@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api, setSession } from '../lib/api';
 
 export default function Login({ onLogin, onBack }) {
-  const [email, setEmail] = useState('raj@vowflo.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,7 +35,7 @@ export default function Login({ onLogin, onBack }) {
 
         <label>Password</label>
         <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="changeme123" />
+          onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="Enter your password" />
 
         {error && <div className="login-error">⚠️ {error}</div>}
 
