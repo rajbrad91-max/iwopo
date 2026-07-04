@@ -68,6 +68,14 @@ export const api = {
   updateVendorPackage: (id, data) => request(`/vendor-packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVendorPackage: (id) => request(`/vendor-packages/${id}`, { method: 'DELETE' }),
   assignPackage: (leadId, package_id) => request(`/vendor-packages/assign/${leadId}`, { method: 'PUT', body: JSON.stringify({ package_id }) }),
+  leadPayments: (leadId) => request(`/payments/lead/${leadId}`),
+  addPayment: (leadId, amount, method, note) => request(`/payments/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ amount, method, note }) }),
+  deletePayment: (id) => request(`/payments/${id}`, { method: 'DELETE' }),
+  saveMoney: (leadId, data) => request(`/payments/lead/${leadId}/money`, { method: 'PUT', body: JSON.stringify(data) }),
+  bookings: () => request('/bookings'),
+  setLeadStatus: (leadId, status) => request(`/bookings/${leadId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  inquirySettings: (vendorId) => request(`/inquiry-settings/${vendorId}`),
+  saveInquirySettings: (data) => request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) }),
   myServices: () => request('/vendors/me/services'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

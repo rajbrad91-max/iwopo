@@ -7,6 +7,9 @@ import vendorRoutes from './routes/vendors.js';
 import leadRoutes from './routes/leads.js';
 import meRoutes from './routes/me.js';
 import vendorPackageRoutes from './routes/vendorPackages.js';
+import paymentRoutes from './routes/payments.js';
+import bookingRoutes from './routes/bookings.js';
+import inquirySettingsRoutes from './routes/inquirySettings.js';
 
 dotenv.config();
 
@@ -22,6 +25,9 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/vendor-packages', vendorPackageRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/inquiry-settings', inquirySettingsRoutes);
 
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'Vowflo API', version: '2.0.0' });

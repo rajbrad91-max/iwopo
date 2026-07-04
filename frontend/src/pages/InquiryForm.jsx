@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import './inquiry.css';
 
 export default function InquiryForm({ vendorId }) {
+  const [cfg, setCfg] = useState(null);
   const [f, setF] = useState({
     name: '', email: '', phone: '',
     event_type: 'Wedding', event_date: '', timing_from: '', timing_to: '',
@@ -15,6 +16,13 @@ export default function InquiryForm({ vendorId }) {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+
+  useEffect(() => {
+    api.inquirySettings(vendorId).then(d => {
+      setCfg(d.settings);
+      if (d.settings?.event_types?.length) set('event_type', d.settings.event_types[0]);
+    }).catch(() => setCfg({}));
+  }, [vendorId]);
 
   async function submit() {
     setErr('');
@@ -58,11 +66,15 @@ export default function InquiryForm({ vendorId }) {
     </div>
   );
 
+  if (!cfg) return <div className="iq-wrap"><div className="iq-card">Loading…</div></div>;
+  const c = cfg;
+  const brand = c.brand_color || '#2dd4bf';
+
   return (
     <div className="iq-wrap">
-      <div className="iq-card">
-        <div className="iq-brand">⬡ Booking Inquiry</div>
-        <p className="iq-sub">Tell us about your event 💫</p>
+      <div className="iq-card" style={{ '--brand': brand }}>
+        <div className="iq-brand" style={{ color: brand }}>⬡ {c.brand_name || 'Booking Inquiry'}</div>
+        <p className="iq-sub">{c.intro_text || 'Tell us about your event 💫'}</p>
 
         <label>Your name *</label>
         <input value={f.name} onChange={e => set('name', e.target.value)} placeholder="Full name" />
@@ -70,35 +82,39 @@ export default function InquiryForm({ vendorId }) {
         <div className="iq-row">
           <div><label>Email *</label>
             <input value={f.email} onChange={e => set('email', e.target.value)} placeholder="you@email.com" /></div>
-          <div><label>Phone</label>
-            <input value={f.phone} onChange={e => set('phone', e.target.value)} placeholder="(555) 555-5555" /></div>
+          {c.show_phone !== false && <div><label>Phone</label>
+            <input value={f.phone} onChange={e => set('phone', e.target.value)} placeholder="(555) 555-5555" /></div>}
         </div>
 
         <label>Event type</label>
         <select value={f.event_type} onChange={e => set('event_type', e.target.value)}>
-          <option>Wedding</option><option>Engagement</option><option>Portrait</option><option>Event</option><option>Other</option>
+          {(c.event_types || ['Wedding', 'Engagement', 'Portrait', 'Event', 'Other']).map(t => <option key={t}>{t}</option>)}
         </select>
 
         <div className="iq-row">
           <div><label>Event date</label>
             <input type="date" value={f.event_date} onChange={e => set('event_date', e.target.value)} /></div>
-          <div><label>Guests</label>
-            <input type="number" value={f.guests} onChange={e => set('guests', e.target.value)} placeholder="120" /></div>
+          {c.show_guests !== false && <div><label>Guests</label>
+            <input type="number" value={f.guests} onChange={e => set('guests', e.target.value)} placeholder="120" /></div>}
         </div>
 
-        <div className="iq-row">
-          <div><label>Start time</label>
-            <input type="time" value={f.timing_from} onChange={e => setTime('timing_from', e.target.value)} /></div>
-          <div><label>End time</label>
-            <input type="time" value={f.timing_to} onChange={e => setTime('timing_to', e.target.value)} /></div>
-        </div>
+        {c.show_times !== false && (
+          <div className="iq-row">
+            <div><label>Start time</label>
+              <input type="time" value={f.timing_from} onChange={e => setTime('timing_from', e.target.value)} /></div>
+            <div><label>End time</label>
+              <input type="time" value={f.timing_to} onChange={e => setTime('timing_to', e.target.value)} /></div>
+          </div>
+        )}
 
-        {f.hours && <div className="iq-hours">⏱️ Total coverage: <b>{f.hours} hours</b></div>}
+        {f.hours && <div className="iq-hours" style={{ color: brand, borderColor: brand + '44', background: brand + '14' }}>⏱️ Total coverage: <b>{f.hours} hours</b></div>}
 
-        <label>Location / Venue</label>
-        <input value={f.location} onChange={e => set('location', e.target.value)} placeholder="Venue name or address" />
+        {c.show_location !== false && (<>
+          <label>Location / Venue</label>
+          <input value={f.location} onChange={e => set('location', e.target.value)} placeholder="Venue name or address" />
+        </>)}
 
-        {isWedding && (
+        {isWedding && c.show_getting_ready !== false && (
           <div className="iq-gr">
             <div className="iq-gr-head">✦ Getting Ready Shoot <span>(optional)</span></div>
 
@@ -122,11 +138,13 @@ export default function InquiryForm({ vendorId }) {
           </div>
         )}
 
-        <label>Anything else?</label>
-        <textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows="3" placeholder="Tell us more about your day…" />
+        {c.show_notes !== false && (<>
+          <label>Anything else?</label>
+          <textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows="3" placeholder="Tell us more about your day…" />
+        </>)}
 
         {err && <div className="iq-err">⚠️ {err}</div>}
-        <button className="iq-btn" onClick={submit} disabled={busy}>
+        <button className="iq-btn" onClick={submit} disabled={busy} style={{ background: brand }}>
           {busy ? 'Sending…' : '📨 Send Inquiry'}
         </button>
       </div>

@@ -33,7 +33,9 @@ export default function VendorPanel({ onLogout }) {
         <div className="brand">📸 My Studio<small>VENDOR</small></div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => setTab('dashboard')}>📊 Dashboard</div>
         <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => setTab('leads')}>📋 Leads</div>
+        <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => setTab('bookings')}>📅 Bookings</div>
         <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => setTab('packages')}>📦 My Packages</div>
+        <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => setTab('inqform')}>🎨 Inquiry Form</div>
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => setTab('services')}>🧩 My Services</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => setTab('refer')}>👥 Refer a Friend</div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => setTab('settings')}>⚙️ Settings</div>
@@ -43,7 +45,7 @@ export default function VendorPanel({ onLogout }) {
       <main className="main">
         <div className="topbar">
           <div>
-            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : 'My Services'}</h1>
+            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : 'My Services'}</h1>
             <div className="sub">Welcome back, {user?.name} 👋</div>
           </div>
           <button className="refresh" onClick={load}>🔄 Refresh</button>
@@ -54,6 +56,10 @@ export default function VendorPanel({ onLogout }) {
           <ReferForm user={user} />
         ) : tab === 'leads' ? (
           <LeadsView />
+        ) : tab === 'bookings' ? (
+          <BookingsView />
+        ) : tab === 'inqform' ? (
+          <InqFormSettings user={user} />
         ) : tab === 'packages' ? (
           <PackagesView />
         ) : tab === 'settings' ? (
@@ -289,6 +295,204 @@ function LeadDetail({ lead, onBack }) {
       {row('💄 Bride Getting Ready', `${yn(lead.gr_bride)}${lead.gr_bride_venue ? ' · ' + lead.gr_bride_venue : ''}`)}
       {row('😎 Groom Getting Ready', `${yn(lead.gr_groom)}${lead.gr_groom_venue ? ' · ' + lead.gr_groom_venue : ''}`)}
       {row('📝 Notes', lead.notes)}
+
+      <MoneySection lead={lead} />
+    </div>
+  );
+}
+
+const STATUSES = ['new', 'contacted', 'quoted', 'booked', 'completed', 'cancelled'];
+const S_ICON = { new: '🆕', contacted: '📞', quoted: '💬', booked: '✅', completed: '🏁', cancelled: '❌' };
+
+function MoneySection({ lead }) {
+  const [data, setData] = useState(null);
+  const [amt, setAmt] = useState('');
+  const [method, setMethod] = useState('manual');
+  const [money, setMoney] = useState({ deposit_percent: lead.deposit_percent ?? 30, discount_percent: lead.discount_percent ?? 0, price_override: lead.price_override ?? '' });
+  const [status, setStatus] = useState(lead.status || 'new');
+  const [msg, setMsg] = useState('');
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 8 };
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    try { const d = await api.leadPayments(lead.id); setData(d); } catch {}
+  }
+  async function saveMoney() {
+    try {
+      const d = await api.saveMoney(lead.id, {
+        deposit_percent: Number(money.deposit_percent) || 0,
+        discount_percent: Number(money.discount_percent) || 0,
+        price_override: money.price_override === '' ? null : Number(money.price_override),
+      });
+      setData(s => ({ ...s, summary: d.summary }));
+      setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function pay() {
+    if (!amt || Number(amt) <= 0) return;
+    try { const d = await api.addPayment(lead.id, Number(amt), method); setData(d); setAmt(''); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function delPay(id) {
+    if (!confirm('Remove this payment?')) return;
+    try { await api.deletePayment(id); load(); } catch {}
+  }
+  async function changeStatus(s) {
+    setStatus(s);
+    try { await api.setLeadStatus(lead.id, s); setMsg('✅ Status: ' + s); setTimeout(() => setMsg(''), 1500); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  const sum = data?.summary;
+  return (
+    <div style={{ marginTop: 20 }}>
+      {/* Status */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+        {STATUSES.map(s => (
+          <button key={s} className="refresh" onClick={() => changeStatus(s)}
+            style={{ padding: '5px 11px', fontSize: 12, background: status === s ? '#2dd4bf' : '#0d1417', color: status === s ? '#06231f' : '#e6f0f2' }}>
+            {S_ICON[s]} {s}
+          </button>
+        ))}
+      </div>
+      {msg && <div style={{ fontSize: 13, color: msg[0] === '✅' ? '#4ade80' : '#fb7185', marginBottom: 10 }}>{msg}</div>}
+
+      <h3 style={{ margin: '0 0 10px' }}>💰 Money</h3>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 11, color: '#7c9199' }}>Price override ($)</label>
+          <input style={{ ...box, width: '100%' }} type="number" placeholder="auto from package"
+            value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 11, color: '#7c9199' }}>Discount %</label>
+          <input style={{ ...box, width: '100%' }} type="number"
+            value={money.discount_percent} onChange={e => setMoney({ ...money, discount_percent: e.target.value })} onBlur={saveMoney} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 11, color: '#7c9199' }}>Deposit %</label>
+          <input style={{ ...box, width: '100%' }} type="number"
+            value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
+        </div>
+      </div>
+
+      {sum && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, fontSize: 13 }}>
+          <span style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '7px 12px' }}>💵 Total: <b>${sum.final_total}</b>{sum.discount_amount > 0 && <s style={{ color: '#7c9199', marginLeft: 6 }}>${sum.base_total}</s>}</span>
+          <span style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '7px 12px' }}>🔐 Deposit: <b>${sum.deposit_amount}</b></span>
+          <span style={{ background: '#4ade8018', border: '1px solid #4ade8044', borderRadius: 8, padding: '7px 12px', color: '#4ade80' }}>✅ Paid: <b>${sum.paid}</b></span>
+          <span style={{ background: sum.balance > 0 ? '#fbbf2418' : '#4ade8018', border: '1px solid #fbbf2444', borderRadius: 8, padding: '7px 12px', color: sum.balance > 0 ? '#fbbf24' : '#4ade80' }}>⏳ Balance: <b>${sum.balance}</b></span>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <input style={{ ...box, flex: 1 }} type="number" placeholder="Amount $" value={amt} onChange={e => setAmt(e.target.value)} />
+        <select style={box} value={method} onChange={e => setMethod(e.target.value)}>
+          <option value="manual">Manual</option><option value="etransfer">E-transfer</option>
+          <option value="cash">Cash</option><option value="card">Card</option>
+        </select>
+        <button className="refresh" onClick={pay} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Record payment</button>
+      </div>
+
+      {data?.payments?.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {data.payments.map(p => (
+            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
+              <span>💵 ${Number(p.amount).toFixed(2)} · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
+              <span style={{ cursor: 'pointer' }} onClick={() => delPay(p.id)}>🗑️</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BookingsView() {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.bookings().then(d => setBookings(d.bookings || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  if (loading) return <div className="loading">Loading…</div>;
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead><tr><th>Client</th><th>Event</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th></tr></thead>
+        <tbody>
+          {bookings.length === 0 ? (
+            <tr><td colSpan="6" className="empty">No bookings yet. Set a lead's status to ✅ booked!</td></tr>
+          ) : bookings.map(b => (
+            <tr key={b.id}>
+              <td className="biz">{b.name}</td>
+              <td>{b.event_type}</td>
+              <td>{b.event_date ? String(b.event_date).slice(0, 10) : '—'}</td>
+              <td>${b.money?.final_total ?? 0}</td>
+              <td style={{ color: '#4ade80' }}>${b.money?.paid ?? 0}</td>
+              <td style={{ color: b.money?.balance > 0 ? '#fbbf24' : '#4ade80' }}>${b.money?.balance ?? 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InqFormSettings({ user }) {
+  const [s, setS] = useState(null);
+  const [msg, setMsg] = useState('');
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+
+  useEffect(() => {
+    api.inquirySettings(user?.vendor_id).then(d => setS(d.settings)).catch(() => {});
+  }, []);
+
+  async function save() {
+    setMsg('');
+    try { await api.saveInquirySettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  const toggle = (k) => setS(prev => ({ ...prev, [k]: !prev[k] }));
+
+  if (!s) return <div className="loading">Loading…</div>;
+
+  const toggles = [
+    ['show_phone', '📞 Phone'], ['show_guests', '👥 Guests'], ['show_times', '⏰ Times'],
+    ['show_location', '📍 Location'], ['show_getting_ready', '💄 Getting Ready'], ['show_notes', '📝 Notes'],
+  ];
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <div className="table-wrap" style={{ padding: 22 }}>
+        <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
+        <p className="sub" style={{ marginBottom: 14 }}>Your link: <b style={{ color: '#2dd4bf' }}>alphabetaone.com/inquiry/{user?.vendor_id}</b> 🔗</p>
+
+        <label style={{ fontSize: 12, color: '#7c9199' }}>Brand name</label>
+        <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
+
+        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 12 }}>Brand color</label>
+        <input type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })}
+          style={{ width: 60, height: 36, border: 'none', background: 'transparent', cursor: 'pointer' }} />
+
+        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 12 }}>Intro text</label>
+        <input style={box} value={s.intro_text || ''} onChange={e => setS({ ...s, intro_text: e.target.value })} />
+
+        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 14 }}>Fields to show</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+          {toggles.map(([k, label]) => (
+            <button key={k} className="refresh" onClick={() => toggle(k)}
+              style={{ padding: '6px 12px', fontSize: 12, background: s[k] ? '#2dd4bf' : '#0d1417', color: s[k] ? '#06231f' : '#7c9199' }}>
+              {label} {s[k] ? '✓' : '✕'}
+            </button>
+          ))}
+        </div>
+
+        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 14 }}>Event types (comma separated)</label>
+        <input style={box} value={(s.event_types || []).join(', ')}
+          onChange={e => setS({ ...s, event_types: e.target.value.split(',').map(x => x.trim()).filter(Boolean) })} />
+
+        <button className="refresh" onClick={save} style={{ marginTop: 16, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save form settings</button>
+      </div>
     </div>
   );
 }
