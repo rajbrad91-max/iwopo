@@ -108,19 +108,15 @@ function DashboardView({ vendors, packages, trials }) {
   ];
   const maxC = Math.max(...countries.map(c => c[2]));
 
-  // Build service list from real packages (unique service names)
+  // Sellable items — packages + standalone services (as sold)
   const palette = ['#2dd4bf','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'];
-  const seen = new Set();
-  const svcNames = [];
-  (packages || []).forEach(p => {
-    [...(p.included||[]), ...(p.standalone||[]), ...(p.addons||[])].forEach(it => {
-      const nm = `${it.icon || ''} ${it.name}`.trim();
-      if (!seen.has(it.name)) { seen.add(it.name); svcNames.push(nm); }
-    });
-  });
-  const svcData = (svcNames.length ? svcNames : ['📸 Galleries','📋 Leads','📄 Contracts','📅 Calendar','🤖 AI Chatbot','☁️ Cloud'])
-    .slice(0, 6)
-    .map((name, i) => ({ name, v: 82 - i * 11, c: palette[i % palette.length] }));
+  const sellables = [
+    '🌐 Website Builder', '🎬 Studio Special', '🏢 Vendor Suite',
+    '📸 Galleries', '🤖 AI Chatbot', '💬 Non-AI Chatbot', '☁️ File & Cloud',
+  ];
+  const svcData = sellables.map((name, i) => ({
+    name, v: 88 - i * 10, c: palette[i % palette.length],
+  }));
 
   return (
     <>
@@ -176,7 +172,7 @@ function DashboardView({ vendors, packages, trials }) {
               </PieChart>
             </ResponsiveContainer>
             <div className="sa-adopt">
-              {svcData.slice(0, 6).map((s, i) => (
+              {svcData.slice(0, 7).map((s, i) => (
                 <div key={i} className="sa-ad-row">
                   <div className="sa-ad-top"><span>{s.name}</span><span className="cnt">{s.v}%</span></div>
                   <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ width: `${s.v}%`, background: s.c }} /></div>
