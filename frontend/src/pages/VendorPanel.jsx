@@ -298,6 +298,76 @@ function LeadDetail({ lead, onBack }) {
 
       <MoneySection lead={lead} />
       <EmailBox lead={lead} />
+      <ContractsBox lead={lead} />
+    </div>
+  );
+}
+
+function ContractsBox({ lead }) {
+  const [list, setList] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('Service Agreement');
+  const [body, setBody] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    try { const d = await api.leadContracts(lead.id); setList(d.contracts || []); } catch {}
+  }
+  async function create() {
+    if (!body.trim()) return setMsg('⚠️ Contract text required');
+    setBusy(true); setMsg('');
+    try {
+      await api.createContract(lead.id, title, body);
+      setMsg('✅ Contract created'); setBody(''); setOpen(false); load();
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+  async function voidCt(id) {
+    if (!confirm('Delete this contract?')) return;
+    try { await api.voidContract(id); load(); } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  function copyLink(token) {
+    navigator.clipboard?.writeText(`https://alphabetaone.com/sign/${token}`);
+    setMsg('🔗 Link copied!'); setTimeout(() => setMsg(''), 1500);
+  }
+
+  const S = { draft: '📝', sent: '📨', signed: '✅', void: '🚫' };
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0 }}>📄 Contracts</h3>
+        <button className="refresh" onClick={() => setOpen(!open)}>{open ? '✕ Cancel' : '+ New contract'}</button>
+      </div>
+      {msg && <div style={{ fontSize: 13, marginTop: 8, color: msg[0] === '⚠' ? '#fb7185' : '#4ade80' }}>{msg}</div>}
+
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <input style={box} value={title} onChange={e => setTitle(e.target.value)} placeholder="Contract title" />
+          <textarea style={{ ...box, minHeight: 140, marginTop: 8 }} value={body} onChange={e => setBody(e.target.value)}
+            placeholder={`Write your agreement terms here…\n\ne.g. Coverage: ${lead.hours || 8} hours on ${lead.event_date ? String(lead.event_date).slice(0,10) : 'event date'}…`} />
+          <button className="refresh" onClick={create} disabled={busy} style={{ marginTop: 8, background: '#2dd4bf', color: '#06231f' }}>
+            {busy ? 'Creating…' : '📄 Create & get signing link'}
+          </button>
+        </div>
+      )}
+
+      {list.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+          {list.map(c => (
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+              <span>{S[c.status]} <b>{c.title}</b> · {c.status}{c.signed_name ? ` by ${c.signed_name}` : ''}</span>
+              <span style={{ display: 'flex', gap: 10 }}>
+                {c.status !== 'signed' && <span style={{ cursor: 'pointer', color: '#2dd4bf' }} onClick={() => copyLink(c.token)}>🔗 Copy link</span>}
+                {c.status === 'signed' && <span style={{ color: '#4ade80' }}>{String(c.signed_at).slice(0, 10)}</span>}
+                {c.status !== 'signed' && <span style={{ cursor: 'pointer' }} onClick={() => voidCt(c.id)}>🗑️</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

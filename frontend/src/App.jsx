@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import VendorPanel from './pages/VendorPanel';
 import InquiryForm from './pages/InquiryForm';
+import SignContract from './pages/SignContract';
 import { getUser } from './lib/api';
 
 export default function App() {
@@ -13,6 +14,10 @@ export default function App() {
   // 🌐 Public inquiry route: /inquiry/:vendorId  (no login needed)
   const m = window.location.pathname.match(/^\/inquiry\/(\d+)/);
   if (m) return <InquiryForm vendorId={m[1]} />;
+
+  // 📄 Public contract signing: /sign/:token
+  const s = window.location.pathname.match(/^\/sign\/([a-f0-9]+)/);
+  if (s) return <SignContract token={s[1]} />;
 
   if (user) {
     if (user.role === 'super_admin') return <Dashboard onLogout={() => setUser(null)} />;

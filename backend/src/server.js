@@ -11,6 +11,7 @@ import paymentRoutes from './routes/payments.js';
 import bookingRoutes from './routes/bookings.js';
 import inquirySettingsRoutes from './routes/inquirySettings.js';
 import emailRoutes from './routes/email.js';
+import contractRoutes from './routes/contracts.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/inquiry-settings', inquirySettingsRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/contracts', contractRoutes);
 
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'Vowflo API', version: '2.0.0' });

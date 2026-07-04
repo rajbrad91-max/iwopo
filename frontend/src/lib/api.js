@@ -79,6 +79,11 @@ export const api = {
   emailSettings: () => request('/email/settings'),
   saveEmailSettings: (data) => request('/email/settings', { method: 'PUT', body: JSON.stringify(data) }),
   emailLead: (leadId, subject, body) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body }) }),
+  leadContracts: (leadId) => request(`/contracts/lead/${leadId}`),
+  createContract: (leadId, title, body) => request(`/contracts/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ title, body }) }),
+  voidContract: (id) => request(`/contracts/${id}`, { method: 'DELETE' }),
+  viewContract: (token) => request(`/contracts/sign/${token}`),
+  signContract: (token, signed_name) => request(`/contracts/sign/${token}`, { method: 'POST', body: JSON.stringify({ signed_name }) }),
   myServices: () => request('/vendors/me/services'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {
