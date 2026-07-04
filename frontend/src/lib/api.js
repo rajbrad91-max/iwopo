@@ -76,6 +76,9 @@ export const api = {
   setLeadStatus: (leadId, status) => request(`/bookings/${leadId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   inquirySettings: (vendorId) => request(`/inquiry-settings/${vendorId}`),
   saveInquirySettings: (data) => request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  emailSettings: () => request('/email/settings'),
+  saveEmailSettings: (data) => request('/email/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  emailLead: (leadId, subject, body) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body }) }),
   myServices: () => request('/vendors/me/services'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

@@ -297,6 +297,45 @@ function LeadDetail({ lead, onBack }) {
       {row('📝 Notes', lead.notes)}
 
       <MoneySection lead={lead} />
+      <EmailBox lead={lead} />
+    </div>
+  );
+}
+
+function EmailBox({ lead }) {
+  const [open, setOpen] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+
+  async function send() {
+    if (!subject || !body) return setMsg('⚠️ Subject + message required');
+    setBusy(true); setMsg('');
+    try {
+      const d = await api.emailLead(lead.id, subject, body);
+      setMsg('✅ Sent to ' + d.sent_to); setSubject(''); setBody(''); setOpen(false);
+    } catch (e) { setMsg('⚠️ ' + (e.message || 'Failed')); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <button className="refresh" onClick={() => setOpen(!open)}>
+        {open ? '✕ Close' : `📧 Email ${lead.name || 'client'}`}
+      </button>
+      {msg && <div style={{ fontSize: 13, marginTop: 8, color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</div>}
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <input style={box} placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} />
+          <textarea style={{ ...box, minHeight: 100, marginTop: 8 }} placeholder="Your message…" value={body} onChange={e => setBody(e.target.value)} />
+          <button className="refresh" onClick={send} disabled={busy}
+            style={{ marginTop: 8, background: '#2dd4bf', color: '#06231f' }}>
+            {busy ? 'Sending…' : '📨 Send'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -751,6 +790,63 @@ function SettingsView({ user }) {
         <input style={box} type="password" value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} placeholder="New password (min 6)" />
         <button className="refresh" onClick={savePw} style={{ marginTop: 8 }}>Change password</button>
       </div>
+
+      <EmailSetup />
+    </div>
+  );
+}
+
+function EmailSetup() {
+  const [s, setS] = useState(null);
+  const [msg, setMsg] = useState('');
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 10, width: '100%', marginTop: 6 };
+
+  useEffect(() => {
+    api.emailSettings().then(d => setS(d.settings)).catch(() => setS({ mode: 'platform' }));
+  }, []);
+
+  async function save() {
+    setMsg('');
+    try { await api.saveEmailSettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  if (!s) return null;
+  const MODES = [
+    ['smtp', '🔧 My own SMTP'],
+    ['self', '📥 Self-receive (reply from my inbox)'],
+    ['platform', '🏢 Platform email (noreply)'],
+  ];
+
+  return (
+    <div className="table-wrap" style={{ padding: 22 }}>
+      <h2 style={{ marginTop: 0 }}>📧 Email sending {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
+
+      <label style={{ fontSize: 13, color: '#9fb3b0' }}>How do you want to email clients?</label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+        {MODES.map(([m, label]) => (
+          <button key={m} className="refresh" onClick={() => setS({ ...s, mode: m })}
+            style={{ textAlign: 'left', background: s.mode === m ? '#2dd4bf' : '#0d1417', color: s.mode === m ? '#06231f' : '#e6f0f2' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {s.mode === 'smtp' && (
+        <div style={{ marginTop: 12 }}>
+          <input style={box} placeholder="SMTP host (e.g. smtp.gmail.com)" value={s.smtp_host || ''} onChange={e => setS({ ...s, smtp_host: e.target.value })} />
+          <input style={box} type="number" placeholder="Port (587)" value={s.smtp_port || 587} onChange={e => setS({ ...s, smtp_port: Number(e.target.value) })} />
+          <input style={box} placeholder="SMTP username" value={s.smtp_user || ''} onChange={e => setS({ ...s, smtp_user: e.target.value })} />
+          <input style={box} type="password" placeholder="SMTP password" value={s.smtp_pass || ''} onChange={e => setS({ ...s, smtp_pass: e.target.value })} />
+          <input style={box} placeholder="From name (e.g. Sunny Studios)" value={s.from_name || ''} onChange={e => setS({ ...s, from_name: e.target.value })} />
+          <input style={box} placeholder="From email" value={s.from_email || ''} onChange={e => setS({ ...s, from_email: e.target.value })} />
+        </div>
+      )}
+
+      <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }}>📬 New-lead alerts go to</label>
+      <input style={box} placeholder="you@email.com" value={s.notify_email || ''} onChange={e => setS({ ...s, notify_email: e.target.value })} />
+
+      <button className="refresh" onClick={save} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save email settings</button>
     </div>
   );
 }

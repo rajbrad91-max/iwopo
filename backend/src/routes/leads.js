@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { notifyNewLead } from './email.js';
 
 const router = express.Router();
 
@@ -49,6 +50,7 @@ router.post('/', async (req, res) => {
   try {
     const { rows } = await query(
       `INSERT INTO leads (${cols.join(',')}) VALUES (${ph}) RETURNING *`, vals);
+    notifyNewLead(rows[0]);
     res.status(201).json({ lead: rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
