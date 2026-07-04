@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import apiRoutes from './routes/index.js';
 import authRoutes from './routes/auth.js';
 import vendorRoutes from './routes/vendors.js';
+import leadRoutes from './routes/leads.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
+app.use('/api/leads', leadRoutes);
 
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'Vowflo API', version: '2.0.0' });
