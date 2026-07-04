@@ -174,13 +174,13 @@ function LeadDetail({ lead, onBack }) {
 
   const yn = (v) => v ? '✅ Yes' : '❌ No';
   const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
-  const Row = ({ label, value }) => (
+  const row = (label, value) => (
     <div style={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #223238', fontSize: 14 }}>
       <div style={{ width: 180, color: '#7c9199', fontWeight: 600 }}>{label}</div>
       <div>{value || '—'}</div>
     </div>
   );
-  const ERow = ({ label, k, type }) => (
+  const eRow = (label, k, type) => (
     <div style={{ padding: '8px 0', borderBottom: '1px solid #223238' }}>
       <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>{label}</label>
       <input style={box} type={type || 'text'} value={f[k] ?? ''} onChange={e => set(k, e.target.value)} />
@@ -194,11 +194,11 @@ function LeadDetail({ lead, onBack }) {
       <h2 style={{ marginTop: 0 }}>✏️ Edit Lead</h2>
       {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#fb718518', color: '#fb7185' }}>{msg}</div>}
 
-      <ERow label="👤 Name" k="name" />
-      <ERow label="📧 Email" k="email" />
-      <ERow label="📞 Phone" k="phone" />
-      <ERow label="🎉 Event type" k="event_type" />
-      <ERow label="📅 Date" k="event_date" type="date" />
+      {eRow('👤 Name', 'name')}
+      {eRow('📧 Email', 'email')}
+      {eRow('📞 Phone', 'phone')}
+      {eRow('🎉 Event type', 'event_type')}
+      {eRow('📅 Date', 'event_date', 'date')}
       <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #223238' }}>
         <div style={{ flex: 1 }}>
           <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ Start</label>
@@ -209,9 +209,9 @@ function LeadDetail({ lead, onBack }) {
           <input style={box} type="time" value={f.timing_to || ''} onChange={e => setTime('timing_to', e.target.value)} />
         </div>
       </div>
-      <Row label="⏱️ Hours (auto)" value={f.hours} />
-      <ERow label="📍 Location" k="location" />
-      <ERow label="👥 Guests" k="guests" type="number" />
+      {row('⏱️ Hours (auto)', f.hours)}
+      {eRow('📍 Location', 'location')}
+      {eRow('👥 Guests', 'guests', 'number')}
 
       <div style={{ padding: '10px 0', borderBottom: '1px solid #223238' }}>
         <label style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
@@ -249,16 +249,16 @@ function LeadDetail({ lead, onBack }) {
       <h2 style={{ marginTop: 0 }}>{lead.name} · {lead.event_type}</h2>
       {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#4ade8018', color: '#4ade80' }}>{msg}</div>}
 
-      <Row label="📧 Email" value={lead.email} />
-      <Row label="📞 Phone" value={lead.phone} />
-      <Row label="📅 Date" value={lead.event_date ? String(lead.event_date).slice(0,10) : null} />
-      <Row label="⏰ Time" value={lead.timing_from ? `${lead.timing_from} – ${lead.timing_to || '?'}` : null} />
-      <Row label="📍 Location" value={lead.location} />
-      <Row label="👥 Guests" value={lead.guests} />
-      <Row label="⏱️ Hours" value={lead.hours} />
-      <Row label="💄 Bride Getting Ready" value={`${yn(lead.gr_bride)}${lead.gr_bride_venue ? ' · ' + lead.gr_bride_venue : ''}`} />
-      <Row label="😎 Groom Getting Ready" value={`${yn(lead.gr_groom)}${lead.gr_groom_venue ? ' · ' + lead.gr_groom_venue : ''}`} />
-      <Row label="📝 Notes" value={lead.notes} />
+      {row('📧 Email', lead.email)}
+      {row('📞 Phone', lead.phone)}
+      {row('📅 Date', lead.event_date ? String(lead.event_date).slice(0,10) : null)}
+      {row('⏰ Time', lead.timing_from ? `${lead.timing_from} – ${lead.timing_to || '?'}` : null)}
+      {row('📍 Location', lead.location)}
+      {row('👥 Guests', lead.guests)}
+      {row('⏱️ Hours', lead.hours)}
+      {row('💄 Bride Getting Ready', `${yn(lead.gr_bride)}${lead.gr_bride_venue ? ' · ' + lead.gr_bride_venue : ''}`)}
+      {row('😎 Groom Getting Ready', `${yn(lead.gr_groom)}${lead.gr_groom_venue ? ' · ' + lead.gr_groom_venue : ''}`)}
+      {row('📝 Notes', lead.notes)}
     </div>
   );
 }
