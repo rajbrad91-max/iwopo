@@ -17,6 +17,7 @@ import crewRoutes from './routes/crew.js';
 import notificationRoutes from './routes/notifications.js';
 import reviewRoutes from './routes/reviews.js';
 import portalRoutes from './routes/portal.js';
+import { gate } from './lib/entitlements.js';
 
 dotenv.config();
 
@@ -29,18 +30,18 @@ app.use(express.json());
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
-app.use('/api/leads', leadRoutes);
+app.use('/api/leads', gate('leads'), leadRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/vendor-packages', vendorPackageRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/inquiry-settings', inquirySettingsRoutes);
-app.use('/api/email', emailRoutes);
-app.use('/api/contracts', contractRoutes);
-app.use('/api/invoices', invoiceRoutes);
-app.use('/api/crew', crewRoutes);
+app.use('/api/payments', gate('leads'), paymentRoutes);
+app.use('/api/bookings', gate('leads'), bookingRoutes);
+app.use('/api/inquiry-settings', gate('leads'), inquirySettingsRoutes);
+app.use('/api/email', gate('leads'), emailRoutes);
+app.use('/api/contracts', gate('contracts'), contractRoutes);
+app.use('/api/invoices', gate('contracts'), invoiceRoutes);
+app.use('/api/crew', gate('crew'), crewRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/reviews', reviewRoutes);
+app.use('/api/reviews', gate('reviews'), reviewRoutes);
 app.use('/api/portal', portalRoutes);
 
 app.get('/', (req, res) => {

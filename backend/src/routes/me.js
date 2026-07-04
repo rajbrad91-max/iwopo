@@ -2,8 +2,19 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getFeatures } from '../lib/entitlements.js';
 
 const router = express.Router();
+
+// GET /api/me/features → feature keys this vendor has (super_admin gets '*')
+router.get('/features', requireAuth, async (req, res) => {
+  if (req.user.role === 'super_admin') return res.json({ features: ['*'] });
+  if (!req.user.vendor_id) return res.json({ features: [] });
+  try {
+    const set = await getFeatures(req.user.vendor_id);
+    res.json({ features: [...set] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // GET /api/me/settings
 router.get('/settings', requireAuth, async (req, res) => {

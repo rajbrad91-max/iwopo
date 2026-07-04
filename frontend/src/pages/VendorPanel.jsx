@@ -2,12 +2,33 @@ import { useState, useEffect } from 'react';
 import { api, getUser, clearSession } from '../lib/api';
 import './vendor.css';
 
+// 🗝️ tab → required feature (one map controls everything)
+const TAB_FEATURE = {
+  leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
+  contracts: 'contracts', crew: 'crew', reviews: 'reviews',
+};
+
+function FeatureLocked({ goServices }) {
+  return (
+    <div className="table-wrap" style={{ padding: 40, textAlign: 'center', maxWidth: 520 }}>
+      <div style={{ fontSize: 44 }}>🔒</div>
+      <h2 style={{ margin: '10px 0 6px' }}>This feature isn't in your plan</h2>
+      <p style={{ color: '#7c9199', fontSize: 13, marginBottom: 18 }}>Upgrade your plan or add it as a standalone service to unlock it. ✨</p>
+      <button className="refresh" onClick={goServices} style={{ background: '#2dd4bf', color: '#06231f' }}>🧩 View My Services</button>
+    </div>
+  );
+}
+
 export default function VendorPanel({ onLogout }) {
   const [services, setServices] = useState([]);
+  const [features, setFeatures] = useState(null);   // 🗝️ entitlements (null = loading)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('dashboard');
   const user = getUser();
+
+  // 🗝️ single access check used everywhere
+  const has = (key) => !!features && (features.includes('*') || features.includes(key));
 
   useEffect(() => { load(); }, []);
 
@@ -15,8 +36,9 @@ export default function VendorPanel({ onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const d = await api.myServices();
+      const [d, f] = await Promise.all([api.myServices(), api.myFeatures()]);
       setServices(d.services);
+      setFeatures(f.features || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -33,13 +55,13 @@ export default function VendorPanel({ onLogout }) {
       <aside className="sidebar">
         <div className="brand">📸 My Studio<small>VENDOR</small></div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => setTab('dashboard')}>📊 Dashboard</div>
-        <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => setTab('leads')}>📋 Leads</div>
-        <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => setTab('bookings')}>📅 Bookings</div>
-        <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => setTab('contracts')}>📄 Contracts & Invoices</div>
-        <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => setTab('crew')}>👷 My Crew</div>
-        <div className={`nav-item ${tab==='reviews'?'active':''}`} onClick={() => setTab('reviews')}>⭐ Reviews</div>
-        <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => setTab('packages')}>📦 My Packages</div>
-        <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => setTab('inqform')}>🎨 Inquiry Form</div>
+        {has('leads') && <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => setTab('leads')}>📋 Leads</div>}
+        {has('leads') && <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => setTab('bookings')}>📅 Bookings</div>}
+        {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => setTab('contracts')}>📄 Contracts & Invoices</div>}
+        {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => setTab('crew')}>👷 My Crew</div>}
+        {has('reviews') && <div className={`nav-item ${tab==='reviews'?'active':''}`} onClick={() => setTab('reviews')}>⭐ Reviews</div>}
+        {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => setTab('packages')}>📦 My Packages</div>}
+        {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => setTab('inqform')}>🎨 Inquiry Form</div>}
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => setTab('services')}>🧩 My Services</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => setTab('refer')}>👥 Refer a Friend</div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => setTab('settings')}>⚙️ Settings</div>
@@ -59,7 +81,9 @@ export default function VendorPanel({ onLogout }) {
         </div>
 
         {error && <div className="err-banner">⚠️ {error}</div>}
-        {loading ? <div className="loading">Loading…</div> : tab === 'refer' ? (
+        {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) ? (
+          <FeatureLocked goServices={() => setTab('services')} />
+        ) : loading ? <div className="loading">Loading…</div> : tab === 'refer' ? (
           <ReferForm user={user} />
         ) : tab === 'leads' ? (
           <LeadsView />

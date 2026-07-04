@@ -122,6 +122,7 @@ export const api = {
   portalPick: (token, package_id) => request(`/portal/${token}/pick`, { method: 'POST', body: JSON.stringify({ package_id }) }),
   portalOfficeVisit: (token) => request(`/portal/${token}/office-visit`, { method: 'POST' }),
   myServices: () => request('/vendors/me/services'),
+  myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {
       method: 'POST', body: JSON.stringify({ enabled }),
