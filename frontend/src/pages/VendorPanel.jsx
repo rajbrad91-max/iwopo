@@ -432,7 +432,9 @@ function AllContracts() {
               <td>{c.title}</td>
               <td>{S[c.status]} {c.status}</td>
               <td>{c.signed_at ? String(c.signed_at).slice(0, 10) : '—'}</td>
-              <td>{c.status !== 'signed' && <span style={{ cursor: 'pointer', color: '#2dd4bf', fontSize: 12 }} onClick={() => copyLink(c.token)}>🔗 Copy link</span>}</td>
+              <td>{c.status !== 'signed'
+                ? <span style={{ cursor: 'pointer', color: '#2dd4bf', fontSize: 12 }} onClick={() => copyLink(c.token)}>🔗 Copy link</span>
+                : <a href={`/certificate/${c.token}`} target="_blank" rel="noreferrer" style={{ color: '#4ade80', fontSize: 12, textDecoration: 'none' }}>📜 Certificate</a>}</td>
             </tr>
           ))}
         </tbody>

@@ -6,6 +6,7 @@ import VendorPanel from './pages/VendorPanel';
 import InquiryForm from './pages/InquiryForm';
 import SignContract from './pages/SignContract';
 import InvoiceView from './pages/InvoiceView';
+import Certificate from './pages/Certificate';
 import { getUser } from './lib/api';
 
 export default function App() {
@@ -23,6 +24,10 @@ export default function App() {
   // 🧾 Public invoice view: /invoice/:token
   const iv = window.location.pathname.match(/^\/invoice\/([a-f0-9]+)/);
   if (iv) return <InvoiceView token={iv[1]} />;
+
+  // 📜 Signing certificate: /certificate/:token
+  const ce = window.location.pathname.match(/^\/certificate\/([a-f0-9]+)/);
+  if (ce) return <Certificate token={ce[1]} />;
 
   if (user) {
     if (user.role === 'super_admin') return <Dashboard onLogout={() => setUser(null)} />;

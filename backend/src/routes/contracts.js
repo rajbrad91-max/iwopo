@@ -191,12 +191,33 @@ router.post('/sign/:token', async (req, res) => {
     return res.status(400).json({ error: `Please tap all ${needed} initial boxes ✍️` });
 
   const ip = ipOf(req);
+  // 🔐 document hash: body + signer + signature + timestamp
+  const stamp = new Date().toISOString();
+  const docHash = crypto.createHash('sha256')
+    .update(c.body + '|' + signed_name.trim() + '|' + signature_data + '|' + stamp)
+    .digest('hex');
   const { rows: upd } = await query(
     `UPDATE contracts SET status='signed', signed_name=$1, signed_ip=$2, signature_data=$3,
-      initials=$4, signed_at=NOW(), updated_at=NOW() WHERE id=$5 RETURNING *`,
-    [signed_name.trim(), ip, signature_data, JSON.stringify(initials || []), c.id]);
-  await audit(c.id, 'signed', ip, { signed_name: signed_name.trim() });
+      initials=$4, doc_sha256=$5, signed_at=NOW(), updated_at=NOW() WHERE id=$6 RETURNING *`,
+    [signed_name.trim(), ip, signature_data, JSON.stringify(initials || []), docHash, c.id]);
+  await audit(c.id, 'signed', ip, { signed_name: signed_name.trim(), sha256: docHash });
   res.json({ contract: upd[0] });
+});
+
+// PUBLIC: GET /api/contracts/certificate/:token → signing certificate (signed only)
+router.get('/certificate/:token', async (req, res) => {
+  const { rows } = await query(
+    `SELECT c.id, c.title, c.status, c.signed_name, c.signed_ip, c.signed_at, c.viewed_at,
+            c.created_at, c.doc_sha256, c.signature_data, c.initials,
+            l.name AS client_name, l.email AS client_email, l.event_type, l.event_date,
+            v.business_name
+     FROM contracts c JOIN leads l ON l.id=c.lead_id JOIN vendors v ON v.id=c.vendor_id
+     WHERE c.token=$1`, [req.params.token]);
+  if (!rows[0]) return res.status(404).json({ error: 'Contract not found' });
+  if (rows[0].status !== 'signed') return res.status(400).json({ error: 'Certificate available after signing' });
+  const { rows: trail } = await query(
+    'SELECT event, ip, created_at FROM contract_audit WHERE contract_id=$1 ORDER BY created_at', [rows[0].id]);
+  res.json({ certificate: rows[0], audit: trail });
 });
 
 export default router;
