@@ -1,0 +1,21 @@
+.iq-wrap { min-height: 100vh; background: linear-gradient(135deg, #0d1417, #143d38); display: flex; align-items: center; justify-content: center; padding: 24px; font-family: 'Segoe UI', -apple-system, sans-serif; }
+.iq-card { background: #131e22; border: 1px solid #223238; border-radius: 18px; padding: 32px; width: 100%; max-width: 520px; color: #e6f0f2; }
+.iq-brand { font-size: 22px; font-weight: 800; color: #2dd4bf; }
+.iq-sub { color: #7c9199; font-size: 14px; margin: 4px 0 20px; }
+.iq-card label { display: block; font-size: 12px; color: #9fb3b0; font-weight: 600; margin: 12px 0 5px; }
+.iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 11px 13px; background: #0d1417; border: 1px solid #223238; border-radius: 9px; color: #e6f0f2; font-size: 14px; font-family: inherit; }
+.iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: #2dd4bf; }
+.iq-row { display: flex; gap: 12px; }
+.iq-row > div { flex: 1; }
+.iq-gr { background: #0d1417; border: 1px solid #223238; border-radius: 12px; padding: 16px; margin-top: 14px; }
+.iq-gr-head { font-weight: 700; color: #fbbf24; font-size: 14px; margin-bottom: 12px; }
+.iq-gr-head span { font-weight: 400; opacity: 0.6; font-size: 11px; }
+.iq-check-row { display: flex !important; align-items: center; gap: 9px; font-size: 14px !important; color: #e6f0f2 !important; cursor: pointer; margin-top: 10px !important; }
+.iq-check-row input { width: 17px !important; height: 17px; accent-color: #2dd4bf; cursor: pointer; }
+.iq-gr-venue { margin-top: 8px !important; }
+.iq-err { background: #fb718518; color: #fb7185; padding: 11px; border-radius: 9px; margin-top: 14px; font-size: 13px; }
+.iq-btn { width: 100%; margin-top: 20px; padding: 13px; background: #2dd4bf; color: #06231f; border: none; border-radius: 10px; font-weight: 800; font-size: 15px; cursor: pointer; }
+.iq-btn:hover { background: #14b8a6; }
+.iq-btn:disabled { opacity: 0.6; }
+.iq-done { text-align: center; }
+.iq-check { width: 64px; height: 64px; background: #4ade8022; color: #4ade80; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 34px; margin: 0 auto 16px; }
