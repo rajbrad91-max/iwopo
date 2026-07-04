@@ -156,3 +156,12 @@
 .sa-offer-chip .oc-label { color: var(--muted); }
 .sa-offer-chip .oc-end { color: var(--muted); font-size: 11px; }
 .sa-offer-chip button { background: none; border: none; cursor: pointer; font-size: 13px; padding: 0 2px; }
+
+/* Manage Services grid */
+.sa-manage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.sa-manage-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; cursor: pointer; transition: all 0.18s; position: relative; }
+.sa-manage-card:hover { border-color: var(--teal-2); transform: translateY(-3px); }
+.sa-manage-icon { font-size: 34px; margin-bottom: 10px; }
+.sa-manage-name { font-weight: 800; font-size: 15px; margin-bottom: 4px; }
+.sa-manage-desc { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.sa-manage-badge { position: absolute; top: 12px; right: 12px; background: #fbbf2418; color: #fbbf24; border: 1px solid #fbbf2444; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }

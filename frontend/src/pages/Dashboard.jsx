@@ -9,6 +9,7 @@ import './super.css';
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
   { id: 'services', icon: '🧩', label: 'Services & Packages', group: 'PLATFORM' },
+  { id: 'manage', icon: '🛠️', label: 'Manage Services', group: 'PLATFORM' },
   { id: 'buyers', icon: '🛒', label: 'Buyers', group: 'PLATFORM' },
   { id: 'referrals', icon: '👥', label: 'Referrals', group: 'PLATFORM' },
   { id: 'billing', icon: '💳', label: 'Billing & Plans', group: 'PLATFORM' },
@@ -76,6 +77,7 @@ export default function Dashboard({ onLogout }) {
           <>
             {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} trials={trials} />}
             {view === 'services' && <ServicesView packages={packages} onReload={load} />}
+            {view === 'manage' && <ManageServicesView />}
             {view === 'buyers' && <BuyersView vendors={vendors} />}
             {view === 'referrals' && <ReferralsView />}
             {view === 'billing' && <BillingView packages={packages} />}
@@ -391,6 +393,56 @@ function PackageCard({ pkg, editMode, onSaved }) {
         </div>
       )}
     </div>
+  );
+}
+
+/* ---------- MANAGE SERVICES ---------- */
+const MANAGE_SERVICES = [
+  { key: 'galleries', icon: '📸', name: 'Galleries', desc: 'Client albums & downloads', sold: true },
+  { key: 'leads', icon: '📋', name: 'Leads & Bookings', desc: 'Leads, bookings & inquiry form', sold: true },
+  { key: 'contracts', icon: '📄', name: 'Contracts', desc: 'Contracts & print requests', sold: true },
+  { key: 'calendar', icon: '📅', name: 'Calendar', desc: 'Bookings & crew scheduling', sold: true },
+  { key: 'smartchat', icon: '🤖', name: 'Smart Chat Assistant', desc: 'AI chatbot for their site', sold: true },
+  { key: 'chat', icon: '💬', name: 'Chat Assistant', desc: 'Non-AI chatbot', sold: true },
+  { key: 'website', icon: '🌐', name: 'Website Builder', desc: 'Portfolio, pages & images', sold: true },
+  { key: 'fileflyer', icon: '📦', name: 'File Flyer', desc: 'Large file transfer & cloud', sold: true },
+  { key: 'analytics', icon: '📊', name: 'Analytics', desc: 'Visitor & album analytics', sold: false },
+  { key: 'liveshoots', icon: '🎥', name: 'Live Shoots', desc: 'Live shoot management', sold: false },
+];
+
+function ManageServicesView() {
+  const [active, setActive] = useState(null);
+  if (active) {
+    const svc = MANAGE_SERVICES.find(s => s.key === active);
+    return (
+      <>
+        <button className="sa-view-btn" onClick={() => setActive(null)} style={{ marginBottom: 14 }}>← Back to services</button>
+        <div className="sa-box" style={{ padding: 40, textAlign: 'center' }}>
+          <div style={{ fontSize: 46 }}>{svc.icon}</div>
+          <h2 style={{ margin: '10px 0 6px' }}>{svc.name}</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>{svc.desc}</p>
+          <div className="sa-trial-pill" style={{ marginTop: 14 }}>🚧 Admin panel coming next</div>
+        </div>
+      </>
+    );
+  }
+  return (
+    <>
+      <div className="sa-section-title">Manage Services 🛠️</div>
+      <div className="sa-hint" style={{ marginTop: 0, marginBottom: 14 }}>
+        Full control of every service. Vendors see only what they subscribe to.
+      </div>
+      <div className="sa-manage-grid">
+        {MANAGE_SERVICES.map(s => (
+          <div key={s.key} className="sa-manage-card" onClick={() => setActive(s.key)}>
+            <div className="sa-manage-icon">{s.icon}</div>
+            <div className="sa-manage-name">{s.name}</div>
+            <div className="sa-manage-desc">{s.desc}</div>
+            {!s.sold && <div className="sa-manage-badge">👑 Your-only</div>}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
