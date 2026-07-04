@@ -69,38 +69,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'settings' ? (
           <SettingsView user={user} />
         ) : tab === 'dashboard' ? (
-          <>
-            <div className="stats">
-              <div className="card"><div className="label">Active Services</div><div className="value">{active.length}</div></div>
-              <div className="card"><div className="label">Available</div><div className="value">{services.length}</div></div>
-              <div className="card"><div className="label">Plan</div><div className="value" style={{fontSize:'20px'}}>Trial</div></div>
-              <div className="card"><div className="label">Status</div><div className="value" style={{fontSize:'20px',color:'var(--teal)'}}>Live</div></div>
-            </div>
-            <h2>Your active services</h2>
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Service</th><th>Status</th></tr></thead>
-                <tbody>
-                  {active.length === 0 ? (
-                    <tr><td colSpan="2" className="empty">No services yet. Your admin will enable them soon.</td></tr>
-                  ) : active.map(s => (
-                    <tr key={s.id}>
-                      <td className="biz">{s.icon} {s.name}</td>
-                      <td><span className="badge active">Active</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="upsell">
-              <div>
-                <div className="up-title">🚀 Grow your business with more tools</div>
-                <div className="up-sub">Galleries, Smart Chat Assistant, File Flyer & more — add them anytime.</div>
-              </div>
-              <button className="up-btn" onClick={() => setTab('services')}>✨ Explore services</button>
-            </div>
-          </>
+          <DashHome goTab={setTab} />
         ) : (
           <div className="table-wrap">
             <table>
@@ -119,6 +88,88 @@ export default function VendorPanel({ onLogout }) {
         )}
       </main>
     </div>
+  );
+}
+
+function DashHome({ goTab }) {
+  const [leads, setLeads] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.leads().catch(() => ({ leads: [] })), api.bookings().catch(() => ({ bookings: [] }))])
+      .then(([l, b]) => { setLeads(l.leads || []); setBookings(b.bookings || []); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="loading">Loading…</div>;
+
+  const newLeads = leads.filter(l => l.status === 'new').length;
+  const booked = leads.filter(l => l.status === 'booked').length;
+  const collected = bookings.reduce((s, b) => s + (Number(b.money?.paid) || 0), 0);
+  const recent = leads.slice(0, 5);
+  const upcoming = bookings
+    .filter(b => b.event_date && new Date(b.event_date) >= new Date(new Date().toDateString()))
+    .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+    .slice(0, 5);
+  const SB = { new: 'trial', contacted: 'trial', quoted: 'trial', booked: 'active', completed: 'active', cancelled: 'past' };
+
+  return (
+    <>
+      {/* 📊 Stats — perfectposes style */}
+      <div className="stats">
+        <div className="card"><div className="label">📋 Total Leads</div><div className="value">{leads.length}</div></div>
+        <div className="card"><div className="label">🆕 New Leads</div><div className="value">{newLeads}</div></div>
+        <div className="card"><div className="label">✅ Booked</div><div className="value">{booked}</div></div>
+        <div className="card"><div className="label">💰 Collected</div><div className="value" style={{ fontSize: 26 }}>${collected.toFixed(0)}</div></div>
+      </div>
+
+      {/* 📋 Recent Leads */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <h2 style={{ margin: 0 }}>📋 Recent Leads</h2>
+        <button className="refresh" onClick={() => goTab('leads')} style={{ padding: '6px 14px', fontSize: 12 }}>View all →</button>
+      </div>
+      <div className="table-wrap" style={{ marginBottom: 24 }}>
+        <table>
+          <thead><tr><th>Name</th><th>Event</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody>
+            {recent.length === 0 ? (
+              <tr><td colSpan="4" className="empty">No leads yet. Share your inquiry link! 📨</td></tr>
+            ) : recent.map(l => (
+              <tr key={l.id} onClick={() => goTab('leads')} style={{ cursor: 'pointer' }}>
+                <td className="biz">{l.name}</td>
+                <td>{l.event_type}</td>
+                <td>{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
+                <td><span className={`badge ${SB[l.status] || 'trial'}`}>{l.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 📅 Upcoming Events */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <h2 style={{ margin: 0 }}>📅 Upcoming Events</h2>
+        <button className="refresh" onClick={() => goTab('bookings')} style={{ padding: '6px 14px', fontSize: 12 }}>View all →</button>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Client</th><th>Event</th><th>Date</th><th>Balance</th></tr></thead>
+          <tbody>
+            {upcoming.length === 0 ? (
+              <tr><td colSpan="4" className="empty">No upcoming events. Book a lead to see it here 🗓️</td></tr>
+            ) : upcoming.map(b => (
+              <tr key={b.id} onClick={() => goTab('bookings')} style={{ cursor: 'pointer' }}>
+                <td className="biz">{b.name}</td>
+                <td>{b.event_type}</td>
+                <td>{String(b.event_date).slice(0, 10)}</td>
+                <td style={{ color: Number(b.money?.balance) > 0 ? 'var(--amber)' : 'var(--green)' }}>${b.money?.balance ?? 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
