@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api, getUser, clearSession } from '../lib/api';
+import './vendor.css';
 
 export default function VendorPanel({ onLogout }) {
   const [services, setServices] = useState([]);
@@ -90,6 +91,14 @@ export default function VendorPanel({ onLogout }) {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="upsell">
+              <div>
+                <div className="up-title">🚀 Grow your business with more tools</div>
+                <div className="up-sub">Galleries, Smart Chat Assistant, File Flyer & more — add them anytime.</div>
+              </div>
+              <button className="up-btn" onClick={() => setTab('services')}>✨ Explore services</button>
             </div>
           </>
         ) : (
