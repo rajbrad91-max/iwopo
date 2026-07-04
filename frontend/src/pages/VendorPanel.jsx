@@ -106,7 +106,6 @@ function DashHome({ goTab }) {
 
   const newLeads = leads.filter(l => l.status === 'new').length;
   const booked = leads.filter(l => l.status === 'booked').length;
-  const collected = bookings.reduce((s, b) => s + (Number(b.money?.paid) || 0), 0);
   const recent = leads.slice(0, 5);
   const upcoming = bookings
     .filter(b => b.event_date && new Date(b.event_date) >= new Date(new Date().toDateString()))
@@ -116,12 +115,11 @@ function DashHome({ goTab }) {
 
   return (
     <>
-      {/* 📊 Stats — perfectposes style */}
-      <div className="stats">
+      {/* 📊 Stats — same as perfectposes */}
+      <div className="stats" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
         <div className="card"><div className="label">📋 Total Leads</div><div className="value">{leads.length}</div></div>
         <div className="card"><div className="label">🆕 New Leads</div><div className="value">{newLeads}</div></div>
         <div className="card"><div className="label">✅ Booked</div><div className="value">{booked}</div></div>
-        <div className="card"><div className="label">💰 Collected</div><div className="value" style={{ fontSize: 26 }}>${collected.toFixed(0)}</div></div>
       </div>
 
       {/* 📋 Recent Leads */}
