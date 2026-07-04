@@ -32,6 +32,7 @@ export default function VendorPanel({ onLogout }) {
       <aside className="sidebar">
         <div className="brand">📸 My Studio<small>VENDOR</small></div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => setTab('dashboard')}>📊 Dashboard</div>
+        <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => setTab('leads')}>📋 Leads</div>
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => setTab('services')}>🧩 My Services</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => setTab('refer')}>👥 Refer a Friend</div>
         <div className="logout" onClick={handleLogout}>🚪 Log out</div>
@@ -40,7 +41,7 @@ export default function VendorPanel({ onLogout }) {
       <main className="main">
         <div className="topbar">
           <div>
-            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : 'My Services'}</h1>
+            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : 'My Services'}</h1>
             <div className="sub">Welcome back, {user?.name} 👋</div>
           </div>
           <button className="refresh" onClick={load}>🔄 Refresh</button>
@@ -49,6 +50,8 @@ export default function VendorPanel({ onLogout }) {
         {error && <div className="err-banner">⚠️ {error}</div>}
         {loading ? <div className="loading">Loading…</div> : tab === 'refer' ? (
           <ReferForm user={user} />
+        ) : tab === 'leads' ? (
+          <LeadsView />
         ) : tab === 'dashboard' ? (
           <>
             <div className="stats">
@@ -91,6 +94,70 @@ export default function VendorPanel({ onLogout }) {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function LeadsView() {
+  const [leads, setLeads] = useState([]);
+  const [sel, setSel] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    try { const d = await api.leads(); setLeads(d.leads || []); } catch {}
+    finally { setLoading(false); }
+  }
+
+  if (sel) return <LeadDetail lead={sel} onBack={() => setSel(null)} />;
+
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Event</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+          {loading ? (
+            <tr><td colSpan="4" className="empty">Loading…</td></tr>
+          ) : leads.length === 0 ? (
+            <tr><td colSpan="4" className="empty">No leads yet. Share your inquiry link! 📨</td></tr>
+          ) : leads.map(l => (
+            <tr key={l.id} onClick={() => setSel(l)} style={{ cursor: 'pointer' }}>
+              <td className="biz">{l.name}</td>
+              <td>{l.event_type}</td>
+              <td>{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
+              <td><span className="badge trial">{l.status}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LeadDetail({ lead, onBack }) {
+  const yn = (v) => v ? '✅ Yes' : '❌ No';
+  const Row = ({ label, value }) => (
+    <div style={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #223238', fontSize: 14 }}>
+      <div style={{ width: 180, color: '#7c9199', fontWeight: 600 }}>{label}</div>
+      <div>{value || '—'}</div>
+    </div>
+  );
+  return (
+    <div className="table-wrap" style={{ padding: 24, maxWidth: 640 }}>
+      <button className="refresh" onClick={onBack} style={{ marginBottom: 16 }}>← Back to leads</button>
+      <h2 style={{ marginTop: 0 }}>{lead.name} · {lead.event_type}</h2>
+
+      <Row label="📧 Email" value={lead.email} />
+      <Row label="📞 Phone" value={lead.phone} />
+      <Row label="📅 Date" value={lead.event_date ? String(lead.event_date).slice(0,10) : null} />
+      <Row label="⏰ Time" value={lead.timing_from ? `${lead.timing_from} – ${lead.timing_to || '?'}` : null} />
+      <Row label="📍 Location" value={lead.location} />
+      <Row label="👥 Guests" value={lead.guests} />
+      <Row label="⏱️ Hours" value={lead.hours} />
+      <Row label="💄 Bride Getting Ready" value={`${yn(lead.gr_bride)}${lead.gr_bride_venue ? ' · ' + lead.gr_bride_venue : ''}`} />
+      <Row label="😎 Groom Getting Ready" value={`${yn(lead.gr_groom)}${lead.gr_groom_venue ? ' · ' + lead.gr_groom_venue : ''}`} />
+      <Row label="📝 Notes" value={lead.notes} />
     </div>
   );
 }
