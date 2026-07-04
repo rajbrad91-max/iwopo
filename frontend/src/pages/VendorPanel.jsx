@@ -32,13 +32,16 @@ export default function VendorPanel({ onLogout }) {
     <div className="dash">
       <aside className="sidebar">
         <div className="brand">📸 My Studio<small>VENDOR</small></div>
+        <div className="nav-group">WORK</div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => setTab('dashboard')}>📊 Dashboard</div>
         <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => setTab('leads')}>📋 Leads</div>
         <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => setTab('bookings')}>📅 Bookings</div>
         <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => setTab('contracts')}>📄 Contracts & Invoices</div>
+        <div className="nav-group">SETUP</div>
         <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => setTab('packages')}>📦 My Packages</div>
         <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => setTab('inqform')}>🎨 Inquiry Form</div>
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => setTab('services')}>🧩 My Services</div>
+        <div className="nav-group">ACCOUNT</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => setTab('refer')}>👥 Refer a Friend</div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => setTab('settings')}>⚙️ Settings</div>
         <div className="logout" onClick={handleLogout}>🚪 Log out</div>
@@ -69,38 +72,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'settings' ? (
           <SettingsView user={user} />
         ) : tab === 'dashboard' ? (
-          <>
-            <div className="stats">
-              <div className="card"><div className="label">Active Services</div><div className="value">{active.length}</div></div>
-              <div className="card"><div className="label">Available</div><div className="value">{services.length}</div></div>
-              <div className="card"><div className="label">Plan</div><div className="value" style={{fontSize:'20px'}}>Trial</div></div>
-              <div className="card"><div className="label">Status</div><div className="value" style={{fontSize:'20px',color:'var(--teal)'}}>Live</div></div>
-            </div>
-            <h2>Your active services</h2>
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Service</th><th>Status</th></tr></thead>
-                <tbody>
-                  {active.length === 0 ? (
-                    <tr><td colSpan="2" className="empty">No services yet. Your admin will enable them soon.</td></tr>
-                  ) : active.map(s => (
-                    <tr key={s.id}>
-                      <td className="biz">{s.icon} {s.name}</td>
-                      <td><span className="badge active">Active</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="upsell">
-              <div>
-                <div className="up-title">🚀 Grow your business with more tools</div>
-                <div className="up-sub">Galleries, Smart Chat Assistant, File Flyer & more — add them anytime.</div>
-              </div>
-              <button className="up-btn" onClick={() => setTab('services')}>✨ Explore services</button>
-            </div>
-          </>
+          <DashboardHome user={user} active={active} services={services} goTab={setTab} />
         ) : (
           <div className="table-wrap">
             <table>
@@ -119,6 +91,78 @@ export default function VendorPanel({ onLogout }) {
         )}
       </main>
     </div>
+  );
+}
+
+function DashboardHome({ user, active, services, goTab }) {
+  const [stats, setStats] = useState({ leads: 0, bookings: 0, collected: 0, due: 0 });
+
+  useEffect(() => {
+    Promise.all([api.leads().catch(() => ({ leads: [] })), api.bookings().catch(() => ({ bookings: [] }))])
+      .then(([l, b]) => {
+        const collected = (b.bookings || []).reduce((s, x) => s + (Number(x.money?.paid) || 0), 0);
+        const due = (b.bookings || []).reduce((s, x) => s + (Number(x.money?.balance) || 0), 0);
+        setStats({ leads: (l.leads || []).length, bookings: (b.bookings || []).length, collected, due });
+      });
+  }, []);
+
+  const qa = (icon, label, tab) => (
+    <button className="refresh" onClick={() => goTab(tab)}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', fontSize: 13 }}>
+      <span style={{ fontSize: 18 }}>{icon}</span> {label}
+    </button>
+  );
+
+  function copyInquiry() {
+    navigator.clipboard?.writeText(`https://alphabetaone.com/inquiry/${user?.vendor_id}`);
+  }
+
+  return (
+    <>
+      <div className="stats">
+        <div className="card"><div className="label">📋 Leads</div><div className="value">{stats.leads}</div></div>
+        <div className="card"><div className="label">📅 Bookings</div><div className="value">{stats.bookings}</div></div>
+        <div className="card"><div className="label">💰 Collected</div><div className="value" style={{ fontSize: 24 }}>${stats.collected.toFixed(0)}</div></div>
+        <div className="card"><div className="label">⏳ Balance due</div><div className="value" style={{ fontSize: 24, color: stats.due > 0 ? 'var(--amber)' : 'var(--green)' }}>${stats.due.toFixed(0)}</div></div>
+      </div>
+
+      <h2>⚡ Quick actions</h2>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+        {qa('📋', 'View leads', 'leads')}
+        {qa('📅', 'Bookings', 'bookings')}
+        {qa('📄', 'Contracts & invoices', 'contracts')}
+        {qa('📦', 'My packages', 'packages')}
+        <button className="refresh" onClick={copyInquiry}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', fontSize: 13, background: '#2dd4bf', color: '#06231f', fontWeight: 700 }}>
+          <span style={{ fontSize: 18 }}>🔗</span> Copy my inquiry link
+        </button>
+      </div>
+
+      <h2>🧩 Your active services</h2>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Service</th><th>Status</th></tr></thead>
+          <tbody>
+            {active.length === 0 ? (
+              <tr><td colSpan="2" className="empty">No services yet. Your admin will enable them soon.</td></tr>
+            ) : active.map(s => (
+              <tr key={s.id}>
+                <td className="biz">{s.icon} {s.name}</td>
+                <td><span className="badge active">Active</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="upsell">
+        <div>
+          <div className="up-title">🚀 Grow your business with more tools</div>
+          <div className="up-sub">Galleries, Smart Chat Assistant, File Flyer & more — add them anytime.</div>
+        </div>
+        <button className="up-btn" onClick={() => goTab('services')}>✨ Explore services</button>
+      </div>
+    </>
   );
 }
 
