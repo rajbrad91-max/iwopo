@@ -10,6 +10,7 @@ const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
   { id: 'services', icon: '🧩', label: 'Services & Packages', group: 'PLATFORM' },
   { id: 'buyers', icon: '🛒', label: 'Buyers', group: 'PLATFORM' },
+  { id: 'referrals', icon: '👥', label: 'Referrals', group: 'PLATFORM' },
   { id: 'billing', icon: '💳', label: 'Billing & Plans', group: 'PLATFORM' },
   { id: 'support', icon: '🎫', label: 'Support', group: 'OPERATE' },
   { id: 'settings', icon: '🔧', label: 'Platform Settings', group: 'OPERATE' },
@@ -76,6 +77,7 @@ export default function Dashboard({ onLogout }) {
             {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} trials={trials} />}
             {view === 'services' && <ServicesView packages={packages} onReload={load} />}
             {view === 'buyers' && <BuyersView vendors={vendors} />}
+            {view === 'referrals' && <ReferralsView />}
             {view === 'billing' && <BillingView packages={packages} />}
             {view === 'support' && <SupportView />}
             {view === 'settings' && <SettingsView />}
@@ -389,6 +391,50 @@ function PackageCard({ pkg, editMode, onSaved }) {
         </div>
       )}
     </div>
+  );
+}
+
+/* ---------- REFERRALS ---------- */
+function ReferralsView() {
+  const [refs, setRefs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    try { const d = await api.referrals(); setRefs(d.referrals || []); } catch {}
+    finally { setLoading(false); }
+  }
+  const rewarded = refs.filter(r => r.status === 'rewarded').length;
+  return (
+    <>
+      <div className="sa-stats">
+        <StatCard label="Total Referrals" value={refs.length} trend="Email-based" cls="up" />
+        <StatCard label="Rewarded" value={rewarded} trend="🎁 free month each" cls="up" />
+        <StatCard label="Pending" value={refs.length - rewarded} trend="Awaiting paid signup" cls="warn" />
+      </div>
+      <div className="sa-hint" style={{ marginBottom: 12 }}>
+        🎁 Reward = 1 free month for BOTH — applied when the friend signs up on a <b>paid</b> plan.
+      </div>
+      <div className="sa-table-wrap">
+        <table>
+          <thead><tr><th>Referrer</th><th>Friend</th><th>Reward</th><th>Status</th></tr></thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="4" className="sa-empty">Loading…</td></tr>
+            ) : refs.length === 0 ? (
+              <tr><td colSpan="4" className="sa-empty">No referrals yet.</td></tr>
+            ) : refs.map(r => (
+              <tr key={r.id}>
+                <td className="biz">{r.referrer_email}</td>
+                <td>{r.friend_email}</td>
+                <td>{r.reward}</td>
+                <td><span className={`sa-badge ${r.status === 'rewarded' ? 'active' : 'trial'}`}>{r.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

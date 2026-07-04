@@ -48,6 +48,9 @@ export const api = {
   createOffer: (data) => request('/offers', { method: 'POST', body: JSON.stringify(data) }),
   toggleOffer: (id) => request(`/offers/${id}/toggle`, { method: 'PUT' }),
   deleteOffer: (id) => request(`/offers/${id}`, { method: 'DELETE' }),
+  referrals: () => request('/referrals'),
+  createReferral: (referrer_email, friend_email) =>
+    request('/referrals', { method: 'POST', body: JSON.stringify({ referrer_email, friend_email }) }),
   myServices: () => request('/vendors/me/services'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

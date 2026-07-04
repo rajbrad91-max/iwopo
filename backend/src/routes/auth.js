@@ -32,7 +32,7 @@ router.post('/login', async (req, res) => {
 
   res.json({
     token: signToken(user),
-    user: { id: user.id, name: user.name, role: user.role, vendor_id: user.vendor_id }
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id }
   });
 });
 
@@ -44,16 +44,21 @@ router.get('/trial-eligible', async (req, res) => {
 
 // POST /api/auth/signup  (public - from Selling Platform)
 router.post('/signup', async (req, res) => {
-  const { businessName, name, email, password } = req.body;
+  const { businessName, name, email, password, plan } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
 
+  const isPaid = plan && plan !== 'trial';
   const ip = clientIp(req);
-  const used = await trialCount(ip);
-  if (used >= TRIAL_LIMIT) {
-    return res.status(429).json({
-      error: 'trial_limit',
-      message: `You've used all ${TRIAL_LIMIT} free trials. Please choose a paid plan to continue. 💳`
-    });
+
+  // Trial limit only applies to TRIAL signups (paid always allowed)
+  if (!isPaid) {
+    const used = await trialCount(ip);
+    if (used >= TRIAL_LIMIT) {
+      return res.status(429).json({
+        error: 'trial_limit',
+        message: `You've used all ${TRIAL_LIMIT} free trials. Please choose a paid plan to continue. 💳`
+      });
+    }
   }
 
   const exists = await query('SELECT id FROM users WHERE email=$1', [email]);
@@ -61,8 +66,8 @@ router.post('/signup', async (req, res) => {
 
   // 1. Create vendor (tenant)
   const v = await query(
-    `INSERT INTO vendors (business_name, plan, status) VALUES ($1,'starter','trial') RETURNING id`,
-    [businessName]
+    `INSERT INTO vendors (business_name, plan, status) VALUES ($1,$2,$3) RETURNING id`,
+    [businessName, isPaid ? plan : 'starter', isPaid ? 'active' : 'trial']
   );
   const vendorId = v.rows[0].id;
 
@@ -74,11 +79,20 @@ router.post('/signup', async (req, res) => {
     [name || businessName, email, hash, vendorId]
   );
 
-  // 3. Record this trial against the IP
-  await query(
-    `INSERT INTO trial_signups (ip_address, email, vendor_id) VALUES ($1,$2,$3)`,
-    [ip, email, vendorId]
-  );
+  // 3. Record trial against IP (only for trials)
+  if (!isPaid) {
+    await query(`INSERT INTO trial_signups (ip_address, email, vendor_id) VALUES ($1,$2,$3)`,
+      [ip, email, vendorId]);
+  }
+
+  // 4. Referral reward — if this email was referred AND signed up PAID → reward both 🎁
+  if (isPaid) {
+    await query(
+      `UPDATE referrals SET status='rewarded', friend_vendor_id=$1, rewarded_at=NOW()
+       WHERE friend_email=$2 AND status='pending'`,
+      [vendorId, email]
+    );
+  }
 
   res.status(201).json({ token: signToken(u.rows[0]), user: u.rows[0] });
 });

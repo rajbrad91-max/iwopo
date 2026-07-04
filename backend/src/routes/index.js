@@ -89,4 +89,29 @@ router.delete('/offers/:id', requireAuth, requireSuperAdmin, async (req, res) =>
   res.json({ ok: true });
 });
 
+// 👥 REFERRALS (email-based, reward on paid signup)
+// Public: create a referral (existing user refers a friend's email)
+router.post('/referrals', async (req, res) => {
+  const { referrer_email, friend_email } = req.body;
+  if (!referrer_email || !friend_email) return res.status(400).json({ error: 'Both emails required' });
+  if (referrer_email.toLowerCase() === friend_email.toLowerCase())
+    return res.status(400).json({ error: "Can't refer yourself" });
+  try {
+    // friend must be NEW (not already a user)
+    const exists = await query('SELECT id FROM users WHERE email=$1', [friend_email]);
+    if (exists.rows.length) return res.status(409).json({ error: 'That email already has an account' });
+    const { rows } = await query(
+      `INSERT INTO referrals (referrer_email, friend_email) VALUES ($1,$2) RETURNING *`,
+      [referrer_email, friend_email]
+    );
+    res.status(201).json({ referral: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 🔒 Super admin: list all referrals
+router.get('/referrals', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { rows } = await query('SELECT * FROM referrals ORDER BY created_at DESC');
+  res.json({ referrals: rows });
+});
+
 export default router;
