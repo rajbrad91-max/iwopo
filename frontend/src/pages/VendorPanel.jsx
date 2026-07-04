@@ -151,7 +151,11 @@ function LeadDetail({ lead, onBack }) {
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
 
   useEffect(() => {
-    api.vendorPackages().then(d => setPkgs(d.packages || [])).catch(() => {});
+    api.pkgTemplates().then(d => {
+      const all = [];
+      (d.templates || []).forEach(t => (t.packages || []).forEach(p => all.push({ ...p, tplName: t.name })));
+      setPkgs(all);
+    }).catch(() => {});
   }, []);
 
   async function assignPkg(id) {
@@ -271,7 +275,7 @@ function LeadDetail({ lead, onBack }) {
         <select value={pkgId} onChange={e => assignPkg(e.target.value)}
           style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 8, flex: 1 }}>
           <option value="">— No package —</option>
-          {pkgs.map(p => <option key={p.id} value={p.id}>{p.name} (${Number(p.base_price).toFixed(0)})</option>)}
+          {pkgs.map(p => <option key={p.id} value={p.id}>{p.tplName} → {p.name} (${Number(p.base_price).toFixed(0)})</option>)}
         </select>
       </div>
 
@@ -290,22 +294,41 @@ function LeadDetail({ lead, onBack }) {
 }
 
 function PackagesView() {
-  const [pkgs, setPkgs] = useState([]);
+  const [tpls, setTpls] = useState([]);
+  const [selTpl, setSelTpl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9 };
 
   useEffect(() => { load(); }, []);
   async function load() {
     setLoading(true);
-    try { const d = await api.vendorPackages(); setPkgs(d.packages || []); } catch {}
+    try {
+      const d = await api.pkgTemplates();
+      setTpls(d.templates || []);
+      if (selTpl) {
+        const upd = (d.templates || []).find(t => t.id === selTpl.id);
+        setSelTpl(upd || null);
+      }
+    } catch {}
     finally { setLoading(false); }
   }
-  async function add() {
+  async function addTpl() {
     setMsg('');
-    try { await api.addVendorPackage('New Package'); load(); }
+    try { await api.addTemplate('New Event'); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
-  async function del(id) {
+  async function delTpl(id) {
+    if (!confirm('Delete this template and its packages?')) return;
+    try { await api.deleteTemplate(id); setSelTpl(null); load(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function addPkg(tplId) {
+    setMsg('');
+    try { await api.addVendorPackage('New Package', tplId); load(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function delPkg(id) {
     if (!confirm('Delete this package?')) return;
     try { await api.deleteVendorPackage(id); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
@@ -313,17 +336,59 @@ function PackagesView() {
 
   if (loading) return <div className="loading">Loading…</div>;
 
+  // ---- INSIDE A TEMPLATE ----
+  if (selTpl) return (
+    <div style={{ maxWidth: 720 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <button className="refresh" onClick={() => setSelTpl(null)}>← All templates</button>
+        {selTpl.packages.length < 3 && (
+          <button className="refresh" onClick={() => addPkg(selTpl.id)} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Add Package</button>
+        )}
+      </div>
+      <h2 style={{ margin: '0 0 12px' }}>📁 {selTpl.name}</h2>
+      {msg && <div className="err-banner">{msg}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {selTpl.packages.length === 0 && <div style={{ color: '#7c9199' }}>No packages yet — add one 👆</div>}
+        {selTpl.packages.map(p => <PkgCard key={p.id} pkg={p} onSaved={load} onDelete={() => delPkg(p.id)} />)}
+      </div>
+    </div>
+  );
+
+  // ---- TEMPLATE LIST ----
   return (
     <div style={{ maxWidth: 720 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ color: '#7c9199', fontSize: 13 }}>Create up to 3 packages your clients can book 📦</div>
-        {pkgs.length < 3 && <button className="refresh" onClick={add} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Add Package</button>}
+        <div style={{ color: '#7c9199', fontSize: 13 }}>📁 Up to 6 event templates · 📦 3 packages each</div>
+        {tpls.length < 6 && <button className="refresh" onClick={addTpl} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Add Template</button>}
       </div>
       {msg && <div className="err-banner">{msg}</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {pkgs.map(p => <PkgCard key={p.id} pkg={p} onSaved={load} onDelete={() => del(p.id)} />)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 14 }}>
+        {tpls.map(t => (
+          <div key={t.id} className="table-wrap" style={{ padding: 18, cursor: 'pointer', position: 'relative' }} onClick={() => setSelTpl(t)}>
+            <div style={{ fontSize: 30 }}>📁</div>
+            <TplName tpl={t} onSaved={load} />
+            <div style={{ color: '#7c9199', fontSize: 12, marginTop: 4 }}>📦 {t.packages.length}/3 packages</div>
+            {tpls.length > 1 && (
+              <button className="refresh" style={{ position: 'absolute', top: 10, right: 10, padding: '3px 8px' }}
+                onClick={e => { e.stopPropagation(); delTpl(t.id); }}>🗑️</button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
+  );
+}
+
+function TplName({ tpl, onSaved }) {
+  const [name, setName] = useState(tpl.name);
+  async function save() {
+    if (name !== tpl.name && name.trim()) {
+      try { await api.renameTemplate(tpl.id, name.trim()); onSaved && onSaved(); } catch {}
+    }
+  }
+  return (
+    <input value={name} onClick={e => e.stopPropagation()} onChange={e => setName(e.target.value)} onBlur={save}
+      style={{ background: 'transparent', border: 'none', color: '#e6f0f2', fontWeight: 700, fontSize: 15, width: '100%', marginTop: 6, outline: 'none' }} />
   );
 }
 
