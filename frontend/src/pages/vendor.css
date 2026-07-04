@@ -88,6 +88,3 @@
 .upsell .up-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px #2dd4bf44; }
 
 @media (max-width: 820px) { .dash .topbar { border-radius: 14px; } }
-
-/* Sidebar group labels */
-.dash .nav-group { font-size: 10px; letter-spacing: 2.5px; color: #4a6169; font-weight: 800; padding: 14px 12px 5px; }
