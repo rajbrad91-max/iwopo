@@ -59,6 +59,11 @@ export const api = {
   saveSettings: (data) => request('/me/settings', { method: 'PUT', body: JSON.stringify(data) }),
   changeEmail: (email, password) => request('/me/email', { method: 'PUT', body: JSON.stringify({ email, password }) }),
   changePassword: (current, next) => request('/me/password', { method: 'PUT', body: JSON.stringify({ current, next }) }),
+  vendorPackages: () => request('/vendor-packages'),
+  addVendorPackage: (name) => request('/vendor-packages', { method: 'POST', body: JSON.stringify({ name }) }),
+  updateVendorPackage: (id, data) => request(`/vendor-packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteVendorPackage: (id) => request(`/vendor-packages/${id}`, { method: 'DELETE' }),
+  assignPackage: (leadId, package_id) => request(`/vendor-packages/assign/${leadId}`, { method: 'PUT', body: JSON.stringify({ package_id }) }),
   myServices: () => request('/vendors/me/services'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

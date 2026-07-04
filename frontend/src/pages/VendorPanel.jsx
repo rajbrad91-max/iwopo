@@ -33,6 +33,7 @@ export default function VendorPanel({ onLogout }) {
         <div className="brand">📸 My Studio<small>VENDOR</small></div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => setTab('dashboard')}>📊 Dashboard</div>
         <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => setTab('leads')}>📋 Leads</div>
+        <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => setTab('packages')}>📦 My Packages</div>
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => setTab('services')}>🧩 My Services</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => setTab('refer')}>👥 Refer a Friend</div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => setTab('settings')}>⚙️ Settings</div>
@@ -42,7 +43,7 @@ export default function VendorPanel({ onLogout }) {
       <main className="main">
         <div className="topbar">
           <div>
-            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : 'My Services'}</h1>
+            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : 'My Services'}</h1>
             <div className="sub">Welcome back, {user?.name} 👋</div>
           </div>
           <button className="refresh" onClick={load}>🔄 Refresh</button>
@@ -53,6 +54,8 @@ export default function VendorPanel({ onLogout }) {
           <ReferForm user={user} />
         ) : tab === 'leads' ? (
           <LeadsView />
+        ) : tab === 'packages' ? (
+          <PackagesView />
         ) : tab === 'settings' ? (
           <SettingsView user={user} />
         ) : tab === 'dashboard' ? (
@@ -143,7 +146,21 @@ function LeadDetail({ lead, onBack }) {
   const [f, setF] = useState({ ...lead });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pkgs, setPkgs] = useState([]);
+  const [pkgId, setPkgId] = useState(lead.package_id || '');
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+
+  useEffect(() => {
+    api.vendorPackages().then(d => setPkgs(d.packages || [])).catch(() => {});
+  }, []);
+
+  async function assignPkg(id) {
+    setPkgId(id);
+    try {
+      await api.assignPackage(lead.id, id || null);
+      setMsg('✅ Package updated'); setTimeout(() => setMsg(''), 1500);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
 
   function calcHours(from, to) {
     if (!from || !to) return f.hours || '';
@@ -249,6 +266,15 @@ function LeadDetail({ lead, onBack }) {
       <h2 style={{ marginTop: 0 }}>{lead.name} · {lead.event_type}</h2>
       {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#4ade8018', color: '#4ade80' }}>{msg}</div>}
 
+      <div style={{ padding: '10px 0', borderBottom: '1px solid #223238', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 180, color: '#7c9199', fontWeight: 600, fontSize: 14 }}>📦 Package</div>
+        <select value={pkgId} onChange={e => assignPkg(e.target.value)}
+          style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 8, flex: 1 }}>
+          <option value="">— No package —</option>
+          {pkgs.map(p => <option key={p.id} value={p.id}>{p.name} (${Number(p.base_price).toFixed(0)})</option>)}
+        </select>
+      </div>
+
       {row('📧 Email', lead.email)}
       {row('📞 Phone', lead.phone)}
       {row('📅 Date', lead.event_date ? String(lead.event_date).slice(0,10) : null)}
@@ -259,6 +285,120 @@ function LeadDetail({ lead, onBack }) {
       {row('💄 Bride Getting Ready', `${yn(lead.gr_bride)}${lead.gr_bride_venue ? ' · ' + lead.gr_bride_venue : ''}`)}
       {row('😎 Groom Getting Ready', `${yn(lead.gr_groom)}${lead.gr_groom_venue ? ' · ' + lead.gr_groom_venue : ''}`)}
       {row('📝 Notes', lead.notes)}
+    </div>
+  );
+}
+
+function PackagesView() {
+  const [pkgs, setPkgs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    try { const d = await api.vendorPackages(); setPkgs(d.packages || []); } catch {}
+    finally { setLoading(false); }
+  }
+  async function add() {
+    setMsg('');
+    try { await api.addVendorPackage('New Package'); load(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function del(id) {
+    if (!confirm('Delete this package?')) return;
+    try { await api.deleteVendorPackage(id); load(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  if (loading) return <div className="loading">Loading…</div>;
+
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ color: '#7c9199', fontSize: 13 }}>Create up to 3 packages your clients can book 📦</div>
+        {pkgs.length < 3 && <button className="refresh" onClick={add} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Add Package</button>}
+      </div>
+      {msg && <div className="err-banner">{msg}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {pkgs.map(p => <PkgCard key={p.id} pkg={p} onSaved={load} onDelete={() => del(p.id)} />)}
+      </div>
+    </div>
+  );
+}
+
+function PkgCard({ pkg, onSaved, onDelete }) {
+  const [f, setF] = useState({
+    name: pkg.name, base_price: pkg.base_price, included_hours: pkg.included_hours,
+    per_hour_price: pkg.per_hour_price,
+    inclusions: Array.isArray(pkg.inclusions) ? pkg.inclusions : [],
+  });
+  const [newInc, setNewInc] = useState('');
+  const [saved, setSaved] = useState('');
+  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+
+  async function save() {
+    setSaved('');
+    try {
+      await api.updateVendorPackage(pkg.id, {
+        ...f, base_price: Number(f.base_price) || 0,
+        included_hours: Number(f.included_hours) || 0,
+        per_hour_price: Number(f.per_hour_price) || 0,
+      });
+      setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500);
+      onSaved && onSaved();
+    } catch (e) { setSaved('⚠️ ' + e.message); }
+  }
+  function addInc() {
+    if (!newInc.trim()) return;
+    set('inclusions', [...f.inclusions, newInc.trim()]);
+    setNewInc('');
+  }
+  function rmInc(i) { set('inclusions', f.inclusions.filter((_, x) => x !== i)); }
+
+  return (
+    <div className="table-wrap" style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <input style={{ ...box, width: '55%', fontWeight: 700, fontSize: 16 }} value={f.name} onChange={e => set('name', e.target.value)} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {pkg.is_default && <span className="badge active">Default</span>}
+          {saved && <span style={{ fontSize: 12, color: '#4ade80' }}>{saved}</span>}
+          {!pkg.is_default && <button className="refresh" onClick={onDelete}>🗑️</button>}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: '#7c9199' }}>💰 Base price ($)</label>
+          <input style={box} type="number" value={f.base_price} onChange={e => set('base_price', e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: '#7c9199' }}>⏱️ Included hours</label>
+          <input style={box} type="number" value={f.included_hours} onChange={e => set('included_hours', e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: '#7c9199' }}>➕ Extra $/hour</label>
+          <input style={box} type="number" value={f.per_hour_price} onChange={e => set('per_hour_price', e.target.value)} />
+        </div>
+      </div>
+
+      <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 12 }}>📝 Inclusions (your own items)</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
+        {f.inclusions.map((inc, i) => (
+          <span key={i} style={{ background: '#2dd4bf18', border: '1px solid #2dd4bf44', color: '#2dd4bf', padding: '4px 10px', borderRadius: 16, fontSize: 12 }}>
+            {inc} <span style={{ cursor: 'pointer', marginLeft: 4 }} onClick={() => rmInc(i)}>✕</span>
+          </span>
+        ))}
+        {f.inclusions.length === 0 && <span style={{ color: '#7c9199', fontSize: 12 }}>No items yet — add below 👇</span>}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input style={box} placeholder="e.g. 8x10 prints, 2 photographers…" value={newInc}
+          onChange={e => setNewInc(e.target.value)} onKeyDown={e => e.key === 'Enter' && addInc()} />
+        <button className="refresh" onClick={addInc}>+ Add</button>
+      </div>
+
+      <button className="refresh" onClick={save} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save package</button>
     </div>
   );
 }
