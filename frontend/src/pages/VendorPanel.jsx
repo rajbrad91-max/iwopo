@@ -113,7 +113,7 @@ function LeadsView() {
     finally { setLoading(false); }
   }
 
-  if (sel) return <LeadDetail lead={sel} onBack={() => setSel(null)} />;
+  if (sel) return <LeadDetail lead={sel} onBack={() => { setSel(null); load(); }} />;
 
   return (
     <div className="table-wrap">
@@ -139,17 +139,115 @@ function LeadsView() {
 }
 
 function LeadDetail({ lead, onBack }) {
+  const [edit, setEdit] = useState(false);
+  const [f, setF] = useState({ ...lead });
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+
+  function calcHours(from, to) {
+    if (!from || !to) return f.hours || '';
+    const [fh, fm] = from.split(':').map(Number);
+    const [th, tm] = to.split(':').map(Number);
+    let mins = (th * 60 + tm) - (fh * 60 + fm);
+    if (mins < 0) mins += 1440;
+    return (mins / 60).toFixed(1).replace(/\.0$/, '');
+  }
+  function setTime(k, v) {
+    setF(s => {
+      const n = { ...s, [k]: v };
+      n.hours = calcHours(k === 'timing_from' ? v : s.timing_from, k === 'timing_to' ? v : s.timing_to);
+      return n;
+    });
+  }
+
+  async function save() {
+    setBusy(true); setMsg('');
+    try {
+      await api.updateLead(lead.id, {
+        ...f, hours: f.hours ? Number(f.hours) : null, guests: f.guests ? Number(f.guests) : null,
+      });
+      setMsg('✅ Saved'); setEdit(false);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+
   const yn = (v) => v ? '✅ Yes' : '❌ No';
+  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
   const Row = ({ label, value }) => (
     <div style={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #223238', fontSize: 14 }}>
       <div style={{ width: 180, color: '#7c9199', fontWeight: 600 }}>{label}</div>
       <div>{value || '—'}</div>
     </div>
   );
+  const ERow = ({ label, k, type }) => (
+    <div style={{ padding: '8px 0', borderBottom: '1px solid #223238' }}>
+      <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>{label}</label>
+      <input style={box} type={type || 'text'} value={f[k] ?? ''} onChange={e => set(k, e.target.value)} />
+    </div>
+  );
+
+  // ---- EDIT MODE ----
+  if (edit) return (
+    <div className="table-wrap" style={{ padding: 24, maxWidth: 640 }}>
+      <button className="refresh" onClick={() => setEdit(false)} style={{ marginBottom: 16 }}>← Cancel</button>
+      <h2 style={{ marginTop: 0 }}>✏️ Edit Lead</h2>
+      {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#fb718518', color: '#fb7185' }}>{msg}</div>}
+
+      <ERow label="👤 Name" k="name" />
+      <ERow label="📧 Email" k="email" />
+      <ERow label="📞 Phone" k="phone" />
+      <ERow label="🎉 Event type" k="event_type" />
+      <ERow label="📅 Date" k="event_date" type="date" />
+      <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #223238' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ Start</label>
+          <input style={box} type="time" value={f.timing_from || ''} onChange={e => setTime('timing_from', e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ End</label>
+          <input style={box} type="time" value={f.timing_to || ''} onChange={e => setTime('timing_to', e.target.value)} />
+        </div>
+      </div>
+      <Row label="⏱️ Hours (auto)" value={f.hours} />
+      <ERow label="📍 Location" k="location" />
+      <ERow label="👥 Guests" k="guests" type="number" />
+
+      <div style={{ padding: '10px 0', borderBottom: '1px solid #223238' }}>
+        <label style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!f.gr_bride} onChange={e => set('gr_bride', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#2dd4bf' }} />
+          💄 Bride — Getting Ready
+        </label>
+        {f.gr_bride && <input style={{ ...box, marginTop: 8 }} placeholder="Venue (optional)" value={f.gr_bride_venue || ''} onChange={e => set('gr_bride_venue', e.target.value)} />}
+      </div>
+      <div style={{ padding: '10px 0', borderBottom: '1px solid #223238' }}>
+        <label style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!f.gr_groom} onChange={e => set('gr_groom', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#2dd4bf' }} />
+          😎 Groom — Getting Ready
+        </label>
+        {f.gr_groom && <input style={{ ...box, marginTop: 8 }} placeholder="Venue (optional)" value={f.gr_groom_venue || ''} onChange={e => set('gr_groom_venue', e.target.value)} />}
+      </div>
+
+      <div style={{ padding: '8px 0' }}>
+        <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>📝 Notes</label>
+        <textarea style={{ ...box, minHeight: 70 }} value={f.notes || ''} onChange={e => set('notes', e.target.value)} />
+      </div>
+
+      <button className="refresh" onClick={save} disabled={busy} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>
+        {busy ? 'Saving…' : '💾 Save changes'}
+      </button>
+    </div>
+  );
+
+  // ---- VIEW MODE ----
   return (
     <div className="table-wrap" style={{ padding: 24, maxWidth: 640 }}>
-      <button className="refresh" onClick={onBack} style={{ marginBottom: 16 }}>← Back to leads</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+        <button className="refresh" onClick={onBack}>← Back to leads</button>
+        <button className="refresh" onClick={() => { setF({ ...lead }); setEdit(true); }} style={{ background: '#2dd4bf', color: '#06231f' }}>✏️ Edit</button>
+      </div>
       <h2 style={{ marginTop: 0 }}>{lead.name} · {lead.event_type}</h2>
+      {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#4ade8018', color: '#4ade80' }}>{msg}</div>}
 
       <Row label="📧 Email" value={lead.email} />
       <Row label="📞 Phone" value={lead.phone} />
