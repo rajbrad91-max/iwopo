@@ -90,6 +90,11 @@ export const api = {
   updateCtTemplate: (id, data) => request(`/contracts/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCtTemplate: (id) => request(`/contracts/templates/${id}`, { method: 'DELETE' }),
   createContractFromTemplate: (leadId, template_id) => request(`/contracts/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ template_id }) }),
+  allInvoices: () => request('/invoices'),
+  leadInvoices: (leadId) => request(`/invoices/lead/${leadId}`),
+  createInvoice: (leadId, data) => request(`/invoices/lead/${leadId}`, { method: 'POST', body: JSON.stringify(data || {}) }),
+  deleteInvoice: (id) => request(`/invoices/${id}`, { method: 'DELETE' }),
+  viewInvoice: (token) => request(`/invoices/view/${token}`),
   myServices: () => request('/vendors/me/services'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

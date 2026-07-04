@@ -34,7 +34,7 @@ export default function VendorPanel({ onLogout }) {
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => setTab('dashboard')}>📊 Dashboard</div>
         <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => setTab('leads')}>📋 Leads</div>
         <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => setTab('bookings')}>📅 Bookings</div>
-        <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => setTab('contracts')}>📄 Contracts</div>
+        <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => setTab('contracts')}>📄 Contracts & Invoices</div>
         <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => setTab('packages')}>📦 My Packages</div>
         <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => setTab('inqform')}>🎨 Inquiry Form</div>
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => setTab('services')}>🧩 My Services</div>
@@ -46,7 +46,7 @@ export default function VendorPanel({ onLogout }) {
       <main className="main">
         <div className="topbar">
           <div>
-            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts' : 'My Services'}</h1>
+            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : 'My Services'}</h1>
             <div className="sub">Welcome back, {user?.name} 👋</div>
           </div>
           <button className="refresh" onClick={load}>🔄 Refresh</button>
@@ -302,21 +302,108 @@ function LeadDetail({ lead, onBack }) {
       <MoneySection lead={lead} />
       <EmailBox lead={lead} />
       <ContractsBox lead={lead} />
+      <InvoiceBox lead={lead} />
+    </div>
+  );
+}
+
+function InvoiceBox({ lead }) {
+  const [list, setList] = useState([]);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    try { const d = await api.leadInvoices(lead.id); setList(d.invoices || []); } catch {}
+  }
+  async function gen() {
+    setBusy(true); setMsg('');
+    try { await api.createInvoice(lead.id); setMsg('✅ Invoice generated'); load(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+  async function del(id) {
+    if (!confirm('Delete this invoice?')) return;
+    try { await api.deleteInvoice(id); load(); } catch {}
+  }
+  function copyLink(token) {
+    navigator.clipboard?.writeText(`https://alphabetaone.com/invoice/${token}`);
+    setMsg('🔗 Link copied!'); setTimeout(() => setMsg(''), 1500);
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0 }}>🧾 Invoices</h3>
+        <button className="refresh" onClick={gen} disabled={busy} style={{ background: '#2dd4bf', color: '#06231f' }}>
+          {busy ? 'Generating…' : '+ Generate invoice'}
+        </button>
+      </div>
+      {msg && <div style={{ fontSize: 13, marginTop: 8, color: msg[0] === '⚠' ? '#fb7185' : '#4ade80' }}>{msg}</div>}
+      {list.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+          {list.map(i => (
+            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+              <span>🧾 <b>{i.invoice_number}</b> · ${Number(i.total).toFixed(2)} · balance ${Number(i.balance).toFixed(2)}</span>
+              <span style={{ display: 'flex', gap: 10 }}>
+                <span style={{ cursor: 'pointer', color: '#2dd4bf' }} onClick={() => copyLink(i.token)}>🔗 Copy link</span>
+                <span style={{ cursor: 'pointer' }} onClick={() => del(i.id)}>🗑️</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function ContractsTab() {
-  const [sub, setSub] = useState('list'); // list | setup
+  const [sub, setSub] = useState('list'); // list | setup | invoices
+  const btn = (k, label) => (
+    <button className="refresh" onClick={() => setSub(k)}
+      style={{ background: sub === k ? '#2dd4bf' : '#0d1417', color: sub === k ? '#06231f' : '#e6f0f2' }}>{label}</button>
+  );
   return (
     <div style={{ maxWidth: 820 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <button className="refresh" onClick={() => setSub('list')}
-          style={{ background: sub === 'list' ? '#2dd4bf' : '#0d1417', color: sub === 'list' ? '#06231f' : '#e6f0f2' }}>📄 All contracts</button>
-        <button className="refresh" onClick={() => setSub('setup')}
-          style={{ background: sub === 'setup' ? '#2dd4bf' : '#0d1417', color: sub === 'setup' ? '#06231f' : '#e6f0f2' }}>🛠️ Contract setup</button>
+        {btn('list', '📄 Contracts')}
+        {btn('setup', '🛠️ Contract setup')}
+        {btn('invoices', '🧾 Invoices')}
       </div>
-      {sub === 'list' ? <AllContracts /> : <ContractSetup />}
+      {sub === 'list' ? <AllContracts /> : sub === 'setup' ? <ContractSetup /> : <AllInvoices />}
+    </div>
+  );
+}
+
+function AllInvoices() {
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.allInvoices().then(d => setList(d.invoices || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  function copyLink(token) {
+    navigator.clipboard?.writeText(`https://alphabetaone.com/invoice/${token}`);
+  }
+  if (loading) return <div className="loading">Loading…</div>;
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Client</th><th>Total</th><th>Paid</th><th>Balance</th><th></th></tr></thead>
+        <tbody>
+          {list.length === 0 ? (
+            <tr><td colSpan="6" className="empty">No invoices yet. Generate one from a lead 🧾</td></tr>
+          ) : list.map(i => (
+            <tr key={i.id}>
+              <td className="biz">{i.invoice_number}</td>
+              <td>{i.client_name}</td>
+              <td>${Number(i.total).toFixed(2)}</td>
+              <td style={{ color: '#4ade80' }}>${Number(i.paid).toFixed(2)}</td>
+              <td style={{ color: Number(i.balance) > 0 ? '#fbbf24' : '#4ade80' }}>${Number(i.balance).toFixed(2)}</td>
+              <td><span style={{ cursor: 'pointer', color: '#2dd4bf', fontSize: 12 }} onClick={() => copyLink(i.token)}>🔗 Copy link</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
