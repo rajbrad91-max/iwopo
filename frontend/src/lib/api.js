@@ -38,6 +38,7 @@ export const api = {
     request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password }) }),
   vendors: () => request('/vendors'),
   services: () => request('/services'),
+  packages: () => request('/packages'),
   myServices: () => request('/vendors/me/services'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

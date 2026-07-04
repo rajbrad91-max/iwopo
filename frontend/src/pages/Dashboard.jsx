@@ -1,46 +1,42 @@
 import { useState, useEffect } from 'react';
 import { api, getUser, clearSession } from '../lib/api';
 import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ComposedChart, Area
+  ResponsiveContainer, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ComposedChart, Bar, Line
 } from 'recharts';
 import './super.css';
 
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
-  { id: 'services', icon: '🧩', label: 'Services', group: 'PLATFORM' },
+  { id: 'services', icon: '🧩', label: 'Services & Packages', group: 'PLATFORM' },
   { id: 'buyers', icon: '🛒', label: 'Buyers', group: 'PLATFORM' },
   { id: 'billing', icon: '💳', label: 'Billing & Plans', group: 'PLATFORM' },
   { id: 'support', icon: '🎫', label: 'Support', group: 'OPERATE' },
   { id: 'settings', icon: '🔧', label: 'Platform Settings', group: 'OPERATE' },
   { id: 'admins', icon: '🔐', label: 'Admins', group: 'OPERATE' },
 ];
-
 const TEAL = '#2dd4bf';
 
 export default function Dashboard({ onLogout }) {
   const [view, setView] = useState('dashboard');
   const [vendors, setVendors] = useState([]);
-  const [services, setServices] = useState([]);
+  const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const user = getUser();
 
   useEffect(() => { load(); }, []);
-
   async function load() {
     setLoading(true);
     try {
-      const [v, s] = await Promise.all([api.vendors(), api.services()]);
+      const [v, p] = await Promise.all([api.vendors(), api.packages()]);
       setVendors(v.vendors || []);
-      setServices(s.services || []);
+      setPackages(p.packages || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
-
   function logout() { clearSession(); onLogout(); }
 
-  const active = vendors.filter(v => v.status === 'active').length;
   const trials = vendors.filter(v => v.status === 'trial').length;
 
   return (
@@ -77,10 +73,10 @@ export default function Dashboard({ onLogout }) {
 
         {loading ? <div className="sa-loading">Loading…</div> : (
           <>
-            {view === 'dashboard' && <DashboardView vendors={vendors} services={services} active={active} trials={trials} />}
-            {view === 'services' && <ServicesView services={services} />}
-            {view === 'buyers' && <BuyersView vendors={vendors} services={services} />}
-            {view === 'billing' && <BillingView />}
+            {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} trials={trials} />}
+            {view === 'services' && <ServicesView packages={packages} />}
+            {view === 'buyers' && <BuyersView vendors={vendors} />}
+            {view === 'billing' && <BillingView packages={packages} />}
             {view === 'support' && <SupportView />}
             {view === 'settings' && <SettingsView />}
             {view === 'admins' && <AdminsView user={user} />}
@@ -91,8 +87,10 @@ export default function Dashboard({ onLogout }) {
   );
 }
 
+function money(v) { return v == null ? null : `$${Number(v).toFixed(2)}`; }
+
 /* ---------- DASHBOARD ---------- */
-function DashboardView({ vendors, services, active, trials }) {
+function DashboardView({ vendors, packages, trials }) {
   const growth = [
     { m: 'Nov', mrr: 4.1, sellers: 6 }, { m: 'Dec', mrr: 4.6, sellers: 8 },
     { m: 'Jan', mrr: 5.0, sellers: 7 }, { m: 'Feb', mrr: 5.3, sellers: 9 },
@@ -109,7 +107,6 @@ function DashboardView({ vendors, services, active, trials }) {
     ['Australia', '🇦🇺', 11], ['India', '🇮🇳', 7], ['Other', '🌐', 4],
   ];
   const maxC = Math.max(...countries.map(c => c[2]));
-  const svcData = services.map((s, i) => ({ name: s.name, v: 40 + (i * 11) % 90, c: ['#2dd4bf','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'][i % 8] }));
 
   return (
     <>
@@ -117,7 +114,7 @@ function DashboardView({ vendors, services, active, trials }) {
         <StatCard label="Total Sellers" value={vendors.length || 128} trend="▲ 12 this month" cls="up" />
         <StatCard label="MRR" value="$6.4k" trend="▲ 8.2%" cls="up" />
         <StatCard label="Active Trials" value={trials || 19} trend="7 ending soon" cls="warn" />
-        <StatCard label="Cloud Storage" value="1.8 TB" trend="▲ 0.2 TB month" cls="up" />
+        <StatCard label="Packages" value={packages.length || 3} trend="Live tiers" cls="up" />
       </div>
 
       <div className="sa-grid-2">
@@ -153,46 +150,23 @@ function DashboardView({ vendors, services, active, trials }) {
         </div>
       </div>
 
-      <div className="sa-grid-2eq">
-        <div className="sa-box">
-          <h3>Service Performance</h3><div className="sa-box-sub">Adoption across all services</div>
-          <div style={{ height: 180, display: 'flex' }}>
-            <ResponsiveContainer width="50%" height="100%">
-              <PieChart>
-                <Pie data={svcData} dataKey="v" nameKey="name" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {svcData.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="sa-adopt">
-              {svcData.slice(0, 5).map((s, i) => (
-                <div key={i} className="sa-ad-row">
-                  <div className="sa-ad-top"><span>{s.name}</span><span className="cnt">{s.v}%</span></div>
-                  <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ width: `${s.v}%`, background: s.c }} /></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="sa-box">
-          <h3>🍩 Vendors by Type</h3><div className="sa-box-sub">Vendors per profession</div>
-          <div style={{ height: 180, display: 'flex' }}>
-            <ResponsiveContainer width="50%" height="100%">
-              <PieChart>
-                <Pie data={vTypes} dataKey="v" nameKey="n" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {vTypes.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="sa-legend">
-              {vTypes.map((t, i) => (
-                <div key={i} className="sa-legend-item">
-                  <span className="sa-legend-dot" style={{ background: t.c }} />{t.n}
-                  <span className="sa-legend-val">{t.v}</span>
-                </div>
-              ))}
-            </div>
+      <div className="sa-box">
+        <h3>🍩 Vendors by Type</h3><div className="sa-box-sub">Vendors per profession</div>
+        <div style={{ height: 180, display: 'flex' }}>
+          <ResponsiveContainer width="45%" height="100%">
+            <PieChart>
+              <Pie data={vTypes} dataKey="v" nameKey="n" innerRadius={45} outerRadius={70} paddingAngle={2}>
+                {vTypes.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="sa-legend">
+            {vTypes.map((t, i) => (
+              <div key={i} className="sa-legend-item">
+                <span className="sa-legend-dot" style={{ background: t.c }} />{t.n}
+                <span className="sa-legend-val">{t.v}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -210,35 +184,94 @@ function StatCard({ label, value, trend, cls }) {
   );
 }
 
-/* ---------- SERVICES ---------- */
-function ServicesView({ services }) {
+/* ---------- SERVICES & PACKAGES ---------- */
+function ServicesView({ packages }) {
   return (
     <>
-      <div className="sa-section-title">Your Services</div>
-      <div className="sa-svc-bars">
-        {services.map((s, i) => {
-          const pct = 40 + (i * 13) % 60;
-          const c = ['#2dd4bf','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'][i % 8];
-          return (
-            <div key={s.id} className="sa-svc-bar-row">
-              <div className="sa-sbr-icon" style={{ background: c + '1a', border: `1px solid ${c}` }}>{s.icon}</div>
-              <div className="sa-sbr-name">{s.name}</div>
-              <div className="sa-sbr-progress">
-                <div className="sa-sbr-prog-top"><span>{pct} buyers</span><span>{pct}% adoption</span></div>
-                <div className="sa-sbr-bar"><div className="sa-sbr-fill" style={{ width: `${pct}%`, background: c }} /></div>
-              </div>
-              <div className="sa-sbr-price">${s.price || 25}<span style={{ color: '#7c9199', fontSize: 11 }}>/mo</span></div>
-            </div>
-          );
-        })}
+      <div className="sa-section-title">Packages & Pricing 🎁</div>
+      <div className="sa-hint" style={{ marginTop: 0, marginBottom: 14 }}>
+        Every package includes a 30-day free trial. Editing prices wires up next.
       </div>
-      <p className="sa-hint">💡 Service prices &amp; adoption. Editing wires up next.</p>
+      <div className="sa-pkg-grid">
+        {packages.map(p => <PackageCard key={p.id} pkg={p} />)}
+      </div>
     </>
   );
 }
 
+function PackageCard({ pkg }) {
+  const hasAnnual = pkg.price_annual != null;
+  return (
+    <div className="sa-pkg-card">
+      <div className="sa-pkg-head">
+        <div className="sa-pkg-icon">{pkg.icon}</div>
+        <div>
+          <div className="sa-pkg-name">{pkg.name}</div>
+          <div className="sa-pkg-tag">{pkg.tagline}</div>
+        </div>
+      </div>
+
+      {pkg.price_monthly != null ? (
+        <div className="sa-pkg-price">
+          <span className="amt">{money(pkg.price_monthly)}</span><span className="per">/mo</span>
+          {hasAnnual && (
+            <div className="sa-pkg-annual">
+              or <b>{money(pkg.price_annual)}</b>/yr
+              {pkg.price_annual_regular && <s>{money(pkg.price_annual_regular)}</s>}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="sa-pkg-price"><span className="amt-sm">À la carte</span></div>
+      )}
+
+      <div className="sa-trial-pill">🎁 {pkg.trial_days}-day free trial</div>
+
+      {pkg.included?.length > 0 && (
+        <div className="sa-pkg-sec">
+          <div className="sa-pkg-sec-label">✓ INCLUDED</div>
+          {pkg.included.map(i => (
+            <div key={i.id} className="sa-pkg-item">
+              <span>{i.icon} {i.name}</span>
+              {i.detail && <span className="sa-pkg-detail">{i.detail}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pkg.standalone?.length > 0 && (
+        <div className="sa-pkg-sec">
+          <div className="sa-pkg-sec-label">SERVICES</div>
+          {pkg.standalone.map(i => (
+            <div key={i.id} className="sa-pkg-item">
+              <span>{i.icon} {i.name}{i.detail ? ` · ${i.detail}` : ''}</span>
+              <span className="sa-pkg-iprice">
+                {money(i.price_monthly)}{i.price_annual ? ` · ${money(i.price_annual)}/yr` : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pkg.addons?.length > 0 && (
+        <div className="sa-pkg-sec">
+          <div className="sa-pkg-sec-label">➕ ADD-ONS</div>
+          {pkg.addons.map(i => (
+            <div key={i.id} className="sa-pkg-item">
+              <span>{i.icon} {i.name}{i.detail ? ` · ${i.detail}` : ''}</span>
+              <span className="sa-pkg-iprice">
+                {money(i.price_monthly)}{i.price_annual ? ` · ${money(i.price_annual)}/yr` : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- BUYERS ---------- */
-function BuyersView({ vendors, services }) {
+function BuyersView({ vendors }) {
   return (
     <>
       <div className="sa-section-title">All Buyers</div>
@@ -264,7 +297,7 @@ function BuyersView({ vendors, services }) {
 }
 
 /* ---------- BILLING ---------- */
-function BillingView() {
+function BillingView({ packages }) {
   return (
     <>
       <div className="sa-stats">
@@ -273,14 +306,19 @@ function BillingView() {
         <StatCard label="Active Trials" value="19" trend="7 ending soon" cls="warn" />
         <StatCard label="Past Due" value="3" trend="$210 owed" cls="neutral" />
       </div>
-      <div className="sa-section-title" style={{ marginTop: 6 }}>Plans</div>
+      <div className="sa-section-title" style={{ marginTop: 6 }}>Package Revenue</div>
       <div className="sa-table-wrap">
         <table>
-          <thead><tr><th>Plan</th><th>Price</th><th>Buyers</th><th>Revenue</th></tr></thead>
+          <thead><tr><th>Package</th><th>Monthly</th><th>Annual</th><th>Trial</th></tr></thead>
           <tbody>
-            <tr><td className="biz">Starter</td><td>$29/mo</td><td>49</td><td>$1.4k</td></tr>
-            <tr><td className="biz">Growth</td><td>$59/mo</td><td>58</td><td>$3.4k</td></tr>
-            <tr><td className="biz">Pro</td><td>$79/mo</td><td>21</td><td>$1.6k</td></tr>
+            {packages.map(p => (
+              <tr key={p.id}>
+                <td className="biz">{p.icon} {p.name}</td>
+                <td>{money(p.price_monthly) || '—'}</td>
+                <td>{money(p.price_annual) || '—'}</td>
+                <td>{p.trial_days}d</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -321,7 +359,7 @@ function SettingsView() {
   return (
     <div className="sa-box" style={{ padding: 0 }}>
       <SettingRow name="Platform Name" desc="Shown across all panels" input="Vowflo" />
-      <SettingRow name="Default Trial Length" desc="Days before billing starts" input="14" small />
+      <SettingRow name="Default Trial Length" desc="Days before billing starts" input="30" small />
       <SettingRow name="Maintenance Mode" desc="Take platform offline" toggle />
       <SettingRow name="Auto-suspend Past Due" desc="After 7 days unpaid" toggle on />
     </div>
@@ -348,7 +386,6 @@ function AdminsView({ user }) {
           <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
           <tbody>
             <tr><td className="biz">{user?.name} (you)</td><td>{user?.email || 'raj@vowflo.com'}</td><td><span className="sa-badge active">super_admin</span></td><td><button className="sa-view-btn">Edit</button></td></tr>
-            <tr><td className="biz">Support Bot</td><td>help@vowflo.com</td><td><span className="sa-badge trial">support</span></td><td><button className="sa-view-btn">Edit</button></td></tr>
           </tbody>
         </table>
       </div>

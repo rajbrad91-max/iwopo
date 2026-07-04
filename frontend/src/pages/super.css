@@ -106,3 +106,29 @@
   .sa-stats { grid-template-columns:repeat(2,1fr); }
   .sa-grid-2, .sa-grid-2eq { grid-template-columns:1fr; }
 }
+
+/* ---- Packages ---- */
+.sa-pkg-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; align-items:start; }
+.sa-pkg-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+.sa-pkg-card:hover { border-color:var(--teal-2); }
+.sa-pkg-head { display:flex; align-items:center; gap:11px; margin-bottom:12px; }
+.sa-pkg-icon { width:42px; height:42px; border-radius:10px; background:var(--teal-soft); border:1px solid var(--teal-2); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.sa-pkg-name { font-weight:800; font-size:15px; }
+.sa-pkg-tag { color:var(--muted); font-size:11px; margin-top:2px; }
+.sa-pkg-price { margin-bottom:10px; }
+.sa-pkg-price .amt { font-size:26px; font-weight:800; }
+.sa-pkg-price .amt-sm { font-size:17px; font-weight:800; color:var(--teal); }
+.sa-pkg-price .per { color:var(--muted); font-size:13px; margin-left:2px; }
+.sa-pkg-annual { font-size:12px; color:var(--muted); margin-top:3px; }
+.sa-pkg-annual b { color:var(--text); }
+.sa-pkg-annual s { color:#5c7079; margin-left:6px; }
+.sa-trial-pill { display:inline-block; background:#4ade8018; color:var(--green); border:1px solid #4ade8044; padding:4px 11px; border-radius:20px; font-size:11px; font-weight:700; margin-bottom:12px; }
+.sa-pkg-sec { margin-top:12px; }
+.sa-pkg-sec-label { font-size:10px; letter-spacing:1px; color:var(--muted); font-weight:700; margin-bottom:7px; }
+.sa-pkg-item { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 10px; background:var(--panel-2); border-radius:8px; margin-bottom:5px; font-size:12px; }
+.sa-pkg-detail { color:var(--muted); font-size:11px; }
+.sa-pkg-iprice { color:var(--teal); font-weight:700; font-size:11px; white-space:nowrap; }
+
+@media (max-width:920px) {
+  .sa-pkg-grid { grid-template-columns:1fr; }
+}
