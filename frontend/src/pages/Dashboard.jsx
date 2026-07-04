@@ -108,6 +108,20 @@ function DashboardView({ vendors, packages, trials }) {
   ];
   const maxC = Math.max(...countries.map(c => c[2]));
 
+  // Build service list from real packages (unique service names)
+  const palette = ['#2dd4bf','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'];
+  const seen = new Set();
+  const svcNames = [];
+  (packages || []).forEach(p => {
+    [...(p.included||[]), ...(p.standalone||[]), ...(p.addons||[])].forEach(it => {
+      const nm = `${it.icon || ''} ${it.name}`.trim();
+      if (!seen.has(it.name)) { seen.add(it.name); svcNames.push(nm); }
+    });
+  });
+  const svcData = (svcNames.length ? svcNames : ['📸 Galleries','📋 Leads','📄 Contracts','📅 Calendar','🤖 AI Chatbot','☁️ Cloud'])
+    .slice(0, 6)
+    .map((name, i) => ({ name, v: 82 - i * 11, c: palette[i % palette.length] }));
+
   return (
     <>
       <div className="sa-stats">
@@ -150,23 +164,46 @@ function DashboardView({ vendors, packages, trials }) {
         </div>
       </div>
 
-      <div className="sa-box">
-        <h3>🍩 Vendors by Type</h3><div className="sa-box-sub">Vendors per profession</div>
-        <div style={{ height: 180, display: 'flex' }}>
-          <ResponsiveContainer width="45%" height="100%">
-            <PieChart>
-              <Pie data={vTypes} dataKey="v" nameKey="n" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                {vTypes.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="sa-legend">
-            {vTypes.map((t, i) => (
-              <div key={i} className="sa-legend-item">
-                <span className="sa-legend-dot" style={{ background: t.c }} />{t.n}
-                <span className="sa-legend-val">{t.v}</span>
-              </div>
-            ))}
+      <div className="sa-grid-2eq">
+        <div className="sa-box">
+          <h3>📊 Service Performance</h3><div className="sa-box-sub">Adoption across your services</div>
+          <div style={{ height: 180, display: 'flex' }}>
+            <ResponsiveContainer width="50%" height="100%">
+              <PieChart>
+                <Pie data={svcData} dataKey="v" nameKey="name" innerRadius={45} outerRadius={70} paddingAngle={2}>
+                  {svcData.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="sa-adopt">
+              {svcData.slice(0, 6).map((s, i) => (
+                <div key={i} className="sa-ad-row">
+                  <div className="sa-ad-top"><span>{s.name}</span><span className="cnt">{s.v}%</span></div>
+                  <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ width: `${s.v}%`, background: s.c }} /></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="sa-box">
+          <h3>🍩 Vendors by Type</h3><div className="sa-box-sub">Vendors per profession</div>
+          <div style={{ height: 180, display: 'flex' }}>
+            <ResponsiveContainer width="45%" height="100%">
+              <PieChart>
+                <Pie data={vTypes} dataKey="v" nameKey="n" innerRadius={45} outerRadius={70} paddingAngle={2}>
+                  {vTypes.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="sa-legend">
+              {vTypes.map((t, i) => (
+                <div key={i} className="sa-legend-item">
+                  <span className="sa-legend-dot" style={{ background: t.c }} />{t.n}
+                  <span className="sa-legend-val">{t.v}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
