@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api, getUser, clearSession } from '../lib/api';
 import './vendor.css';
 
@@ -429,8 +429,17 @@ function CalendarView() {
   const key = (d) => `${cur.y}-${String(cur.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const move = (n) => { setDir(n > 0 ? 'left' : 'right'); setSelDay(null); setCur(c => { const d = new Date(c.y, c.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; }); };
 
+  // 👆 finger swipe
+  const touch = useRef({ x: 0, y: 0 });
+  const onTouchStart = (e) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
+  const onTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - touch.current.x;
+    const dy = e.changedTouches[0].clientY - touch.current.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? 1 : -1);
+  };
+
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: 760 }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="table-wrap" style={{ padding: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <button className="refresh" onClick={() => move(-1)}>←</button>
