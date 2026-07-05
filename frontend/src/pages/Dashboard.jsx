@@ -15,8 +15,7 @@ const NAV = [
   { id: 'referrals', icon: '👥', label: 'Referrals', group: 'PLATFORM' },
   { id: 'billing', icon: '💳', label: 'Billing & Plans', group: 'PLATFORM' },
   { id: 'support', icon: '🎫', label: 'Support', group: 'OPERATE' },
-  { id: 'settings', icon: '🔧', label: 'Platform Settings', group: 'OPERATE' },
-  { id: 'admins', icon: '🔐', label: 'Admins', group: 'OPERATE' },
+  { id: 'settings', icon: '🔧', label: 'Settings', group: 'OPERATE' },
 ];
 const TEAL = '#2dd4bf';
 
@@ -87,8 +86,7 @@ export default function Dashboard({ onLogout }) {
             {view === 'referrals' && <ReferralsView />}
             {view === 'billing' && <BillingView packages={packages} />}
             {view === 'support' && <SupportView />}
-            {view === 'settings' && <SettingsView saTheme={saTheme} setSaTheme={setSaTheme} />}
-            {view === 'admins' && <AdminsView user={user} />}
+            {view === 'settings' && <SettingsView saTheme={saTheme} setSaTheme={setSaTheme} user={user} />}
           </>
         )}
       </main>
@@ -984,8 +982,9 @@ function SupportView() {
 }
 
 /* ---------- SETTINGS ---------- */
-function SettingsView({ saTheme, setSaTheme }) {
+function SettingsView({ saTheme, setSaTheme, user }) {
   return (
+    <>
     <div className="sa-box" style={{ padding: 0 }}>
       <div className="sa-settings-row">
         <div><div className="sr-name">🌗 Panel Theme</div><div className="sr-desc">Super panel only — doesn't affect vendors</div></div>
@@ -1006,6 +1005,9 @@ function SettingsView({ saTheme, setSaTheme }) {
       <SettingRow name="Maintenance Mode" desc="Take platform offline" toggle />
       <SettingRow name="Auto-suspend Past Due" desc="After 7 days unpaid" toggle on />
     </div>
+    <div className="sa-section-title" style={{ marginTop: 22 }}>🔐 Admins</div>
+    <AdminsView user={user} />
+    </>
   );
 }
 function SettingRow({ name, desc, input, small, toggle, on }) {
