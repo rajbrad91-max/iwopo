@@ -76,19 +76,40 @@ router.get('/offers', async (req, res) => {
 
 // 🔒 Create offer
 router.post('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { code, label, percent_off, starts_at, ends_at } = req.body;
+  const { code, label, percent_off, starts_at, ends_at, applies_to } = req.body;
   if (!code || !percent_off) return res.status(400).json({ error: 'Missing code or percent' });
   try {
     const { rows } = await query(
-      `INSERT INTO offers (code,label,percent_off,starts_at,ends_at)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [code.toUpperCase(), label || null, percent_off, starts_at || null, ends_at || null]
+      `INSERT INTO offers (code,label,percent_off,starts_at,ends_at,applies_to)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [code.toUpperCase(), label || null, percent_off, starts_at || null, ends_at || null, applies_to || 'all']
     );
     res.status(201).json({ offer: rows[0] });
   } catch (e) {
     if (e.code === '23505') return res.status(409).json({ error: 'Code already exists' });
     res.status(500).json({ error: e.message });
   }
+});
+
+// Public: validate a coupon code (for checkout)
+// applies_to: 'all' | 'service:ID' | 'package:ID'
+router.get('/offers/validate/:code', async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT * FROM offers WHERE code=$1 AND active=true
+       AND (starts_at IS NULL OR starts_at<=CURRENT_DATE)
+       AND (ends_at IS NULL OR ends_at>=CURRENT_DATE)`,
+      [req.params.code.toUpperCase()]
+    );
+    if (!rows[0]) return res.status(404).json({ valid: false, error: 'Invalid or expired code' });
+    const offer = rows[0];
+    // optional target check: ?target=service:12 or package:1
+    const { target } = req.query;
+    if (offer.applies_to !== 'all' && target && offer.applies_to !== target) {
+      return res.status(400).json({ valid: false, error: 'Code not valid for this item' });
+    }
+    res.json({ valid: true, code: offer.code, percent_off: offer.percent_off, applies_to: offer.applies_to });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 Toggle / delete offer
