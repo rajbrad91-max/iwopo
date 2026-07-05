@@ -133,6 +133,20 @@ export const api = {
     return data;
   },
   fileUrl: (photoId, type) => `/api/albums/file/${photoId}/${type}`,
+  indexFaces: (albumId) => request(`/albums/${albumId}/index-faces`, { method: 'POST' }),
+  faceSearch: async (albumId, selfieFile) => {
+    const fd = new FormData();
+    fd.append('selfie', selfieFile);
+    const token = localStorage.getItem('vowflo_token');
+    const res = await fetch(`/api/albums/${albumId}/face-search`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Search failed');
+    return data;
+  },
   updateCrew: (id, data) => request(`/crew/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCrew: (id) => request(`/crew/${id}`, { method: 'DELETE' }),
   leadCrew: (leadId) => request(`/crew/lead/${leadId}`),

@@ -265,10 +265,31 @@ function AlbumDetail({ albumId, onBack }) {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [prog, setProg] = useState('');
+  const [indexing, setIndexing] = useState(false);
+  const [faceMsg, setFaceMsg] = useState('');
+  const [matchIds, setMatchIds] = useState(null); // null = show all, [] = filtered
   const token = localStorage.getItem('vowflo_token');
 
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => { setAlbum(d.album); setPhotos(d.photos || []); }).catch(() => {}); }
+
+  async function indexFaces() {
+    setIndexing(true); setFaceMsg('🧠 Scanning faces…');
+    try { const r = await api.indexFaces(albumId); setFaceMsg(`✅ Indexed ${r.indexed} photos · ${r.faces} faces`); }
+    catch (e) { setFaceMsg('⚠️ ' + e.message); }
+    finally { setIndexing(false); setTimeout(() => setFaceMsg(''), 4000); }
+  }
+  async function onSelfie(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFaceMsg('🔍 Searching…');
+    try {
+      const r = await api.faceSearch(albumId, file);
+      setMatchIds(r.photo_ids);
+      setFaceMsg(`✅ Found ${r.matches} matching photos`);
+    } catch (err) { setFaceMsg('⚠️ ' + err.message); }
+    e.target.value = '';
+  }
 
   async function onFiles(e) {
     const files = e.target.files;
@@ -298,13 +319,23 @@ function AlbumDetail({ albumId, onBack }) {
           <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading} />
         </label>
       </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button className="refresh" onClick={indexFaces} disabled={indexing}>{indexing ? '🧠 Indexing…' : '🧠 Index Faces'}</button>
+        <label className="refresh" style={{ cursor: 'pointer' }}>
+          🤳 Search by Selfie
+          <input type="file" accept="image/*" hidden onChange={onSelfie} />
+        </label>
+        {matchIds !== null && <button className="refresh" onClick={() => { setMatchIds(null); setFaceMsg(''); }}>✕ Clear filter</button>}
+        {faceMsg && <span style={{ fontSize: 13, color: 'var(--muted)' }}>{faceMsg}</span>}
+      </div>
       {prog && <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--muted)' }}>{prog}</div>}
 
       {photos.length === 0 ? (
         <div className="table-wrap" style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>No photos yet. Upload some 📤</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10 }}>
-          {photos.map(p => (
+          {photos.filter(p => matchIds === null || matchIds.includes(p.id)).map(p => (
             <div key={p.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)', aspectRatio: '1' }}>
               <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               {p.is_selected && <span style={{ position: 'absolute', top: 6, left: 6, background: '#2dd4bf', color: '#06231f', borderRadius: 20, fontSize: 10, fontWeight: 800, padding: '2px 7px' }}>✅ Picked</span>}
