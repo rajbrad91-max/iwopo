@@ -5,7 +5,7 @@ import './vendor.css';
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
-  contracts: 'contracts', crew: 'crew', calendar: 'calendar',
+  contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
 };
 
 function FeatureLocked({ goServices }) {
@@ -73,6 +73,7 @@ export default function VendorPanel({ onLogout }) {
         {has('calendar') && <div className={`nav-item ${tab==='calendar'?'active':''}`} onClick={() => setTab('calendar')}>🗓️ Calendar</div>}
         {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => setTab('contracts')}>📄 Contracts & Invoices</div>}
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => setTab('crew')}>👷 My Crew</div>}
+        {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => setTab('galleries')}>📸 Galleries</div>}
         <div className="nav-group">SETUP</div>
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => setTab('packages')}>📦 My Packages</div>}
         {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => setTab('inqform')}>🎨 Inquiry Form</div>}
@@ -88,7 +89,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="hdr-icon sidebar-toggle" onClick={() => setCollapsed(c => !c)} title="Toggle menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'galleries' ? 'Galleries' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -111,6 +112,8 @@ export default function VendorPanel({ onLogout }) {
           <ContractsTab />
         ) : tab === 'crew' ? (
           <CrewView />
+        ) : tab === 'galleries' ? (
+          <GalleriesView />
         ) : tab === 'calendar' ? (
           <CalendarView />
         ) : tab === 'inqform' ? (
@@ -180,6 +183,137 @@ function NotifBell() {
         </div>
       )}
     </div>
+  );
+}
+
+function GalleriesView() {
+  const [albums, setAlbums] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(null); // album id being viewed
+  const [showNew, setShowNew] = useState(false);
+  const [f, setF] = useState({ title: '', category: '', guest_username: '', guest_password: '', admin_username: '', admin_password: '' });
+  const [msg, setMsg] = useState('');
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
+
+  useEffect(() => { load(); }, []);
+  function load() { setLoading(true); api.albums().then(d => setAlbums(d.albums || [])).catch(() => {}).finally(() => setLoading(false)); }
+
+  async function create() {
+    if (!f.title) return setMsg('⚠️ Title required');
+    try {
+      await api.createAlbum(f);
+      setF({ title: '', category: '', guest_username: '', guest_password: '', admin_username: '', admin_password: '' });
+      setShowNew(false); setMsg(''); load();
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function del(id) {
+    if (!confirm('Delete this album and all its photos?')) return;
+    await api.deleteAlbum(id); load();
+  }
+
+  if (open) return <AlbumDetail albumId={open} onBack={() => { setOpen(null); load(); }} />;
+  if (loading) return <div className="loading">Loading…</div>;
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <h2 style={{ margin: 0 }}>📸 Galleries</h2>
+        <button className="refresh" style={{ background: '#2dd4bf', color: '#06231f' }} onClick={() => setShowNew(s => !s)}>{showNew ? '✕ Cancel' : '+ New Album'}</button>
+      </div>
+
+      {showNew && (
+        <div className="table-wrap" style={{ padding: 18, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label className="lbl">Title *</label><input style={box} value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="Susan & Mike Wedding" /></div>
+            <div><label className="lbl">Category</label><input style={box} value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="Wedding" /></div>
+            <div><label className="lbl">👁️ Guest username</label><input style={box} value={f.guest_username} onChange={e => setF({ ...f, guest_username: e.target.value })} /></div>
+            <div><label className="lbl">👁️ Guest password</label><input style={box} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} /></div>
+            <div><label className="lbl">🔑 Admin username</label><input style={box} value={f.admin_username} onChange={e => setF({ ...f, admin_username: e.target.value })} /></div>
+            <div><label className="lbl">🔑 Admin password</label><input style={box} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} /></div>
+          </div>
+          <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button className="refresh" style={{ background: '#2dd4bf', color: '#06231f' }} onClick={create}>✅ Create album</button>
+            {msg && <span style={{ color: '#fb7185', fontSize: 13 }}>{msg}</span>}
+          </div>
+        </div>
+      )}
+
+      {albums.length === 0 ? (
+        <div className="table-wrap" style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>No albums yet. Create your first one 📸</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 16 }}>
+          {albums.map(a => (
+            <div key={a.id} className="table-wrap" style={{ padding: 16, cursor: 'pointer' }} onClick={() => setOpen(a.id)}>
+              <div style={{ fontSize: 34, marginBottom: 8 }}>🖼️</div>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>{a.title}</div>
+              <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 8 }}>{a.category || '—'}</div>
+              <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
+                <span>📷 {a.photo_count} photos</span>
+                {a.selected_count > 0 && <span style={{ color: '#2dd4bf' }}>✅ {a.selected_count} picked</span>}
+              </div>
+              <button className="refresh" style={{ marginTop: 10, fontSize: 11, padding: '4px 10px' }} onClick={e => { e.stopPropagation(); del(a.id); }}>🗑️ Delete</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function AlbumDetail({ albumId, onBack }) {
+  const [album, setAlbum] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [prog, setProg] = useState('');
+  const token = localStorage.getItem('vowflo_token');
+
+  useEffect(() => { load(); }, [albumId]);
+  function load() { api.album(albumId).then(d => { setAlbum(d.album); setPhotos(d.photos || []); }).catch(() => {}); }
+
+  async function onFiles(e) {
+    const files = e.target.files;
+    if (!files.length) return;
+    setUploading(true); setProg(`Uploading ${files.length} photos…`);
+    try { await api.uploadPhotos(albumId, files); setProg('✅ Done'); load(); }
+    catch (err) { setProg('⚠️ ' + err.message); }
+    finally { setUploading(false); setTimeout(() => setProg(''), 2000); }
+  }
+  async function delPhoto(pid) {
+    if (!confirm('Delete this photo?')) return;
+    await api.deletePhoto(albumId, pid); load();
+  }
+
+  if (!album) return <div className="loading">Loading…</div>;
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div>
+          <button className="refresh" style={{ fontSize: 12, marginBottom: 6 }} onClick={onBack}>← Back</button>
+          <h2 style={{ margin: 0 }}>🖼️ {album.title}</h2>
+          <div style={{ color: 'var(--muted)', fontSize: 12 }}>{photos.length} photos</div>
+        </div>
+        <label className="refresh" style={{ background: '#2dd4bf', color: '#06231f', cursor: 'pointer' }}>
+          {uploading ? '⏳ Uploading…' : '📤 Upload photos'}
+          <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading} />
+        </label>
+      </div>
+      {prog && <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--muted)' }}>{prog}</div>}
+
+      {photos.length === 0 ? (
+        <div className="table-wrap" style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>No photos yet. Upload some 📤</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10 }}>
+          {photos.map(p => (
+            <div key={p.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)', aspectRatio: '1' }}>
+              <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {p.is_selected && <span style={{ position: 'absolute', top: 6, left: 6, background: '#2dd4bf', color: '#06231f', borderRadius: 20, fontSize: 10, fontWeight: 800, padding: '2px 7px' }}>✅ Picked</span>}
+              <button onClick={() => delPhoto(p.id)} style={{ position: 'absolute', top: 6, right: 6, background: '#00000090', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '2px 6px' }}>🗑️</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
