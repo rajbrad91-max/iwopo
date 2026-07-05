@@ -3,6 +3,12 @@
   --muted:#7c9199; --text:#e6f0f2; --teal:#2dd4bf; --teal-2:#14b8a6;
   --teal-soft:#2dd4bf1a; --green:#4ade80; --amber:#fbbf24; --red:#fb7185;
 }
+/* 🌗 Super panel light theme — scoped to .sa-wrap, independent of vendor panels */
+.sa-wrap[data-sa-theme="light"] {
+  --bg:#f4f6f8; --panel:#ffffff; --panel-2:#f0f3f5; --line:#dde3e7;
+  --muted:#64757d; --text:#1a2529; --teal:#0f766e; --teal-2:#0d5f58;
+  --teal-soft:#0f766e14; --green:#16a34a; --amber:#d97706; --red:#e11d48;
+}
 .sa-wrap { display:flex; min-height:100vh; background:var(--bg); color:var(--text); font-size:13px; }
 .sa-wrap * { box-sizing:border-box; }
 

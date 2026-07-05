@@ -25,7 +25,11 @@ export default function Dashboard({ onLogout }) {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [saTheme, setSaTheme] = useState(() => localStorage.getItem('vf_super_theme') || 'dark');
   const user = getUser();
+
+  // 🌗 apply super theme to .sa-wrap only (never touches vendor panels)
+  useEffect(() => { localStorage.setItem('vf_super_theme', saTheme); }, [saTheme]);
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -42,7 +46,7 @@ export default function Dashboard({ onLogout }) {
   const trials = vendors.filter(v => v.status === 'trial').length;
 
   return (
-    <div className="sa-wrap">
+    <div className="sa-wrap" data-sa-theme={saTheme}>
       <aside className={`sa-sidebar ${sidebarOpen ? 'show' : ''}`}>
         <div className="sa-brand"><span className="hex">⬡</span><div>VOWFLO<br /><small>SUPER</small></div></div>
         {['PLATFORM', 'OPERATE'].map(g => (
@@ -82,7 +86,7 @@ export default function Dashboard({ onLogout }) {
             {view === 'referrals' && <ReferralsView />}
             {view === 'billing' && <BillingView packages={packages} />}
             {view === 'support' && <SupportView />}
-            {view === 'settings' && <SettingsView />}
+            {view === 'settings' && <SettingsView saTheme={saTheme} setSaTheme={setSaTheme} />}
             {view === 'admins' && <AdminsView user={user} />}
           </>
         )}
@@ -575,9 +579,23 @@ function SupportView() {
 }
 
 /* ---------- SETTINGS ---------- */
-function SettingsView() {
+function SettingsView({ saTheme, setSaTheme }) {
   return (
     <div className="sa-box" style={{ padding: 0 }}>
+      <div className="sa-settings-row">
+        <div><div className="sr-name">🌗 Panel Theme</div><div className="sr-desc">Super panel only — doesn't affect vendors</div></div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {['dark', 'light'].map(t => (
+            <button key={t} onClick={() => setSaTheme(t)}
+              style={{ padding: '7px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 12,
+                border: '1px solid var(--line)',
+                background: saTheme === t ? '#2dd4bf' : 'var(--panel-2)',
+                color: saTheme === t ? '#06231f' : 'var(--text)' }}>
+              {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
+            </button>
+          ))}
+        </div>
+      </div>
       <SettingRow name="Platform Name" desc="Shown across all panels" input="Vowflo" />
       <SettingRow name="Default Trial Length" desc="Days before billing starts" input="30" small />
       <SettingRow name="Maintenance Mode" desc="Take platform offline" toggle />
