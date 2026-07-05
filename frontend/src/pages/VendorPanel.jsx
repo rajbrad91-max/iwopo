@@ -26,15 +26,13 @@ export default function VendorPanel({ onLogout }) {
   const [error, setError] = useState('');
   const [tab, setTab] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('vf_theme') || 'dark');
   const user = getUser();
 
-  // 🌗 apply + persist theme
+  // 🌗 instant paint from last-known theme (avoids flash); load() then applies vendor's DB theme
   useEffect(() => {
-    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
-    else document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('vf_theme', theme);
-  }, [theme]);
+    const cached = localStorage.getItem('vf_theme');
+    if (cached === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  }, []);
 
   // 🗝️ single access check used everywhere
   const has = (key) => !!features && (features.includes('*') || features.includes(key));
@@ -45,9 +43,14 @@ export default function VendorPanel({ onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const [d, f] = await Promise.all([api.myServices(), api.myFeatures()]);
+      const [d, f, st] = await Promise.all([api.myServices(), api.myFeatures(), api.mySettings().catch(() => ({ settings: null }))]);
       setServices(d.services);
       setFeatures(f.features || []);
+      // 🌗 apply this vendor's saved theme
+      const th = st?.settings?.theme || 'dark';
+      if (th === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('vf_theme', th);
     } catch (err) {
       setError(err.message);
     } finally {
