@@ -13,7 +13,7 @@ function FeatureLocked({ goServices }) {
     <div className="table-wrap" style={{ padding: 40, textAlign: 'center', maxWidth: 520 }}>
       <div style={{ fontSize: 44 }}>🔒</div>
       <h2 style={{ margin: '10px 0 6px' }}>This feature isn't in your plan</h2>
-      <p style={{ color: '#7c9199', fontSize: 13, marginBottom: 18 }}>Upgrade your plan or add it as a standalone service to unlock it. ✨</p>
+      <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>Upgrade your plan or add it as a standalone service to unlock it. ✨</p>
       <button className="refresh" onClick={goServices} style={{ background: '#2dd4bf', color: '#06231f' }}>🧩 View My Services</button>
     </div>
   );
@@ -165,13 +165,13 @@ function NotifBell() {
         )}
       </button>
       {open && (
-        <div style={{ position: 'absolute', right: 0, top: 44, width: 320, maxHeight: 400, overflowY: 'auto', background: '#131e22', border: '1px solid #223238', borderRadius: 12, zIndex: 40, boxShadow: '0 10px 30px #00000060' }}>
+        <div style={{ position: 'absolute', right: 0, top: 44, width: 320, maxHeight: 400, overflowY: 'auto', background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 12, zIndex: 40, boxShadow: '0 10px 30px #00000060' }}>
           {data.notifications.length === 0 ? (
-            <div style={{ padding: 20, color: '#7c9199', fontSize: 13, textAlign: 'center' }}>No notifications yet 🔕</div>
+            <div style={{ padding: 20, color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>No notifications yet 🔕</div>
           ) : data.notifications.map(n => (
-            <div key={n.id} style={{ padding: '11px 14px', borderBottom: '1px solid #223238', fontSize: 12.5 }}>
+            <div key={n.id} style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>
               <div style={{ fontWeight: 700 }}>{n.title}</div>
-              {n.body && <div style={{ color: '#7c9199', marginTop: 2 }}>{n.body}</div>}
+              {n.body && <div style={{ color: 'var(--muted)', marginTop: 2 }}>{n.body}</div>}
               <div style={{ color: '#4a6169', fontSize: 10.5, marginTop: 3 }}>{String(n.created_at).slice(0, 16).replace('T', ' ')}</div>
             </div>
           ))}
@@ -185,7 +185,7 @@ function CrewView() {
   const [crew, setCrew] = useState([]);
   const [f, setF] = useState({ name: '', role: '', phone: '', email: '' });
   const [msg, setMsg] = useState('');
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9 };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
 
   useEffect(() => { load(); }, []);
   function load() { api.crew().then(d => setCrew(d.crew || [])).catch(() => {}); }
@@ -270,7 +270,7 @@ function CalendarView() {
           <h2 style={{ margin: 0 }}>🗓️ {monthName}</h2>
           <button className="refresh" onClick={() => move(1)}>→</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, fontSize: 11, color: '#7c9199', textAlign: 'center', marginBottom: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginBottom: 6 }}>
           {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
         </div>
         <div key={`${cur.y}-${cur.m}`} className={`cal-grid slide-${dir}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
@@ -282,13 +282,13 @@ function CalendarView() {
             return (
               <div key={i} onClick={() => evts.length && setSelDay(k)}
                 style={{ minHeight: 58, borderRadius: 8, padding: 6, fontSize: 12, cursor: evts.length ? 'pointer' : 'default',
-                  background: evts.length ? '#2dd4bf1e' : '#0d1417',
-                  border: `1px solid ${selDay === k ? '#2dd4bf' : isToday ? '#fbbf24' : '#223238'}` }}>
-                <div style={{ fontWeight: 700, color: isToday ? '#fbbf24' : evts.length ? '#2dd4bf' : '#7c9199' }}>{d}</div>
+                  background: evts.length ? 'var(--teal-soft)' : 'var(--panel-2)',
+                  border: `1px solid ${selDay === k ? 'var(--teal)' : isToday ? 'var(--amber)' : 'var(--line)'}` }}>
+                <div style={{ fontWeight: 700, color: isToday ? 'var(--amber)' : evts.length ? 'var(--teal)' : 'var(--muted)' }}>{d}</div>
                 {evts.slice(0, 2).map(e => (
                   <div key={e.id} style={{ fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>✅ {e.name}</div>
                 ))}
-                {evts.length > 2 && <div style={{ fontSize: 10, color: '#7c9199' }}>+{evts.length - 2}</div>}
+                {evts.length > 2 && <div style={{ fontSize: 10, color: 'var(--muted)' }}>+{evts.length - 2}</div>}
               </div>
             );
           })}
@@ -428,9 +428,9 @@ function LeadsView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="refresh" onClick={() => setView('active')}
-            style={{ background: view === 'active' ? '#2dd4bf' : '#0d1417', color: view === 'active' ? '#06231f' : '#e6f0f2' }}>📋 Active</button>
+            style={{ background: view === 'active' ? '#2dd4bf' : 'var(--panel-2)', color: view === 'active' ? '#06231f' : 'var(--text)' }}>📋 Active</button>
           <button className="refresh" onClick={() => setView('history')}
-            style={{ background: view === 'history' ? '#2dd4bf' : '#0d1417', color: view === 'history' ? '#06231f' : '#e6f0f2' }}>📜 History</button>
+            style={{ background: view === 'history' ? '#2dd4bf' : 'var(--panel-2)', color: view === 'history' ? '#06231f' : 'var(--text)' }}>📜 History</button>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {msg && <span style={{ fontSize: 13, color: msg[0] === '⚠' ? '#fb7185' : '#4ade80' }}>{msg}</span>}
@@ -524,16 +524,16 @@ function LeadDetail({ lead, onBack }) {
   }
 
   const yn = (v) => v ? '✅ Yes' : '❌ No';
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
   const row = (label, value) => (
-    <div style={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid #223238', fontSize: 14 }}>
-      <div style={{ width: 180, color: '#7c9199', fontWeight: 600 }}>{label}</div>
+    <div style={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid var(--line)', fontSize: 14 }}>
+      <div style={{ width: 180, color: 'var(--muted)', fontWeight: 600 }}>{label}</div>
       <div>{value || '—'}</div>
     </div>
   );
   const eRow = (label, k, type) => (
-    <div style={{ padding: '8px 0', borderBottom: '1px solid #223238' }}>
-      <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>{label}</label>
+    <div style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+      <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>{label}</label>
       <input style={box} type={type || 'text'} value={f[k] ?? ''} onChange={e => set(k, e.target.value)} />
     </div>
   );
@@ -550,13 +550,13 @@ function LeadDetail({ lead, onBack }) {
       {eRow('📞 Phone', 'phone')}
       {eRow('🎉 Event type', 'event_type')}
       {eRow('📅 Date', 'event_date', 'date')}
-      <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #223238' }}>
+      <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ Start</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ Start</label>
           <input style={box} type="time" value={f.timing_from || ''} onChange={e => setTime('timing_from', e.target.value)} />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ End</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ End</label>
           <input style={box} type="time" value={f.timing_to || ''} onChange={e => setTime('timing_to', e.target.value)} />
         </div>
       </div>
@@ -564,14 +564,14 @@ function LeadDetail({ lead, onBack }) {
       {eRow('📍 Location', 'location')}
       {eRow('👥 Guests', 'guests', 'number')}
 
-      <div style={{ padding: '10px 0', borderBottom: '1px solid #223238' }}>
+      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
         <label style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
           <input type="checkbox" checked={!!f.gr_bride} onChange={e => set('gr_bride', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#2dd4bf' }} />
           💄 Bride — Getting Ready
         </label>
         {f.gr_bride && <input style={{ ...box, marginTop: 8 }} placeholder="Venue (optional)" value={f.gr_bride_venue || ''} onChange={e => set('gr_bride_venue', e.target.value)} />}
       </div>
-      <div style={{ padding: '10px 0', borderBottom: '1px solid #223238' }}>
+      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
         <label style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
           <input type="checkbox" checked={!!f.gr_groom} onChange={e => set('gr_groom', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#2dd4bf' }} />
           😎 Groom — Getting Ready
@@ -580,7 +580,7 @@ function LeadDetail({ lead, onBack }) {
       </div>
 
       <div style={{ padding: '8px 0' }}>
-        <label style={{ fontSize: 12, color: '#7c9199', fontWeight: 600, display: 'block', marginBottom: 5 }}>📝 Notes</label>
+        <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>📝 Notes</label>
         <textarea style={{ ...box, minHeight: 70 }} value={f.notes || ''} onChange={e => set('notes', e.target.value)} />
       </div>
 
@@ -600,10 +600,10 @@ function LeadDetail({ lead, onBack }) {
       <h2 style={{ marginTop: 0 }}>{lead.name} · {lead.event_type}</h2>
       {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#4ade8018', color: '#4ade80' }}>{msg}</div>}
 
-      <div style={{ padding: '10px 0', borderBottom: '1px solid #223238', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 180, color: '#7c9199', fontWeight: 600, fontSize: 14 }}>📦 Package</div>
+      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 180, color: 'var(--muted)', fontWeight: 600, fontSize: 14 }}>📦 Package</div>
         <select value={pkgId} onChange={e => assignPkg(e.target.value)}
-          style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 8, flex: 1 }}>
+          style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8, flex: 1 }}>
           <option value="">— No package —</option>
           {pkgs.map(p => <option key={p.id} value={p.id}>{p.tplName} → {p.name} (${Number(p.base_price).toFixed(0)})</option>)}
         </select>
@@ -635,7 +635,7 @@ function BookingExtras({ lead }) {
   const [assigned, setAssigned] = useState([]);
   const [pick, setPick] = useState({ crew_member_id: '', duty: '', arrive_time: '', leave_time: '' });
   const [msg, setMsg] = useState('');
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9 };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
 
   useEffect(() => {
     api.crew().then(d => setCrew(d.crew || [])).catch(() => {});
@@ -679,26 +679,26 @@ function BookingExtras({ lead }) {
           <button className="refresh" onClick={copyPortal} style={{ background: '#2dd4bf', color: '#06231f' }}>🔗 Client portal link</button>
         )}
         <button className="refresh" onClick={() => saveFlags({ billed: !flags.billed })}
-          style={{ background: flags.billed ? '#4ade8022' : '#0d1417', color: flags.billed ? '#4ade80' : '#e6f0f2' }}>
+          style={{ background: flags.billed ? '#4ade8022' : 'var(--panel-2)', color: flags.billed ? '#4ade80' : 'var(--text)' }}>
           🧾 Billed {flags.billed ? '✓' : ''}
         </button>
         <button className="refresh" onClick={() => saveFlags({ delivered: !flags.delivered })}
-          style={{ background: flags.delivered ? '#4ade8022' : '#0d1417', color: flags.delivered ? '#4ade80' : '#e6f0f2' }}>
+          style={{ background: flags.delivered ? '#4ade8022' : 'var(--panel-2)', color: flags.delivered ? '#4ade80' : 'var(--text)' }}>
           📦 Delivered {flags.delivered ? '✓' : ''}
         </button>
       </div>
 
-      <label style={{ fontSize: 11, color: '#7c9199' }}>💒 Ceremony details</label>
+      <label style={{ fontSize: 11, color: 'var(--muted)' }}>💒 Ceremony details</label>
       <textarea style={{ ...box, width: '100%', minHeight: 46 }} value={flags.ceremony}
         onChange={e => setFlags({ ...flags, ceremony: e.target.value })} onBlur={() => saveFlags({})} />
 
-      <label style={{ fontSize: 11, color: '#7c9199', display: 'block', marginTop: 10 }}>📝 Booking notes (private)</label>
+      <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginTop: 10 }}>📝 Booking notes (private)</label>
       <textarea style={{ ...box, width: '100%', minHeight: 60 }} value={flags.booking_notes}
         onChange={e => setFlags({ ...flags, booking_notes: e.target.value })} onBlur={() => saveFlags({})} />
 
       <h3 style={{ margin: '16px 0 8px' }}>👷 Event crew</h3>
       {crew.length === 0 ? (
-        <div style={{ color: '#7c9199', fontSize: 13 }}>No crew in your roster yet — add them in 👷 My Crew tab first.</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No crew in your roster yet — add them in 👷 My Crew tab first.</div>
       ) : (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           <select style={box} value={pick.crew_member_id} onChange={e => setPick({ ...pick, crew_member_id: e.target.value })}>
@@ -712,7 +712,7 @@ function BookingExtras({ lead }) {
         </div>
       )}
       {assigned.map(a => (
-        <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 6 }}>
+        <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 6 }}>
           <span>👤 <b>{a.name}</b>{a.duty ? ` · ${a.duty}` : ''}{a.arrive_time ? ` · ${a.arrive_time}→${a.leave_time || '?'}` : ''}
             {a.checked_in_at ? ' · ✅ in' : ''}{a.checked_out_at ? ' · 🏁 out' : ''}</span>
           <span style={{ display: 'flex', gap: 10 }}>
@@ -761,7 +761,7 @@ function InvoiceBox({ lead }) {
       {list.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
           {list.map(i => (
-            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
               <span>🧾 <b>{i.invoice_number}</b> · ${Number(i.total).toFixed(2)} · balance ${Number(i.balance).toFixed(2)}</span>
               <span style={{ display: 'flex', gap: 10 }}>
                 <span style={{ cursor: 'pointer', color: '#2dd4bf' }} onClick={() => copyLink(i.token)}>🔗 Copy link</span>
@@ -779,7 +779,7 @@ function ContractsTab() {
   const [sub, setSub] = useState('list'); // list | setup | invoices
   const btn = (k, label) => (
     <button className="refresh" onClick={() => setSub(k)}
-      style={{ background: sub === k ? '#2dd4bf' : '#0d1417', color: sub === k ? '#06231f' : '#e6f0f2' }}>{label}</button>
+      style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
   );
   return (
     <div style={{ maxWidth: 820 }}>
@@ -867,7 +867,7 @@ function ContractSetup() {
   const [tpls, setTpls] = useState([]);
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState('');
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%', fontFamily: 'inherit' };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%', fontFamily: 'inherit' };
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -903,16 +903,16 @@ function ContractSetup() {
         </div>
       </div>
 
-      <label style={{ fontSize: 12, color: '#7c9199' }}>Template name</label>
+      <label style={{ fontSize: 12, color: 'var(--muted)' }}>Template name</label>
       <input style={box} value={sel.name || ''} onChange={e => setSel({ ...sel, name: e.target.value })} />
 
-      <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 10 }}>Event type (optional, e.g. Wedding)</label>
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Event type (optional, e.g. Wedding)</label>
       <input style={box} value={sel.event_type || ''} onChange={e => setSel({ ...sel, event_type: e.target.value })} />
 
-      <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 10 }}>Header (optional)</label>
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Header (optional)</label>
       <textarea style={{ ...box, minHeight: 50 }} value={sel.header || ''} onChange={e => setSel({ ...sel, header: e.target.value })} />
 
-      <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 10 }}>Contract body ✍️</label>
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Contract body ✍️</label>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, margin: '6px 0' }}>
         {CT_PLACEHOLDERS.map(p => (
           <span key={p} onClick={() => insertAt(p)}
@@ -923,7 +923,7 @@ function ContractSetup() {
       </div>
       <textarea style={{ ...box, minHeight: 220 }} value={sel.body || ''} onChange={e => setSel({ ...sel, body: e.target.value })} />
 
-      <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 10 }}>Legal terms (optional)</label>
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Legal terms (optional)</label>
       <textarea style={{ ...box, minHeight: 80 }} value={sel.legal_terms || ''} onChange={e => setSel({ ...sel, legal_terms: e.target.value })} />
 
       <button className="refresh" onClick={save} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save template</button>
@@ -933,17 +933,17 @@ function ContractSetup() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ color: '#7c9199', fontSize: 13 }}>🛠️ Build your own contracts — placeholders auto-fill, [INITIAL] adds tap-to-initial boxes</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>🛠️ Build your own contracts — placeholders auto-fill, [INITIAL] adds tap-to-initial boxes</div>
         <button className="refresh" onClick={add} style={{ background: '#2dd4bf', color: '#06231f' }}>+ New template</button>
       </div>
       {msg && <div className="err-banner">{msg}</div>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 14 }}>
-        {tpls.length === 0 && <div style={{ color: '#7c9199' }}>No templates yet — create one 👆</div>}
+        {tpls.length === 0 && <div style={{ color: 'var(--muted)' }}>No templates yet — create one 👆</div>}
         {tpls.map(t => (
           <div key={t.id} className="table-wrap" style={{ padding: 18, cursor: 'pointer' }} onClick={() => setSel(t)}>
             <div style={{ fontSize: 30 }}>📑</div>
             <div style={{ fontWeight: 700, marginTop: 6 }}>{t.name}</div>
-            <div style={{ color: '#7c9199', fontSize: 12, marginTop: 4 }}>{t.event_type || 'Any event'} · {(t.body.match(/\[INITIAL\]/g) || []).length} initials</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>{t.event_type || 'Any event'} · {(t.body.match(/\[INITIAL\]/g) || []).length} initials</div>
           </div>
         ))}
       </div>
@@ -959,7 +959,7 @@ function ContractsBox({ lead }) {
   const [body, setBody] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   useEffect(() => {
     load();
@@ -1022,7 +1022,7 @@ function ContractsBox({ lead }) {
       {list.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
           {list.map(c => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
               <span>{S[c.status]} <b>{c.title}</b> · {c.status}{c.signed_name ? ` by ${c.signed_name}` : ''}</span>
               <span style={{ display: 'flex', gap: 10 }}>
                 {c.status !== 'signed' && <span style={{ cursor: 'pointer', color: '#2dd4bf' }} onClick={() => copyLink(c.token)}>🔗 Copy link</span>}
@@ -1043,7 +1043,7 @@ function EmailBox({ lead }) {
   const [body, setBody] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   async function send() {
     if (!subject || !body) return setMsg('⚠️ Subject + message required');
@@ -1085,7 +1085,7 @@ function MoneySection({ lead }) {
   const [money, setMoney] = useState({ deposit_percent: lead.deposit_percent ?? 30, discount_percent: lead.discount_percent ?? 0, price_override: lead.price_override ?? '' });
   const [status, setStatus] = useState(lead.status || 'new');
   const [msg, setMsg] = useState('');
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 8 };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8 };
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -1124,7 +1124,7 @@ function MoneySection({ lead }) {
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
         {STATUSES.map(s => (
           <button key={s} className="refresh" onClick={() => changeStatus(s)}
-            style={{ padding: '5px 11px', fontSize: 12, background: status === s ? '#2dd4bf' : '#0d1417', color: status === s ? '#06231f' : '#e6f0f2' }}>
+            style={{ padding: '5px 11px', fontSize: 12, background: status === s ? '#2dd4bf' : 'var(--panel-2)', color: status === s ? '#06231f' : 'var(--text)' }}>
             {S_ICON[s]} {s}
           </button>
         ))}
@@ -1134,17 +1134,17 @@ function MoneySection({ lead }) {
       <h3 style={{ margin: '0 0 10px' }}>💰 Money</h3>
       <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 11, color: '#7c9199' }}>Price override ($)</label>
+          <label style={{ fontSize: 11, color: 'var(--muted)' }}>Price override ($)</label>
           <input style={{ ...box, width: '100%' }} type="number" placeholder="auto from package"
             value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 11, color: '#7c9199' }}>Discount %</label>
+          <label style={{ fontSize: 11, color: 'var(--muted)' }}>Discount %</label>
           <input style={{ ...box, width: '100%' }} type="number"
             value={money.discount_percent} onChange={e => setMoney({ ...money, discount_percent: e.target.value })} onBlur={saveMoney} />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 11, color: '#7c9199' }}>Deposit %</label>
+          <label style={{ fontSize: 11, color: 'var(--muted)' }}>Deposit %</label>
           <input style={{ ...box, width: '100%' }} type="number"
             value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
         </div>
@@ -1152,8 +1152,8 @@ function MoneySection({ lead }) {
 
       {sum && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, fontSize: 13 }}>
-          <span style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '7px 12px' }}>💵 Total: <b>${sum.final_total}</b>{sum.discount_amount > 0 && <s style={{ color: '#7c9199', marginLeft: 6 }}>${sum.base_total}</s>}</span>
-          <span style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '7px 12px' }}>🔐 Deposit: <b>${sum.deposit_amount}</b></span>
+          <span style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 12px' }}>💵 Total: <b>${sum.final_total}</b>{sum.discount_amount > 0 && <s style={{ color: 'var(--muted)', marginLeft: 6 }}>${sum.base_total}</s>}</span>
+          <span style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 12px' }}>🔐 Deposit: <b>${sum.deposit_amount}</b></span>
           <span style={{ background: '#4ade8018', border: '1px solid #4ade8044', borderRadius: 8, padding: '7px 12px', color: '#4ade80' }}>✅ Paid: <b>${sum.paid}</b></span>
           <span style={{ background: sum.balance > 0 ? '#fbbf2418' : '#4ade8018', border: '1px solid #fbbf2444', borderRadius: 8, padding: '7px 12px', color: sum.balance > 0 ? '#fbbf24' : '#4ade80' }}>⏳ Balance: <b>${sum.balance}</b></span>
         </div>
@@ -1171,7 +1171,7 @@ function MoneySection({ lead }) {
       {data?.payments?.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {data.payments.map(p => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
+            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
               <span>💵 ${Number(p.amount).toFixed(2)} · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
               <span style={{ cursor: 'pointer' }} onClick={() => delPay(p.id)}>🗑️</span>
             </div>
@@ -1215,7 +1215,7 @@ function BookingsView() {
 function InqFormSettings({ user }) {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   useEffect(() => {
     api.inquirySettings(user?.vendor_id).then(d => setS(d.settings)).catch(() => {});
@@ -1241,27 +1241,27 @@ function InqFormSettings({ user }) {
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub" style={{ marginBottom: 14 }}>Your link: <b style={{ color: '#2dd4bf' }}>alphabetaone.com/inquiry/{user?.vendor_id}</b> 🔗</p>
 
-        <label style={{ fontSize: 12, color: '#7c9199' }}>Brand name</label>
+        <label style={{ fontSize: 12, color: 'var(--muted)' }}>Brand name</label>
         <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
 
-        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 12 }}>Brand color</label>
+        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 12 }}>Brand color</label>
         <input type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })}
           style={{ width: 60, height: 36, border: 'none', background: 'transparent', cursor: 'pointer' }} />
 
-        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 12 }}>Intro text</label>
+        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 12 }}>Intro text</label>
         <input style={box} value={s.intro_text || ''} onChange={e => setS({ ...s, intro_text: e.target.value })} />
 
-        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 14 }}>Fields to show</label>
+        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 14 }}>Fields to show</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
           {toggles.map(([k, label]) => (
             <button key={k} className="refresh" onClick={() => toggle(k)}
-              style={{ padding: '6px 12px', fontSize: 12, background: s[k] ? '#2dd4bf' : '#0d1417', color: s[k] ? '#06231f' : '#7c9199' }}>
+              style={{ padding: '6px 12px', fontSize: 12, background: s[k] ? '#2dd4bf' : 'var(--panel-2)', color: s[k] ? '#06231f' : 'var(--muted)' }}>
               {label} {s[k] ? '✓' : '✕'}
             </button>
           ))}
         </div>
 
-        <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 14 }}>Event types (comma separated)</label>
+        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 14 }}>Event types (comma separated)</label>
         <input style={box} value={(s.event_types || []).join(', ')}
           onChange={e => setS({ ...s, event_types: e.target.value.split(',').map(x => x.trim()).filter(Boolean) })} />
 
@@ -1276,7 +1276,7 @@ function PackagesView() {
   const [selTpl, setSelTpl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9 };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -1326,7 +1326,7 @@ function PackagesView() {
       <h2 style={{ margin: '0 0 12px' }}>📁 {selTpl.name}</h2>
       {msg && <div className="err-banner">{msg}</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {selTpl.packages.length === 0 && <div style={{ color: '#7c9199' }}>No packages yet — add one 👆</div>}
+        {selTpl.packages.length === 0 && <div style={{ color: 'var(--muted)' }}>No packages yet — add one 👆</div>}
         {selTpl.packages.map(p => <PkgCard key={p.id} pkg={p} onSaved={load} onDelete={() => delPkg(p.id)} />)}
       </div>
     </div>
@@ -1336,7 +1336,7 @@ function PackagesView() {
   return (
     <div style={{ maxWidth: 720 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ color: '#7c9199', fontSize: 13 }}>📁 Up to 6 event templates · 📦 3 packages each</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>📁 Up to 6 event templates · 📦 3 packages each</div>
         {tpls.length < 6 && <button className="refresh" onClick={addTpl} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Add Template</button>}
       </div>
       {msg && <div className="err-banner">{msg}</div>}
@@ -1345,7 +1345,7 @@ function PackagesView() {
           <div key={t.id} className="table-wrap" style={{ padding: 18, cursor: 'pointer', position: 'relative' }} onClick={() => setSelTpl(t)}>
             <div style={{ fontSize: 30 }}>📁</div>
             <TplName tpl={t} onSaved={load} />
-            <div style={{ color: '#7c9199', fontSize: 12, marginTop: 4 }}>📦 {t.packages.length}/3 packages</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>📦 {t.packages.length}/3 packages</div>
             {tpls.length > 1 && (
               <button className="refresh" style={{ position: 'absolute', top: 10, right: 10, padding: '3px 8px' }}
                 onClick={e => { e.stopPropagation(); delTpl(t.id); }}>🗑️</button>
@@ -1366,7 +1366,7 @@ function TplName({ tpl, onSaved }) {
   }
   return (
     <input value={name} onClick={e => e.stopPropagation()} onChange={e => setName(e.target.value)} onBlur={save}
-      style={{ background: 'transparent', border: 'none', color: '#e6f0f2', fontWeight: 700, fontSize: 15, width: '100%', marginTop: 6, outline: 'none' }} />
+      style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontWeight: 700, fontSize: 15, width: '100%', marginTop: 6, outline: 'none' }} />
   );
 }
 
@@ -1379,7 +1379,7 @@ function PkgCard({ pkg, onSaved, onDelete }) {
   const [newInc, setNewInc] = useState('');
   const [saved, setSaved] = useState('');
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 9, width: '100%' };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   async function save() {
     setSaved('');
@@ -1413,27 +1413,27 @@ function PkgCard({ pkg, onSaved, onDelete }) {
 
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: '#7c9199' }}>💰 Base price ($)</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>💰 Base price ($)</label>
           <input style={box} type="number" value={f.base_price} onChange={e => set('base_price', e.target.value)} />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: '#7c9199' }}>⏱️ Included hours</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>⏱️ Included hours</label>
           <input style={box} type="number" value={f.included_hours} onChange={e => set('included_hours', e.target.value)} />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: '#7c9199' }}>➕ Extra $/hour</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>➕ Extra $/hour</label>
           <input style={box} type="number" value={f.per_hour_price} onChange={e => set('per_hour_price', e.target.value)} />
         </div>
       </div>
 
-      <label style={{ fontSize: 12, color: '#7c9199', display: 'block', marginTop: 12 }}>📝 Inclusions (your own items)</label>
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 12 }}>📝 Inclusions (your own items)</label>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
         {f.inclusions.map((inc, i) => (
           <span key={i} style={{ background: '#2dd4bf18', border: '1px solid #2dd4bf44', color: '#2dd4bf', padding: '4px 10px', borderRadius: 16, fontSize: 12 }}>
             {inc} <span style={{ cursor: 'pointer', marginLeft: 4 }} onClick={() => rmInc(i)}>✕</span>
           </span>
         ))}
-        {f.inclusions.length === 0 && <span style={{ color: '#7c9199', fontSize: 12 }}>No items yet — add below 👇</span>}
+        {f.inclusions.length === 0 && <span style={{ color: 'var(--muted)', fontSize: 12 }}>No items yet — add below 👇</span>}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input style={box} placeholder="e.g. 8x10 prints, 2 photographers…" value={newInc}
@@ -1477,14 +1477,14 @@ function SettingsView({ user }) {
   }
 
   if (!s) return <div className="loading">Loading…</div>;
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 10, width: '100%', marginTop: 6 };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 10, width: '100%', marginTop: 6 };
 
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8 }}>
         {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Email']].map(([k, label]) => (
           <button key={k} className="refresh" onClick={() => setSub(k)}
-            style={{ background: sub === k ? '#2dd4bf' : '#0d1417', color: sub === k ? '#06231f' : '#e6f0f2' }}>{label}</button>
+            style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
         ))}
       </div>
 
@@ -1497,7 +1497,7 @@ function SettingsView({ user }) {
         <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
           {['12h', '24h'].map(t => (
             <button key={t} onClick={() => savePrefs({ ...s, time_format: t })}
-              className="refresh" style={{ flex: 1, background: s.time_format === t ? '#2dd4bf' : '#0d1417', color: s.time_format === t ? '#06231f' : '#e6f0f2' }}>
+              className="refresh" style={{ flex: 1, background: s.time_format === t ? '#2dd4bf' : 'var(--panel-2)', color: s.time_format === t ? '#06231f' : 'var(--text)' }}>
               {t === '12h' ? '12-hour (2:30 PM)' : '24-hour (14:30)'}
             </button>
           ))}
@@ -1507,7 +1507,7 @@ function SettingsView({ user }) {
         <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
           {['dark', 'light'].map(t => (
             <button key={t} onClick={() => savePrefs({ ...s, theme: t })}
-              className="refresh" style={{ flex: 1, background: s.theme === t ? '#2dd4bf' : '#0d1417', color: s.theme === t ? '#06231f' : '#e6f0f2' }}>
+              className="refresh" style={{ flex: 1, background: s.theme === t ? '#2dd4bf' : 'var(--panel-2)', color: s.theme === t ? '#06231f' : 'var(--text)' }}>
               {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
             </button>
           ))}
@@ -1516,7 +1516,7 @@ function SettingsView({ user }) {
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }}>Timezone</label>
         <input style={box} value={s.timezone || ''} onChange={e => setS({ ...s, timezone: e.target.value })}
           onBlur={() => savePrefs(s)} />
-        <div style={{ fontSize: 11, color: '#7c9199', marginTop: 4 }}>🌍 Auto-detected from your location</div>
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>🌍 Auto-detected from your location</div>
       </div>
       )}
 
@@ -1546,7 +1546,7 @@ function SettingsView({ user }) {
 function EmailSetup() {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
-  const box = { background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2', padding: 10, width: '100%', marginTop: 6 };
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 10, width: '100%', marginTop: 6 };
 
   useEffect(() => {
     api.emailSettings().then(d => setS(d.settings)).catch(() => setS({ mode: 'platform' }));
@@ -1573,7 +1573,7 @@ function EmailSetup() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
         {MODES.map(([m, label]) => (
           <button key={m} className="refresh" onClick={() => setS({ ...s, mode: m })}
-            style={{ textAlign: 'left', background: s.mode === m ? '#2dd4bf' : '#0d1417', color: s.mode === m ? '#06231f' : '#e6f0f2' }}>
+            style={{ textAlign: 'left', background: s.mode === m ? '#2dd4bf' : 'var(--panel-2)', color: s.mode === m ? '#06231f' : 'var(--text)' }}>
             {label}
           </button>
         ))}
@@ -1625,7 +1625,7 @@ function ReferForm({ user }) {
       <label style={{ fontSize: 13, color: 'var(--muted)' }}>Friend's email</label>
       <input value={friend} onChange={e => setFriend(e.target.value)}
         placeholder="friend@email.com"
-        style={{ width: '100%', padding: 10, margin: '6px 0 12px', background: '#0d1417', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2' }} />
+        style={{ width: '100%', padding: 10, margin: '6px 0 12px', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)' }} />
       {err && <div className="err-banner">⚠️ {err}</div>}
       {msg && <div style={{ background: '#4ade8018', color: '#4ade80', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 14 }}>{msg}</div>}
       <button className="refresh" onClick={send} disabled={busy} style={{ width: '100%' }}>
