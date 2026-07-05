@@ -5,33 +5,37 @@
 /* Sidebar → glassy gradient rail */
 .dash .sidebar {
   width: 232px;
-  background: linear-gradient(180deg, #12242a 0%, #0e181c 100%);
-  border-right: 1px solid #1c3038;
+  background: linear-gradient(180deg, var(--v-side-1) 0%, var(--v-side-2) 100%);
+  border-right: 1px solid var(--v-side-line);
   padding: 24px 16px;
   gap: 2px;
 }
 .dash .brand {
   font-size: 18px;
   padding: 6px 10px 24px;
-  background: linear-gradient(90deg, #2dd4bf, #6ee7d8);
+  background: linear-gradient(90deg, var(--teal), var(--v-brand-2));
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
-.dash .brand small { -webkit-text-fill-color: #7c9199; letter-spacing: 4px; margin-top: 3px; }
+.dash .brand small { -webkit-text-fill-color: var(--muted); letter-spacing: 4px; margin-top: 3px; }
 .dash .nav-item {
   padding: 8px 13px; border-radius: 10px; font-size: 13px;
   transition: all .18s ease; border: 1px solid transparent;
 }
-.dash .nav-item:hover { background: #1a2c33; transform: translateX(3px); }
+.dash .nav-item:hover { background: var(--v-navhover); transform: translateX(3px); }
 .dash .nav-item.active {
   background: linear-gradient(90deg, #2dd4bf22, #2dd4bf08);
-  border-color: #2dd4bf33; color: #2dd4bf;
+  border-color: #2dd4bf33; color: var(--teal);
   box-shadow: 0 0 18px #2dd4bf14 inset;
+}
+[data-theme="light"] .dash .nav-item.active {
+  background: linear-gradient(90deg, #0f766e18, #0f766e06);
+  border-color: #0f766e33;
 }
 
 /* Topbar → hero header */
 .dash .topbar {
-  background: linear-gradient(120deg, #14282e, #10333055 60%, transparent);
-  border: 1px solid #1c3038; border-radius: 18px;
+  background: linear-gradient(120deg, var(--v-topbar-1), var(--v-topbar-2) 60%, transparent);
+  border: 1px solid var(--v-side-line); border-radius: 18px;
   padding: 20px 24px; margin-bottom: 26px;
 }
 .dash .topbar h1 { font-size: 24px; letter-spacing: -0.3px; }
@@ -43,26 +47,26 @@
 .dash .stats { gap: 16px; }
 .dash .card {
   border-radius: 16px; padding: 20px;
-  background: linear-gradient(150deg, #16252b, #121c21);
-  border: 1px solid #1e343c;
+  background: linear-gradient(150deg, var(--v-card-1), var(--v-card-2));
+  border: 1px solid var(--v-card-line);
   transition: all .2s ease; position: relative; overflow: hidden;
 }
 .dash .card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
   background: linear-gradient(90deg, transparent, #2dd4bf66, transparent);
 }
-.dash .card:hover { transform: translateY(-3px); border-color: #2dd4bf44; box-shadow: 0 10px 26px #00000040; }
-.dash .card .value { background: linear-gradient(90deg, #e6f0f2, #9ae8dd); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.dash .card:hover { transform: translateY(-3px); border-color: #2dd4bf44; box-shadow: 0 10px 26px var(--v-shadow); }
+.dash .card .value { background: linear-gradient(90deg, var(--text), var(--v-value-2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 
 /* Tables → soft panels */
 .dash .table-wrap {
-  border-radius: 16px; border-color: #1e343c;
-  background: linear-gradient(160deg, #15232a, #111b20);
-  box-shadow: 0 6px 22px #00000030;
+  border-radius: 16px; border-color: var(--v-card-line);
+  background: linear-gradient(160deg, var(--v-table-1), var(--v-table-2));
+  box-shadow: 0 6px 22px var(--v-shadow);
 }
-.dash th { background: #12202666; }
+.dash th { background: var(--v-th); }
 .dash tbody tr { transition: background .15s; }
-.dash tbody tr:hover { background: #1a2c3355; }
+.dash tbody tr:hover { background: var(--v-rowhover); }
 
 /* Buttons w/ teal fill keep pop */
 .dash .refresh[style*="rgb(45, 212, 191)"], .dash button[style*="#2dd4bf"] { box-shadow: 0 4px 16px #2dd4bf33; }
@@ -91,7 +95,7 @@
 
 /* ── RE-LAYOUT PASS ── */
 /* Sidebar group labels */
-.dash .nav-group { font-size: 9.5px; letter-spacing: 2.2px; color: #4a6169; font-weight: 800; padding: 9px 12px 3px; }
+.dash .nav-group { font-size: 9.5px; letter-spacing: 2.2px; color: var(--v-group); font-weight: 800; padding: 9px 12px 3px; }
 
 /* Uniform form controls everywhere in the panel */
 .dash input:not([type=checkbox]):not([type=color]), .dash select, .dash textarea {
@@ -99,7 +103,7 @@
   transition: border-color .15s, box-shadow .15s;
 }
 .dash input:focus, .dash select:focus, .dash textarea:focus {
-  outline: none; border-color: #2dd4bf !important; box-shadow: 0 0 0 3px #2dd4bf22;
+  outline: none; border-color: var(--teal) !important; box-shadow: 0 0 0 3px var(--teal-soft);
 }
 .dash button { font-family: inherit; }
 
@@ -109,11 +113,11 @@
 
 /* Consistent card padding on table-wrap panels used as cards */
 .dash .table-wrap { transition: border-color .18s; }
-.dash .table-wrap:hover { border-color: #2a444e; }
+.dash .table-wrap:hover { border-color: var(--v-wrap-hover); }
 
 /* Scrollbar polish */
 .dash ::-webkit-scrollbar { width: 9px; height: 9px; }
-.dash ::-webkit-scrollbar-thumb { background: #223238; border-radius: 8px; }
+.dash ::-webkit-scrollbar-thumb { background: var(--v-scroll); border-radius: 8px; }
 .dash ::-webkit-scrollbar-thumb:hover { background: #2dd4bf66; }
 
 /* 🗓️ Calendar slide animation */
@@ -125,7 +129,7 @@
 /* ── HEADER ICONS + SIDEBAR COLLAPSE ── */
 .dash .hdr-icon {
   width: 40px; height: 40px; border-radius: 11px;
-  background: #16252b; border: 1px solid #1e343c; color: #e6f0f2;
+  background: var(--v-icon-bg); border: 1px solid var(--v-card-line); color: var(--text);
   font-size: 17px; cursor: pointer; transition: all .16s;
   display: flex; align-items: center; justify-content: center;
 }

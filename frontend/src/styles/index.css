@@ -2,6 +2,26 @@
   --bg:#0d1417; --panel:#131e22; --panel-2:#1a282d; --line:#223238;
   --muted:#7c9199; --text:#e6f0f2; --teal:#2dd4bf; --teal-2:#14b8a6;
   --teal-soft:#2dd4bf1a; --green:#4ade80; --amber:#fbbf24; --red:#fb7185;
+  /* vendor-panel gradient/detail tokens (dark defaults) */
+  --v-side-1:#12242a; --v-side-2:#0e181c; --v-side-line:#1c3038;
+  --v-navhover:#1a2c33; --v-card-1:#16252b; --v-card-2:#121c21;
+  --v-card-line:#1e343c; --v-topbar-1:#14282e; --v-topbar-2:#10333055;
+  --v-table-1:#15232a; --v-table-2:#111b20; --v-th:#12202666;
+  --v-rowhover:#1a2c3355; --v-wrap-hover:#2a444e; --v-group:#4a6169;
+  --v-icon-bg:#16252b; --v-scroll:#223238; --v-shadow:#00000040;
+  --v-brand-2:#6ee7d8; --v-value-2:#9ae8dd;
+}
+[data-theme="light"] {
+  --bg:#f4f6f8; --panel:#ffffff; --panel-2:#f0f3f5; --line:#dde3e7;
+  --muted:#64757d; --text:#1a2529; --teal:#0f766e; --teal-2:#0d5f58;
+  --teal-soft:#0f766e14; --green:#16a34a; --amber:#d97706; --red:#e11d48;
+  --v-side-1:#ffffff; --v-side-2:#f7f9fa; --v-side-line:#e3e9ec;
+  --v-navhover:#eef2f4; --v-card-1:#ffffff; --v-card-2:#fbfcfd;
+  --v-card-line:#e3e9ec; --v-topbar-1:#ffffff; --v-topbar-2:#f0fdfa88;
+  --v-table-1:#ffffff; --v-table-2:#fbfcfd; --v-th:#f4f7f8;
+  --v-rowhover:#f0fdfa88; --v-wrap-hover:#c9d5da; --v-group:#94a3ac;
+  --v-icon-bg:#f4f7f8; --v-scroll:#cbd5da; --v-shadow:#0f172a1a;
+  --v-brand-2:#0d5f58; --v-value-2:#0f766e;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); font-size:14px; }

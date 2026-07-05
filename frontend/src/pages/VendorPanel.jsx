@@ -26,7 +26,15 @@ export default function VendorPanel({ onLogout }) {
   const [error, setError] = useState('');
   const [tab, setTab] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('vf_theme') || 'dark');
   const user = getUser();
+
+  // 🌗 apply + persist theme
+  useEffect(() => {
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('vf_theme', theme);
+  }, [theme]);
 
   // 🗝️ single access check used everywhere
   const has = (key) => !!features && (features.includes('*') || features.includes(key));
@@ -83,6 +91,7 @@ export default function VendorPanel({ onLogout }) {
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {has('calendar') && <button className="hdr-icon" onClick={() => setTab('calendar')} title="Calendar">🗓️</button>}
+            <button className="hdr-icon" onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} title="Toggle light/dark">{theme === 'light' ? '🌙' : '☀️'}</button>
             <NotifBell />
           </div>
         </div>
