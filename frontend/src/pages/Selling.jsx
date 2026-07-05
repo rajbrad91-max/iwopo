@@ -176,7 +176,14 @@ export default function Selling({ onSignup, onGoLogin }) {
                   {s.is_addon && <span className="sl-badge">Add-on</span>}
                 </div>
                 <div className="sl-svc-name">{s.name}</div>
-                <div className="sl-svc-price">${s.price}<em>/mo</em></div>
+                <div className="sl-svc-price">{s.tiers ? 'from ' : ''}${s.price}<em>/mo</em></div>
+                {s.tiers && (
+                  <div className="sl-tiers">
+                    {s.tiers.map(t => (
+                      <div key={t.label} className="sl-tier-row"><span>{t.label}</span><span>${t.price}/mo</span></div>
+                    ))}
+                  </div>
+                )}
                 <div className="sl-svc-add">Add →</div>
               </div>
             </Reveal>

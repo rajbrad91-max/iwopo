@@ -160,3 +160,8 @@
 .sl-addons-lbl { font-size:11px; color:var(--fog); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px; }
 .sl-addon-row { display:flex; justify-content:space-between; font-size:13.5px; padding:5px 0; color:var(--white); }
 .sl-addon-price { color:var(--teal); font-weight:700; }
+
+/* file flyer tiers */
+.sl-tiers { margin-top:10px; display:flex; flex-direction:column; gap:3px; }
+.sl-tier-row { display:flex; justify-content:space-between; font-size:12.5px; color:var(--fog); }
+.sl-tier-row span:last-child { color:var(--white); font-weight:600; }

@@ -326,7 +326,18 @@ function StandaloneServices() {
             <div style={{ fontWeight: 700 }}>{s.name}{s.is_addon ? ' · add-on' : ''}</div>
             {edit
               ? <ServicePriceEditor service={s} onSaved={load} />
-              : <div style={{ fontSize: 22, fontWeight: 800 }}>${s.price}<span style={{ fontSize: 12, color: 'var(--muted)' }}>/mo</span>{s.price_annual ? <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>${s.price_annual}/yr</span> : null}</div>}
+              : <>
+                  <div style={{ fontSize: 22, fontWeight: 800 }}>{s.tiers ? 'from ' : ''}${s.price}<span style={{ fontSize: 12, color: 'var(--muted)' }}>/mo</span>{s.price_annual ? <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>${s.price_annual}/yr</span> : null}</div>
+                  {s.tiers && (
+                    <div style={{ marginTop: 4 }}>
+                      {s.tiers.map(t => (
+                        <div key={t.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: 'var(--muted)' }}>
+                          <span>{t.label}</span><span style={{ color: 'var(--text)', fontWeight: 600 }}>${t.price}/mo</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>}
           </div>
         ))}
       </div>
