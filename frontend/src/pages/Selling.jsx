@@ -143,6 +143,14 @@ export default function Selling({ onSignup, onGoLogin }) {
                       <li key={f.id}><span className="ic">{f.icon}</span>{f.name}{f.detail ? <em> · {f.detail}</em> : ''}</li>
                     ))}
                   </ul>
+                  {(p.addons || []).length > 0 && (
+                    <div className="sl-addons">
+                      <div className="sl-addons-lbl">Optional add-ons</div>
+                      {p.addons.map(a => (
+                        <div key={a.id} className="sl-addon-row"><span>{a.icon} {a.name}</span><span className="sl-addon-price">+${a.price_monthly}/mo</span></div>
+                      ))}
+                    </div>
+                  )}
                   <button className={`sl-pick ${feat ? 'solid' : ''}`} onClick={() => choosePlan(p, 'package')}>Choose {p.name}</button>
                   {p.trial_days > 0 && <div className="sl-trial">🎁 {p.trial_days}-day free trial</div>}
                 </div>

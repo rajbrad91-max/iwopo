@@ -154,3 +154,9 @@
   .reveal { transition:opacity .4s; transform:none; }
   .sl-stage { transform:none !important; }
 }
+
+/* package add-ons */
+.sl-addons { border-top:1px solid var(--line); margin:4px 0 18px; padding-top:14px; }
+.sl-addons-lbl { font-size:11px; color:var(--fog); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px; }
+.sl-addon-row { display:flex; justify-content:space-between; font-size:13.5px; padding:5px 0; color:var(--white); }
+.sl-addon-price { color:var(--teal); font-weight:700; }
