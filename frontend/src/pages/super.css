@@ -177,3 +177,10 @@
 .sa-bell { position:relative; width:40px; height:40px; border-radius:11px; background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
 .sa-bell:hover { border-color:var(--teal); transform:translateY(-1px); }
 .sa-bell-badge { position:absolute; top:-5px; right:-5px; background:var(--red); color:#fff; font-size:10px; font-weight:800; min-width:18px; height:18px; padding:0 4px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+
+/* ◀ sidebar auto-hide */
+.sa-collapse-btn { font-size:11px; color:var(--muted); cursor:pointer; padding:6px 12px 12px; font-weight:700; letter-spacing:0.5px; user-select:none; }
+.sa-collapse-btn:hover { color:var(--teal); }
+.sa-sidebar { transition:margin-left .25s ease; }
+.sa-collapsed .sa-sidebar { margin-left:-225px; }
+.sa-collapsed .sa-collapse-btn { position:absolute; left:225px; top:16px; background:var(--panel); border:1px solid var(--line); border-radius:0 9px 9px 0; padding:8px 10px; }

@@ -25,6 +25,8 @@ export default function Dashboard({ onLogout }) {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('vf_sa_collapsed') === '1');
+  useEffect(() => { localStorage.setItem('vf_sa_collapsed', collapsed ? '1' : '0'); }, [collapsed]);
   const [saTheme, setSaTheme] = useState(() => localStorage.getItem('vf_super_theme') || 'dark');
   const user = getUser();
 
@@ -46,9 +48,10 @@ export default function Dashboard({ onLogout }) {
   const trials = vendors.filter(v => v.status === 'trial').length;
 
   return (
-    <div className="sa-wrap" data-sa-theme={saTheme}>
+    <div className={`sa-wrap ${collapsed ? 'sa-collapsed' : ''}`} data-sa-theme={saTheme}>
       <aside className={`sa-sidebar ${sidebarOpen ? 'show' : ''}`}>
         <div className="sa-brand"><span className="hex">⬡</span><div>VOWFLO<br /><small>SUPER</small></div></div>
+        <div className="sa-collapse-btn" onClick={() => setCollapsed(c => !c)} title="Auto-hide sidebar">{collapsed ? '»' : '« Auto-hide'}</div>
         {['PLATFORM', 'OPERATE'].map(g => (
           <div key={g}>
             <div className="sa-nav-label">{g}</div>
