@@ -25,6 +25,7 @@ export default function VendorPanel({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('dashboard');
+  const [collapsed, setCollapsed] = useState(false);
   const user = getUser();
 
   // 🗝️ single access check used everywhere
@@ -51,7 +52,7 @@ export default function VendorPanel({ onLogout }) {
   const active = services.filter(s => s.enabled);
 
   return (
-    <div className="dash">
+    <div className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className="sidebar">
         <div className="brand">📸 My Studio<small>VENDOR</small></div>
         <div className="nav-group">WORK</div>
@@ -73,13 +74,16 @@ export default function VendorPanel({ onLogout }) {
 
       <main className="main">
         <div className="topbar">
-          <div>
-            <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
-            <div className="sub">Welcome back, {user?.name} 👋</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="hdr-icon sidebar-toggle" onClick={() => setCollapsed(c => !c)} title="Toggle menu">☰</button>
+            <div>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <div className="sub">Welcome back, {user?.name} 👋</div>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {has('calendar') && <button className="hdr-icon" onClick={() => setTab('calendar')} title="Calendar">🗓️</button>}
             <NotifBell />
-            <button className="refresh" onClick={load}>🔄 Refresh</button>
           </div>
         </div>
 
