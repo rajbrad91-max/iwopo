@@ -338,11 +338,28 @@ function StandaloneServices() {
                       ))}
                     </div>
                   )}
+                  <CountryPriceList cp={s.country_prices} />
                 </>}
           </div>
         ))}
       </div>
     </>
+  );
+}
+
+function CountryPriceList({ cp }) {
+  const entries = Object.entries(cp || {}).filter(([k]) => k !== 'default');
+  if (!entries.length) return null;
+  const nameOf = (c) => COUNTRIES.find(x => x.code === c)?.name || c;
+  return (
+    <div style={{ marginTop: 6, borderTop: '1px dashed var(--line)', paddingTop: 6 }}>
+      <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 3 }}>🌍 Exceptions</div>
+      {entries.map(([c, p]) => (
+        <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '1px 0', color: 'var(--muted)' }}>
+          <span>{nameOf(c)}</span><span style={{ color: 'var(--text)', fontWeight: 600 }}>${p}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -467,6 +484,7 @@ function PackageCard({ pkg, editMode, onSaved }) {
                 {pkg.price_annual_regular && <s>{money(pkg.price_annual_regular)}</s>}
               </div>
             )}
+            <CountryPriceList cp={pkg.country_prices} />
           </div>
         )
       ) : (
