@@ -769,8 +769,28 @@ function ReferralsView() {
 
 /* ---------- BUYERS ---------- */
 function BuyersView({ vendors }) {
+  const [refCount, setRefCount] = useState(0);
+  useEffect(() => {
+    api.referrals().then(d => setRefCount((d.referrals || []).filter(r => r.status === 'rewarded').length)).catch(() => {});
+  }, []);
+
+  const paid = vendors.filter(v => v.status === 'active').length;
+  const trials = vendors.filter(v => v.status === 'trial').length;
+  const now = new Date();
+  const newThisMonth = vendors.filter(v => {
+    if (!v.created_at) return false;
+    const d = new Date(v.created_at);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
   return (
     <>
+      <div className="sa-stats">
+        <StatCard label="💰 Paid Users" value={paid} trend="Active subscriptions" cls="up" />
+        <StatCard label="🎁 Users on Trials" value={trials} trend="Not yet paying" cls="warn" />
+        <StatCard label="👥 Referrals" value={refCount} trend="Paid · with discount" cls="up" />
+        <StatCard label="🆕 New This Month" value={newThisMonth} trend="Signed up this month" cls="neutral" />
+      </div>
       <div className="sa-section-title">All Buyers</div>
       <div className="sa-table-wrap">
         <table>
