@@ -227,6 +227,7 @@ function CalendarView() {
   const [bookings, setBookings] = useState([]);
   const [cur, setCur] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [selDay, setSelDay] = useState(null);
+  const [dir, setDir] = useState('left');
 
   useEffect(() => {
     api.bookings().then(d => setBookings(d.bookings || [])).catch(() => {});
@@ -246,7 +247,7 @@ function CalendarView() {
   const monthName = first.toLocaleString('default', { month: 'long', year: 'numeric' });
   const today = new Date().toISOString().slice(0, 10);
   const key = (d) => `${cur.y}-${String(cur.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const move = (n) => { setSelDay(null); setCur(c => { const d = new Date(c.y, c.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; }); };
+  const move = (n) => { setDir(n > 0 ? 'left' : 'right'); setSelDay(null); setCur(c => { const d = new Date(c.y, c.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; }); };
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -259,7 +260,7 @@ function CalendarView() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, fontSize: 11, color: '#7c9199', textAlign: 'center', marginBottom: 6 }}>
           {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+        <div key={`${cur.y}-${cur.m}`} className={`cal-grid slide-${dir}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
           {cells.map((d, i) => {
             if (!d) return <div key={i} />;
             const k = key(d);

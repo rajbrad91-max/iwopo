@@ -8,7 +8,7 @@
   background: linear-gradient(180deg, #12242a 0%, #0e181c 100%);
   border-right: 1px solid #1c3038;
   padding: 24px 16px;
-  gap: 5px;
+  gap: 2px;
 }
 .dash .brand {
   font-size: 18px;
@@ -18,7 +18,7 @@
 }
 .dash .brand small { -webkit-text-fill-color: #7c9199; letter-spacing: 4px; margin-top: 3px; }
 .dash .nav-item {
-  padding: 11px 14px; border-radius: 12px; font-size: 13.5px;
+  padding: 8px 13px; border-radius: 10px; font-size: 13px;
   transition: all .18s ease; border: 1px solid transparent;
 }
 .dash .nav-item:hover { background: #1a2c33; transform: translateX(3px); }
@@ -91,7 +91,7 @@
 
 /* ── RE-LAYOUT PASS ── */
 /* Sidebar group labels */
-.dash .nav-group { font-size: 10px; letter-spacing: 2.5px; color: #4a6169; font-weight: 800; padding: 14px 12px 5px; }
+.dash .nav-group { font-size: 9.5px; letter-spacing: 2.2px; color: #4a6169; font-weight: 800; padding: 9px 12px 3px; }
 
 /* Uniform form controls everywhere in the panel */
 .dash input:not([type=checkbox]):not([type=color]), .dash select, .dash textarea {
@@ -115,3 +115,9 @@
 .dash ::-webkit-scrollbar { width: 9px; height: 9px; }
 .dash ::-webkit-scrollbar-thumb { background: #223238; border-radius: 8px; }
 .dash ::-webkit-scrollbar-thumb:hover { background: #2dd4bf66; }
+
+/* 🗓️ Calendar slide animation */
+@keyframes calSlideL { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes calSlideR { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0); } }
+.cal-grid.slide-left { animation: calSlideL .28s ease; }
+.cal-grid.slide-right { animation: calSlideR .28s ease; }
