@@ -42,6 +42,7 @@ export const api = {
   adminMessages: () => request('/admin/messages'),
   platformSettings: () => request('/settings/platform'),
   savePlatformSettings: (data) => request('/settings/platform', { method: 'PUT', body: JSON.stringify(data) }),
+  revealAwsCreds: () => request('/settings/platform/reveal'),
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   services: () => request('/services'),
   packages: () => request('/packages'),

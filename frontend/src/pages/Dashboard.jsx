@@ -991,7 +991,10 @@ function SupportView() {
 function FaceEngineSettings() {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [show, setShow] = useState(false);
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
+  const roBox = { ...box, opacity: 0.7, cursor: 'not-allowed' };
 
   useEffect(() => { api.platformSettings().then(d => setS(d.settings || {})).catch(() => {}); }, []);
   if (!s) return null;
@@ -1001,7 +1004,23 @@ function FaceEngineSettings() {
     try { await api.savePlatformSettings(next); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
+  async function startEdit() {
+    // pull real creds to edit
+    try { const real = await api.revealAwsCreds(); setS(v => ({ ...v, ...real })); } catch {}
+    setEditing(true); setShow(false);
+  }
+  function stopEdit() {
+    setEditing(false); setShow(false);
+    // re-mask by reloading masked view
+    api.platformSettings().then(d => setS(d.settings || {})).catch(() => {});
+  }
   const engine = s.face_engine || 'vladmandic';
+  // display value: masked unless editing+show
+  const val = (k) => {
+    if (!editing) return s[k] || '';
+    if (show) return s[k] || '';
+    return s[k] ? '••••••••••••' : '';
+  };
 
   return (
     <>
@@ -1020,11 +1039,25 @@ function FaceEngineSettings() {
         </div>
 
         {engine === 'aws' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div><label className="lbl">AWS Access Key</label><input style={box} value={s.aws_access_key || ''} onChange={e => setS({ ...s, aws_access_key: e.target.value })} onBlur={() => save(s)} /></div>
-            <div><label className="lbl">AWS Secret Key</label><input style={box} value={s.aws_secret_key || ''} onChange={e => setS({ ...s, aws_secret_key: e.target.value })} onBlur={() => save(s)} placeholder="enter to change" /></div>
-            <div><label className="lbl">AWS Region</label><input style={box} value={s.aws_region || ''} onChange={e => setS({ ...s, aws_region: e.target.value })} onBlur={() => save(s)} /></div>
-          </div>
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>🔑 AWS Credentials</span>
+              {!editing ? (
+                <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => setShow(v => !v)}>{show ? '🙈 Hide' : '👁️ Show'}</button>
+                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div><label className="lbl">AWS Access Key</label><input style={editing ? box : roBox} readOnly={!editing} value={val('aws_access_key')} onChange={e => setS({ ...s, aws_access_key: e.target.value })} /></div>
+              <div><label className="lbl">AWS Secret Key</label><input style={editing ? box : roBox} readOnly={!editing} value={val('aws_secret_key')} onChange={e => setS({ ...s, aws_secret_key: e.target.value })} /></div>
+              <div><label className="lbl">AWS Region</label><input style={editing ? box : roBox} readOnly={!editing} value={val('aws_region')} onChange={e => setS({ ...s, aws_region: e.target.value })} /></div>
+            </div>
+          </>
         )}
         <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--muted)' }}>
           {engine === 'aws' ? '☁️ Faster + more accurate. Costs ~$1 per 1000 photos.' : '🖥️ Free, runs on your server. Slower on large albums.'}

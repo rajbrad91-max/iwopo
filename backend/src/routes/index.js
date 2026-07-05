@@ -16,6 +16,14 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 🔓 Super admin: reveal full AWS creds (edit-mode eye toggle)
+router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const s = await getAllSettings();
+    res.json({ aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '', aws_region: s.aws_region || '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const allowed = ['face_engine', 'aws_access_key', 'aws_secret_key', 'aws_region'];
