@@ -161,65 +161,56 @@
 
 /* ═══════════ 📱 RESPONSIVE ═══════════ */
 
-/* hamburger hidden on desktop, shown on mobile */
 .dash .sidebar-toggle { display:none; }
 
 /* Tablet (≤1000px): stack dashboard columns */
 @media (max-width:1000px){
   .dash-grid { grid-template-columns:1fr; }
   .dash-right { position:static; }
-  .main { padding:18px 20px; }
 }
 
-/* Small tablet / large phone (≤820px): sidebar slide-over */
+/* Mobile (≤820px): slide-over sidebar + 4 square tiles */
 @media (max-width:820px){
+  /* sidebar off-screen by default, slides in when open */
   .dash .sidebar {
-    position:fixed; top:0; left:0; height:100vh; z-index:60;
-    width:250px; margin-left:-260px;
-    box-shadow:4px 0 30px rgba(0,0,0,.4);
-    transition:margin-left .26s ease; opacity:1; pointer-events:auto;
+    position:fixed; top:0; left:0; height:100vh; width:250px; z-index:60;
+    margin-left:-260px; opacity:1; pointer-events:auto;
+    box-shadow:4px 0 30px rgba(0,0,0,.4); transition:margin-left .26s ease;
   }
-  /* NOT collapsed = OPEN on mobile */
   .dash:not(.sidebar-collapsed) .sidebar { margin-left:0; }
-  .dash:not(.sidebar-collapsed) .sidebar::after {
-    content:''; position:fixed; top:0; left:250px; right:0; bottom:0;
-    background:rgba(0,0,0,.5); z-index:-1;
-  }
   .dash.sidebar-collapsed .sidebar { margin-left:-260px; }
-  .dash .main { padding:16px 14px; }
-  .dash .stats { grid-template-columns:repeat(2,1fr) !important; }
-  .dash .topbar { padding:16px 16px; margin-bottom:18px; }
-  .dash .topbar h1 { font-size:20px; }
+  /* dark overlay behind open sidebar */
+  .dash:not(.sidebar-collapsed) .main::before {
+    content:''; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:55;
+  }
   .sidebar-toggle { display:flex !important; }
-}
 
-/* Phone (≤560px) */
-@media (max-width:560px){
-  /* 🛡️ nothing overflows the screen */
+  /* no overflow */
   .dash, .dash * { max-width:100%; box-sizing:border-box; }
   .dash .main { padding:16px 12px; overflow-x:hidden; }
   .dash-grid, .dash-left, .dash-right { min-width:0; }
-  /* wide inline grids collapse to 1 col (except calendar 7-col) */
   .dash [style*="grid-template-columns"]:not(.cal-grid):not([style*="repeat(7"]) { grid-template-columns:1fr !important; }
   input, select, textarea { max-width:100%; }
+
+  /* 🟩 4 square tiles in ONE row */
   .dash .stats { grid-template-columns:repeat(4,1fr) !important; gap:7px; }
-  .dash .stats .card { aspect-ratio:1; display:flex; flex-direction:column; justify-content:center; padding:8px 6px; }
-  .dash .stats .card .value { font-size:20px; }
-  .dash .stats .card .label { font-size:8.5px; line-height:1.2; }
-  .dash .card { padding:11px 12px; }
-  .dash .topbar h1 { font-size:18px; }
+  .dash .stats .card { aspect-ratio:1; display:flex; flex-direction:column; justify-content:center; padding:8px 5px; }
+  .dash .stats .card .value { font-size:19px; }
+  .dash .stats .card .label { font-size:8px; line-height:1.15; }
+
+  .dash .topbar { padding:16px; margin-bottom:18px; }
+  .dash .topbar h1 { font-size:19px; }
   .dash .topbar .sub { font-size:12px; }
   .ev-card { padding:12px; }
-  /* horizontal scroll for wide tables */
   .table-wrap { overflow-x:auto; }
   .table-wrap table { min-width:460px; }
 }
 
-/* Fold / very narrow (≤380px) */
+/* Fold (≤380px): smaller tile text */
 @media (max-width:380px){
-  .dash .stats { grid-template-columns:repeat(4,1fr) !important; gap:5px; }
-  .dash .stats .card .value { font-size:17px; }
-  .dash .stats .card .label { font-size:7.5px; }
+  .dash .stats { gap:5px; }
+  .dash .stats .card .value { font-size:16px; }
+  .dash .stats .card .label { font-size:7px; }
   .dash .main { padding:12px 8px; }
   .hdr-icon { width:36px; height:36px; }
 }
