@@ -187,12 +187,19 @@
 .sa-collapse-switch.on::after { transform:translateX(16px); }
 
 .sa-sidebar { transition:width .22s ease, padding .22s ease; }
+/* Auto-hide ON = collapsed to icons, expands on hover */
 .sa-collapsed .sa-sidebar { width:66px; padding:20px 8px; overflow:hidden; }
 .sa-collapsed .sa-brand div, .sa-collapsed .sa-nav-label, .sa-collapsed .sa-collapse-lbl { display:none; }
-.sa-collapsed .sa-nav-item { justify-content:center; gap:0; padding:11px 0; }
-.sa-collapsed .sa-nav-item .ico { margin:0; }
-/* hide text after icon in collapsed mode */
-.sa-collapsed .sa-nav-item { font-size:0; }
-.sa-collapsed .sa-nav-item .ico { font-size:16px; }
+.sa-collapsed .sa-nav-item { justify-content:center; gap:0; padding:11px 0; font-size:0; }
+.sa-collapsed .sa-nav-item .ico { margin:0; font-size:16px; }
 .sa-collapsed .sa-collapse-row { justify-content:center; }
+
+/* hover → expand back out */
+.sa-collapsed .sa-sidebar:hover { width:225px; padding:20px 14px; position:absolute; height:100vh; z-index:40; box-shadow:6px 0 24px #00000040; }
+.sa-collapsed .sa-sidebar:hover .sa-brand div,
+.sa-collapsed .sa-sidebar:hover .sa-nav-label,
+.sa-collapsed .sa-sidebar:hover .sa-collapse-lbl { display:block; }
+.sa-collapsed .sa-sidebar:hover .sa-nav-item { justify-content:flex-start; gap:11px; padding:10px 12px; font-size:14px; }
+.sa-collapsed .sa-sidebar:hover .sa-collapse-row { justify-content:space-between; }
+
 
