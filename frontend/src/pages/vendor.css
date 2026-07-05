@@ -44,13 +44,15 @@
 .dash .refresh:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #2dd4bf22; }
 
 /* Stat cards → glow tiles */
-.dash .stats { gap: 16px; }
+.dash .stats { gap: 12px; }
 .dash .card {
-  border-radius: 16px; padding: 20px;
+  border-radius: 12px; padding: 13px 15px;
   background: linear-gradient(150deg, var(--v-card-1), var(--v-card-2));
   border: 1px solid var(--v-card-line);
   transition: all .2s ease; position: relative; overflow: hidden;
 }
+.dash .stats .card .label { font-size: 11.5px; }
+.dash .stats .card .value { font-size: 26px; margin-top: 2px; }
 .dash .card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
   background: linear-gradient(90deg, transparent, #2dd4bf66, transparent);
