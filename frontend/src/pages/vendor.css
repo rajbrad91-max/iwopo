@@ -192,6 +192,14 @@
 
 /* Phone (≤560px) */
 @media (max-width:560px){
+  /* 🛡️ nothing overflows the screen */
+  .dash, .dash * { max-width:100%; box-sizing:border-box; }
+  .dash .main { padding:16px 12px; overflow-x:hidden; }
+  .dash-grid, .dash-left, .dash-right { min-width:0; }
+  /* wide inline grids collapse to 1 col (except calendar 7-col) */
+  .dash [style*="grid-template-columns"]:not(.cal-grid):not([style*="repeat(7"]) { grid-template-columns:1fr !important; }
+  .dash .stats { grid-template-columns:repeat(2,1fr) !important; }
+  input, select, textarea { max-width:100%; }
   .dash .stats { grid-template-columns:repeat(2,1fr) !important; gap:10px; }
   .dash .stats .card .value { font-size:22px; }
   .dash .stats .card .label { font-size:10.5px; }
