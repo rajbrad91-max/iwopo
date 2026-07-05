@@ -326,14 +326,14 @@ function StandaloneServices() {
             <div style={{ fontSize: 26 }}>{s.icon}</div>
             <div style={{ fontWeight: 700 }}>{s.name}{s.is_addon ? ' · add-on' : ''}</div>
             {edit
-              ? <><ServicePriceEditor service={s} onSaved={load} /><CountryPriceEditor type="service" item={s} onSaved={load} /></>
+              ? <><ServicePriceEditor service={s} onSaved={load} />{s.tiers && <TierEditor service={s} onSaved={load} />}<CountryPriceEditor type="service" item={s} onSaved={load} /></>
               : <>
                   <div style={{ fontSize: 22, fontWeight: 800 }}>{s.tiers ? 'from ' : ''}${s.price}<span style={{ fontSize: 12, color: 'var(--muted)' }}>/mo</span>{s.price_annual ? <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>${s.price_annual}/yr</span> : null}</div>
                   {s.tiers && (
                     <div style={{ marginTop: 4 }}>
                       {s.tiers.map(t => (
                         <div key={t.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: 'var(--muted)' }}>
-                          <span>{t.label}</span><span style={{ color: 'var(--text)', fontWeight: 600 }}>${t.price}/mo</span>
+                          <span>{t.label}</span><span style={{ color: 'var(--text)', fontWeight: 600 }}>${t.price}/mo{t.price_annual ? ` · $${t.price_annual}/yr` : ''}</span>
                         </div>
                       ))}
                     </div>
@@ -402,6 +402,37 @@ function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
         <input style={{ ...box, width: 60 }} type="number" placeholder="$" value={val} onChange={e => setVal(e.target.value)} />
         <button className="sa-btn-teal" onClick={add} disabled={saving} style={{ padding: '5px 10px' }}>+</button>
       </div>
+    </div>
+  );
+}
+
+function TierEditor({ service, onSaved }) {
+  const [tiers, setTiers] = useState(() => (service.tiers || []).map(t => ({ ...t })));
+  const [saving, setSaving] = useState(false);
+  const set = (i, k, v) => setTiers(ts => ts.map((t, j) => j === i ? { ...t, [k]: v } : t));
+  async function save() {
+    setSaving(true);
+    try {
+      const clean = tiers.map(t => ({ label: t.label, price: Number(t.price) || 0, price_annual: t.price_annual === '' || t.price_annual == null ? null : Number(t.price_annual) }));
+      await api.updateServiceTiers(service.id, clean);
+      onSaved && onSaved();
+    } catch (e) { alert('Save failed: ' + e.message); }
+    finally { setSaving(false); }
+  }
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', padding: '5px 7px', width: 62 };
+  return (
+    <div style={{ marginTop: 8, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>📦 Tiers (mo / yr)</div>
+      {tiers.map((t, i) => (
+        <div key={i} style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 5 }}>
+          <span style={{ width: 46, fontSize: 12 }}>{t.label}</span>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>$</span>
+          <input style={box} type="number" value={t.price} onChange={e => set(i, 'price', e.target.value)} />
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>yr$</span>
+          <input style={box} type="number" placeholder="—" value={t.price_annual ?? ''} onChange={e => set(i, 'price_annual', e.target.value)} />
+        </div>
+      ))}
+      <button className="sa-btn-teal" onClick={save} disabled={saving} style={{ padding: '5px 12px', marginTop: 4 }}>{saving ? '…' : 'Save tiers'}</button>
     </div>
   );
 }

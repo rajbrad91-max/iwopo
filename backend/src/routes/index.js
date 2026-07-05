@@ -96,6 +96,15 @@ router.put('/services/:id/price', requireAuth, requireSuperAdmin, async (req, re
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 🔒 Super admin: update a service's tiers (jsonb array)
+router.put('/services/:id/tiers', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { tiers } = req.body;
+  try {
+    await query(`UPDATE services SET tiers=$1 WHERE id=$2`, [JSON.stringify(tiers || []), req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 🔒 Super admin: set country-specific prices (services or packages)
 // body: { type:'service'|'package', country_prices:{ default:14.99, CA:18, 'CA-BC':20 } }
 router.put('/country-prices/:type/:id', requireAuth, requireSuperAdmin, async (req, res) => {
