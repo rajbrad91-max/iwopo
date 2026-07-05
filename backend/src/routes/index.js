@@ -55,6 +55,15 @@ router.put('/package-items/:id/price', requireAuth, requireSuperAdmin, async (re
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 🔒 Super admin: update a STANDALONE SERVICE price
+router.put('/services/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { price } = req.body;
+  try {
+    await query(`UPDATE services SET price=$1 WHERE id=$2`, [price ?? 0, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 🎁 OFFERS
 // Public: list active offers
 router.get('/offers', async (req, res) => {

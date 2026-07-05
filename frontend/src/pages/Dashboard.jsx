@@ -297,7 +297,60 @@ function ServicesView({ packages, onReload }) {
       <div className="sa-pkg-grid">
         {packages.map(p => <PackageCard key={p.id} pkg={p} editMode={editMode} onSaved={onReload} />)}
       </div>
+
+      {/* STANDALONE SERVICES */}
+      <StandaloneServices />
     </>
+  );
+}
+
+function StandaloneServices() {
+  const [services, setServices] = useState([]);
+  const [edit, setEdit] = useState(false);
+  useEffect(() => { load(); }, []);
+  function load() { api.services().then(d => setServices((d.services || []).filter(s => Number(s.price) > 0))).catch(() => {}); }
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 22 }}>
+        <div className="sa-section-title" style={{ margin: 0 }}>Standalone Services 🧩</div>
+        <button className={`sa-view-btn ${edit ? 'active-btn' : ''}`} onClick={() => setEdit(!edit)}>
+          {edit ? '✓ Done' : '✏️ Edit Prices'}
+        </button>
+      </div>
+      <div className="sa-hint" style={{ marginTop: 0, marginBottom: 14 }}>
+        {edit ? 'Click a price to change it, then Save. Shows live on the public page.' : 'Individual services sold on their own.'}
+      </div>
+      <div className="sa-pkg-grid">
+        {services.map(s => (
+          <div key={s.id} className="sa-box" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 26 }}>{s.icon}</div>
+            <div style={{ fontWeight: 700 }}>{s.name}{s.is_addon ? ' · add-on' : ''}</div>
+            {edit
+              ? <ServicePriceEditor service={s} onSaved={load} />
+              : <div style={{ fontSize: 22, fontWeight: 800 }}>${s.price}<span style={{ fontSize: 12, color: 'var(--muted)' }}>/mo</span></div>}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ServicePriceEditor({ service, onSaved }) {
+  const [p, setP] = useState(service.price ?? '');
+  const [saving, setSaving] = useState(false);
+  async function save() {
+    setSaving(true);
+    try { await api.updateServicePrice(service.id, p === '' ? 0 : Number(p)); onSaved && onSaved(); }
+    catch (e) { alert('Save failed: ' + e.message); }
+    finally { setSaving(false); }
+  }
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      <span style={{ color: 'var(--muted)' }}>$</span>
+      <input type="number" value={p} onChange={e => setP(e.target.value)}
+        style={{ width: 70, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', padding: '5px 8px' }} />
+      <button className="sa-btn-teal" onClick={save} disabled={saving} style={{ padding: '5px 12px' }}>{saving ? '…' : 'Save'}</button>
+    </div>
   );
 }
 
