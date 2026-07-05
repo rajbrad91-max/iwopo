@@ -767,8 +767,87 @@ function ReferralsView() {
   );
 }
 
+function VendorDrawer({ vendorId, onClose }) {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    api.vendorDetail(vendorId).then(setD).catch(e => setErr(e.message));
+  }, [vendorId]);
+
+  const fmt = (x) => x ? String(x).slice(0, 10) : '—';
+  const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 60 };
+  const panel = { position: 'fixed', top: 0, right: 0, height: '100vh', width: 440, maxWidth: '92vw', background: 'var(--panel)', borderLeft: '1px solid var(--line)', zIndex: 61, padding: 24, overflowY: 'auto' };
+  const row = (k, v) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)', fontSize: 13.5 }}>
+      <span style={{ color: 'var(--muted)' }}>{k}</span><span style={{ fontWeight: 600, textAlign: 'right' }}>{v ?? '—'}</span>
+    </div>
+  );
+
+  return (
+    <>
+      <div style={overlay} onClick={onClose} />
+      <div style={panel}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ margin: 0 }}>Vendor details</h2>
+          <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={onClose}>✕</span>
+        </div>
+        {err && <div className="sa-empty">⚠️ {err}</div>}
+        {!d && !err && <div className="sa-loading">Loading…</div>}
+        {d && (
+          <>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{d.vendor.business_name}</div>
+            <div style={{ marginBottom: 16 }}><span className={`sa-badge ${d.vendor.status}`}>{d.vendor.status}</span></div>
+
+            <div className="sa-section-title" style={{ fontSize: 12, margin: '6px 0' }}>Account</div>
+            {row('Plan', d.vendor.plan)}
+            {row('Country', d.vendor.country)}
+            {row('🌍 Signup IP', d.vendor.signup_ip)}
+            {row('Storage', d.vendor.storage_mb ? `${d.vendor.storage_mb} MB` : '—')}
+            {row('Joined', fmt(d.vendor.created_at))}
+
+            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Contact</div>
+            {d.users.map(u => (
+              <div key={u.id}>
+                {row('👤 Name', u.name)}
+                {row('📧 Email', u.email)}
+                {row('Role', u.role)}
+              </div>
+            ))}
+
+            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Referred by</div>
+            {d.referredBy
+              ? row('🎁 ' + d.referredBy.referrer_email, d.referredBy.status)
+              : <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>Not referred</div>}
+
+            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Services subscribed</div>
+            {d.services.length === 0
+              ? <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>No services yet</div>
+              : d.services.map(s => (
+                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--line)', fontSize: 13.5 }}>
+                  <span>{s.icon} {s.name}</span>
+                  <span style={{ color: s.enabled ? 'var(--green,#4ade80)' : 'var(--muted)' }}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
+                </div>
+              ))}
+
+            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Subscription history</div>
+            {d.subscriptions.length === 0
+              ? <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>No subscription records</div>
+              : d.subscriptions.map(su => (
+                <div key={su.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
+                  <span>{su.plan_name || 'Plan'} · <span style={{ color: 'var(--muted)' }}>{su.status}</span></span>
+                  <span style={{ color: 'var(--muted)' }}>{fmt(su.started_at)}{su.ends_at ? ` → ${fmt(su.ends_at)}` : ''}</span>
+                </div>
+              ))}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
 /* ---------- BUYERS ---------- */
 function BuyersView({ vendors }) {
+  const [openId, setOpenId] = useState(null);
   const [refCount, setRefCount] = useState(0);
   useEffect(() => {
     api.referrals().then(d => setRefCount((d.referrals || []).filter(r => r.status === 'rewarded').length)).catch(() => {});
@@ -803,12 +882,13 @@ function BuyersView({ vendors }) {
                 <td className="biz">{v.business_name}</td>
                 <td>{v.plan}</td>
                 <td><span className={`sa-badge ${v.status}`}>{v.status}</span></td>
-                <td><button className="sa-view-btn">Manage</button></td>
+                <td><button className="sa-view-btn" onClick={() => setOpenId(v.id)}>Manage</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {openId && <VendorDrawer vendorId={openId} onClose={() => setOpenId(null)} />}
     </>
   );
 }

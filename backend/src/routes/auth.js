@@ -66,8 +66,8 @@ router.post('/signup', async (req, res) => {
 
   // 1. Create vendor (tenant)
   const v = await query(
-    `INSERT INTO vendors (business_name, plan, status) VALUES ($1,$2,$3) RETURNING id`,
-    [businessName, isPaid ? plan : 'starter', isPaid ? 'active' : 'trial']
+    `INSERT INTO vendors (business_name, plan, status, signup_ip) VALUES ($1,$2,$3,$4) RETURNING id`,
+    [businessName, isPaid ? plan : 'starter', isPaid ? 'active' : 'trial', ip]
   );
   const vendorId = v.rows[0].id;
 
