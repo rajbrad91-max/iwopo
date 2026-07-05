@@ -988,6 +988,53 @@ function SupportView() {
 }
 
 /* ---------- SETTINGS ---------- */
+function FaceEngineSettings() {
+  const [s, setS] = useState(null);
+  const [msg, setMsg] = useState('');
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
+
+  useEffect(() => { api.platformSettings().then(d => setS(d.settings || {})).catch(() => {}); }, []);
+  if (!s) return null;
+
+  async function save(next) {
+    setS(next);
+    try { await api.savePlatformSettings(next); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  const engine = s.face_engine || 'vladmandic';
+
+  return (
+    <>
+      <div className="sa-section-title" style={{ marginTop: 22 }}>🧠 Face Recognition Engine</div>
+      <div className="sa-box" style={{ padding: 18 }}>
+        {/* toggle */}
+        <div style={{ display: 'flex', gap: 0, background: 'var(--panel-2)', borderRadius: 10, padding: 4, width: 'fit-content', marginBottom: 16 }}>
+          {['vladmandic', 'aws'].map(opt => (
+            <button key={opt} onClick={() => save({ ...s, face_engine: opt })}
+              style={{ padding: '9px 22px', borderRadius: 7, cursor: 'pointer', fontWeight: 700, fontSize: 13, border: 'none',
+                background: engine === opt ? '#2dd4bf' : 'transparent',
+                color: engine === opt ? '#06231f' : 'var(--muted)' }}>
+              {opt === 'aws' ? '☁️ AWS Rekognition' : '🖥️ @vladmandic (free)'}
+            </button>
+          ))}
+        </div>
+
+        {engine === 'aws' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div><label className="lbl">AWS Access Key</label><input style={box} value={s.aws_access_key || ''} onChange={e => setS({ ...s, aws_access_key: e.target.value })} onBlur={() => save(s)} /></div>
+            <div><label className="lbl">AWS Secret Key</label><input style={box} value={s.aws_secret_key || ''} onChange={e => setS({ ...s, aws_secret_key: e.target.value })} onBlur={() => save(s)} placeholder="enter to change" /></div>
+            <div><label className="lbl">AWS Region</label><input style={box} value={s.aws_region || ''} onChange={e => setS({ ...s, aws_region: e.target.value })} onBlur={() => save(s)} /></div>
+          </div>
+        )}
+        <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--muted)' }}>
+          {engine === 'aws' ? '☁️ Faster + more accurate. Costs ~$1 per 1000 photos.' : '🖥️ Free, runs on your server. Slower on large albums.'}
+          {msg && <span style={{ marginLeft: 10, color: '#4ade80' }}>{msg}</span>}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function SettingsView({ saTheme, setSaTheme, user }) {
   return (
     <>
@@ -1013,9 +1060,11 @@ function SettingsView({ saTheme, setSaTheme, user }) {
     </div>
     <div className="sa-section-title" style={{ marginTop: 22 }}>🔐 Admins</div>
     <AdminsView user={user} />
+    <FaceEngineSettings />
     </>
   );
 }
+
 function SettingRow({ name, desc, input, small, toggle, on }) {
   const [isOn, setOn] = useState(on);
   return (

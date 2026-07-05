@@ -2,8 +2,31 @@ import express from 'express';
 import geoip from 'geoip-lite';
 import { query } from '../config/db.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
+import { getAllSettings, setSetting } from '../lib/settings.js';
 
 const router = express.Router();
+
+// 🔒 Super admin: platform settings (face engine + AWS creds)
+router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const s = await getAllSettings();
+    // mask secret
+    if (s.aws_secret_key) s.aws_secret_key = s.aws_secret_key.slice(0, 4) + '••••••••' + s.aws_secret_key.slice(-4);
+    res.json({ settings: s });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const allowed = ['face_engine', 'aws_access_key', 'aws_secret_key', 'aws_region'];
+    for (const k of allowed) {
+      if (req.body[k] !== undefined && req.body[k] !== '' && !String(req.body[k]).includes('••••')) {
+        await setSetting(k, req.body[k]);
+      }
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // 🌍 currency symbol per country
 const CURRENCY = { US:'$', CA:'C$', GB:'£', IN:'₹', AU:'A$', EU:'€' };
