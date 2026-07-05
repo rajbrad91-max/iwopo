@@ -347,6 +347,13 @@ function StandaloneServices() {
   );
 }
 
+// read a country_prices entry (number legacy OR {m,y}) → {m, y}
+function cpEntry(v) {
+  if (v == null) return { m: null, y: null };
+  if (typeof v === 'object') return { m: v.m ?? null, y: v.y ?? null };
+  return { m: v, y: null };
+}
+
 function CountryPriceList({ cp }) {
   const entries = Object.entries(cp || {}).filter(([k]) => k !== 'default');
   if (!entries.length) return null;
@@ -354,11 +361,15 @@ function CountryPriceList({ cp }) {
   return (
     <div style={{ marginTop: 6, borderTop: '1px dashed var(--line)', paddingTop: 6 }}>
       <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 3 }}>🌍 Exceptions</div>
-      {entries.map(([c, p]) => (
-        <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '1px 0', color: 'var(--muted)' }}>
-          <span>{nameOf(c)}</span><span style={{ color: 'var(--text)', fontWeight: 600 }}>${p}</span>
-        </div>
-      ))}
+      {entries.map(([c, v]) => {
+        const e = cpEntry(v);
+        return (
+          <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '1px 0', color: 'var(--muted)' }}>
+            <span>{nameOf(c)}</span>
+            <span style={{ color: 'var(--text)', fontWeight: 600 }}>${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -366,7 +377,8 @@ function CountryPriceList({ cp }) {
 function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
   const [cp, setCp] = useState(item.country_prices || {});
   const [country, setCountry] = useState('CA-BC');
-  const [val, setVal] = useState('');
+  const [m, setM] = useState('');
+  const [y, setY] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function save(next) {
@@ -376,9 +388,9 @@ function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
     finally { setSaving(false); }
   }
   function add() {
-    if (val === '') return;
-    save({ ...cp, [country]: Number(val) });
-    setVal('');
+    if (m === '') return;
+    save({ ...cp, [country]: { m: Number(m), y: y === '' ? null : Number(y) } });
+    setM(''); setY('');
   }
   function remove(code) {
     const n = { ...cp }; delete n[code]; save(n);
@@ -389,17 +401,21 @@ function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
   return (
     <div style={{ marginTop: 8, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
       <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>🌍 Country exceptions (default = USD)</div>
-      {Object.entries(cp).map(([c, p]) => (
-        <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '2px 0' }}>
-          <span>{nameOf(c)}</span>
-          <span style={{ display: 'flex', gap: 8 }}><b>${p}</b><span style={{ cursor: 'pointer' }} onClick={() => remove(c)}>🗑️</span></span>
-        </div>
-      ))}
-      <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-        <select style={{ ...box, flex: 1, fontSize: 12 }} value={country} onChange={e => setCountry(e.target.value)}>
+      {Object.entries(cp).map(([c, v]) => {
+        const e = cpEntry(v);
+        return (
+          <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '2px 0' }}>
+            <span>{nameOf(c)}</span>
+            <span style={{ display: 'flex', gap: 8 }}><b>${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</b><span style={{ cursor: 'pointer' }} onClick={() => remove(c)}>🗑️</span></span>
+          </div>
+        );
+      })}
+      <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+        <select style={{ ...box, flex: 1, fontSize: 12, minWidth: 140 }} value={country} onChange={e => setCountry(e.target.value)}>
           {COUNTRIES.filter(c => c.code !== 'default').map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
-        <input style={{ ...box, width: 60 }} type="number" placeholder="$" value={val} onChange={e => setVal(e.target.value)} />
+        <input style={{ ...box, width: 60 }} type="number" placeholder="mo$" value={m} onChange={e => setM(e.target.value)} />
+        <input style={{ ...box, width: 60 }} type="number" placeholder="yr$" value={y} onChange={e => setY(e.target.value)} />
         <button className="sa-btn-teal" onClick={add} disabled={saving} style={{ padding: '5px 10px' }}>+</button>
       </div>
     </div>

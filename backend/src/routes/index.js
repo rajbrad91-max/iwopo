@@ -20,12 +20,24 @@ function geoFrom(req) {
 }
 
 // pick the right price for a row given geo
-function priceFor(row, geo, baseField = 'price') {
+// pick monthly+annual for a row given geo. country_prices values can be:
+//   number (monthly only)  OR  { m: monthly, y: annual }
+function geoPrice(row, geo, baseField = 'price', baseAnnualField = 'price_annual') {
   const cp = row.country_prices || {};
-  if (geo.code !== 'default' && cp[geo.code] != null) return Number(cp[geo.code]);
-  if (geo.code === 'CA-BC' && cp['CA'] != null) return Number(cp['CA']); // BC falls back to CA
-  if (cp.default != null) return Number(cp.default);
-  return Number(row[baseField]); // ultimate fallback = base USD price
+  let entry;
+  if (geo.code !== 'default' && cp[geo.code] != null) entry = cp[geo.code];
+  else if (geo.code === 'CA-BC' && cp['CA'] != null) entry = cp['CA'];
+  else if (cp.default != null) entry = cp.default;
+
+  if (entry != null) {
+    if (typeof entry === 'object') return { m: Number(entry.m), y: entry.y != null ? Number(entry.y) : null };
+    return { m: Number(entry), y: null }; // legacy number = monthly only
+  }
+  return { m: Number(row[baseField]), y: row[baseAnnualField] != null ? Number(row[baseAnnualField]) : null };
+}
+
+function priceFor(row, geo, baseField = 'price') {
+  return geoPrice(row, geo, baseField).m;
 }
 
 router.get('/hello', (req, res) => {
@@ -36,7 +48,10 @@ router.get('/hello', (req, res) => {
 router.get('/services', async (req, res) => {
   const geo = geoFrom(req);
   const { rows } = await query('SELECT * FROM services ORDER BY id');
-  const services = rows.map(s => ({ ...s, price: priceFor(s, geo), currency: geo.currency, geo_code: geo.code }));
+  const services = rows.map(s => {
+    const gp = geoPrice(s, geo);
+    return { ...s, price: gp.m, price_annual: gp.y ?? s.price_annual, currency: geo.currency, geo_code: geo.code };
+  });
   res.json({ services, geo: geo.code, currency: geo.currency });
 });
 
@@ -46,14 +61,18 @@ router.get('/packages', async (req, res) => {
     const geo = geoFrom(req);
     const { rows: packages } = await query('SELECT * FROM packages ORDER BY sort_order');
     const { rows: items } = await query('SELECT * FROM package_items ORDER BY package_id, sort_order');
-    const result = packages.map(p => ({
+    const result = packages.map(p => {
+      const gp = p.price_monthly != null ? geoPrice(p, geo, 'price_monthly', 'price_annual') : { m: p.price_monthly, y: p.price_annual };
+      return {
       ...p,
-      price_monthly: p.price_monthly != null ? priceFor(p, geo, 'price_monthly') : p.price_monthly,
+      price_monthly: gp.m,
+      price_annual: gp.y ?? p.price_annual,
       currency: geo.currency,
       included: items.filter(i => i.package_id === p.id && i.is_included),
       addons: items.filter(i => i.package_id === p.id && i.is_addon),
       standalone: items.filter(i => i.package_id === p.id && !i.is_included && !i.is_addon),
-    }));
+      };
+    });
     res.json({ packages: result });
   } catch (e) {
     res.status(500).json({ error: e.message });
