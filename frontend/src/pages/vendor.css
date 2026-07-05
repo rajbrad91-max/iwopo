@@ -198,11 +198,11 @@
   .dash-grid, .dash-left, .dash-right { min-width:0; }
   /* wide inline grids collapse to 1 col (except calendar 7-col) */
   .dash [style*="grid-template-columns"]:not(.cal-grid):not([style*="repeat(7"]) { grid-template-columns:1fr !important; }
-  .dash .stats { grid-template-columns:repeat(2,1fr) !important; }
   input, select, textarea { max-width:100%; }
-  .dash .stats { grid-template-columns:repeat(2,1fr) !important; gap:10px; }
-  .dash .stats .card .value { font-size:22px; }
-  .dash .stats .card .label { font-size:10.5px; }
+  .dash .stats { grid-template-columns:repeat(4,1fr) !important; gap:7px; }
+  .dash .stats .card { aspect-ratio:1; display:flex; flex-direction:column; justify-content:center; padding:8px 6px; }
+  .dash .stats .card .value { font-size:20px; }
+  .dash .stats .card .label { font-size:8.5px; line-height:1.2; }
   .dash .card { padding:11px 12px; }
   .dash .topbar h1 { font-size:18px; }
   .dash .topbar .sub { font-size:12px; }
@@ -212,9 +212,11 @@
   .table-wrap table { min-width:460px; }
 }
 
-/* Fold / very narrow (≤380px): tiles single column */
+/* Fold / very narrow (≤380px) */
 @media (max-width:380px){
-  .dash .stats { grid-template-columns:1fr !important; }
-  .dash .main { padding:12px 10px; }
+  .dash .stats { grid-template-columns:repeat(4,1fr) !important; gap:5px; }
+  .dash .stats .card .value { font-size:17px; }
+  .dash .stats .card .label { font-size:7.5px; }
+  .dash .main { padding:12px 8px; }
   .hdr-icon { width:36px; height:36px; }
 }
