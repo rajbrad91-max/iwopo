@@ -37,7 +37,7 @@ export default function Dashboard({ onLogout }) {
   async function load() {
     setLoading(true);
     try {
-      const [v, p] = await Promise.all([api.vendors(), api.packages()]);
+      const [v, p] = await Promise.all([api.vendors(), api.adminPackages()]);
       setVendors(v.vendors || []);
       setPackages(p.packages || []);
     } catch (e) { console.error(e); }
@@ -344,7 +344,7 @@ function StandaloneServices() {
   const [services, setServices] = useState([]);
   const [edit, setEdit] = useState(false);
   useEffect(() => { load(); }, []);
-  function load() { api.services().then(d => setServices((d.services || []).filter(s => Number(s.price) > 0))).catch(() => {}); }
+  function load() { api.adminServices().then(d => setServices((d.services || []).filter(s => Number(s.price) > 0))).catch(() => {}); }
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 22 }}>
@@ -683,8 +683,8 @@ function CouponBuilder() {
   useEffect(() => { load(); }, []);
   function load() {
     api.offers().then(d => setCoupons(d.offers || [])).catch(() => {});
-    api.services().then(d => setServices(d.services || [])).catch(() => {});
-    api.packages().then(d => setPackages((d.packages || []).filter(p => p.price_monthly != null))).catch(() => {});
+    api.adminServices().then(d => setServices(d.services || [])).catch(() => {});
+    api.adminPackages().then(d => setPackages((d.packages || []).filter(p => p.price_monthly != null))).catch(() => {});
   }
 
   async function create() {

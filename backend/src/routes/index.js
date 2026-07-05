@@ -81,13 +81,20 @@ router.post('/support', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 🔒 Super admin: full services incl. country_prices (for editor)
+router.get('/admin/services', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { rows } = await query('SELECT * FROM services ORDER BY id');
+  res.json({ services: rows });
+});
+
 // Public: list all services (legacy) — geo-priced
 router.get('/services', async (req, res) => {
   const geo = geoFrom(req);
   const { rows } = await query('SELECT * FROM services ORDER BY id');
   const services = rows.map(s => {
     const gp = geoPrice(s, geo);
-    return { ...s, price: gp.m, price_annual: gp.y ?? s.price_annual, currency: geo.currency, geo_code: geo.code };
+    const { country_prices, ...pub } = s; // 🔒 don't expose all-country pricing publicly
+    return { ...pub, price: gp.m, price_annual: gp.y ?? s.price_annual, currency: geo.currency, geo_code: geo.code };
   });
   res.json({ services, geo: geo.code, currency: geo.currency });
 });
@@ -100,8 +107,9 @@ router.get('/packages', async (req, res) => {
     const { rows: items } = await query('SELECT * FROM package_items ORDER BY package_id, sort_order');
     const result = packages.map(p => {
       const gp = p.price_monthly != null ? geoPrice(p, geo, 'price_monthly', 'price_annual') : { m: p.price_monthly, y: p.price_annual };
+      const { country_prices, ...pub } = p; // 🔒 hide all-country pricing from public
       return {
-      ...p,
+      ...pub,
       price_monthly: gp.m,
       price_annual: gp.y ?? p.price_annual,
       currency: geo.currency,
@@ -114,6 +122,19 @@ router.get('/packages', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// 🔒 Super admin: full packages incl. country_prices (for editor)
+router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { rows: packages } = await query('SELECT * FROM packages ORDER BY sort_order');
+  const { rows: items } = await query('SELECT * FROM package_items ORDER BY package_id, sort_order');
+  const result = packages.map(p => ({
+    ...p,
+    included: items.filter(i => i.package_id === p.id && i.is_included),
+    addons: items.filter(i => i.package_id === p.id && i.is_addon),
+    standalone: items.filter(i => i.package_id === p.id && !i.is_included && !i.is_addon),
+  }));
+  res.json({ packages: result });
 });
 
 // 🔒 Super admin: update a PACKAGE price
@@ -175,7 +196,8 @@ router.put('/country-prices/:type/:id', requireAuth, requireSuperAdmin, async (r
 
 // 🎁 OFFERS
 // Public: list active offers
-router.get('/offers', async (req, res) => {
+// 🔒 Super admin: list all offers (coupons are internal)
+router.get('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
   const { rows } = await query('SELECT * FROM offers ORDER BY created_at DESC');
   res.json({ offers: rows });
 });

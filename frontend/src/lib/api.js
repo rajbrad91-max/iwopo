@@ -43,6 +43,8 @@ export const api = {
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   services: () => request('/services'),
   packages: () => request('/packages'),
+  adminServices: () => request('/admin/services'),
+  adminPackages: () => request('/admin/packages'),
   trialEligible: () => request('/auth/trial-eligible'),
   updatePackagePrice: (id, prices) =>
     request(`/packages/${id}/price`, { method: 'PUT', body: JSON.stringify(prices) }),
