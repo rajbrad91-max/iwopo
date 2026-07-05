@@ -75,6 +75,7 @@ export default function Dashboard({ onLogout }) {
               <div className="sa-sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
+          <AdminBells goView={setView} />
         </div>
 
         {loading ? <div className="sa-loading">Loading…</div> : (
@@ -96,6 +97,37 @@ export default function Dashboard({ onLogout }) {
 }
 
 function money(v) { return v == null ? null : `$${Number(v).toFixed(2)}`; }
+
+function AdminBells({ goView }) {
+  const [c, setC] = useState({ messages: 0, paid: 0, trials: 0 });
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000); // 🔄 live every 30s
+    return () => clearInterval(t);
+  }, []);
+  function load() { api.adminCounts().then(setC).catch(() => {}); }
+
+  async function open(group, view) {
+    try { await api.markCountSeen(group); } catch {}
+    setC(x => ({ ...x, [group]: 0 }));
+    goView(view);
+  }
+
+  const Bell = ({ emoji, n, title, onClick }) => (
+    <button className="sa-bell" title={title} onClick={onClick}>
+      {emoji}
+      {n > 0 && <span className="sa-bell-badge">{n}</span>}
+    </button>
+  );
+
+  return (
+    <div className="sa-bells">
+      <Bell emoji="📨" n={c.messages} title="Support messages" onClick={() => open('messages', 'support')} />
+      <Bell emoji="💰" n={c.paid} title="New paid subscribers" onClick={() => open('paid', 'buyers')} />
+      <Bell emoji="🎁" n={c.trials} title="New trial subscribers" onClick={() => open('trials', 'buyers')} />
+    </div>
+  );
+}
 
 /* ---------- DASHBOARD ---------- */
 function DashboardView({ vendors, packages, trials }) {

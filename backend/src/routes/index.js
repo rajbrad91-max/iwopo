@@ -44,6 +44,43 @@ router.get('/hello', (req, res) => {
   res.json({ message: 'Hello from Vowflo API! 👋' });
 });
 
+// 🔔 Super admin: live notification counts (topbar icons)
+router.get('/admin/counts', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const msgs = await query(`SELECT count(*)::int n FROM support_messages WHERE seen=false AND status='open'`);
+    const paid = await query(`SELECT count(*)::int n FROM vendors WHERE status='active' AND seen_by_admin=false`);
+    const trial = await query(`SELECT count(*)::int n FROM vendors WHERE status='trial' AND seen_by_admin=false`);
+    res.json({ messages: msgs.rows[0].n, paid: paid.rows[0].n, trials: trial.rows[0].n });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 🔔 mark a group seen: 'messages' | 'paid' | 'trials'
+router.put('/admin/counts/:group/seen', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    if (req.params.group === 'messages') await query(`UPDATE support_messages SET seen=true WHERE seen=false`);
+    else if (req.params.group === 'paid') await query(`UPDATE vendors SET seen_by_admin=true WHERE status='active'`);
+    else if (req.params.group === 'trials') await query(`UPDATE vendors SET seen_by_admin=true WHERE status='trial'`);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 📨 support messages list (super admin)
+router.get('/admin/messages', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { rows } = await query(`SELECT * FROM support_messages ORDER BY created_at DESC`);
+  res.json({ messages: rows });
+});
+
+// 📨 public: submit a support message
+router.post('/support', async (req, res) => {
+  const { from_email, subject, body, vendor_id } = req.body;
+  if (!from_email || !body) return res.status(400).json({ error: 'Email + message required' });
+  try {
+    await query(`INSERT INTO support_messages (vendor_id, from_email, subject, body) VALUES ($1,$2,$3,$4)`,
+      [vendor_id || null, from_email, subject || null, body]);
+    res.status(201).json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Public: list all services (legacy) — geo-priced
 router.get('/services', async (req, res) => {
   const geo = geoFrom(req);

@@ -37,6 +37,9 @@ export const api = {
   signup: (businessName, email, password) =>
     request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password }) }),
   vendors: () => request('/vendors'),
+  adminCounts: () => request('/admin/counts'),
+  markCountSeen: (group) => request(`/admin/counts/${group}/seen`, { method: 'PUT' }),
+  adminMessages: () => request('/admin/messages'),
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   services: () => request('/services'),
   packages: () => request('/packages'),
