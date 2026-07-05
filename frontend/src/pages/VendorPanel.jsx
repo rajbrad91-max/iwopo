@@ -91,7 +91,6 @@ export default function VendorPanel({ onLogout }) {
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {has('calendar') && <button className="hdr-icon" onClick={() => setTab('calendar')} title="Calendar">🗓️</button>}
-            <button className="hdr-icon" onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} title="Toggle light/dark">{theme === 'light' ? '🌙' : '☀️'}</button>
             <NotifBell />
           </div>
         </div>
@@ -1463,6 +1462,10 @@ function SettingsView({ user }) {
 
   async function savePrefs(next) {
     setS(next); setSaved('');
+    // 🌗 apply theme live + persist
+    if (next.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('vf_theme', next.theme || 'dark');
     try { await api.saveSettings(next); setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500); } catch {}
   }
   async function saveEmail() {
