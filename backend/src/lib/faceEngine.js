@@ -2,6 +2,7 @@
 import * as tf from '@tensorflow/tfjs-node';
 import * as faceapi from '@vladmandic/face-api';
 import canvas from 'canvas';
+import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -23,7 +24,9 @@ async function init() {
 // Get all face descriptors (128-float vectors) from an image file
 export async function getFaceDescriptors(imagePath) {
   await init();
-  const img = await canvas.loadImage(imagePath);
+  // canvas can't read webp → decode to JPEG buffer with sharp first
+  const jpegBuf = await sharp(imagePath).jpeg().toBuffer();
+  const img = await canvas.loadImage(jpegBuf);
   const results = await faceapi
     .detectAllFaces(img)
     .withFaceLandmarks()
