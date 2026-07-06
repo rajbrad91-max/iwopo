@@ -1499,6 +1499,19 @@ function InqFormSettings({ user }) {
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub" style={{ marginBottom: 14 }}>Your link: <b style={{ color: '#2dd4bf' }}>alphabetaone.com/inquiry/{user?.vendor_id}</b> 🔗</p>
 
+        <label style={{ fontSize: 12, color: 'var(--muted)' }}>Logo 🖼️</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+          {s.logo_path && <img src={`/api/inquiry-settings/logo/${s.logo_path}`} alt="logo" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--line)' }} />}
+          <label className="refresh" style={{ padding: '7px 14px', fontSize: 12, cursor: 'pointer' }}>
+            📤 Upload logo
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+              const f = e.target.files[0]; if (!f) return;
+              try { const r = await api.uploadLogo(f); setS(v => ({ ...v, logo_path: r.logo_path })); setMsg('✅ Logo uploaded'); setTimeout(() => setMsg(''), 1500); }
+              catch (err) { setMsg('⚠️ ' + err.message); }
+            }} />
+          </label>
+        </div>
+
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Brand name</label>
         <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
 

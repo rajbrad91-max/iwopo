@@ -1,15 +1,21 @@
 import express from 'express';
+import multer from 'multer';
+import sharp from 'sharp';
+import fs from 'fs';
+import path from 'path';
 import { query } from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+const LOGO_DIR = '/var/www/vowflo/storage/logos';
+const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 8 * 1024 * 1024 } });
 const DEFAULTS = {
   brand_name: null, brand_color: '#2dd4bf', intro_text: 'Tell us about your event 💫', intro_link: '',
   show_phone: true, show_guests: true, show_times: true, show_location: true,
   show_getting_ready: true, show_notes: true,
   event_types: ['Wedding', 'Engagement', 'Portrait', 'Event', 'Other'],
   theme: 'classic', font: 'Inter', details_heading: 'Event Details',
-  custom_fields: [], background: 'none',
+  custom_fields: [], background: 'none', logo_path: '',
 };
 
 // PUBLIC: GET /api/inquiry-settings/:vendorId → used by the public form
@@ -48,6 +54,28 @@ router.put('/', requireAuth, async (req, res) => {
        JSON.stringify(b.custom_fields || []), b.background || 'none', b.intro_link || '']);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// VENDOR: upload logo → resize to webp, store path
+router.post('/logo', requireAuth, upload.single('logo'), async (req, res) => {
+  const v = req.user.vendor_id;
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const fname = `${v}_${Date.now()}.webp`;
+    await sharp(req.file.path).resize(400, 400, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 88 }).toFile(path.join(LOGO_DIR, fname));
+    fs.unlinkSync(req.file.path);
+    await query(`INSERT INTO inquiry_settings (vendor_id, logo_path) VALUES ($2,$1)
+      ON CONFLICT (vendor_id) DO UPDATE SET logo_path=$1, updated_at=NOW()`, [fname, v]);
+    res.json({ ok: true, logo_path: fname });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUBLIC: serve a logo
+router.get('/logo/:file', (req, res) => {
+  const f = path.join(LOGO_DIR, path.basename(req.params.file));
+  if (!fs.existsSync(f)) return res.status(404).end();
+  res.sendFile(f);
 });
 
 export default router;

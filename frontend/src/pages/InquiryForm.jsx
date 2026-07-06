@@ -78,12 +78,15 @@ export default function InquiryForm({ vendorId }) {
       {/* page-wide profession watermark */}
       {prof.icon && <div className="iq-watermark" aria-hidden>{Array.from({ length: 120 }).map((_, i) => <span key={i}>{prof.icon}</span>)}</div>}
       <div className={`iq-card iq-theme-${c.theme || 'classic'}`}>
-        {/* soft brand shade header */}
+        {/* header: logo left, brand + intro centered */}
         <div className="iq-hd">
-          <div className="iq-brand">⬡ {c.brand_name || 'Booking Inquiry'}</div>
-          {c.intro_link
-            ? <a className="iq-sub iq-sub-link" href={c.intro_link} target="_blank" rel="noopener noreferrer">{c.intro_text || 'Tell us about your event 💫'} ↗</a>
-            : <p className="iq-sub">{c.intro_text || 'Tell us about your event 💫'}</p>}
+          {c.logo_path && <img className="iq-logo" src={`/api/inquiry-settings/logo/${c.logo_path}`} alt="logo" />}
+          <div className="iq-hd-text">
+            <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
+            {c.intro_link
+              ? <a className="iq-sub iq-sub-link" href={c.intro_link} target="_blank" rel="noopener noreferrer">{c.intro_text || 'Tell us about your event'} ↗</a>
+              : <p className="iq-sub">{c.intro_text || 'Tell us about your event'}</p>}
+          </div>
         </div>
 
         <div className="iq-body">
