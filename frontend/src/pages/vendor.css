@@ -155,7 +155,12 @@
 
 /* ═══════════ 📱 RESPONSIVE ═══════════ */
 
-.dash .sidebar-toggle { display:none; }
+/* hamburger always visible (desktop + mobile) */
+.dash .sidebar-toggle { display:flex; }
+
+/* desktop: collapse sidebar to zero width */
+.dash .sidebar { transition:width .22s ease, margin-left .22s ease, padding .22s ease; overflow:hidden; }
+.dash.sidebar-collapsed .sidebar { width:0; padding-left:0; padding-right:0; margin-left:0; }
 
 /* Tablet (≤1000px): stack the 2-column dashboard */
 @media (max-width:1000px){
