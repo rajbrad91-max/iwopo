@@ -1480,6 +1480,7 @@ function FieldBuilder({ fields, setFields }) {
 function InqFormSettings({ user }) {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
+  const [saving, setSaving] = useState(false);
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   useEffect(() => {
@@ -1488,8 +1489,10 @@ function InqFormSettings({ user }) {
 
   async function save() {
     setMsg('');
-    try { await api.saveInquirySettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
+    setSaving(true);
+    try { await api.saveInquirySettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 2500); }
     catch (e) { setMsg('⚠️ ' + e.message); }
+    setSaving(false);
   }
   if (!s) return <div className="loading">Loading…</div>;
 
@@ -1568,7 +1571,9 @@ function InqFormSettings({ user }) {
           <FieldBuilder fields={s.custom_fields || []} setFields={(f) => setS({ ...s, custom_fields: f })} />
         </div>
 
-        <button className="refresh" onClick={save} style={{ marginTop: 16, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save form settings</button>
+        <button className="refresh" onClick={save} disabled={saving} style={{ marginTop: 16, width: '100%', background: '#2dd4bf', color: '#06231f' }}>
+          {saving ? '⏳ Saving…' : msg || '💾 Save form settings'}
+        </button>
       </div>
     </div>
   );
