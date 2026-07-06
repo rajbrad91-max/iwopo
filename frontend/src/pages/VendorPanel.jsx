@@ -1490,14 +1490,7 @@ function InqFormSettings({ user }) {
     try { await api.saveInquirySettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
-  const toggle = (k) => setS(prev => ({ ...prev, [k]: !prev[k] }));
-
   if (!s) return <div className="loading">Loading…</div>;
-
-  const toggles = [
-    ['show_phone', '📞 Phone'], ['show_guests', '👥 Guests'], ['show_times', '⏰ Times'],
-    ['show_location', '📍 Location'], ['show_getting_ready', '💄 Getting Ready'], ['show_notes', '📝 Notes'],
-  ];
 
   return (
     <div style={{ maxWidth: 560 }}>
@@ -1514,20 +1507,6 @@ function InqFormSettings({ user }) {
 
         <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 12 }}>Intro text</label>
         <input style={box} value={s.intro_text || ''} onChange={e => setS({ ...s, intro_text: e.target.value })} />
-
-        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 14 }}>Fields to show</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-          {toggles.map(([k, label]) => (
-            <button key={k} className="refresh" onClick={() => toggle(k)}
-              style={{ padding: '6px 12px', fontSize: 12, background: s[k] ? '#2dd4bf' : 'var(--panel-2)', color: s[k] ? '#06231f' : 'var(--muted)' }}>
-              {label} {s[k] ? '✓' : '✕'}
-            </button>
-          ))}
-        </div>
-
-        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 14 }}>Event types (comma separated)</label>
-        <input style={box} value={(s.event_types || []).join(', ')}
-          onChange={e => setS({ ...s, event_types: e.target.value.split(',').map(x => x.trim()).filter(Boolean) })} />
 
         {/* 🎨 Theme + font */}
         <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
