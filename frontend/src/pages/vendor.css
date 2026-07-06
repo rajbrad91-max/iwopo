@@ -232,6 +232,49 @@
 .bx-link { cursor: pointer; color: #2dd4bf; }
 .bx-del { cursor: pointer; }
 
+/* 🧾 Invoice box */
+.ib-wrap { margin-top: 20px; }
+.ib-head { display: flex; justify-content: space-between; align-items: center; }
+.ib-h3 { margin: 0; }
+.ib-msg { font-size: 13px; margin-top: 8px; }
+.ib-msg.is-ok { color: #4ade80; }
+.ib-msg.is-err { color: #fb7185; }
+.ib-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ib-item { display: flex; justify-content: space-between; align-items: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; }
+
+/* 📧 Email box */
+.eb-wrap { margin-top: 20px; }
+.eb-msg { font-size: 13px; margin-top: 8px; }
+.eb-msg.is-ok { color: #4ade80; }
+.eb-msg.is-err { color: #fb7185; }
+.eb-form { margin-top: 10px; }
+.eb-input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 9px; box-sizing: border-box; }
+.eb-body { min-height: 100px; margin-top: 8px; }
+.eb-send { margin-top: 8px; }
+
+/* 💰 Money section */
+.ms-wrap { margin-top: 20px; }
+.ms-status { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.ms-status-btn { padding: 5px 11px; font-size: 12px; background: var(--panel-2); color: var(--text); }
+.ms-status-btn.is-on { background: #2dd4bf; color: #06231f; }
+.ms-msg { font-size: 13px; margin-bottom: 10px; }
+.ms-msg.is-ok { color: #4ade80; }
+.ms-msg.is-err { color: #fb7185; }
+.ms-h3 { margin: 0 0 10px; }
+.ms-fields { display: flex; gap: 10px; margin-bottom: 12px; }
+.ms-field { flex: 1; }
+.ms-label { font-size: 11px; color: var(--muted); }
+.ms-input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 8px; box-sizing: border-box; }
+.ms-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; }
+.ms-chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; }
+.ms-chip-paid { background: #4ade8018; border-color: #4ade8044; color: #4ade80; }
+.ms-chip-due { background: #fbbf2418; border-color: #fbbf2444; color: #fbbf24; }
+.ms-strike { color: var(--muted); margin-left: 6px; }
+.ms-pay-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.ms-amt { flex: 1; }
+.ms-pay-list { display: flex; flex-direction: column; gap: 6px; }
+.ms-pay-item { display: flex; justify-content: space-between; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+
 /* ═══════════ 🍔 MENU BUTTON + COLLAPSE ═══════════ */
 
 /* menu button lives in the topbar (in-flow, no overlap) */

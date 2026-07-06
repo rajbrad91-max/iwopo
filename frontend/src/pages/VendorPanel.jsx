@@ -955,22 +955,22 @@ function InvoiceBox({ lead }) {
   }
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0 }}>🧾 Invoices</h3>
-        <button className="refresh" onClick={gen} disabled={busy} style={{ background: '#2dd4bf', color: '#06231f' }}>
+    <div className="ib-wrap">
+      <div className="ib-head">
+        <h3 className="ib-h3">🧾 Invoices</h3>
+        <button className="refresh bx-primary" onClick={gen} disabled={busy}>
           {busy ? 'Generating…' : '+ Generate invoice'}
         </button>
       </div>
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: msg[0] === '⚠' ? '#fb7185' : '#4ade80' }}>{msg}</div>}
+      {msg && <div className={`ib-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
       {list.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+        <div className="ib-list">
           {list.map(i => (
-            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+            <div key={i.id} className="ib-item">
               <span>🧾 <b>{i.invoice_number}</b> · ${Number(i.total).toFixed(2)} · balance ${Number(i.balance).toFixed(2)}</span>
-              <span style={{ display: 'flex', gap: 10 }}>
-                <span style={{ cursor: 'pointer', color: '#2dd4bf' }} onClick={() => copyLink(i.token)}>🔗 Copy link</span>
-                <span style={{ cursor: 'pointer' }} onClick={() => del(i.id)}>🗑️</span>
+              <span className="bx-crew-actions">
+                <span className="bx-link" onClick={() => copyLink(i.token)}>🔗 Copy link</span>
+                <span className="bx-del" onClick={() => del(i.id)}>🗑️</span>
               </span>
             </div>
           ))}
@@ -1261,17 +1261,16 @@ function EmailBox({ lead }) {
   }
 
   return (
-    <div style={{ marginTop: 20 }}>
+    <div className="eb-wrap">
       <button className="refresh" onClick={() => setOpen(!open)}>
         {open ? '✕ Close' : `📧 Email ${lead.name || 'client'}`}
       </button>
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</div>}
+      {msg && <div className={`eb-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
       {open && (
-        <div style={{ marginTop: 10 }}>
-          <input style={box} placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} />
-          <textarea style={{ ...box, minHeight: 100, marginTop: 8 }} placeholder="Your message…" value={body} onChange={e => setBody(e.target.value)} />
-          <button className="refresh" onClick={send} disabled={busy}
-            style={{ marginTop: 8, background: '#2dd4bf', color: '#06231f' }}>
+        <div className="eb-form">
+          <input className="eb-input" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} />
+          <textarea className="eb-input eb-body" placeholder="Your message…" value={body} onChange={e => setBody(e.target.value)} />
+          <button className="refresh bx-primary eb-send" onClick={send} disabled={busy}>
             {busy ? 'Sending…' : '📨 Send'}
           </button>
         </div>
@@ -1324,61 +1323,60 @@ function MoneySection({ lead }) {
 
   const sum = data?.summary;
   return (
-    <div style={{ marginTop: 20 }}>
+    <div className="ms-wrap">
       {/* Status */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div className="ms-status">
         {STATUSES.map(s => (
-          <button key={s} className="refresh" onClick={() => changeStatus(s)}
-            style={{ padding: '5px 11px', fontSize: 12, background: status === s ? '#2dd4bf' : 'var(--panel-2)', color: status === s ? '#06231f' : 'var(--text)' }}>
+          <button key={s} className={`refresh ms-status-btn ${status === s ? 'is-on' : ''}`} onClick={() => changeStatus(s)}>
             {S_ICON[s]} {s}
           </button>
         ))}
       </div>
-      {msg && <div style={{ fontSize: 13, color: msg[0] === '✅' ? '#4ade80' : '#fb7185', marginBottom: 10 }}>{msg}</div>}
+      {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
 
-      <h3 style={{ margin: '0 0 10px' }}>💰 Money</h3>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 11, color: 'var(--muted)' }}>Price override ($)</label>
-          <input style={{ ...box, width: '100%' }} type="number" placeholder="auto from package"
+      <h3 className="ms-h3">💰 Money</h3>
+      <div className="ms-fields">
+        <div className="ms-field">
+          <label className="ms-label">Price override ($)</label>
+          <input className="ms-input" type="number" placeholder="auto from package"
             value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 11, color: 'var(--muted)' }}>Discount %</label>
-          <input style={{ ...box, width: '100%' }} type="number"
+        <div className="ms-field">
+          <label className="ms-label">Discount %</label>
+          <input className="ms-input" type="number"
             value={money.discount_percent} onChange={e => setMoney({ ...money, discount_percent: e.target.value })} onBlur={saveMoney} />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 11, color: 'var(--muted)' }}>Deposit %</label>
-          <input style={{ ...box, width: '100%' }} type="number"
+        <div className="ms-field">
+          <label className="ms-label">Deposit %</label>
+          <input className="ms-input" type="number"
             value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
         </div>
       </div>
 
       {sum && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14, fontSize: 13 }}>
-          <span style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 12px' }}>💵 Total: <b>${sum.final_total}</b>{sum.discount_amount > 0 && <s style={{ color: 'var(--muted)', marginLeft: 6 }}>${sum.base_total}</s>}</span>
-          <span style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 12px' }}>🔐 Deposit: <b>${sum.deposit_amount}</b></span>
-          <span style={{ background: '#4ade8018', border: '1px solid #4ade8044', borderRadius: 8, padding: '7px 12px', color: '#4ade80' }}>✅ Paid: <b>${sum.paid}</b></span>
-          <span style={{ background: sum.balance > 0 ? '#fbbf2418' : '#4ade8018', border: '1px solid #fbbf2444', borderRadius: 8, padding: '7px 12px', color: sum.balance > 0 ? '#fbbf24' : '#4ade80' }}>⏳ Balance: <b>${sum.balance}</b></span>
+        <div className="ms-summary">
+          <span className="ms-chip">💵 Total: <b>${sum.final_total}</b>{sum.discount_amount > 0 && <s className="ms-strike">${sum.base_total}</s>}</span>
+          <span className="ms-chip">🔐 Deposit: <b>${sum.deposit_amount}</b></span>
+          <span className="ms-chip ms-chip-paid">✅ Paid: <b>${sum.paid}</b></span>
+          <span className={`ms-chip ${sum.balance > 0 ? 'ms-chip-due' : 'ms-chip-paid'}`}>⏳ Balance: <b>${sum.balance}</b></span>
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <input style={{ ...box, flex: 1 }} type="number" placeholder="Amount $" value={amt} onChange={e => setAmt(e.target.value)} />
-        <select style={box} value={method} onChange={e => setMethod(e.target.value)}>
+      <div className="ms-pay-row">
+        <input className="ms-input ms-amt" type="number" placeholder="Amount $" value={amt} onChange={e => setAmt(e.target.value)} />
+        <select className="ms-input" value={method} onChange={e => setMethod(e.target.value)}>
           <option value="manual">Manual</option><option value="etransfer">E-transfer</option>
           <option value="cash">Cash</option><option value="card">Card</option>
         </select>
-        <button className="refresh" onClick={pay} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Record payment</button>
+        <button className="refresh bx-primary" onClick={pay}>+ Record payment</button>
       </div>
 
       {data?.payments?.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="ms-pay-list">
           {data.payments.map(p => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
+            <div key={p.id} className="ms-pay-item">
               <span>💵 ${Number(p.amount).toFixed(2)} · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
-              <span style={{ cursor: 'pointer' }} onClick={() => delPay(p.id)}>🗑️</span>
+              <span className="bx-del" onClick={() => delPay(p.id)}>🗑️</span>
             </div>
           ))}
         </div>
