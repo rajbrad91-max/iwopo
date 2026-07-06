@@ -136,10 +136,12 @@
 }
 .dash .hdr-icon:hover { border-color: #2dd4bf66; transform: translateY(-1px); box-shadow: 0 4px 14px #2dd4bf22; }
 
-/* 📊 Dashboard 2-column layout (perfectposes style) */
-.dash .stats .card .ic { width:36px; height:36px; border-radius:50%; background:var(--v-icon-bg); display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:8px; }
+/* 📊 Dashboard: 2-column layout */
 .dash-grid { display:grid; grid-template-columns:1fr 380px; gap:22px; align-items:start; }
 .dash-right { position:sticky; top:20px; }
+
+/* stat tile icon circle */
+.dash .stats .card .ic { width:36px; height:36px; border-radius:50%; background:var(--v-icon-bg); display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:8px; }
 
 /* 🔵 event cards */
 .ev-card { display:flex; gap:14px; background:linear-gradient(160deg, var(--v-table-1), var(--v-table-2)); border:1px solid var(--v-card-line); border-radius:12px; padding:14px; margin-bottom:12px; cursor:pointer; transition:all .15s; box-shadow:0 6px 22px var(--v-shadow); }
