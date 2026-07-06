@@ -1,10 +1,16 @@
 import express from 'express';
+import multer from 'multer';
+import sharp from 'sharp';
+import fs from 'fs';
+import path from 'path';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFeatures } from '../lib/entitlements.js';
 
 const router = express.Router();
+const LOGO_DIR = '/var/www/vowflo/storage/logos';
+const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 8 * 1024 * 1024 } });
 
 // GET /api/me/features → feature keys this vendor has (super_admin gets '*')
 router.get('/features', requireAuth, async (req, res) => {
@@ -74,6 +80,50 @@ router.put('/password', requireAuth, async (req, res) => {
     await query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, req.user.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/me/profile → vendor business info
+router.get('/profile', requireAuth, async (req, res) => {
+  const vid = req.user.vendor_id;
+  if (!vid) return res.json({ profile: null });
+  try {
+    const { rows } = await query('SELECT id, business_name, phone, email, country, logo_path FROM vendors WHERE id=$1', [vid]);
+    res.json({ profile: rows[0] || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/me/profile → update business info
+router.put('/profile', requireAuth, async (req, res) => {
+  const vid = req.user.vendor_id;
+  if (!vid) return res.status(400).json({ error: 'No vendor' });
+  const { business_name, phone, email, country } = req.body;
+  try {
+    await query(
+      `UPDATE vendors SET business_name=COALESCE($1,business_name), phone=$2, email=$3, country=$4 WHERE id=$5`,
+      [business_name || null, phone || '', email || '', country || '', vid]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/me/logo → upload company logo (single source, used everywhere)
+router.post('/logo', requireAuth, upload.single('logo'), async (req, res) => {
+  const vid = req.user.vendor_id;
+  if (!vid) return res.status(400).json({ error: 'No vendor' });
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const fname = `${vid}_${Date.now()}.webp`;
+    await sharp(req.file.path).resize(400, 400, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 88 }).toFile(path.join(LOGO_DIR, fname));
+    fs.unlinkSync(req.file.path);
+    await query('UPDATE vendors SET logo_path=$1 WHERE id=$2', [fname, vid]);
+    res.json({ ok: true, logo_path: fname });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/me/logo/:file → serve a logo (public)
+router.get('/logo/:file', (req, res) => {
+  const f = path.join(LOGO_DIR, path.basename(req.params.file));
+  if (!fs.existsSync(f)) return res.status(404).end();
+  res.sendFile(f);
 });
 
 export default router;

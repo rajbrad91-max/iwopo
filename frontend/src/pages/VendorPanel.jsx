@@ -27,7 +27,10 @@ export default function VendorPanel({ onLogout }) {
   const [error, setError] = useState('');
   const [tab, setTab] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(() => window.innerWidth <= 820);
+  const [profile, setProfile] = useState(null);
   const user = getUser();
+
+  useEffect(() => { api.myProfile().then(d => setProfile(d.profile)).catch(() => {}); }, []);
 
   // 🌗 instant paint from last-known theme (avoids flash); load() then applies vendor's DB theme
   useEffect(() => {
@@ -69,7 +72,12 @@ export default function VendorPanel({ onLogout }) {
     <div className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
       {!collapsed && <div className="sidebar-backdrop" onClick={() => setCollapsed(true)} />}
       <aside className="sidebar">
-        <div className="brand">📸 <span className="nav-txt">My Studio<small>VENDOR</small></span></div>
+        <div className="brand">
+          {profile?.logo_path
+            ? <img className="brand-logo" src={`/api/me/logo/${profile.logo_path}`} alt="logo" />
+            : <span>📸</span>}
+          <span className="nav-txt">{profile?.business_name || 'My Studio'}<small>VENDOR</small></span>
+        </div>
         <div className="nav-group">WORK</div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => go('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></div>
         {has('leads') && <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => go('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span></div>}
@@ -1502,19 +1510,6 @@ function InqFormSettings({ user }) {
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub" style={{ marginBottom: 14 }}>Your link: <b style={{ color: '#2dd4bf' }}>alphabetaone.com/inquiry/{user?.vendor_id}</b> 🔗</p>
 
-        <label style={{ fontSize: 12, color: 'var(--muted)' }}>Logo 🖼️</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-          {s.logo_path && <img src={`/api/inquiry-settings/logo/${s.logo_path}`} alt="logo" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--line)' }} />}
-          <label className="refresh" style={{ padding: '7px 14px', fontSize: 12, cursor: 'pointer' }}>
-            📤 Upload logo
-            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
-              const f = e.target.files[0]; if (!f) return;
-              try { const r = await api.uploadLogo(f); setS(v => ({ ...v, logo_path: r.logo_path })); setMsg('✅ Logo uploaded'); setTimeout(() => setMsg(''), 1500); }
-              catch (err) { setMsg('⚠️ ' + err.message); }
-            }} />
-          </label>
-        </div>
-
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Brand name</label>
         <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
 
@@ -1757,6 +1752,8 @@ function PkgCard({ pkg, onSaved, onDelete }) {
 function SettingsView({ user }) {
   const [s, setS] = useState(null);
   const [sub, setSub] = useState('prefs'); // prefs | account | email
+  const [prof, setProf] = useState(null);
+  const [profMsg, setProfMsg] = useState('');
   const [saved, setSaved] = useState('');
   const [em, setEm] = useState({ email: user?.email || '', password: '' });
   const [pw, setPw] = useState({ current: '', next: '' });
@@ -1766,7 +1763,20 @@ function SettingsView({ user }) {
     api.mySettings().then(d => {
       setS(d.settings || { time_format: '12h', theme: 'dark', timezone: guessTz() });
     }).catch(() => setS({ time_format: '12h', theme: 'dark', timezone: guessTz() }));
+    api.myProfile().then(d => setProf(d.profile || {})).catch(() => setProf({}));
   }, []);
+
+  async function saveProfile() {
+    setProfMsg('⏳ Saving…');
+    try { await api.saveProfile(prof); setProfMsg('✅ Saved'); setTimeout(() => setProfMsg(''), 2000); }
+    catch (e) { setProfMsg('⚠️ ' + e.message); }
+  }
+  async function onLogoPick(e) {
+    const f = e.target.files[0]; if (!f) return;
+    setProfMsg('⏳ Uploading…');
+    try { const r = await api.uploadLogo(f); setProf(v => ({ ...v, logo_path: r.logo_path })); setProfMsg('✅ Logo updated'); setTimeout(() => setProfMsg(''), 2000); }
+    catch (err) { setProfMsg('⚠️ ' + err.message); }
+  }
   function guessTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/Vancouver'; } }
 
   async function savePrefs(next) {
@@ -1835,7 +1845,30 @@ function SettingsView({ user }) {
       {/* Account */}
       {sub === 'account' && (
       <div className="table-wrap" style={{ padding: 22 }}>
-        <h2 style={{ marginTop: 0 }}>🔐 Account</h2>
+        <h2 style={{ marginTop: 0 }}>🏢 Business Profile</h2>
+        {profMsg && <div style={{ fontSize: 13, color: profMsg[0] === '✅' ? '#4ade80' : 'var(--muted)', marginBottom: 10 }}>{profMsg}</div>}
+
+        {/* logo — single source, updates everywhere */}
+        <label style={{ fontSize: 13, color: '#9fb3b0' }}>Logo 🖼️</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '6px 0 14px' }}>
+          {prof?.logo_path && <img src={`/api/me/logo/${prof.logo_path}`} alt="logo" style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--line)' }} />}
+          <label className="refresh" style={{ padding: '7px 14px', fontSize: 12, cursor: 'pointer' }}>
+            📤 Upload logo
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoPick} />
+          </label>
+        </div>
+
+        <label style={{ fontSize: 13, color: '#9fb3b0' }}>Company name</label>
+        <input style={box} value={prof?.business_name || ''} onChange={e => setProf({ ...prof, business_name: e.target.value })} />
+        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Phone</label>
+        <input style={box} value={prof?.phone || ''} onChange={e => setProf({ ...prof, phone: e.target.value })} />
+        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Business email</label>
+        <input style={box} value={prof?.email || ''} onChange={e => setProf({ ...prof, email: e.target.value })} />
+        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Country</label>
+        <input style={box} value={prof?.country || ''} onChange={e => setProf({ ...prof, country: e.target.value })} />
+        <button className="refresh" onClick={saveProfile} style={{ marginTop: 12, background: '#2dd4bf', color: '#06231f' }}>💾 Save profile</button>
+
+        <h2 style={{ marginTop: 26 }}>🔐 Account</h2>
         {msg && <div style={{ padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 13, background: msg[0] === '✅' ? '#4ade8018' : '#fb718518', color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</div>}
 
         <label style={{ fontSize: 13, color: '#9fb3b0' }}>📧 Change email</label>

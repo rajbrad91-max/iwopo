@@ -1,14 +1,8 @@
 import express from 'express';
-import multer from 'multer';
-import sharp from 'sharp';
-import fs from 'fs';
-import path from 'path';
 import { query } from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
-const LOGO_DIR = '/var/www/vowflo/storage/logos';
-const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 8 * 1024 * 1024 } });
 const DEFAULTS = {
   brand_name: null, brand_color: '#2dd4bf', intro_text: 'Tell us about your event', intro_link: '',
   theme: 'classic', font: 'Inter', details_heading: 'Event Details',
@@ -18,11 +12,11 @@ const DEFAULTS = {
 // PUBLIC: GET /api/inquiry-settings/:vendorId → used by the public form
 router.get('/:vendorId', async (req, res) => {
   try {
-    const { rows: v } = await query('SELECT id, business_name FROM vendors WHERE id=$1', [req.params.vendorId]);
+    const { rows: v } = await query('SELECT id, business_name, logo_path FROM vendors WHERE id=$1', [req.params.vendorId]);
     if (!v[0]) return res.status(404).json({ error: 'Vendor not found' });
     const { rows } = await query('SELECT * FROM inquiry_settings WHERE vendor_id=$1', [req.params.vendorId]);
     const s = rows[0] || DEFAULTS;
-    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || v[0].business_name } });
+    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || v[0].business_name, logo_path: v[0].logo_path || '' } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -47,28 +41,6 @@ router.put('/', requireAuth, async (req, res) => {
        JSON.stringify(b.custom_fields || []), b.background || 'none']);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// VENDOR: upload logo → resize to webp, store path
-router.post('/logo', requireAuth, upload.single('logo'), async (req, res) => {
-  const v = req.user.vendor_id;
-  if (!v) return res.status(400).json({ error: 'No vendor' });
-  if (!req.file) return res.status(400).json({ error: 'No file' });
-  try {
-    const fname = `${v}_${Date.now()}.webp`;
-    await sharp(req.file.path).resize(400, 400, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 88 }).toFile(path.join(LOGO_DIR, fname));
-    fs.unlinkSync(req.file.path);
-    await query(`INSERT INTO inquiry_settings (vendor_id, logo_path) VALUES ($2,$1)
-      ON CONFLICT (vendor_id) DO UPDATE SET logo_path=$1, updated_at=NOW()`, [fname, v]);
-    res.json({ ok: true, logo_path: fname });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// PUBLIC: serve a logo
-router.get('/logo/:file', (req, res) => {
-  const f = path.join(LOGO_DIR, path.basename(req.params.file));
-  if (!fs.existsSync(f)) return res.status(404).end();
-  res.sendFile(f);
 });
 
 export default router;

@@ -80,7 +80,7 @@ export default function InquiryForm({ vendorId }) {
       <div className={`iq-card iq-theme-${c.theme || 'classic'}`}>
         {/* header: logo left, brand + intro centered */}
         <div className="iq-hd">
-          {c.logo_path && <img className="iq-logo" src={`/api/inquiry-settings/logo/${c.logo_path}`} alt="logo" />}
+          {c.logo_path && <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="logo" />}
           <div className="iq-hd-text">
             <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
             {c.intro_link

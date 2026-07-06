@@ -92,11 +92,13 @@ export const api = {
   setLeadStatus: (leadId, status) => request(`/bookings/${leadId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   inquirySettings: (vendorId) => request(`/inquiry-settings/${vendorId}`),
   saveInquirySettings: (data) => request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  myProfile: () => request('/me/profile'),
+  saveProfile: (data) => request('/me/profile', { method: 'PUT', body: JSON.stringify(data) }),
   uploadLogo: async (file) => {
     const fd = new FormData();
     fd.append('logo', file);
     const token = localStorage.getItem('vowflo_token');
-    const res = await fetch('/api/inquiry-settings/logo', {
+    const res = await fetch('/api/me/logo', {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: fd,
