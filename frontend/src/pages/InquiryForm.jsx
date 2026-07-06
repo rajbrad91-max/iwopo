@@ -75,15 +75,14 @@ export default function InquiryForm({ vendorId }) {
 
   return (
     <div className="iq-wrap" style={{ fontFamily: `'${font}', sans-serif`, '--brand': brand }}>
+      {/* page-wide profession watermark */}
+      {prof.icon && <div className="iq-watermark" aria-hidden>{Array.from({ length: 120 }).map((_, i) => <span key={i}>{prof.icon}</span>)}</div>}
       <div className={`iq-card iq-theme-${c.theme || 'classic'}`}>
         {/* soft brand shade header */}
         <div className="iq-hd">
           <div className="iq-brand">⬡ {c.brand_name || 'Booking Inquiry'}</div>
           <p className="iq-sub">{c.intro_text || 'Tell us about your event 💫'}</p>
         </div>
-
-        {/* watermark layer (pure CSS emoji, ~0 storage) */}
-        {prof.icon && <div className="iq-watermark" aria-hidden>{Array.from({ length: 40 }).map((_, i) => <span key={i}>{prof.icon}</span>)}</div>}
 
         <div className="iq-body">
           {/* ── Section 1: Contact Details ── */}

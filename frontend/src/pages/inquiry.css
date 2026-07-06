@@ -1,10 +1,8 @@
-/* 📷 cream photography watermark — inline SVG, tiled, ~0 storage */
+/* page bg = brand color (soft) */
 .iq-wrap {
   min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
   padding: 40px 20px; color: #3D3530;
-  background-color: #F5F0EA;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%233D3530' stroke-width='1.4' opacity='0.06'%3E%3Crect x='24' y='30' width='42' height='30' rx='4'/%3E%3Ccircle cx='45' cy='45' r='9'/%3E%3Ccircle cx='150' cy='48' r='16'/%3E%3Ccircle cx='150' cy='48' r='7'/%3E%3Cline x1='150' y1='24' x2='150' y2='32'/%3E%3Crect x='30' y='140' width='34' height='24' rx='3'/%3E%3Ccircle cx='47' cy='152' r='7'/%3E%3Cpath d='M140 150 l14 -10 v20 z'/%3E%3Crect x='120' y='140' width='22' height='20' rx='2'/%3E%3Cline x1='175' y1='120' x2='175' y2='150'/%3E%3Cline x1='165' y1='150' x2='185' y2='150'/%3E%3Cline x1='175' y1='150' x2='168' y2='170'/%3E%3Cline x1='175' y1='150' x2='182' y2='170'/%3E%3C/g%3E%3C/svg%3E");
-  background-repeat: repeat;
+  background-color: color-mix(in srgb, var(--brand, #C9A86A) 35%, #F5F0EA);
 }
 .iq-card {
   position: relative; overflow: hidden; width: 100%; max-width: 720px;
@@ -19,8 +17,9 @@
 
 .iq-body { position: relative; z-index: 2; padding: 24px 32px 32px; }
 
-/* profession watermark inside card */
-.iq-watermark { position: absolute; inset: 0; z-index: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 40px; padding: 40px; opacity: 0.05; font-size: 34px; pointer-events: none; user-select: none; overflow: hidden; }
+/* profession watermark — tiled across whole page background */
+.iq-watermark { position: fixed; inset: 0; z-index: 0; display: flex; flex-wrap: wrap; gap: 46px; padding: 40px; opacity: 0.08; font-size: 40px; pointer-events: none; user-select: none; overflow: hidden; align-content: flex-start; }
+.iq-watermark span { flex: 0 0 auto; }
 
 /* sections */
 .iq-section { padding: 20px 0; border-top: 1px solid #ECE4D8; }
