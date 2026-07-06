@@ -165,7 +165,7 @@ function NotifBell() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button className="refresh" onClick={toggle} style={{ position: 'relative' }}>
+      <button className="hdr-icon" onClick={toggle} style={{ position: 'relative' }}>
         🔔
         {data.unseen > 0 && (
           <span style={{ position: 'absolute', top: -5, right: -5, background: '#fb7185', color: '#fff', borderRadius: 12, fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>{data.unseen}</span>
