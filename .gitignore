@@ -4,3 +4,4 @@ dist/
 *.log
 vowflo_src.zip
 models/
+storage/
