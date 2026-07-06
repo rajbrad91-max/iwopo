@@ -80,8 +80,6 @@ tr:last-child td { border-bottom:none; }
 .badge.trial { background:var(--teal-soft); color:var(--teal); }
 .badge.past { background:#fb718522; color:var(--red); }
 
-@media (max-width:820px) { .stats { grid-template-columns:repeat(2,1fr); } }
-
 /* MANAGE BUTTON + DRAWER */
 .manage-btn { background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:6px 14px; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px; }
 .manage-btn:hover { border-color:var(--teal); color:var(--teal); }
