@@ -6,7 +6,7 @@ const router = express.Router();
 const DEFAULTS = {
   brand_name: null, brand_color: '#2dd4bf', intro_text: 'Tell us about your event', intro_link: '',
   theme: 'classic', font: 'Inter', details_heading: 'Event Details',
-  custom_fields: [], background: 'none', logo_path: '',
+  custom_fields: [], background: 'none',
 };
 
 // PUBLIC: GET /api/inquiry-settings/:vendorId → used by the public form
