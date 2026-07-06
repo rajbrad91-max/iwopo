@@ -157,18 +157,13 @@
 
 /* ═══════════ 🍔 MENU BUTTON + COLLAPSE ═══════════ */
 
-/* floating menu button — always on top, nothing covers it */
-.menu-fab {
-  position:fixed; top:14px; left:14px; z-index:100;
-  width:42px; height:42px; border-radius:11px;
+/* menu button lives in the topbar (in-flow, no overlap) */
+.menu-btn {
+  width:40px; height:40px; border-radius:11px; flex-shrink:0;
   background:var(--v-side-1); border:1px solid var(--v-side-line); color:var(--text);
-  font-size:19px; cursor:pointer; display:flex; align-items:center; justify-content:center;
-  box-shadow:0 4px 14px rgba(0,0,0,.2);
+  font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
 }
-.menu-fab:hover { border-color:#2dd4bf66; }
-
-/* make room for the fab at top of sidebar */
-.dash .sidebar { padding-top:64px; }
+.menu-btn:hover { border-color:#2dd4bf66; }
 
 /* nav item = icon + text */
 .dash .nav-item, .dash .logout { display:flex; align-items:center; gap:10px; }
@@ -196,17 +191,14 @@
   .dash .sidebar {
     position:fixed; top:0; left:0; height:100vh; width:250px; z-index:60;
     margin-left:-260px; box-shadow:4px 0 30px rgba(0,0,0,.4);
-    transition:margin-left .26s ease;
   }
-  /* on mobile, open = NOT collapsed; always show text */
   .dash.sidebar-collapsed .sidebar { width:250px; margin-left:-260px; }
   .dash:not(.sidebar-collapsed) .sidebar { width:250px; margin-left:0; }
   .dash:not(.sidebar-collapsed) .nav-txt { display:inline; }
   .dash:not(.sidebar-collapsed) .nav-group { opacity:1; }
   .sidebar-backdrop { display:block; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:55; }
 
-  /* main resets — fab floats over */
-  .dash .main { padding:16px 12px; padding-top:64px; overflow-x:hidden; }
+  .dash .main { padding:16px 12px; overflow-x:hidden; }
   .dash *, .dash *::before { box-sizing:border-box; }
   .dash-left, .dash-right { min-width:0; }
   .dash input, .dash select, .dash textarea { max-width:100%; }
@@ -231,6 +223,6 @@
   .dash .stats { gap:5px; }
   .dash .stats .card { padding:8px 3px; }
   .dash .stats .card .label { font-size:7px; }
-  .dash .main { padding:12px 8px; padding-top:64px; }
+  .dash .main { padding:12px 8px; }
   .dash .hdr-icon { width:36px; height:36px; }
 }

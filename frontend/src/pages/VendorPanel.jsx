@@ -66,7 +66,6 @@ export default function VendorPanel({ onLogout }) {
 
   return (
     <div className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
-      <button className="menu-fab" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
       {!collapsed && <div className="sidebar-backdrop" onClick={() => setCollapsed(true)} />}
       <aside className="sidebar">
         <div className="brand">📸 <span className="nav-txt">My Studio<small>VENDOR</small></span></div>
@@ -91,6 +90,7 @@ export default function VendorPanel({ onLogout }) {
       <main className="main">
         <div className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
               <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'galleries' ? 'Galleries' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
