@@ -137,7 +137,7 @@
 .dash .hdr-icon:hover { border-color: #2dd4bf66; transform: translateY(-1px); box-shadow: 0 4px 14px #2dd4bf22; }
 
 /* 📊 Dashboard 2-column layout (perfectposes style) */
-.dash .stats .card .ic { display:none; }  /* icon circle only shows on mobile */
+.dash .stats .card .ic { width:36px; height:36px; border-radius:50%; background:var(--v-icon-bg); display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:8px; }
 .dash-grid { display:grid; grid-template-columns:1fr 380px; gap:22px; align-items:start; }
 .dash-right { position:sticky; top:20px; }
 
@@ -193,10 +193,10 @@
   .dash .topbar h1 { font-size:18px; }
   .dash .topbar .sub { font-size:11.5px; margin-top:2px; }
 
-  /* 4 small square tiles in one row */
+  /* 4 small tiles in one row */
   .dash .stats { grid-template-columns:repeat(4,1fr); gap:8px; margin-top:6px; }
-  .dash .stats .card { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px 4px; gap:3px; }
-  .dash .stats .card .ic { width:30px; height:30px; border-radius:50%; background:var(--v-icon-bg); display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .dash .stats .card { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:10px 4px; gap:2px; }
+  .dash .stats .card .ic { width:26px; height:26px; font-size:13px; margin-bottom:2px; }
   .dash .stats .card .value { font-size:19px; font-weight:800; }
   .dash .stats .card .label { font-size:8px; line-height:1.1; color:var(--v-muted); }
 
@@ -208,7 +208,7 @@
 /* Fold / very small (≤380px) */
 @media (max-width:380px){
   .dash .stats { gap:5px; }
-  .dash .stats .card .value { font-size:16px; }
+  .dash .stats .card { padding:8px 3px; }
   .dash .stats .card .label { font-size:7px; }
   .dash .main { padding:12px 8px; }
   .dash .hdr-icon { width:36px; height:36px; }
