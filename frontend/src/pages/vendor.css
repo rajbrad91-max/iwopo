@@ -177,7 +177,7 @@
 .sidebar-backdrop { display:none; }
 
 /* ── DESKTOP COLLAPSE → icons only ── */
-.dash .sidebar { transition:width .22s ease; overflow:hidden; }
+.dash .sidebar { transition:width .22s ease, margin-left .26s ease; overflow:hidden; }
 .dash.sidebar-collapsed .sidebar { width:66px; }
 .dash.sidebar-collapsed .nav-txt { display:none; }
 .dash.sidebar-collapsed .nav-group { opacity:0; }
