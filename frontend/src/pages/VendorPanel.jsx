@@ -726,67 +726,66 @@ function LeadDetail({ lead, onBack }) {
   }
 
   const yn = (v) => v ? '✅ Yes' : '❌ No';
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
   const row = (label, value) => (
-    <div style={{ display: 'flex', padding: '10px 0', borderBottom: '1px solid var(--line)', fontSize: 14 }}>
-      <div style={{ width: 180, color: 'var(--muted)', fontWeight: 600 }}>{label}</div>
+    <div className="ld-row">
+      <div className="ld-label">{label}</div>
       <div>{value || '—'}</div>
     </div>
   );
   const eRow = (label, k, type) => (
-    <div style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-      <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>{label}</label>
-      <input style={box} type={type || 'text'} value={f[k] ?? ''} onChange={e => set(k, e.target.value)} />
+    <div className="ld-erow">
+      <label className="ld-elabel">{label}</label>
+      <input className="ld-input" type={type || 'text'} value={f[k] ?? ''} onChange={e => set(k, e.target.value)} />
     </div>
   );
 
   // ---- EDIT MODE ----
   if (edit) return (
-    <div className="table-wrap" style={{ padding: 24, maxWidth: 640 }}>
-      <button className="refresh" onClick={() => setEdit(false)} style={{ marginBottom: 16 }}>← Cancel</button>
-      <h2 style={{ marginTop: 0 }}>✏️ Edit Lead</h2>
-      {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#fb718518', color: '#fb7185' }}>{msg}</div>}
+    <div className="table-wrap ld-wrap">
+      <button className="refresh ld-cancel" onClick={() => setEdit(false)}>← Cancel</button>
+      <h2 className="ld-h2">✏️ Edit Lead</h2>
+      {msg && <div className="ld-msg is-err">{msg}</div>}
 
       {eRow('👤 Name', 'name')}
       {eRow('📧 Email', 'email')}
       {eRow('📞 Phone', 'phone')}
       {eRow('🎉 Event type', 'event_type')}
       {eRow('📅 Date', 'event_date', 'date')}
-      <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ Start</label>
-          <input style={box} type="time" value={f.timing_from || ''} onChange={e => setTime('timing_from', e.target.value)} />
+      <div className="ld-erow ld-time-row">
+        <div className="ld-time-col">
+          <label className="ld-elabel">⏰ Start</label>
+          <input className="ld-input" type="time" value={f.timing_from || ''} onChange={e => setTime('timing_from', e.target.value)} />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>⏰ End</label>
-          <input style={box} type="time" value={f.timing_to || ''} onChange={e => setTime('timing_to', e.target.value)} />
+        <div className="ld-time-col">
+          <label className="ld-elabel">⏰ End</label>
+          <input className="ld-input" type="time" value={f.timing_to || ''} onChange={e => setTime('timing_to', e.target.value)} />
         </div>
       </div>
       {row('⏱️ Hours (auto)', f.hours)}
       {eRow('📍 Location', 'location')}
       {eRow('👥 Guests', 'guests', 'number')}
 
-      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
-        <label style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
-          <input type="checkbox" checked={!!f.gr_bride} onChange={e => set('gr_bride', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#2dd4bf' }} />
+      <div className="ld-check-block">
+        <label className="ld-check-lbl">
+          <input type="checkbox" checked={!!f.gr_bride} onChange={e => set('gr_bride', e.target.checked)} className="ld-check" />
           💄 Bride — Getting Ready
         </label>
-        {f.gr_bride && <input style={{ ...box, marginTop: 8 }} placeholder="Venue (optional)" value={f.gr_bride_venue || ''} onChange={e => set('gr_bride_venue', e.target.value)} />}
+        {f.gr_bride && <input className="ld-input ld-venue" placeholder="Venue (optional)" value={f.gr_bride_venue || ''} onChange={e => set('gr_bride_venue', e.target.value)} />}
       </div>
-      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
-        <label style={{ fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
-          <input type="checkbox" checked={!!f.gr_groom} onChange={e => set('gr_groom', e.target.checked)} style={{ width: 16, height: 16, accentColor: '#2dd4bf' }} />
+      <div className="ld-check-block">
+        <label className="ld-check-lbl">
+          <input type="checkbox" checked={!!f.gr_groom} onChange={e => set('gr_groom', e.target.checked)} className="ld-check" />
           😎 Groom — Getting Ready
         </label>
-        {f.gr_groom && <input style={{ ...box, marginTop: 8 }} placeholder="Venue (optional)" value={f.gr_groom_venue || ''} onChange={e => set('gr_groom_venue', e.target.value)} />}
+        {f.gr_groom && <input className="ld-input ld-venue" placeholder="Venue (optional)" value={f.gr_groom_venue || ''} onChange={e => set('gr_groom_venue', e.target.value)} />}
       </div>
 
-      <div style={{ padding: '8px 0' }}>
-        <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, display: 'block', marginBottom: 5 }}>📝 Notes</label>
-        <textarea style={{ ...box, minHeight: 70 }} value={f.notes || ''} onChange={e => set('notes', e.target.value)} />
+      <div className="ld-notes">
+        <label className="ld-elabel">📝 Notes</label>
+        <textarea className="ld-input ld-textarea" value={f.notes || ''} onChange={e => set('notes', e.target.value)} />
       </div>
 
-      <button className="refresh" onClick={save} disabled={busy} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>
+      <button className="refresh ld-save" onClick={save} disabled={busy}>
         {busy ? 'Saving…' : '💾 Save changes'}
       </button>
     </div>
@@ -794,21 +793,20 @@ function LeadDetail({ lead, onBack }) {
 
   // ---- VIEW MODE ----
   return (
-    <div className="table-wrap" style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+    <div className="table-wrap ld-wrap-view">
+      <div className="ld-topbar">
         <button className="refresh" onClick={onBack}>← Back to leads</button>
-        <button className="refresh" onClick={() => { setF({ ...lead }); setEdit(true); }} style={{ background: '#2dd4bf', color: '#06231f' }}>✏️ Edit</button>
+        <button className="refresh ld-edit-btn" onClick={() => { setF({ ...lead }); setEdit(true); }}>✏️ Edit</button>
       </div>
-      <h2 style={{ marginTop: 0 }}>{lead.name} · {lead.event_type}</h2>
-      {msg && <div style={{ padding: 10, borderRadius: 8, margin: '0 0 12px', fontSize: 13, background: '#4ade8018', color: '#4ade80' }}>{msg}</div>}
+      <h2 className="ld-h2">{lead.name} · {lead.event_type}</h2>
+      {msg && <div className="ld-msg is-ok">{msg}</div>}
 
       <div className="lead-grid">
       <div className="lead-left">
 
-      <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 180, color: 'var(--muted)', fontWeight: 600, fontSize: 14 }}>📦 Package</div>
-        <select value={pkgId} onChange={e => assignPkg(e.target.value)}
-          style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8, flex: 1 }}>
+      <div className="ld-pkg-row">
+        <div className="ld-label">📦 Package</div>
+        <select className="ld-select" value={pkgId} onChange={e => assignPkg(e.target.value)}>
           <option value="">— No package —</option>
           {pkgs.map(p => <option key={p.id} value={p.id}>{p.tplName} → {p.name} (${Number(p.base_price).toFixed(0)})</option>)}
         </select>
