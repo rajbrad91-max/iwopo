@@ -878,53 +878,51 @@ function BookingExtras({ lead }) {
   }
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <h3 style={{ margin: '0 0 10px' }}>📦 Booking extras {msg && <span style={{ fontSize: 13, color: msg[0] === '⚠' ? '#fb7185' : '#4ade80' }}>{msg}</span>}</h3>
+    <div className="bx-wrap">
+      <h3 className="bx-h3">📦 Booking extras {msg && <span className={`bx-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</span>}</h3>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div className="bx-flags">
         {lead.client_token && (
-          <button className="refresh" onClick={copyPortal} style={{ background: '#2dd4bf', color: '#06231f' }}>🔗 Client portal link</button>
+          <button className="refresh bx-primary" onClick={copyPortal}>🔗 Client portal link</button>
         )}
-        <button className="refresh" onClick={() => saveFlags({ billed: !flags.billed })}
-          style={{ background: flags.billed ? '#4ade8022' : 'var(--panel-2)', color: flags.billed ? '#4ade80' : 'var(--text)' }}>
+        <button className={`refresh bx-toggle ${flags.billed ? 'is-on' : ''}`} onClick={() => saveFlags({ billed: !flags.billed })}>
           🧾 Billed {flags.billed ? '✓' : ''}
         </button>
-        <button className="refresh" onClick={() => saveFlags({ delivered: !flags.delivered })}
-          style={{ background: flags.delivered ? '#4ade8022' : 'var(--panel-2)', color: flags.delivered ? '#4ade80' : 'var(--text)' }}>
+        <button className={`refresh bx-toggle ${flags.delivered ? 'is-on' : ''}`} onClick={() => saveFlags({ delivered: !flags.delivered })}>
           📦 Delivered {flags.delivered ? '✓' : ''}
         </button>
       </div>
 
-      <label style={{ fontSize: 11, color: 'var(--muted)' }}>💒 Ceremony details</label>
-      <textarea style={{ ...box, width: '100%', minHeight: 46 }} value={flags.ceremony}
+      <label className="bx-label">💒 Ceremony details</label>
+      <textarea className="bx-input bx-ceremony" value={flags.ceremony}
         onChange={e => setFlags({ ...flags, ceremony: e.target.value })} onBlur={() => saveFlags({})} />
 
-      <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginTop: 10 }}>📝 Booking notes (private)</label>
-      <textarea style={{ ...box, width: '100%', minHeight: 60 }} value={flags.booking_notes}
+      <label className="bx-label bx-label-mt">📝 Booking notes (private)</label>
+      <textarea className="bx-input bx-notes" value={flags.booking_notes}
         onChange={e => setFlags({ ...flags, booking_notes: e.target.value })} onBlur={() => saveFlags({})} />
 
-      <h3 style={{ margin: '16px 0 8px' }}>👷 Event crew</h3>
+      <h3 className="bx-h3 bx-crew-h">👷 Event crew</h3>
       {crew.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No crew in your roster yet — add them in 👷 My Crew tab first.</div>
+        <div className="bx-empty">No crew in your roster yet — add them in 👷 My Crew tab first.</div>
       ) : (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          <select style={box} value={pick.crew_member_id} onChange={e => setPick({ ...pick, crew_member_id: e.target.value })}>
+        <div className="bx-assign-row">
+          <select className="bx-input" value={pick.crew_member_id} onChange={e => setPick({ ...pick, crew_member_id: e.target.value })}>
             <option value="">👤 Pick crew…</option>
             {crew.map(c => <option key={c.id} value={c.id}>{c.name}{c.role ? ` (${c.role})` : ''}</option>)}
           </select>
-          <input style={{ ...box, width: 130 }} placeholder="Duty" value={pick.duty} onChange={e => setPick({ ...pick, duty: e.target.value })} />
-          <input style={{ ...box, width: 96 }} placeholder="Arrive" value={pick.arrive_time} onChange={e => setPick({ ...pick, arrive_time: e.target.value })} />
-          <input style={{ ...box, width: 96 }} placeholder="Leave" value={pick.leave_time} onChange={e => setPick({ ...pick, leave_time: e.target.value })} />
-          <button className="refresh" onClick={assign} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Assign</button>
+          <input className="bx-input bx-duty" placeholder="Duty" value={pick.duty} onChange={e => setPick({ ...pick, duty: e.target.value })} />
+          <input className="bx-input bx-time" placeholder="Arrive" value={pick.arrive_time} onChange={e => setPick({ ...pick, arrive_time: e.target.value })} />
+          <input className="bx-input bx-time" placeholder="Leave" value={pick.leave_time} onChange={e => setPick({ ...pick, leave_time: e.target.value })} />
+          <button className="refresh bx-primary" onClick={assign}>+ Assign</button>
         </div>
       )}
       {assigned.map(a => (
-        <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 6 }}>
+        <div key={a.id} className="bx-crew-item">
           <span>👤 <b>{a.name}</b>{a.duty ? ` · ${a.duty}` : ''}{a.arrive_time ? ` · ${a.arrive_time}→${a.leave_time || '?'}` : ''}
             {a.checked_in_at ? ' · ✅ in' : ''}{a.checked_out_at ? ' · 🏁 out' : ''}</span>
-          <span style={{ display: 'flex', gap: 10 }}>
-            <span style={{ cursor: 'pointer', color: '#2dd4bf' }} onClick={() => copyCheckin(a.checkin_token)}>🔗 Check-in link</span>
-            <span style={{ cursor: 'pointer' }} onClick={() => unassign(a.id)}>🗑️</span>
+          <span className="bx-crew-actions">
+            <span className="bx-link" onClick={() => copyCheckin(a.checkin_token)}>🔗 Check-in link</span>
+            <span className="bx-del" onClick={() => unassign(a.id)}>🗑️</span>
           </span>
         </div>
       ))}
