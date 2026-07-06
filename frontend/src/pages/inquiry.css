@@ -1,4 +1,6 @@
-.iq-wrap { min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; background: radial-gradient(1000px 500px at 50% -5%, color-mix(in srgb, var(--brand) 20%, transparent), #0a1013 65%); }
+.iq-wrap { min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; background: var(--brand, #2dd4bf); }
+.iq-wrap::before { content: ''; position: fixed; inset: 0; background: radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--brand, #2dd4bf) 55%, transparent), #0a1013 60%); z-index: 0; }
+.iq-wrap > * { position: relative; z-index: 1; }
 .iq-card { position: relative; overflow: hidden; background: #131e22; border: 1px solid #223238; border-radius: 18px; width: 100%; max-width: 720px; color: #e6f0f2; }
 
 /* soft brand shade header */
