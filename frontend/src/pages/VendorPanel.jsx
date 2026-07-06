@@ -595,6 +595,7 @@ function LeadsView() {
   const [sel, setSel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('active'); // active | history
+  const [filter, setFilter] = useState('all'); // all | new | quoted | booked
   const [checked, setChecked] = useState([]);
   const [msg, setMsg] = useState('');
 
@@ -627,8 +628,35 @@ function LeadsView() {
 
   if (sel) return <LeadDetail lead={sel} onBack={() => { setSel(null); load(); }} />;
 
+  // 📊 stat tiles + filtering
+  const counts = {
+    all: leads.length,
+    new: leads.filter(l => l.status === 'new').length,
+    quoted: leads.filter(l => l.status === 'quoted').length,
+    booked: leads.filter(l => l.status === 'booked').length,
+  };
+  const shown = filter === 'all' ? leads : leads.filter(l => l.status === filter);
+  const TILES = [
+    ['all', '📋', 'Total Leads'],
+    ['new', '🆕', 'New'],
+    ['quoted', '📤', 'Packages Sent'],
+    ['booked', '✅', 'Booked'],
+  ];
+
   return (
     <div>
+      {view === 'active' && (
+        <div className="lead-stats">
+          {TILES.map(([key, icon, label]) => (
+            <button key={key} className={`lead-stat ${filter === key ? 'is-on' : ''}`} onClick={() => setFilter(key)}>
+              <span className="lead-stat-ic">{icon}</span>
+              <span className="lead-stat-val">{counts[key]}</span>
+              <span className="lead-stat-lbl">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="leads-toolbar">
         <div className="leads-tabs">
           <button className={`refresh ${view === 'active' ? 'is-on' : ''}`} onClick={() => setView('active')}>📋 Active</button>
@@ -648,9 +676,9 @@ function LeadsView() {
           <tbody>
             {loading ? (
               <tr><td colSpan="8" className="empty">Loading…</td></tr>
-            ) : leads.length === 0 ? (
+            ) : shown.length === 0 ? (
               <tr><td colSpan="8" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
-            ) : leads.map(l => (
+            ) : shown.map(l => (
               <tr key={l.id} onClick={() => view === 'active' && setSel(l)} className={view === 'active' ? 'row-clickable' : ''}>
                 {view === 'active' && (
                   <td className="cell-check" onClick={e => toggleCheck(l.id, e)}>

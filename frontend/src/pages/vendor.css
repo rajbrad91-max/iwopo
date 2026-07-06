@@ -166,6 +166,16 @@
 .lead-right > * { margin-bottom: 16px; }
 @media (max-width: 900px){ .lead-grid { grid-template-columns: 1fr; } }
 
+/* 📊 Lead stat tiles */
+.lead-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.lead-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 16px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; transition: border-color .15s, transform .1s; }
+.lead-stat:hover { border-color: #2dd4bf88; transform: translateY(-1px); }
+.lead-stat.is-on { border-color: #2dd4bf; background: #2dd4bf14; }
+.lead-stat-ic { font-size: 16px; }
+.lead-stat-val { font-size: 26px; font-weight: 800; }
+.lead-stat-lbl { font-size: 12px; color: var(--muted); }
+@media (max-width: 640px){ .lead-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+
 /* 📋 Leads list */
 .leads-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .leads-tabs, .leads-actions { display: flex; gap: 8px; align-items: center; }
