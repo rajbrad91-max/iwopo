@@ -1,3 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@400;600;800&family=Playfair+Display:wght@400;600;800&family=Montserrat:wght@400;600;800&family=Lora:wght@400;600;700&display=swap');
+
+/* 🎨 THEMES — change card look */
+.iq-theme-classic { border-radius: 20px; }
+.iq-theme-modern { border-radius: 8px; }
+.iq-theme-modern .iq-hd { background: #4A3E3D; }
+.iq-theme-modern .iq-brand, .iq-theme-modern .iq-sub { color: #F5F0EA; }
+.iq-theme-elegant { border-radius: 26px; }
+.iq-theme-elegant .iq-section-title { font-style: italic; letter-spacing: 1px; }
+.iq-theme-bold .iq-hd { background: var(--brand, #C9A86A); }
+.iq-theme-bold .iq-brand, .iq-theme-bold .iq-sub { color: #fff; }
+.iq-theme-bold .iq-section-title { text-transform: uppercase; font-size: 17px; }
+.iq-theme-minimal { border-radius: 4px; box-shadow: none; border: 1px solid #E8E0D5; }
+.iq-theme-minimal .iq-hd { background: #FAF8F5; }
+
 /* page bg = brand color (soft) */
 .iq-wrap {
   min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
