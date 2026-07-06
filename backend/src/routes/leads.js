@@ -17,8 +17,12 @@ router.get('/', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   try {
     const { rows } = vid
-      ? await query('SELECT * FROM leads WHERE vendor_id=$1 AND archived_at IS NULL ORDER BY created_at DESC', [vid])
-      : await query('SELECT * FROM leads WHERE archived_at IS NULL ORDER BY created_at DESC');
+      ? await query(`SELECT l.*, p.name AS package_name FROM leads l
+          LEFT JOIN vendor_packages p ON p.id = l.package_id
+          WHERE l.vendor_id=$1 AND l.archived_at IS NULL ORDER BY l.created_at DESC`, [vid])
+      : await query(`SELECT l.*, p.name AS package_name FROM leads l
+          LEFT JOIN vendor_packages p ON p.id = l.package_id
+          WHERE l.archived_at IS NULL ORDER BY l.created_at DESC`);
     res.json({ leads: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

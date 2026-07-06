@@ -644,12 +644,12 @@ function LeadsView() {
 
       <div className="table-wrap">
         <table>
-          <thead><tr>{view === 'active' && <th className="col-check"></th>}<th>Name</th><th>Event</th><th>Date</th><th>Status</th>{view === 'history' && <th></th>}</tr></thead>
+          <thead><tr>{view === 'active' && <th className="col-check"></th>}<th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" className="empty">Loading…</td></tr>
+              <tr><td colSpan="8" className="empty">Loading…</td></tr>
             ) : leads.length === 0 ? (
-              <tr><td colSpan="6" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
+              <tr><td colSpan="8" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
             ) : leads.map(l => (
               <tr key={l.id} onClick={() => view === 'active' && setSel(l)} className={view === 'active' ? 'row-clickable' : ''}>
                 {view === 'active' && (
@@ -660,10 +660,14 @@ function LeadsView() {
                 <td className="biz">{l.name}</td>
                 <td>{l.event_type}</td>
                 <td>{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
+                <td>{l.location || '—'}</td>
+                <td>{l.package_name || '—'}</td>
                 <td><span className="badge trial">{l.status}</span></td>
-                {view === 'history' && (
-                  <td><span className="lead-restore" onClick={e => restore(l.id, e)}>↩️ Restore</span></td>
-                )}
+                <td>
+                  {view === 'active'
+                    ? <span className="lead-restore" onClick={e => { e.stopPropagation(); setSel(l); }}>👁️ Open</span>
+                    : <span className="lead-restore" onClick={e => restore(l.id, e)}>↩️ Restore</span>}
+                </td>
               </tr>
             ))}
           </tbody>
