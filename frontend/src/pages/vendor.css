@@ -200,9 +200,9 @@
   .dash .stats .card .value { font-size:19px; font-weight:800; }
   .dash .stats .card .label { font-size:8px; line-height:1.1; color:var(--v-muted); }
 
-  /* wide tables scroll instead of overflow */
-  .table-wrap { overflow-x:auto; }
-  .table-wrap table { min-width:460px; }
+  /* tables fit screen, smaller text */
+  .dash .table-wrap table { width:100%; font-size:12.5px; }
+  .dash .table-wrap th, .dash .table-wrap td { padding:8px 6px; }
 }
 
 /* Fold / very small (≤380px) */
