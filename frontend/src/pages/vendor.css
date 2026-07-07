@@ -191,6 +191,28 @@
 .lead-check { accent-color: #2dd4bf; pointer-events: none; }
 .lead-restore { cursor: pointer; color: #2dd4bf; font-size: 12px; }
 
+/* 📱 Leads as cards on mobile */
+@media (max-width: 720px) {
+  .leads-table, .leads-table tbody, .leads-table tr { display: block; width: 100%; }
+  .leads-table thead { display: none; }
+  .leads-table tr {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .leads-table td {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border: none; text-align: right;
+  }
+  .leads-table td::before {
+    content: attr(data-label); color: var(--muted); font-size: 12px; font-weight: 600; text-align: left;
+  }
+  .leads-table td.cell-check { justify-content: flex-start; }
+  .leads-table td.cell-check::before { display: none; }
+  .leads-table td.biz { font-size: 15px; font-weight: 700; }
+  .leads-table td.empty { justify-content: center; }
+  .leads-table td.empty::before { display: none; }
+}
+
 /* ➕🔍🗑️ lead action icons */
 .lead-ic-btn { width: 38px; height: 38px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .lead-ic-btn:hover { border-color: #2dd4bf88; }

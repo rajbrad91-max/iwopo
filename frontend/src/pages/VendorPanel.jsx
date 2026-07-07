@@ -745,7 +745,7 @@ function LeadsView() {
       {showAdd && <AddLeadModal vendorId={getUser()?.vendor_id} onClose={() => setShowAdd(false)} onSaveDone={() => { setShowAdd(false); load(); }} />}
 
       <div className="table-wrap">
-        <table>
+        <table className="leads-table">
           <thead><tr>{view === 'active' && <th className="col-check"></th>}<th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {loading ? (
@@ -759,13 +759,13 @@ function LeadsView() {
                     <input type="checkbox" readOnly checked={checked.includes(l.id)} className="lead-check" />
                   </td>
                 )}
-                <td className="biz">{l.name}</td>
-                <td>{l.event_type}</td>
-                <td>{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
-                <td>{l.location || '—'}</td>
-                <td>{l.package_name || '—'}</td>
-                <td><span className="badge trial">{l.status}</span></td>
-                <td>
+                <td className="biz" data-label="Client">{l.name}</td>
+                <td data-label="Event">{l.event_type}</td>
+                <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
+                <td data-label="Location">{l.location || '—'}</td>
+                <td data-label="Packages">{l.package_name || '—'}</td>
+                <td data-label="Status"><span className="badge trial">{l.status}</span></td>
+                <td data-label="Actions">
                   {view === 'active'
                     ? <span className="lead-restore" onClick={e => { e.stopPropagation(); setSel(l); }}>👁️ Open</span>
                     : <span className="lead-restore" onClick={e => restore(l.id, e)}>↩️ Restore</span>}
