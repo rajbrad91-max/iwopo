@@ -990,6 +990,7 @@ function ContractsBox({ lead }) {
   );
 }
 
+const STATUSES = ['new', 'contacted', 'quoted', 'booked', 'completed', 'cancelled'];
 const S_ICON = { new: '🆕', contacted: '📞', quoted: '💬', booked: '✅', completed: '🏁', cancelled: '❌' };
 
 function MoneySection({ lead }) {
