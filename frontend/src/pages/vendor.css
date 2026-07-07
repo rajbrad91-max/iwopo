@@ -191,60 +191,60 @@
 .lead-check { accent-color: #2dd4bf; pointer-events: none; }
 .lead-restore { cursor: pointer; color: #2dd4bf; font-size: 12px; }
 
-/* 📱 Leads as cards on mobile */
+/* 📱 Leads as compact cards on mobile */
 @media (max-width: 720px) {
   .leads-table, .leads-table tbody, .leads-table tr { display: block; width: 100%; }
   .leads-table thead { display: none; }
 
   .leads-table tr {
     position: relative;
-    background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px;
-    padding: 16px; margin-bottom: 12px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px;
+    display: grid; grid-template-columns: auto auto; gap: 3px 10px;
   }
-  .leads-table tr.row-clickable:active { border-color: #2dd4bf; }
+  .leads-table tr.row-clickable:active { border-color: #2dd4bf; background: #2dd4bf0c; }
 
-  /* checkbox floats top-right */
-  .leads-table td.cell-check {
-    position: absolute; top: 14px; right: 14px; padding: 0;
-  }
+  /* checkbox: top-right corner */
+  .leads-table td.cell-check { position: absolute; top: 12px; right: 12px; padding: 0; }
   .leads-table td.cell-check::before { display: none; }
-  .leads-table .lead-check { width: 20px; height: 20px; pointer-events: none; }
+  .leads-table .lead-check { width: 18px; height: 18px; pointer-events: none; }
 
-  /* client name = big heading */
+  /* name: bold, spans full width, top */
   .leads-table td.biz {
-    display: block; padding: 0 40px 10px 0; margin-bottom: 10px;
-    border-bottom: 1px solid var(--line);
-    font-size: 17px; font-weight: 800; color: var(--text);
+    grid-column: 1 / -1; padding: 0 30px 6px 0;
+    font-size: 16px; font-weight: 800; color: var(--text);
   }
   .leads-table td.biz::before { display: none; }
 
-  /* detail rows: label left, value right */
+  /* status: right under name, full width */
+  .leads-table td[data-label="Status"] {
+    grid-column: 1 / -1; padding: 0 0 8px 0; margin-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .leads-table td[data-label="Status"]::before { display: none; }
+
+  /* detail cells: stacked label + value, compact */
   .leads-table td {
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 12px; padding: 5px 0; border: none; text-align: right;
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 3px 0; border: none; text-align: left; min-width: 0;
   }
   .leads-table td::before {
     content: attr(data-label);
-    color: var(--muted); font-size: 12px; font-weight: 600;
-    text-align: left; flex-shrink: 0;
+    color: var(--muted); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .3px;
   }
+  .leads-table td { font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
 
-  /* status badge row */
-  .leads-table td[data-label="Status"] .badge { font-size: 12px; }
-
-  /* actions = full-width button look */
+  /* actions: small link, bottom-right */
   .leads-table td[data-label="Actions"] {
-    justify-content: center; margin-top: 12px; padding-top: 12px;
-    border-top: 1px solid var(--line);
+    grid-column: 1 / -1; flex-direction: row; justify-content: flex-end;
+    margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line);
   }
   .leads-table td[data-label="Actions"]::before { display: none; }
-  .leads-table td[data-label="Actions"] .lead-restore {
-    display: block; width: 100%; text-align: center;
-    background: #2dd4bf18; color: #2dd4bf; padding: 10px; border-radius: 9px; font-weight: 600;
-  }
+  .leads-table td[data-label="Actions"] .lead-restore { font-weight: 600; }
 
   /* empty state */
-  .leads-table td.empty { justify-content: center; padding: 20px; }
+  .leads-table td.empty { grid-column: 1 / -1; text-align: center; padding: 20px; }
   .leads-table td.empty::before { display: none; }
 }
 
