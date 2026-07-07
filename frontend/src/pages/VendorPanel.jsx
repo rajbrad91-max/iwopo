@@ -1095,6 +1095,183 @@ function MoneySection({ lead }) {
   );
 }
 
+function ContractsTab() {
+  const [sub, setSub] = useState('list'); // list | setup | invoices
+  const btn = (k, label) => (
+    <button className="refresh" onClick={() => setSub(k)}
+      style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
+  );
+  return (
+    <div style={{ maxWidth: 820 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {btn('list', '📄 Contracts')}
+        {btn('setup', '🛠️ Contract setup')}
+        {btn('invoices', '🧾 Invoices')}
+      </div>
+      {sub === 'list' ? <AllContracts /> : sub === 'setup' ? <ContractSetup /> : <AllInvoices />}
+    </div>
+  );
+}
+
+function AllInvoices() {
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.allInvoices().then(d => setList(d.invoices || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  function copyLink(token) {
+    navigator.clipboard?.writeText(`https://alphabetaone.com/invoice/${token}`);
+  }
+  if (loading) return <div className="loading">Loading…</div>;
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Client</th><th>Total</th><th>Paid</th><th>Balance</th><th></th></tr></thead>
+        <tbody>
+          {list.length === 0 ? (
+            <tr><td colSpan="6" className="empty">No invoices yet. Generate one from a lead 🧾</td></tr>
+          ) : list.map(i => (
+            <tr key={i.id}>
+              <td className="biz">{i.invoice_number}</td>
+              <td>{i.client_name}</td>
+              <td>${Number(i.total).toFixed(2)}</td>
+              <td style={{ color: '#4ade80' }}>${Number(i.paid).toFixed(2)}</td>
+              <td style={{ color: Number(i.balance) > 0 ? '#fbbf24' : '#4ade80' }}>${Number(i.balance).toFixed(2)}</td>
+              <td><span style={{ cursor: 'pointer', color: '#2dd4bf', fontSize: 12 }} onClick={() => copyLink(i.token)}>🔗 Copy link</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AllContracts() {
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const S = { draft: '📝', sent: '📨', signed: '✅', void: '🚫' };
+  useEffect(() => {
+    api.allContracts().then(d => setList(d.contracts || [])).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  function copyLink(token) {
+    navigator.clipboard?.writeText(`https://alphabetaone.com/sign/${token}`);
+  }
+  if (loading) return <div className="loading">Loading…</div>;
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead><tr><th>Client</th><th>Contract</th><th>Status</th><th>Signed</th><th></th></tr></thead>
+        <tbody>
+          {list.length === 0 ? (
+            <tr><td colSpan="5" className="empty">No contracts yet. Create one from a lead, or set up templates in 🛠️ Contract setup.</td></tr>
+          ) : list.map(c => (
+            <tr key={c.id}>
+              <td className="biz">{c.client_name}</td>
+              <td>{c.title}</td>
+              <td>{S[c.status]} {c.status}</td>
+              <td>{c.signed_at ? String(c.signed_at).slice(0, 10) : '—'}</td>
+              <td>{c.status !== 'signed'
+                ? <span style={{ cursor: 'pointer', color: '#2dd4bf', fontSize: 12 }} onClick={() => copyLink(c.token)}>🔗 Copy link</span>
+                : <a href={`/certificate/${c.token}`} target="_blank" rel="noreferrer" style={{ color: '#4ade80', fontSize: 12, textDecoration: 'none' }}>📜 Certificate</a>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
+
+function ContractSetup() {
+  const [tpls, setTpls] = useState([]);
+  const [sel, setSel] = useState(null);
+  const [msg, setMsg] = useState('');
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%', fontFamily: 'inherit' };
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    try { const d = await api.ctTemplates(); setTpls(d.templates || []); } catch {}
+  }
+  async function add() {
+    try {
+      const d = await api.addCtTemplate({ name: 'New Contract', body: 'This agreement is between {{company_name}} and {{client_name}} for {{event_type}} on {{event_date}}.\n\nTotal: {{total_cost}} · Deposit: {{deposit}}\n\nI agree to the cancellation policy. [INITIAL]\n\nI agree to the payment schedule. [INITIAL]' });
+      setSel(d.template); load();
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function save() {
+    if (!sel) return;
+    setMsg('');
+    try { await api.updateCtTemplate(sel.id, sel); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); load(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function del(id) {
+    if (!confirm('Delete this template?')) return;
+    try { await api.deleteCtTemplate(id); setSel(null); load(); } catch {}
+  }
+  function insertAt(txt) {
+    setSel(s => ({ ...s, body: (s.body || '') + ' ' + txt }));
+  }
+
+  if (sel) return (
+    <div className="table-wrap" style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+        <button className="refresh" onClick={() => setSel(null)}>← All templates</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {msg && <span style={{ fontSize: 13, color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</span>}
+          <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
+        </div>
+      </div>
+
+      <label style={{ fontSize: 12, color: 'var(--muted)' }}>Template name</label>
+      <input style={box} value={sel.name || ''} onChange={e => setSel({ ...sel, name: e.target.value })} />
+
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Event type (optional, e.g. Wedding)</label>
+      <input style={box} value={sel.event_type || ''} onChange={e => setSel({ ...sel, event_type: e.target.value })} />
+
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Header (optional)</label>
+      <textarea style={{ ...box, minHeight: 50 }} value={sel.header || ''} onChange={e => setSel({ ...sel, header: e.target.value })} />
+
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Contract body ✍️</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, margin: '6px 0' }}>
+        {CT_PLACEHOLDERS.map(p => (
+          <span key={p} onClick={() => insertAt(p)}
+            style={{ background: '#2dd4bf18', border: '1px solid #2dd4bf44', color: '#2dd4bf', padding: '3px 8px', borderRadius: 12, fontSize: 11, cursor: 'pointer' }}>{p}</span>
+        ))}
+        <span onClick={() => insertAt('[INITIAL]')}
+          style={{ background: '#fbbf2418', border: '1px solid #fbbf2444', color: '#fbbf24', padding: '3px 8px', borderRadius: 12, fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>✍️ [INITIAL] box</span>
+      </div>
+      <textarea style={{ ...box, minHeight: 220 }} value={sel.body || ''} onChange={e => setSel({ ...sel, body: e.target.value })} />
+
+      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Legal terms (optional)</label>
+      <textarea style={{ ...box, minHeight: 80 }} value={sel.legal_terms || ''} onChange={e => setSel({ ...sel, legal_terms: e.target.value })} />
+
+      <button className="refresh" onClick={save} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save template</button>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>🛠️ Build your own contracts — placeholders auto-fill, [INITIAL] adds tap-to-initial boxes</div>
+        <button className="refresh" onClick={add} style={{ background: '#2dd4bf', color: '#06231f' }}>+ New template</button>
+      </div>
+      {msg && <div className="err-banner">{msg}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 14 }}>
+        {tpls.length === 0 && <div style={{ color: 'var(--muted)' }}>No templates yet — create one 👆</div>}
+        {tpls.map(t => (
+          <div key={t.id} className="table-wrap" style={{ padding: 18, cursor: 'pointer' }} onClick={() => setSel(t)}>
+            <div style={{ fontSize: 30 }}>📑</div>
+            <div style={{ fontWeight: 700, marginTop: 6 }}>{t.name}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>{t.event_type || 'Any event'} · {(t.body.match(/\[INITIAL\]/g) || []).length} initials</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function BookingsView() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1111,15 +1288,16 @@ function BookingsView() {
 
   return (
     <div>
-      <div className="bk-stats">
-        <div className="bk-stat"><span className="bk-stat-val">{inMonth}</span><span className="bk-stat-lbl">This Month</span></div>
-        <div className="bk-stat"><span className="bk-stat-val">{inYear}</span><span className="bk-stat-lbl">This Year</span></div>
-        <div className="bk-stat"><span className="bk-stat-val">{nextYear}</span><span className="bk-stat-lbl">Next Year</span></div>
-      </div>
-
-      <div className="bk-toggle">
-        <button className={`bk-tog-btn ${mode === 'list' ? 'is-on' : ''}`} onClick={() => setMode('list')}>📋 List</button>
-        <button className={`bk-tog-btn ${mode === 'calendar' ? 'is-on' : ''}`} onClick={() => setMode('calendar')}>🗓️ Calendar</button>
+      <div className="bk-topbar">
+        <div className="bk-stats">
+          <div className="bk-stat"><span className="bk-stat-val">{inMonth}</span><span className="bk-stat-lbl">This Month</span></div>
+          <div className="bk-stat"><span className="bk-stat-val">{inYear}</span><span className="bk-stat-lbl">This Year</span></div>
+          <div className="bk-stat"><span className="bk-stat-val">{nextYear}</span><span className="bk-stat-lbl">Next Year</span></div>
+        </div>
+        <div className="bk-toggle">
+          <button className={`bk-tog-btn ${mode === 'list' ? 'is-on' : ''}`} onClick={() => setMode('list')}>📋 List</button>
+          <button className={`bk-tog-btn ${mode === 'calendar' ? 'is-on' : ''}`} onClick={() => setMode('calendar')}>🗓️ Calendar</button>
+        </div>
       </div>
 
       {mode === 'calendar' ? <CalendarView /> : (
