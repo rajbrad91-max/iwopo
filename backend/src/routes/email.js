@@ -135,6 +135,17 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 📤 shared helper: send an email to a lead using vendor's email settings
+export async function sendLeadEmail(req, lead, subject, body) {
+  const s = await getSettings(lead.vendor_id);
+  if (s.mode === 'self') { const e = new Error('You are in self-receive mode — reply from your own inbox 📥'); e.code = 'self_mode'; throw e; }
+  const t = transporterFor(s);
+  if (!t) throw new Error('No email server configured yet. Add SMTP creds in Settings → Email ⚙️');
+  const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
+  const fromName = s.from_name || 'Vowflo';
+  await t.sendMail({ from: `"${fromName}" <${fromEmail}>`, to: lead.email, subject, text: body });
+}
+
 // 📬 helper used by leads route: notify vendor of new lead
 export async function notifyNewLead(lead) {
   try {

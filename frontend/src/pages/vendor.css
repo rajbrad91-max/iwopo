@@ -224,11 +224,23 @@
 .ld-select { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 10px; }
 
 /* left column = clean card */
-.lead-left { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 6px 18px; }
+.lead-left { display: flex; flex-direction: column; gap: 16px; }
 .lead-left .ld-pkg-row { margin: 12px 0; padding: 0 0 14px; background: none; border: none; border-bottom: 1px solid var(--line); border-radius: 0; }
 
 /* right column = cards */
-.lead-right > * { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-top: 0 !important; }
+.lead-right { display: flex; flex-direction: column; gap: 16px; }
+.lead-right > * { margin: 0 !important; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.lead-right .ms-wrap, .lead-right .ib-wrap { margin: 0 !important; }
+
+/* ld cards */
+.ld-view { padding: 4px; }
+.ld-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.ld-card-h { font-size: 14px; font-weight: 800; color: #2dd4bf; margin-bottom: 10px; letter-spacing: .2px; }
+.ld-pkg-select { width: 100%; margin-bottom: 12px; }
+.ld-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ld-gate { background: var(--panel); color: var(--muted); }
+.ld-gate.is-on { background: #4ade8022; color: #4ade80; }
+.ld-msg-mt { margin-top: 10px; }
 
 /* 📦 Booking extras */
 .bx-wrap { margin-top: 20px; }

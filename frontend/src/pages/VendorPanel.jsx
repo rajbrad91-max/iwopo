@@ -712,7 +712,23 @@ function LeadDetail({ lead, onBack }) {
   const [busy, setBusy] = useState(false);
   const [pkgs, setPkgs] = useState([]);
   const [pkgId, setPkgId] = useState(lead.package_id || '');
+  const [gateway, setGateway] = useState(!!lead.gateway_enabled);
+  const [pkgBusy, setPkgBusy] = useState(false);
+  const [pkgMsg, setPkgMsg] = useState('');
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+
+  async function toggleGateway() {
+    const next = !gateway;
+    setGateway(next);
+    try { await api.setGateway(lead.id, next); setPkgMsg(next ? '🔒 Secure login ON' : '🔓 Secure login OFF'); setTimeout(() => setPkgMsg(''), 1500); }
+    catch (e) { setGateway(!next); setPkgMsg('⚠️ ' + e.message); }
+  }
+  async function sendPackages() {
+    setPkgBusy(true); setPkgMsg('');
+    try { await api.sendPackages(lead.id); setPkgMsg('✅ Packages sent!'); setTimeout(() => setPkgMsg(''), 2500); }
+    catch (e) { setPkgMsg('⚠️ ' + (e.message || 'Failed')); }
+    finally { setPkgBusy(false); }
+  }
 
   useEffect(() => {
     api.pkgTemplates().then(d => {
@@ -825,7 +841,7 @@ function LeadDetail({ lead, onBack }) {
 
   // ---- VIEW MODE ----
   return (
-    <div className="table-wrap ld-wrap-view">
+    <div className="ld-view">
       <div className="ld-topbar">
         <button className="refresh" onClick={onBack}>← Back to leads</button>
         <button className="refresh ld-edit-btn" onClick={() => { setF({ ...lead }); setEdit(true); }}>✏️ Edit</button>
@@ -836,32 +852,52 @@ function LeadDetail({ lead, onBack }) {
       <div className="lead-grid">
       <div className="lead-left">
 
-      <div className="ld-pkg-row">
-        <div className="ld-label">📦 Package</div>
-        <select className="ld-select" value={pkgId} onChange={e => assignPkg(e.target.value)}>
-          <option value="">— No package —</option>
-          {pkgs.map(p => <option key={p.id} value={p.id}>{p.tplName} → {p.name} (${Number(p.base_price).toFixed(0)})</option>)}
-        </select>
+      {/* 👤 Contact Details */}
+      <div className="ld-card">
+        <div className="ld-card-h">👤 Contact Details</div>
+        {row('📧 Email', lead.email)}
+        {row('📞 Phone', lead.phone)}
+        {row('📷 Instagram', lead.instagram)}
+        {row('🔎 Heard via', lead.heard)}
       </div>
 
-      {row('📧 Email', lead.email)}
-      {row('📞 Phone', lead.phone)}
-      {row('📅 Date', lead.event_date ? String(lead.event_date).slice(0,10) : null)}
-      {row('⏰ Time', lead.timing_from ? `${lead.timing_from} – ${lead.timing_to || '?'}` : null)}
-      {row('📍 Location', lead.location)}
-      {row('👥 Guests', lead.guests)}
-      {row('⏱️ Hours', lead.hours)}
-      {row('💄 Bride Getting Ready', `${yn(lead.gr_bride)}${lead.gr_bride_venue ? ' · ' + lead.gr_bride_venue : ''}`)}
-      {row('😎 Groom Getting Ready', `${yn(lead.gr_groom)}${lead.gr_groom_venue ? ' · ' + lead.gr_groom_venue : ''}`)}
-      {row('📝 Notes', lead.notes)}
+      {/* 🎉 Event Details */}
+      <div className="ld-card">
+        <div className="ld-card-h">🎉 Event Details</div>
+        {row('📅 Date', lead.event_date ? String(lead.event_date).slice(0,10) : null)}
+        {row('⏰ Time', lead.timing_from ? `${lead.timing_from} – ${lead.timing_to || '?'}` : null)}
+        {row('📍 Location', lead.location)}
+        {row('👥 Guests', lead.guests)}
+        {row('⏱️ Hours', lead.hours)}
+        {row('💄 Bride Getting Ready', `${yn(lead.gr_bride)}${lead.gr_bride_venue ? ' · ' + lead.gr_bride_venue : ''}`)}
+        {row('😎 Groom Getting Ready', `${yn(lead.gr_groom)}${lead.gr_groom_venue ? ' · ' + lead.gr_groom_venue : ''}`)}
+        {row('📝 Notes', lead.notes)}
+      </div>
+
       </div>
 
       <div className="lead-right">
+
+      {/* 📦 Packages */}
+      <div className="ld-card">
+        <div className="ld-card-h">📦 Packages</div>
+        <select className="ld-select ld-pkg-select" value={pkgId} onChange={e => assignPkg(e.target.value)}>
+          <option value="">— No package —</option>
+          {pkgs.map(p => <option key={p.id} value={p.id}>{p.tplName} → {p.name} (${Number(p.base_price).toFixed(0)})</option>)}
+        </select>
+        <div className="ld-btn-row">
+          <button className="refresh bx-primary" onClick={sendPackages} disabled={pkgBusy}>{pkgBusy ? 'Sending…' : '📤 Send Packages'}</button>
+          <button className={`refresh ld-gate ${gateway ? 'is-on' : ''}`} onClick={toggleGateway}>🔒 Secure Login {gateway ? 'ON' : 'OFF'}</button>
+        </div>
+        {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
+      </div>
+
+      {/* 💰 Payment */}
       <MoneySection lead={lead} />
-      <EmailBox lead={lead} />
+
+      {/* 📄 Contract (view only) */}
       <ContractsBox lead={lead} />
-      <InvoiceBox lead={lead} />
-      <BookingExtras lead={lead} />
+
       </div>
       </div>
     </div>

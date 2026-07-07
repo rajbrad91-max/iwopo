@@ -1,7 +1,7 @@
 import express from 'express';
 import { query } from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
-import { notifyNewLead } from './email.js';
+import { notifyNewLead, sendLeadEmail } from './email.js';
 import { notify } from './notifications.js';
 
 const router = express.Router();
@@ -133,6 +133,36 @@ router.put('/:id', requireAuth, async (req, res) => {
     const { rows } = await query(
       `UPDATE leads SET ${set}, updated_at=NOW() WHERE id=$${vals.length} RETURNING *`, vals);
     res.json({ lead: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 🔒 toggle Secure Login (client portal gate)
+router.put('/:id/gateway', requireAuth, async (req, res) => {
+  const vid = req.user.vendor_id;
+  try {
+    const { rows } = await query('SELECT vendor_id FROM leads WHERE id=$1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && rows[0].vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' });
+    await query('UPDATE leads SET gateway_enabled=$1, updated_at=NOW() WHERE id=$2', [!!req.body.enabled, req.params.id]);
+    res.json({ ok: true, gateway_enabled: !!req.body.enabled });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 📤 Send Packages — emails the client portal link (reuses email settings)
+router.post('/:id/send-packages', requireAuth, async (req, res) => {
+  const vid = req.user.vendor_id;
+  try {
+    const { rows } = await query('SELECT * FROM leads WHERE id=$1', [req.params.id]);
+    const lead = rows[0];
+    if (!lead) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' });
+    if (!lead.email) return res.status(400).json({ error: 'Lead has no email' });
+
+    const link = `https://alphabetaone.com/portal/${lead.client_token}`;
+    const subject = 'Your packages are ready 🎉';
+    const body = `Hi ${lead.name},\n\nView your custom packages and book here:\n${link}\n\nThank you!`;
+    await sendLeadEmail(req, lead, subject, body);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
