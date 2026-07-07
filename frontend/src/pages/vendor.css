@@ -191,6 +191,31 @@
 .lead-check { accent-color: #2dd4bf; pointer-events: none; }
 .lead-restore { cursor: pointer; color: #2dd4bf; font-size: 12px; }
 
+/* ➕🔍🗑️ lead action icons */
+.lead-ic-btn { width: 38px; height: 38px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.lead-ic-btn:hover { border-color: #2dd4bf88; }
+.lead-ic-btn.is-on { background: #2dd4bf; border-color: #2dd4bf; }
+.lead-ic-btn:disabled { opacity: .4; cursor: default; }
+.lead-ic-del:hover:not(:disabled) { border-color: #fb7185; }
+.lead-search { width: 100%; padding: 11px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 14px; margin-bottom: 12px; box-sizing: border-box; }
+.lead-search:focus { outline: none; border-color: #2dd4bf; }
+
+/* ➕ add-lead modal */
+.al-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+.al-modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 620px; padding: 22px 24px; }
+.al-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.al-title { margin: 0; }
+.al-x { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.al-err { background: #fb718518; color: #fb7185; padding: 10px 12px; border-radius: 9px; font-size: 13px; margin-bottom: 12px; }
+.al-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.al-full { grid-column: 1 / -1; }
+.al-lbl { display: block; font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 5px; }
+.al-input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 10px 11px; box-sizing: border-box; }
+.al-input:focus { outline: none; border-color: #2dd4bf; }
+.al-ta { min-height: 60px; }
+.al-save { margin-top: 16px; width: 100%; background: #2dd4bf; color: #06231f; }
+@media (max-width: 560px){ .al-grid { grid-template-columns: 1fr; } }
+
 /* 📅 Bookings list/calendar toggle */
 .bk-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .bk-stats { display: flex; gap: 10px; }

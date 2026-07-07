@@ -589,6 +589,54 @@ function DashHome({ goTab }) {
   );
 }
 
+// ➕ Manual add-lead modal (mirrors the public inquiry form fields)
+function AddLeadModal({ onClose, onSaveDone }) {
+  const [f, setF] = useState({ name: '', email: '', phone: '', role: '', instagram: '', heard: '', event_type: '', event_date: '', location: '', guests: '', notes: '' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+
+  async function save() {
+    setErr('');
+    if (!f.name || !f.email) { setErr('Name and email are required'); return; }
+    setBusy(true);
+    try { await api.createLead(f); onSaveDone(); }
+    catch (e) { setErr(e.message || 'Failed'); setBusy(false); }
+  }
+
+  return (
+    <div className="al-overlay" onClick={onClose}>
+      <div className="al-modal" onClick={e => e.stopPropagation()}>
+        <div className="al-head">
+          <h3 className="al-title">➕ Add Lead</h3>
+          <button className="al-x" onClick={onClose}>✕</button>
+        </div>
+        {err && <div className="al-err">⚠️ {err}</div>}
+
+        <div className="al-grid">
+          <div><label className="al-lbl">Full Name *</label><input className="al-input" value={f.name} onChange={e => set('name', e.target.value)} /></div>
+          <div><label className="al-lbl">Role</label>
+            <select className="al-input" value={f.role} onChange={e => set('role', e.target.value)}>
+              <option value="">Select…</option><option>Bride</option><option>Groom</option><option>Planner</option><option>Other</option>
+            </select>
+          </div>
+          <div><label className="al-lbl">Email *</label><input className="al-input" value={f.email} onChange={e => set('email', e.target.value)} /></div>
+          <div><label className="al-lbl">Phone</label><input className="al-input" value={f.phone} onChange={e => set('phone', e.target.value)} /></div>
+          <div><label className="al-lbl">Instagram</label><input className="al-input" value={f.instagram} onChange={e => set('instagram', e.target.value)} /></div>
+          <div><label className="al-lbl">How heard</label><input className="al-input" value={f.heard} onChange={e => set('heard', e.target.value)} /></div>
+          <div><label className="al-lbl">Event Type</label><input className="al-input" value={f.event_type} onChange={e => set('event_type', e.target.value)} /></div>
+          <div><label className="al-lbl">Event Date</label><input className="al-input" type="date" value={f.event_date} onChange={e => set('event_date', e.target.value)} /></div>
+          <div><label className="al-lbl">Location</label><input className="al-input" value={f.location} onChange={e => set('location', e.target.value)} /></div>
+          <div><label className="al-lbl">Guests</label><input className="al-input" type="number" value={f.guests} onChange={e => set('guests', e.target.value)} /></div>
+          <div className="al-full"><label className="al-lbl">Notes</label><textarea className="al-input al-ta" value={f.notes} onChange={e => set('notes', e.target.value)} /></div>
+        </div>
+
+        <button className="refresh al-save" onClick={save} disabled={busy}>{busy ? 'Saving…' : '💾 Save Lead'}</button>
+      </div>
+    </div>
+  );
+}
+
 function LeadsView() {
   const [leads, setLeads] = useState([]);
   const [sel, setSel] = useState(null);
@@ -597,6 +645,16 @@ function LeadsView() {
   const [filter, setFilter] = useState('all'); // all | new | quoted | booked
   const [checked, setChecked] = useState([]);
   const [msg, setMsg] = useState('');
+  const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+
+  async function deleteChecked() {
+    if (!checked.length) return;
+    if (!confirm(`Delete ${checked.length} lead(s)? This can't be undone.`)) return;
+    try { await api.bulkDeleteLeads(checked); setMsg('🗑️ Deleted'); setTimeout(() => setMsg(''), 1500); load(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
 
   useEffect(() => { load(); }, [view]);
   async function load() {
@@ -634,7 +692,10 @@ function LeadsView() {
     quoted: leads.filter(l => l.status === 'quoted').length,
     booked: leads.filter(l => l.status === 'booked').length,
   };
-  const shown = filter === 'all' ? leads : leads.filter(l => l.status === filter);
+  const byFilter = filter === 'all' ? leads : leads.filter(l => l.status === filter);
+  const shown = search.trim()
+    ? byFilter.filter(l => `${l.name} ${l.email} ${l.phone} ${l.event_type} ${l.location}`.toLowerCase().includes(search.toLowerCase()))
+    : byFilter;
   const TILES = [
     ['all', '📋', 'Total Leads'],
     ['new', '🆕', 'New'],
@@ -657,6 +718,11 @@ function LeadsView() {
           </div>
         ) : <div />}
         <div className="leads-tabs">
+          {view === 'active' && <>
+            <button className="lead-ic-btn" onClick={() => setShowAdd(true)} title="Add lead">➕</button>
+            <button className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); setSearch(''); }} title="Search">🔍</button>
+            <button className="lead-ic-btn lead-ic-del" onClick={deleteChecked} disabled={!checked.length} title="Delete selected">🗑️</button>
+          </>}
           <button className={`refresh ${view === 'active' ? 'is-on' : ''}`} onClick={() => setView('active')}>📋 Active</button>
           <button className={`refresh ${view === 'history' ? 'is-on' : ''}`} onClick={() => setView('history')}>📜 History</button>
         </div>
@@ -670,6 +736,12 @@ function LeadsView() {
           )}
         </div>
       )}
+
+      {showSearch && view === 'active' && (
+        <input className="lead-search" autoFocus placeholder="🔍 Search name, email, phone, event…" value={search} onChange={e => setSearch(e.target.value)} />
+      )}
+
+      {showAdd && <AddLeadModal onClose={() => setShowAdd(false)} onSaveDone={() => { setShowAdd(false); load(); }} />}
 
       <div className="table-wrap">
         <table>

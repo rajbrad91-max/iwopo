@@ -51,6 +51,19 @@ router.post('/bulk-archive', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/leads/bulk-delete  { ids: [] } 🗑️ (hard delete)
+router.post('/bulk-delete', requireAuth, async (req, res) => {
+  const vid = vendorIdFor(req);
+  const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+  if (!ids.length) return res.status(400).json({ error: 'No ids' });
+  try {
+    const { rowCount } = vid
+      ? await query('DELETE FROM leads WHERE id=ANY($1) AND vendor_id=$2', [ids, vid])
+      : await query('DELETE FROM leads WHERE id=ANY($1)', [ids]);
+    res.json({ deleted: rowCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/leads/:id/restore ↩️
 router.post('/:id/restore', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);

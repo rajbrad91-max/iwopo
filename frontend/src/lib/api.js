@@ -127,6 +127,7 @@ export const api = {
   viewInvoice: (token) => request(`/invoices/view/${token}`),
   leadsHistory: () => request('/leads/history'),
   bulkArchive: (ids) => request('/leads/bulk-archive', { method: 'POST', body: JSON.stringify({ ids }) }),
+  bulkDeleteLeads: (ids) => request('/leads/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   restoreLead: (id) => request(`/leads/${id}/restore`, { method: 'POST' }),
   setGateway: (id, enabled) => request(`/leads/${id}/gateway`, { method: 'PUT', body: JSON.stringify({ enabled }) }),
   sendPackages: (id) => request(`/leads/${id}/send-packages`, { method: 'POST' }),
