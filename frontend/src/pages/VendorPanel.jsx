@@ -644,30 +644,32 @@ function LeadsView() {
 
   return (
     <div>
-      {view === 'active' && (
-        <div className="lead-stats">
-          {TILES.map(([key, icon, label]) => (
-            <button key={key} className={`lead-stat ${filter === key ? 'is-on' : ''}`} onClick={() => setFilter(key)}>
-              <span className="lead-stat-ic">{icon}</span>
-              <span className="lead-stat-val">{counts[key]}</span>
-              <span className="lead-stat-lbl">{label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="leads-toolbar">
+      <div className="lead-topbar">
+        {view === 'active' ? (
+          <div className="lead-stats">
+            {TILES.map(([key, icon, label]) => (
+              <button key={key} className={`lead-stat ${filter === key ? 'is-on' : ''}`} onClick={() => setFilter(key)}>
+                <span className="lead-stat-ic">{icon}</span>
+                <span className="lead-stat-val">{counts[key]}</span>
+                <span className="lead-stat-lbl">{label}</span>
+              </button>
+            ))}
+          </div>
+        ) : <div />}
         <div className="leads-tabs">
           <button className={`refresh ${view === 'active' ? 'is-on' : ''}`} onClick={() => setView('active')}>📋 Active</button>
           <button className={`refresh ${view === 'history' ? 'is-on' : ''}`} onClick={() => setView('history')}>📜 History</button>
         </div>
+      </div>
+
+      {(msg || (view === 'active' && checked.length > 0)) && (
         <div className="leads-actions">
           {msg && <span className={`leads-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</span>}
           {view === 'active' && checked.length > 0 && (
             <button className="refresh btn-archive" onClick={archiveChecked}>🗂️ Archive ({checked.length})</button>
           )}
         </div>
-      </div>
+      )}
 
       <div className="table-wrap">
         <table>
