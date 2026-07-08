@@ -453,32 +453,33 @@ function CalendarView({ onOpen }) {
   };
 
   return (
-    <div style={{ maxWidth: 760 }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <div className="table-wrap" style={{ padding: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+    <div className="cal-wrap" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="table-wrap cal-panel">
+        <div className="cal-nav">
           <button className="refresh" onClick={() => move(-1)}>←</button>
-          <h2 style={{ margin: 0 }}>🗓️ {monthName}</h2>
+          <h2 className="cal-month">🗓️ {monthName}</h2>
           <button className="refresh" onClick={() => move(1)}>→</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginBottom: 6 }}>
+        <div className="cal-dow">
           {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
         </div>
-        <div key={`${cur.y}-${cur.m}`} className={`cal-grid slide-${dir}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+        <div key={`${cur.y}-${cur.m}`} className={`cal-grid slide-${dir}`}>
           {cells.map((d, i) => {
             if (!d) return <div key={i} />;
             const k = key(d);
             const evts = byDay[k] || [];
             const isToday = k === today;
+            const cls = ['cal-cell'];
+            if (evts.length) cls.push('has-evt');
+            if (selDay === k) cls.push('is-sel');
+            else if (isToday) cls.push('is-today');
             return (
-              <div key={i} onClick={() => evts.length && setSelDay(k)}
-                style={{ minHeight: 58, borderRadius: 8, padding: 6, fontSize: 12, cursor: evts.length ? 'pointer' : 'default',
-                  background: evts.length ? 'var(--teal-soft)' : 'var(--panel-2)',
-                  border: `1px solid ${selDay === k ? 'var(--teal)' : isToday ? 'var(--amber)' : 'var(--line)'}` }}>
-                <div style={{ fontWeight: 700, color: isToday ? 'var(--amber)' : evts.length ? 'var(--teal)' : 'var(--muted)' }}>{d}</div>
+              <div key={i} className={cls.join(' ')} onClick={() => evts.length && setSelDay(k)}>
+                <div className="cal-daynum">{d}</div>
                 {evts.slice(0, 2).map(e => (
-                  <div key={e.id} style={{ fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>✅ {e.name}</div>
+                  <div key={e.id} className="cal-daylbl">✅ {e.name}</div>
                 ))}
-                {evts.length > 2 && <div style={{ fontSize: 10, color: 'var(--muted)' }}>+{evts.length - 2}</div>}
+                {evts.length > 2 && <div className="cal-daymore">+{evts.length - 2}</div>}
               </div>
             );
           })}
