@@ -933,8 +933,8 @@ function LeadDetail({ lead, onBack }) {
           {pkgs.map(p => <option key={p.id} value={p.id}>{p.tplName} → {p.name} (${Number(p.base_price).toFixed(0)})</option>)}
         </select>
         <div className="ld-btn-row">
-          <button className="refresh bx-primary ld-btn-sm" onClick={sendPackages} disabled={pkgBusy}>{pkgBusy ? 'Sending…' : '📤 Send'}</button>
-          <button className={`refresh ld-gate ld-btn-sm ${gateway ? 'is-on' : ''}`} onClick={toggleGateway}>🔒 Login {gateway ? 'ON' : 'OFF'}</button>
+          <button className="refresh bx-primary ld-btn-sm" onClick={sendPackages} disabled={pkgBusy}>{pkgBusy ? 'Sending…' : '📤 Send Packages'}</button>
+          <button className={`refresh ld-gate ld-btn-sm ${gateway ? 'is-on' : ''}`} onClick={toggleGateway}>🔒 Secure Login {gateway ? 'ON' : 'OFF'}</button>
           <div className={`ld-timer-btn ${timer.enabled ? 'is-on' : ''}`}>
             <button className="ld-timer-toggle" onClick={() => saveTimer({ enabled: !timer.enabled })}>⏳ Timer {timer.enabled ? 'ON' : 'OFF'}</button>
             <input className="ld-timer-hrs" type="number" min="1" max="720" value={timer.hours}
