@@ -1026,12 +1026,12 @@ function MoneySection({ lead }) {
   const [method, setMethod] = useState('manual');
   const [money, setMoney] = useState({ deposit_percent: lead.deposit_percent ?? 30, discount_percent: lead.discount_percent ?? 0, price_override: lead.price_override ?? '' });
   const [status, setStatus] = useState(lead.status || 'new');
+  const [webPay, setWebPay] = useState(lead.web_payment_enabled !== false);
   const [msg, setMsg] = useState('');
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8 };
 
   useEffect(() => { load(); }, []);
   async function load() {
-    try { const d = await api.leadPayments(lead.id); setData(d); } catch {}
+    try { const d = await api.leadPayments(lead.id); setData(d); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
   }
   async function saveMoney() {
     try {
@@ -1043,6 +1043,11 @@ function MoneySection({ lead }) {
       setData(s => ({ ...s, summary: d.summary }));
       setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500);
     } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function toggleWebPay() {
+    const next = !webPay; setWebPay(next);
+    try { await api.setWebPayment(lead.id, next); }
+    catch (e) { setWebPay(!next); setMsg('⚠️ ' + e.message); }
   }
   async function pay() {
     if (!amt || Number(amt) <= 0) return;
@@ -1060,6 +1065,7 @@ function MoneySection({ lead }) {
   }
 
   const sum = data?.summary;
+  const pending = sum ? sum.balance : null;
   return (
     <div className="ms-wrap">
       {/* Status dropdown (auto-set, overridable) */}
@@ -1071,12 +1077,14 @@ function MoneySection({ lead }) {
       </div>
       {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
 
-      <h3 className="ms-h3">💰 Money</h3>
+      <h3 className="ms-h3">💳 Payment & Deposit</h3>
+
+      {/* deposit % + discount % + custom billed */}
       <div className="ms-fields">
         <div className="ms-field">
-          <label className="ms-label">Price override ($)</label>
-          <input className="ms-input" type="number" placeholder="auto from package"
-            value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
+          <label className="ms-label">Deposit %</label>
+          <input className="ms-input" type="number"
+            value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
         </div>
         <div className="ms-field">
           <label className="ms-label">Discount %</label>
@@ -1084,40 +1092,62 @@ function MoneySection({ lead }) {
             value={money.discount_percent} onChange={e => setMoney({ ...money, discount_percent: e.target.value })} onBlur={saveMoney} />
         </div>
         <div className="ms-field">
-          <label className="ms-label">Deposit %</label>
-          <input className="ms-input" type="number"
-            value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
+          <label className="ms-label">Custom Billed ($)</label>
+          <input className="ms-input" type="number" placeholder="auto"
+            value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
         </div>
       </div>
 
+      {/* web payment toggle */}
+      <div className="ms-webpay" onClick={toggleWebPay}>
+        <div className={`ms-switch ${webPay ? 'is-on' : ''}`}><span className="ms-knob" /></div>
+        <div className="ms-webpay-txt">
+          <div className="ms-webpay-title">💻 Payment on website: <b>{webPay ? 'Enabled' : 'Disabled'}</b></div>
+          <div className="ms-webpay-sub">{webPay ? 'Client can pay online by card.' : 'Client pays in person only (online card hidden).'}</div>
+        </div>
+      </div>
+
+      {/* 3 tiles: Total / Received / Pending */}
       {sum && (
-        <div className="ms-summary">
-          <span className="ms-chip">💵 Total: <b>${sum.final_total}</b>{sum.discount_amount > 0 && <s className="ms-strike">${sum.base_total}</s>}</span>
-          <span className="ms-chip">🔐 Deposit: <b>${sum.deposit_amount}</b></span>
-          <span className="ms-chip ms-chip-paid">✅ Paid: <b>${sum.paid}</b></span>
-          <span className={`ms-chip ${sum.balance > 0 ? 'ms-chip-due' : 'ms-chip-paid'}`}>⏳ Balance: <b>${sum.balance}</b></span>
+        <div className="ms-tiles">
+          <div className="ms-tile ms-tile-total">
+            <div className="ms-tile-lbl">Total Amount</div>
+            <div className="ms-tile-val">${sum.final_total}</div>
+            {sum.discount_amount > 0 && <div className="ms-tile-note">was ${sum.base_total}</div>}
+          </div>
+          <div className="ms-tile ms-tile-recv">
+            <div className="ms-tile-lbl">Received</div>
+            <div className="ms-tile-val">${sum.paid}</div>
+          </div>
+          <div className={`ms-tile ${pending > 0 ? 'ms-tile-pend' : 'ms-tile-clear'}`}>
+            <div className="ms-tile-lbl">Pending</div>
+            <div className="ms-tile-val">${pending}</div>
+          </div>
         </div>
       )}
+      {sum && <div className="ms-deposit-line">🔐 Deposit due: <b>${sum.deposit_amount}</b> ({sum.deposit_percent}%)</div>}
 
+      {/* manual payments */}
+      <div className="ms-mp-head">Manual Payments</div>
       <div className="ms-pay-row">
         <input className="ms-input ms-amt" type="number" placeholder="Amount $" value={amt} onChange={e => setAmt(e.target.value)} />
         <select className="ms-input ms-method" value={method} onChange={e => setMethod(e.target.value)}>
           <option value="manual">Manual</option><option value="etransfer">E-transfer</option>
           <option value="cash">Cash</option><option value="card">Card</option>
         </select>
-        <button className="refresh bx-primary ms-pay-btn" onClick={pay}>+ Record payment</button>
+        <button className="refresh bx-primary ms-pay-btn" onClick={pay}>+ Add payment</button>
       </div>
 
-      {data?.payments?.length > 0 && (
+      {data?.payments?.length > 0 ? (
         <div className="ms-pay-list">
           {data.payments.map(p => (
             <div key={p.id} className="ms-pay-item">
-              <span>💵 ${Number(p.amount).toFixed(2)} · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
+              <span>💵 <b>${Number(p.amount).toFixed(2)}</b> · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
               <span className="bx-del" onClick={() => delPay(p.id)}>🗑️</span>
             </div>
           ))}
         </div>
-      )}
+      ) : <div className="ms-mp-empty">No manual payments recorded yet.</div>}
     </div>
   );
 }

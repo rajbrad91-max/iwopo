@@ -101,6 +101,7 @@ export const api = {
   addPayment: (leadId, amount, method, note) => request(`/payments/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ amount, method, note }) }),
   deletePayment: (id) => request(`/payments/${id}`, { method: 'DELETE' }),
   saveMoney: (leadId, data) => request(`/payments/lead/${leadId}/money`, { method: 'PUT', body: JSON.stringify(data) }),
+  setWebPayment: (leadId, enabled) => request(`/payments/lead/${leadId}/web-payment`, { method: 'PUT', body: JSON.stringify({ enabled }) }),
   bookings: () => request('/bookings'),
   setLeadStatus: (leadId, status) => request(`/bookings/${leadId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   inquirySettings: (vendorId) => request(`/inquiry-settings/${vendorId}`),

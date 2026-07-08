@@ -457,6 +457,34 @@
 .ms-chip-paid { background: #4ade8018; border-color: #4ade8044; color: #4ade80; }
 .ms-chip-due { background: #fbbf2418; border-color: #fbbf2444; color: #fbbf24; }
 .ms-strike { color: var(--muted); margin-left: 6px; }
+
+/* 💻 web payment toggle */
+.ms-webpay { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; margin-bottom: 14px; }
+.ms-switch { flex-shrink: 0; width: 42px; height: 24px; border-radius: 20px; background: var(--line); position: relative; transition: background .2s; margin-top: 2px; }
+.ms-switch.is-on { background: #2dd4bf; }
+.ms-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .2s; }
+.ms-switch.is-on .ms-knob { left: 21px; }
+.ms-webpay-title { font-size: 13px; }
+.ms-webpay-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* 3 money tiles */
+.ms-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.ms-tile { border: 1px solid var(--line); border-radius: 11px; padding: 11px 10px; text-align: center; }
+.ms-tile-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); }
+.ms-tile-val { font-size: 17px; font-weight: 800; margin-top: 3px; }
+.ms-tile-note { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.ms-tile-total { background: #3b5bdb14; border-color: #3b5bdb44; }
+.ms-tile-total .ms-tile-val { color: #6b8afd; }
+.ms-tile-recv { background: #4ade8014; border-color: #4ade8044; }
+.ms-tile-recv .ms-tile-val { color: #4ade80; }
+.ms-tile-pend { background: #fb718514; border-color: #fb718544; }
+.ms-tile-pend .ms-tile-val { color: #fb7185; }
+.ms-tile-clear { background: var(--panel-2); }
+.ms-deposit-line { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+/* manual payments */
+.ms-mp-head { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 8px; }
+.ms-mp-empty { font-size: 12px; color: var(--muted); margin-top: 8px; }
 .ms-pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .ms-amt, .ms-method { width: 100%; }
 .ms-pay-btn { grid-column: 1 / -1; }

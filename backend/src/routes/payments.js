@@ -49,6 +49,7 @@ export async function moneySummary(lead) {
     deposit_amount: +deposit.toFixed(2),
     paid: +paid.toFixed(2),
     balance: +(finalTotal - paid).toFixed(2),
+    web_payment_enabled: lead.web_payment_enabled !== false,
   };
 }
 
@@ -106,6 +107,18 @@ router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
       [deposit_percent ?? null, discount_percent ?? null,
        price_override === undefined ? lead.price_override : price_override, lead.id]);
     res.json({ lead: rows[0], summary: await moneySummary(rows[0]) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/payments/lead/:leadId/web-payment → toggle online card payment
+router.put('/lead/:leadId/web-payment', requireAuth, async (req, res) => {
+  try {
+    const lead = await leadFor(req, res, req.params.leadId);
+    if (!lead) return;
+    const { rows } = await query(
+      'UPDATE leads SET web_payment_enabled=$1, updated_at=NOW() WHERE id=$2 RETURNING *',
+      [!!req.body.enabled, lead.id]);
+    res.json({ web_payment_enabled: rows[0].web_payment_enabled });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
