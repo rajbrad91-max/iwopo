@@ -522,7 +522,7 @@ function DashHome({ goTab }) {
     .filter(b => b.event_date && new Date(b.event_date) >= new Date(new Date().toDateString()))
     .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
     .slice(0, 6);
-  const SB = { new: 'trial', contacted: 'trial', quoted: 'trial', booked: 'active', completed: 'active', cancelled: 'past' };
+  const SB = { new: 'trial', quoted: 'trial', booked: 'active' };
   const mName = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const dParts = (d) => { const x = new Date(d); return { day: x.getDate(), mon: mName[x.getMonth()], dow: x.toLocaleDateString('en',{weekday:'long'}) }; };
 
@@ -766,7 +766,7 @@ function LeadsView() {
                 <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
                 <td data-label="Location">{l.location || '—'}</td>
                 <td data-label="Packages">{l.package_name || '—'}</td>
-                <td data-label="Status"><span className="badge trial">{l.status}</span></td>
+                <td data-label="Status"><span className={`badge ${l.status === 'booked' ? 'active' : 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
                 <td data-label="Actions">
                   {view === 'active'
                     ? <span className="lead-restore" onClick={e => { e.stopPropagation(); setSel(l); }}>👁️ Open</span>
@@ -1022,8 +1022,9 @@ function ContractsBox({ lead }) {
   );
 }
 
-const STATUSES = ['new', 'contacted', 'quoted', 'booked', 'completed', 'cancelled'];
-const S_ICON = { new: '🆕', contacted: '📞', quoted: '💬', booked: '✅', completed: '🏁', cancelled: '❌' };
+const STATUSES = ['new', 'quoted', 'booked'];
+const S_ICON = { new: '🆕', quoted: '📤', booked: '✅' };
+const S_LABEL = { new: 'New', quoted: 'Package Sent', booked: 'Booking Confirmed' };
 
 function MoneySection({ lead }) {
   const [data, setData] = useState(null);
@@ -1070,8 +1071,8 @@ function MoneySection({ lead }) {
       {/* Status */}
       <div className="ms-status">
         {STATUSES.map(s => (
-          <button key={s} className={`refresh ms-status-btn ${status === s ? 'is-on' : ''}`} onClick={() => changeStatus(s)}>
-            {S_ICON[s]} {s}
+          <button key={s} className={`ms-status-btn ${status === s ? 'is-on' : ''}`} onClick={() => changeStatus(s)}>
+            {S_ICON[s]} {S_LABEL[s]}
           </button>
         ))}
       </div>

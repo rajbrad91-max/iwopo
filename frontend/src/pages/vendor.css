@@ -441,8 +441,9 @@
 /* 💰 Money section */
 .ms-wrap { margin-top: 20px; }
 .ms-status { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
-.ms-status-btn { padding: 5px 11px; font-size: 12px; background: var(--panel-2); color: var(--text); }
-.ms-status-btn.is-on { background: #2dd4bf; color: #06231f; }
+.ms-status-btn { padding: 6px 12px; font-size: 12px; font-weight: 600; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); border-radius: 20px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+.ms-status-btn:hover { border-color: #2dd4bf88; }
+.ms-status-btn.is-on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
 .ms-msg { font-size: 13px; margin-bottom: 10px; }
 .ms-msg.is-ok { color: #4ade80; }
 .ms-msg.is-err { color: #fb7185; }
