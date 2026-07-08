@@ -1,6 +1,19 @@
 // 🔌 API helper — talks to the backend
 const BASE = '/api';
 
+// 🕐 format a "HH:MM" (24h) string per the vendor's saved preference
+export function fmtTime(t) {
+  if (!t) return '';
+  const m = String(t).match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return t;
+  let h = Number(m[1]); const min = m[2];
+  const pref = localStorage.getItem('vf_time_format') || '12h';
+  if (pref === '24h') return `${String(h).padStart(2, '0')}:${min}`;
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${min} ${ap}`;
+}
+
 function getToken() {
   return localStorage.getItem('vowflo_token');
 }

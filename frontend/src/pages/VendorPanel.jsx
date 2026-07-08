@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, getUser, clearSession } from '../lib/api';
+import { fmtTime } from '../lib/api';
 import { PROFESSIONS, LeadFormBody } from './InquiryForm';
 import './inquiry.css';
 import './vendor.css';
@@ -58,6 +59,7 @@ export default function VendorPanel({ onLogout }) {
       if (th === 'light') document.documentElement.setAttribute('data-theme', 'light');
       else document.documentElement.removeAttribute('data-theme');
       localStorage.setItem('vf_theme', th);
+      localStorage.setItem('vf_time_format', st?.settings?.time_format || '12h');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -485,7 +487,7 @@ function CalendarView({ onOpen }) {
 
       {selDay && (byDay[selDay] || []).map(b => (
         <div key={b.id} className="table-wrap cal-evt" onClick={() => onOpen && onOpen(b)}>
-          🎉 <b>{b.name}</b> · {b.event_type} · {b.timing_from ? `${b.timing_from}–${b.timing_to || '?'}` : 'time TBD'}
+          🎉 <b>{b.name}</b> · {b.event_type} · {b.timing_from ? `${fmtTime(b.timing_from)}–${b.timing_to ? fmtTime(b.timing_to) : '?'}` : 'time TBD'}
           {b.location ? ` · 📍 ${b.location}` : ''}
           {b.money ? ` · ⏳ $${b.money.balance} due` : ''}
           {onOpen && <span className="cal-evt-open">👁️ Open</span>}
@@ -577,7 +579,7 @@ function DashHome({ goTab }) {
                 <div className="ev-body">
                   <div className="ev-name">{b.name}</div>
                   <div className="ev-type">{b.event_type}{b.package_snapshot?.name ? ` · ${b.package_snapshot.name}` : ''}</div>
-                  {(b.timing_from || b.timing_to) && <div className="ev-line">🕐 {b.timing_from || '?'} — {b.timing_to || '?'}</div>}
+                  {(b.timing_from || b.timing_to) && <div className="ev-line">🕐 {b.timing_from ? fmtTime(b.timing_from) : '?'} — {b.timing_to ? fmtTime(b.timing_to) : '?'}</div>}
                   {b.location && <div className="ev-line">📍 {b.location}</div>}
                   {b.phone && <div className="ev-line">📞 {b.phone}</div>}
                   {b.email && <div className="ev-line">✉️ {b.email}</div>}
@@ -895,7 +897,7 @@ function LeadDetail({ lead, onBack }) {
       <div className="ld-card">
         <div className="ld-card-h">🎉 Event Details</div>
         {row('📅 Date', lead.event_date ? String(lead.event_date).slice(0,10) : null)}
-        {row('⏰ Time', lead.timing_from ? `${lead.timing_from} – ${lead.timing_to || '?'}` : null)}
+        {row('⏰ Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : '?'}` : null)}
         {row('📍 Location', lead.location)}
         {row('👥 Guests', lead.guests)}
         {row('⏱️ Hours', lead.hours)}
@@ -1724,6 +1726,7 @@ function SettingsView({ user }) {
     if (next.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
     else document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('vf_theme', next.theme || 'dark');
+    localStorage.setItem('vf_time_format', next.time_format || '12h');
     try { await api.saveSettings(next); setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500); } catch {}
   }
   async function saveEmail() {
