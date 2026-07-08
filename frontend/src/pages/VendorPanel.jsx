@@ -884,6 +884,7 @@ function LeadDetail({ lead, onBack }) {
       {/* 👤 Contact Details */}
       <div className="ld-card">
         <div className="ld-card-h">👤 Contact Details</div>
+        {row('🙋 Role', lead.role)}
         {row('📧 Email', lead.email)}
         {row('📞 Phone', lead.phone)}
         {row('📷 Instagram', lead.instagram)}
