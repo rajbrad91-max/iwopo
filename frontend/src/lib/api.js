@@ -123,6 +123,7 @@ export const api = {
   saveEmailSettings: (data) => request('/email/settings', { method: 'PUT', body: JSON.stringify(data) }),
   emailLead: (leadId, subject, body) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body }) }),
   leadContracts: (leadId) => request(`/contracts/lead/${leadId}`),
+  previewContract: (leadId) => request(`/contracts/preview/${leadId}`),
   createContract: (leadId, title, body) => request(`/contracts/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ title, body }) }),
   voidContract: (id) => request(`/contracts/${id}`, { method: 'DELETE' }),
   viewContract: (token) => request(`/contracts/sign/${token}`),

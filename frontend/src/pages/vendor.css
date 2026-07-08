@@ -457,10 +457,41 @@
 .ms-chip-paid { background: #4ade8018; border-color: #4ade8044; color: #4ade80; }
 .ms-chip-due { background: #fbbf2418; border-color: #fbbf2444; color: #fbbf24; }
 .ms-strike { color: var(--muted); margin-left: 6px; }
-.ms-pay-row { display: flex; gap: 8px; margin-bottom: 12px; }
-.ms-amt { flex: 1; }
+.ms-pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.ms-amt, .ms-method { width: 100%; }
+.ms-pay-btn { grid-column: 1 / -1; }
 .ms-pay-list { display: flex; flex-direction: column; gap: 6px; }
 .ms-pay-item { display: flex; justify-content: space-between; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+
+/* status dropdown */
+.ms-status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.ms-status-lbl { font-size: 12px; color: var(--muted); font-weight: 600; }
+.ms-status-sel { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px; color: var(--text); padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ms-status-sel:focus { outline: none; border-color: #2dd4bf; }
+
+/* 📄 contract box */
+.ctb-wrap { margin-top: 0; }
+.ctb-head { display: flex; justify-content: space-between; align-items: center; }
+.ctb-h3 { margin: 0; }
+.ctb-preview { background: #2dd4bf; color: #06231f; }
+.ctb-hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+.ctb-msg { font-size: 13px; margin-top: 8px; }
+.ctb-msg.is-ok { color: #4ade80; }
+.ctb-msg.is-err { color: #fb7185; }
+.ctb-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.ctb-item { display: flex; justify-content: space-between; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; }
+.ctb-actions { display: flex; gap: 10px; }
+.ctb-link { cursor: pointer; color: #2dd4bf; }
+.ctb-signed { color: #4ade80; }
+.ctb-del { cursor: pointer; }
+
+/* contract preview modal */
+.ctp-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.ctp-modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 640px; max-height: 85vh; display: flex; flex-direction: column; }
+.ctp-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.ctp-title { margin: 0; font-size: 17px; }
+.ctp-body { padding: 22px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: var(--text); }
+.ctp-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--line); }
 
 /* ═══════════ 🍔 MENU BUTTON + COLLAPSE ═══════════ */
 

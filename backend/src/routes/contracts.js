@@ -141,6 +141,24 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
   res.status(201).json({ contract: rows[0] });
 });
 
+// 👁️ Preview a contract for a lead — auto-picks template, fills placeholders, no save
+router.get('/preview/:leadId', requireAuth, async (req, res) => {
+  const { rows: leads } = await query('SELECT * FROM leads WHERE id=$1', [req.params.leadId]);
+  const lead = leads[0];
+  if (!lead) return res.status(404).json({ error: 'Lead not found' });
+  if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });
+
+  // pick template: match event_type first, else the first template
+  const { rows: tpls } = await query('SELECT * FROM contract_templates WHERE vendor_id=$1 ORDER BY id', [lead.vendor_id]);
+  if (!tpls.length) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
+  const t = tpls.find(x => x.event_type && lead.event_type && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || tpls[0];
+
+  const text = [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+  const { rows: v } = await query('SELECT business_name FROM vendors WHERE id=$1', [lead.vendor_id]);
+  const filled = await fillPlaceholders(text, lead, v[0]?.business_name);
+  res.json({ title: t.name, body: filled, template_name: t.name });
+});
+
 router.delete('/:id', requireAuth, async (req, res) => {
   const { rows } = await query('SELECT vendor_id, status FROM contracts WHERE id=$1', [req.params.id]);
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });

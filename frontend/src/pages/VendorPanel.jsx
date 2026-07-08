@@ -938,27 +938,28 @@ function LeadDetail({ lead, onBack }) {
 
 function ContractsBox({ lead }) {
   const [list, setList] = useState([]);
-  const [tpls, setTpls] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('Service Agreement');
-  const [body, setBody] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
+  const [preview, setPreview] = useState(null); // { title, body }
 
-  useEffect(() => {
-    load();
-    api.ctTemplates().then(d => setTpls(d.templates || [])).catch(() => {});
-  }, []);
+  useEffect(() => { load(); }, []);
   async function load() {
     try { const d = await api.leadContracts(lead.id); setList(d.contracts || []); } catch {}
   }
-  async function create() {
-    if (!body.trim()) return setMsg('⚠️ Contract text required');
+  async function doPreview() {
+    setBusy(true); setMsg('');
+    try { const d = await api.previewContract(lead.id); setPreview(d); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+  async function sendForSign() {
     setBusy(true); setMsg('');
     try {
-      await api.createContract(lead.id, title, body);
-      setMsg('✅ Contract created'); setBody(''); setOpen(false); load();
+      const tpls = await api.ctTemplates();
+      const t = (tpls.templates || []).find(x => x.event_type && lead.event_type && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || (tpls.templates || [])[0];
+      if (!t) throw new Error('No contract template. Set one up in Contracts & Invoices.');
+      await api.createContractFromTemplate(lead.id, t.id);
+      setMsg('✅ Contract ready — copy the signing link below'); setPreview(null); load();
     } catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
@@ -973,49 +974,42 @@ function ContractsBox({ lead }) {
 
   const S = { draft: '📝', sent: '📨', signed: '✅', void: '🚫' };
   return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0 }}>📄 Contracts</h3>
-        <button className="refresh" onClick={() => setOpen(!open)}>{open ? '✕ Cancel' : '+ New contract'}</button>
+    <div className="ctb-wrap">
+      <div className="ctb-head">
+        <h3 className="ctb-h3">📄 Contract</h3>
+        <button className="refresh ctb-preview" onClick={doPreview} disabled={busy}>{busy ? '…' : '👁️ Preview Contract'}</button>
       </div>
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: msg[0] === '⚠' ? '#fb7185' : '#4ade80' }}>{msg}</div>}
-
-      {open && (
-        <div style={{ marginTop: 10 }}>
-          {tpls.length > 0 && (
-            <select style={{ ...box, marginBottom: 8 }} defaultValue=""
-              onChange={async e => {
-                if (!e.target.value) return;
-                setBusy(true); setMsg('');
-                try { await api.createContractFromTemplate(lead.id, Number(e.target.value)); setMsg('✅ Contract created from template'); setOpen(false); load(); }
-                catch (er) { setMsg('⚠️ ' + er.message); }
-                finally { setBusy(false); }
-              }}>
-              <option value="">📑 Use a template… (auto-fills client info)</option>
-              {tpls.map(t => <option key={t.id} value={t.id}>{t.name}{t.event_type ? ` (${t.event_type})` : ''}</option>)}
-            </select>
-          )}
-          <input style={box} value={title} onChange={e => setTitle(e.target.value)} placeholder="Contract title" />
-          <textarea style={{ ...box, minHeight: 140, marginTop: 8 }} value={body} onChange={e => setBody(e.target.value)}
-            placeholder={`Write your agreement terms here…\n\ne.g. Coverage: ${lead.hours || 8} hours on ${lead.event_date ? String(lead.event_date).slice(0,10) : 'event date'}…`} />
-          <button className="refresh" onClick={create} disabled={busy} style={{ marginTop: 8, background: '#2dd4bf', color: '#06231f' }}>
-            {busy ? 'Creating…' : '📄 Create & get signing link'}
-          </button>
-        </div>
-      )}
+      <p className="ctb-hint">Auto-built from your Contract setup 🛠️</p>
+      {msg && <div className={`ctb-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
 
       {list.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+        <div className="ctb-list">
           {list.map(c => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}>
+            <div key={c.id} className="ctb-item">
               <span>{S[c.status]} <b>{c.title}</b> · {c.status}{c.signed_name ? ` by ${c.signed_name}` : ''}</span>
-              <span style={{ display: 'flex', gap: 10 }}>
-                {c.status !== 'signed' && <span style={{ cursor: 'pointer', color: '#2dd4bf' }} onClick={() => copyLink(c.token)}>🔗 Copy link</span>}
-                {c.status === 'signed' && <span style={{ color: '#4ade80' }}>{String(c.signed_at).slice(0, 10)}</span>}
-                {c.status !== 'signed' && <span style={{ cursor: 'pointer' }} onClick={() => voidCt(c.id)}>🗑️</span>}
+              <span className="ctb-actions">
+                {c.status !== 'signed' && <span className="ctb-link" onClick={() => copyLink(c.token)}>🔗 Copy link</span>}
+                {c.status === 'signed' && <span className="ctb-signed">{String(c.signed_at).slice(0, 10)}</span>}
+                {c.status !== 'signed' && <span className="ctb-del" onClick={() => voidCt(c.id)}>🗑️</span>}
               </span>
             </div>
           ))}
+        </div>
+      )}
+
+      {preview && (
+        <div className="ctp-overlay" onClick={() => setPreview(null)}>
+          <div className="ctp-modal" onClick={e => e.stopPropagation()}>
+            <div className="ctp-head">
+              <h3 className="ctp-title">📄 {preview.title}</h3>
+              <button className="al-x" onClick={() => setPreview(null)}>✕</button>
+            </div>
+            <div className="ctp-body">{preview.body}</div>
+            <div className="ctp-foot">
+              <button className="refresh" onClick={() => setPreview(null)}>Close</button>
+              <button className="refresh ctb-preview" onClick={sendForSign} disabled={busy}>{busy ? 'Sending…' : '📨 Send for signing'}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1068,13 +1062,12 @@ function MoneySection({ lead }) {
   const sum = data?.summary;
   return (
     <div className="ms-wrap">
-      {/* Status */}
-      <div className="ms-status">
-        {STATUSES.map(s => (
-          <button key={s} className={`ms-status-btn ${status === s ? 'is-on' : ''}`} onClick={() => changeStatus(s)}>
-            {S_ICON[s]} {S_LABEL[s]}
-          </button>
-        ))}
+      {/* Status dropdown (auto-set, overridable) */}
+      <div className="ms-status-row">
+        <label className="ms-status-lbl">Status</label>
+        <select className="ms-status-sel" value={status} onChange={e => changeStatus(e.target.value)}>
+          {STATUSES.map(s => <option key={s} value={s}>{S_ICON[s]} {S_LABEL[s]}</option>)}
+        </select>
       </div>
       {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
 
@@ -1108,11 +1101,11 @@ function MoneySection({ lead }) {
 
       <div className="ms-pay-row">
         <input className="ms-input ms-amt" type="number" placeholder="Amount $" value={amt} onChange={e => setAmt(e.target.value)} />
-        <select className="ms-input" value={method} onChange={e => setMethod(e.target.value)}>
+        <select className="ms-input ms-method" value={method} onChange={e => setMethod(e.target.value)}>
           <option value="manual">Manual</option><option value="etransfer">E-transfer</option>
           <option value="cash">Cash</option><option value="card">Card</option>
         </select>
-        <button className="refresh bx-primary" onClick={pay}>+ Record payment</button>
+        <button className="refresh bx-primary ms-pay-btn" onClick={pay}>+ Record payment</button>
       </div>
 
       {data?.payments?.length > 0 && (
