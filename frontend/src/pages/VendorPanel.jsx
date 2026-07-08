@@ -1110,12 +1110,18 @@ function MoneySection({ lead }) {
   const pending = sum ? sum.balance : null;
   return (
     <div className="ms-wrap">
-      {/* Status dropdown (auto-set, overridable) */}
-      <div className="ms-status-row">
-        <label className="ms-status-lbl">Status</label>
-        <select className="ms-status-sel" value={status} onChange={e => changeStatus(e.target.value)}>
-          {STATUSES.map(s => <option key={s} value={s}>{S_ICON[s]} {S_LABEL[s]}</option>)}
-        </select>
+      {/* Status dropdown + web-payment toggle in one row */}
+      <div className="ms-top-row">
+        <div className="ms-status-row">
+          <label className="ms-status-lbl">Status</label>
+          <select className="ms-status-sel" value={status} onChange={e => changeStatus(e.target.value)}>
+            {STATUSES.map(s => <option key={s} value={s}>{S_ICON[s]} {S_LABEL[s]}</option>)}
+          </select>
+        </div>
+        <button className={`ms-webpay-chip ${webPay ? 'is-on' : ''}`} onClick={toggleWebPay}
+          title={webPay ? 'Client can pay online by card' : 'Client pays in person only'}>
+          💻 Online pay: <b>{webPay ? 'ON' : 'OFF'}</b>
+        </button>
       </div>
       {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
 
@@ -1137,15 +1143,6 @@ function MoneySection({ lead }) {
           <label className="ms-label">Custom Billed ($)</label>
           <input className="ms-input" type="number" placeholder="auto"
             value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
-        </div>
-      </div>
-
-      {/* web payment toggle */}
-      <div className="ms-webpay" onClick={toggleWebPay}>
-        <div className={`ms-switch ${webPay ? 'is-on' : ''}`}><span className="ms-knob" /></div>
-        <div className="ms-webpay-txt">
-          <div className="ms-webpay-title">💻 Payment on website: <b>{webPay ? 'Enabled' : 'Disabled'}</b></div>
-          <div className="ms-webpay-sub">{webPay ? 'Client can pay online by card.' : 'Client pays in person only (online card hidden).'}</div>
         </div>
       </div>
 

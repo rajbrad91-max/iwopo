@@ -473,14 +473,12 @@
 .ms-chip-due { background: #fbbf2418; border-color: #fbbf2444; color: #fbbf24; }
 .ms-strike { color: var(--muted); margin-left: 6px; }
 
-/* 💻 web payment toggle */
-.ms-webpay { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; margin-bottom: 14px; }
-.ms-switch { flex-shrink: 0; width: 42px; height: 24px; border-radius: 20px; background: var(--line); position: relative; transition: background .2s; margin-top: 2px; }
-.ms-switch.is-on { background: #2dd4bf; }
-.ms-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .2s; }
-.ms-switch.is-on .ms-knob { left: 21px; }
-.ms-webpay-title { font-size: 13px; }
-.ms-webpay-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+/* 💻 web payment toggle — compact chip next to status */
+.ms-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.ms-top-row .ms-status-row { flex: 1; margin-bottom: 0; min-width: 180px; }
+.ms-webpay-chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 12px; font-weight: 600; padding: 8px 14px; cursor: pointer; white-space: nowrap; transition: all .15s; }
+.ms-webpay-chip:hover { border-color: #2dd4bf88; }
+.ms-webpay-chip.is-on { background: #4ade8022; border-color: #4ade8066; color: #4ade80; }
 
 /* 3 money tiles */
 .ms-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
