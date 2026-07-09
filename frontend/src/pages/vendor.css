@@ -620,8 +620,8 @@
 .gal-cover-btn { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--panel-2); border: 1.5px dashed var(--line); border-radius: 10px; color: var(--muted); padding: 11px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
 .gal-cover-btn:hover { border-color: #2dd4bf; color: #2dd4bf; background: #2dd4bf0d; }
 .gal-pw-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 13px; font-weight: 800; color: var(--text); margin: 22px 0 12px; padding-top: 18px; border-top: 1px solid var(--line); }
-.gal-pw-tools { display: flex; gap: 6px; align-items: center; }
-.gal-prefix { width: 92px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 6px 9px; font-size: 12px; }
+.gal-pw-tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.gal-prefix { width: 132px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 6px 9px; font-size: 12px; }
 .gal-prefix:focus { outline: none; border-color: #2dd4bf; }
 .gal-gen { background: #2dd4bf22; border: 1px solid #2dd4bf55; color: #2dd4bf; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
 .gal-gen:hover { background: #2dd4bf33; }
