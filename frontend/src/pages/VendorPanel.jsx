@@ -212,6 +212,7 @@ function GalleriesView() {
   const [coverFile, setCoverFile] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [tpl, setTpl] = useState('');
+  const [showPw, setShowPw] = useState({ guest: false, admin: false });
   const [sendModal, setSendModal] = useState(null); // { album, email, body, editing }
   const [sendMsg, setSendMsg] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -387,8 +388,18 @@ function GalleriesView() {
             </span>
           </div>
           <div className="gal-grid">
-            <div><label className="lbl">👁️ Guest password</label><input className="gal-input" value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} /></div>
-            <div><label className="lbl">🔐 Admin password</label><input className="gal-input" value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} /></div>
+            <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
+              <div className="gal-pw-wrap">
+                <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
+                <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
+              </div>
+            </div>
+            <div><label className="lbl">🔐 Admin password</label>
+              <div className="gal-pw-wrap">
+                <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
+                <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
+              </div>
+            </div>
           </div>
 
           <div className="gal-form-foot">
