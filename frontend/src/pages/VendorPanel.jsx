@@ -358,7 +358,7 @@ function GalleriesView() {
         <div className="table-wrap gal-form">
           <div className="gal-form-h">{edit ? '✏️ Edit Album' : '➕ New Album'}</div>
 
-          {!edit && bookings.length > 0 && (
+          {bookings.length > 0 && (
             <div className="gal-pick">
               <label className="lbl">📞 Auto-fill from a confirmed booking</label>
               <select className="gal-input" defaultValue="" onChange={e => pickBooking(e.target.value)}>
