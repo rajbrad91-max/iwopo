@@ -11,6 +11,7 @@ import ClientPortal from './pages/ClientPortal';
 import CrewCheckin from './pages/CrewCheckin';
 import PublicGallery from './pages/PublicGallery';
 import VendorGallery from './pages/VendorGallery';
+import Vote from './pages/Vote';
 import { getUser } from './lib/api';
 
 export default function App() {
@@ -20,6 +21,9 @@ export default function App() {
   // 🌐 Public inquiry route: /inquiry/:vendorId  (no login needed)
   const m = window.location.pathname.match(/^\/inquiry\/(\d+)/);
   if (m) return <InquiryForm vendorId={m[1]} />;
+
+  // 🗳️ Voting page: /vote
+  if (window.location.pathname.match(/^\/vote\/?$/)) return <Vote />;
 
   // 📄 Public contract signing: /sign/:token
   const s = window.location.pathname.match(/^\/sign\/([a-f0-9]+)/);
