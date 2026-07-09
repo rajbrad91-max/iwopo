@@ -1040,7 +1040,8 @@ function FaceEngineSettings() {
   ];
   // display value: masked unless editing+show
   const val = (k) => {
-    if (!editing) return s[k] || '';
+    // 🔒 always masked when just viewing — real values only appear in edit mode + Show
+    if (!editing) return s[k] ? '••••••••••••' : '';
     if (show) return s[k] || '';
     return s[k] ? '••••••••••••' : '';
   };
