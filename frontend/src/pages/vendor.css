@@ -698,3 +698,7 @@
 /* 🔗 Copy gallery link button */
 .gal-copy-url { background: var(--panel-2); border: 1px solid #2dd4bf55; color: #2dd4bf; }
 .gal-copy-url:hover { background: #2dd4bf0d; }
+
+/* 🔗 Full gallery link row in settings */
+.gal-set-link { display: flex; gap: 8px; margin-top: 6px; }
+.gal-set-link .gal-input { flex: 1; font-size: 12px; }

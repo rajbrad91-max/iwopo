@@ -33,6 +33,31 @@ async function findAlbum(token) {
   return rows[0] || null;
 }
 
+// 🌐 whole-gallery index: list all albums for a vendor (covers + names + album tokens)
+router.get('/vendor/:token', async (req, res) => {
+  try {
+    const { rows: v } = await query('SELECT id, business_name FROM vendors WHERE gallery_token=$1', [req.params.token]);
+    if (!v[0]) return res.status(404).json({ error: 'Gallery not found' });
+    const { rows: albums } = await query(
+      `SELECT a.public_token, a.title, a.category, a.cover_photo,
+              (SELECT COUNT(*)::int FROM photos p WHERE p.album_id=a.id) AS photo_count
+       FROM albums a WHERE a.vendor_id=$1 ORDER BY a.created_at DESC NULLS LAST, a.id DESC`, [v[0].id]);
+    res.json({
+      vendor: { name: v[0].business_name },
+      albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: a.photo_count })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 🌐 cover for an album in the index (by album token, public — no password)
+router.get('/vendor-cover/:albumToken', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.albumToken);
+    if (!a || !a.cover_photo) return res.status(404).end();
+    res.sendFile(path.join(ROOT, String(a.id), a.cover_photo));
+  } catch { res.status(404).end(); }
+});
+
 // 🌐 album meta (no photos) — for the login gate
 router.get('/:token', async (req, res) => {
   try {

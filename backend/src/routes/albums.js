@@ -83,7 +83,10 @@ router.get('/settings', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
     const { rows } = await query('SELECT pw_prefix, spw_prefix, instructions_template FROM album_settings WHERE vendor_id=$1', [v]);
-    res.json({ settings: rows[0] || { pw_prefix: '', spw_prefix: '', instructions_template: null } });
+    const { rows: vt } = await query('SELECT gallery_token FROM vendors WHERE id=$1', [v]);
+    const settings = rows[0] || { pw_prefix: '', spw_prefix: '', instructions_template: null };
+    settings.gallery_token = vt[0]?.gallery_token || null;
+    res.json({ settings });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

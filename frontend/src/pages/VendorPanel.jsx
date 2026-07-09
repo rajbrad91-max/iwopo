@@ -214,6 +214,15 @@ function GalleriesView() {
   const [tpl, setTpl] = useState('');
   const [showPw, setShowPw] = useState({ guest: false, admin: false });
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [galleryToken, setGalleryToken] = useState('');
+  const [copiedGallery, setCopiedGallery] = useState(false);
+
+  function copyGalleryUrl() {
+    const url = `${window.location.origin}/gallery/${galleryToken}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedGallery(true); setTimeout(() => setCopiedGallery(false), 2000);
+    }).catch(() => { prompt('Copy your full gallery link:', url); });
+  }
 
   function copyUrl(a) {
     const url = `${window.location.origin}/g/${a.public_token}`;
@@ -260,6 +269,7 @@ function GalleriesView() {
       const s = d.settings || {};
       setPwPrefix(s.pw_prefix || ''); setSpwPrefix(s.spw_prefix || '');
       setTpl(s.instructions_template || '');
+      setGalleryToken(s.gallery_token || '');
     }).catch(() => {});
   }, []);
   function load() { setLoading(true); api.albums().then(d => setAlbums(d.albums || [])).catch(() => {}).finally(() => setLoading(false)); }
@@ -431,7 +441,14 @@ function GalleriesView() {
               <h3 className="al-title">⚙️ Gallery Settings</h3>
               <button className="al-x" onClick={() => setShowSettings(false)}>✕</button>
             </div>
-            <label className="lbl">🔑 Default password prefixes</label>
+
+            <label className="lbl">🔗 Full gallery link (all albums — embed on your website)</label>
+            <div className="gal-set-link">
+              <input className="gal-input" readOnly value={galleryToken ? `${window.location.origin}/gallery/${galleryToken}` : 'Loading…'} onFocus={e => e.target.select()} />
+              <button className="refresh gal-copy-url" onClick={copyGalleryUrl} disabled={!galleryToken}>{copiedGallery ? '✅ Copied!' : '🔗 Copy'}</button>
+            </div>
+
+            <label className="lbl gal-set-lbl">🔑 Default password prefixes</label>
             <div className="gal-set-prefixes">
               <input className="gal-input" value={pwPrefix} onChange={e => setPwPrefix(e.target.value)} placeholder="Guest prefix (e.g. view)" />
               <input className="gal-input" value={spwPrefix} onChange={e => setSpwPrefix(e.target.value)} placeholder="Admin prefix (e.g. admin)" />

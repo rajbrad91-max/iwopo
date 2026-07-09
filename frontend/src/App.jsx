@@ -10,6 +10,7 @@ import Certificate from './pages/Certificate';
 import ClientPortal from './pages/ClientPortal';
 import CrewCheckin from './pages/CrewCheckin';
 import PublicGallery from './pages/PublicGallery';
+import VendorGallery from './pages/VendorGallery';
 import { getUser } from './lib/api';
 
 export default function App() {
@@ -40,7 +41,11 @@ export default function App() {
   const ck = window.location.pathname.match(/^\/checkin\/([a-f0-9]+)/);
   if (ck) return <CrewCheckin token={ck[1]} />;
 
-  // 🖼️ Public client gallery: /g/:token
+  // 🖼️ Whole vendor gallery (all albums): /gallery/:token
+  const vg = window.location.pathname.match(/^\/gallery\/([a-z0-9]+)/i);
+  if (vg) return <VendorGallery token={vg[1]} />;
+
+  // 🖼️ Public client gallery (single album): /g/:token
   const g = window.location.pathname.match(/^\/g\/([a-z0-9]+)/i);
   if (g) return <PublicGallery token={g[1]} />;
 
