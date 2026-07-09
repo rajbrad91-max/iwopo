@@ -644,8 +644,6 @@
 .gal-card-actions { display: flex; gap: 8px; }
 .gal-mini { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
 .gal-mini:hover { border-color: #2dd4bf88; background: #2dd4bf0d; }
-.gal-mini-del { flex: 0 0 auto; }
-.gal-mini-del:hover { border-color: #fb7185; background: #fb71850d; }
 @media (max-width: 560px){ .gal-grid { grid-template-columns: 1fr; } }
 
 /* 📸 Galleries — extra (settings) */
@@ -692,3 +690,7 @@
 .ad-picked { position: absolute; top: 6px; left: 6px; background: #2dd4bf; color: #06231f; border-radius: 20px; font-size: 10px; font-weight: 800; padding: 2px 7px; }
 .ad-photo-del { position: absolute; top: 6px; right: 6px; background: #00000090; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 2px 6px; }
 .ad-photo-del:hover { background: #fb7185; }
+
+/* ⚙️ Gallery tile manage button */
+.gal-mini-gear { width: 100%; font-weight: 700; }
+.gal-mini-gear:hover { border-color: #2dd4bf; background: #2dd4bf0d; color: #2dd4bf; }

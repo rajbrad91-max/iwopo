@@ -404,6 +404,7 @@ function GalleriesView() {
 
           <div className="gal-form-foot">
             <button className="refresh gal-save" onClick={create}>{edit ? '💾 Save changes' : '✅ Create album'}</button>
+            {edit && <button className="refresh gal-mini-send" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
             {msg && <span className="gal-err">{msg}</span>}
           </div>
         </div>
@@ -457,9 +458,7 @@ function GalleriesView() {
                 </div>
                 {!selectMode && (
                   <div className="gal-card-actions">
-                    <button className="gal-mini" onClick={e => { e.stopPropagation(); startEdit(a); }}>✏️ Edit</button>
-                    <button className="gal-mini gal-mini-send" onClick={e => { e.stopPropagation(); openSend(a); }}>📧 Send</button>
-                    <button className="gal-mini gal-mini-del" onClick={e => { e.stopPropagation(); del(a.id); }}>🗑️</button>
+                    <button className="gal-mini gal-mini-gear" onClick={e => { e.stopPropagation(); startEdit(a); }} title="Edit album">⚙️ Manage</button>
                   </div>
                 )}
               </div>
