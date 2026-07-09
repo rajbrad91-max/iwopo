@@ -622,49 +622,100 @@ Thank you for choosing us! 💛`;
 function AlbumDetail({ albumId, onBack }) {
   const [album, setAlbum] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [events, setEvents] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [prog, setProg] = useState('');
+  const [activeEvent, setActiveEvent] = useState('all'); // filter + upload target
+  const [newEvent, setNewEvent] = useState('');
   const token = localStorage.getItem('vowflo_token');
 
   useEffect(() => { load(); }, [albumId]);
-  function load() { api.album(albumId).then(d => { setAlbum(d.album); setPhotos(d.photos || []); }).catch(() => {}); }
+  function load() { api.album(albumId).then(d => { setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []); }).catch(() => {}); }
+
+  const isPerClient = album && (album.gallery_mode === 'per_client');
 
   async function onFiles(e) {
     const files = e.target.files;
     if (!files.length) return;
+    // in per-client mode uploads go into the active event (must pick one first)
+    const eventId = isPerClient && activeEvent !== 'all' ? activeEvent : null;
+    if (isPerClient && !eventId) { setProg('⚠️ Pick an event tab first to upload into it'); setTimeout(() => setProg(''), 2500); e.target.value = ''; return; }
     setUploading(true); setProg(`Uploading ${files.length} photos…`);
-    try { await api.uploadPhotos(albumId, files); setProg('✅ Done'); load(); }
+    try { await api.uploadPhotos(albumId, files, eventId); setProg('✅ Done'); load(); }
     catch (err) { setProg('⚠️ ' + err.message); }
-    finally { setUploading(false); setTimeout(() => setProg(''), 2000); }
+    finally { setUploading(false); setTimeout(() => setProg(''), 2000); e.target.value = ''; }
   }
   async function delPhoto(pid) {
     if (!confirm('Delete this photo?')) return;
     await api.deletePhoto(albumId, pid); load();
   }
+  async function addEvent() {
+    const name = newEvent.trim();
+    if (!name) return;
+    try { const d = await api.addAlbumEvent(albumId, name); setNewEvent(''); setActiveEvent(d.event.id); load(); }
+    catch (e) { alert('⚠️ ' + e.message); }
+  }
+  async function renameEvent(ev) {
+    const name = prompt('Rename event:', ev.name);
+    if (!name || name === ev.name) return;
+    try { await api.renameAlbumEvent(albumId, ev.id, name); load(); } catch (e) { alert('⚠️ ' + e.message); }
+  }
+  async function delEvent(ev) {
+    if (!confirm(`Delete event "${ev.name}"? Photos stay but become ungrouped.`)) return;
+    try { await api.deleteAlbumEvent(albumId, ev.id); if (String(activeEvent) === String(ev.id)) setActiveEvent('all'); load(); }
+    catch (e) { alert('⚠️ ' + e.message); }
+  }
 
   if (!album) return <div className="loading">Loading…</div>;
+
+  const shown = isPerClient && activeEvent !== 'all'
+    ? photos.filter(p => String(p.event_id) === String(activeEvent))
+    : photos;
+  const uploadLabel = uploading ? '⏳ Uploading…'
+    : isPerClient ? (activeEvent === 'all' ? '📤 Pick an event to upload' : '📤 Upload to this event')
+    : '📤 Upload photos';
 
   return (
     <>
       <div className="ad-head">
         <div>
           <button className="refresh ad-back" onClick={onBack}>← Back</button>
-          <h2 className="ad-title">🖼️ {album.title}</h2>
-          <div className="ad-count">{photos.length} photos</div>
+          <h2 className="ad-title">🖼️ {album.title}{isPerClient && <span className="ad-mode-tag">👤 Per client</span>}</h2>
+          <div className="ad-count">{photos.length} photos{isPerClient ? ` · ${events.length} events` : ''}</div>
         </div>
-        <label className="refresh ad-upload">
-          {uploading ? '⏳ Uploading…' : '📤 Upload photos'}
-          <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading} />
+        <label className={`refresh ad-upload ${isPerClient && activeEvent === 'all' ? 'ad-upload-off' : ''}`}>
+          {uploadLabel}
+          <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || (isPerClient && activeEvent === 'all')} />
         </label>
       </div>
 
+      {isPerClient && (
+        <div className="ad-events">
+          <button className={`pg-ev ${activeEvent === 'all' ? 'on' : ''}`} onClick={() => setActiveEvent('all')}>All ({photos.length})</button>
+          {events.map(ev => {
+            const n = photos.filter(p => String(p.event_id) === String(ev.id)).length;
+            return (
+              <span key={ev.id} className="ad-ev-wrap">
+                <button className={`pg-ev ${String(activeEvent) === String(ev.id) ? 'on' : ''}`} onClick={() => setActiveEvent(ev.id)}>{ev.name} ({n})</button>
+                <button className="ad-ev-edit" title="Rename" onClick={() => renameEvent(ev)}>✏️</button>
+                <button className="ad-ev-edit" title="Delete" onClick={() => delEvent(ev)}>🗑️</button>
+              </span>
+            );
+          })}
+          <span className="ad-ev-add">
+            <input className="gal-input ad-ev-input" placeholder="New event…" value={newEvent} onChange={e => setNewEvent(e.target.value)} onKeyDown={e => e.key === 'Enter' && addEvent()} />
+            <button className="gal-gen" onClick={addEvent}>➕</button>
+          </span>
+        </div>
+      )}
+
       {prog && <div className="ad-prog">{prog}</div>}
 
-      {photos.length === 0 ? (
-        <div className="table-wrap ad-empty">No photos yet. Upload some 📤</div>
+      {shown.length === 0 ? (
+        <div className="table-wrap ad-empty">{isPerClient && activeEvent === 'all' && events.length === 0 ? 'Create an event above, then upload photos into it 📤' : 'No photos here yet. Upload some 📤'}</div>
       ) : (
         <div className="ad-grid">
-          {photos.map(p => (
+          {shown.map(p => (
             <div key={p.id} className="ad-photo">
               <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" />
               {p.is_selected && <span className="ad-picked">✅ Picked</span>}

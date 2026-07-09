@@ -175,9 +175,10 @@ export const api = {
   album: (id) => request(`/albums/${id}`),
   deleteAlbum: (id) => request(`/albums/${id}`, { method: 'DELETE' }),
   deletePhoto: (albumId, photoId) => request(`/albums/${albumId}/photos/${photoId}`, { method: 'DELETE' }),
-  uploadPhotos: async (albumId, files) => {
+  uploadPhotos: async (albumId, files, eventId) => {
     const fd = new FormData();
     [...files].forEach(f => fd.append('photos', f));
+    if (eventId) fd.append('event_id', eventId);
     const token = localStorage.getItem('vowflo_token');
     const res = await fetch(`/api/albums/${albumId}/photos`, {
       method: 'POST',
@@ -188,6 +189,9 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Upload failed');
     return data;
   },
+  addAlbumEvent: (albumId, name) => request(`/albums/${albumId}/events`, { method: 'POST', body: JSON.stringify({ name }) }),
+  renameAlbumEvent: (albumId, eventId, name) => request(`/albums/${albumId}/events/${eventId}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  deleteAlbumEvent: (albumId, eventId) => request(`/albums/${albumId}/events/${eventId}`, { method: 'DELETE' }),
   fileUrl: (photoId, type) => `/api/albums/file/${photoId}/${type}`,
   indexFaces: (albumId) => request(`/albums/${albumId}/index-faces`, { method: 'POST' }),
   faceSearch: async (albumId, selfieFile) => {

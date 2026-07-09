@@ -223,7 +223,43 @@ router.get('/:id', requireAuth, async (req, res) => {
     const { rows: a } = await query('SELECT * FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
     if (!a[0]) return res.status(404).json({ error: 'Album not found' });
     const { rows: photos } = await query('SELECT * FROM photos WHERE album_id=$1 ORDER BY created_at', [req.params.id]);
-    res.json({ album: a[0], photos });
+    const { rows: events } = await query('SELECT id, name, sort_order FROM album_events WHERE album_id=$1 ORDER BY sort_order, id', [req.params.id]);
+    res.json({ album: a[0], photos, events });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 🔒 events CRUD (per-client mode)
+router.post('/:id/events', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name required' });
+  try {
+    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
+    if (!own[0]) return res.status(404).json({ error: 'Album not found' });
+    const { rows: mx } = await query('SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM album_events WHERE album_id=$1', [req.params.id]);
+    const { rows } = await query(
+      'INSERT INTO album_events (album_id, vendor_id, name, sort_order) VALUES ($1,$2,$3,$4) RETURNING id, name, sort_order',
+      [req.params.id, v, name, mx[0].n]);
+    res.status(201).json({ event: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const { name } = req.body;
+  try {
+    const { rows } = await query(
+      'UPDATE album_events SET name=COALESCE($1,name) WHERE id=$2 AND album_id=$3 AND vendor_id=$4 RETURNING id, name',
+      [name || null, req.params.eventId, req.params.id, v]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json({ event: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
+  const v = vid(req);
+  try {
+    const r = await query('DELETE FROM album_events WHERE id=$1 AND album_id=$2 AND vendor_id=$3', [req.params.eventId, req.params.id, v]);
+    if (r.rowCount === 0) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -263,10 +299,11 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
       fs.unlinkSync(f.path);
 
       const rel = (n) => `${v}/${req.params.id}/${n}`;
+      const eventId = req.body.event_id ? parseInt(req.body.event_id, 10) : null;
       const { rows } = await query(
-        `INSERT INTO photos (album_id, vendor_id, filename, storage_path, thumb_path, preview_path)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-        [req.params.id, v, f.originalname, rel(origName), rel(thumbName), rel(prevName)]);
+        `INSERT INTO photos (album_id, vendor_id, filename, storage_path, thumb_path, preview_path, event_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [req.params.id, v, f.originalname, rel(origName), rel(thumbName), rel(prevName), eventId]);
       saved.push(rows[0]);
     }
     res.status(201).json({ uploaded: saved.length, photos: saved });
