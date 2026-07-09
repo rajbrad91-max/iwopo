@@ -272,10 +272,6 @@ function GalleriesView() {
       admin_password: spwPrefix + tail,
     }));
   }
-  function genPasswords() {
-    const tail = String(Math.floor(1000 + Math.random() * 9000));
-    setF(s => ({ ...s, guest_password: pwPrefix + tail, admin_password: spwPrefix + tail }));
-  }
   // 🔄 changing a prefix re-applies to the existing last-4 tail (PerfectPoses behaviour)
   function applyPrefix(which, val) {
     if (which === 'guest') setPwPrefix(val); else setSpwPrefix(val);
@@ -388,7 +384,6 @@ function GalleriesView() {
             <span className="gal-pw-tools">
               <input className="gal-prefix" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix" title="Guest password prefix" />
               <input className="gal-prefix" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix" title="Admin password prefix" />
-              <button className="gal-gen" onClick={genPasswords} title="Generate passwords">🎲 Auto</button>
             </span>
           </div>
           <div className="gal-grid">
