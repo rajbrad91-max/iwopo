@@ -157,7 +157,7 @@ export const api = {
   albumBookingOptions: () => request('/albums/booking-options'),
   albumSettings: () => request('/albums/settings'),
   saveAlbumSettings: (data) => request('/albums/settings', { method: 'PUT', body: JSON.stringify(data) }),
-  emailAlbumInstructions: (id, template) => request(`/albums/${id}/email-instructions`, { method: 'POST', body: JSON.stringify({ template }) }),
+  emailAlbumInstructions: (id, payload) => request(`/albums/${id}/email-instructions`, { method: 'POST', body: JSON.stringify(payload || {}) }),
   uploadAlbumCover: async (albumId, file) => {
     const fd = new FormData();
     fd.append('cover', file);

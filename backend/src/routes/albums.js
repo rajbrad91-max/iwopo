@@ -112,16 +112,27 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     const { rows } = await query('SELECT * FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
     const a = rows[0];
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!a.client_email) return res.status(400).json({ error: 'No client email on this album' });
 
-    const { rows: st } = await query('SELECT instructions_template FROM album_settings WHERE vendor_id=$1', [v]);
-    let body = (req.body.template ?? st[0]?.instructions_template) || DEFAULT_INSTRUCTIONS;
-    body = body
-      .replaceAll('{client_name}', a.title || 'Client')
-      .replaceAll('{admin_password}', a.admin_password || '')
-      .replaceAll('{guest_password}', a.guest_password || '');
+    // recipient: explicit override from popup, else album's stored client_email
+    const to = (req.body.email || a.client_email || '').trim();
+    if (!to) return res.status(400).json({ error: 'No recipient email' });
 
-    const lead = { vendor_id: v, email: a.client_email, name: a.title };
+    // body: popup sends already-filled text; otherwise fall back to template + fill
+    let body = req.body.body;
+    if (!body) {
+      const { rows: st } = await query('SELECT instructions_template FROM album_settings WHERE vendor_id=$1', [v]);
+      body = (st[0]?.instructions_template || DEFAULT_INSTRUCTIONS)
+        .replaceAll('{client_name}', a.title || 'Client')
+        .replaceAll('{admin_password}', a.admin_password || '')
+        .replaceAll('{guest_password}', a.guest_password || '');
+    }
+
+    // remember the entered email on the album for next time
+    if (req.body.email && req.body.email !== a.client_email) {
+      await query('UPDATE albums SET client_email=$1 WHERE id=$2', [to, a.id]);
+    }
+
+    const lead = { vendor_id: v, email: to, name: a.title };
     const { sendLeadEmail } = await import('./email.js');
     await sendLeadEmail(req, lead, 'Your Photos Are Ready 📸', body);
     res.json({ ok: true });

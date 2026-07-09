@@ -212,11 +212,13 @@ function GalleriesView() {
   const [coverFile, setCoverFile] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [tpl, setTpl] = useState('');
+  const [sendModal, setSendModal] = useState(null); // { album, email, body, editing }
+  const [sendMsg, setSendMsg] = useState('');
   const [f, setF] = useState(emptyAlbum());
   const [msg, setMsg] = useState('');
 
   function emptyAlbum() {
-    return { title: '', category: '', client_email: '', guest_username: '', guest_password: '', admin_username: '', admin_password: '' };
+    return { title: '', category: '', client_email: '', guest_password: '', admin_password: '' };
   }
 
   useEffect(() => {
@@ -243,9 +245,7 @@ function GalleriesView() {
       ...s,
       title: b.name,
       client_email: b.email || '',
-      guest_username: b.name,
       guest_password: pwPrefix + tail,
-      admin_username: b.name,
       admin_password: spwPrefix + tail,
     }));
   }
@@ -281,8 +281,7 @@ function GalleriesView() {
     setEdit(a);
     setF({
       title: a.title || '', category: a.category || '', client_email: a.client_email || '',
-      guest_username: a.guest_username || '', guest_password: a.guest_password || '',
-      admin_username: a.admin_username || '', admin_password: a.admin_password || '',
+      guest_password: a.guest_password || '', admin_password: a.admin_password || '',
     });
     setCoverFile(null); setShowNew(true); setMsg('');
   }
@@ -290,11 +289,26 @@ function GalleriesView() {
     if (!confirm('Delete this album and all its photos?')) return;
     await api.deleteAlbum(id); load();
   }
-  async function emailInstructions(a) {
-    if (!a.client_email) return alert('No client email on this album. Edit it to add one.');
-    if (!confirm(`Email gallery instructions to ${a.client_email}?`)) return;
-    try { await api.emailAlbumInstructions(a.id, tpl || undefined); alert('✅ Instructions emailed!'); }
-    catch (e) { alert('⚠️ ' + e.message); }
+
+  // 📧 fill instructions template with this album's values
+  function fillTpl(a, raw) {
+    const base = raw || tpl || DEFAULT_GALLERY_TPL;
+    return base
+      .replaceAll('{client_name}', a.title || 'Client')
+      .replaceAll('{guest_password}', a.guest_password || '')
+      .replaceAll('{admin_password}', a.admin_password || '');
+  }
+  function openSend(a) {
+    setSendMsg('');
+    setSendModal({ album: a, email: a.client_email || '', body: fillTpl(a), editing: false });
+  }
+  async function doSend() {
+    if (!sendModal?.email) { setSendMsg('⚠️ Email required'); return; }
+    setSendMsg('Sending…');
+    try {
+      await api.emailAlbumInstructions(sendModal.album.id, { email: sendModal.email, body: sendModal.body });
+      setSendMsg('✅ Sent!'); setTimeout(() => setSendModal(null), 1200);
+    } catch (e) { setSendMsg('⚠️ ' + e.message); }
   }
   async function saveSettingsOnly() {
     try { await api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix, instructions_template: tpl }); setShowSettings(false); }
@@ -338,7 +352,6 @@ function GalleriesView() {
                 <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
               </label>
             </div>
-            <div className="gal-full"><label className="lbl">📧 Client email (for sending instructions)</label><input className="gal-input" value={f.client_email} onChange={e => setF({ ...f, client_email: e.target.value })} placeholder="client@email.com" /></div>
           </div>
 
           <div className="gal-pw-head">
@@ -350,9 +363,7 @@ function GalleriesView() {
             </span>
           </div>
           <div className="gal-grid">
-            <div><label className="lbl">👁️ Guest username</label><input className="gal-input" value={f.guest_username} onChange={e => setF({ ...f, guest_username: e.target.value })} /></div>
             <div><label className="lbl">👁️ Guest password</label><input className="gal-input" value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} /></div>
-            <div><label className="lbl">🔐 Admin username</label><input className="gal-input" value={f.admin_username} onChange={e => setF({ ...f, admin_username: e.target.value })} /></div>
             <div><label className="lbl">🔐 Admin password</label><input className="gal-input" value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} /></div>
           </div>
 
@@ -403,7 +414,7 @@ function GalleriesView() {
                 </div>
                 <div className="gal-card-actions">
                   <button className="gal-mini" onClick={e => { e.stopPropagation(); startEdit(a); }}>✏️ Edit</button>
-                  {a.client_email && <button className="gal-mini" onClick={e => { e.stopPropagation(); emailInstructions(a); }}>📧</button>}
+                  <button className="gal-mini gal-mini-send" onClick={e => { e.stopPropagation(); openSend(a); }}>📧 Send</button>
                   <button className="gal-mini gal-mini-del" onClick={e => { e.stopPropagation(); del(a.id); }}>🗑️</button>
                 </div>
               </div>
@@ -411,9 +422,51 @@ function GalleriesView() {
           ))}
         </div>
       )}
+
+      {sendModal && (
+        <div className="al-overlay" onClick={() => setSendModal(null)}>
+          <div className="gal-send-modal" onClick={e => e.stopPropagation()}>
+            <div className="al-head">
+              <h3 className="al-title">📧 Send Instructions</h3>
+              <button className="al-x" onClick={() => setSendModal(null)}>✕</button>
+            </div>
+            <label className="lbl">To (client email)</label>
+            <input className="gal-input" value={sendModal.email} onChange={e => setSendModal(m => ({ ...m, email: e.target.value }))} placeholder="client@email.com" />
+
+            <div className="gal-send-msghead">
+              <label className="lbl">Instructions</label>
+              {sendModal.editing
+                ? <button className="gal-gen" onClick={() => {
+                    // save edited body back as the reusable template (re-insert placeholders isn't needed; save raw text with current values)
+                    api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix, instructions_template: sendModal.body }).then(() => setTpl(sendModal.body)).catch(() => {});
+                    setSendModal(m => ({ ...m, editing: false }));
+                  }}>💾 Save</button>
+                : <button className="gal-gen" onClick={() => setSendModal(m => ({ ...m, editing: true }))}>✏️ Edit</button>}
+            </div>
+            <textarea className="gal-input gal-send-ta" readOnly={!sendModal.editing} value={sendModal.body} onChange={e => setSendModal(m => ({ ...m, body: e.target.value }))} />
+
+            <div className="gal-send-foot">
+              <button className="refresh gal-save" onClick={doSend}>📨 Send</button>
+              {sendMsg && <span className="gal-err">{sendMsg}</span>}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+
+const DEFAULT_GALLERY_TPL = `Dear {client_name},
+
+Your photos are now ready to view and download! 🎉
+
+Guest Password: {guest_password}
+(Share this with friends and family)
+
+Admin Password: {admin_password}
+(Use this to manage or remove photos)
+
+Thank you for choosing us! 💛`;
 
 function AlbumDetail({ albumId, onBack }) {
   const [album, setAlbum] = useState(null);

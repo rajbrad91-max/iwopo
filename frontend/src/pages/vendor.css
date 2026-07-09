@@ -659,3 +659,11 @@
 .gal-set-hint code { background: var(--panel-2); padding: 1px 5px; border-radius: 5px; color: #2dd4bf; }
 .gal-set-ta { min-height: 200px; font-family: inherit; line-height: 1.5; }
 .gal-set-save { margin-top: 16px; width: 100%; }
+
+/* 📧 Send Instructions popup */
+.gal-mini-send:hover { border-color: #2dd4bf; background: #2dd4bf0d; }
+.gal-send-modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 540px; padding: 22px 24px; }
+.gal-send-msghead { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+.gal-send-ta { min-height: 220px; margin-top: 6px; font-family: inherit; line-height: 1.5; resize: vertical; }
+.gal-send-ta[readonly] { opacity: .85; cursor: default; }
+.gal-send-foot { display: flex; gap: 14px; align-items: center; margin-top: 16px; }
