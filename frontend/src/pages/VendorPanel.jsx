@@ -541,29 +541,29 @@ function AlbumDetail({ albumId, onBack }) {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div className="ad-head">
         <div>
-          <button className="refresh" style={{ fontSize: 12, marginBottom: 6 }} onClick={onBack}>← Back</button>
-          <h2 style={{ margin: 0 }}>🖼️ {album.title}</h2>
-          <div style={{ color: 'var(--muted)', fontSize: 12 }}>{photos.length} photos</div>
+          <button className="refresh ad-back" onClick={onBack}>← Back</button>
+          <h2 className="ad-title">🖼️ {album.title}</h2>
+          <div className="ad-count">{photos.length} photos</div>
         </div>
-        <label className="refresh" style={{ background: '#2dd4bf', color: '#06231f', cursor: 'pointer' }}>
+        <label className="refresh ad-upload">
           {uploading ? '⏳ Uploading…' : '📤 Upload photos'}
           <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading} />
         </label>
       </div>
 
-      {prog && <div style={{ marginBottom: 12, fontSize: 13, color: 'var(--muted)' }}>{prog}</div>}
+      {prog && <div className="ad-prog">{prog}</div>}
 
       {photos.length === 0 ? (
-        <div className="table-wrap" style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>No photos yet. Upload some 📤</div>
+        <div className="table-wrap ad-empty">No photos yet. Upload some 📤</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10 }}>
+        <div className="ad-grid">
           {photos.map(p => (
-            <div key={p.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)', aspectRatio: '1' }}>
-              <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              {p.is_selected && <span style={{ position: 'absolute', top: 6, left: 6, background: '#2dd4bf', color: '#06231f', borderRadius: 20, fontSize: 10, fontWeight: 800, padding: '2px 7px' }}>✅ Picked</span>}
-              <button onClick={() => delPhoto(p.id)} style={{ position: 'absolute', top: 6, right: 6, background: '#00000090', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '2px 6px' }}>🗑️</button>
+            <div key={p.id} className="ad-photo">
+              <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" />
+              {p.is_selected && <span className="ad-picked">✅ Picked</span>}
+              <button className="ad-photo-del" onClick={() => delPhoto(p.id)}>🗑️</button>
             </div>
           ))}
         </div>
