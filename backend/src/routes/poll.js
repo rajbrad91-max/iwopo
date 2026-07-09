@@ -4,8 +4,13 @@ import { query } from '../config/db.js';
 const router = express.Router();
 
 // ── EDIT YOUR POLL HERE ──────────────────────────────
-const POLL_TITLE = 'Which name do you like best?';
-const OPTIONS = ['Name A', 'Name B', 'Name C', 'Name D'];
+const POLL_TITLE = 'Which brand name do you like best?';
+const OPTIONS = ['Vendlio.ai', 'iwopo.com', 'Vowflo.com'];
+const HINTS = {
+  'Vendlio.ai': 'Relatable (vendors)',
+  'iwopo.com': 'Unique (no built-in meaning)',
+  'Vowflo.com': 'Relatable, but easy to misspell',
+};
 const RESULTS_PASSWORD = 'xyz.123';
 // ─────────────────────────────────────────────────────
 
@@ -19,7 +24,7 @@ router.get('/', async (req, res) => {
   try {
     const ip = clientIp(req);
     const { rows } = await query('SELECT choice FROM poll_votes WHERE ip=$1', [ip]);
-    res.json({ title: POLL_TITLE, options: OPTIONS, myVote: rows[0]?.choice || null });
+    res.json({ title: POLL_TITLE, options: OPTIONS, hints: HINTS, myVote: rows[0]?.choice || null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

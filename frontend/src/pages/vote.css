@@ -35,3 +35,9 @@
 .vote-refresh { margin-top: 6px; background: none; border: none; color: #2dd4bf; font-size: 13px; cursor: pointer; padding: 4px 0; }
 
 .vote-foot { text-align: center; margin-top: 30px; color: #4b5563; font-size: 12px; }
+
+/* option name + hint */
+.vote-opt-main { display: flex; flex-direction: column; gap: 3px; }
+.vote-opt-name { font-size: 16px; font-weight: 600; }
+.vote-opt-hint { font-size: 12px; font-weight: 400; color: #9ca3af; }
+.vote-opt.chosen .vote-opt-hint { color: #2dd4bf; opacity: .8; }

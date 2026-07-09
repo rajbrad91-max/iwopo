@@ -50,7 +50,10 @@ export default function Vote() {
         <div className="vote-options">
           {cfg.options.map(name => (
             <button key={name} className={`vote-opt ${myVote === name ? 'chosen' : ''}`} disabled={!!myVote || busy} onClick={() => vote(name)}>
-              <span>{name}</span>
+              <span className="vote-opt-main">
+                <span className="vote-opt-name">{name}</span>
+                {cfg.hints?.[name] && <span className="vote-opt-hint">{cfg.hints[name]}</span>}
+              </span>
               <span className="vote-tick">✓ your pick</span>
             </button>
           ))}
