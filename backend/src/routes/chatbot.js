@@ -254,4 +254,43 @@ router.post('/chat/:vendorId', async (req, res) => {
   }
 });
 
+// ── 🧑‍💼 VENDOR (their own chatbot only) ──
+
+function vid(req) { return req.user.vendor_id; }
+
+// am I subscribed? (drives the panel: history vs upsell)
+router.get('/my/status', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await query(
+      'SELECT active FROM chatbot_subscribers WHERE vendor_id=$1', [vid(req)]);
+    res.json({ subscribed: !!rows[0], active: !!rows[0]?.active });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 💬 my chat history — grouped into conversations (last 30 days only)
+router.get('/my/history', requireAuth, async (req, res) => {
+  const v = vid(req);
+  try {
+    const { rows: sub } = await query('SELECT active FROM chatbot_subscribers WHERE vendor_id=$1', [v]);
+    if (!sub[0]) return res.status(403).json({ error: 'Not subscribed' });
+
+    const { rows } = await query(
+      `SELECT session, role, content, created_at
+       FROM chatbot_transcripts
+       WHERE vendor_id=$1 AND created_at > now() - interval '30 days'
+       ORDER BY session, id`, [v]);
+
+    // group rows into conversations keyed by session
+    const bySession = new Map();
+    for (const r of rows) {
+      if (!bySession.has(r.session)) bySession.set(r.session, { session: r.session, started_at: r.created_at, messages: [] });
+      const c = bySession.get(r.session);
+      c.messages.push({ role: r.role, content: r.content, at: r.created_at });
+      c.last_at = r.created_at;
+    }
+    const conversations = [...bySession.values()].sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
+    res.json({ conversations });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

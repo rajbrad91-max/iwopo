@@ -72,6 +72,9 @@ export const api = {
   chatbotResolvePending: (id, answer, dismiss) => request(`/chatbot/pending/${id}`, { method: 'PUT', body: JSON.stringify({ answer, dismiss }) }),
   chatbotMessages: (vendorId) => request(`/chatbot/messages/${vendorId}`),
   chatbotMarkRead: (id) => request(`/chatbot/messages/${id}/read`, { method: 'PUT' }),
+  // vendor-side
+  myChatbotStatus: () => request('/chatbot/my/status'),
+  myChatbotHistory: () => request('/chatbot/my/history'),
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   services: () => request('/services'),
   packages: () => request('/packages'),

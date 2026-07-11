@@ -209,6 +209,28 @@ async function recordUsage(vendorId, session, usage) {
     [vendorId, session || null, inTok, outTok, cost.toFixed(6)]);
 }
 
+/** 💬 Save both sides of the exchange to the transcript (vendors read this). */
+async function saveTranscript(vendorId, session, userText, botText) {
+  if (!session) return;
+  try {
+    await query(
+      `INSERT INTO chatbot_transcripts (vendor_id, session, role, content)
+       VALUES ($1,$2,'user',$3), ($1,$2,'assistant',$4)`,
+      [vendorId, session, userText, botText]);
+  } catch { /* never break the chat over a transcript write */ }
+}
+
+/** 🗑️ Delete transcripts older than 30 days (called on a timer). */
+export async function purgeOldTranscripts() {
+  try {
+    const r = await query("DELETE FROM chatbot_transcripts WHERE created_at < now() - interval '30 days'");
+    if (r.rowCount) console.log(`🗑️ purged ${r.rowCount} old chat transcript rows`);
+  } catch (e) { console.error('transcript purge failed:', e.message); }
+}
+// run at boot, then daily
+purgeOldTranscripts();
+setInterval(purgeOldTranscripts, 24 * 3600 * 1000);
+
 /**
  * The brain. Takes a visitor message + history, returns Tasveer's reply.
  * Handles all three tools and records cost.
@@ -279,6 +301,7 @@ export async function generateReply(vendorId, businessName, text, history = [], 
         ? "Perfect — I've passed your details to the team and they'll be in touch soon!"
         : 'Could you tell me a little more?';
     }
+    await saveTranscript(vendorId, session, text, reply);
     return { reply, lead_saved: leadSaved };
   } catch (e) {
     console.error('Tasveer exception:', e.message);

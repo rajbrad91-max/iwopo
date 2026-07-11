@@ -92,6 +92,7 @@ export default function VendorPanel({ onLogout }) {
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
         {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => go('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></div>}
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => go('services')}><span className="nav-ic">🧩</span><span className="nav-txt">My Services</span></div>
+        <div className={`nav-item ${tab==='aichat'?'active':''}`} onClick={() => go('aichat')}><span className="nav-ic">🤖</span><span className="nav-txt">AI Chat</span></div>
         <div className="nav-group">ACCOUNT</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => go('refer')}><span className="nav-ic">👥</span><span className="nav-txt">Refer a Friend</span></div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => go('settings')}><span className="nav-ic">⚙️</span><span className="nav-txt">Settings</span></div>
@@ -103,7 +104,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'galleries' ? 'Galleries' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'galleries' ? 'Galleries' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -128,6 +129,8 @@ export default function VendorPanel({ onLogout }) {
           <CrewView />
         ) : tab === 'galleries' ? (
           <GalleriesView />
+        ) : tab === 'aichat' ? (
+          <AiChatVendorView goServices={() => setTab('services')} />
         ) : tab === 'calendar' ? (
           <CalendarView />
         ) : tab === 'inqform' ? (
@@ -197,6 +200,114 @@ function NotifBell() {
         </div>
       )}
     </div>
+  );
+}
+
+// 🤖 Vendor AI Chat — conversation history (subscribed) or upsell (not)
+function AiChatVendorView({ goServices }) {
+  const [status, setStatus] = useState(null);
+  const [convos, setConvos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(null);
+
+  useEffect(() => {
+    api.myChatbotStatus()
+      .then(s => {
+        setStatus(s);
+        if (s.subscribed) {
+          return api.myChatbotHistory()
+            .then(d => setConvos(d.conversations || []))
+            .catch(() => {});
+        }
+      })
+      .catch(() => setStatus({ subscribed: false }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="loading">Loading…</div>;
+
+  // 🚫 not subscribed → upsell
+  if (!status?.subscribed) {
+    return (
+      <div className="table-wrap ac-upsell">
+        <div className="ac-upsell-icon">🤖</div>
+        <h2 className="ac-upsell-title">Meet Tasveer, your AI assistant</h2>
+        <p className="ac-upsell-text">
+          Tasveer chats with visitors on your inquiry page 24/7 — answering their questions,
+          collecting their details, and saving them straight into your Leads. You'll see every
+          conversation right here.
+        </p>
+        <ul className="ac-upsell-list">
+          <li>💬 Answers questions using your own info</li>
+          <li>📋 Captures leads automatically, day and night</li>
+          <li>🌍 Replies in your client's language</li>
+          <li>📨 Passes messages straight to you</li>
+        </ul>
+        <button className="refresh ac-upsell-btn" onClick={goServices}>✨ Add AI Chat to my plan</button>
+      </div>
+    );
+  }
+
+  // ⚪ subscribed but switched off
+  if (!status.active) {
+    return (
+      <div className="table-wrap ac-upsell">
+        <div className="ac-upsell-icon">⏸️</div>
+        <h2 className="ac-upsell-title">Your AI Chat is paused</h2>
+        <p className="ac-upsell-text">Tasveer isn't answering visitors right now. Get in touch and we'll switch it back on.</p>
+      </div>
+    );
+  }
+
+  // 💬 reading one conversation
+  if (open) {
+    return (
+      <>
+        <button className="refresh ac-back" onClick={() => setOpen(null)}>← All conversations</button>
+        <div className="table-wrap ac-thread">
+          <div className="ac-thread-head">
+            💬 Conversation · {new Date(open.messages[0].at).toLocaleString()}
+          </div>
+          {open.messages.map((m, i) => (
+            <div key={i} className={`ac-msg ${m.role}`}>
+              <div className="ac-msg-who">{m.role === 'user' ? '👤 Visitor' : '🤖 Tasveer'}</div>
+              <div className="ac-msg-text">{m.content}</div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  // 📜 conversation list
+  return (
+    <>
+      <div className="ac-head">
+        <div>
+          <div className="ac-title">💬 Chat History</div>
+          <div className="ac-sub">{convos.length} conversation{convos.length === 1 ? '' : 's'} · kept for 30 days</div>
+        </div>
+      </div>
+
+      {convos.length === 0 ? (
+        <div className="table-wrap ac-empty">No conversations yet. When visitors chat with Tasveer, they'll appear here 💬</div>
+      ) : (
+        <div className="ac-list">
+          {convos.map(c => {
+            const first = c.messages.find(m => m.role === 'user');
+            return (
+              <div key={c.session} className="ac-card" onClick={() => setOpen(c)}>
+                <div className="ac-card-main">
+                  <div className="ac-card-snippet">{first ? first.content : '—'}</div>
+                  <div className="ac-card-meta">{c.messages.length} messages</div>
+                </div>
+                <div className="ac-card-date">{new Date(c.last_at).toLocaleDateString()}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
