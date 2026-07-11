@@ -5,6 +5,7 @@
 
 import { query } from '../config/db.js';
 import { getSetting } from './settings.js';
+import { notify } from '../routes/notifications.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -95,7 +96,12 @@ FINISHING UP:
 
 UNANSWERED QUESTIONS: If a visitor asks a specific factual business question the knowledge above does NOT cover, do NOT guess. Reply warmly that you're not 100% sure and will have the team confirm (offer to take their details), THEN call log_unanswered with the question. Only for genuine knowledge gaps - NEVER for pricing (offer a quote) and NEVER for greetings/chit-chat.
 
-LEAVING A MESSAGE FOR THE OWNER: If a visitor wants to pass a message/note/special request to the owner or team (or leaves a complaint), reply with a warm confirmation AND call leave_message with their message (and name/contact if given). Also use leave_message if the visitor seems frustrated, upset, says you're not helping, or asks for a real person.`;
+LEAVING A MESSAGE FOR THE OWNER: If a visitor wants to pass a message/note/special request to the owner or team (or leaves a complaint), reply with a warm confirmation AND call leave_message with their message (and name/contact if given). Also use leave_message if the visitor seems frustrated, upset, says you're not helping, or asks for a real person.
+
+WHEN THINGS GO WRONG (important — always alert the team):
+- If the visitor seems UPSET, angry, frustrated, disappointed, complains, says you're not helping/making sense, or asks for a real person → call flag_issue with reason 'upset' and a one-line summary.
+- If you simply CAN'T help them properly (their need is outside what you know, or the conversation is going in circles) → call flag_issue with reason 'trouble' and a one-line summary.
+- Either way, keep your reply warm and reassuring: tell them you've flagged it and the team will follow up. Then offer to take their name and phone so the team can reach them.`;
 }
 
 /** Tool definitions Tasveer can call. */
@@ -149,6 +155,18 @@ export function chatTools() {
         required: ['message'],
       },
     },
+    {
+      name: 'flag_issue',
+      description: "Call this when the conversation is going badly and the vendor should know: the visitor seems upset, angry, frustrated or disappointed; they complain; they say you're not helping or aren't making sense; they ask to speak to a real person; or you're clearly unable to help them. Keep replying warmly and reassure them the team will follow up. This alerts the vendor immediately.",
+      input_schema: {
+        type: 'object',
+        properties: {
+          reason: { type: 'string', enum: ['upset', 'trouble'], description: "'upset' if the visitor is angry/frustrated/complaining; 'trouble' if you simply couldn't help them properly." },
+          summary: { type: 'string', description: 'One short sentence on what happened, so the vendor can follow up.' },
+        },
+        required: ['reason', 'summary'],
+      },
+    },
   ];
 }
 
@@ -184,6 +202,11 @@ export async function saveLeadFromChat(vendorId, input) {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'new')`,
     [vendorId, name, input.email || null, input.phone || null, input.event_type || null,
      eventDate, input.location || null, guests, input.instagram || null, notes]);
+
+  // 🔔 tell the vendor a booking came in through the chatbot
+  const bits = [input.event_type, input.event_date, input.location].filter(Boolean).join(' · ');
+  await notify(vendorId, `📋 New lead from AI Chat: ${name}`,
+    bits || (input.phone ? `Phone: ${input.phone}` : 'Details in Leads'), 'lead');
 }
 
 export async function logUnanswered(vendorId, question, session) {
@@ -197,6 +220,22 @@ export async function leaveMessage(vendorId, input, session) {
   if (!m) return;
   await query('INSERT INTO chatbot_messages (vendor_id, message, name, contact, session) VALUES ($1,$2,$3,$4,$5)',
     [vendorId, m, input.name || null, input.contact || null, session || null]);
+
+  // 🔔 a visitor left a message for the team
+  const who = input.name ? input.name : 'A visitor';
+  await notify(vendorId, `📨 ${who} left a message for you`, m.slice(0, 200), 'message');
+}
+
+/** 😠⚠️ Visitor upset, or Tasveer couldn't help — alert the vendor. */
+export async function flagIssue(vendorId, input) {
+  const summary = (input.summary || '').trim();
+  if (!summary) return;
+  const upset = input.reason === 'upset';
+  await notify(
+    vendorId,
+    upset ? '😠 A visitor seemed upset in AI Chat' : '⚠️ AI Chat had trouble helping a visitor',
+    summary.slice(0, 300),
+    upset ? 'upset' : 'trouble');
 }
 
 /** Record token usage + cost for this vendor. */
@@ -285,6 +324,7 @@ export async function generateReply(vendorId, businessName, text, history = [], 
         if (block.name === 'save_lead') { await saveLeadFromChat(vendorId, block.input || {}); leadSaved = true; }
         else if (block.name === 'log_unanswered') await logUnanswered(vendorId, block.input?.question, session);
         else if (block.name === 'leave_message') await leaveMessage(vendorId, block.input || {}, session);
+        else if (block.name === 'flag_issue') await flagIssue(vendorId, block.input || {});
       }
     }
     reply = reply.trim();
