@@ -262,3 +262,30 @@
 .cb-input[readonly] { opacity: .75; cursor: default; }
 .cb-area { min-height: 90px; resize: vertical; line-height: 1.5; }
 @media (max-width: 640px) { .cb-card { flex-direction: column; align-items: stretch; } .cb-card-right { justify-content: space-between; } }
+
+/* 🤖 Chatbot tabs, costs, API key, inbox */
+.cb-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.cb-tab { background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.cb-tab:hover { color: var(--text); border-color: #2dd4bf66; }
+.cb-tab.on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
+.cb-total { font-size: 15px; margin: 12px 0 16px; color: var(--muted); }
+.cb-total b { color: #2dd4bf; font-size: 18px; }
+.cb-api { padding: 18px; }
+.cb-api-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+.cb-api-field { min-width: 0; }
+.cb-api-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cb-inbox { padding: 18px; margin-bottom: 16px; }
+.cb-inbox-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.cb-inbox-hint { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+.cb-pending { padding: 12px 0; border-top: 1px solid var(--line); }
+.cb-pending-q { font-size: 14px; margin-bottom: 8px; font-style: italic; }
+.cb-pending-row { display: flex; gap: 8px; }
+.cb-pending-row .cb-input { flex: 1; }
+.cb-vmsg { padding: 12px 0; border-top: 1px solid var(--line); }
+.cb-vmsg.unread { border-left: 3px solid #2dd4bf; padding-left: 12px; }
+.cb-vmsg-top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px; }
+.cb-vmsg-who { font-weight: 600; }
+.cb-vmsg-date { color: var(--muted); }
+.cb-vmsg-body { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+.cb-mark { margin-top: 8px; background: none; border: none; color: #2dd4bf; font-size: 12.5px; cursor: pointer; padding: 0; }
+@media (max-width: 640px) { .cb-api-row { grid-template-columns: 1fr; } .cb-pending-row { flex-direction: column; } }

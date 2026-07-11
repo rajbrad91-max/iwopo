@@ -19,6 +19,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
     const s = await getAllSettings();
     // mask secret
     if (s.aws_secret_key) s.aws_secret_key = s.aws_secret_key.slice(0, 4) + '••••••••' + s.aws_secret_key.slice(-4);
+    if (s.anthropic_api_key) s.anthropic_api_key = s.anthropic_api_key.slice(0, 7) + '••••••••' + s.anthropic_api_key.slice(-4);
     res.json({ settings: s });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -35,13 +36,13 @@ router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req,
 router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const s = await getAllSettings();
-    res.json({ aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '', aws_region: s.aws_region || '' });
+    res.json({ aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '', aws_region: s.aws_region || '', anthropic_api_key: s.anthropic_api_key || '' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const allowed = ['face_engine', 'aws_mode', 'aws_access_key', 'aws_secret_key', 'aws_region'];
+    const allowed = ['face_engine', 'aws_mode', 'aws_access_key', 'aws_secret_key', 'aws_region', 'anthropic_api_key', 'anthropic_model'];
     for (const k of allowed) {
       if (req.body[k] !== undefined && req.body[k] !== '' && !String(req.body[k]).includes('••••')) {
         await setSetting(k, req.body[k]);

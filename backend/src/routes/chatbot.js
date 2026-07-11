@@ -2,12 +2,30 @@ import express from 'express';
 import crypto from 'crypto';
 import { query } from '../config/db.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
+import { generateReply, isActiveSubscriber } from '../lib/tasveer.js';
 
 const router = express.Router();
 
+// 🚦 simple in-memory rate limit: 30 messages / hour / (ip+session)
+const hits = new Map();
+const RATE_MAX = 30;
+const RATE_WINDOW = 3600 * 1000;
+function rateLimited(key) {
+  const now = Date.now();
+  const rec = hits.get(key);
+  if (!rec || now - rec.start > RATE_WINDOW) { hits.set(key, { start: now, n: 1 }); return false; }
+  rec.n++;
+  return rec.n > RATE_MAX;
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of hits) if (now - v.start > RATE_WINDOW) hits.delete(k);
+}, RATE_WINDOW);
+
 const KNOWLEDGE_FIELDS = [
-  'business_name', 'tagline', 'service_area', 'contact', 'hours',
-  'services', 'packages', 'faqs', 'policies', 'notes',
+  'business_name', 'tagline', 'about_team', 'service_area', 'contact', 'hours',
+  'services', 'languages', 'delivery_time', 'packages', 'faqs', 'policies',
+  'avoid_topics', 'tone_notes', 'notes',
 ];
 
 function emptyKnowledge(vendorId) {
@@ -154,6 +172,86 @@ router.post('/fill/:token', async (req, res) => {
     await saveKnowledge(s.vendor_id, req.body);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 💰 cost + usage per vendor (super admin)
+router.get('/costs', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT u.vendor_id, v.business_name,
+              SUM(u.input_tokens)::int  AS input_tokens,
+              SUM(u.output_tokens)::int AS output_tokens,
+              SUM(u.cost_usd)::numeric(12,4) AS cost_usd,
+              COUNT(*)::int AS messages,
+              MAX(u.created_at) AS last_used
+       FROM chatbot_usage u JOIN vendors v ON v.id=u.vendor_id
+       GROUP BY u.vendor_id, v.business_name
+       ORDER BY cost_usd DESC`);
+    const total = rows.reduce((s, r) => s + Number(r.cost_usd || 0), 0);
+    res.json({ vendors: rows, total_usd: Number(total.toFixed(4)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ❓ pending (unanswered) questions for a vendor
+router.get('/pending/:vendorId', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { rows } = await query(
+      "SELECT * FROM chatbot_pending WHERE vendor_id=$1 AND status='pending' ORDER BY id DESC", [req.params.vendorId]);
+    res.json({ pending: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/pending/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const status = req.body.dismiss ? 'dismissed' : 'answered';
+    await query('UPDATE chatbot_pending SET answer=$1, status=$2 WHERE id=$3',
+      [req.body.answer || null, status, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 📨 visitor messages left for a vendor
+router.get('/messages/:vendorId', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { rows } = await query(
+      'SELECT * FROM chatbot_messages WHERE vendor_id=$1 ORDER BY id DESC LIMIT 100', [req.params.vendorId]);
+    res.json({ messages: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/messages/:id/read', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    await query("UPDATE chatbot_messages SET status='read' WHERE id=$1", [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 🌐 PUBLIC CHAT (the widget talks to this) ──
+
+router.post('/chat/:vendorId', async (req, res) => {
+  try {
+    const vendorId = parseInt(req.params.vendorId, 10);
+    if (!vendorId) return res.status(400).json({ error: 'Bad vendor' });
+
+    if (!(await isActiveSubscriber(vendorId))) {
+      return res.status(403).json({ error: 'Chat is not available.' });
+    }
+
+    const text = (req.body.message || '').toString().slice(0, 2000).trim();
+    if (!text) return res.status(400).json({ error: 'Empty message' });
+    const session = (req.body.session || '').toString().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'anon';
+    const history = Array.isArray(req.body.history) ? req.body.history.slice(-40) : [];
+
+    const ip = (req.ip || 'unknown').toString();
+    if (rateLimited(`${ip}:${session}:${vendorId}`)) {
+      return res.json({ reply: "Thanks for all the questions! For anything more, please reach out to the team directly.", done: true });
+    }
+
+    const { rows: v } = await query('SELECT business_name FROM vendors WHERE id=$1', [vendorId]);
+    const out = await generateReply(vendorId, v[0]?.business_name || '', text, history, session);
+    res.json({ reply: out.reply, lead_saved: out.lead_saved, done: false });
+  } catch (e) {
+    console.error('chat error', e.message);
+    res.status(500).json({ reply: "Sorry, something went wrong. Please try again." });
+  }
 });
 
 export default router;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import ChatWidget from './ChatWidget';
 import './inquiry.css';
 
 // professions for the background watermark
@@ -98,6 +99,7 @@ export default function InquiryForm({ vendorId }) {
           </button>
         </div>
       </div>
+      <ChatWidget vendorId={vendorId} businessName={c.brand_name} />
     </div>
   );
 }
