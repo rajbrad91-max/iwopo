@@ -289,3 +289,7 @@
 .cb-vmsg-body { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
 .cb-mark { margin-top: 8px; background: none; border: none; color: #2dd4bf; font-size: 12.5px; cursor: pointer; padding: 0; }
 @media (max-width: 640px) { .cb-api-row { grid-template-columns: 1fr; } .cb-pending-row { flex-direction: column; } }
+
+/* 🤖 missing chatbot classes */
+.cb-add-btn { white-space: nowrap; }
+.cb-card-main { min-width: 0; flex: 1; }
