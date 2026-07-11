@@ -222,3 +222,43 @@
 .fr-cred-head:hover { border-color: #2dd4bf66; }
 .fr-cred-chev { font-size: 10px; color: var(--muted); }
 .fr-cred-body { padding: 14px 2px 4px; }
+
+/* 🤖 AI Chat — subscribers + knowledge */
+.cb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.cb-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.cb-back { background: none; border: none; color: #2dd4bf; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0 0 8px; }
+.cb-actions { display: flex; gap: 9px; flex-wrap: wrap; }
+.cb-add-row { display: flex; gap: 8px; align-items: center; }
+.cb-select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 9px 12px; font-size: 13px; }
+.cb-cancel { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 9px 12px; cursor: pointer; }
+.cb-empty { padding: 40px; text-align: center; color: var(--muted); }
+
+.cb-list { display: flex; flex-direction: column; gap: 10px; }
+.cb-card { display: flex; justify-content: space-between; align-items: center; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 13px; padding: 15px 18px; cursor: pointer; transition: border-color .15s, transform .1s; }
+.cb-card:hover { border-color: #2dd4bf66; transform: translateY(-1px); }
+.cb-card-name { font-weight: 700; font-size: 15px; }
+.cb-card-meta { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+.cb-card-right { display: flex; align-items: center; gap: 12px; }
+.cb-status { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.cb-status.on { color: #4ade80; }
+.cb-status.off { color: var(--muted); }
+.cb-toggle { width: 42px; height: 23px; border-radius: 20px; border: none; background: #3a3f4a; cursor: pointer; padding: 2px; display: flex; transition: background .18s; }
+.cb-toggle.on { background: #2dd4bf; justify-content: flex-end; }
+.cb-knob { width: 19px; height: 19px; border-radius: 50%; background: #fff; display: block; }
+.cb-del { background: none; border: none; cursor: pointer; font-size: 14px; opacity: .55; }
+.cb-del:hover { opacity: 1; }
+
+.cb-share { padding: 18px; margin-bottom: 16px; }
+.cb-share-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.cb-share-hint { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
+.cb-share-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.cb-warn { color: #fbbf24; font-size: 12.5px; }
+.cb-msg { color: #4ade80; font-size: 13px; margin-bottom: 12px; }
+
+.cb-knowledge { padding: 20px; }
+.cb-field { margin-bottom: 16px; }
+.cb-input { width: 100%; padding: 10px 13px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 14px; font-family: inherit; }
+.cb-input:focus { outline: none; border-color: #2dd4bf; }
+.cb-input[readonly] { opacity: .75; cursor: default; }
+.cb-area { min-height: 90px; resize: vertical; line-height: 1.5; }
+@media (max-width: 640px) { .cb-card { flex-direction: column; align-items: stretch; } .cb-card-right { justify-content: space-between; } }

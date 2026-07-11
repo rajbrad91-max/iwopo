@@ -17,6 +17,7 @@ import crewRoutes from './routes/crew.js';
 import albumRoutes from './routes/albums.js';
 import galleryPublicRoutes from './routes/galleryPublic.js';
 import pollRoutes from './routes/poll.js';
+import chatbotRoutes from './routes/chatbot.js';
 import notificationRoutes from './routes/notifications.js';
 import portalRoutes from './routes/portal.js';
 import { gate } from './lib/entitlements.js';
@@ -46,6 +47,7 @@ app.use('/api/crew', gate('crew'), crewRoutes);
 app.use('/api/albums', gate('galleries'), albumRoutes);
 app.use('/api/g', galleryPublicRoutes); // 🌐 public client gallery (no auth/gate)
 app.use('/api/poll', pollRoutes); // 🗳️ public voting page (one vote per IP)
+app.use('/api/chatbot', chatbotRoutes); // 🤖 Tasveer chatbot: subscribers + knowledge base
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/portal', portalRoutes);
 

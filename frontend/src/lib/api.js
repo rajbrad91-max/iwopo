@@ -58,6 +58,15 @@ export const api = {
   revealAwsCreds: () => request('/settings/platform/reveal'),
   reindexAll: () => request('/settings/reindex-all', { method: 'POST' }),
   faceQueueStatus: () => request('/face-queue/status'),
+
+  // 🤖 Chatbot (Tasveer)
+  chatbotSubscribers: () => request('/chatbot/subscribers'),
+  chatbotAddSubscriber: (vendor_id) => request('/chatbot/subscribers', { method: 'POST', body: JSON.stringify({ vendor_id }) }),
+  chatbotSetActive: (vendorId, active) => request(`/chatbot/subscribers/${vendorId}/active`, { method: 'PUT', body: JSON.stringify({ active }) }),
+  chatbotRemoveSubscriber: (vendorId) => request(`/chatbot/subscribers/${vendorId}`, { method: 'DELETE' }),
+  chatbotSetCode: (vendorId, access_code) => request(`/chatbot/subscribers/${vendorId}/code`, { method: 'PUT', body: JSON.stringify({ access_code }) }),
+  chatbotKnowledge: (vendorId) => request(`/chatbot/knowledge/${vendorId}`),
+  chatbotSaveKnowledge: (vendorId, data) => request(`/chatbot/knowledge/${vendorId}`, { method: 'PUT', body: JSON.stringify(data) }),
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   services: () => request('/services'),
   packages: () => request('/packages'),

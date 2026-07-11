@@ -14,6 +14,7 @@ const NAV = [
   { id: 'buyers', icon: '🛒', label: 'Buyers', group: 'PLATFORM' },
   { id: 'referrals', icon: '👥', label: 'Referrals', group: 'PLATFORM' },
   { id: 'billing', icon: '💳', label: 'Billing & Plans', group: 'PLATFORM' },
+  { id: 'aichat', icon: '🤖', label: 'AI Chat', group: 'OPERATE' },
   { id: 'support', icon: '🎫', label: 'Support', group: 'OPERATE' },
   { id: 'settings', icon: '🔧', label: 'Settings', group: 'OPERATE' },
 ];
@@ -91,6 +92,7 @@ export default function Dashboard({ onLogout }) {
             {view === 'buyers' && <BuyersView vendors={vendors} />}
             {view === 'referrals' && <ReferralsView />}
             {view === 'billing' && <BillingView packages={packages} />}
+            {view === 'aichat' && <AiChatView vendors={vendors} />}
             {view === 'support' && <SupportView />}
             {view === 'settings' && <SettingsView saTheme={saTheme} setSaTheme={setSaTheme} user={user} />}
           </>
@@ -988,6 +990,177 @@ function SupportView() {
 }
 
 /* ---------- SETTINGS ---------- */
+// 🤖 AI Chat — subscribers + knowledge pages
+const KFIELDS = [
+  { k: 'business_name', label: '🏢 Business name', type: 'input' },
+  { k: 'tagline', label: '✨ Tagline', type: 'input' },
+  { k: 'service_area', label: '📍 City / service area', type: 'input' },
+  { k: 'contact', label: '📞 Contact (phone / email)', type: 'input' },
+  { k: 'hours', label: '🕒 Hours', type: 'input' },
+  { k: 'services', label: '📸 Services offered', type: 'area' },
+  { k: 'packages', label: '💰 Packages & pricing', type: 'area' },
+  { k: 'faqs', label: '❓ FAQs (question → answer)', type: 'area' },
+  { k: 'policies', label: '📋 Policies (booking, deposit, travel, cancellation)', type: 'area' },
+  { k: 'notes', label: '📝 Anything else', type: 'area' },
+];
+
+function AiChatView({ vendors }) {
+  const [subs, setSubs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [openVendor, setOpenVendor] = useState(null);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => { load(); }, []);
+  function load() {
+    setLoading(true);
+    api.chatbotSubscribers().then(d => setSubs(d.subscribers || [])).catch(() => {}).finally(() => setLoading(false));
+  }
+  async function toggleActive(s) {
+    try { await api.chatbotSetActive(s.vendor_id, !s.active); load(); } catch (e) { alert('⚠️ ' + e.message); }
+  }
+  async function addSub(vendorId) {
+    if (!vendorId) return;
+    try { await api.chatbotAddSubscriber(Number(vendorId)); setAdding(false); load(); } catch (e) { alert('⚠️ ' + e.message); }
+  }
+  async function removeSub(s) {
+    if (!confirm(`Remove ${s.business_name} from the chatbot?`)) return;
+    try { await api.chatbotRemoveSubscriber(s.vendor_id); load(); } catch (e) { alert('⚠️ ' + e.message); }
+  }
+
+  if (openVendor) return <KnowledgePage vendorId={openVendor} onBack={() => { setOpenVendor(null); load(); }} />;
+
+  const notSubscribed = vendors.filter(v => !subs.some(s => s.vendor_id === v.id));
+
+  return (
+    <>
+      <div className="cb-head">
+        <div>
+          <div className="sa-section-title">🤖 Chatbot Subscribers</div>
+          <div className="cb-sub">{subs.length} subscriber{subs.length === 1 ? '' : 's'} · {subs.filter(s => s.active).length} active</div>
+        </div>
+        {!adding ? (
+          <button className="sa-btn-teal cb-add-btn" onClick={() => setAdding(true)}>➕ Add subscriber</button>
+        ) : (
+          <div className="cb-add-row">
+            <select className="cb-select" defaultValue="" onChange={e => addSub(e.target.value)}>
+              <option value="">Pick a vendor…</option>
+              {notSubscribed.map(v => <option key={v.id} value={v.id}>{v.business_name}</option>)}
+            </select>
+            <button className="cb-cancel" onClick={() => setAdding(false)}>✕</button>
+          </div>
+        )}
+      </div>
+
+      {loading ? <div className="sa-loading">Loading…</div>
+        : subs.length === 0 ? <div className="sa-box cb-empty">No chatbot subscribers yet. Add one above 🤖</div>
+        : (
+          <div className="cb-list">
+            {subs.map(s => (
+              <div key={s.vendor_id} className="cb-card" onClick={() => setOpenVendor(s.vendor_id)}>
+                <div className="cb-card-main">
+                  <div className="cb-card-name">{s.business_name}</div>
+                  <div className="cb-card-meta">
+                    {s.email} · {s.has_knowledge ? '📚 Knowledge filled' : '📭 No knowledge yet'}
+                  </div>
+                </div>
+                <div className="cb-card-right" onClick={e => e.stopPropagation()}>
+                  <span className={`cb-status ${s.active ? 'on' : 'off'}`}>{s.active ? '🟢 Active' : '⚪ Inactive'}</span>
+                  <button className={`cb-toggle ${s.active ? 'on' : ''}`} onClick={() => toggleActive(s)} title={s.active ? 'Turn off' : 'Turn on'}>
+                    <span className="cb-knob" />
+                  </button>
+                  <button className="cb-del" onClick={() => removeSub(s)} title="Remove">🗑️</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+    </>
+  );
+}
+
+function KnowledgePage({ vendorId, onBack }) {
+  const [k, setK] = useState(null);
+  const [sub, setSub] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [showShare, setShowShare] = useState(false);
+  const [code, setCode] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { load(); }, [vendorId]);
+  function load() {
+    api.chatbotKnowledge(vendorId).then(d => {
+      setK(d.knowledge); setSub(d.subscriber); setCode(d.subscriber?.access_code || '');
+    }).catch(() => {});
+  }
+  async function save() {
+    try { await api.chatbotSaveKnowledge(vendorId, k); setEditing(false); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1800); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function saveCode() {
+    try {
+      const d = await api.chatbotSetCode(vendorId, code);
+      setSub(s => ({ ...s, access_code: d.access_code }));
+      setMsg('✅ Access code saved'); setTimeout(() => setMsg(''), 1800);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  function copyLink() {
+    const url = `${window.location.origin}/knowledge/${sub.share_token}`;
+    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+      .catch(() => prompt('Copy this link:', url));
+  }
+
+  if (!k || !sub) return <div className="sa-loading">Loading…</div>;
+  const shareUrl = `${window.location.origin}/knowledge/${sub.share_token}`;
+
+  return (
+    <>
+      <div className="cb-head">
+        <div>
+          <button className="cb-back" onClick={onBack}>← Subscribers</button>
+          <div className="sa-section-title">📚 {sub.business_name} — Knowledge</div>
+          <div className="cb-sub">This is what the chatbot knows about them.</div>
+        </div>
+        <div className="cb-actions">
+          <button className="sa-btn-teal" onClick={() => setShowShare(v => !v)}>🔗 Share with vendor</button>
+          {!editing
+            ? <button className="sa-btn-teal" onClick={() => setEditing(true)}>✏️ Edit</button>
+            : <button className="sa-btn-teal" onClick={save}>💾 Save</button>}
+        </div>
+      </div>
+
+      {showShare && (
+        <div className="sa-box cb-share">
+          <div className="cb-share-title">🔗 Shareable fill-in link</div>
+          <div className="cb-share-hint">Send this to the vendor. They enter the access code, fill it in, and it's ready for the chatbot.</div>
+          <div className="cb-share-row">
+            <input className="cb-input" readOnly value={shareUrl} onFocus={e => e.target.select()} />
+            <button className="sa-btn-teal" onClick={copyLink}>{copied ? '✅' : '🔗 Copy'}</button>
+          </div>
+          <div className="cb-share-row">
+            <input className="cb-input" placeholder="Set an access code (e.g. studio2026)" value={code} onChange={e => setCode(e.target.value)} />
+            <button className="sa-btn-teal" onClick={saveCode}>🔑 Save code</button>
+          </div>
+          {!sub.access_code && <div className="cb-warn">⚠️ No access code set — anyone with the link can edit. Set one above.</div>}
+        </div>
+      )}
+
+      {msg && <div className="cb-msg">{msg}</div>}
+
+      <div className="sa-box cb-knowledge">
+        {KFIELDS.map(f => (
+          <div key={f.k} className="cb-field">
+            <label className="lbl">{f.label}</label>
+            {f.type === 'input'
+              ? <input className="cb-input" readOnly={!editing} value={k[f.k] || ''} onChange={e => setK({ ...k, [f.k]: e.target.value })} />
+              : <textarea className="cb-input cb-area" readOnly={!editing} value={k[f.k] || ''} onChange={e => setK({ ...k, [f.k]: e.target.value })} />}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function FaceEngineSettings() {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');

@@ -1,0 +1,24 @@
+/* 📚 Public knowledge fill-in page */
+* { box-sizing: border-box; }
+.kf-wrap { min-height: 100vh; background: #0f1115; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 44px 18px; }
+.kf-msg { padding: 80px; color: #9ca3af; }
+.kf-gate { width: 100%; max-width: 420px; text-align: center; padding-top: 40px; }
+.kf-card { width: 100%; max-width: 620px; }
+.kf-kicker { text-transform: uppercase; letter-spacing: 3px; font-size: 11px; color: #2dd4bf; margin-bottom: 10px; }
+.kf-title { font-size: 28px; font-weight: 700; letter-spacing: -.4px; margin: 0; }
+.kf-sub { color: #9ca3af; font-size: 14px; margin: 8px 0 28px; line-height: 1.5; }
+.kf-gate-form { display: flex; flex-direction: column; gap: 12px; }
+
+.kf-field { margin-bottom: 18px; }
+.kf-label { display: block; font-size: 13px; font-weight: 600; color: #d1d5db; margin-bottom: 7px; }
+.kf-input { width: 100%; padding: 13px 15px; border-radius: 11px; border: 1px solid #262b35; background: #171a21; color: #f3f4f6; font-size: 14.5px; font-family: inherit; }
+.kf-input::placeholder { color: #6b7280; }
+.kf-input:focus { outline: none; border-color: #2dd4bf; box-shadow: 0 0 0 3px #2dd4bf22; }
+.kf-area { min-height: 110px; resize: vertical; line-height: 1.5; }
+
+.kf-btn { padding: 14px 20px; border-radius: 11px; border: none; background: #2dd4bf; color: #06231f; font-weight: 700; font-size: 15px; cursor: pointer; font-family: inherit; }
+.kf-btn:hover { opacity: .92; }
+.kf-btn:disabled { opacity: .6; cursor: default; }
+.kf-submit { width: 100%; margin-top: 8px; }
+.kf-err { color: #fb7185; margin-top: 14px; font-size: 14px; }
+.kf-foot { text-align: center; margin-top: 30px; color: #4b5563; font-size: 12px; }

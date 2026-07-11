@@ -12,6 +12,7 @@ import CrewCheckin from './pages/CrewCheckin';
 import PublicGallery from './pages/PublicGallery';
 import VendorGallery from './pages/VendorGallery';
 import Vote from './pages/Vote';
+import KnowledgeFill from './pages/KnowledgeFill';
 import { getUser } from './lib/api';
 
 export default function App() {
@@ -24,6 +25,10 @@ export default function App() {
 
   // 🗳️ Voting page: /vote
   if (window.location.pathname.match(/^\/vote\/?$/)) return <Vote />;
+
+  // 📚 Chatbot knowledge fill-in: /knowledge/:token
+  const kf = window.location.pathname.match(/^\/knowledge\/([a-f0-9]+)/i);
+  if (kf) return <KnowledgeFill token={kf[1]} />;
 
   // 📄 Public contract signing: /sign/:token
   const s = window.location.pathname.match(/^\/sign\/([a-f0-9]+)/);
