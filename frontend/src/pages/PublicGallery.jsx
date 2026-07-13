@@ -11,7 +11,7 @@ function ensureFonts() {
   document.head.appendChild(l);
 }
 
-export default function PublicGallery({ token, embedded }) {
+export default function PublicGallery({ token, embedded, onBack }) {
   const [meta, setMeta] = useState(null);
   const [err, setErr] = useState('');
   const [pw, setPw] = useState('');
@@ -233,8 +233,11 @@ export default function PublicGallery({ token, embedded }) {
       </section>
 
       <header className="pg-bar">
-        <button className="pg-bar-title" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          {session.title}
+        <button
+          className="pg-bar-title"
+          onClick={() => (onBack ? onBack() : window.scrollTo({ top: 0, behavior: 'smooth' }))}
+        >
+          {onBack ? '← All albums' : session.title}
         </button>
         <nav className="pg-bar-acts">
           {session.faceReady && (

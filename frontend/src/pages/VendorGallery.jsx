@@ -38,8 +38,7 @@ export default function VendorGallery({ token }) {
   if (openToken) {
     return (
       <div style={styleVars}>
-        <button className="vg-back" onClick={() => setOpenToken(null)}>← All Albums</button>
-        <PublicGallery token={openToken} embedded />
+        <PublicGallery token={openToken} embedded onBack={() => setOpenToken(null)} />
       </div>
     );
   }
