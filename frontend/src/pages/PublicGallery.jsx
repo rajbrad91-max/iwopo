@@ -248,7 +248,7 @@ export default function PublicGallery({ token, embedded }) {
     }
     if (row.length) {                               // last row: don't stretch a stray photo
       const avail = gridW - GAP * (row.length - 1);
-      rows.push({ items: row, h: Math.min(targetH, avail / sum), last: true });
+      rows.push({ items: row, h: Math.min(targetH, avail / sum) });
     }
   }
 
