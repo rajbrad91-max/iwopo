@@ -148,17 +148,16 @@
 .pg-back {
   background: none; border: none;
   padding: 0;
-  color: var(--pg-head);
+  color: var(--pg-sub);
   font-family: var(--pg-bfont);
-  font-size: 11px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
-  opacity: .7;
-  transition: opacity .16s, color .16s;
+  transition: color .16s;
 }
-.pg-back:hover { opacity: 1; color: var(--pg-accent); }
+.pg-back:hover { color: var(--pg-accent); }
 
 .pg-bar-title {
   background: none; border: none;
@@ -170,33 +169,48 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   min-width: 0;
 }
-.pg-bar-acts { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.pg-bar-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
 .pg-ico {
-  padding: 8px 14px;
-  border: none;
-  background: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in srgb, var(--pg-head) 14%, transparent);
+  border-radius: 8px;
+  background: transparent;
   color: var(--pg-head);
   font-family: var(--pg-bfont);
-  font-size: 11px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
-  opacity: .72;
-  transition: opacity .16s, color .16s;
+  transition: border-color .16s, background .16s, color .16s;
 }
-.pg-ico:hover:not(:disabled) { opacity: 1; color: var(--pg-accent); }
-.pg-ico:disabled { opacity: .35; cursor: default; }
-.pg-ico.is-on { color: var(--pg-accent); opacity: 1; }
+.pg-ico:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--pg-head) 30%, transparent);
+  background: color-mix(in srgb, var(--pg-head) 4%, transparent);
+}
+.pg-ico:disabled { opacity: .45; cursor: default; }
+.pg-ico.is-on {
+  border-color: var(--pg-accent);
+  color: var(--pg-accent);
+}
 .pg-ico.is-solid {
   background: var(--pg-accent);
+  border-color: var(--pg-accent);
   color: #fff;
-  opacity: 1;
-  border-radius: 2px;
-  padding: 9px 16px;
+  font-weight: 600;
 }
-.pg-ico.is-solid:hover { filter: brightness(1.1); color: #fff; }
+.pg-ico.is-solid:hover:not(:disabled) {
+  background: var(--pg-accent);
+  filter: brightness(1.08);
+  color: #fff;
+}
+
+.pg-ico-svg { width: 15px; height: 15px; flex: 0 0 auto; }
 
 .pg-note {
   padding: 22px 32px 0;
@@ -487,8 +501,8 @@
   }
   .pg-bar { padding: 12px 14px; }
   .pg-bar-left { gap: 10px; }
-  .pg-ico { padding: 7px 9px; font-size: 10px; letter-spacing: .08em; }
-  .pg-ico.is-solid { padding: 8px 12px; }
+  .pg-ico { padding: 8px 11px; font-size: 12px; gap: 6px; }
+  .pg-ico-svg { width: 14px; height: 14px; }
   .pg-scenes { margin: 0 14px; padding: 26px 0 4px; gap: 18px; }
   .pg-note { padding: 18px 14px 0; }
   .pg-check { opacity: .9; width: 20px; height: 20px; top: 6px; left: 6px; font-size: 10px; }
@@ -510,18 +524,20 @@
     gap: 10px;
   }
   .pg-bar-left { justify-content: space-between; }
-  .pg-bar-acts { justify-content: space-between; gap: 2px; }
-  .pg-ico { padding: 7px 6px; font-size: 9.5px; letter-spacing: .06em; }
-  .pg-ico.is-solid { padding: 8px 10px; }
+  .pg-bar-acts { justify-content: space-between; gap: 6px; }
+  .pg-ico { padding: 9px 10px; font-size: 11.5px; gap: 5px; flex: 1 1 auto; justify-content: center; }
   .pg-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 112px; }
   .pg-cover { min-height: 400px; }
   .pg-scroll { bottom: 26px; }
 }
 
-/* very narrow (folded phones ~280-360px) */
+/* very narrow (folded phones ~280-360px): icons only, labels would crowd */
 @media (max-width: 380px) {
+  .pg-ico span { display: none; }
+  .pg-ico { padding: 10px; }
+  .pg-ico-svg { width: 16px; height: 16px; }
   .pg-grid { grid-auto-rows: 96px; gap: 4px; padding: 16px 8px 130px; }
-  .pg-back { font-size: 10px; }
+  .pg-back { font-size: 12px; }
   .pg-selbar { padding: 9px 8px 9px 14px; gap: 8px; }
   .pg-selbar-n { font-size: 10px; }
   .pg-selbar-btn { padding: 7px 9px; font-size: 9.5px; }

@@ -11,6 +11,19 @@ function ensureFonts() {
   document.head.appendChild(l);
 }
 
+// simple line icons — they inherit the button's colour, so themes just work
+const Icon = ({ d, ...rest }) => (
+  <svg className="pg-ico-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...rest}>
+    {d}
+  </svg>
+);
+const IconFace = <Icon d={<><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></>} />;
+const IconShare = <Icon d={<><path d="M12 15V3" /><path d="M8 7l4-4 4 4" /><path d="M4 14v5a2 2 0 002 2h12a2 2 0 002-2v-5" /></>} />;
+const IconPlay = <Icon d={<path d="M8 5l11 7-11 7V5z" />} />;
+const IconDownload = <Icon d={<><path d="M12 3v12" /><path d="M8 11l4 4 4-4" /><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></>} />;
+const IconClose = <Icon d={<><path d="M6 6l12 12" /><path d="M18 6L6 18" /></>} />;
+
 export default function PublicGallery({ token, embedded, onBack }) {
   const [meta, setMeta] = useState(null);
   const [err, setErr] = useState('');
@@ -233,17 +246,23 @@ export default function PublicGallery({ token, embedded, onBack }) {
           {session.faceReady && (
             matchIds === null
               ? <button className="pg-ico" onClick={() => selfieInput.current?.click()} disabled={selfieBusy}>
-                  {selfieBusy ? '…' : 'Find me'}
+                  {IconFace}<span>{selfieBusy ? 'Searching…' : 'Find me'}</span>
                 </button>
-              : <button className="pg-ico is-on" onClick={() => { setMatchIds(null); setSelfieMsg(''); }}>Show all</button>
+              : <button className="pg-ico is-on" onClick={() => { setMatchIds(null); setSelfieMsg(''); }}>
+                  {IconClose}<span>Show all</span>
+                </button>
           )}
           <input ref={selfieInput} type="file" accept="image/*" hidden onChange={onSelfie} />
-          <button className="pg-ico" onClick={share}>{copied ? 'Copied' : 'Share'}</button>
+          <button className="pg-ico" onClick={share}>
+            {IconShare}<span>{copied ? 'Copied' : 'Share'}</span>
+          </button>
           {photos.length > 0 && (
-            <button className="pg-ico" onClick={() => { setLightbox(0); setSlideshow(true); }}>Slideshow</button>
+            <button className="pg-ico" onClick={() => { setLightbox(0); setSlideshow(true); }}>
+              {IconPlay}<span>Slideshow</span>
+            </button>
           )}
           <button className="pg-ico is-solid" onClick={() => downloadAll('all')} disabled={zipBusy === 'all'}>
-            {zipBusy === 'all' ? 'Preparing…' : 'Download all'}
+            {IconDownload}<span>{zipBusy === 'all' ? 'Preparing…' : 'Download all'}</span>
           </button>
         </nav>
       </header>
