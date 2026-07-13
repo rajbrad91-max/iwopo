@@ -29,7 +29,6 @@ export default function PublicGallery({ token, embedded }) {
   const [pickedOnly, setPickedOnly] = useState(false);
   const [slideshow, setSlideshow] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const selfieInput = useRef(null);
   const gridRef = useRef(null);
   const [tallIds, setTallIds] = useState(() => new Set());   // portraits → span 2 grid rows
@@ -48,14 +47,6 @@ export default function PublicGallery({ token, embedded }) {
       .then(setMeta)
       .catch(e => setErr(e.message));
   }, [token]);
-
-  useEffect(() => {
-    if (!session) return;
-    const onScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.55);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [session]);
 
   const pickKey = `pg-picked-${token}`;
   useEffect(() => {
@@ -218,7 +209,7 @@ export default function PublicGallery({ token, embedded }) {
         </button>
       </section>
 
-      <header className={`pg-bar ${scrolled ? 'is-visible' : ''}`}>
+      <header className="pg-bar">
         <button className="pg-bar-title" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           {session.title}
         </button>

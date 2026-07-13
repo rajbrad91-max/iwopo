@@ -130,7 +130,7 @@
 
 .pg-anchor { scroll-margin-top: 62px; }
 
-/* ── 🧭 minimal bar ── */
+/* ── 🧭 top bar — fixed, always visible ── */
 .pg-bar {
   position: fixed; top: 0; left: 0; right: 0;
   z-index: 30;
@@ -140,12 +140,7 @@
   background: color-mix(in srgb, var(--pg-bg) 90%, transparent);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid color-mix(in srgb, var(--pg-head) 7%, transparent);
-  opacity: 0;
-  transform: translateY(-100%);
-  transition: opacity .3s, transform .3s;
-  pointer-events: none;
 }
-.pg-bar.is-visible { opacity: 1; transform: none; pointer-events: auto; }
 
 .pg-bar-title {
   background: none; border: none;
