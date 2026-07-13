@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import './gallery.css';
 
 const API = '/api/g';
-const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Playfair+Display:wght@500;700&family=Jost:wght@300;400;600&family=Montserrat:wght@400;600&family=Poppins:wght@400;600&family=Lora:wght@400;600&family=Raleway:wght@400;600&display=swap';
+const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Playfair+Display:wght@400;500;700&family=Jost:wght@300;400;500&family=Montserrat:wght@300;400;600&family=Poppins:wght@300;400;600&family=Lora:wght@400;600&family=Raleway:wght@300;400;600&display=swap';
 
 function ensureFonts() {
   if (document.getElementById('pg-fonts')) return;
@@ -19,17 +19,19 @@ export default function PublicGallery({ token, embedded }) {
   const [authErr, setAuthErr] = useState('');
   const [session, setSession] = useState(null);
 
-  const [lightbox, setLightbox] = useState(null);   // index into `photos`
+  const [lightbox, setLightbox] = useState(null);
   const [zipBusy, setZipBusy] = useState('');
   const [activeEvent, setActiveEvent] = useState('all');
   const [matchIds, setMatchIds] = useState(null);
   const [selfieBusy, setSelfieBusy] = useState(false);
   const [selfieMsg, setSelfieMsg] = useState('');
-  const [favs, setFavs] = useState(() => new Set());
-  const [favsOnly, setFavsOnly] = useState(false);
+  const [picked, setPicked] = useState(() => new Set());
+  const [pickedOnly, setPickedOnly] = useState(false);
   const [slideshow, setSlideshow] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const selfieInput = useRef(null);
+  const gridRef = useRef(null);
 
   useEffect(() => { ensureFonts(); }, []);
   useEffect(() => {
@@ -39,24 +41,31 @@ export default function PublicGallery({ token, embedded }) {
       .catch(e => setErr(e.message));
   }, [token]);
 
-  // favourites persist per gallery, on this device
-  const favKey = `pg-favs-${token}`;
+  useEffect(() => {
+    if (!session) return;
+    const onScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.55);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [session]);
+
+  const pickKey = `pg-picked-${token}`;
   useEffect(() => {
     try {
-      const raw = window.sessionStorage?.getItem(favKey);
-      if (raw) setFavs(new Set(JSON.parse(raw)));
-    } catch { /* storage unavailable — favourites stay in memory */ }
-  }, [favKey]);
-  const persistFavs = (next) => {
-    try { window.sessionStorage?.setItem(favKey, JSON.stringify([...next])); } catch { /* ignore */ }
+      const raw = window.sessionStorage?.getItem(pickKey);
+      if (raw) setPicked(new Set(JSON.parse(raw)));
+    } catch { /* storage unavailable — selection stays in memory */ }
+  }, [pickKey]);
+  const persist = (next) => {
+    try { window.sessionStorage?.setItem(pickKey, JSON.stringify([...next])); } catch { /* ignore */ }
   };
 
   const theme = session?.theme || meta?.theme || {};
   const styleVars = {
-    '--pg-bg': theme.bg_color || '#0f1115',
-    '--pg-head': theme.heading_color || '#f3f4f6',
-    '--pg-accent': theme.accent_color || '#2dd4bf',
-    '--pg-sub': theme.sub_color || '#9ca3af',
+    '--pg-bg': theme.bg_color || '#fbfbfa',
+    '--pg-head': theme.heading_color || '#16161a',
+    '--pg-accent': theme.accent_color || '#1f6f6b',
+    '--pg-sub': theme.sub_color || '#8a8a8f',
     '--pg-hfont': `'${theme.heading_font || 'Playfair Display'}', serif`,
     '--pg-bfont': `'${theme.body_font || 'Jost'}', sans-serif`,
   };
@@ -82,26 +91,29 @@ export default function PublicGallery({ token, embedded }) {
   function downloadAll(eventId) {
     const key = eventId || 'all';
     setZipBusy(key);
-    const q = eventId ? `&event=${eventId}` : '';
+    const q = eventId && eventId !== 'all' ? `&event=${eventId}` : '';
     window.location.href = `${API}/${token}/download-all?vt=${session.vt}${q}`;
     setTimeout(() => setZipBusy(''), 4000);
   }
+  function downloadPicked() {
+    setZipBusy('picked');
+    [...picked].forEach((id, i) => setTimeout(() => downloadOne(id), i * 400));
+    setTimeout(() => setZipBusy(''), picked.size * 400 + 800);
+  }
 
-  function toggleFav(id) {
-    setFavs(prev => {
+  function togglePick(id) {
+    setPicked(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
-      persistFavs(next);
+      persist(next);
       return next;
     });
   }
+  function clearPicked() { setPicked(new Set()); persist(new Set()); setPickedOnly(false); }
 
-  function shareGallery() {
+  function share() {
     const url = window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: session?.title || 'Gallery', url }).catch(() => {});
-      return;
-    }
+    if (navigator.share) { navigator.share({ title: session?.title || 'Gallery', url }).catch(() => {}); return; }
     navigator.clipboard.writeText(url)
       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
       .catch(() => prompt('Copy this link:', url));
@@ -118,26 +130,24 @@ export default function PublicGallery({ token, embedded }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Search failed');
       setMatchIds(d.photo_ids);
-      setFavsOnly(false);
+      setPickedOnly(false);
       setSelfieMsg(d.matches ? `Found ${d.matches} photo${d.matches === 1 ? '' : 's'} of you` : 'No matches — try a clearer selfie');
+      gridRef.current?.scrollIntoView({ behavior: 'smooth' });
     } catch (err) { setSelfieMsg(err.message); }
     finally { setSelfieBusy(false); e.target.value = ''; }
   }
 
-  // 🖼️ what's on screen right now
   const allPhotos = session?.photos || [];
   let photos = allPhotos;
   if (session?.mode === 'per_client' && activeEvent !== 'all') photos = photos.filter(p => String(p.event_id) === String(activeEvent));
   if (matchIds !== null) photos = photos.filter(p => matchIds.includes(p.id));
-  if (favsOnly) photos = photos.filter(p => favs.has(p.id));
+  if (pickedOnly) photos = photos.filter(p => picked.has(p.id));
 
-  // ⌨️ lightbox + slideshow navigation
   const step = useCallback((dir) => {
     setLightbox(i => {
       if (i === null) return null;
       const n = photos.length;
-      if (!n) return null;
-      return (i + dir + n) % n;
+      return n ? (i + dir + n) % n : null;
     });
   }, [photos.length]);
 
@@ -161,19 +171,19 @@ export default function PublicGallery({ token, embedded }) {
   if (err) return <div className="pg-wrap" style={styleVars}><div className="pg-state">{err}</div></div>;
   if (!meta) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
 
-  // 🔒 password gate
+  const coverUrl = meta.album.cover ? `${API}/${token}/cover` : null;
+
   if (!session) {
     const m = meta.album;
     return (
-      <div className="pg-wrap pg-gate-wrap" style={styleVars}>
-        {m.cover && <div className="pg-gate-bg" style={{ backgroundImage: `url(${API}/${token}/cover)` }} />}
+      <div className="pg-wrap pg-gatewrap" style={styleVars}>
+        {coverUrl && <div className="pg-gate-bg" style={{ backgroundImage: `url(${coverUrl})` }} />}
         <div className="pg-gate">
-          <div className="pg-kicker">{theme.title_text || 'Private gallery'}</div>
+          <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
           <h1 className="pg-gate-title">{m.title}</h1>
-          <div className="pg-gate-sub">{m.photo_count} photos · enter your password to view</div>
           <form onSubmit={unlock} className="pg-gate-form">
             <input className="pg-input" type="password" placeholder="Password" value={pw} onChange={e => setPw(e.target.value)} autoFocus />
-            <button className="pg-btn" type="submit" disabled={authing}>{authing ? 'Checking…' : 'View gallery'}</button>
+            <button className="pg-btn" type="submit" disabled={authing}>{authing ? 'Checking…' : 'Enter gallery'}</button>
           </form>
           {authErr && <div className="pg-err">{authErr}</div>}
         </div>
@@ -182,119 +192,122 @@ export default function PublicGallery({ token, embedded }) {
   }
 
   const current = lightbox !== null ? photos[lightbox] : null;
-  const favCount = favs.size;
+  const nPicked = picked.size;
 
   return (
     <div className="pg-wrap" style={styleVars}>
-      {/* header */}
-      <header className="pg-head">
-        <div className="pg-head-left">
-          <div className="pg-kicker">{theme.title_text || 'Private gallery'}</div>
-          <h1 className="pg-title">{session.title}</h1>
-          <div className="pg-count">
-            {allPhotos.length} photos
-            {favCount > 0 && <> · {favCount} favourite{favCount === 1 ? '' : 's'}</>}
-          </div>
-        </div>
 
-        <div className="pg-tools">
+      <section className={`pg-cover ${coverUrl ? '' : 'is-plain'}`}>
+        {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})` }} />}
+        <div className="pg-cover-inner">
+          <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
+          <h1 className="pg-cover-title">{session.title}</h1>
+          <div className="pg-cover-meta">{allPhotos.length} photos</div>
+        </div>
+        <button className="pg-scroll" onClick={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+          <span>View photos</span>
+          <i />
+        </button>
+      </section>
+
+      <header className={`pg-bar ${scrolled ? 'is-visible' : ''}`}>
+        <button className="pg-bar-title" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          {session.title}
+        </button>
+        <nav className="pg-bar-acts">
           {session.faceReady && (
             matchIds === null
-              ? <button className="pg-tool" onClick={() => selfieInput.current?.click()} disabled={selfieBusy}>
-                  {selfieBusy ? 'Searching…' : 'Find my photos'}
+              ? <button className="pg-ico" onClick={() => selfieInput.current?.click()} disabled={selfieBusy}>
+                  {selfieBusy ? '…' : 'Find me'}
                 </button>
-              : <button className="pg-tool is-on" onClick={() => { setMatchIds(null); setSelfieMsg(''); }}>Show all</button>
+              : <button className="pg-ico is-on" onClick={() => { setMatchIds(null); setSelfieMsg(''); }}>Show all</button>
           )}
           <input ref={selfieInput} type="file" accept="image/*" hidden onChange={onSelfie} />
-
-          {favCount > 0 && (
-            <button className={`pg-tool ${favsOnly ? 'is-on' : ''}`} onClick={() => setFavsOnly(v => !v)}>
-              ♥ {favsOnly ? 'All photos' : 'Favourites'}
-            </button>
-          )}
-
-          <button className="pg-tool" onClick={shareGallery}>{copied ? 'Link copied' : 'Share'}</button>
-
+          <button className="pg-ico" onClick={share}>{copied ? 'Copied' : 'Share'}</button>
           {photos.length > 0 && (
-            <button className="pg-tool" onClick={() => { setLightbox(0); setSlideshow(true); }}>Slideshow</button>
+            <button className="pg-ico" onClick={() => { setLightbox(0); setSlideshow(true); }}>Slideshow</button>
           )}
-
-          {allPhotos.length > 0 && (
-            <button className="pg-btn pg-btn-sm" onClick={() => downloadAll(null)} disabled={zipBusy === 'all'}>
-              {zipBusy === 'all' ? 'Preparing…' : 'Download all'}
-            </button>
-          )}
-        </div>
+          <button className="pg-ico is-solid" onClick={() => downloadAll('all')} disabled={zipBusy === 'all'}>
+            {zipBusy === 'all' ? 'Preparing…' : 'Download all'}
+          </button>
+        </nav>
       </header>
+
+      <div ref={gridRef} className="pg-anchor" />
 
       {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
 
-      {/* per-client event tabs */}
-      {session.mode === 'per_client' && session.events.length > 0 && matchIds === null && !favsOnly && (
-        <nav className="pg-events">
-          <button className={`pg-ev ${activeEvent === 'all' ? 'is-on' : ''}`} onClick={() => setActiveEvent('all')}>All</button>
+      {session.mode === 'per_client' && session.events.length > 0 && matchIds === null && !pickedOnly && (
+        <nav className="pg-scenes">
+          <button className={`pg-scene ${activeEvent === 'all' ? 'is-on' : ''}`} onClick={() => setActiveEvent('all')}>All</button>
           {session.events.map(ev => (
-            <span key={ev.id} className="pg-ev-group">
-              <button className={`pg-ev ${String(activeEvent) === String(ev.id) ? 'is-on' : ''}`} onClick={() => setActiveEvent(ev.id)}>{ev.name}</button>
-              <button className="pg-ev-dl" title={`Download ${ev.name}`} onClick={() => downloadAll(ev.id)} disabled={zipBusy === ev.id}>
-                {zipBusy === ev.id ? '…' : '↓'}
-              </button>
-            </span>
+            <button
+              key={ev.id}
+              className={`pg-scene ${String(activeEvent) === String(ev.id) ? 'is-on' : ''}`}
+              onClick={() => setActiveEvent(ev.id)}
+            >{ev.name}</button>
           ))}
+          {activeEvent !== 'all' && (
+            <button className="pg-scene-dl" onClick={() => downloadAll(activeEvent)} disabled={zipBusy === activeEvent}>
+              {zipBusy === activeEvent ? 'Preparing…' : 'Download this event'}
+            </button>
+          )}
         </nav>
       )}
 
-      {/* 🧱 masonry grid */}
       {photos.length === 0 ? (
         <div className="pg-state">
-          {favsOnly ? 'No favourites yet — tap the heart on a photo to save it.'
+          {pickedOnly ? 'Nothing selected yet.'
             : matchIds !== null ? 'No matching photos.'
             : 'This gallery is empty.'}
         </div>
       ) : (
         <div className="pg-masonry">
           {photos.map((p, i) => (
-            <figure key={p.id} className="pg-tile" onClick={() => { setSlideshow(false); setLightbox(i); }}>
+            <figure
+              key={p.id}
+              className={`pg-tile ${picked.has(p.id) ? 'is-picked' : ''}`}
+              onClick={() => { setSlideshow(false); setLightbox(i); }}
+            >
               <img src={photoUrl(p.id, 'thumb')} loading="lazy" alt="" />
-              <div className="pg-tile-veil" />
               <button
-                className={`pg-fav ${favs.has(p.id) ? 'is-on' : ''}`}
-                onClick={e => { e.stopPropagation(); toggleFav(p.id); }}
-                aria-label={favs.has(p.id) ? 'Remove favourite' : 'Add favourite'}
-              >♥</button>
-              <button
-                className="pg-tile-dl"
-                onClick={e => { e.stopPropagation(); downloadOne(p.id); }}
-                aria-label="Download photo"
-              >↓</button>
+                className="pg-check"
+                onClick={e => { e.stopPropagation(); togglePick(p.id); }}
+                aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
+              >✓</button>
             </figure>
           ))}
         </div>
       )}
 
-      {/* 🔍 lightbox */}
+      {nPicked > 0 && (
+        <div className="pg-selbar">
+          <span className="pg-selbar-n">{nPicked} selected</span>
+          <div className="pg-selbar-acts">
+            <button className="pg-selbar-btn" onClick={() => setPickedOnly(v => !v)}>
+              {pickedOnly ? 'Show all' : 'View selected'}
+            </button>
+            <button className="pg-selbar-btn" onClick={downloadPicked} disabled={zipBusy === 'picked'}>
+              {zipBusy === 'picked' ? 'Downloading…' : 'Download'}
+            </button>
+            <button className="pg-selbar-btn is-quiet" onClick={clearPicked}>Clear</button>
+          </div>
+        </div>
+      )}
+
       {current && (
         <div className="pg-lb" onClick={() => { setLightbox(null); setSlideshow(false); }}>
           <div className="pg-lb-bar" onClick={e => e.stopPropagation()}>
             <span className="pg-lb-count">{lightbox + 1} / {photos.length}</span>
             <div className="pg-lb-acts">
-              <button className={`pg-lb-btn ${favs.has(current.id) ? 'is-on' : ''}`} onClick={() => toggleFav(current.id)}>♥</button>
-              <button className={`pg-lb-btn ${slideshow ? 'is-on' : ''}`} onClick={() => setSlideshow(s => !s)}>
-                {slideshow ? '❚❚' : '▶'}
-              </button>
+              <button className={`pg-lb-btn ${picked.has(current.id) ? 'is-on' : ''}`} onClick={() => togglePick(current.id)}>✓</button>
+              <button className={`pg-lb-btn ${slideshow ? 'is-on' : ''}`} onClick={() => setSlideshow(s => !s)}>{slideshow ? '❚❚' : '▶'}</button>
               <button className="pg-lb-btn" onClick={() => downloadOne(current.id)}>↓</button>
               <button className="pg-lb-btn" onClick={() => { setLightbox(null); setSlideshow(false); }}>✕</button>
             </div>
           </div>
-
           <button className="pg-lb-nav prev" onClick={e => { e.stopPropagation(); setSlideshow(false); step(-1); }} aria-label="Previous">‹</button>
-          <img
-            key={current.id}
-            className="pg-lb-img"
-            src={photoUrl(current.id, 'preview')}
-            alt=""
-            onClick={e => e.stopPropagation()}
-          />
+          <img key={current.id} className="pg-lb-img" src={photoUrl(current.id, 'preview')} alt="" onClick={e => e.stopPropagation()} />
           <button className="pg-lb-nav next" onClick={e => { e.stopPropagation(); setSlideshow(false); step(1); }} aria-label="Next">›</button>
         </div>
       )}
