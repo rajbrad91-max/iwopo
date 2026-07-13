@@ -44,8 +44,8 @@ export default function VendorGallery({ token }) {
     );
   }
 
-  if (err) return <div className="pg-wrap" style={styleVars}><div className="pg-msg">⚠️ {err}</div></div>;
-  if (!data) return <div className="pg-wrap" style={styleVars}><div className="pg-msg">Loading…</div></div>;
+  if (err) return <div className="pg-wrap" style={styleVars}><div className="pg-state">⚠️ {err}</div></div>;
+  if (!data) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
 
   return (
     <div className="pg-wrap" style={styleVars}>
@@ -57,7 +57,7 @@ export default function VendorGallery({ token }) {
       </div>
 
       {data.albums.length === 0 ? (
-        <div className="pg-msg">No albums published yet 📭</div>
+        <div className="pg-state">No albums published yet 📭</div>
       ) : (
         <div className="vg-grid">
           {data.albums.map(a => (
