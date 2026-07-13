@@ -3,11 +3,13 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import multer from 'multer';
+import sharp from 'sharp';
 import { createRequire } from 'module';
 import { query } from '../config/db.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
 import { getFaceDescriptorsAWS, findMatchesAWS } from '../lib/faceAWS.js';
 import { getSetting } from '../lib/settings.js';
+import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -234,6 +236,76 @@ router.post('/:token/selfie', upload.single('selfie'), async (req, res) => {
     }
     res.json({ matches: ids.length, photo_ids: ids });
   } catch (e) { if (req.file) fs.unlink(req.file.path, () => {}); res.status(500).json({ error: e.message }); }
+});
+
+// 🧑‍🤝‍🧑 face circles for this album — one per person, most photos first
+router.get('/:token/faces', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+
+    const clusters = await albumClusters(a.id);
+    res.json({
+      faces: clusters.map(c => ({ id: c.id, count: c.photo_count })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 🖼️ the circular thumbnail for one person — the face cropped out of its photo
+router.get('/:token/face/:clusterId', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).end();
+    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
+
+    const { rows } = await query(
+      `SELECT c.cover_box, p.preview_path
+       FROM face_clusters c JOIN photos p ON p.id = c.cover_photo_id
+       WHERE c.id=$1 AND c.album_id=$2`, [req.params.clusterId, a.id]);
+    const c = rows[0];
+    if (!c) return res.status(404).end();
+
+    const full = path.join(ROOT, c.preview_path);
+    if (!fs.existsSync(full)) return res.status(404).end();
+
+    const box = c.cover_box || {};
+    const bx = box._x ?? box.x, by = box._y ?? box.y;
+    const bw = box._width ?? box.width, bh = box._height ?? box.height;
+
+    // no box (AWS crops) → just serve the photo and let the browser round it
+    if (bw == null) { res.type('webp'); return res.sendFile(full); }
+
+    const meta = await sharp(full).metadata();
+    // pad the crop out so it's a head-and-shoulders circle, not a tight face
+    const pad = Math.round(Math.max(bw, bh) * 0.45);
+    const left = Math.max(0, Math.round(bx - pad));
+    const top = Math.max(0, Math.round(by - pad));
+    const size = Math.round(Math.max(bw, bh) + pad * 2);
+    const width = Math.min(size, meta.width - left);
+    const height = Math.min(size, meta.height - top);
+
+    const buf = await sharp(full)
+      .extract({ left, top, width, height })
+      .resize(160, 160, { fit: 'cover' })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    res.type('webp');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(buf);
+  } catch { res.status(404).end(); }
+});
+
+// 📸 which photos a given person appears in
+router.get('/:token/face/:clusterId/photos', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    const ids = await clusterPhotoIds(a.id, req.params.clusterId);
+    res.json({ photo_ids: ids });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 export default router;

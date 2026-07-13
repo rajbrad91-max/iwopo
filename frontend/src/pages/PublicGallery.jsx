@@ -42,7 +42,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [pickedOnly, setPickedOnly] = useState(false);
   const [slideshow, setSlideshow] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [faces, setFaces] = useState([]);           // face circles, most photos first
+  const [activeFace, setActiveFace] = useState(null);
+  const [allFaces, setAllFaces] = useState(false);  // "Find more" → show every circle
+  const [findMeOpen, setFindMeOpen] = useState(false);
   const selfieInput = useRef(null);
+  const cameraInput = useRef(null);
   const gridRef = useRef(null);
   const [tallIds, setTallIds] = useState(() => new Set());   // portraits → span 2 grid rows
 
@@ -99,6 +104,32 @@ export default function PublicGallery({ token, embedded, onBack }) {
   }
 
   const photoUrl = (id, type) => `${API}/${token}/photo/${id}/${type}?vt=${session.vt}`;
+  const faceUrl = (clusterId) => `${API}/${token}/face/${clusterId}?vt=${session.vt}`;
+
+  // 🧑‍🤝‍🧑 load the face circles once we're in
+  useEffect(() => {
+    if (!session) return;
+    fetch(`${API}/${token}/faces?vt=${session.vt}`)
+      .then(r => r.json())
+      .then(d => setFaces(d.faces || []))
+      .catch(() => {});
+  }, [session, token]);
+
+  // clicking a circle filters the grid to that person
+  async function pickFace(f) {
+    if (activeFace === f.id) { setActiveFace(null); setMatchIds(null); return; }
+    setActiveFace(f.id);
+    setSelfieMsg('');
+    try {
+      const r = await fetch(`${API}/${token}/face/${f.id}/photos?vt=${session.vt}`);
+      const d = await r.json();
+      setMatchIds(d.photo_ids || []);
+      setPickedOnly(false);
+      gridRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } catch { setActiveFace(null); }
+  }
+  function clearFace() { setActiveFace(null); setMatchIds(null); setSelfieMsg(''); }
+
   const downloadOne = (id) => { window.location.href = `${API}/${token}/download/${id}?vt=${session.vt}`; };
   function downloadAll(eventId) {
     const key = eventId || 'all';
@@ -134,6 +165,8 @@ export default function PublicGallery({ token, embedded, onBack }) {
   async function onSelfie(e) {
     const file = e.target.files[0];
     if (!file) return;
+    setFindMeOpen(false);
+    setActiveFace(null);
     setSelfieBusy(true); setSelfieMsg('Looking for you…');
     try {
       const fd = new FormData();
@@ -228,44 +261,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
   const current = lightbox !== null ? photos[lightbox] : null;
   const nPicked = picked.size;
+  const FACE_LIMIT = 10;                                   // CSS keeps 4-5 visible on phones
+  const shownFaces = allFaces ? faces : faces.slice(0, FACE_LIMIT);
+  const hasMoreFaces = faces.length > FACE_LIMIT;
 
   return (
     <div className="pg-wrap" style={styleVars}>
-
-      {/* 🧭 bar sits at the very top of the page, above the cover */}
-      <header className="pg-bar">
-        <div className="pg-bar-left">
-          {onBack && (
-            <button className="pg-back" onClick={onBack}>← Back to all albums</button>
-          )}
-          <button className="pg-bar-title" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            {session.title}
-          </button>
-        </div>
-        <nav className="pg-bar-acts">
-          {session.faceReady && (
-            matchIds === null
-              ? <button className="pg-ico" onClick={() => selfieInput.current?.click()} disabled={selfieBusy}>
-                  {IconFace}<span>{selfieBusy ? 'Searching…' : 'Find me'}</span>
-                </button>
-              : <button className="pg-ico is-on" onClick={() => { setMatchIds(null); setSelfieMsg(''); }}>
-                  {IconClose}<span>Show all</span>
-                </button>
-          )}
-          <input ref={selfieInput} type="file" accept="image/*" hidden onChange={onSelfie} />
-          <button className="pg-ico" onClick={share}>
-            {IconShare}<span>{copied ? 'Copied' : 'Share'}</span>
-          </button>
-          {photos.length > 0 && (
-            <button className="pg-ico" onClick={() => { setLightbox(0); setSlideshow(true); }}>
-              {IconPlay}<span>Slideshow</span>
-            </button>
-          )}
-          <button className="pg-ico is-solid" onClick={() => downloadAll('all')} disabled={zipBusy === 'all'}>
-            {IconDownload}<span>{zipBusy === 'all' ? 'Preparing…' : 'Download all'}</span>
-          </button>
-        </nav>
-      </header>
 
       <section className={`pg-cover ${coverUrl ? '' : 'is-plain'}`}>
         {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})` }} />}
@@ -279,6 +280,81 @@ export default function PublicGallery({ token, embedded, onBack }) {
           <i />
         </button>
       </section>
+
+      {/* bar 1 — navigation + the album download */}
+      <div className="pg-actions">
+        {onBack
+          ? <button className="pg-back" onClick={onBack}>← Back to all albums</button>
+          : <span className="pg-back is-static">{session.title}</span>}
+        <div className="pg-actions-right">
+          <button className="pg-ico" onClick={share}>
+            {IconShare}<span>{copied ? 'Copied' : 'Share'}</span>
+          </button>
+          {photos.length > 0 && (
+            <button className="pg-ico" onClick={() => { setLightbox(0); setSlideshow(true); }}>
+              {IconPlay}<span>Slideshow</span>
+            </button>
+          )}
+          <button className="pg-ico is-solid" onClick={() => downloadAll('all')} disabled={zipBusy === 'all'}>
+            {IconDownload}<span>{zipBusy === 'all' ? 'Preparing…' : 'Download album'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* bar 2 — the people in this gallery */}
+      {(faces.length > 0 || session.faceReady) && (
+        <div className="pg-people">
+          <div className={`pg-faces ${allFaces ? 'is-expanded' : ''}`}>
+            {shownFaces.map(f => (
+              <button
+                key={f.id}
+                className={`pg-face ${activeFace === f.id ? 'is-on' : ''}`}
+                onClick={() => pickFace(f)}
+                title={`${f.count} photos`}
+              >
+                <img src={faceUrl(f.id)} alt="" loading="lazy" />
+                <span className="pg-face-n">{f.count}</span>
+              </button>
+            ))}
+            {faces.length === 0 && <span className="pg-faces-empty">Finding faces…</span>}
+          </div>
+
+          <div className="pg-people-acts">
+            {activeFace && (
+              <button className="pg-ico is-on" onClick={clearFace}>
+                {IconClose}<span>Show all</span>
+              </button>
+            )}
+            {hasMoreFaces && (
+              <button className="pg-ico" onClick={() => setAllFaces(v => !v)}>
+                {allFaces ? 'Show fewer' : `Find more (${faces.length})`}
+              </button>
+            )}
+            <button className="pg-ico" onClick={() => setFindMeOpen(true)} disabled={selfieBusy}>
+              {IconFace}<span>{selfieBusy ? 'Searching…' : 'Find me'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      <input ref={selfieInput} type="file" accept="image/*" hidden onChange={onSelfie} />
+      {/* separate input so "take a selfie" opens the camera directly on phones */}
+      <input ref={cameraInput} type="file" accept="image/*" capture="user" hidden onChange={onSelfie} />
+
+      {/* 🤳 find-me popup */}
+      {findMeOpen && (
+        <div className="pg-modal" onClick={() => setFindMeOpen(false)}>
+          <div className="pg-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="pg-modal-x" onClick={() => setFindMeOpen(false)}>✕</button>
+            <h2 className="pg-modal-title">Find your photos</h2>
+            <p className="pg-modal-sub">We'll match your face against this gallery. Your photo isn't stored.</p>
+            <div className="pg-modal-acts">
+              <button className="pg-btn" onClick={() => cameraInput.current?.click()}>Take a selfie</button>
+              <button className="pg-btn is-ghost" onClick={() => selfieInput.current?.click()}>Upload a photo</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div ref={gridRef} />
 

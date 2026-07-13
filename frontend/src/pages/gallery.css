@@ -130,46 +130,126 @@
 }
 @keyframes pg-drop { 0%, 100% { transform: scaleY(.35); opacity: .4; } 50% { transform: scaleY(1); opacity: 1; } }
 
-/* ── 🧭 top bar — sits at the very top of the page and scrolls away with it ── */
-.pg-bar {
-  position: relative;
-  z-index: 30;
+/* ── bar 1: navigation + album download ── */
+.pg-actions {
   display: flex; justify-content: space-between; align-items: center;
   gap: 12px 16px;
   flex-wrap: wrap;
-  padding: 14px clamp(14px, 3vw, 28px);
-  background: var(--pg-bg);
-  border-bottom: 1px solid color-mix(in srgb, var(--pg-head) 7%, transparent);
+  padding: 18px clamp(14px, 3vw, 28px);
+  border-bottom: 1px solid color-mix(in srgb, var(--pg-head) 8%, transparent);
 }
-.pg-bar-left {
-  display: flex; align-items: center; gap: 14px;
-  min-width: 0; flex: 1 1 auto;
-}
+.pg-actions-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
 .pg-back {
   background: none; border: none;
   padding: 0;
   color: var(--pg-sub);
   font-family: var(--pg-bfont);
   font-size: 13px;
-  letter-spacing: 0;
-  text-transform: none;
   cursor: pointer;
   white-space: nowrap;
   transition: color .16s;
 }
 .pg-back:hover { color: var(--pg-accent); }
-
-.pg-bar-title {
-  background: none; border: none;
+.pg-back.is-static {
+  cursor: default;
   font-family: var(--pg-hfont, serif);
-  font-size: clamp(14px, 2.2vw, 17px);
+  font-size: 16px;
   color: var(--pg-head);
-  cursor: pointer;
-  padding: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  min-width: 0;
 }
-.pg-bar-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ── bar 2: the people in this gallery ── */
+.pg-people {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px;
+  padding: 16px clamp(14px, 3vw, 28px);
+  border-bottom: 1px solid color-mix(in srgb, var(--pg-head) 8%, transparent);
+}
+.pg-faces {
+  display: flex; gap: 14px; align-items: flex-start;
+  overflow-x: auto;
+  min-width: 0;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.pg-faces::-webkit-scrollbar { display: none; }
+.pg-faces.is-expanded { flex-wrap: wrap; overflow: visible; }
+.pg-faces-empty { color: var(--pg-sub); font-size: 13px; padding: 18px 0; white-space: nowrap; }
+
+.pg-face {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: none; border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.pg-face img {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid transparent;
+  background: color-mix(in srgb, var(--pg-head) 6%, transparent);
+  transition: border-color .16s, transform .16s;
+}
+.pg-face:hover img { transform: scale(1.05); }
+.pg-face.is-on img { border-color: var(--pg-accent); }
+.pg-face-n {
+  font-family: var(--pg-bfont);
+  font-size: 11px;
+  color: var(--pg-sub);
+}
+.pg-face.is-on .pg-face-n { color: var(--pg-accent); font-weight: 600; }
+
+.pg-people-acts { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+
+/* ── 🤳 find-me popup ── */
+.pg-modal {
+  position: fixed; inset: 0; z-index: 70;
+  background: rgba(10,10,12,.62);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: pg-fade .2s ease;
+}
+.pg-modal-card {
+  position: relative;
+  width: 100%; max-width: 380px;
+  background: var(--pg-bg);
+  border-radius: 14px;
+  padding: 34px 28px 28px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  animation: pg-rise .28s cubic-bezier(.2,.8,.3,1) both;
+}
+.pg-modal-x {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none;
+  color: var(--pg-sub);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px;
+}
+.pg-modal-x:hover { color: var(--pg-head); }
+.pg-modal-title {
+  font-family: var(--pg-hfont, serif);
+  font-size: 24px;
+  font-weight: 400;
+  margin: 0 0 8px;
+  color: var(--pg-head);
+}
+.pg-modal-sub {
+  color: var(--pg-sub);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+.pg-modal-acts { display: flex; flex-direction: column; gap: 10px; }
+.pg-btn.is-ghost {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--pg-head) 18%, transparent);
+  color: var(--pg-head);
+}
+.pg-btn.is-ghost:hover { border-color: var(--pg-accent); color: var(--pg-accent); filter: none; }
 
 .pg-ico {
   display: inline-flex;
@@ -499,10 +579,11 @@
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));  /* 2 across on phones */
     grid-auto-rows: 118px;
   }
-  .pg-bar { padding: 12px 14px; }
-  .pg-bar-left { gap: 10px; }
+  .pg-actions, .pg-people { padding: 14px; }
   .pg-ico { padding: 8px 11px; font-size: 12px; gap: 6px; }
   .pg-ico-svg { width: 14px; height: 14px; }
+  .pg-face img { width: 50px; height: 50px; }
+  .pg-faces { gap: 11px; }
   .pg-scenes { margin: 0 14px; padding: 26px 0 4px; gap: 18px; }
   .pg-note { padding: 18px 14px 0; }
   .pg-check { opacity: .9; width: 20px; height: 20px; top: 6px; left: 6px; font-size: 10px; }
@@ -516,16 +597,23 @@
   .pg-lb-nav.next { right: 6px; }
 }
 
-/* small phones + folded devices: stack the bar so nothing gets squeezed */
+/* small phones + folded devices: stack the bars so nothing gets squeezed */
 @media (max-width: 560px) {
-  .pg-bar {
+  .pg-actions {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 12px;
   }
-  .pg-bar-left { justify-content: space-between; }
-  .pg-bar-acts { justify-content: space-between; gap: 6px; }
+  .pg-actions-right { justify-content: space-between; gap: 6px; }
+  .pg-people {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .pg-people-acts { justify-content: space-between; gap: 6px; }
   .pg-ico { padding: 9px 10px; font-size: 11.5px; gap: 5px; flex: 1 1 auto; justify-content: center; }
+  .pg-face img { width: 46px; height: 46px; }
+  .pg-faces { gap: 10px; }
   .pg-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 112px; }
   .pg-cover { min-height: 400px; }
   .pg-scroll { bottom: 26px; }
@@ -536,6 +624,7 @@
   .pg-ico span { display: none; }
   .pg-ico { padding: 10px; }
   .pg-ico-svg { width: 16px; height: 16px; }
+  .pg-face img { width: 42px; height: 42px; }
   .pg-grid { grid-auto-rows: 96px; gap: 4px; padding: 16px 8px 130px; }
   .pg-back { font-size: 12px; }
   .pg-selbar { padding: 9px 8px 9px 14px; gap: 8px; }

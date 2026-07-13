@@ -18,6 +18,7 @@ import { query } from '../config/db.js';
 import { getFaceDescriptors } from './faceEngine.js';
 import { getFaceDescriptorsAWS } from './faceAWS.js';
 import { getSetting } from './settings.js';
+import { clusterAlbum } from './faceCluster.js';
 
 const ROOT = '/var/www/vowflo/storage/galleries';
 
@@ -115,6 +116,10 @@ async function indexOneAlbum(albumId) {
     i += batch.length;
     await new Promise(r => setTimeout(r, PAUSE_MS));   // breather
   }
+
+  // 🧑‍🤝‍🧑 group the faces into people so the gallery can show face circles
+  try { await clusterAlbum(albumId); }
+  catch (e) { console.error('face clustering failed:', e.message); }
 }
 
 // manual full re-index (vendor/admin button) — still adaptive + throttled
