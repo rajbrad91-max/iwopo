@@ -1,5 +1,6 @@
 import express from 'express';
 import { query } from '../config/db.js';
+import jwt from 'jsonwebtoken';
 import { requireAuth } from '../middleware/auth.js';
 import { notifyNewLead, sendLeadEmail } from './email.js';
 import { notify } from './notifications.js';
@@ -110,10 +111,22 @@ const FIELDS = ['name','email','phone','event_type','event_date','timing_from','
   'location','hours','guests','gr_bride','gr_bride_venue','gr_groom','gr_groom_venue',
   'notes','internal_notes','status','role','instagram','heard','custom_data'];
 
-// POST /api/leads → create (public inquiry OR admin). vendor_id required.
+// POST /api/leads → create (public inquiry OR logged-in vendor panel).
+// Public form sends vendor_id in the body; the vendor panel is authenticated,
+// so we take vendor_id from the token instead of trusting the body.
 router.post('/', async (req, res) => {
   const b = req.body;
-  const vendor_id = b.vendor_id;
+
+  let vendor_id = b.vendor_id || null;
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) {
+    try {
+      const user = jwt.verify(auth.slice(7), process.env.JWT_SECRET || 'dev-secret-change-me');
+      if (user.role === 'super_admin') vendor_id = b.vendor_id || null;   // super admin must say which vendor
+      else vendor_id = user.vendor_id;                                     // vendors always their own
+    } catch { /* bad token → fall back to body (public form) */ }
+  }
+
   if (!vendor_id) return res.status(400).json({ error: 'vendor_id required' });
   const cols = ['vendor_id', 'client_token', ...FIELDS.filter(f => b[f] !== undefined)];
   const vals = [vendor_id, (await import('crypto')).randomBytes(20).toString('hex'),
