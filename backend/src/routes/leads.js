@@ -111,6 +111,42 @@ const FIELDS = ['name','email','phone','event_type','event_date','timing_from','
   'location','hours','guests','gr_bride','gr_bride_venue','gr_groom','gr_groom_venue',
   'notes','internal_notes','status','role','instagram','heard','custom_data'];
 
+/**
+ * 🔗 Custom fields live in custom_data (a free-form bag keyed by field id), but
+ * Bookings / Calendar / Details read the REAL columns (event_date, location…).
+ * This syncs the bag → the columns so a date the vendor typed actually shows up.
+ * Type drives the mapping: a 'date' custom field IS the event date, etc.
+ */
+const TYPE_TO_COLUMN = {
+  date: 'event_date',
+  location: 'location',
+};
+
+async function mapCustomToColumns(vendorId, body, { overwrite = false } = {}) {
+  const cd = body.custom_data;
+  if (!cd || typeof cd !== 'object') return body;
+
+  let fields = [];
+  try {
+    const { rows } = await query('SELECT custom_fields FROM inquiry_settings WHERE vendor_id=$1', [vendorId]);
+    fields = rows[0]?.custom_fields || [];
+  } catch { return body; }
+  if (!Array.isArray(fields) || !fields.length) return body;
+
+  const out = { ...body };
+  for (const f of fields) {
+    const col = TYPE_TO_COLUMN[f.type];
+    if (!col) continue;                       // only types that have a real column
+    const val = cd[f.id];
+    if (val === undefined || val === '') continue;
+    // on create: don't clobber a value the caller explicitly set.
+    // on edit (overwrite): the form is the source of truth — the new value wins.
+    if (!overwrite && out[col] !== undefined && out[col] !== null && out[col] !== '') continue;
+    out[col] = val;
+  }
+  return out;
+}
+
 // POST /api/leads → create (public inquiry OR logged-in vendor panel).
 // Public form sends vendor_id in the body; the vendor panel is authenticated,
 // so we take vendor_id from the token instead of trusting the body.
@@ -128,9 +164,13 @@ router.post('/', async (req, res) => {
   }
 
   if (!vendor_id) return res.status(400).json({ error: 'vendor_id required' });
-  const cols = ['vendor_id', 'client_token', ...FIELDS.filter(f => b[f] !== undefined)];
+
+  // 🔗 pull real columns (event_date, location…) out of the custom-field bag
+  const mapped = await mapCustomToColumns(vendor_id, b);
+
+  const cols = ['vendor_id', 'client_token', ...FIELDS.filter(f => mapped[f] !== undefined)];
   const vals = [vendor_id, (await import('crypto')).randomBytes(20).toString('hex'),
-    ...FIELDS.filter(f => b[f] !== undefined).map(f => f === 'custom_data' ? JSON.stringify(b[f]) : b[f])];
+    ...FIELDS.filter(f => mapped[f] !== undefined).map(f => f === 'custom_data' ? JSON.stringify(mapped[f]) : mapped[f])];
   const ph = cols.map((_, i) => `$${i + 1}`).join(',');
   try {
     const { rows } = await query(
@@ -151,10 +191,16 @@ router.put('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
 
     const b = req.body;
-    const upd = FIELDS.filter(f => b[f] !== undefined);
+    const ownerVid = exist[0].vendor_id;
+
+    // 🔗 keep the real columns in sync with the custom-field bag on every edit.
+    // Here the mapped value WINS (the vendor just changed it in the form).
+    const mapped = await mapCustomToColumns(ownerVid, b, { overwrite: true });
+
+    const upd = FIELDS.filter(f => mapped[f] !== undefined);
     if (!upd.length) return res.json({ ok: true });
     const set = upd.map((f, i) => `${f}=$${i + 1}`).join(',');
-    const vals = upd.map(f => b[f]);
+    const vals = upd.map(f => f === 'custom_data' ? JSON.stringify(mapped[f]) : mapped[f]);
     vals.push(req.params.id);
     const { rows } = await query(
       `UPDATE leads SET ${set}, updated_at=NOW() WHERE id=$${vals.length} RETURNING *`, vals);
