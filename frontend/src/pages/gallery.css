@@ -319,6 +319,9 @@
   display: flex; align-items: center; justify-content: center;
   padding: 8px;
   animation: pg-fade .22s ease;
+  /* let our swipe handler own the gesture — no browser pan or pull-to-refresh */
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 @keyframes pg-fade { from { opacity: 0; } to { opacity: 1; } }
 .pg-lb-bar {
@@ -351,6 +354,8 @@
   max-width: 100%; max-height: 100%;
   object-fit: contain;
   cursor: default;
+  user-select: none;
+  -webkit-user-drag: none;
   animation: pg-in .32s cubic-bezier(.2,.7,.3,1);
 }
 @keyframes pg-in { from { opacity: 0; transform: scale(.99); } to { opacity: 1; transform: none; } }

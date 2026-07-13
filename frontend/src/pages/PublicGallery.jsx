@@ -167,6 +167,29 @@ export default function PublicGallery({ token, embedded }) {
     return () => clearInterval(t);
   }, [slideshow, lightbox, step]);
 
+  // 👆 swipe the full-screen photo: left/right to move, down to close
+  const touch = useRef(null);
+  const SWIPE_MIN = 45;                       // px before it counts as a swipe
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e) => {
+    if (!touch.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
+    touch.current = null;
+    if (Math.abs(dx) > Math.abs(dy)) {         // horizontal → next / previous
+      if (Math.abs(dx) < SWIPE_MIN) return;
+      setSlideshow(false);
+      step(dx < 0 ? 1 : -1);                   // swipe left = next
+    } else if (dy > SWIPE_MIN * 1.6) {         // pull down → close
+      setLightbox(null);
+      setSlideshow(false);
+    }
+  };
+
   if (err) return <div className="pg-wrap" style={styleVars}><div className="pg-state">{err}</div></div>;
   if (!meta) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
 
@@ -298,7 +321,12 @@ export default function PublicGallery({ token, embedded }) {
       )}
 
       {current && (
-        <div className="pg-lb" onClick={() => { setLightbox(null); setSlideshow(false); }}>
+        <div
+          className="pg-lb"
+          onClick={() => { setLightbox(null); setSlideshow(false); }}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
           <div className="pg-lb-bar" onClick={e => e.stopPropagation()}>
             <span className="pg-lb-count">{lightbox + 1} / {photos.length}</span>
             <div className="pg-lb-acts">
