@@ -219,26 +219,16 @@ export default function PublicGallery({ token, embedded, onBack }) {
   return (
     <div className="pg-wrap" style={styleVars}>
 
-      <section className={`pg-cover ${coverUrl ? '' : 'is-plain'}`}>
-        {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})` }} />}
-        <div className="pg-cover-inner">
-          <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
-          <h1 className="pg-cover-title">{session.title}</h1>
-          <div className="pg-cover-meta">{allPhotos.length} photos</div>
-        </div>
-        <button className="pg-scroll" onClick={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}>
-          <span>View photos</span>
-          <i />
-        </button>
-      </section>
-
+      {/* 🧭 bar sits at the very top of the page, above the cover */}
       <header className="pg-bar">
-        <button
-          className="pg-bar-title"
-          onClick={() => (onBack ? onBack() : window.scrollTo({ top: 0, behavior: 'smooth' }))}
-        >
-          {onBack ? '← All albums' : session.title}
-        </button>
+        <div className="pg-bar-left">
+          {onBack && (
+            <button className="pg-back" onClick={onBack}>← Back to all albums</button>
+          )}
+          <button className="pg-bar-title" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            {session.title}
+          </button>
+        </div>
         <nav className="pg-bar-acts">
           {session.faceReady && (
             matchIds === null
@@ -257,6 +247,19 @@ export default function PublicGallery({ token, embedded, onBack }) {
           </button>
         </nav>
       </header>
+
+      <section className={`pg-cover ${coverUrl ? '' : 'is-plain'}`}>
+        {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})` }} />}
+        <div className="pg-cover-inner">
+          <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
+          <h1 className="pg-cover-title">{session.title}</h1>
+          <div className="pg-cover-meta">{allPhotos.length} photos</div>
+        </div>
+        <button className="pg-scroll" onClick={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+          <span>View photos</span>
+          <i />
+        </button>
+      </section>
 
       <div ref={gridRef} />
 
