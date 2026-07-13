@@ -32,13 +32,6 @@ export default function PublicGallery({ token, embedded }) {
   const [scrolled, setScrolled] = useState(false);
   const selfieInput = useRef(null);
   const gridRef = useRef(null);
-  const [ratios, setRatios] = useState({});   // photoId → width/height (portraits span 2 rows)
-
-  const noteRatio = (id, img) => {
-    if (!img?.naturalWidth || !img?.naturalHeight) return;
-    const r = img.naturalWidth / img.naturalHeight;
-    setRatios(prev => (prev[id] ? prev : { ...prev, [id]: r }));
-  };
 
   useEffect(() => { ensureFonts(); }, []);
   useEffect(() => {
@@ -269,29 +262,20 @@ export default function PublicGallery({ token, embedded }) {
               : matchIds !== null ? 'No matching photos.'
               : 'This gallery is empty.'}
           </div>
-        ) : photos.map((p, i) => {
-          const r = ratios[p.id];
-          const tall = r !== undefined && r < 0.9;   // portrait → occupy two rows
-          return (
-            <figure
-              key={p.id}
-              className={`pg-tile ${tall ? 'is-tall' : ''} ${picked.has(p.id) ? 'is-picked' : ''}`}
-              onClick={() => { setSlideshow(false); setLightbox(i); }}
-            >
-              <img
-                src={photoUrl(p.id, 'thumb')}
-                loading="lazy"
-                alt=""
-                onLoad={e => noteRatio(p.id, e.currentTarget)}
-              />
-              <button
-                className="pg-check"
-                onClick={e => { e.stopPropagation(); togglePick(p.id); }}
-                aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
-              >✓</button>
-            </figure>
-          );
-        })}
+        ) : photos.map((p, i) => (
+          <figure
+            key={p.id}
+            className={`pg-tile ${picked.has(p.id) ? 'is-picked' : ''}`}
+            onClick={() => { setSlideshow(false); setLightbox(i); }}
+          >
+            <img src={photoUrl(p.id, 'thumb')} loading="lazy" alt="" />
+            <button
+              className="pg-check"
+              onClick={e => { e.stopPropagation(); togglePick(p.id); }}
+              aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
+            >✓</button>
+          </figure>
+        ))}
       </div>
 
       {nPicked > 0 && (

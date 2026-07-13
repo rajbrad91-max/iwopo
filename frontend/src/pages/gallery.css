@@ -229,29 +229,29 @@
 }
 .pg-scene-dl:disabled { opacity: .5; cursor: default; }
 
-/* ── 🧱 fixed-cell grid — even rows, photos read left → right in order ── */
+/* ── 🧱 uniform grid — even rows, no dead space, photos read left → right ── */
 .pg-grid {
   display: grid;
   gap: 8px;
   padding: 30px 28px 120px;
   /* ~5 across on a laptop; auto-fits to any width, so folds/tablets adapt too */
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  grid-auto-rows: 175px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-auto-rows: 210px;
 }
 .pg-tile {
   position: relative;
   overflow: hidden;
   cursor: zoom-in;
-  background: color-mix(in srgb, var(--pg-head) 4%, transparent);
+  /* a quiet backdrop for the bands beside portraits / above panoramas */
+  background: color-mix(in srgb, var(--pg-head) 5%, transparent);
 }
-/* portraits take two rows so they aren't cropped to a letterbox */
-.pg-tile.is-tall { grid-row: span 2; }
 /* the empty-state message sits inside the grid, so let it span every column */
 .pg-grid .pg-state { grid-column: 1 / -1; }
 .pg-tile img {
   display: block;
   width: 100%; height: 100%;
-  object-fit: cover;
+  /* show the whole photo — never crop a portrait's head off in the preview */
+  object-fit: contain;
   transition: transform .7s cubic-bezier(.2,.7,.3,1), opacity .3s;
 }
 .pg-tile:hover img { transform: scale(1.02); }
@@ -472,7 +472,7 @@
     padding: 20px 10px 130px;
     gap: 5px;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));  /* 2 across on phones */
-    grid-auto-rows: 118px;
+    grid-auto-rows: 165px;
   }
   .pg-bar { padding: 12px 14px; }
   .pg-bar-title { font-size: 14px; max-width: 32%; }
