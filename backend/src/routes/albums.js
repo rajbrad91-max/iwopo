@@ -93,9 +93,9 @@ router.get('/settings', requireAuth, async (req, res) => {
 
 const THEME_DEFAULTS = {
   heading_font: 'Playfair Display', body_font: 'Jost',
-  bg_color: '#0f1115', heading_color: '#f3f4f6', accent_color: '#2dd4bf', sub_color: '#9ca3af',
-  title_text: 'Client Galleries', subtitle_text: 'Secure, Password-Protected Memories',
-  tagline_text: 'Ready to view, share and download.', default_mode: 'per_event',
+  bg_color: '#fbfbfa', heading_color: '#16161a', accent_color: '#1f6f6b', sub_color: '#8a8a8f',
+  title_text: 'Private gallery', subtitle_text: 'Your photos, ready to view and download',
+  tagline_text: '', default_mode: 'per_event',
 };
 
 // 🎨 gallery theme GET — per vendor

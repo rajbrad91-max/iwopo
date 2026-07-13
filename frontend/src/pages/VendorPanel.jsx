@@ -329,7 +329,25 @@ function GalleriesView() {
   const [copiedGallery, setCopiedGallery] = useState(false);
   const [theme, setTheme] = useState({});
   const [themeSaved, setThemeSaved] = useState(false);
-  const GAL_FONTS = ['Cormorant Garamond', 'Playfair Display', 'Jost', 'Montserrat', 'Poppins', 'Lora', 'Raleway', 'Georgia'];
+  const GAL_FONTS = ['Cormorant Garamond', 'Playfair Display', 'Jost', 'Montserrat', 'Poppins', 'Lora', 'Raleway'];
+  // 🎨 curated looks — professionally paired fonts + palettes
+  const GAL_PRESETS = [
+    { id: 'editorial', name: 'Editorial', note: 'Light and airy. Photos do the talking.',
+      t: { heading_font: 'Playfair Display', body_font: 'Jost', bg_color: '#fbfbfa', heading_color: '#16161a', accent_color: '#1f6f6b', sub_color: '#8a8a8f' } },
+    { id: 'noir', name: 'Noir', note: 'Deep charcoal. Makes colour glow.',
+      t: { heading_font: 'Cormorant Garamond', body_font: 'Jost', bg_color: '#0e0e11', heading_color: '#f2f2f0', accent_color: '#c9a227', sub_color: '#8b8b93' } },
+    { id: 'blush', name: 'Blush', note: 'Warm white, muted rose. Romantic.',
+      t: { heading_font: 'Cormorant Garamond', body_font: 'Montserrat', bg_color: '#faf6f4', heading_color: '#2b2320', accent_color: '#b4756b', sub_color: '#9c8b85' } },
+    { id: 'studio', name: 'Studio', note: 'Neutral grey. Tight and modern.',
+      t: { heading_font: 'Raleway', body_font: 'Jost', bg_color: '#f4f4f5', heading_color: '#18181b', accent_color: '#3f3f46', sub_color: '#8e8e96' } },
+    { id: 'sage', name: 'Sage', note: 'Cool green-grey. Calm and natural.',
+      t: { heading_font: 'Lora', body_font: 'Jost', bg_color: '#f3f5f2', heading_color: '#1f2620', accent_color: '#5c7a63', sub_color: '#8b968c' } },
+    { id: 'midnight', name: 'Midnight', note: 'Deep navy, cool accent. Confident.',
+      t: { heading_font: 'Playfair Display', body_font: 'Poppins', bg_color: '#0d1220', heading_color: '#eef1f7', accent_color: '#7aa2f7', sub_color: '#7d879c' } },
+  ];
+  const applyPreset = (p) => setTheme(t => ({ ...t, ...p.t }));
+  const presetActive = (p) => ['heading_font', 'body_font', 'bg_color', 'heading_color', 'accent_color', 'sub_color']
+    .every(k => (theme[k] || '').toLowerCase() === p.t[k].toLowerCase());
   function setT(k, val) { setTheme(t => ({ ...t, [k]: val })); }
   async function saveTheme() {
     try { await api.saveGalleryTheme(theme); setThemeSaved(true); setTimeout(() => setThemeSaved(false), 1800); }
@@ -602,7 +620,26 @@ function GalleriesView() {
 
               <div className="gal-set-col">
                 <div className="gal-theme-head">🎨 Client page style</div>
-                <div className="gal-set-hint">Fonts, colours &amp; text for your public gallery page</div>
+                <div className="gal-set-hint">Pick a look, then fine-tune if you want.</div>
+
+                <div className="gal-presets">
+                  {GAL_PRESETS.map(p => (
+                    <button
+                      key={p.id}
+                      className={`gal-preset ${presetActive(p) ? 'is-on' : ''}`}
+                      onClick={() => applyPreset(p)}
+                      title={p.note}
+                    >
+                      <span className="gal-preset-swatch" style={{ background: p.t.bg_color }}>
+                        <i style={{ background: p.t.accent_color }} />
+                        <i style={{ background: p.t.heading_color }} />
+                      </span>
+                      <span className="gal-preset-name">{p.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="gal-set-hint gal-fine">Fine-tune</div>
 
                 <div className="gal-set-prefixes gal-theme-fonts">
                   <div><label className="lbl">Heading font</label>

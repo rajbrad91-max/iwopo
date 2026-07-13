@@ -774,3 +774,28 @@
 .bk-search { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .bk-search .gal-input { flex: 1; max-width: 460px; }
 .bk-search-count { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+/* 🎨 Curated gallery presets */
+.gal-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; }
+.gal-preset {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 11px 6px;
+  background: var(--panel-2);
+  border: 1.5px solid var(--line);
+  border-radius: 11px;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color .15s, transform .1s;
+}
+.gal-preset:hover { border-color: #2dd4bf88; transform: translateY(-1px); }
+.gal-preset.is-on { border-color: #2dd4bf; background: #2dd4bf0d; }
+.gal-preset-swatch {
+  width: 100%; height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.gal-preset-swatch i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.gal-preset-name { font-size: 11.5px; font-weight: 600; }
+.gal-fine { margin-top: 16px; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; opacity: .7; }
+@media (max-width: 760px) { .gal-presets { grid-template-columns: repeat(2, 1fr); } }
