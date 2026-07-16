@@ -207,6 +207,30 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Upload failed');
     return data;
   },
+  // upload in chunks so photos appear progressively; onProgress(done, total) after each chunk, onChunk() to refresh grid
+  uploadPhotosChunked: async (albumId, files, eventId, chunkSize, onProgress, onChunk) => {
+    const list = [...files];
+    const total = list.length;
+    const token = localStorage.getItem('vowflo_token');
+    let done = 0;
+    for (let i = 0; i < total; i += chunkSize) {
+      const slice = list.slice(i, i + chunkSize);
+      const fd = new FormData();
+      slice.forEach(f => fd.append('photos', f));
+      if (eventId) fd.append('event_id', eventId);
+      const res = await fetch(`/api/albums/${albumId}/photos`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      done += slice.length;
+      if (onProgress) onProgress(done, total);
+      if (onChunk) await onChunk();
+    }
+    return { count: total };
+  },
   addAlbumEvent: (albumId, name) => request(`/albums/${albumId}/events`, { method: 'POST', body: JSON.stringify({ name }) }),
   renameAlbumEvent: (albumId, eventId, name) => request(`/albums/${albumId}/events/${eventId}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   deleteAlbumEvent: (albumId, eventId) => request(`/albums/${albumId}/events/${eventId}`, { method: 'DELETE' }),

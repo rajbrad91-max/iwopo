@@ -685,6 +685,7 @@
 .ad-prog { margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 .ad-empty { padding: 40px; text-align: center; color: var(--muted); }
 .ad-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; }
+.ad-grid-sentinel { padding: 22px; text-align: center; color: var(--muted); font-size: 12.5px; }
 .ad-photo { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 1; }
 .ad-photo img { width: 100%; height: 100%; object-fit: cover; }
 .ad-picked { position: absolute; top: 6px; left: 6px; background: #2dd4bf; color: #06231f; border-radius: 20px; font-size: 10px; font-weight: 800; padding: 2px 7px; }

@@ -775,10 +775,35 @@ function AlbumDetail({ albumId, onBack }) {
   const [prog, setProg] = useState('');
   const [activeEvent, setActiveEvent] = useState('all'); // filter + upload target
   const [newEvent, setNewEvent] = useState('');
+  const [visibleCount, setVisibleCount] = useState(20); // infinite-scroll: how many thumbs are mounted
+  const sentinelRef = useRef(null);
   const token = localStorage.getItem('vowflo_token');
 
   useEffect(() => { load(); }, [albumId]);
-  function load() { api.album(albumId).then(d => { setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []); }).catch(() => {}); }
+  function load() { api.album(albumId).then(d => {
+    setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);
+    // per-client: default to the first event (no "All" tab); non-per-client ignores activeEvent
+    if (d.album && d.album.gallery_mode === 'per_client' && (d.events || []).length > 0) {
+      setActiveEvent(prev => prev === 'all' ? d.events[0].id : prev);
+    }
+  }).catch(() => {}); }
+
+  // refresh only the photo list (used mid-upload so new photos appear without resetting the view)
+  function reloadPhotos() { return api.album(albumId).then(d => { setPhotos(d.photos || []); }).catch(() => {}); }
+
+  // reset the infinite-scroll window when switching event tabs
+  useEffect(() => { setVisibleCount(20); }, [activeEvent]);
+
+  // infinite scroll: reveal 20 more each time the sentinel scrolls into view
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) setVisibleCount(c => c + 20);
+    }, { rootMargin: '400px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [activeEvent, photos.length]);
 
   const isPerClient = album && (album.gallery_mode === 'per_client');
 
@@ -788,10 +813,17 @@ function AlbumDetail({ albumId, onBack }) {
     // in per-client mode uploads go into the active event (must pick one first)
     const eventId = isPerClient && activeEvent !== 'all' ? activeEvent : null;
     if (isPerClient && !eventId) { setProg('⚠️ Pick an event tab first to upload into it'); setTimeout(() => setProg(''), 2500); e.target.value = ''; return; }
-    setUploading(true); setProg(`Uploading ${files.length} photos…`);
-    try { await api.uploadPhotos(albumId, files, eventId); setProg('✅ Done'); load(); }
+    setUploading(true); setProg(`Uploading 0 / ${files.length} photos…`);
+    const total = files.length;
+    try {
+      await api.uploadPhotosChunked(albumId, files, eventId, 20,
+        (done) => setProg(`Uploading ${done} / ${total} photos…`),
+        () => reloadPhotos()
+      );
+      setProg(`✅ ${total} uploaded`);
+    }
     catch (err) { setProg('⚠️ ' + err.message); }
-    finally { setUploading(false); setTimeout(() => setProg(''), 2000); e.target.value = ''; }
+    finally { setUploading(false); setTimeout(() => setProg(''), 2500); e.target.value = ''; }
   }
   async function delPhoto(pid) {
     if (!confirm('Delete this photo?')) return;
@@ -819,6 +851,7 @@ function AlbumDetail({ albumId, onBack }) {
   const shown = isPerClient && activeEvent !== 'all'
     ? photos.filter(p => String(p.event_id) === String(activeEvent))
     : photos;
+  const visible = shown.slice(0, visibleCount); // infinite-scroll window
   const uploadLabel = uploading ? '⏳ Uploading…'
     : isPerClient ? (activeEvent === 'all' ? '📤 Pick an event to upload' : '📤 Upload to this event')
     : '📤 Upload photos';
@@ -839,7 +872,6 @@ function AlbumDetail({ albumId, onBack }) {
 
       {isPerClient && (
         <div className="ad-events">
-          <button className={`pg-ev ${activeEvent === 'all' ? 'on' : ''}`} onClick={() => setActiveEvent('all')}>All ({photos.length})</button>
           {events.map(ev => {
             const n = photos.filter(p => String(p.event_id) === String(ev.id)).length;
             return (
@@ -863,7 +895,7 @@ function AlbumDetail({ albumId, onBack }) {
         <div className="table-wrap ad-empty">{isPerClient && activeEvent === 'all' && events.length === 0 ? 'Create an event above, then upload photos into it 📤' : 'No photos here yet. Upload some 📤'}</div>
       ) : (
         <div className="ad-grid">
-          {shown.map(p => (
+          {visible.map(p => (
             <div key={p.id} className="ad-photo">
               <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" />
               {p.is_selected && <span className="ad-picked">✅ Picked</span>}
@@ -872,6 +904,7 @@ function AlbumDetail({ albumId, onBack }) {
           ))}
         </div>
       )}
+      {visible.length < shown.length && <div ref={sentinelRef} className="ad-grid-sentinel">Loading more…</div>}
     </>
   );
 }
