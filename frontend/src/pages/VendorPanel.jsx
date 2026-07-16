@@ -777,7 +777,11 @@ function AlbumDetail({ albumId, onBack }) {
   const [newEvent, setNewEvent] = useState('');
   const [visibleCount, setVisibleCount] = useState(20); // infinite-scroll: how many thumbs are mounted
   const sentinelRef = useRef(null);
+  const workerRef = useRef(null);
   const token = localStorage.getItem('vowflo_token');
+
+  // clean up the upload worker on unmount
+  useEffect(() => () => { if (workerRef.current) workerRef.current.terminate(); }, []);
 
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => {
@@ -807,23 +811,36 @@ function AlbumDetail({ albumId, onBack }) {
 
   const isPerClient = album && (album.gallery_mode === 'per_client');
 
-  async function onFiles(e) {
-    const files = e.target.files;
+  function onFiles(e) {
+    const files = [...e.target.files];
+    e.target.value = '';
     if (!files.length) return;
     // in per-client mode uploads go into the active event (must pick one first)
     const eventId = isPerClient && activeEvent !== 'all' ? activeEvent : null;
-    if (isPerClient && !eventId) { setProg('⚠️ Pick an event tab first to upload into it'); setTimeout(() => setProg(''), 2500); e.target.value = ''; return; }
-    setUploading(true); setProg(`Uploading 0 / ${files.length} photos…`);
+    if (isPerClient && !eventId) { setProg('⚠️ Pick an event tab first to upload into it'); setTimeout(() => setProg(''), 2500); return; }
     const total = files.length;
-    try {
-      await api.uploadPhotosChunked(albumId, files, eventId, 20,
-        (done) => setProg(`Uploading ${done} / ${total} photos…`),
-        () => reloadPhotos()
-      );
-      setProg(`✅ ${total} uploaded`);
-    }
-    catch (err) { setProg('⚠️ ' + err.message); }
-    finally { setUploading(false); setTimeout(() => setProg(''), 2500); e.target.value = ''; }
+    setUploading(true); setProg(`Uploading 0 / ${total} photos…`);
+
+    // upload on a background thread so it keeps running when the tab is hidden
+    if (workerRef.current) workerRef.current.terminate();
+    const worker = new Worker(new URL('../lib/uploadWorker.js', import.meta.url), { type: 'module' });
+    workerRef.current = worker;
+    worker.onmessage = (ev) => {
+      const m = ev.data;
+      if (m.type === 'progress') setProg(`Uploading ${m.done} / ${m.total} photos…`);
+      else if (m.type === 'chunk') reloadPhotos();
+      else if (m.type === 'done') {
+        setProg(`✅ ${m.count} uploaded`);
+        setUploading(false); reloadPhotos();
+        setTimeout(() => setProg(''), 2500);
+        worker.terminate(); workerRef.current = null;
+      } else if (m.type === 'error') {
+        setProg('⚠️ ' + m.message);
+        setUploading(false); reloadPhotos();
+        worker.terminate(); workerRef.current = null;
+      }
+    };
+    worker.postMessage({ albumId, files, eventId, token, maxCount: 20 });
   }
   async function delPhoto(pid) {
     if (!confirm('Delete this photo?')) return;
