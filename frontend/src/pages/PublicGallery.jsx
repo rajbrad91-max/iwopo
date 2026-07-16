@@ -40,7 +40,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [picked, setPicked] = useState(() => new Set());
   const [pickedOnly, setPickedOnly] = useState(false);
   const [slideshow, setSlideshow] = useState(false);
-  const [zoomed, setZoomed] = useState(false);      // pinch/tap zoom → swap to 2500px preview
+  const [zoomed, setZoomed] = useState(false);      // double-tap zoom → swap to original 1:1
   const [faces, setFaces] = useState([]);           // face circles, most photos first
   const [activeFace, setActiveFace] = useState(null);
   const [allFaces, setAllFaces] = useState(false);  // "Find more" → show every circle
@@ -217,14 +217,14 @@ export default function PublicGallery({ token, embedded, onBack }) {
     return () => clearInterval(t);
   }, [slideshow, lightbox, step]);
 
-  // ⏭️ preload the medium of next 2 + prev 1 so swiping feels instant; reset zoom on move
+  // ⏭️ preload the full-size of next 2 + prev 1 so swiping feels instant; reset zoom on move
   useEffect(() => {
     if (lightbox === null || !session) return;
     setZoomed(false);
     const n = photos.length;
     [lightbox + 1, lightbox + 2, lightbox - 1]
       .filter(i => i >= 0 && i < n)
-      .forEach(i => { const im = new Image(); im.src = photoUrl(photos[i].id, 'medium'); });
+      .forEach(i => { const im = new Image(); im.src = photoUrl(photos[i].id, 'full'); });
   }, [lightbox, session]);
 
   // 👆 swipe the full-screen photo: left/right to move, down to close
@@ -441,7 +441,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
             <img
               key={current.id + (zoomed ? '-z' : '')}
               className={`pg-lb-img ${zoomed ? 'is-zoom' : ''}`}
-              src={photoUrl(current.id, zoomed ? 'preview' : 'medium')}
+              src={photoUrl(current.id, zoomed ? 'orig' : 'full')}
               alt=""
               decoding="async"
               fetchpriority="high"

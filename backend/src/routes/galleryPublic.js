@@ -137,7 +137,7 @@ router.post('/:token/auth', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 🖼️ serve a photo (thumb|medium|preview|orig) — needs valid view token
+// 🖼️ serve a photo (thumb|full|orig) — needs valid view token
 router.get('/:token/photo/:photoId/:type', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
@@ -146,12 +146,11 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
     const { rows } = await query('SELECT * FROM photos WHERE id=$1 AND album_id=$2', [req.params.photoId, a.id]);
     const p = rows[0];
     if (!p) return res.status(404).end();
-    // map type → stored path; medium falls back to preview for photos uploaded before the medium tier
+    // 3 tiers: orig (download/zoom 1:1) · full 2200px (preview_path, default display) · thumb (grid)
     let rel;
     if (req.params.type === 'orig') rel = p.storage_path;
-    else if (req.params.type === 'preview') rel = p.preview_path;
-    else if (req.params.type === 'medium') rel = p.medium_path || p.preview_path;
-    else rel = p.thumb_path;
+    else if (req.params.type === 'thumb') rel = p.thumb_path;
+    else rel = p.preview_path; // 'full' → the 2200px display file (preview_path column)
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).end();
     res.sendFile(full);

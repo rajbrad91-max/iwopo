@@ -274,7 +274,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 🔒 upload photos → 3-tier WebP pipeline (thumb 800 / preview 2500 / original)
+// 🔒 upload photos → 3-tier pipeline (thumb 800 / full 2200 webp / original)
 router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, res) => {
   const v = vid(req);
   try {
@@ -289,15 +289,12 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
       const base = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       const origName = `${base}_orig${path.extname(f.originalname) || '.jpg'}`;
       const thumbName = `${base}_thumb.webp`;
-      const mediumName = `${base}_medium.webp`;
-      const prevName = `${base}_preview.webp`;
+      const fullName = `${base}_full.webp`;
 
-      // original (as-is, for download)
+      // original (as-is, for download + pinch-zoom 1:1)
       fs.copyFileSync(f.path, path.join(dir, origName));
-      // preview 2500px webp (pinch-zoom / high-DPI)
-      await sharp(f.path).rotate().resize(2500, 2500, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, prevName));
-      // medium 2000px long-edge webp (default full-screen view — lighter, fast scroll)
-      await sharp(f.path).rotate().resize(2000, 2000, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, mediumName));
+      // full-screen 2200px long-edge webp (the single display tier)
+      await sharp(f.path).rotate().resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
       // thumb 800px webp (grid)
       await sharp(f.path).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
       fs.unlinkSync(f.path);
@@ -305,9 +302,9 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
       const rel = (n) => `${v}/${req.params.id}/${n}`;
       const eventId = req.body.event_id ? parseInt(req.body.event_id, 10) : null;
       const { rows } = await query(
-        `INSERT INTO photos (album_id, vendor_id, filename, storage_path, thumb_path, medium_path, preview_path, event_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-        [req.params.id, v, f.originalname, rel(origName), rel(thumbName), rel(mediumName), rel(prevName), eventId]);
+        `INSERT INTO photos (album_id, vendor_id, filename, storage_path, thumb_path, preview_path, event_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [req.params.id, v, f.originalname, rel(origName), rel(thumbName), rel(fullName), eventId]);
       saved.push(rows[0]);
     }
     res.status(201).json({ uploaded: saved.length, photos: saved });
