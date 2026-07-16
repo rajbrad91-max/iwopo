@@ -427,6 +427,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
         >
           <div className="pg-lb-bar" onClick={e => e.stopPropagation()}>
             <span className="pg-lb-count">{lightbox + 1} / {photos.length}</span>
+            <span className="pg-lb-name">{(current.name || '').replace(/\.[^.]+$/, '')}</span>
             <div className="pg-lb-acts">
               <button className={`pg-lb-btn ${picked.has(current.id) ? 'is-on' : ''}`} onClick={() => togglePick(current.id)}>✓</button>
               <button className={`pg-lb-btn ${slideshow ? 'is-on' : ''}`} onClick={() => setSlideshow(s => !s)}>{slideshow ? '❚❚' : '▶'}</button>
