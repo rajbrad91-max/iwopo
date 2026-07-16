@@ -14,7 +14,7 @@ import { getSetting } from '../lib/settings.js';
 
 const router = express.Router();
 const ROOT = '/var/www/vowflo/storage/galleries';
-const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 60 * 1024 * 1024 } });
+const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 200 * 1024 * 1024 } });
 
 // which vendor am I?
 function vid(req) { return req.user.vendor_id; }

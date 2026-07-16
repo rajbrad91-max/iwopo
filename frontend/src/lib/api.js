@@ -207,14 +207,24 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Upload failed');
     return data;
   },
-  // upload in chunks so photos appear progressively; onProgress(done, total) after each chunk, onChunk() to refresh grid
+  // upload in chunks so photos appear progressively; packs each request up to ~80MB (or chunkSize files, whichever hits first) to stay under proxy body limits. onProgress(done,total) + onChunk() after each chunk.
   uploadPhotosChunked: async (albumId, files, eventId, chunkSize, onProgress, onChunk) => {
     const list = [...files];
     const total = list.length;
     const token = localStorage.getItem('vowflo_token');
+    const MAX_BYTES = 80 * 1024 * 1024; // ~80MB per request
+    const maxCount = chunkSize || 20;
     let done = 0;
-    for (let i = 0; i < total; i += chunkSize) {
-      const slice = list.slice(i, i + chunkSize);
+    let i = 0;
+    while (i < total) {
+      // build a chunk: add files until we hit the size cap or the count cap (always at least 1 file)
+      const slice = [];
+      let bytes = 0;
+      while (i < total && slice.length < maxCount && (slice.length === 0 || bytes + list[i].size <= MAX_BYTES)) {
+        bytes += list[i].size;
+        slice.push(list[i]);
+        i++;
+      }
       const fd = new FormData();
       slice.forEach(f => fd.append('photos', f));
       if (eventId) fd.append('event_id', eventId);
@@ -224,7 +234,7 @@ export const api = {
         body: fd,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
       done += slice.length;
       if (onProgress) onProgress(done, total);
       if (onChunk) await onChunk();
