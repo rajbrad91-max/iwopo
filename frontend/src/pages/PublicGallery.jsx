@@ -121,11 +121,15 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // 🧑‍🤝‍🧑 load the face circles once we're in
   useEffect(() => {
     if (!session) return;
-    fetch(`${API}/${token}/faces?vt=${session.vt}`)
+    // in per-client mode, faces are scoped to the selected event (Wedding faces don't show under Jaggo)
+    const evParam = (session.mode === 'per_client' && activeEvent !== 'all') ? `&event=${activeEvent}` : '';
+    fetch(`${API}/${token}/faces?vt=${session.vt}${evParam}`)
       .then(r => r.json())
       .then(d => setFaces(d.faces || []))
       .catch(() => {});
-  }, [session, token]);
+    // switching events clears any active person filter — they may not appear in the new event
+    setActiveFace(null); setMatchIds(null);
+  }, [session, token, activeEvent]);
 
   // clicking a circle filters the grid to that person
   async function pickFace(f) {

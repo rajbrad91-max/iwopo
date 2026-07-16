@@ -249,6 +249,21 @@ router.get('/:token/faces', async (req, res) => {
     if (!a) return res.status(404).json({ error: 'Not found' });
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
 
+    const eventId = req.query.event ? parseInt(req.query.event, 10) : null;
+    if (eventId) {
+      // event-scoped: count each person's photos WITHIN this event only, hide anyone with none
+      const { rows } = await query(
+        `SELECT c.id, COUNT(pf.photo_id)::int AS count
+         FROM face_clusters c
+         JOIN photo_faces pf ON pf.cluster_id = c.id
+         JOIN photos p ON p.id = pf.photo_id AND p.event_id = $2
+         WHERE c.album_id = $1
+         GROUP BY c.id
+         HAVING COUNT(pf.photo_id) > 0
+         ORDER BY COUNT(pf.photo_id) DESC, c.id ASC`, [a.id, eventId]);
+      return res.json({ faces: rows.map(r => ({ id: r.id, count: r.count })) });
+    }
+
     const clusters = await albumClusters(a.id);
     res.json({
       faces: clusters.map(c => ({ id: c.id, count: c.photo_count })),
