@@ -18,10 +18,11 @@ const Icon = ({ d, ...rest }) => (
     {d}
   </svg>
 );
-const IconFace = <Icon d={<><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></>} />;
-const IconDownload = <Icon d={<><path d="M12 3v12" /><path d="M8 11l4 4 4-4" /><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></>} />;
 const IconClose = <Icon d={<><path d="M6 6l12 12" /><path d="M18 6L6 18" /></>} />;
-const IconGrid = <Icon d={<><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><circle cx="8" cy="16" r="3" /><circle cx="16" cy="16" r="3" /></>} />;
+// two overlapping people → "show more faces/people"
+const IconPeople = <Icon d={<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0111 0" /><path d="M16 5.2a3.2 3.2 0 010 5.9" /><path d="M17.5 13.4A5.5 5.5 0 0120.5 18.3" /></>} />;
+// single person in view → "find me / my selfie"
+const IconUser = <Icon d={<><circle cx="12" cy="8" r="3.6" /><path d="M5 20a7 7 0 0114 0" /></>} />;
 
 export default function PublicGallery({ token, embedded, onBack }) {
   const [meta, setMeta] = useState(null);
@@ -364,10 +365,10 @@ export default function PublicGallery({ token, embedded, onBack }) {
               onClick={() => setAllFaces(v => !v)}
               disabled={!hasMoreFaces && !allFaces}
             >
-              {IconGrid}<span>{allFaces ? 'Show fewer' : 'Find more'}</span>
+              {IconPeople}<span>{allFaces ? 'Show fewer' : 'More Faces'}</span>
             </button>
             <button className="pg-ico" onClick={() => setFindMeOpen(true)} disabled={selfieBusy}>
-              {IconFace}<span>{selfieBusy ? 'Searching…' : 'Find me'}</span>
+              {IconUser}<span>{selfieBusy ? 'Searching…' : 'Find me'}</span>
             </button>
           </div>
         </div>

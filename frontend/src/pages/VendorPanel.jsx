@@ -776,12 +776,16 @@ function AlbumDetail({ albumId, onBack }) {
   const [activeEvent, setActiveEvent] = useState('all'); // filter + upload target
   const [newEvent, setNewEvent] = useState('');
   const [visibleCount, setVisibleCount] = useState(20); // infinite-scroll: how many thumbs are mounted
+  const [pending, setPending] = useState([]); // local previews of files still uploading {uid, url, eventId}
   const sentinelRef = useRef(null);
   const workerRef = useRef(null);
   const token = localStorage.getItem('vowflo_token');
 
-  // clean up the upload worker on unmount
-  useEffect(() => () => { if (workerRef.current) workerRef.current.terminate(); }, []);
+  // clean up the upload worker + any object URLs on unmount
+  useEffect(() => () => {
+    if (workerRef.current) workerRef.current.terminate();
+    setPending(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
+  }, []);
 
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => {
@@ -819,24 +823,48 @@ function AlbumDetail({ albumId, onBack }) {
     const eventId = isPerClient && activeEvent !== 'all' ? activeEvent : null;
     if (isPerClient && !eventId) { setProg('⚠️ Pick an event tab first to upload into it'); setTimeout(() => setProg(''), 2500); return; }
     const total = files.length;
+
+    // 📸 instant previews: show the first 50 picked photos right away (dimmed + spinner).
+    // Capped at 50 so huge batches (1000s of photos) don't fill browser memory with previews.
+    const PREVIEW_CAP = 50;
+    const previews = files.slice(0, PREVIEW_CAP).map((f, idx) => ({
+      uid: `${Date.now()}_${idx}_${f.name}`,
+      url: URL.createObjectURL(f),
+      eventId: eventId ? String(eventId) : null,
+    }));
+    setPending(previews);
     setUploading(true); setProg(`Uploading 0 / ${total} photos…`);
 
     // upload on a background thread so it keeps running when the tab is hidden
     if (workerRef.current) workerRef.current.terminate();
     const worker = new Worker(new URL('../lib/uploadWorker.js', import.meta.url), { type: 'module' });
     workerRef.current = worker;
+    const finish = () => {
+      setUploading(false);
+      // drop all previews (real photos have replaced them) and free their memory
+      setPending(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
+      reloadPhotos();
+    };
     worker.onmessage = (ev) => {
       const m = ev.data;
-      if (m.type === 'progress') setProg(`Uploading ${m.done} / ${m.total} photos…`);
-      else if (m.type === 'chunk') reloadPhotos();
-      else if (m.type === 'done') {
+      if (m.type === 'progress') {
+        setProg(`Uploading ${m.done} / ${m.total} photos…`);
+        // photos 0..done have landed as real thumbs — drop that many previews from the front
+        setPending(() => {
+          const consumed = previews.slice(0, m.done);
+          consumed.forEach(p => URL.revokeObjectURL(p.url));
+          return previews.slice(m.done);
+        });
+      } else if (m.type === 'chunk') {
+        reloadPhotos();
+      } else if (m.type === 'done') {
         setProg(`✅ ${m.count} uploaded`);
-        setUploading(false); reloadPhotos();
+        finish();
         setTimeout(() => setProg(''), 2500);
         worker.terminate(); workerRef.current = null;
       } else if (m.type === 'error') {
         setProg('⚠️ ' + m.message);
-        setUploading(false); reloadPhotos();
+        finish();
         worker.terminate(); workerRef.current = null;
       }
     };
@@ -869,6 +897,10 @@ function AlbumDetail({ albumId, onBack }) {
     ? photos.filter(p => String(p.event_id) === String(activeEvent))
     : photos;
   const visible = shown.slice(0, visibleCount); // infinite-scroll window
+  // previews for the current event view (per-client shows only the active event's uploads)
+  const pendingShown = (isPerClient && activeEvent !== 'all')
+    ? pending.filter(p => p.eventId === String(activeEvent))
+    : pending;
   const uploadLabel = uploading ? '⏳ Uploading…'
     : isPerClient ? (activeEvent === 'all' ? '📤 Pick an event to upload' : '📤 Upload to this event')
     : '📤 Upload photos';
@@ -908,7 +940,7 @@ function AlbumDetail({ albumId, onBack }) {
 
       {prog && <div className="ad-prog">{prog}</div>}
 
-      {shown.length === 0 ? (
+      {shown.length === 0 && pendingShown.length === 0 ? (
         <div className="table-wrap ad-empty">{isPerClient && activeEvent === 'all' && events.length === 0 ? 'Create an event above, then upload photos into it 📤' : 'No photos here yet. Upload some 📤'}</div>
       ) : (
         <div className="ad-grid">
@@ -917,6 +949,13 @@ function AlbumDetail({ albumId, onBack }) {
               <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" />
               {p.is_selected && <span className="ad-picked">✅ Picked</span>}
               <button className="ad-photo-del" onClick={() => delPhoto(p.id)}>🗑️</button>
+              <span className="ad-photo-name" title={p.filename}>{(p.filename || '').replace(/\.[^.]+$/, '')}</span>
+            </div>
+          ))}
+          {pendingShown.map(p => (
+            <div key={p.uid} className="ad-photo is-uploading">
+              <img src={p.url} />
+              <span className="ad-photo-spin" />
             </div>
           ))}
         </div>

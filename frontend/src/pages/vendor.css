@@ -691,6 +691,28 @@
 .ad-picked { position: absolute; top: 6px; left: 6px; background: #2dd4bf; color: #06231f; border-radius: 20px; font-size: 10px; font-weight: 800; padding: 2px 7px; }
 .ad-photo-del { position: absolute; top: 6px; right: 6px; background: #00000090; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; padding: 2px 6px; }
 .ad-photo-del:hover { background: #fb7185; }
+/* 🏷️ filename under each thumbnail — sits over a bottom gradient, truncates if long */
+.ad-photo-name {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 14px 8px 5px;
+  font-size: 10.5px; line-height: 1.2;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0,0,0,.72), transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}
+/* 📤 photo still uploading: dimmed thumb + centered spinner, brightens when it lands */
+.ad-photo.is-uploading img { opacity: .4; filter: saturate(.7); }
+.ad-photo-spin {
+  position: absolute; top: 50%; left: 50%;
+  width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border: 3px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ad-spin .7s linear infinite;
+  pointer-events: none;
+}
+@keyframes ad-spin { to { transform: rotate(360deg); } }
 
 /* ⚙️ Gallery tile manage button */
 .gal-mini-gear { width: 100%; font-weight: 700; }
