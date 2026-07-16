@@ -130,14 +130,7 @@
 }
 @keyframes pg-drop { 0%, 100% { transform: scaleY(.35); opacity: .4; } 50% { transform: scaleY(1); opacity: 1; } }
 
-/* ── bar 1: navigation + album download ── */
-.pg-actions {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 12px 16px;
-  flex-wrap: wrap;
-  padding: 18px clamp(14px, 3vw, 28px);
-  border-bottom: 1px solid color-mix(in srgb, var(--pg-head) 8%, transparent);
-}
+/* ── back button (events bar) ── */
 .pg-back {
   background: none; border: none;
   padding: 0;
@@ -583,7 +576,7 @@
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));  /* 2 across on phones */
     grid-auto-rows: 118px;
   }
-  .pg-actions, .pg-people { padding: 14px; }
+  .pg-people { padding: 14px; }
   .pg-ico { padding: 8px 11px; font-size: 12px; gap: 6px; }
   .pg-ico-svg { width: 14px; height: 14px; }
   .pg-face img { width: 50px; height: 50px; }
@@ -606,11 +599,6 @@
 
 /* small phones + folded devices: stack the bars so nothing gets squeezed */
 @media (max-width: 560px) {
-  .pg-actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
   .pg-people {
     flex-direction: column;
     align-items: stretch;

@@ -109,6 +109,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'That password did not match');
       setSession(d);
+      if (d.mode === 'per_client' && d.events && d.events.length > 0) setActiveEvent(d.events[0].id);
     } catch (e) { setAuthErr(e.message); }
     finally { setAuthing(false); }
   }
@@ -266,6 +267,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // how many circles fit before "Find more" — 4-5 on phones, 8-10 on desktop
   const shownFaces = allFaces ? faces : faces.slice(0, faceLimit);
   const hasMoreFaces = faces.length > faceLimit;
+  const showScenes = session.mode === 'per_client' && session.events.length > 0 && matchIds === null && !pickedOnly;
 
   return (
     <div className="pg-wrap" style={styleVars}>
@@ -283,15 +285,46 @@ export default function PublicGallery({ token, embedded, onBack }) {
         </button>
       </section>
 
-      {/* bar 1 — back + download the album */}
-      <div className="pg-actions">
-        {onBack
-          ? <button className="pg-back" onClick={onBack}>← Back to all albums</button>
-          : <span className="pg-back is-static">{session.title}</span>}
-        <button className="pg-ico is-solid" onClick={() => downloadAll('all')} disabled={zipBusy === 'all'}>
-          {IconDownload}<span>{zipBusy === 'all' ? 'Preparing…' : 'Download album'}</span>
-        </button>
-      </div>
+      <input ref={selfieInput} type="file" accept="image/*" hidden onChange={onSelfie} />
+      {/* separate input so "take a selfie" opens the camera directly on phones */}
+      <input ref={cameraInput} type="file" accept="image/*" capture="user" hidden onChange={onSelfie} />
+
+      {/* 🤳 find-me popup */}
+      {findMeOpen && (
+        <div className="pg-modal" onClick={() => setFindMeOpen(false)}>
+          <div className="pg-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="pg-modal-x" onClick={() => setFindMeOpen(false)}>✕</button>
+            <h2 className="pg-modal-title">Find your photos</h2>
+            <p className="pg-modal-sub">We'll match your face against this gallery. Your photo isn't stored.</p>
+            <div className="pg-modal-acts">
+              <button className="pg-btn" onClick={() => cameraInput.current?.click()}>Take a selfie</button>
+              <button className="pg-btn is-ghost" onClick={() => selfieInput.current?.click()}>Upload a photo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div ref={gridRef} />
+
+      {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
+
+      {(onBack || showScenes) && (
+        <nav className="pg-scenes">
+          {onBack && <button className="pg-back" onClick={onBack}>← Back</button>}
+          {showScenes && <>
+          {session.events.map(ev => (
+            <button
+              key={ev.id}
+              className={`pg-scene ${String(activeEvent) === String(ev.id) ? 'is-on' : ''}`}
+              onClick={() => setActiveEvent(ev.id)}
+            >{ev.name}</button>
+          ))}
+          <button className="pg-scene-dl" onClick={() => downloadAll(activeEvent)} disabled={zipBusy === activeEvent}>
+            {zipBusy === activeEvent ? 'Preparing…' : `Download ${session.events.find(ev => String(ev.id) === String(activeEvent))?.name || 'event'}`}
+          </button>
+          </>}
+        </nav>
+      )}
 
       {/* bar 2 — the people in this gallery */}
       {(faces.length > 0 || session.faceReady) && (
@@ -329,47 +362,6 @@ export default function PublicGallery({ token, embedded, onBack }) {
             </button>
           </div>
         </div>
-      )}
-
-      <input ref={selfieInput} type="file" accept="image/*" hidden onChange={onSelfie} />
-      {/* separate input so "take a selfie" opens the camera directly on phones */}
-      <input ref={cameraInput} type="file" accept="image/*" capture="user" hidden onChange={onSelfie} />
-
-      {/* 🤳 find-me popup */}
-      {findMeOpen && (
-        <div className="pg-modal" onClick={() => setFindMeOpen(false)}>
-          <div className="pg-modal-card" onClick={e => e.stopPropagation()}>
-            <button className="pg-modal-x" onClick={() => setFindMeOpen(false)}>✕</button>
-            <h2 className="pg-modal-title">Find your photos</h2>
-            <p className="pg-modal-sub">We'll match your face against this gallery. Your photo isn't stored.</p>
-            <div className="pg-modal-acts">
-              <button className="pg-btn" onClick={() => cameraInput.current?.click()}>Take a selfie</button>
-              <button className="pg-btn is-ghost" onClick={() => selfieInput.current?.click()}>Upload a photo</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div ref={gridRef} />
-
-      {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
-
-      {session.mode === 'per_client' && session.events.length > 0 && matchIds === null && !pickedOnly && (
-        <nav className="pg-scenes">
-          <button className={`pg-scene ${activeEvent === 'all' ? 'is-on' : ''}`} onClick={() => setActiveEvent('all')}>All</button>
-          {session.events.map(ev => (
-            <button
-              key={ev.id}
-              className={`pg-scene ${String(activeEvent) === String(ev.id) ? 'is-on' : ''}`}
-              onClick={() => setActiveEvent(ev.id)}
-            >{ev.name}</button>
-          ))}
-          {activeEvent !== 'all' && (
-            <button className="pg-scene-dl" onClick={() => downloadAll(activeEvent)} disabled={zipBusy === activeEvent}>
-              {zipBusy === activeEvent ? 'Preparing…' : 'Download this event'}
-            </button>
-          )}
-        </nav>
       )}
 
       <div className="pg-grid">
