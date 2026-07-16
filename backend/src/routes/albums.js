@@ -270,6 +270,8 @@ router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const r = await query('DELETE FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
     if (r.rowCount === 0) return res.status(404).json({ error: 'Not found' });
+    // remove the album's entire storage folder (all photos + tiers) from disk
+    try { fs.rmSync(path.join(ROOT, String(v), String(req.params.id)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -317,8 +319,20 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
 router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const r = await query('DELETE FROM photos WHERE id=$1 AND album_id=$2 AND vendor_id=$3', [req.params.photoId, req.params.id, v]);
-    if (r.rowCount === 0) return res.status(404).json({ error: 'Not found' });
+    // fetch the file paths first so we can remove all tiers from disk after the row is gone
+    const { rows } = await query(
+      'SELECT storage_path, preview_path, thumb_path FROM photos WHERE id=$1 AND album_id=$2 AND vendor_id=$3',
+      [req.params.photoId, req.params.id, v]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+
+    await query('DELETE FROM photos WHERE id=$1 AND album_id=$2 AND vendor_id=$3',
+      [req.params.photoId, req.params.id, v]);
+
+    // remove all 3 tiers from disk (original + 2200px full + thumb); ignore if already gone
+    for (const rel of [rows[0].storage_path, rows[0].preview_path, rows[0].thumb_path]) {
+      if (!rel) continue;
+      try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* file already missing — fine */ }
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

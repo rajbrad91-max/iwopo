@@ -15,11 +15,17 @@ import { findMatchesAWS } from './faceAWS.js';
 const ROOT = '/var/www/vowflo/storage/galleries';
 
 // A face must be at least this confident to be clustered — weak detections
-// (blurry background heads) would otherwise create junk circles.
-const MIN_SCORE = 0.9;
+// (blurry background heads) would otherwise create junk circles and false matches.
+const MIN_SCORE = 0.93;
 // Two local descriptors within this euclidean distance are the same person.
-// 0.5 is a well-established threshold for 128-float face descriptors.
-const MATCH_DIST = 0.52;
+// Tightened from 0.52 → 0.45 for accuracy: 0.5+ merges different people (especially
+// similar faces / odd angles). 0.45 strongly favours precision — occasionally splits
+// one person into two circles, but almost never puts a stranger in someone's results.
+const MATCH_DIST = 0.45;
+// A face box must cover at least this fraction of the image's smaller side to be
+// clustered. Tiny background faces in group shots give unreliable descriptors that
+// cause false matches, so we skip them.
+const MIN_FACE_FRAC = 0.045;
 // Ignore anyone who only shows up in a single photo — usually a stranger in the
 // background, not a guest worth putting on the bar.
 const MIN_PHOTOS = 2;
@@ -51,6 +57,22 @@ async function collectFaces(albumId) {
   for (const p of rows) {
     for (const f of (p.faces || [])) {
       if ((f.score ?? 1) < MIN_SCORE) continue;
+      // skip tiny faces — a box whose smaller side is under MIN_FACE_FRAC of the
+      // image is a distant background head; its descriptor is too noisy to trust.
+      const b = f.box || null;
+      if (b) {
+        const w = b.width ?? b.w ?? 0;
+        const h = b.height ?? b.h ?? 0;
+        if (w > 0 && h > 0) {
+          const looksNormalized = w <= 1 && h <= 1;
+          if (looksNormalized) {
+            if (Math.min(w, h) < MIN_FACE_FRAC) continue;
+          } else {
+            // pixel boxes: require the face to be at least ~55px on its short side
+            if (Math.min(w, h) < 55) continue;
+          }
+        }
+      }
       faces.push({
         photo_id: p.id,
         engine: p.face_engine || 'vladmandic',
@@ -65,20 +87,31 @@ async function collectFaces(albumId) {
 }
 
 /**
- * Greedy agglomerative clustering on local descriptors.
- * Each face joins the nearest cluster within MATCH_DIST, or starts a new one.
- * Centroids are re-averaged as members join, so clusters stay centred.
+ * Greedy clustering on local descriptors, matched against each cluster's actual
+ * members (not a drifting average). A face joins a cluster only if it is within
+ * MATCH_DIST of that cluster's NEAREST existing member. Averaging alone let
+ * clusters drift over many photos until they matched strangers; nearest-member
+ * matching prevents that drift — the main cause of false face matches. The mean
+ * descriptor is still kept per cluster for the "Find me" selfie search.
  */
 function clusterLocal(faces) {
   const clusters = [];
-  for (const f of faces) {
-    if (!Array.isArray(f.descriptor)) continue;
+  // process the most confident faces first so clusters seed on clean detections
+  const ordered = [...faces].filter(f => Array.isArray(f.descriptor))
+    .sort((a, b) => b.score - a.score);
 
+  for (const f of ordered) {
     let best = null;
     let bestDist = Infinity;
     for (const c of clusters) {
-      const d = distance(f.descriptor, c.centroid);
-      if (d < bestDist) { bestDist = d; best = c; }
+      // distance to the NEAREST existing member of this cluster
+      let near = Infinity;
+      for (const m of c.faces) {
+        const d = distance(f.descriptor, m.descriptor);
+        if (d < near) near = d;
+        if (near === 0) break;
+      }
+      if (near < bestDist) { bestDist = near; best = c; }
     }
 
     if (best && bestDist <= MATCH_DIST) {
