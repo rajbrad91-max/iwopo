@@ -945,11 +945,11 @@ function AlbumDetail({ albumId, onBack }) {
       ) : (
         <div className="ad-grid">
           {visible.map(p => (
-            <div key={p.id} className="ad-photo">
+            <div key={p.id} className="ad-photo" title={p.filename}>
               <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" />
               {p.is_selected && <span className="ad-picked">✅ Picked</span>}
               <button className="ad-photo-del" onClick={() => delPhoto(p.id)}>🗑️</button>
-              <span className="ad-photo-name" title={p.filename}>{(p.filename || '').replace(/\.[^.]+$/, '')}</span>
+              <span className="ad-photo-name">{(p.filename || '').replace(/\.[^.]+$/, '')}</span>
             </div>
           ))}
           {pendingShown.map(p => (
