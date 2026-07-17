@@ -804,6 +804,23 @@ function AlbumDetail({ albumId, onBack }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [lightbox]);
 
+  // browser Back closes the full-screen photo instead of leaving the gallery.
+  // On open we push a history entry; Back pops it and closes the viewer. Closing
+  // via X/Esc/click goes back once to consume that entry, keeping history clean.
+  const lbHistRef = useRef(false); // did WE push a history entry for the current lightbox?
+  useEffect(() => {
+    if (lightbox === null) return;
+    window.history.pushState({ adLightbox: true }, '');
+    lbHistRef.current = true;
+    const onPop = () => { lbHistRef.current = false; setLightbox(null); };
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      // if the viewer was closed by something other than Back, consume our entry
+      if (lbHistRef.current) { lbHistRef.current = false; window.history.back(); }
+    };
+  }, [lightbox === null]);
+
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => {
     setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);

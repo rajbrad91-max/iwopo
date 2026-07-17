@@ -215,6 +215,22 @@ export default function PublicGallery({ token, embedded, onBack }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [lightbox, step]);
 
+  // browser Back closes the full-screen photo instead of leaving the gallery.
+  // On open we push a history entry; Back pops it and closes the viewer. Closing
+  // any other way goes back once to consume that entry, keeping history clean.
+  const lbHistRef = useRef(false);
+  useEffect(() => {
+    if (lightbox === null) return;
+    window.history.pushState({ pgLightbox: true }, '');
+    lbHistRef.current = true;
+    const onPop = () => { lbHistRef.current = false; setLightbox(null); setSlideshow(false); };
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      if (lbHistRef.current) { lbHistRef.current = false; window.history.back(); }
+    };
+  }, [lightbox === null]);
+
   useEffect(() => {
     if (!slideshow || lightbox === null) return;
     const t = setInterval(() => step(1), 3500);
