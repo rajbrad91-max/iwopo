@@ -293,3 +293,13 @@
 /* 🤖 missing chatbot classes */
 .cb-add-btn { white-space: nowrap; }
 .cb-card-main { min-width: 0; flex: 1; }
+
+/* 🎛️ per-vendor feature toggles (super admin drawer) */
+.sa-feat-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.sa-feat-name { font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+.sa-feat-ovr { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: #f59e0b; border: 1px solid #f59e0b55; border-radius: 20px; padding: 1px 6px; }
+.sa-feat-toggle { position: relative; width: 40px; height: 22px; border-radius: 20px; border: none; background: var(--muted); cursor: pointer; transition: background .16s; flex: 0 0 auto; padding: 0; }
+.sa-feat-toggle.is-on { background: #2dd4bf; }
+.sa-feat-toggle:disabled { opacity: .5; cursor: default; }
+.sa-feat-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .16s; }
+.sa-feat-toggle.is-on .sa-feat-knob { transform: translateX(18px); }

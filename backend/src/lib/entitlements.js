@@ -7,7 +7,10 @@ dotenv.config();
 
 const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
-/** All feature keys a vendor currently has access to. */
+/** All feature keys a vendor currently has access to.
+ *  = (active plan features ∪ enabled standalone services), then per-vendor
+ *  overrides are applied last: an override can force a feature ON (add it) or
+ *  OFF (remove it) regardless of plan/services — this is the super-admin toggle. */
 export async function getFeatures(vendorId) {
   const { rows } = await query(
     `SELECT pf.feature_key FROM vendor_subscriptions vs
@@ -19,7 +22,17 @@ export async function getFeatures(vendorId) {
        JOIN services s ON s.id = v.service_id
       WHERE v.vendor_id = $1 AND v.enabled = TRUE AND s.feature_key IS NOT NULL`,
     [vendorId]);
-  return new Set(rows.map(r => r.feature_key));
+  const set = new Set(rows.map(r => r.feature_key));
+
+  // apply per-vendor overrides last (super-admin manual on/off)
+  const { rows: ovr } = await query(
+    `SELECT feature_key, enabled FROM vendor_feature_overrides WHERE vendor_id = $1`,
+    [vendorId]);
+  for (const o of ovr) {
+    if (o.enabled) set.add(o.feature_key);
+    else set.delete(o.feature_key);
+  }
+  return set;
 }
 
 /** Decode Bearer token if present (does NOT reject — public routes pass through). */

@@ -805,6 +805,43 @@ function ReferralsView() {
   );
 }
 
+function FeatureToggles({ vendorId }) {
+  const [feats, setFeats] = useState(null);
+  const [busy, setBusy] = useState('');
+  useEffect(() => {
+    api.vendorFeatures(vendorId).then(d => setFeats(d.features || [])).catch(() => setFeats([]));
+  }, [vendorId]);
+
+  async function toggle(f) {
+    setBusy(f.key);
+    try {
+      await api.setVendorFeature(vendorId, f.key, { enabled: !f.enabled });
+      const d = await api.vendorFeatures(vendorId);
+      setFeats(d.features || []);
+    } catch (e) { /* keep prior state */ }
+    setBusy('');
+  }
+
+  if (!feats) return <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>Loading…</div>;
+  return (
+    <div>
+      {feats.map(f => (
+        <div key={f.key} className="sa-feat-row">
+          <span className="sa-feat-name">{f.label}{f.overridden && <span className="sa-feat-ovr" title="Manually overridden — not following the plan default">override</span>}</span>
+          <button
+            className={`sa-feat-toggle ${f.enabled ? 'is-on' : ''}`}
+            onClick={() => toggle(f)}
+            disabled={busy === f.key}
+            aria-label={`${f.enabled ? 'Disable' : 'Enable'} ${f.label}`}
+          >
+            <span className="sa-feat-knob" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function VendorDrawer({ vendorId, onClose }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
@@ -866,6 +903,9 @@ function VendorDrawer({ vendorId, onClose }) {
                   <span style={{ color: s.enabled ? 'var(--green,#4ade80)' : 'var(--muted)' }}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
                 </div>
               ))}
+
+            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Feature access</div>
+            <FeatureToggles vendorId={vendorId} />
 
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Subscription history</div>
             {d.subscriptions.length === 0
