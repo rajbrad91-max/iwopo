@@ -1646,7 +1646,7 @@ function ContractsBox({ lead }) {
     try { await api.voidContract(id); load(); } catch (e) { setMsg('⚠️ ' + e.message); }
   }
   function copyLink(token) {
-    navigator.clipboard?.writeText(`https://alphabetaone.com/sign/${token}`);
+    navigator.clipboard?.writeText(`https://iwopo.com/sign/${token}`);
     setMsg('🔗 Link copied!'); setTimeout(() => setMsg(''), 1500);
   }
 
@@ -1864,7 +1864,7 @@ function AllInvoices() {
     api.allInvoices().then(d => setList(d.invoices || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
   function copyLink(token) {
-    navigator.clipboard?.writeText(`https://alphabetaone.com/invoice/${token}`);
+    navigator.clipboard?.writeText(`https://iwopo.com/invoice/${token}`);
   }
   if (loading) return <div className="loading">Loading…</div>;
   return (
@@ -1898,7 +1898,7 @@ function AllContracts() {
     api.allContracts().then(d => setList(d.contracts || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
   function copyLink(token) {
-    navigator.clipboard?.writeText(`https://alphabetaone.com/sign/${token}`);
+    navigator.clipboard?.writeText(`https://iwopo.com/sign/${token}`);
   }
   if (loading) return <div className="loading">Loading…</div>;
   return (
@@ -2178,7 +2178,7 @@ function InqFormSettings({ user }) {
     <div style={{ maxWidth: 560 }}>
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
-        <p className="sub" style={{ marginBottom: 14 }}>Your link: <b style={{ color: '#2dd4bf' }}>alphabetaone.com/inquiry/{user?.vendor_id}</b> 🔗</p>
+        <p className="sub" style={{ marginBottom: 14 }}>Your link: <b style={{ color: '#2dd4bf' }}>iwopo.com/inquiry/{user?.vendor_id}</b> 🔗</p>
 
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Brand name</label>
         <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />

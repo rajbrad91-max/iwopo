@@ -230,7 +230,7 @@ router.post('/:id/send-packages', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' });
     if (!lead.email) return res.status(400).json({ error: 'Lead has no email' });
 
-    const link = `https://alphabetaone.com/portal/${lead.client_token}`;
+    const link = `https://iwopo.com/portal/${lead.client_token}`;
     const subject = 'Your packages are ready 🎉';
     const body = `Hi ${lead.name},\n\nView your custom packages and book here:\n${link}\n\nThank you!`;
     await sendLeadEmail(req, lead, subject, body);
