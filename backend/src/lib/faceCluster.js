@@ -1,3 +1,4 @@
+import { GALLERIES_ROOT } from '../config/paths.js';
 // 🧑‍🤝‍🧑 Face clustering — group the same person across an album's photos.
 //
 // Runs AFTER indexing, using whatever engine the album was locked to.
@@ -12,7 +13,7 @@ import path from 'path';
 import { query } from '../config/db.js';
 import { findMatchesAWS } from './faceAWS.js';
 
-const ROOT = '/var/www/vowflo/storage/galleries';
+const ROOT = GALLERIES_ROOT;
 
 // A face must be at least this confident to be clustered — weak detections
 // (blurry background heads) would otherwise create junk circles. 0.87 keeps most

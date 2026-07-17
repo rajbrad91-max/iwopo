@@ -1,3 +1,4 @@
+import { LOGO_DIR as LOGO_DIR_CFG } from '../config/paths.js';
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
@@ -9,7 +10,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { getFeatures } from '../lib/entitlements.js';
 
 const router = express.Router();
-const LOGO_DIR = '/var/www/vowflo/storage/logos';
+const LOGO_DIR = LOGO_DIR_CFG;
 const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 8 * 1024 * 1024 } });
 
 // GET /api/me/features → feature keys this vendor has (super_admin gets '*')

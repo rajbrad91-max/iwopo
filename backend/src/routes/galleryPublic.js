@@ -1,3 +1,4 @@
+import { GALLERIES_ROOT } from '../config/paths.js';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -33,7 +34,7 @@ async function getTheme(vendorId) {
 }
 
 const router = express.Router();
-const ROOT = '/var/www/vowflo/storage/galleries';
+const ROOT = GALLERIES_ROOT;
 
 // short-lived signed view tokens (in-memory; fine for single-node)
 const viewTokens = new Map(); // vt -> { albumId, role, exp }

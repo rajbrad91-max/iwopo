@@ -1,3 +1,4 @@
+import { GALLERIES_ROOT } from '../config/paths.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -13,7 +14,7 @@ import { enqueueAlbum, indexAlbumNow } from '../lib/faceQueue.js';
 import { getSetting } from '../lib/settings.js';
 
 const router = express.Router();
-const ROOT = '/var/www/vowflo/storage/galleries';
+const ROOT = GALLERIES_ROOT;
 const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 200 * 1024 * 1024 } });
 
 // which vendor am I?

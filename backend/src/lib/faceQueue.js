@@ -1,3 +1,4 @@
+import { GALLERIES_ROOT } from '../config/paths.js';
 // 🧵 Face-indexing queue — adaptive worker, per-album engine lock, AWS overflow.
 //
 // Traffic speed is non-negotiable, so:
@@ -20,7 +21,7 @@ import { getFaceDescriptorsAWS } from './faceAWS.js';
 import { getSetting } from './settings.js';
 import { clusterAlbum } from './faceCluster.js';
 
-const ROOT = '/var/www/vowflo/storage/galleries';
+const ROOT = GALLERIES_ROOT;
 
 // ── tunables ────────────────────────────────────────────────
 const PAUSE_MS = 250;            // 0.25s breather between photos
