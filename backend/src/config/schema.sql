@@ -1,4 +1,4 @@
--- ⬡ Vowflo Multi-Tenant Schema
+-- ⬡ iwopo Multi-Tenant Schema
 
 -- VENDORS (tenants)
 CREATE TABLE IF NOT EXISTS vendors (

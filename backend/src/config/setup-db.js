@@ -39,9 +39,9 @@ async function setup() {
   await pool.query(
     `INSERT INTO users (name, email, password_hash, role, vendor_id)
      VALUES ($1,$2,$3,'super_admin',NULL) ON CONFLICT (email) DO NOTHING`,
-    ['Raj', 'raj@vowflo.com', hash]
+    ['Raj', 'raj@iwopo.com', hash]
   );
-  console.log('✅ Super admin created (raj@vowflo.com / changeme123)');
+  console.log('✅ Super admin created (raj@iwopo.com / changeme123)');
 
   console.log('🎉 Database ready!');
   await pool.end();
