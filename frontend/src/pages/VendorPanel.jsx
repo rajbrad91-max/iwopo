@@ -778,9 +778,11 @@ function AlbumDetail({ albumId, onBack }) {
   const [visibleCount, setVisibleCount] = useState(20); // infinite-scroll: how many thumbs are mounted
   const [pending, setPending] = useState([]); // local previews of files still uploading {uid, url, eventId}
   const [dragOver, setDragOver] = useState(false); // drag-and-drop upload zone highlight
+  const [lightbox, setLightbox] = useState(null); // index into `visible` of the open full-screen photo
   const dropInputRef = useRef(null); // hidden input the big drop zone clicks
   const sentinelRef = useRef(null);
   const workerRef = useRef(null);
+  const visibleLenRef = useRef(0); // holds current visible-photo count for the keyboard handler
   const token = localStorage.getItem('vowflo_token');
 
   // clean up the upload worker + any object URLs on unmount
@@ -788,6 +790,19 @@ function AlbumDetail({ albumId, onBack }) {
     if (workerRef.current) workerRef.current.terminate();
     setPending(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
   }, []);
+
+  // keyboard controls for the full-screen viewer: Esc closes, arrows navigate.
+  // reads the count from a ref so it doesn't depend on `visible` (defined later).
+  useEffect(() => {
+    if (lightbox === null) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightbox(null);
+      else if (e.key === 'ArrowLeft') setLightbox(i => (i > 0 ? i - 1 : i));
+      else if (e.key === 'ArrowRight') setLightbox(i => (i < visibleLenRef.current - 1 ? i + 1 : i));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox]);
 
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => {
@@ -911,6 +926,7 @@ function AlbumDetail({ albumId, onBack }) {
     ? photos.filter(p => String(p.event_id) === String(activeEvent))
     : photos;
   const visible = shown.slice(0, visibleCount); // infinite-scroll window
+  visibleLenRef.current = visible.length; // keep the keyboard handler's bound current
   // previews for the current event view (per-client shows only the active event's uploads)
   const pendingShown = (isPerClient && activeEvent !== 'all')
     ? pending.filter(p => p.eventId === String(activeEvent))
@@ -977,9 +993,9 @@ function AlbumDetail({ albumId, onBack }) {
         )
       ) : (
         <div className="ad-grid">
-          {visible.map(p => (
+          {visible.map((p, idx) => (
             <div key={p.id} className="ad-photo" title={p.filename}>
-              <img src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" />
+              <img className="ad-photo-img" src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" onClick={() => setLightbox(idx)} />
               {p.is_selected && <span className="ad-picked">✅ Picked</span>}
               <button className="ad-photo-del" onClick={() => delPhoto(p.id)}>🗑️</button>
               <span className="ad-photo-name">{(p.filename || '').replace(/\.[^.]+$/, '')}</span>
@@ -994,6 +1010,25 @@ function AlbumDetail({ albumId, onBack }) {
         </div>
       )}
       {visible.length < shown.length && <div ref={sentinelRef} className="ad-grid-sentinel">Loading more…</div>}
+
+      {lightbox !== null && visible[lightbox] && (
+        <div className="ad-lb" onClick={() => setLightbox(null)}>
+          <button className="ad-lb-close" onClick={() => setLightbox(null)}>✕</button>
+          {lightbox > 0 && (
+            <button className="ad-lb-nav prev" onClick={e => { e.stopPropagation(); setLightbox(i => i - 1); }}>‹</button>
+          )}
+          <img
+            className="ad-lb-img"
+            src={`${api.fileUrl(visible[lightbox].id, 'preview')}?token=${token}`}
+            alt={visible[lightbox].filename || ''}
+            onClick={e => e.stopPropagation()}
+          />
+          {lightbox < visible.length - 1 && (
+            <button className="ad-lb-nav next" onClick={e => { e.stopPropagation(); setLightbox(i => i + 1); }}>›</button>
+          )}
+          <span className="ad-lb-name">{(visible[lightbox].filename || '').replace(/\.[^.]+$/, '')}</span>
+        </div>
+      )}
     </>
   );
 }
