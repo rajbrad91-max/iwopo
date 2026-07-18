@@ -138,7 +138,7 @@ export default function Selling({ onSignup, onGoLogin }) {
       {/* NAV */}
       <nav className="sl-nav">
         <div className="sl-nav-inner">
-          <div className="sl-logo"><span className="hex">⬡</span> iwopo</div>
+          <div className="sl-logo"><img src="/iwopo-logo.png" alt="iwopo" className="sl-logo-img" /></div>
           <div className="sl-nav-links">
             <a href="#features">Features</a>
             <a href="#packages">Pricing</a>
@@ -508,7 +508,7 @@ export default function Selling({ onSignup, onGoLogin }) {
       <footer className="sl-foot">
         <div className="sl-foot-top">
           <div className="sl-foot-brand">
-            <div className="sl-logo"><span className="hex">⬡</span> iwopo</div>
+            <div className="sl-logo"><img src="/iwopo-logo.png" alt="iwopo" className="sl-logo-img" /></div>
             <p>The operating system for wedding professionals.</p>
           </div>
           <div className="sl-foot-cols">
@@ -531,6 +531,7 @@ export default function Selling({ onSignup, onGoLogin }) {
           <div className="sl-foot-legalcol">
             <span>© {new Date().getFullYear()} IWOPO, LLC. Built for wedding vendors.</span>
             <span className="sl-foot-addr">3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804, United States</span>
+            <a className="sl-foot-mail" href="mailto:sales@iwopo.com">sales@iwopo.com</a>
           </div>
           <span className="sl-foot-legal"><a href="#faq">Privacy</a><a href="#faq">Terms</a></span>
         </div>

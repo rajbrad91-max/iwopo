@@ -55,7 +55,7 @@
 .sl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--p); box-shadow: 0 0 0 4px rgba(108,76,245,.15); }
 .sl-dot.light { background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.2); }
 
-.hex { color: var(--p); font-size: 1.05em; }
+.sl-logo-img { height: 34px; width: auto; display: block; }
 
 /* NAV */
 .sl-nav {
@@ -369,6 +369,8 @@
 .sl-foot-bottom { max-width: var(--maxw); margin: 24px auto 0; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--gray); }
 .sl-foot-legalcol { display: flex; flex-direction: column; gap: 4px; }
 .sl-foot-addr { font-size: 12.5px; color: #9aa1ad; }
+.sl-foot-mail { font-size: 12.5px; color: var(--p); text-decoration: none; width: fit-content; }
+.sl-foot-mail:hover { text-decoration: underline; }
 .sl-foot-legal { display: flex; gap: 20px; }
 .sl-foot-legal a:hover { color: var(--p); }
 

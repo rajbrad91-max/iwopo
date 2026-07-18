@@ -25,7 +25,7 @@ export default function Login({ onLogin, onBack }) {
     <div className="login-wrap">
       <div className="login-card">
         {onBack && <div className="login-back" onClick={onBack}>← Back</div>}
-        <div className="login-brand">⬡ IWOPO</div>
+        <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>
         <h1>Sign in</h1>
         <p className="login-sub">Vendors & admins</p>
 

@@ -36,7 +36,7 @@ export default function ClientPortal({ token }) {
   return (
     <div className="iq-wrap">
       <div className="iq-card" style={{ maxWidth: 720 }}>
-        <div className="iq-brand">⬡ {business_name}</div>
+        <div className="iq-brand"><img src="/logo_icon.png" alt="" className="iq-brand-img" /> {business_name}</div>
         <p className="iq-sub">Hi {lead.name} 👋 — your {lead.event_type} {lead.event_date ? `on ${String(lead.event_date).slice(0, 10)}` : ''}</p>
 
         {msg && <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 12, background: msg[0] === '⚠' ? '#fb718522' : '#4ade8022', color: msg[0] === '⚠' ? '#fb7185' : '#4ade80', fontSize: 13 }}>{msg}</div>}

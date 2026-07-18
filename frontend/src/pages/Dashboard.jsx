@@ -51,7 +51,7 @@ export default function Dashboard({ onLogout }) {
   return (
     <div className={`sa-wrap ${collapsed ? 'sa-collapsed' : ''}`} data-sa-theme={saTheme}>
       <aside className={`sa-sidebar ${sidebarOpen ? 'show' : ''}`}>
-        <div className="sa-brand"><span className="hex">⬡</span><div>IWOPO<br /><small>SUPER</small></div></div>
+        <div className="sa-brand"><img src="/logo_icon.png" alt="iwopo" className="sa-brand-img" /><div>IWOPO<br /><small>SUPER</small></div></div>
         <div className="sa-collapse-row" onClick={() => setCollapsed(c => !c)} title="Auto-hide sidebar">
           <span className="sa-collapse-lbl">Auto-hide</span>
           <span className={`sa-collapse-switch ${collapsed ? 'on' : ''}`} />
