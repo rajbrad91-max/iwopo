@@ -322,4 +322,62 @@ router.get('/:token/face/:clusterId/photos', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ⭐ favorites — clients mark photos, saved server-side keyed by album + email.
+// Email is normalized (trim + lowercase) so the same person's list follows them
+// across devices when they re-enter the same address.
+const normEmail = (e) => String(e || '').trim().toLowerCase().slice(0, 160);
+const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+// list this email's favorited photo ids for the album
+router.get('/:token/favorites', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    const email = normEmail(req.query.email);
+    if (!validEmail(email)) return res.json({ photo_ids: [] });
+    const { rows } = await query(
+      'SELECT photo_id FROM favorites WHERE album_id=$1 AND email=$2',
+      [a.id, email]
+    );
+    res.json({ photo_ids: rows.map(r => r.photo_id) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// add a favorite (idempotent via the unique constraint)
+router.post('/:token/favorites', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    const email = normEmail(req.body?.email);
+    const photoId = parseInt(req.body?.photo_id, 10);
+    if (!validEmail(email)) return res.status(400).json({ error: 'A valid email is required' });
+    if (!photoId) return res.status(400).json({ error: 'photo_id required' });
+    // make sure the photo really belongs to this album
+    const { rows: pr } = await query('SELECT id FROM photos WHERE id=$1 AND album_id=$2', [photoId, a.id]);
+    if (!pr[0]) return res.status(404).json({ error: 'Photo not found' });
+    await query(
+      `INSERT INTO favorites (album_id, photo_id, email)
+       VALUES ($1,$2,$3) ON CONFLICT (album_id, photo_id, email) DO NOTHING`,
+      [a.id, photoId, email]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// remove a favorite
+router.delete('/:token/favorites/:photoId', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    const email = normEmail(req.query.email);
+    const photoId = parseInt(req.params.photoId, 10);
+    if (!validEmail(email) || !photoId) return res.status(400).json({ error: 'email and photo_id required' });
+    await query('DELETE FROM favorites WHERE album_id=$1 AND photo_id=$2 AND email=$3', [a.id, photoId, email]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

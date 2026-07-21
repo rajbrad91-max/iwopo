@@ -26,6 +26,8 @@ const IconPeople = <Icon d={<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5
 const IconUser = <Icon d={<><circle cx="10" cy="10" r="7.5" /><path d="M15.5 15.5L21 21" /><circle cx="10" cy="8" r="2.2" /><path d="M6.2 13.2a3.9 3.9 0 017.6 0" /></>} />;
 // down-arrow into a tray → clearly "download to device"
 const IconDownload = <Icon d={<><path d="M12 4v10" /><path d="M8 10.5l4 4 4-4" /><path d="M5 19h14" /></>} />;
+// five-point star → "favorite"
+const IconStar = <Icon d={<><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" /></>} />;
 
 export default function PublicGallery({ token, embedded, onBack }) {
   const [meta, setMeta] = useState(null);
@@ -43,6 +45,14 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [selfieMsg, setSelfieMsg] = useState('');
   const [picked, setPicked] = useState(() => new Set());
   const [pickedOnly, setPickedOnly] = useState(false);
+  // ⭐ favorites — saved server-side, keyed by the client's email (persists + cross-device)
+  const [favs, setFavs] = useState(() => new Set());
+  const [favEmail, setFavEmail] = useState('');
+  const [favOnly, setFavOnly] = useState(false);
+  const [favModalOpen, setFavModalOpen] = useState(false);
+  const [favEmailInput, setFavEmailInput] = useState('');
+  const [favErr, setFavErr] = useState('');
+  const [pendingFav, setPendingFav] = useState(null);   // photo id waiting for email before it can be starred
   const [slideshow, setSlideshow] = useState(false);
   const [faces, setFaces] = useState([]);           // face circles, most photos first
   const [activeFace, setActiveFace] = useState(null);
@@ -104,6 +114,24 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const persist = (next) => {
     try { window.sessionStorage?.setItem(pickKey, JSON.stringify([...next])); } catch { /* ignore */ }
   };
+
+  // ⭐ remember the client's email across visits/devices (localStorage, not just session)
+  const favEmailKey = `pg-fav-email-${token}`;
+  useEffect(() => {
+    try {
+      const saved = window.localStorage?.getItem(favEmailKey);
+      if (saved) setFavEmail(saved);
+    } catch { /* storage unavailable */ }
+  }, [favEmailKey]);
+
+  // once we have a session + an email, pull this person's favorites from the server
+  useEffect(() => {
+    if (!session?.vt || !favEmail) return;
+    fetch(`${API}/${token}/favorites?vt=${session.vt}&email=${encodeURIComponent(favEmail)}`)
+      .then(r => r.ok ? r.json() : { photo_ids: [] })
+      .then(d => setFavs(new Set(d.photo_ids || [])))
+      .catch(() => { /* leave favs as-is */ });
+  }, [session?.vt, favEmail, token]);
 
   const theme = session?.theme || meta?.theme || {};
   const styleVars = {
@@ -187,6 +215,53 @@ export default function PublicGallery({ token, embedded, onBack }) {
   }
   function clearPicked() { setPicked(new Set()); persist(new Set()); setPickedOnly(false); }
 
+  // ⭐ write a favorite to the server (add or remove) for a known email
+  async function saveFav(id, email, add) {
+    try {
+      if (add) {
+        await fetch(`${API}/${token}/favorites?vt=${session.vt}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photo_id: id, email }),
+        });
+      } else {
+        await fetch(`${API}/${token}/favorites/${id}?vt=${session.vt}&email=${encodeURIComponent(email)}`, {
+          method: 'DELETE',
+        });
+      }
+    } catch { /* best-effort; UI state already updated optimistically */ }
+  }
+
+  // star/unstar a photo. First-ever star with no email → ask for it once.
+  function toggleFav(id) {
+    if (!favEmail) { setPendingFav(id); setFavErr(''); setFavEmailInput(''); setFavModalOpen(true); return; }
+    setFavs(prev => {
+      const next = new Set(prev);
+      const add = !next.has(id);
+      add ? next.add(id) : next.delete(id);
+      saveFav(id, favEmail, add);
+      return next;
+    });
+  }
+
+  // client submitted their email in the modal → remember it, save the pending star
+  async function submitFavEmail(e) {
+    e?.preventDefault();
+    const email = favEmailInput.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFavErr('Please enter a valid email.'); return; }
+    setFavEmail(email);
+    try { window.localStorage?.setItem(favEmailKey, email); } catch { /* ignore */ }
+    // pull any existing favorites saved under this email (cross-device resume)
+    let existing = new Set();
+    try {
+      const r = await fetch(`${API}/${token}/favorites?vt=${session.vt}&email=${encodeURIComponent(email)}`);
+      if (r.ok) { const d = await r.json(); existing = new Set(d.photo_ids || []); }
+    } catch { /* ignore */ }
+    if (pendingFav != null) { existing.add(pendingFav); saveFav(pendingFav, email, true); }
+    setFavs(existing);
+    setFavModalOpen(false);
+    setPendingFav(null);
+  }
+
   async function onSelfie(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -212,6 +287,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
   if (activeEvent !== 'all') photos = photos.filter(p => String(p.event_id) === String(activeEvent));
   if (matchIds !== null) photos = photos.filter(p => matchIds.includes(p.id));
   if (pickedOnly) photos = photos.filter(p => picked.has(p.id));
+  if (favOnly) photos = photos.filter(p => favs.has(p.id));
 
   const step = useCallback((dir) => {
     setLightbox(i => {
@@ -311,10 +387,11 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
   const current = lightbox !== null ? photos[lightbox] : null;
   const nPicked = picked.size;
+  const nFavs = favs.size;
   // Collapsed: CSS fits as many circles as the row holds (no dead space); the rest
   // are hidden and revealed by "More Faces". We render ALL faces and let the grid clip
   // to one row when collapsed — so the fit is always exact on any screen width.
-  const showScenes = session.events.length > 0 && matchIds === null && !pickedOnly;
+  const showScenes = session.events.length > 0 && matchIds === null && !pickedOnly && !favOnly;
 
   return (
     <div className="pg-wrap" style={styleVars}>
@@ -348,6 +425,29 @@ export default function PublicGallery({ token, embedded, onBack }) {
               <button className="pg-btn is-ghost" onClick={() => selfieInput.current?.click()}>Upload a photo</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ⭐ email-once modal — asked the first time a client stars a photo */}
+      {favModalOpen && (
+        <div className="pg-modal" onClick={() => { setFavModalOpen(false); setPendingFav(null); }}>
+          <form className="pg-modal-card" onClick={e => e.stopPropagation()} onSubmit={submitFavEmail}>
+            <button type="button" className="pg-modal-x" onClick={() => { setFavModalOpen(false); setPendingFav(null); }} title="Close">✕</button>
+            <h2 className="pg-modal-title">Save your favorites</h2>
+            <p className="pg-modal-sub">Enter your email so your favorites are saved — you can come back to them anytime, on any device.</p>
+            <input
+              className="pg-input"
+              type="email"
+              placeholder="you@email.com"
+              value={favEmailInput}
+              onChange={e => { setFavEmailInput(e.target.value); setFavErr(''); }}
+              autoFocus
+            />
+            {favErr && <div className="pg-err">{favErr}</div>}
+            <div className="pg-modal-acts">
+              <button className="pg-btn" type="submit">Save &amp; continue</button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -424,6 +524,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
         {photos.length === 0 ? (
           <div className="pg-state">
             {pickedOnly ? 'Nothing selected yet.'
+              : favOnly ? 'No favorites yet.'
               : matchIds !== null ? 'No matching photos.'
               : 'This gallery is empty.'}
           </div>
@@ -445,6 +546,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
               aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
               title={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
             >✓</button>
+            <button
+              className={`pg-star ${favs.has(p.id) ? 'is-on' : ''}`}
+              onClick={e => { e.stopPropagation(); toggleFav(p.id); }}
+              aria-label={favs.has(p.id) ? 'Remove from favorites' : 'Add to favorites'}
+              title={favs.has(p.id) ? 'Remove from favorites' : 'Add to favorites'}
+            >{IconStar}</button>
           </figure>
         ))}
       </div>
@@ -468,6 +575,17 @@ export default function PublicGallery({ token, embedded, onBack }) {
         </div>
       )}
 
+      {nFavs > 0 && (
+        <div className={`pg-selbar pg-favbar ${nPicked > 0 ? 'is-stacked' : ''}`}>
+          <span className="pg-selbar-n">⭐ {nFavs} favorite{nFavs === 1 ? '' : 's'}</span>
+          <div className="pg-selbar-acts">
+            <button className="pg-selbar-btn" onClick={() => setFavOnly(v => !v)}>
+              {favOnly ? 'Show all' : 'View favorites'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {current && (
         <div
           className="pg-lb"
@@ -478,6 +596,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
           <div className="pg-lb-bar" onClick={e => e.stopPropagation()}>
             <span className="pg-lb-name">{(current.name || '').replace(/\.[^.]+$/, '')}</span>
             <div className="pg-lb-acts">
+              <button className={`pg-lb-btn pg-lb-star ${favs.has(current.id) ? 'is-on' : ''}`} onClick={() => toggleFav(current.id)} title={favs.has(current.id) ? 'Remove from favorites' : 'Add to favorites'}>{IconStar}</button>
               <button className={`pg-lb-btn ${picked.has(current.id) ? 'is-on' : ''}`} onClick={() => togglePick(current.id)} title={picked.has(current.id) ? 'Unselect photo' : 'Select photo'}>✓</button>
               <button className={`pg-lb-btn ${slideshow ? 'is-on' : ''}`} onClick={() => setSlideshow(s => !s)} title={slideshow ? 'Pause slideshow' : 'Play slideshow'}>{slideshow ? '❚❚' : '▶'}</button>
               <button className="pg-lb-btn" onClick={() => downloadOne(current.id)} title="Download photo">{IconDownload}</button>

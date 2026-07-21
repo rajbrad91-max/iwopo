@@ -387,6 +387,34 @@
   color: #fff;
 }
 
+/* ⭐ favorite star — top-right corner, opposite the select check */
+.pg-star {
+  position: absolute; top: 8px; right: 8px;
+  width: 30px; height: 30px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.28);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .18s, background .16s, transform .16s;
+}
+.pg-star .pg-ico-svg { width: 18px; height: 18px; }
+.pg-tile:hover .pg-star { opacity: 1; }
+.pg-star:hover { background: rgba(0,0,0,.45); transform: scale(1.08); }
+/* starred: stays visible, gold fill */
+.pg-star.is-on {
+  opacity: 1;
+  background: rgba(0,0,0,.32);
+  color: #ffc94d;
+}
+.pg-star.is-on .pg-ico-svg { fill: #ffc94d; stroke: #ffc94d; }
+/* lightbox star mirrors the same gold when active */
+.pg-lb-star.is-on { color: #ffc94d; }
+.pg-lb-star.is-on .pg-ico-svg { fill: #ffc94d; stroke: #ffc94d; }
+
 /* ── ✅ selection bar ── */
 .pg-selbar {
   position: fixed;
@@ -403,6 +431,9 @@
 }
 @keyframes pg-pop { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .pg-selbar-n { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+/* ⭐ favorites bar — same pill; when the select bar is also up, stack above it */
+.pg-favbar.is-stacked { bottom: 84px; }
+@keyframes pg-pop-stacked { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .pg-selbar-acts { display: flex; gap: 4px; }
 .pg-selbar-btn {
   padding: 8px 15px;

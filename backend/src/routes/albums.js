@@ -421,4 +421,30 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ⭐ favorites a vendor received for one of their albums, grouped by client email.
+// Ownership enforced: the album must belong to the requesting vendor.
+router.get('/:id/favorites', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
+    if (!own[0]) return res.status(404).json({ error: 'Not found' });
+    const { rows } = await query(
+      `SELECT f.email, f.photo_id, f.created_at, p.filename
+         FROM favorites f
+         JOIN photos p ON p.id = f.photo_id
+        WHERE f.album_id = $1
+        ORDER BY f.email, f.created_at`,
+      [req.params.id]
+    );
+    // group into { email, count, photos:[{photo_id, filename, created_at}] }
+    const byEmail = new Map();
+    for (const r of rows) {
+      if (!byEmail.has(r.email)) byEmail.set(r.email, []);
+      byEmail.get(r.email).push({ photo_id: r.photo_id, filename: r.filename, created_at: r.created_at });
+    }
+    const lists = [...byEmail.entries()].map(([email, photos]) => ({ email, count: photos.length, photos }));
+    res.json({ total: rows.length, lists });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
