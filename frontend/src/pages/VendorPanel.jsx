@@ -1006,7 +1006,7 @@ function AlbumDetail({ albumId, onBack }) {
       <div className="ad-head">
         <div>
           <button className="refresh ad-back" onClick={onBack}>← Back</button>
-          <h2 className="ad-title">🖼️ {album.title}{isPerClient && <span className="ad-mode-tag">👤 Per client</span>}</h2>
+          <h2 className="ad-title">🖼️ {album.title}</h2>
           <div className="ad-count">{photos.length} photos{isPerClient ? ` · ${events.length} events` : ''}</div>
         </div>
         <div className="ad-head-actions">

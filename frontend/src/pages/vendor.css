@@ -796,7 +796,6 @@
 }
 
 /* 🗂️ Album detail — event manager (per-client) */
-.ad-mode-tag { font-size: 11px; font-weight: 700; color: #2dd4bf; background: #2dd4bf18; padding: 2px 9px; border-radius: 20px; margin-left: 10px; vertical-align: middle; }
 .ad-upload-off { opacity: .5; cursor: not-allowed; }
 .ad-events { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
 .ad-events .pg-ev { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 20px; padding: 6px 13px; font-size: 13px; cursor: pointer; }
