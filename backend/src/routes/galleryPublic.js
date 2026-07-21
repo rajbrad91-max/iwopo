@@ -91,7 +91,7 @@ router.get('/:token', async (req, res) => {
     if (!a) return res.status(404).json({ error: 'Gallery not found' });
     const { rows: c } = await query('SELECT COUNT(*)::int AS n FROM photos WHERE album_id=$1', [a.id]);
     const theme = await getTheme(a.vendor_id);
-    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: c[0].n, id: a.id, token: a.public_token, mode: 'per_client' }, theme });
+    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: c[0].n, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

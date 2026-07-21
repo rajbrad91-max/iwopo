@@ -312,6 +312,50 @@ function AiChatVendorView({ goServices }) {
   );
 }
 
+// 🎯 Cover focal-point picker: click or drag to set where the cover centers.
+// The same point is used on desktop AND mobile, so covers frame well at any aspect ratio.
+function FocalPicker({ src, focus, onFocus, view, onView }) {
+  const ref = useRef(null);
+  const dragging = useRef(false);
+  const [fx, fy] = (focus || '50% 50%').split(' ').map(s => parseFloat(s));
+
+  function setFromEvent(e) {
+    const el = ref.current; if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const pt = e.touches ? e.touches[0] : e;
+    let x = ((pt.clientX - rect.left) / rect.width) * 100;
+    let y = ((pt.clientY - rect.top) / rect.height) * 100;
+    x = Math.max(0, Math.min(100, x));
+    y = Math.max(0, Math.min(100, y));
+    onFocus(`${Math.round(x)}% ${Math.round(y)}%`);
+  }
+  function onDown(e) { dragging.current = true; setFromEvent(e); }
+  function onMove(e) { if (dragging.current) { e.preventDefault(); setFromEvent(e); } }
+  function onUp() { dragging.current = false; }
+
+  return (
+    <div className="fp-wrap">
+      <div className="fp-toolbar">
+        <span className="fp-hint">🎯 Click or drag to set the frame's center</span>
+        <div className="fp-toggle">
+          <button type="button" className={`fp-tog ${view === 'desktop' ? 'on' : ''}`} onClick={() => onView('desktop')}>🖥️ Desktop</button>
+          <button type="button" className={`fp-tog ${view === 'mobile' ? 'on' : ''}`} onClick={() => onView('mobile')}>📱 Mobile</button>
+        </div>
+      </div>
+      <div
+        ref={ref}
+        className={`fp-frame ${view === 'mobile' ? 'fp-mobile' : 'fp-desktop'}`}
+        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
+        style={{ backgroundImage: `url(${src})`, backgroundPosition: `${fx}% ${fy}%` }}
+      >
+        <div className="fp-dot" style={{ left: `${fx}%`, top: `${fy}%` }} />
+      </div>
+      <div className="fp-note">Preview shows how the cover crops in this view. The dot marks the point kept centered.</div>
+    </div>
+  );
+}
+
 function GalleriesView() {
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -322,6 +366,8 @@ function GalleriesView() {
   const [pwPrefix, setPwPrefix] = useState('');
   const [spwPrefix, setSpwPrefix] = useState('');
   const [coverFile, setCoverFile] = useState(null);
+  const [coverFocus, setCoverFocus] = useState('50% 50%'); // "X% Y%" focal point for cover framing
+  const [focusView, setFocusView] = useState('desktop'); // preview aspect toggle
   const [showSettings, setShowSettings] = useState(false);
   const [tpl, setTpl] = useState('');
   const [showPw, setShowPw] = useState({ guest: false, admin: false });
@@ -441,7 +487,7 @@ function GalleriesView() {
     });
   }
 
-  function resetForm() { setF(emptyAlbum()); setCoverFile(null); setEdit(null); setMsg(''); }
+  function resetForm() { setF(emptyAlbum()); setCoverFile(null); setCoverFocus('50% 50%'); setFocusView('desktop'); setEdit(null); setMsg(''); }
   async function create() {
     if (!f.title) return setMsg('⚠️ Gallery name required');
     try {
@@ -451,6 +497,8 @@ function GalleriesView() {
       if (edit) { const d = await api.updateAlbum(edit.id, f); album = d.album; }
       else { const d = await api.createAlbum(f); album = d.album; }
       if (coverFile && album) { try { await api.uploadAlbumCover(album.id, coverFile); } catch {} }
+      // save focal point whenever there's a cover (new or existing)
+      if (album && (coverFile || edit?.cover_photo)) { try { await api.saveCoverFocus(album.id, coverFocus); } catch {} }
       resetForm(); setShowNew(false); load();
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -460,7 +508,7 @@ function GalleriesView() {
       title: a.title || '', category: a.category || '', client_email: a.client_email || '',
       guest_password: a.guest_password || '', admin_password: a.admin_password || '',
     });
-    setCoverFile(null); setShowNew(true); setMsg('');
+    setCoverFile(null); setCoverFocus(a.cover_focus || '50% 50%'); setFocusView('desktop'); setShowNew(true); setMsg('');
   }
   async function del(id) {
     if (!confirm('Delete this album and all its photos?')) return;
@@ -539,6 +587,13 @@ function GalleriesView() {
                 {coverFile ? `✅ ${coverFile.name.slice(0, 18)}…` : (edit?.cover_photo ? '🖼️ Replace cover' : '📤 Choose cover')}
                 <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
               </label>
+              {(coverFile || edit?.cover_photo) && (
+                <FocalPicker
+                  src={coverFile ? URL.createObjectURL(coverFile) : `${api.albumCoverUrl(edit.id)}?t=${edit.cover_photo}`}
+                  focus={coverFocus} onFocus={setCoverFocus}
+                  view={focusView} onView={setFocusView}
+                />
+              )}
             </div>
           </div>
 
@@ -757,7 +812,8 @@ function AlbumDetail({ albumId, onBack }) {
   const [uploading, setUploading] = useState(false);
   const [prog, setProg] = useState('');
   const [activeEvent, setActiveEvent] = useState('all'); // filter + upload target
-  const [newEvent, setNewEvent] = useState('');
+  const [evModal, setEvModal] = useState(null); // { type:'add'|'edit'|'delete', ev, name }
+  const [evBusy, setEvBusy] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20); // infinite-scroll: how many thumbs are mounted
   const [pending, setPending] = useState([]); // local previews of files still uploading {uid, url, eventId}
   const [dragOver, setDragOver] = useState(false); // drag-and-drop upload zone highlight
@@ -903,21 +959,31 @@ function AlbumDetail({ albumId, onBack }) {
     if (!confirm('Delete this photo?')) return;
     await api.deletePhoto(albumId, pid); load();
   }
-  async function addEvent() {
-    const name = newEvent.trim();
-    if (!name) return;
-    try { const d = await api.addAlbumEvent(albumId, name); setNewEvent(''); setActiveEvent(d.event.id); load(); }
-    catch (e) { alert('⚠️ ' + e.message); }
-  }
-  async function renameEvent(ev) {
-    const name = prompt('Rename event:', ev.name);
-    if (!name || name === ev.name) return;
-    try { await api.renameAlbumEvent(albumId, ev.id, name); load(); } catch (e) { alert('⚠️ ' + e.message); }
-  }
-  async function delEvent(ev) {
-    if (!confirm(`Delete event "${ev.name}"? Photos stay but become ungrouped.`)) return;
-    try { await api.deleteAlbumEvent(albumId, ev.id); if (String(activeEvent) === String(ev.id)) setActiveEvent('all'); load(); }
-    catch (e) { alert('⚠️ ' + e.message); }
+  // event add/edit/delete now go through a styled in-app modal (evModal)
+  function openAddEvent() { setEvModal({ type: 'add', ev: null, name: '' }); }
+  function openEditEvent() { const ev = events.find(e => String(e.id) === String(activeEvent)); if (ev) setEvModal({ type: 'edit', ev, name: ev.name }); }
+  function openDeleteEvent() { const ev = events.find(e => String(e.id) === String(activeEvent)); if (ev) setEvModal({ type: 'delete', ev, name: ev.name }); }
+
+  async function commitEvent() {
+    if (!evModal) return;
+    const { type, ev, name } = evModal;
+    const trimmed = (name || '').trim();
+    if ((type === 'add' || type === 'edit') && !trimmed) return;
+    setEvBusy(true);
+    try {
+      if (type === 'add') {
+        const d = await api.addAlbumEvent(albumId, trimmed);
+        setActiveEvent(d.event.id);
+      } else if (type === 'edit') {
+        if (trimmed !== ev.name) await api.renameAlbumEvent(albumId, ev.id, trimmed);
+      } else if (type === 'delete') {
+        await api.deleteAlbumEvent(albumId, ev.id);
+        if (String(activeEvent) === String(ev.id)) setActiveEvent('all');
+      }
+      setEvModal(null);
+      load();
+    } catch (e) { alert('⚠️ ' + e.message); }
+    finally { setEvBusy(false); }
   }
 
   if (!album) return <div className="loading">Loading…</div>;
@@ -943,10 +1009,19 @@ function AlbumDetail({ albumId, onBack }) {
           <h2 className="ad-title">🖼️ {album.title}{isPerClient && <span className="ad-mode-tag">👤 Per client</span>}</h2>
           <div className="ad-count">{photos.length} photos{isPerClient ? ` · ${events.length} events` : ''}</div>
         </div>
-        <label className={`refresh ad-upload ${isPerClient && activeEvent === 'all' ? 'ad-upload-off' : ''}`}>
-          {uploadLabel}
-          <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || (isPerClient && activeEvent === 'all')} />
-        </label>
+        <div className="ad-head-actions">
+          {isPerClient && (
+            <div className="ad-ev-actions">
+              <button className="refresh ad-ev-btn" onClick={openAddEvent} title="Add a new event">➕ Add</button>
+              <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all'} title="Rename the selected event">✏️ Edit</button>
+              <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all'} title="Delete the selected event">🗑️ Delete</button>
+            </div>
+          )}
+          <label className={`refresh ad-upload ${isPerClient && activeEvent === 'all' ? 'ad-upload-off' : ''}`}>
+            {uploadLabel}
+            <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || (isPerClient && activeEvent === 'all')} />
+          </label>
+        </div>
       </div>
 
       {isPerClient && (
@@ -954,17 +1029,48 @@ function AlbumDetail({ albumId, onBack }) {
           {events.map(ev => {
             const n = photos.filter(p => String(p.event_id) === String(ev.id)).length;
             return (
-              <span key={ev.id} className="ad-ev-wrap">
-                <button className={`pg-ev ${String(activeEvent) === String(ev.id) ? 'on' : ''}`} onClick={() => setActiveEvent(ev.id)}>{ev.name} ({n})</button>
-                <button className="ad-ev-edit" title="Rename" onClick={() => renameEvent(ev)}>✏️</button>
-                <button className="ad-ev-edit" title="Delete" onClick={() => delEvent(ev)}>🗑️</button>
-              </span>
+              <button key={ev.id} className={`pg-ev ${String(activeEvent) === String(ev.id) ? 'on' : ''}`} onClick={() => setActiveEvent(ev.id)}>{ev.name} ({n})</button>
             );
           })}
-          <span className="ad-ev-add">
-            <input className="gal-input ad-ev-input" placeholder="New event…" value={newEvent} onChange={e => setNewEvent(e.target.value)} onKeyDown={e => e.key === 'Enter' && addEvent()} />
-            <button className="gal-gen" onClick={addEvent}>➕</button>
-          </span>
+        </div>
+      )}
+
+      {isPerClient && evModal && (
+        <div className="al-overlay" onClick={() => !evBusy && setEvModal(null)}>
+          <div className="gal-set-modal ev-modal" onClick={e => e.stopPropagation()}>
+            <div className="al-head">
+              <h3 className="al-title">
+                {evModal.type === 'add' ? '➕ New event' : evModal.type === 'edit' ? '✏️ Rename event' : '🗑️ Delete event'}
+              </h3>
+              <button className="al-x" onClick={() => !evBusy && setEvModal(null)}>✕</button>
+            </div>
+
+            {evModal.type === 'delete' ? (
+              <p className="ev-modal-text">
+                Delete <strong>“{evModal.ev.name}”</strong>? The photos stay in the gallery but become ungrouped from this event.
+              </p>
+            ) : (
+              <>
+                <label className="lbl">Event name</label>
+                <input
+                  className="gal-input" autoFocus value={evModal.name}
+                  onChange={e => setEvModal(m => ({ ...m, name: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && commitEvent()}
+                  placeholder="e.g. Wedding, Reception, Mehndi"
+                />
+              </>
+            )}
+
+            <div className="ev-modal-foot">
+              <button className="refresh ev-modal-cancel" onClick={() => setEvModal(null)} disabled={evBusy}>Cancel</button>
+              <button
+                className={`refresh ev-modal-ok ${evModal.type === 'delete' ? 'ev-modal-danger' : ''}`}
+                onClick={commitEvent} disabled={evBusy}
+              >
+                {evBusy ? '…' : evModal.type === 'add' ? 'Add event' : evModal.type === 'edit' ? 'Save' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -972,7 +1078,7 @@ function AlbumDetail({ albumId, onBack }) {
 
       {shown.length === 0 && pendingShown.length === 0 ? (
         (isPerClient && activeEvent === 'all' && events.length === 0) ? (
-          <div className="table-wrap ad-empty">Create an event above, then upload photos into it 📤</div>
+          <div className="table-wrap ad-empty">Click ➕ Add up top to create an event, then upload photos into it 📤</div>
         ) : (
           <div
             className={`ad-dropzone ${dragOver ? 'is-drag' : ''} ${uploading || (isPerClient && activeEvent === 'all') ? 'is-off' : ''}`}

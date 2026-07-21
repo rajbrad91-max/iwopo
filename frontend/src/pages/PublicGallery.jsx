@@ -279,7 +279,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
     const m = meta.album;
     return (
       <div className="pg-wrap pg-gatewrap" style={styleVars}>
-        {coverUrl && <div className="pg-gate-bg" style={{ backgroundImage: `url(${coverUrl})` }} />}
+        {coverUrl && <div className="pg-gate-bg" style={{ backgroundImage: `url(${coverUrl})`, backgroundPosition: meta.album.cover_focus || '50% 50%' }} />}
         <div className="pg-gate">
           <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
           <h1 className="pg-gate-title">{m.title}</h1>
@@ -304,7 +304,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
     <div className="pg-wrap" style={styleVars}>
 
       <section className={`pg-cover ${coverUrl ? '' : 'is-plain'}`}>
-        {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})` }} />}
+        {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})`, backgroundPosition: meta.album.cover_focus || '50% 50%' }} />}
         <div className="pg-cover-inner">
           <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
           <h1 className="pg-cover-title">{session.title}</h1>

@@ -208,6 +208,20 @@ router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 🎯 save the cover focal point ("X% Y%") so covers frame well on any aspect ratio
+router.put('/:id/cover-focus', requireAuth, async (req, res) => {
+  const v = vid(req);
+  try {
+    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
+    if (!own[0]) return res.status(404).json({ error: 'Not found' });
+    const focus = (req.body.focus || '50% 50%').trim();
+    // validate: two percentages like "37% 62%"
+    if (!/^\d{1,3}%\s\d{1,3}%$/.test(focus)) return res.status(400).json({ error: 'Bad focus format' });
+    const { rows } = await query('UPDATE albums SET cover_focus=$1 WHERE id=$2 RETURNING *', [focus, req.params.id]);
+    res.json({ album: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 🌐 public cover image
 router.get('/cover/:id', async (req, res) => {
   try {

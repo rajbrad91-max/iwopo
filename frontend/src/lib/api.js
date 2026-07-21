@@ -198,6 +198,8 @@ export const api = {
     return data;
   },
   albumCoverUrl: (id) => `/api/albums/cover/${id}`,
+  saveCoverFocus: (albumId, focus) =>
+    request(`/albums/${albumId}/cover-focus`, { method: 'PUT', body: JSON.stringify({ focus }) }),
   album: (id) => request(`/albums/${id}`),
   deleteAlbum: (id) => request(`/albums/${id}`, { method: 'DELETE' }),
   deletePhoto: (albumId, photoId) => request(`/albums/${albumId}/photos/${photoId}`, { method: 'DELETE' }),

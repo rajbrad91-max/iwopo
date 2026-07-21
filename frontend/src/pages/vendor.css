@@ -799,13 +799,35 @@
 .ad-mode-tag { font-size: 11px; font-weight: 700; color: #2dd4bf; background: #2dd4bf18; padding: 2px 9px; border-radius: 20px; margin-left: 10px; vertical-align: middle; }
 .ad-upload-off { opacity: .5; cursor: not-allowed; }
 .ad-events { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
-.ad-ev-wrap { display: inline-flex; align-items: center; gap: 2px; }
 .ad-events .pg-ev { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 20px; padding: 6px 13px; font-size: 13px; cursor: pointer; }
 .ad-events .pg-ev.on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; font-weight: 700; }
-.ad-ev-edit { background: none; border: none; cursor: pointer; font-size: 12px; padding: 3px; opacity: .6; }
-.ad-ev-edit:hover { opacity: 1; }
-.ad-ev-add { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; }
-.ad-ev-input { width: 130px; padding: 6px 10px !important; font-size: 12px; }
+.ad-head-actions { display: flex; align-items: center; gap: 10px; }
+.ad-ev-actions { display: inline-flex; gap: 6px; }
+.ad-ev-btn { font-size: 13px; padding: 8px 12px; }
+.ad-ev-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ad-ev-btn-del:not(:disabled):hover { color: #fb7185; border-color: #fb7185; }
+
+/* event add/edit/delete modal */
+.ev-modal { max-width: 440px; width: 92vw; }
+.ev-modal .lbl { display: block; margin: 4px 0 6px; }
+.ev-modal-text { color: var(--text); font-size: 14px; line-height: 1.55; margin: 4px 0 0; }
+.ev-modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.ev-modal-ok { background: #2dd4bf; color: #06231f; font-weight: 700; }
+.ev-modal-danger { background: #fb7185; color: #2a0810; }
+.ev-modal-cancel { background: var(--panel-2); }
+
+/* 🎯 cover focal-point picker */
+.fp-wrap { margin-top: 10px; }
+.fp-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.fp-hint { font-size: 12px; color: var(--muted); }
+.fp-toggle { display: inline-flex; gap: 4px; }
+.fp-tog { font-size: 12px; padding: 4px 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); border-radius: 20px; cursor: pointer; }
+.fp-tog.on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; font-weight: 700; }
+.fp-frame { position: relative; width: 100%; background-size: cover; background-repeat: no-repeat; border-radius: 10px; border: 1px solid var(--line); cursor: crosshair; overflow: hidden; touch-action: none; }
+.fp-desktop { aspect-ratio: 16 / 7; }   /* matches the wide desktop cover band */
+.fp-mobile { aspect-ratio: 9 / 14; max-width: 240px; }  /* tall mobile cover */
+.fp-dot { position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: #2dd4bf88; box-shadow: 0 0 0 2px #06231f88, 0 2px 8px rgba(0,0,0,.4); transform: translate(-50%, -50%); pointer-events: none; }
+.fp-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
 
 /* 🤖 Vendor AI Chat — history + upsell */
 .ac-head { margin-bottom: 16px; }
