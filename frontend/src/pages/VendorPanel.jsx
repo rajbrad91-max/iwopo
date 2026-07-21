@@ -1104,23 +1104,31 @@ function AlbumDetail({ albumId, onBack }) {
             {favBusy ? (
               <div className="ad-fav-empty">Loading favorites…</div>
             ) : !favData || favData.total === 0 ? (
-              <div className="ad-fav-empty">No favorites yet. When clients ⭐ photos in the gallery, their picks show up here — grouped by the email they used.</div>
+              <div className="ad-fav-empty">No favorites yet. When clients ⭐ photos in the gallery, their picks show up here — grouped by event, then by the email they used.</div>
             ) : (
               <div className="ad-fav-lists">
-                <div className="ad-fav-total">{favData.total} favorite{favData.total === 1 ? '' : 's'} from {favData.lists.length} {favData.lists.length === 1 ? 'person' : 'people'}</div>
-                {favData.lists.map(list => (
-                  <div key={list.email} className="ad-fav-group">
-                    <div className="ad-fav-group-head">
-                      <span className="ad-fav-email">{list.email}</span>
-                      <span className="ad-fav-count">{list.count} photo{list.count === 1 ? '' : 's'}</span>
+                <div className="ad-fav-total">{favData.total} favorite{favData.total === 1 ? '' : 's'} across {favData.events.length} event{favData.events.length === 1 ? '' : 's'}</div>
+                {favData.events.map(ev => (
+                  <div key={ev.event_id ?? 'none'} className="ad-fav-event">
+                    <div className="ad-fav-event-head">
+                      <span className="ad-fav-event-name">🗂️ {ev.event_name}</span>
+                      <span className="ad-fav-count">{ev.count} photo{ev.count === 1 ? '' : 's'}</span>
                     </div>
-                    <div className="ad-fav-grid">
-                      {list.photos.map(ph => (
-                        <div key={ph.photo_id} className="ad-fav-thumb" title={ph.filename}>
-                          <img src={`${api.fileUrl(ph.photo_id, 'thumb')}?token=${token}`} loading="lazy" alt="" />
+                    {ev.lists.map(list => (
+                      <div key={list.email} className="ad-fav-group">
+                        <div className="ad-fav-group-head">
+                          <span className="ad-fav-email">{list.email}</span>
+                          <span className="ad-fav-count">{list.count} photo{list.count === 1 ? '' : 's'}</span>
                         </div>
-                      ))}
-                    </div>
+                        <div className="ad-fav-grid">
+                          {list.photos.map(ph => (
+                            <div key={ph.photo_id} className="ad-fav-thumb" title={ph.filename}>
+                              <img src={`${api.fileUrl(ph.photo_id, 'thumb')}?token=${token}`} loading="lazy" alt="" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

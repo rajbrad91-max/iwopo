@@ -822,6 +822,10 @@
 .ad-fav-modal { max-width: 760px; width: 94vw; max-height: 86vh; overflow-y: auto; }
 .ad-fav-empty { color: var(--muted); font-size: 14px; line-height: 1.6; padding: 24px 4px; text-align: center; }
 .ad-fav-total { color: var(--muted); font-size: 12.5px; margin: 4px 0 16px; }
+.ad-fav-event { margin-bottom: 26px; }
+.ad-fav-event-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
+.ad-fav-event-name { font-weight: 700; font-size: 15px; color: var(--text); }
+.ad-fav-event .ad-fav-group { margin-left: 12px; }
 .ad-fav-group { margin-bottom: 22px; }
 .ad-fav-group-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
 .ad-fav-email { font-weight: 700; font-size: 14px; color: var(--text); word-break: break-all; }

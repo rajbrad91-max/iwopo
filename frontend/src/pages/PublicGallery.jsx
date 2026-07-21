@@ -408,11 +408,14 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
   const current = lightbox !== null ? photos[lightbox] : null;
   const nPicked = picked.size;
-  const nFavs = favs.size;
-  // Collapsed: CSS fits as many circles as the row holds (no dead space); the rest
-  // are hidden and revealed by "More Faces". We render ALL faces and let the grid clip
-  // to one row when collapsed — so the fit is always exact on any screen width.
-  const showScenes = session.events.length > 0 && matchIds === null && !pickedOnly && !favOnly;
+  // favorites are per-event: count only the stars within the currently selected event
+  const favInEvent = allPhotos.filter(p =>
+    favs.has(p.id) && (activeEvent === 'all' || String(p.event_id) === String(activeEvent))
+  );
+  const nFavs = favInEvent.length;
+  // event tabs stay visible during favorites view too, so the client can switch
+  // between each event's own favorites (Jaggo vs Wedding are independent lists).
+  const showScenes = session.events.length > 0 && matchIds === null && !pickedOnly;
 
   return (
     <div className="pg-wrap" style={styleVars}>

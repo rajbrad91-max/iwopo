@@ -429,21 +429,30 @@ router.get('/:id/favorites', requireAuth, async (req, res) => {
     const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
     if (!own[0]) return res.status(404).json({ error: 'Not found' });
     const { rows } = await query(
-      `SELECT f.email, f.photo_id, f.created_at, p.filename
+      `SELECT f.email, f.photo_id, f.created_at, p.filename,
+              p.event_id, e.name AS event_name
          FROM favorites f
          JOIN photos p ON p.id = f.photo_id
+         LEFT JOIN album_events e ON e.id = p.event_id
         WHERE f.album_id = $1
-        ORDER BY f.email, f.created_at`,
+        ORDER BY e.name NULLS FIRST, f.email, f.created_at`,
       [req.params.id]
     );
-    // group into { email, count, photos:[{photo_id, filename, created_at}] }
-    const byEmail = new Map();
+    // group by event → then by email: [{ event_id, event_name, count, lists:[{email,count,photos}] }]
+    const evMap = new Map();
     for (const r of rows) {
-      if (!byEmail.has(r.email)) byEmail.set(r.email, []);
-      byEmail.get(r.email).push({ photo_id: r.photo_id, filename: r.filename, created_at: r.created_at });
+      const key = r.event_id == null ? 'none' : String(r.event_id);
+      if (!evMap.has(key)) evMap.set(key, { event_id: r.event_id, event_name: r.event_name || 'Ungrouped', emails: new Map() });
+      const ev = evMap.get(key);
+      if (!ev.emails.has(r.email)) ev.emails.set(r.email, []);
+      ev.emails.get(r.email).push({ photo_id: r.photo_id, filename: r.filename, created_at: r.created_at });
     }
-    const lists = [...byEmail.entries()].map(([email, photos]) => ({ email, count: photos.length, photos }));
-    res.json({ total: rows.length, lists });
+    const events = [...evMap.values()].map(ev => {
+      const lists = [...ev.emails.entries()].map(([email, photos]) => ({ email, count: photos.length, photos }));
+      const count = lists.reduce((n, l) => n + l.count, 0);
+      return { event_id: ev.event_id, event_name: ev.event_name, count, lists };
+    });
+    res.json({ total: rows.length, events });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
