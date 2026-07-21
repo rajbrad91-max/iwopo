@@ -193,7 +193,9 @@
 }
 .pg-face.is-on .pg-face-n { color: var(--pg-accent); font-weight: 600; }
 
-.pg-people-acts { display: flex; gap: 14px 10px; align-items: flex-start; flex: 0 0 auto; }
+/* faces take the available width; action circles pin to the right edge, always */
+.pg-faces { flex: 1 1 auto; }
+.pg-people-acts { display: flex; gap: 14px 10px; align-items: flex-start; flex: 0 0 auto; margin-left: auto; padding-left: 10px; }
 
 /* ── 🤳 find-me popup ── */
 .pg-modal {
@@ -276,6 +278,7 @@
 .pg-facebtn.is-on .pg-facebtn-lbl { color: var(--pg-accent); font-weight: 600; }
 
 .pg-ico-svg { width: 22px; height: 22px; flex: 0 0 auto; }
+.pg-facebtn-ic .pg-ico-svg { width: 34px; height: 34px; }
 
 .pg-note {
   padding: 22px 32px 0;
@@ -601,7 +604,7 @@
   }
   .pg-people { padding: 14px; }
   .pg-facebtn .pg-facebtn-ic { width: 60px; height: 60px; }
-  .pg-ico-svg { width: 20px; height: 20px; }
+  .pg-facebtn-ic .pg-ico-svg { width: 30px; height: 30px; }
   .pg-face img { width: 60px; height: 60px; }
   .pg-faces { gap: 11px; }
   .pg-scenes { margin: 0 14px; padding: 26px 0 4px; gap: 18px; }
@@ -624,6 +627,7 @@
 @media (max-width: 560px) {
   .pg-people-acts { gap: 10px; }
   .pg-facebtn .pg-facebtn-ic { width: 56px; height: 56px; }
+  .pg-facebtn-ic .pg-ico-svg { width: 28px; height: 28px; }
   .pg-face img { width: 56px; height: 56px; }
   .pg-faces { gap: 10px; }
   .pg-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 112px; }
@@ -634,7 +638,7 @@
 /* very narrow (folded phones ~280-360px) */
 @media (max-width: 380px) {
   .pg-facebtn .pg-facebtn-ic { width: 50px; height: 50px; }
-  .pg-ico-svg { width: 18px; height: 18px; }
+  .pg-facebtn-ic .pg-ico-svg { width: 26px; height: 26px; }
   .pg-facebtn-lbl { font-size: 10px; }
   .pg-face img { width: 50px; height: 50px; }
   .pg-face-n { font-size: 10px; }
