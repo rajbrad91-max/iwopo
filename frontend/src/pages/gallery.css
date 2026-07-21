@@ -431,6 +431,30 @@
 .pg-lb-star.is-on { color: #ffc94d; }
 .pg-lb-star.is-on .pg-ico-svg { fill: #ffc94d; stroke: #ffc94d; }
 
+/* 🗑️ admin delete button — bottom-right of the tile, red on hover */
+.pg-del {
+  position: absolute; bottom: 8px; right: 8px;
+  width: 30px; height: 30px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.28);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .18s, background .16s, transform .16s;
+}
+.pg-del .pg-ico-svg { width: 17px; height: 17px; }
+.pg-tile:hover .pg-del { opacity: 1; }
+.pg-del:hover { background: #e5484d; transform: scale(1.08); }
+.pg-lb-del:hover { color: #ff6b6e; }
+/* red primary button for destructive confirm */
+.pg-btn-danger { background: #e5484d; color: #fff; }
+.pg-btn-danger:hover { filter: brightness(1.06); }
+/* the "Send to studio" selection action */
+.pg-selbar-btn.is-send { background: var(--pg-accent); color: #fff; font-weight: 600; }
+
 /* ── ✅ selection bar ── */
 .pg-selbar {
   position: fixed;

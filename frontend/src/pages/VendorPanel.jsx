@@ -827,6 +827,9 @@ function AlbumDetail({ albumId, onBack }) {
   const [favModal, setFavModal] = useState(false);      // ⭐ show the client-favorites panel
   const [favData, setFavData] = useState(null);         // { total, lists:[{email,count,photos}] }
   const [favBusy, setFavBusy] = useState(false);
+  const [selModal, setSelModal] = useState(false);      // 📩 show the client's sent selection
+  const [selData, setSelData] = useState(null);
+  const [selBusy, setSelBusy] = useState(false);
   const dropInputRef = useRef(null); // hidden input the big drop zone clicks
   const sentinelRef = useRef(null);
   const workerRef = useRef(null);
@@ -888,6 +891,15 @@ function AlbumDetail({ albumId, onBack }) {
       .then(d => setFavData(d))
       .catch(() => setFavData({ total: 0, lists: [] }))
       .finally(() => setFavBusy(false));
+  }
+
+  // 📩 open the sent-selection panel (what the client's admin sent to the studio)
+  function openSelection() {
+    setSelModal(true); setSelBusy(true); setSelData(null);
+    api.albumSelection(albumId)
+      .then(d => setSelData(d))
+      .catch(() => setSelData({ total: 0, events: [] }))
+      .finally(() => setSelBusy(false));
   }
 
   // reset the infinite-scroll window when switching event tabs
@@ -1029,6 +1041,7 @@ function AlbumDetail({ albumId, onBack }) {
         </div>
         <div className="ad-head-actions">
           <button className="refresh ad-ev-btn" onClick={openFavorites} title="See which photos clients marked as favorites">⭐ Favorites</button>
+          <button className="refresh ad-ev-btn" onClick={openSelection} title="See the photo selection the client sent you">📩 Selection</button>
           {isPerClient && (
             <div className="ad-ev-actions">
               <button className="refresh ad-ev-btn" onClick={openAddEvent} title="Add a new event">➕ Add</button>
@@ -1129,6 +1142,41 @@ function AlbumDetail({ albumId, onBack }) {
                         </div>
                       </div>
                     ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {selModal && (
+        <div className="al-overlay" onClick={() => setSelModal(false)}>
+          <div className="gal-set-modal ad-fav-modal" onClick={e => e.stopPropagation()}>
+            <div className="al-head">
+              <h3 className="al-title">📩 Client's selection</h3>
+              <button className="al-x" onClick={() => setSelModal(false)}>✕</button>
+            </div>
+            {selBusy ? (
+              <div className="ad-fav-empty">Loading selection…</div>
+            ) : !selData || selData.total === 0 ? (
+              <div className="ad-fav-empty">Nothing sent yet. When the client logs in with the admin password, picks photos with the ✓ tool, and clicks “Send to studio”, their final selection appears here — grouped by event.</div>
+            ) : (
+              <div className="ad-fav-lists">
+                <div className="ad-fav-total">{selData.total} photo{selData.total === 1 ? '' : 's'} selected across {selData.events.length} event{selData.events.length === 1 ? '' : 's'}</div>
+                {selData.events.map(ev => (
+                  <div key={ev.event_id ?? 'none'} className="ad-fav-event">
+                    <div className="ad-fav-event-head">
+                      <span className="ad-fav-event-name">🗂️ {ev.event_name}</span>
+                      <span className="ad-fav-count">{ev.count} photo{ev.count === 1 ? '' : 's'}</span>
+                    </div>
+                    <div className="ad-fav-grid">
+                      {ev.photos.map(ph => (
+                        <div key={ph.photo_id} className="ad-fav-thumb" title={ph.filename}>
+                          <img src={`${api.fileUrl(ph.photo_id, 'thumb')}?token=${token}`} loading="lazy" alt="" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

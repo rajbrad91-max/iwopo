@@ -456,4 +456,30 @@ router.get('/:id/favorites', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 📩 the selection the client's admin sent to the studio, grouped by event.
+router.get('/:id/selection', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
+    if (!own[0]) return res.status(404).json({ error: 'Not found' });
+    const { rows } = await query(
+      `SELECT s.photo_id, s.created_at, p.filename, p.event_id, e.name AS event_name
+         FROM selections s
+         JOIN photos p ON p.id = s.photo_id
+         LEFT JOIN album_events e ON e.id = p.event_id
+        WHERE s.album_id = $1
+        ORDER BY e.name NULLS FIRST, p.filename`,
+      [req.params.id]
+    );
+    const evMap = new Map();
+    for (const r of rows) {
+      const key = r.event_id == null ? 'none' : String(r.event_id);
+      if (!evMap.has(key)) evMap.set(key, { event_id: r.event_id, event_name: r.event_name || 'Ungrouped', photos: [] });
+      evMap.get(key).photos.push({ photo_id: r.photo_id, filename: r.filename, created_at: r.created_at });
+    }
+    const events = [...evMap.values()].map(ev => ({ ...ev, count: ev.photos.length }));
+    res.json({ total: rows.length, events });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;

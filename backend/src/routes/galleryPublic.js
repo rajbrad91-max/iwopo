@@ -322,6 +322,52 @@ router.get('/:token/face/:clusterId/photos', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 📩 admin-only: save the admin's selection to the studio, and delete photos.
+// These require the view token to have role 'admin' (admin gallery password).
+function requireAdmin(vt, albumId) {
+  const rec = checkViewToken(vt, albumId);
+  return rec && rec.role === 'admin' ? rec : null;
+}
+
+// admin sends their selection → replace this album's saved selection
+router.post('/:token/selection', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (!requireAdmin(req.query.vt, a.id)) return res.status(403).json({ error: 'Admin access required' });
+    const ids = Array.isArray(req.body?.photo_ids) ? req.body.photo_ids.map(n => parseInt(n, 10)).filter(Boolean) : [];
+    // only keep ids that actually belong to this album
+    const { rows: valid } = await query('SELECT id FROM photos WHERE album_id=$1', [a.id]);
+    const allow = new Set(valid.map(r => r.id));
+    const keep = ids.filter(id => allow.has(id));
+    // replace the album's selection with the new set
+    await query('DELETE FROM selections WHERE album_id=$1', [a.id]);
+    for (const id of keep) {
+      await query('INSERT INTO selections (album_id, photo_id) VALUES ($1,$2) ON CONFLICT (album_id, photo_id) DO NOTHING', [a.id, id]);
+    }
+    res.json({ ok: true, count: keep.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// admin deletes a photo (all 3 file tiers + DB row; cascades favorites/selections)
+router.delete('/:token/photo/:photoId', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (!requireAdmin(req.query.vt, a.id)) return res.status(403).json({ error: 'Admin access required' });
+    const { rows } = await query(
+      'SELECT storage_path, preview_path, thumb_path FROM photos WHERE id=$1 AND album_id=$2',
+      [req.params.photoId, a.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    await query('DELETE FROM photos WHERE id=$1 AND album_id=$2', [req.params.photoId, a.id]);
+    for (const rel of [rows[0].storage_path, rows[0].preview_path, rows[0].thumb_path]) {
+      if (!rel) continue;
+      try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* already gone — fine */ }
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ⭐ favorites — clients mark photos, saved server-side keyed by album + email.
 // Email is normalized (trim + lowercase) so the same person's list follows them
 // across devices when they re-enter the same address.

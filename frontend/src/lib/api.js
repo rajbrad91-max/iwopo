@@ -202,6 +202,7 @@ export const api = {
     request(`/albums/${albumId}/cover-focus`, { method: 'PUT', body: JSON.stringify({ focus }) }),
   album: (id) => request(`/albums/${id}`),
   albumFavorites: (id) => request(`/albums/${id}/favorites`),
+  albumSelection: (id) => request(`/albums/${id}/selection`),
   deleteAlbum: (id) => request(`/albums/${id}`, { method: 'DELETE' }),
   deletePhoto: (albumId, photoId) => request(`/albums/${albumId}/photos/${photoId}`, { method: 'DELETE' }),
   uploadPhotos: async (albumId, files, eventId) => {
