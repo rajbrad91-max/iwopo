@@ -824,6 +824,9 @@ function AlbumDetail({ albumId, onBack }) {
   const [pending, setPending] = useState([]); // local previews of files still uploading {uid, url, eventId}
   const [dragOver, setDragOver] = useState(false); // drag-and-drop upload zone highlight
   const [lightbox, setLightbox] = useState(null); // index into `visible` of the open full-screen photo
+  const [favModal, setFavModal] = useState(false);      // ⭐ show the client-favorites panel
+  const [favData, setFavData] = useState(null);         // { total, lists:[{email,count,photos}] }
+  const [favBusy, setFavBusy] = useState(false);
   const dropInputRef = useRef(null); // hidden input the big drop zone clicks
   const sentinelRef = useRef(null);
   const workerRef = useRef(null);
@@ -877,6 +880,15 @@ function AlbumDetail({ albumId, onBack }) {
 
   // refresh only the photo list (used mid-upload so new photos appear without resetting the view)
   function reloadPhotos() { return api.album(albumId).then(d => { setPhotos(d.photos || []); }).catch(() => {}); }
+
+  // ⭐ open the client-favorites panel and load favorites grouped by email
+  function openFavorites() {
+    setFavModal(true); setFavBusy(true); setFavData(null);
+    api.albumFavorites(albumId)
+      .then(d => setFavData(d))
+      .catch(() => setFavData({ total: 0, lists: [] }))
+      .finally(() => setFavBusy(false));
+  }
 
   // reset the infinite-scroll window when switching event tabs
   useEffect(() => { setVisibleCount(20); }, [activeEvent]);
@@ -1016,6 +1028,7 @@ function AlbumDetail({ albumId, onBack }) {
           <div className="ad-count">{photos.length} photos{isPerClient ? ` · ${events.length} events` : ''}</div>
         </div>
         <div className="ad-head-actions">
+          <button className="refresh ad-ev-btn" onClick={openFavorites} title="See which photos clients marked as favorites">⭐ Favorites</button>
           {isPerClient && (
             <div className="ad-ev-actions">
               <button className="refresh ad-ev-btn" onClick={openAddEvent} title="Add a new event">➕ Add</button>
@@ -1076,6 +1089,42 @@ function AlbumDetail({ albumId, onBack }) {
                 {evBusy ? '…' : evModal.type === 'add' ? 'Add event' : evModal.type === 'edit' ? 'Save' : 'Delete'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {favModal && (
+        <div className="al-overlay" onClick={() => setFavModal(false)}>
+          <div className="gal-set-modal ad-fav-modal" onClick={e => e.stopPropagation()}>
+            <div className="al-head">
+              <h3 className="al-title">⭐ Client favorites</h3>
+              <button className="al-x" onClick={() => setFavModal(false)}>✕</button>
+            </div>
+
+            {favBusy ? (
+              <div className="ad-fav-empty">Loading favorites…</div>
+            ) : !favData || favData.total === 0 ? (
+              <div className="ad-fav-empty">No favorites yet. When clients ⭐ photos in the gallery, their picks show up here — grouped by the email they used.</div>
+            ) : (
+              <div className="ad-fav-lists">
+                <div className="ad-fav-total">{favData.total} favorite{favData.total === 1 ? '' : 's'} from {favData.lists.length} {favData.lists.length === 1 ? 'person' : 'people'}</div>
+                {favData.lists.map(list => (
+                  <div key={list.email} className="ad-fav-group">
+                    <div className="ad-fav-group-head">
+                      <span className="ad-fav-email">{list.email}</span>
+                      <span className="ad-fav-count">{list.count} photo{list.count === 1 ? '' : 's'}</span>
+                    </div>
+                    <div className="ad-fav-grid">
+                      {list.photos.map(ph => (
+                        <div key={ph.photo_id} className="ad-fav-thumb" title={ph.filename}>
+                          <img src={`${api.fileUrl(ph.photo_id, 'thumb')}?token=${token}`} loading="lazy" alt="" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
