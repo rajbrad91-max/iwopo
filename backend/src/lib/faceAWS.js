@@ -25,12 +25,52 @@ export async function getFaceDescriptorsAWS(imagePath) {
     Attributes: ['DEFAULT'],
   }));
   const faces = out.FaceDetails || [];
-  // store the image bytes (base64) so we can CompareFaces later
-  return faces.map(f => ({
+  if (!faces.length) return [];
+
+  // AWS DetectFaces gives no comparable vector, so we must keep pixels for the
+  // later CompareFaces call. Keep only a small CROP of each face — the previous
+  // version stored the whole full-size photo once per face, so a 3-face photo
+  // held three copies of the same image (~500-900 KB each). On a real wedding
+  // album that ran to hundreds of MB and was enough to break the vendor panel.
+  const meta = await sharp(jpeg).metadata();
+  const W = meta.width || 0, H = meta.height || 0;
+
+  const crops = [];
+  for (const f of faces) {
+    const b = f.BoundingBox || {};
+    let img = null;
+    try {
+      // BoundingBox is fractional (0-1). Pad it so CompareFaces still sees a
+      // whole head rather than a tight rectangle, then clamp to the image.
+      const pad = 0.45;
+      const bw = (b.Width || 0) * W, bh = (b.Height || 0) * H;
+      const cx = ((b.Left || 0) + (b.Width || 0) / 2) * W;
+      const cy = ((b.Top || 0) + (b.Height || 0) / 2) * H;
+      const side = Math.max(bw, bh) * (1 + pad * 2);
+      let left = Math.round(cx - side / 2);
+      let top = Math.round(cy - side / 2);
+      let size = Math.round(side);
+      left = Math.max(0, Math.min(left, Math.max(0, W - 1)));
+      top = Math.max(0, Math.min(top, Math.max(0, H - 1)));
+      size = Math.max(48, Math.min(size, W - left, H - top));
+
+      img = await sharp(jpeg)
+        .extract({ left, top, width: size, height: size })
+        .resize(300, 300, { fit: 'cover' })     // plenty for Rekognition
+        .jpeg({ quality: 82 })
+        .toBuffer();
+    } catch {
+      img = null;   // crop failed (odd geometry) — fall through below
+    }
+    crops.push(img);
+  }
+
+  return faces.map((f, i) => ({
     aws: true,
     box: f.BoundingBox,
     score: f.Confidence,
-    imgB64: jpeg.toString('base64'),   // needed for compare
+    // ~10-20 KB per face instead of ~500-900 KB
+    imgB64: crops[i] ? crops[i].toString('base64') : null,
   }));
 }
 
