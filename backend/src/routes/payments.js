@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -9,9 +9,9 @@ function vid(req) {
   return req.user.vendor_id;
 }
 
+// 🔒 tenancy gate: load a lead and refuse it if it isn't this vendor's
 async function leadFor(req, res, leadId) {
-  const { rows } = await query('SELECT * FROM leads WHERE id=$1', [leadId]);
-  const lead = rows[0];
+  const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
   if (!lead) { res.status(404).json({ error: 'Lead not found' }); return null; }
   if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) {
     res.status(403).json({ error: 'Forbidden' }); return null;
@@ -37,8 +37,11 @@ export async function moneySummary(lead) {
   const finalTotal = Math.max(total - discount, 0);
   const deposit = (Number(lead.deposit_percent) || 0) / 100 * finalTotal;
 
-  const { rows } = await query('SELECT COALESCE(SUM(amount),0) AS paid FROM payments WHERE lead_id=$1', [lead.id]);
-  const paid = Number(rows[0].paid);
+  const agg = await prisma.payments.aggregate({
+    where: { lead_id: lead.id },
+    _sum: { amount: true },
+  });
+  const paid = Number(agg._sum.amount || 0);   // Decimal → number, same as the old SUM
 
   return {
     base_total: +total.toFixed(2),
@@ -58,8 +61,10 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
   try {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
-    const { rows: payments } = await query(
-      'SELECT * FROM payments WHERE lead_id=$1 ORDER BY paid_at DESC', [lead.id]);
+    const payments = await prisma.payments.findMany({
+      where: { lead_id: lead.id },
+      orderBy: { paid_at: 'desc' },
+    });
     res.json({ payments, summary: await moneySummary(lead) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -71,23 +76,32 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
   try {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
-    await query(
-      `INSERT INTO payments (vendor_id, lead_id, amount, method, note) VALUES ($1,$2,$3,$4,$5)`,
-      [lead.vendor_id, lead.id, Number(amount), method || 'manual', note || null]);
-    const { rows: payments } = await query(
-      'SELECT * FROM payments WHERE lead_id=$1 ORDER BY paid_at DESC', [lead.id]);
+    await prisma.payments.create({
+      data: {
+        vendor_id: lead.vendor_id,             // 🔒 stamped from the owning lead, never the body
+        lead_id: lead.id,
+        amount: Number(amount),
+        method: method || 'manual',
+        note: note || null,
+      },
+    });
+    const payments = await prisma.payments.findMany({
+      where: { lead_id: lead.id },
+      orderBy: { paid_at: 'desc' },
+    });
     res.status(201).json({ payments, summary: await moneySummary(lead) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE /api/payments/:id
 router.delete('/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
   try {
-    const { rows } = await query('SELECT * FROM payments WHERE id=$1', [req.params.id]);
-    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && rows[0].vendor_id !== vid(req))
-      return res.status(403).json({ error: 'Forbidden' });
-    await query('DELETE FROM payments WHERE id=$1', [req.params.id]);
+    const pay = await prisma.payments.findUnique({ where: { id } });
+    if (!pay) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && pay.vendor_id !== vid(req))
+      return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
+    await prisma.payments.delete({ where: { id } });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -98,15 +112,16 @@ router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
   try {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
-    const { rows } = await query(
-      `UPDATE leads SET
-        deposit_percent=COALESCE($1,deposit_percent),
-        discount_percent=COALESCE($2,discount_percent),
-        price_override=$3, updated_at=NOW()
-       WHERE id=$4 RETURNING *`,
-      [deposit_percent ?? null, discount_percent ?? null,
-       price_override === undefined ? lead.price_override : price_override, lead.id]);
-    res.json({ lead: rows[0], summary: await moneySummary(rows[0]) });
+    // COALESCE($n, col): only overwrite what was supplied. price_override is
+    // deliberately settable to null (clearing a manual price).
+    const data = { updated_at: new Date() };
+    if (deposit_percent !== undefined && deposit_percent !== null) data.deposit_percent = Number(deposit_percent);
+    if (discount_percent !== undefined && discount_percent !== null) data.discount_percent = Number(discount_percent);
+    if (price_override !== undefined) {
+      data.price_override = (price_override === null || price_override === '') ? null : Number(price_override);
+    }
+    const updated = await prisma.leads.update({ where: { id: lead.id }, data });
+    res.json({ lead: updated, summary: await moneySummary(updated) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -115,10 +130,11 @@ router.put('/lead/:leadId/web-payment', requireAuth, async (req, res) => {
   try {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
-    const { rows } = await query(
-      'UPDATE leads SET web_payment_enabled=$1, updated_at=NOW() WHERE id=$2 RETURNING *',
-      [!!req.body.enabled, lead.id]);
-    res.json({ web_payment_enabled: rows[0].web_payment_enabled });
+    const updated = await prisma.leads.update({
+      where: { id: lead.id },
+      data: { web_payment_enabled: !!req.body.enabled, updated_at: new Date() },
+    });
+    res.json({ web_payment_enabled: updated.web_payment_enabled });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
