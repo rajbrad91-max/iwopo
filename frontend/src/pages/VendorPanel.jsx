@@ -587,19 +587,23 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
 
             <section className="gal-card-sec">
               <h4 className="gal-sec-h">🔑 Access</h4>
+              <div className="gal-sec-note gal-pw-hint">
+                A prefix is added in front of the last 4 characters of the password —
+                e.g. prefix <code>susan</code> + <code>4821</code> = <code>susan4821</code>.
+              </div>
               <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
                 <div className="gal-pw-wrap">
                   <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
                 </div>
-                <input className="gal-prefix gal-prefix-full" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix" title="Guest password prefix" />
+                <input className="gal-prefix gal-prefix-full" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix (optional)" title="Added in front of the last 4 characters" />
               </div>
               <div><label className="lbl">🔐 Admin password</label>
                 <div className="gal-pw-wrap">
                   <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
                 </div>
-                <input className="gal-prefix gal-prefix-full" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix" title="Admin password prefix" />
+                <input className="gal-prefix gal-prefix-full" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix (optional)" title="Added in front of the last 4 characters" />
               </div>
               <div className="gal-sec-note">Guests can view, download and favorite. The admin password also unlocks selecting, sending a selection, and deleting.</div>
             </section>

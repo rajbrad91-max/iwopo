@@ -888,6 +888,12 @@
 .gal-sec-h { margin: 0; font-size: 13px; font-weight: 800; color: var(--text); letter-spacing: .02em; }
 .gal-sec-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .gal-sec-note { font-size: 11.5px; color: var(--muted); line-height: 1.55; margin-top: auto; padding-top: 4px; }
+/* the prefix explainer sits at the TOP of the card, not pushed to the bottom */
+.gal-pw-hint { margin-top: 0; padding-top: 0; }
+.gal-pw-hint code {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+  padding: 1px 5px; font-size: 11px; color: var(--text);
+}
 .gal-prefix-full { width: 100%; margin-top: 6px; }
 .gal-cover-btn { margin-top: auto; }
 .gal-cover-empty {
