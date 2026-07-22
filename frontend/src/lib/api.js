@@ -33,6 +33,27 @@ export function getUser() {
   return raw ? JSON.parse(raw) : null;
 }
 
+// 🔎 Read the role baked into the JWT itself, rather than trusting the copy of
+// the user we stashed in localStorage. Both panels share one `iwopo_token` key,
+// so logging into the vendor panel overwrites a super-admin token — the admin
+// screens would still render while every request went out as a vendor and came
+// back "Super admin only". Comparing the two catches that.
+function roleFromToken() {
+  const t = getToken();
+  if (!t) return null;
+  try {
+    const payload = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.role || null;
+  } catch { return null; }
+}
+
+/** True when the stored user and the actual token disagree about who you are. */
+export function sessionMismatch() {
+  const stored = getUser()?.role;
+  const actual = roleFromToken();
+  return !!(stored && actual && stored !== actual);
+}
+
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   const token = getToken();
@@ -40,6 +61,16 @@ async function request(path, options = {}) {
 
   const res = await fetch(BASE + path, { ...options, headers });
   const data = await res.json().catch(() => ({}));
+
+  // 🔑 an expired/invalid token, or a role mismatch on an admin-only route,
+  // means this session can't do what the UI is showing. Clear it and send the
+  // person back to login instead of leaving them stuck on a dead screen.
+  if (res.status === 401 || (res.status === 403 && sessionMismatch())) {
+    clearSession();
+    window.location.reload();
+    throw new Error('Your session expired — please log in again.');
+  }
+
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
 }

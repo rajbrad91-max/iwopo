@@ -14,10 +14,17 @@ import VendorGallery from './pages/VendorGallery';
 import Vote from './pages/Vote';
 import KnowledgeFill from './pages/KnowledgeFill';
 import ResetPassword from './pages/ResetPassword';
-import { getUser } from './lib/api';
+import { getUser, sessionMismatch, clearSession } from './lib/api';
 
 export default function App() {
-  const [user, setUser] = useState(getUser());
+  // 🔑 If the stored user and the actual token disagree (e.g. logging into the
+  // vendor panel overwrote a super-admin token in the same browser), the saved
+  // user is stale — drop it so we show the login screen rather than admin
+  // screens that would 403 on every request.
+  const [user, setUser] = useState(() => {
+    if (sessionMismatch()) { clearSession(); return null; }
+    return getUser();
+  });
   const [showLogin, setShowLogin] = useState(false);
   // re-render on Back/Forward so URL-driven routes (e.g. /panel ↔ /) stay in sync
   const [, forceUrlTick] = useState(0);
