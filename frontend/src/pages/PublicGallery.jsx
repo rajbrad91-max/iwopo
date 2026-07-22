@@ -60,6 +60,8 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [sendMsg, setSendMsg] = useState('');
   const [delPhoto, setDelPhoto] = useState(null);       // photo id pending delete-confirmation
   const [delBusy, setDelBusy] = useState(false);
+  const [favBulkBusy, setFavBulkBusy] = useState(false); // bulk "Favorite" on the selection
+  const [delPicked, setDelPicked] = useState(false);     // bulk delete confirmation open
   const [slideshow, setSlideshow] = useState(false);
   const [faces, setFaces] = useState([]);           // face circles, most photos first
   const [activeFace, setActiveFace] = useState(null);
@@ -312,8 +314,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
       if (r.ok) { const d = await r.json(); existing = new Set(d.photo_ids || []); }
     } catch { /* ignore */ }
     if (pendingFav != null) {
-      // opened by tapping a star → add that star
-      existing.add(pendingFav); saveFav(pendingFav, email, true);
+      // opened by starring — one photo, or a whole selection (array)
+      const ids = Array.isArray(pendingFav) ? pendingFav : [pendingFav];
+      for (const id of ids) { existing.add(id); saveFav(id, email, true); }
     } else {
       // opened via the "Favorites" button → switch into favorites view (resume list)
       setPickedOnly(false); setFavOnly(true);
@@ -321,6 +324,41 @@ export default function PublicGallery({ token, embedded, onBack }) {
     setFavs(existing);
     setFavModalOpen(false);
     setPendingFav(null);
+  }
+
+  // ⭐ favorite every photo in the current selection (asks for email once if needed)
+  async function favoritePicked() {
+    if (!picked.size) return;
+    const ids = [...picked];
+    if (!favEmail) { setPendingFav(ids); setFavErr(''); setFavEmailInput(''); setFavModalOpen(true); return; }
+    setFavBulkBusy(true);
+    try {
+      const next = new Set(favs);
+      for (const id of ids) { if (!next.has(id)) { next.add(id); await saveFav(id, favEmail, true); } }
+      setFavs(next);
+      setSendMsg(`${ids.length} photo${ids.length === 1 ? '' : 's'} added to your favorites.`);
+    } finally { setFavBulkBusy(false); }
+  }
+
+  // 🗑️ delete every photo in the current selection (admin only, confirmed first)
+  async function confirmDeletePicked() {
+    const ids = [...picked];
+    if (!ids.length) { setDelPicked(false); return; }
+    setDelBusy(true);
+    let ok = 0;
+    try {
+      for (const id of ids) {
+        try {
+          const r = await fetch(`${API}/${token}/photo/${id}?vt=${session.vt}`, { method: 'DELETE' });
+          if (r.ok) ok++;
+        } catch { /* skip this one */ }
+      }
+      const gone = new Set(ids);
+      setSession(s => s ? { ...s, photos: (s.photos || []).filter(p => !gone.has(p.id)) } : s);
+      setFavs(prev => new Set([...prev].filter(id => !gone.has(id))));
+      clearPicked();
+      setSendMsg(`${ok} photo${ok === 1 ? '' : 's'} deleted.`);
+    } finally { setDelBusy(false); setDelPicked(false); }
   }
 
   async function onSelfie(e) {
@@ -533,6 +571,23 @@ export default function PublicGallery({ token, embedded, onBack }) {
         </div>
       )}
 
+      {/* 🗑️ bulk delete confirmation (admin) */}
+      {delPicked && (
+        <div className="pg-modal" onClick={() => !delBusy && setDelPicked(false)}>
+          <div className="pg-modal-card" onClick={e => e.stopPropagation()}>
+            <button type="button" className="pg-modal-x" onClick={() => !delBusy && setDelPicked(false)} title="Close">✕</button>
+            <h2 className="pg-modal-title">Delete {nPicked} photo{nPicked === 1 ? '' : 's'}?</h2>
+            <p className="pg-modal-sub">This permanently removes the selected photo{nPicked === 1 ? '' : 's'} from the gallery. It can't be undone.</p>
+            <div className="pg-modal-acts">
+              <button className="pg-btn pg-btn-danger" onClick={confirmDeletePicked} disabled={delBusy}>
+                {delBusy ? 'Deleting…' : `Delete ${nPicked} photo${nPicked === 1 ? '' : 's'}`}
+              </button>
+              <button className="pg-btn is-ghost" onClick={() => setDelPicked(false)} disabled={delBusy}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div ref={gridRef} />
 
       {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
@@ -629,28 +684,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
               alt=""
               onLoad={e => noteShape(p.id, e.currentTarget)}
             />
-            {isAdmin && (
-              <button
-                className="pg-check"
-                onClick={e => { e.stopPropagation(); togglePick(p.id); }}
-                aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
-                title={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
-              >✓</button>
-            )}
             <button
-              className={`pg-star ${favs.has(p.id) ? 'is-on' : ''}`}
-              onClick={e => { e.stopPropagation(); toggleFav(p.id); }}
-              aria-label={favs.has(p.id) ? 'Remove from favorites' : 'Add to favorites'}
-              title={favs.has(p.id) ? 'Remove from favorites' : 'Add to favorites'}
-            >{IconStar}</button>
-            {isAdmin && (
-              <button
-                className="pg-del"
-                onClick={e => { e.stopPropagation(); askDeletePhoto(p.id); }}
-                aria-label="Delete photo"
-                title="Delete this photo from the gallery"
-              >{IconTrash}</button>
-            )}
+              className="pg-check"
+              onClick={e => { e.stopPropagation(); togglePick(p.id); }}
+              aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
+              title={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
+            >✓</button>
           </figure>
         ))}
       </div>
@@ -659,19 +698,29 @@ export default function PublicGallery({ token, embedded, onBack }) {
         <div className="pg-grid-end">No more images to display. (Total Images: {photos.length})</div>
       )}
 
-      {isAdmin && nPicked > 0 && (
+      {nPicked > 0 && (
         <div className="pg-selbar">
           <span className="pg-selbar-n">{nPicked} selected</span>
           <div className="pg-selbar-acts">
             <button className="pg-selbar-btn" onClick={() => setPickedOnly(v => !v)}>
               {pickedOnly ? 'Show all' : 'View selected'}
             </button>
+            <button className="pg-selbar-btn" onClick={favoritePicked} disabled={favBulkBusy}>
+              {favBulkBusy ? 'Saving…' : 'Favorite'}
+            </button>
             <button className="pg-selbar-btn" onClick={downloadPicked} disabled={zipBusy === 'picked'}>
               {zipBusy === 'picked' ? 'Downloading…' : 'Download'}
             </button>
-            <button className="pg-selbar-btn is-send" onClick={sendSelection} disabled={sendBusy}>
-              {sendBusy ? 'Sending…' : 'Send to studio'}
-            </button>
+            {isAdmin && (
+              <button className="pg-selbar-btn is-send" onClick={sendSelection} disabled={sendBusy}>
+                {sendBusy ? 'Sending…' : 'Send to studio'}
+              </button>
+            )}
+            {isAdmin && (
+              <button className="pg-selbar-btn is-danger" onClick={() => setDelPicked(true)} disabled={delBusy}>
+                Delete
+              </button>
+            )}
             <button className="pg-selbar-btn is-quiet" onClick={clearPicked}>Clear</button>
           </div>
         </div>
