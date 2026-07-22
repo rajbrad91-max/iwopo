@@ -312,12 +312,19 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     if (!a) return res.status(404).end();
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
 
+    // NOTE: face_clusters.cover_photo_id has no FK, so Prisma generates no
+    // relation for it — the cover photo must be fetched as a second query.
     const cluster = await prisma.face_clusters.findFirst({
       where: { id: Number(req.params.clusterId), album_id: a.id },   // 🔒 cluster must be in THIS album
-      select: { cover_box: true, photos: { select: { preview_path: true } } },
+      select: { cover_box: true, cover_photo_id: true },
     });
-    if (!cluster || !cluster.photos) return res.status(404).end();
-    const c = { cover_box: cluster.cover_box, preview_path: cluster.photos.preview_path };
+    if (!cluster?.cover_photo_id) return res.status(404).end();
+    const coverPhoto = await prisma.photos.findFirst({
+      where: { id: cluster.cover_photo_id, album_id: a.id },         // 🔒 still scoped to this album
+      select: { preview_path: true },
+    });
+    if (!coverPhoto?.preview_path) return res.status(404).end();
+    const c = { cover_box: cluster.cover_box, preview_path: coverPhoto.preview_path };
 
     const full = path.join(ROOT, c.preview_path);
     if (!fs.existsSync(full)) return res.status(404).end();
