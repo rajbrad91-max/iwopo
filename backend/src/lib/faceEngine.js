@@ -12,6 +12,17 @@ faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODELS = path.join(__dirname, '..', '..', 'models');
 
+// Detector confidence floor. face-api's default is 0.5, which was dropping
+// genuine faces that AWS Rekognition picked up — typically someone turned
+// slightly away or further from the camera. Measured on a real wedding set:
+//   0.5 (default) → 14 faces, 4 people
+//   0.4           → 15 faces, 6 people   ← matches AWS exactly
+//   0.3 / 0.2     → identical to 0.4, so 0.4 is not a knife-edge value
+// A missed face is worse than it sounds: it can also be the only link between
+// two photos of the same person, so one miss can lose a whole face circle.
+const MIN_CONFIDENCE = 0.4;
+const MAX_RESULTS = 100;   // a big group shot can legitimately have many faces
+
 let ready = false;
 async function init() {
   if (ready) return;
@@ -21,6 +32,13 @@ async function init() {
   ready = true;
 }
 
+function detectorOptions() {
+  return new faceapi.SsdMobilenetv1Options({
+    minConfidence: MIN_CONFIDENCE,
+    maxResults: MAX_RESULTS,
+  });
+}
+
 // Get all face descriptors (128-float vectors) from an image file
 export async function getFaceDescriptors(imagePath) {
   await init();
@@ -28,7 +46,7 @@ export async function getFaceDescriptors(imagePath) {
   const jpegBuf = await sharp(imagePath).jpeg().toBuffer();
   const img = await canvas.loadImage(jpegBuf);
   const results = await faceapi
-    .detectAllFaces(img)
+    .detectAllFaces(img, detectorOptions())
     .withFaceLandmarks()
     .withFaceDescriptors();
   return results.map(r => ({

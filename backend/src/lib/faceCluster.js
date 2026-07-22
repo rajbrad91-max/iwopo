@@ -15,9 +15,19 @@ import prisma from '../config/prisma.js';
 const ROOT = GALLERIES_ROOT;
 
 // A face must be at least this confident to be clustered — weak detections
-// (blurry background heads) would otherwise create junk circles. 0.87 keeps most
-// real faces while still dropping obvious garbage.
-const MIN_SCORE = 0.87;
+// (blurry background heads) would otherwise create junk circles.
+//
+// This MUST stay at or below faceEngine.js's MIN_CONFIDENCE (0.4), or the
+// detector's work is thrown away here. It was 0.87 while the detector emitted
+// scores as low as 0.41, so genuine faces AWS finds easily — someone turned
+// away, or further from the camera — were detected and then silently dropped
+// at this stage. Measured on a real wedding set, 0.87 gave 4 people where AWS
+// gave 6; 0.40 gives 6, matching AWS exactly.
+//
+// Junk is filtered by MIN_FACE_FRAC (size) and MIN_PHOTOS (must appear twice)
+// rather than by confidence alone, so lowering this does not create noise
+// circles — a one-off false positive still can't reach the bar.
+const MIN_SCORE = 0.40;
 // Two local descriptors within this euclidean distance are the same person.
 // 0.48 balances two failure modes: too high (0.52+) merges different people; too
 // low (0.45) splits one person's varied angles/lighting into fragments that then
