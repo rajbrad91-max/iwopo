@@ -1,6 +1,6 @@
 import express from 'express';
 import crypto from 'crypto';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
 
@@ -15,8 +15,9 @@ function ipOf(req) {
   return (fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress || '').replace('::ffff:', '');
 }
 async function audit(contractId, event, ip, meta) {
-  await query('INSERT INTO contract_audit (contract_id, event, ip, meta) VALUES ($1,$2,$3,$4)',
-    [contractId, event, ip || null, meta ? JSON.stringify(meta) : null]);
+  await prisma.contract_audit.create({
+    data: { contract_id: contractId, event, ip: ip || null, meta: meta ?? null },
+  });
 }
 
 // 🔤 Fill placeholders from lead + package + money
@@ -49,147 +50,201 @@ async function fillPlaceholders(text, lead, businessName) {
 
 /* ───────── 📑 TEMPLATES ───────── */
 router.get('/templates', requireAuth, async (req, res) => {
-  const v = vid(req);
-  if (!v) return res.status(400).json({ error: 'No vendor' });
-  const { rows } = await query('SELECT * FROM contract_templates WHERE vendor_id=$1 ORDER BY id', [v]);
-  res.json({ templates: rows });
+  try {
+    const v = vid(req);
+    if (!v) return res.status(400).json({ error: 'No vendor' });
+    const templates = await prisma.contract_templates.findMany({
+      where: { vendor_id: Number(v) },          // 🔒 tenancy
+      orderBy: { id: 'asc' },
+    });
+    res.json({ templates });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/templates', requireAuth, async (req, res) => {
-  const v = vid(req);
-  if (!v) return res.status(400).json({ error: 'No vendor' });
-  const { name, event_type, header, body, legal_terms } = req.body;
-  const { rows } = await query(
-    `INSERT INTO contract_templates (vendor_id, name, event_type, header, body, legal_terms)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [v, name || 'My Contract', event_type || null, header || '', body || '', legal_terms || '']);
-  res.status(201).json({ template: rows[0] });
+  try {
+    const v = vid(req);
+    if (!v) return res.status(400).json({ error: 'No vendor' });
+    const { name, event_type, header, body, legal_terms } = req.body;
+    const template = await prisma.contract_templates.create({
+      data: {
+        vendor_id: Number(v),                   // 🔒 tenancy
+        name: name || 'My Contract',
+        event_type: event_type || null,
+        header: header || '', body: body || '', legal_terms: legal_terms || '',
+      },
+    });
+    res.status(201).json({ template });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/templates/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const { rows: own } = await query('SELECT vendor_id FROM contract_templates WHERE id=$1', [req.params.id]);
-  if (!own[0]) return res.status(404).json({ error: 'Not found' });
-  if (req.user.role !== 'super_admin' && own[0].vendor_id !== v) return res.status(403).json({ error: 'Forbidden' });
-  const { name, event_type, header, body, legal_terms } = req.body;
-  const { rows } = await query(
-    `UPDATE contract_templates SET name=COALESCE($1,name), event_type=$2,
-      header=COALESCE($3,header), body=COALESCE($4,body), legal_terms=COALESCE($5,legal_terms), updated_at=NOW()
-     WHERE id=$6 RETURNING *`,
-    [name ?? null, event_type ?? null, header ?? null, body ?? null, legal_terms ?? null, req.params.id]);
-  res.json({ template: rows[0] });
+  try {
+    const v = vid(req);
+    const id = Number(req.params.id);
+    const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    const { name, event_type, header, body, legal_terms } = req.body;
+    // COALESCE($n, col): only overwrite what was supplied (event_type is always set)
+    const data = { event_type: event_type ?? null, updated_at: new Date() };
+    if (name !== undefined && name !== null) data.name = name;
+    if (header !== undefined && header !== null) data.header = header;
+    if (body !== undefined && body !== null) data.body = body;
+    if (legal_terms !== undefined && legal_terms !== null) data.legal_terms = legal_terms;
+    const template = await prisma.contract_templates.update({ where: { id }, data });
+    res.json({ template });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete('/templates/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const { rows: own } = await query('SELECT vendor_id FROM contract_templates WHERE id=$1', [req.params.id]);
-  if (!own[0]) return res.status(404).json({ error: 'Not found' });
-  if (req.user.role !== 'super_admin' && own[0].vendor_id !== v) return res.status(403).json({ error: 'Forbidden' });
-  await query('DELETE FROM contract_templates WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const v = vid(req);
+    const id = Number(req.params.id);
+    const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    await prisma.contract_templates.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /* ───────── 📄 CONTRACTS (vendor side) ───────── */
 // all my contracts (for sidebar tab)
 router.get('/', requireAuth, async (req, res) => {
-  const v = vid(req);
-  if (!v && req.user.role !== 'super_admin') return res.status(400).json({ error: 'No vendor' });
-  const { rows } = v
-    ? await query(
-      `SELECT c.*, l.name AS client_name, l.event_type AS lead_event FROM contracts c
-       JOIN leads l ON l.id=c.lead_id WHERE c.vendor_id=$1 ORDER BY c.created_at DESC`, [v])
-    : await query(
-      `SELECT c.*, l.name AS client_name, l.event_type AS lead_event FROM contracts c
-       JOIN leads l ON l.id=c.lead_id ORDER BY c.created_at DESC`);
-  res.json({ contracts: rows });
+  try {
+    const v = vid(req);
+    if (!v && req.user.role !== 'super_admin') return res.status(400).json({ error: 'No vendor' });
+    const rows = await prisma.contracts.findMany({
+      where: v ? { vendor_id: Number(v) } : {},  // 🔒 tenancy (super_admin may span vendors)
+      orderBy: { created_at: 'desc' },
+      include: { leads: { select: { name: true, event_type: true } } },
+    });
+    const contracts = rows.map(({ leads, ...c }) => ({
+      ...c, client_name: leads?.name ?? null, lead_event: leads?.event_type ?? null,
+    }));
+    res.json({ contracts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/lead/:leadId', requireAuth, async (req, res) => {
-  const { rows: leads } = await query('SELECT vendor_id FROM leads WHERE id=$1', [req.params.leadId]);
-  if (!leads[0]) return res.status(404).json({ error: 'Lead not found' });
-  if (req.user.role !== 'super_admin' && leads[0].vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });
-  const { rows } = await query('SELECT * FROM contracts WHERE lead_id=$1 ORDER BY created_at DESC', [req.params.leadId]);
-  res.json({ contracts: rows });
+  try {
+    const leadId = Number(req.params.leadId);
+    const lead = await prisma.leads.findUnique({ where: { id: leadId }, select: { vendor_id: true } });
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    const contracts = await prisma.contracts.findMany({
+      where: { lead_id: leadId },
+      orderBy: { created_at: 'desc' },
+    });
+    res.json({ contracts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // create from raw text OR template (template_id) — placeholders auto-filled
 router.post('/lead/:leadId', requireAuth, async (req, res) => {
-  const { title, body, template_id } = req.body;
-  const { rows: leads } = await query('SELECT * FROM leads WHERE id=$1', [req.params.leadId]);
-  const lead = leads[0];
-  if (!lead) return res.status(404).json({ error: 'Lead not found' });
-  if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { title, body, template_id } = req.body;
+    const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
-  let text = body, ctTitle = title || 'Service Agreement';
-  if (template_id) {
-    const { rows: t } = await query('SELECT * FROM contract_templates WHERE id=$1 AND vendor_id=$2', [template_id, lead.vendor_id]);
-    if (!t[0]) return res.status(400).json({ error: 'Template not found' });
-    text = [t[0].header, t[0].body, t[0].legal_terms].filter(Boolean).join('\n\n');
-    ctTitle = title || t[0].name;
-  }
-  if (!text || !text.trim()) return res.status(400).json({ error: 'Contract text required' });
+    let text = body, ctTitle = title || 'Service Agreement';
+    if (template_id) {
+      const t = await prisma.contract_templates.findFirst({
+        where: { id: Number(template_id), vendor_id: lead.vendor_id },   // 🔒 tenancy
+      });
+      if (!t) return res.status(400).json({ error: 'Template not found' });
+      text = [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+      ctTitle = title || t.name;
+    }
+    if (!text || !text.trim()) return res.status(400).json({ error: 'Contract text required' });
 
-  const { rows: v } = await query('SELECT business_name FROM vendors WHERE id=$1', [lead.vendor_id]);
-  const filled = await fillPlaceholders(text, lead, v[0]?.business_name);
+    const vendor = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });
+    const filled = await fillPlaceholders(text, lead, vendor?.business_name);
 
-  const token = crypto.randomBytes(24).toString('hex');
-  const { rows } = await query(
-    `INSERT INTO contracts (vendor_id, lead_id, token, title, body, status)
-     VALUES ($1,$2,$3,$4,$5,'sent') RETURNING *`,
-    [lead.vendor_id, lead.id, token, ctTitle, filled]);
-  await audit(rows[0].id, 'created', ipOf(req));
-  res.status(201).json({ contract: rows[0] });
+    const contract = await prisma.contracts.create({
+      data: {
+        vendor_id: lead.vendor_id,             // 🔒 stamped from the owning lead
+        lead_id: lead.id,
+        token: crypto.randomBytes(24).toString('hex'),
+        title: ctTitle, body: filled, status: 'sent',
+      },
+    });
+    await audit(contract.id, 'created', ipOf(req));
+    res.status(201).json({ contract });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 👁️ Preview a contract for a lead — auto-picks template, fills placeholders, no save
 router.get('/preview/:leadId', requireAuth, async (req, res) => {
-  const { rows: leads } = await query('SELECT * FROM leads WHERE id=$1', [req.params.leadId]);
-  const lead = leads[0];
-  if (!lead) return res.status(404).json({ error: 'Lead not found' });
-  if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
-  // pick template: match event_type first, else the first template
-  const { rows: tpls } = await query('SELECT * FROM contract_templates WHERE vendor_id=$1 ORDER BY id', [lead.vendor_id]);
-  if (!tpls.length) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
-  const t = tpls.find(x => x.event_type && lead.event_type && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || tpls[0];
+    // pick template: match event_type first, else the first template
+    const tpls = await prisma.contract_templates.findMany({
+      where: { vendor_id: lead.vendor_id },     // 🔒 tenancy
+      orderBy: { id: 'asc' },
+    });
+    if (!tpls.length) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
+    const t = tpls.find(x => x.event_type && lead.event_type && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || tpls[0];
 
-  const text = [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
-  const { rows: v } = await query('SELECT business_name FROM vendors WHERE id=$1', [lead.vendor_id]);
-  const filled = await fillPlaceholders(text, lead, v[0]?.business_name);
-  res.json({ title: t.name, body: filled, template_name: t.name });
+    const text = [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+    const vendor = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });
+    const filled = await fillPlaceholders(text, lead, vendor?.business_name);
+    res.json({ title: t.name, body: filled, template_name: t.name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  const { rows } = await query('SELECT vendor_id, status FROM contracts WHERE id=$1', [req.params.id]);
-  if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-  if (req.user.role !== 'super_admin' && rows[0].vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });
-  if (rows[0].status === 'signed') return res.status(400).json({ error: 'Signed contracts cannot be deleted (audit)' });
-  await query('DELETE FROM contracts WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const id = Number(req.params.id);
+    const c = await prisma.contracts.findUnique({ where: { id }, select: { vendor_id: true, status: true } });
+    if (!c) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && c.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (c.status === 'signed') return res.status(400).json({ error: 'Signed contracts cannot be deleted (audit)' });
+    await prisma.contracts.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // audit trail for a contract
 router.get('/:id/audit', requireAuth, async (req, res) => {
-  const { rows: c } = await query('SELECT vendor_id FROM contracts WHERE id=$1', [req.params.id]);
-  if (!c[0]) return res.status(404).json({ error: 'Not found' });
-  if (req.user.role !== 'super_admin' && c[0].vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });
-  const { rows } = await query('SELECT * FROM contract_audit WHERE contract_id=$1 ORDER BY created_at', [req.params.id]);
-  res.json({ audit: rows });
+  try {
+    const id = Number(req.params.id);
+    const c = await prisma.contracts.findUnique({ where: { id }, select: { vendor_id: true } });
+    if (!c) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && c.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    const auditRows = await prisma.contract_audit.findMany({
+      where: { contract_id: id },
+      orderBy: { created_at: 'asc' },
+    });
+    res.json({ audit: auditRows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /* ───────── ✍️ PUBLIC SIGNING ───────── */
 router.get('/sign/:token', async (req, res) => {
-  const { rows } = await query(
-    `SELECT c.id, c.title, c.body, c.status, c.signed_name, c.signed_at, c.initials, c.viewed_at,
-            l.name AS client_name, v.business_name
-     FROM contracts c JOIN leads l ON l.id=c.lead_id JOIN vendors v ON v.id=c.vendor_id
-     WHERE c.token=$1`, [req.params.token]);
-  if (!rows[0]) return res.status(404).json({ error: 'Contract not found' });
-  if (!rows[0].viewed_at) {
-    await query('UPDATE contracts SET viewed_at=NOW() WHERE id=$1', [rows[0].id]);
-    await audit(rows[0].id, 'viewed', ipOf(req));
-  }
-  res.json({ contract: rows[0] });
+  try {
+    const c = await prisma.contracts.findFirst({
+      where: { token: req.params.token },       // the token itself is the access key
+      select: {
+        id: true, title: true, body: true, status: true, signed_name: true,
+        signed_at: true, initials: true, viewed_at: true,
+        leads: { select: { name: true } },
+        vendors: { select: { business_name: true } },
+      },
+    });
+    if (!c) return res.status(404).json({ error: 'Contract not found' });
+    if (!c.viewed_at) {
+      await prisma.contracts.update({ where: { id: c.id }, data: { viewed_at: new Date() } });
+      await audit(c.id, 'viewed', ipOf(req));
+    }
+    const { leads, vendors, ...rest } = c;
+    res.json({ contract: { ...rest, client_name: leads?.name ?? null, business_name: vendors?.business_name ?? null } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // sign: typed name + drawn signature (base64) + initials array
@@ -197,45 +252,67 @@ router.post('/sign/:token', async (req, res) => {
   const { signed_name, signature_data, initials } = req.body;
   if (!signed_name || signed_name.trim().length < 2) return res.status(400).json({ error: 'Type your full name to sign' });
   if (!signature_data) return res.status(400).json({ error: 'Please draw your signature' });
-  const { rows } = await query('SELECT * FROM contracts WHERE token=$1', [req.params.token]);
-  const c = rows[0];
-  if (!c) return res.status(404).json({ error: 'Contract not found' });
-  if (c.status === 'signed') return res.status(400).json({ error: 'Already signed ✅' });
+  try {
+    const c = await prisma.contracts.findFirst({ where: { token: req.params.token } });
+    if (!c) return res.status(404).json({ error: 'Contract not found' });
+    if (c.status === 'signed') return res.status(400).json({ error: 'Already signed ✅' });
 
-  // require all [INITIAL] markers initialed
-  const needed = (c.body.match(/\[INITIAL\]/g) || []).length;
-  const given = Array.isArray(initials) ? initials.filter(Boolean).length : 0;
-  if (needed > 0 && given < needed)
-    return res.status(400).json({ error: `Please tap all ${needed} initial boxes ✍️` });
+    // require all [INITIAL] markers initialed
+    const needed = (c.body.match(/\[INITIAL\]/g) || []).length;
+    const given = Array.isArray(initials) ? initials.filter(Boolean).length : 0;
+    if (needed > 0 && given < needed)
+      return res.status(400).json({ error: `Please tap all ${needed} initial boxes ✍️` });
 
-  const ip = ipOf(req);
-  // 🔐 document hash: body + signer + signature + timestamp
-  const stamp = new Date().toISOString();
-  const docHash = crypto.createHash('sha256')
-    .update(c.body + '|' + signed_name.trim() + '|' + signature_data + '|' + stamp)
-    .digest('hex');
-  const { rows: upd } = await query(
-    `UPDATE contracts SET status='signed', signed_name=$1, signed_ip=$2, signature_data=$3,
-      initials=$4, doc_sha256=$5, signed_at=NOW(), updated_at=NOW() WHERE id=$6 RETURNING *`,
-    [signed_name.trim(), ip, signature_data, JSON.stringify(initials || []), docHash, c.id]);
-  await audit(c.id, 'signed', ip, { signed_name: signed_name.trim(), sha256: docHash });
-  res.json({ contract: upd[0] });
+    const ip = ipOf(req);
+    // 🔐 document hash: body + signer + signature + timestamp
+    const stamp = new Date().toISOString();
+    const docHash = crypto.createHash('sha256')
+      .update(c.body + '|' + signed_name.trim() + '|' + signature_data + '|' + stamp)
+      .digest('hex');
+    const updated = await prisma.contracts.update({
+      where: { id: c.id },
+      data: {
+        status: 'signed', signed_name: signed_name.trim(), signed_ip: ip,
+        signature_data, initials: initials || [], doc_sha256: docHash,
+        signed_at: new Date(), updated_at: new Date(),
+      },
+    });
+    await audit(c.id, 'signed', ip, { signed_name: signed_name.trim(), sha256: docHash });
+    res.json({ contract: updated });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUBLIC: GET /api/contracts/certificate/:token → signing certificate (signed only)
 router.get('/certificate/:token', async (req, res) => {
-  const { rows } = await query(
-    `SELECT c.id, c.title, c.status, c.signed_name, c.signed_ip, c.signed_at, c.viewed_at,
-            c.created_at, c.doc_sha256, c.signature_data, c.initials,
-            l.name AS client_name, l.email AS client_email, l.event_type, l.event_date,
-            v.business_name
-     FROM contracts c JOIN leads l ON l.id=c.lead_id JOIN vendors v ON v.id=c.vendor_id
-     WHERE c.token=$1`, [req.params.token]);
-  if (!rows[0]) return res.status(404).json({ error: 'Contract not found' });
-  if (rows[0].status !== 'signed') return res.status(400).json({ error: 'Certificate available after signing' });
-  const { rows: trail } = await query(
-    'SELECT event, ip, created_at FROM contract_audit WHERE contract_id=$1 ORDER BY created_at', [rows[0].id]);
-  res.json({ certificate: rows[0], audit: trail });
+  try {
+    const c = await prisma.contracts.findFirst({
+      where: { token: req.params.token },       // the token itself is the access key
+      select: {
+        id: true, title: true, status: true, signed_name: true, signed_ip: true,
+        signed_at: true, viewed_at: true, created_at: true, doc_sha256: true,
+        signature_data: true, initials: true,
+        leads: { select: { name: true, email: true, event_type: true, event_date: true } },
+        vendors: { select: { business_name: true } },
+      },
+    });
+    if (!c) return res.status(404).json({ error: 'Contract not found' });
+    if (c.status !== 'signed') return res.status(400).json({ error: 'Certificate available after signing' });
+    const trail = await prisma.contract_audit.findMany({
+      where: { contract_id: c.id },
+      select: { event: true, ip: true, created_at: true },
+      orderBy: { created_at: 'asc' },
+    });
+    const { leads, vendors, ...rest } = c;
+    res.json({
+      certificate: {
+        ...rest,
+        client_name: leads?.name ?? null, client_email: leads?.email ?? null,
+        event_type: leads?.event_type ?? null, event_date: leads?.event_date ?? null,
+        business_name: vendors?.business_name ?? null,
+      },
+      audit: trail,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 export default router;
