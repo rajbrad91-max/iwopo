@@ -762,6 +762,7 @@ model album_faces {
   matched_face_id     Int?
   is_processed        Boolean       @default(false)
   created_at          DateTime      @default(now()) @db.Timestamp(6)
+  portrait_score      Decimal?      @db.Decimal(5, 4)
   albums              albums        @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   album_faces         album_faces?  @relation("album_facesToalbum_faces", fields: [matched_face_id], references: [id], onUpdate: NoAction)
   other_album_faces   album_faces[] @relation("album_facesToalbum_faces")

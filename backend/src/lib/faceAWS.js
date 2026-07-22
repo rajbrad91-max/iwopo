@@ -75,15 +75,29 @@ export async function indexPhotoFaces(albumId, imagePath, externalImageId) {
     CollectionId: collectionIdFor(albumId),
     Image: { Bytes },
     ExternalImageId: String(externalImageId).replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 255),
-    DetectionAttributes: ['DEFAULT'],
+    // ALL (rather than DEFAULT) also returns pose, quality and eyes-open, which
+    // is what lets the gallery choose a front-facing face for the circle instead
+    // of an arbitrary one. Same API call, so no extra cost.
+    DetectionAttributes: ['ALL'],
     MaxFaces: 20,
     QualityFilter: 'AUTO',        // drops blurry / tiny faces before they cost anything
   }));
-  return (res.FaceRecords || []).map(r => ({
-    faceId: r.Face?.FaceId,
-    boundingBox: r.Face?.BoundingBox || null,
-    confidence: r.Face?.Confidence ?? null,
-  })).filter(f => f.faceId);
+  return (res.FaceRecords || []).map(r => {
+    const box = r.Face?.BoundingBox || null;
+    const d = r.FaceDetail || {};
+    return {
+      faceId: r.Face?.FaceId,
+      boundingBox: box,
+      confidence: r.Face?.Confidence ?? null,
+      // portrait-quality inputs (see lib/portraitScore.js)
+      yaw: d.Pose?.Yaw ?? null,
+      pitch: d.Pose?.Pitch ?? null,
+      sharpness: d.Quality?.Sharpness ?? null,
+      brightness: d.Quality?.Brightness ?? null,
+      eyesOpen: d.EyesOpen?.Value ?? null,
+      areaFrac: box ? (box.Width || 0) * (box.Height || 0) : null,
+    };
+  }).filter(f => f.faceId);
 }
 
 /** Everyone in the collection who looks like this already-indexed face. */

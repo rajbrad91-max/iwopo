@@ -5,6 +5,7 @@ import canvas from 'canvas';
 import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { poseFromLandmarks } from './portraitScore.js';
 
 const { Canvas, Image, ImageData } = canvas;
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
@@ -49,11 +50,23 @@ export async function getFaceDescriptors(imagePath) {
     .detectAllFaces(img, detectorOptions())
     .withFaceLandmarks()
     .withFaceDescriptors();
-  return results.map(r => ({
-    descriptor: Array.from(r.descriptor),   // 128 floats → JSON-safe
-    box: r.detection.box,
-    score: r.detection.score,
-  }));
+
+  const imgArea = (img.width || 1) * (img.height || 1);
+
+  return results.map(r => {
+    // landmarks are computed anyway for the descriptor — use them to work out
+    // which way the head is turned, so the gallery can pick a front-facing
+    // face for the circle instead of whichever scored highest.
+    const { yaw, pitch } = poseFromLandmarks(r.landmarks);
+    const b = r.detection.box;
+    return {
+      descriptor: Array.from(r.descriptor),   // 128 floats → JSON-safe
+      box: b,
+      score: r.detection.score,
+      yaw, pitch,
+      areaFrac: (b.width * b.height) / imgArea,
+    };
+  });
 }
 
 // Compare two descriptors → distance (lower = more similar). <0.5 ≈ match

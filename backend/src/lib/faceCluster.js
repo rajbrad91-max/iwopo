@@ -11,6 +11,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../config/prisma.js';
+import { portraitScore } from './portraitScore.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -92,6 +93,8 @@ async function collectFaces(albumId) {
         descriptor: f.descriptor || null,
         box: f.box || null,
         score: f.score ?? 1,
+        // pose + size, used to pick the best portrait for the circle
+        yaw: f.yaw, pitch: f.pitch, areaFrac: f.areaFrac, detScore: f.score,
       });
     }
   }
@@ -166,8 +169,11 @@ export async function clusterAlbum(albumId) {
     const photoIds = [...new Set(g.faces.map(f => f.photo_id))];
     if (photoIds.length < MIN_PHOTOS) continue;
 
-    // the circle uses the clearest face we found for this person
-    const cover = g.faces.reduce((a, b) => (b.score > a.score ? b : a), g.faces[0]);
+    // 🖼️ the circle uses the most PORTRAIT-LIKE face of this person, not simply
+    // the highest detection score. Detection score answers "is this a face?",
+    // which a sharp side-profile can win over a softer front-facing shot.
+    const cover = g.faces.reduce((best, f) =>
+      portraitScore(f) > portraitScore(best) ? f : best, g.faces[0]);
 
     const created = await prisma.face_clusters.create({
       data: {

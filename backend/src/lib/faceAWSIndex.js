@@ -17,6 +17,7 @@ import {
   ensureCollection, indexPhotoFaces, searchByFaceId,
   collectionIdFor, deleteFaces,
 } from './faceAWS.js';
+import { portraitScore } from './portraitScore.js';
 
 const ROOT = GALLERIES_ROOT;
 const MATCH_THRESHOLD = 80;   // AWS similarity %, same as PerfectPoses
@@ -67,6 +68,14 @@ export async function indexAlbumAWS(albumId) {
             // from the photo already on disk, so no extra image is stored
             bounding_box: f.boundingBox ?? undefined,
             confidence: f.confidence ?? undefined,
+            // how good this face is AS A CIRCLE (front-facing, large, sharp).
+            // The best-scoring face of a person becomes their circle.
+            portrait_score: portraitScore({
+              yaw: f.yaw, pitch: f.pitch,
+              sharpness: f.sharpness, brightness: f.brightness,
+              eyesOpen: f.eyesOpen, areaFrac: f.areaFrac,
+              detScore: (f.confidence ?? 100) / 100,
+            }),
           },
         });
       }
@@ -117,8 +126,13 @@ export async function groupAlbumFacesAWS(albumId) {
 
   const faces = await prisma.album_faces.findMany({
     where: { album_id: album.id },
-    select: { id: true, rekognition_face_id: true },
-    orderBy: { id: 'asc' },
+    select: { id: true, rekognition_face_id: true, portrait_score: true },
+    // 🖼️ Work through the best portraits FIRST. Whichever face is processed
+    // first becomes the parent of its group, and the parent is what the client
+    // sees as the circle — so starting with the most front-facing, well-lit
+    // face means the circle is a proper portrait rather than an arbitrary
+    // (often side-on) shot.
+    orderBy: [{ portrait_score: 'desc' }, { id: 'asc' }],
   });
   const byRekId = new Map(faces.map(f => [f.rekognition_face_id, f.id]));
   const done = new Set();
