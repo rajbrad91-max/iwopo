@@ -562,7 +562,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
           <div className="gal-form-h">{edit ? '✏️ Edit Album' : '➕ New Album'}</div>
 
           {/* three grouped cards that share the panel width evenly */}
-          <div className="gal-cards">
+          <div className="gal-form-cards">
 
             <section className="gal-card-sec">
               <h4 className="gal-sec-h">📋 Details</h4>
