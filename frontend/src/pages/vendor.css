@@ -871,17 +871,25 @@
 }
 
 /* 🎯 cover focal-point picker */
-.fp-wrap { margin-top: 10px; }
-.fp-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-.fp-hint { font-size: 12px; color: var(--muted); }
+/* controls on the left, live preview on the right — so neither side is cramped */
+.fp-wrap { margin-top: 10px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.fp-side { display: flex; flex-direction: column; gap: 10px; }
+.fp-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
 .fp-toggle { display: inline-flex; gap: 4px; }
-.fp-tog { font-size: 12px; padding: 4px 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); border-radius: 20px; cursor: pointer; }
+.fp-tog { font-size: 12px; padding: 5px 11px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); border-radius: 20px; cursor: pointer; }
 .fp-tog.on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; font-weight: 700; }
 .fp-frame { position: relative; width: 100%; background-size: cover; background-repeat: no-repeat; border-radius: 10px; border: 1px solid var(--line); cursor: crosshair; overflow: hidden; touch-action: none; }
 .fp-desktop { aspect-ratio: 16 / 7; }   /* matches the wide desktop cover band */
 .fp-mobile { aspect-ratio: 9 / 14; max-width: 240px; }  /* tall mobile cover */
 .fp-dot { position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: #2dd4bf88; box-shadow: 0 0 0 2px #06231f88, 0 2px 8px rgba(0,0,0,.4); transform: translate(-50%, -50%); pointer-events: none; }
-.fp-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.fp-note { font-size: 11px; color: var(--muted); line-height: 1.5; }
+/* the cover block spans the form's full width so the picker has room */
+.gal-cover-row { margin-top: 4px; }
+.gal-cover-row .gal-cover-btn { max-width: 220px; }
+@media (max-width: 700px) {
+  .fp-wrap { grid-template-columns: 1fr; gap: 10px; }
+  .gal-cover-row .gal-cover-btn { max-width: none; }
+}
 
 /* 🤖 Vendor AI Chat — history + upsell */
 .ac-head { margin-bottom: 16px; }

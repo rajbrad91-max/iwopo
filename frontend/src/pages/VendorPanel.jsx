@@ -338,12 +338,13 @@ function FocalPicker({ src, focus, onFocus, view, onView }) {
 
   return (
     <div className="fp-wrap">
-      <div className="fp-toolbar">
-        <span className="fp-hint">🎯 Click or drag to set the frame's center</span>
+      <div className="fp-side">
+        <span className="fp-hint">🎯 Click or drag on the preview to set the frame's center</span>
         <div className="fp-toggle">
           <button type="button" className={`fp-tog ${view === 'desktop' ? 'on' : ''}`} onClick={() => onView('desktop')}>🖥️ Desktop</button>
           <button type="button" className={`fp-tog ${view === 'mobile' ? 'on' : ''}`} onClick={() => onView('mobile')}>📱 Mobile</button>
         </div>
+        <div className="fp-note">Preview shows how the cover crops in this view. The dot marks the point kept centered.</div>
       </div>
       <div
         ref={ref}
@@ -354,7 +355,6 @@ function FocalPicker({ src, focus, onFocus, view, onView }) {
       >
         <div className="fp-dot" style={{ left: `${fx}%`, top: `${fy}%` }} />
       </div>
-      <div className="fp-note">Preview shows how the cover crops in this view. The dot marks the point kept centered.</div>
     </div>
   );
 }
@@ -587,7 +587,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
                 {['Wedding', 'Engagement', 'Pre-Wedding', 'Reception', 'Birthday', 'Portrait', 'Event', 'Other'].map(c => <option key={c} value={c} />)}
               </datalist>
             </div>
-            <div>
+            <div className="gal-full gal-cover-row">
               <label className="lbl">🖼️ Cover photo</label>
               <label className="gal-cover-btn">
                 {coverFile ? `✅ ${coverFile.name.slice(0, 18)}…` : (edit?.cover_photo ? '🖼️ Replace cover' : '📤 Choose cover')}
