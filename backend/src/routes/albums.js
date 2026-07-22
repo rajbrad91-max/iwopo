@@ -8,6 +8,7 @@ import path from 'path';
 import archiver from 'archiver';
 import jwt from 'jsonwebtoken';
 import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
 import { getFaceDescriptorsAWS, findMatchesAWS } from '../lib/faceAWS.js';
@@ -26,11 +27,23 @@ router.get('/', requireAuth, async (req, res) => {
   const v = vid(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
-    const { rows } = await query(
-      `SELECT a.*,
-        (SELECT count(*)::int FROM photos p WHERE p.album_id=a.id) AS photo_count,
-        (SELECT count(*)::int FROM photos p WHERE p.album_id=a.id AND p.is_selected) AS selected_count
-       FROM albums a WHERE a.vendor_id=$1 ORDER BY a.created_at DESC`, [v]);
+    const albums = await prisma.albums.findMany({
+      where: { vendor_id: v },                    // 🔒 tenancy
+      orderBy: { created_at: 'desc' },
+      include: { _count: { select: { photos: true } } },
+    });
+    // how many photos are flagged selected, per album (one grouped query, not N)
+    const picked = await prisma.photos.groupBy({
+      by: ['album_id'],
+      where: { vendor_id: v, is_selected: true },   // 🔒 tenancy (photos carry vendor_id directly)
+      _count: { _all: true },
+    });
+    const pickedBy = new Map(picked.map(r => [r.album_id, r._count._all]));
+    const rows = albums.map(({ _count, ...a }) => ({
+      ...a,
+      photo_count: _count.photos,
+      selected_count: pickedBy.get(a.id) || 0,
+    }));
     res.json({ albums: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -44,13 +57,22 @@ router.post('/', requireAuth, async (req, res) => {
   if (!title) return res.status(400).json({ error: 'Title required' });
   try {
     const token = crypto.randomBytes(6).toString('hex'); // 12-char public share token
-    const { rows } = await query(
-      `INSERT INTO albums (vendor_id, title, category, guest_username, guest_password, admin_username, admin_password,
-        client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai, public_token)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-      [v, title, category || null, guest_username || null, guest_password || null, admin_username || null, admin_password || null,
-       client_email || null, !!exp_enabled, exp_from_date || null, exp_date || null, exp_notes || null, !!face_ai, token]);
-    res.status(201).json({ album: rows[0] });
+    const album = await prisma.albums.create({
+      data: {
+        vendor_id: v, title,
+        category: category || null,
+        guest_username: guest_username || null, guest_password: guest_password || null,
+        admin_username: admin_username || null, admin_password: admin_password || null,
+        client_email: client_email || null,
+        exp_enabled: !!exp_enabled,
+        exp_from_date: exp_from_date ? new Date(exp_from_date) : null,
+        exp_date: exp_date ? new Date(exp_date) : null,
+        exp_notes: exp_notes || null,
+        face_ai: !!face_ai,
+        public_token: token,
+      },
+    });
+    res.status(201).json({ album });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -59,11 +81,12 @@ router.get('/booking-options', requireAuth, async (req, res) => {
   const v = vid(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
-    const { rows } = await query(
-      `SELECT id, name, phone, email FROM leads
-       WHERE vendor_id=$1 AND status='booked' AND archived_at IS NULL AND name IS NOT NULL
-       ORDER BY name`, [v]);
-    res.json({ bookings: rows });
+    const bookings = await prisma.leads.findMany({
+      where: { vendor_id: v, status: 'booked', archived_at: null, name: { not: null } }, // 🔒 tenancy
+      select: { id: true, name: true, phone: true, email: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json({ bookings });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -72,11 +95,16 @@ router.put('/settings', requireAuth, async (req, res) => {
   const v = vid(req);
   const { pw_prefix, spw_prefix, instructions_template } = req.body;
   try {
-    await query(
-      `INSERT INTO album_settings (vendor_id, pw_prefix, spw_prefix, instructions_template)
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (vendor_id) DO UPDATE SET pw_prefix=$2, spw_prefix=$3, instructions_template=$4`,
-      [v, pw_prefix || '', spw_prefix || '', instructions_template || null]);
+    const data = {
+      pw_prefix: pw_prefix || '',
+      spw_prefix: spw_prefix || '',
+      instructions_template: instructions_template || null,
+    };
+    await prisma.album_settings.upsert({
+      where: { vendor_id: v },                    // 🔒 tenancy
+      update: data,
+      create: { vendor_id: v, ...data },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -85,10 +113,16 @@ router.put('/settings', requireAuth, async (req, res) => {
 router.get('/settings', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const { rows } = await query('SELECT pw_prefix, spw_prefix, instructions_template FROM album_settings WHERE vendor_id=$1', [v]);
-    const { rows: vt } = await query('SELECT gallery_token FROM vendors WHERE id=$1', [v]);
-    const settings = rows[0] || { pw_prefix: '', spw_prefix: '', instructions_template: null };
-    settings.gallery_token = vt[0]?.gallery_token || null;
+    const row = await prisma.album_settings.findUnique({
+      where: { vendor_id: v },                    // 🔒 tenancy
+      select: { pw_prefix: true, spw_prefix: true, instructions_template: true },
+    });
+    const vendor = await prisma.vendors.findUnique({
+      where: { id: v },
+      select: { gallery_token: true },
+    });
+    const settings = row || { pw_prefix: '', spw_prefix: '', instructions_template: null };
+    settings.gallery_token = vendor?.gallery_token || null;
     res.json({ settings });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
