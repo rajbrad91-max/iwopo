@@ -341,8 +341,10 @@ router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
 router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const r = await query('DELETE FROM album_events WHERE id=$1 AND album_id=$2 AND vendor_id=$3', [req.params.eventId, req.params.id, v]);
-    if (r.rowCount === 0) return res.status(404).json({ error: 'Not found' });
+    const { count } = await prisma.album_events.deleteMany({
+      where: { id: Number(req.params.eventId), album_id: Number(req.params.id), vendor_id: v }, // 🔒 tenancy
+    });
+    if (!count) return res.status(404).json({ error: 'Not found' });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -351,8 +353,10 @@ router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
 router.delete('/:id', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const r = await query('DELETE FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (r.rowCount === 0) return res.status(404).json({ error: 'Not found' });
+    const { count } = await prisma.albums.deleteMany({
+      where: { id: Number(req.params.id), vendor_id: v },   // 🔒 tenancy
+    });
+    if (!count) return res.status(404).json({ error: 'Not found' });
     // remove the album's entire storage folder (all photos + tiers) from disk
     try { fs.rmSync(path.join(ROOT, String(v), String(req.params.id)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
     res.json({ ok: true });
@@ -362,11 +366,12 @@ router.delete('/:id', requireAuth, async (req, res) => {
 // 🔒 upload photos → 3-tier pipeline (thumb 800 / full 2200 webp / original)
 router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
-    const { rows: a } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!a[0]) return res.status(404).json({ error: 'Album not found' });
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Album not found' });
 
-    const dir = path.join(ROOT, String(v), String(req.params.id));
+    const dir = path.join(ROOT, String(v), String(id));
     fs.mkdirSync(dir, { recursive: true });
 
     const saved = [];
@@ -384,35 +389,42 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
       await sharp(f.path).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
       fs.unlinkSync(f.path);
 
-      const rel = (n) => `${v}/${req.params.id}/${n}`;
+      const rel = (n) => `${v}/${id}/${n}`;
       const eventId = req.body.event_id ? parseInt(req.body.event_id, 10) : null;
-      const { rows } = await query(
-        `INSERT INTO photos (album_id, vendor_id, filename, storage_path, thumb_path, preview_path, event_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-        [req.params.id, v, f.originalname, rel(origName), rel(thumbName), rel(fullName), eventId]);
-      saved.push(rows[0]);
+      const photo = await prisma.photos.create({
+        data: {
+          album_id: id, vendor_id: v,             // 🔒 tenancy stamped on every row
+          filename: f.originalname,
+          storage_path: rel(origName),
+          thumb_path: rel(thumbName),
+          preview_path: rel(fullName),
+          event_id: eventId,
+        },
+      });
+      saved.push(photo);
     }
     res.status(201).json({ uploaded: saved.length, photos: saved });
     // 🤳 queue face indexing (throttled single worker — never blocks the API)
-    enqueueAlbum(req.params.id);
+    enqueueAlbum(id);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 delete a photo (tenant-checked)
 router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
   const v = vid(req);
+  const where = { id: Number(req.params.photoId), album_id: Number(req.params.id), vendor_id: v }; // 🔒 tenancy
   try {
     // fetch the file paths first so we can remove all tiers from disk after the row is gone
-    const { rows } = await query(
-      'SELECT storage_path, preview_path, thumb_path FROM photos WHERE id=$1 AND album_id=$2 AND vendor_id=$3',
-      [req.params.photoId, req.params.id, v]);
-    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    const p = await prisma.photos.findFirst({
+      where,
+      select: { storage_path: true, preview_path: true, thumb_path: true },
+    });
+    if (!p) return res.status(404).json({ error: 'Not found' });
 
-    await query('DELETE FROM photos WHERE id=$1 AND album_id=$2 AND vendor_id=$3',
-      [req.params.photoId, req.params.id, v]);
+    await prisma.photos.deleteMany({ where });
 
     // remove all 3 tiers from disk (original + 2200px full + thumb); ignore if already gone
-    for (const rel of [rows[0].storage_path, rows[0].preview_path, rows[0].thumb_path]) {
+    for (const rel of [p.storage_path, p.preview_path, p.thumb_path]) {
       if (!rel) continue;
       try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* file already missing — fine */ }
     }
@@ -428,9 +440,10 @@ router.get('/file/:photoId/:type', async (req, res) => {
   try { user = jwt.verify(tok, SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
   const v = user.vendor_id;
   try {
-    const { rows } = await query('SELECT * FROM photos WHERE id=$1 AND vendor_id=$2', [req.params.photoId, v]);
-    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-    const p = rows[0];
+    const p = await prisma.photos.findFirst({
+      where: { id: Number(req.params.photoId), vendor_id: v },   // 🔒 tenancy
+    });
+    if (!p) return res.status(404).json({ error: 'Not found' });
     const rel = req.params.type === 'orig' ? p.storage_path : req.params.type === 'preview' ? p.preview_path : p.thumb_path;
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
