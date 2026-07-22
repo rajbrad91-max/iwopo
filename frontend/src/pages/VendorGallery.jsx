@@ -69,7 +69,7 @@ export default function VendorGallery({ token }) {
               </div>
               <div className="vg-card-body">
                 <div className="vg-card-title">{a.title}</div>
-                <div className="vg-card-meta">{a.category || '—'} · 📷 {a.photo_count}</div>
+                <div className="vg-card-meta">{a.category || '—'}</div>
               </div>
             </div>
           ))}
