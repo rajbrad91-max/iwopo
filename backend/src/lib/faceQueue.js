@@ -17,9 +17,9 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '../config/prisma.js';
 import { getFaceDescriptors } from './faceEngine.js';
-import { getFaceDescriptorsAWS } from './faceAWS.js';
 import { getSetting } from './settings.js';
 import { clusterAlbum } from './faceCluster.js';
+import { indexAlbumAWS, groupAlbumFacesAWS } from './faceAWSIndex.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -111,9 +111,8 @@ async function drain() {
 async function indexPhoto(p, engine) {
   const full = path.join(ROOT, p.preview_path);
   if (!fs.existsSync(full)) return;
-  const found = engine === 'aws'
-    ? await getFaceDescriptorsAWS(full)
-    : await getFaceDescriptors(full);
+  // local engine only — AWS albums are handled by faceAWSIndex.js before this runs
+  const found = await getFaceDescriptors(full);
   await prisma.photos.update({
     where: { id: p.id },
     data: { faces: found, face_count: found.length, face_indexed: true, face_engine: engine },
@@ -122,6 +121,17 @@ async function indexPhoto(p, engine) {
 
 async function indexOneAlbum(albumId) {
   const engine = await resolveAlbumEngine(albumId);   // 🔒 locked & persisted for this whole album
+
+  // ☁️ AWS uses Rekognition Collections: AWS holds the face signatures and we
+  // keep only the returned FaceId. Indexing and grouping both live in
+  // faceAWSIndex.js, so the local descriptor path below never runs for AWS.
+  if (engine === 'aws') {
+    try {
+      await indexAlbumAWS(albumId);
+      await groupAlbumFacesAWS(albumId);
+    } catch (e) { console.error('aws face indexing failed:', e.message); }
+    return;
+  }
 
   let photos;
   try {

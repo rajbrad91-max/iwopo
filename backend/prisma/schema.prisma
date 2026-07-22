@@ -46,7 +46,9 @@ model albums {
   faces_clustered  Boolean?         @default(false)
   face_engine_lock String?          @db.VarChar(10)
   cover_focus      String?          @default("50% 50%") @db.VarChar(20)
+  has_collection   Boolean          @default(false)
   album_events     album_events[]
+  album_faces      album_faces[]
   face_clusters    face_clusters[]
   favorites        favorites[]
   photos           photos[]
@@ -511,6 +513,7 @@ model photos {
   face_count   Int?          @default(0)
   event_id     Int?
   face_engine  String?       @db.VarChar(20)
+  album_faces  album_faces[]
   favorites    favorites[]
   photo_faces  photo_faces[]
   albums       albums        @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -744,4 +747,30 @@ model vendors {
   vendor_services          vendor_services[]
   vendor_settings          vendor_settings?
   vendor_subscriptions     vendor_subscriptions[]
+}
+
+model album_faces {
+  id                  Int           @id @default(autoincrement())
+  album_id            Int
+  photo_id            Int
+  vendor_id           Int
+  rekognition_face_id String        @db.VarChar(191)
+  collection_id       String        @db.VarChar(191)
+  bounding_box        Json?
+  confidence          Decimal?      @db.Decimal(5, 2)
+  thumb_path          String?
+  occurrence_count    Int           @default(1)
+  matched_face_id     Int?
+  is_processed        Boolean       @default(false)
+  created_at          DateTime      @default(now()) @db.Timestamp(6)
+  albums              albums        @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  album_faces         album_faces?  @relation("album_facesToalbum_faces", fields: [matched_face_id], references: [id], onUpdate: NoAction)
+  other_album_faces   album_faces[] @relation("album_facesToalbum_faces")
+  photos              photos        @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([album_id, rekognition_face_id])
+  @@index([album_id], map: "idx_album_faces_album")
+  @@index([matched_face_id], map: "idx_album_faces_matched")
+  @@index([photo_id], map: "idx_album_faces_photo")
+  @@index([vendor_id], map: "idx_album_faces_vendor")
 }

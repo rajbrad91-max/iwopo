@@ -11,7 +11,6 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../config/prisma.js';
-import { findMatchesAWS } from './faceAWS.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -128,29 +127,9 @@ function clusterLocal(faces) {
   return clusters;
 }
 
-/**
- * AWS albums store a face crop per photo rather than a comparable vector, so we
- * cluster by comparing each face against the representative of each cluster.
- */
-async function clusterAWS(faces) {
-  const clusters = [];
-  for (const f of faces) {
-    if (!f.imgB64) continue;
-
-    let joined = false;
-    for (const c of clusters) {
-      const reps = [{ photo_id: 0, imgB64: c.rep.imgB64 }];
-      try {
-        const m = await findMatchesAWS(f.imgB64, reps, 90);
-        if (m.length) { c.faces.push(f); joined = true; break; }
-      } catch { /* a failed compare just means "not this cluster" */ }
-    }
-    if (!joined) clusters.push({ rep: f, faces: [f] });
-  }
-  return clusters;
-}
-
-/** Rebuild every cluster for one album. Safe to re-run. */
+/** Rebuild every cluster for one album. Safe to re-run.
+ *  LOCAL ENGINE ONLY — AWS albums are grouped by faceAWSIndex.js using
+ *  Rekognition Collections, which keeps the signatures on AWS's side. */
 export async function clusterAlbum(albumId) {
   const alb = await prisma.albums.findUnique({
     where: { id: Number(albumId) },
@@ -166,8 +145,8 @@ export async function clusterAlbum(albumId) {
     return { clusters: 0 };
   }
 
-  const engine = faces[0].engine === 'aws' ? 'aws' : 'vladmandic';
-  const groups = engine === 'aws' ? await clusterAWS(faces) : clusterLocal(faces);
+  const engine = 'vladmandic';
+  const groups = clusterLocal(faces);
 
   // start clean so re-running never duplicates people
   await prisma.face_clusters.deleteMany({ where: { album_id: Number(albumId) } });

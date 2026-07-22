@@ -10,7 +10,8 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
-import { getFaceDescriptorsAWS, findMatchesAWS } from '../lib/faceAWS.js';
+import { searchBySelfie, deleteCollection } from '../lib/faceAWS.js';
+import { forgetPhotoFacesAWS } from '../lib/faceAWSIndex.js';
 import { enqueueAlbum, indexAlbumNow } from '../lib/faceQueue.js';
 import { getSetting } from '../lib/settings.js';
 
@@ -356,6 +357,9 @@ router.delete('/:id', requireAuth, async (req, res) => {
       where: { id: Number(req.params.id), vendor_id: v },   // 🔒 tenancy
     });
     if (!count) return res.status(404).json({ error: 'Not found' });
+    // ☁️ tear down the album's Rekognition collection so AWS isn't left holding
+    // face data (and billing for it) after the album is gone
+    try { await deleteCollection(req.params.id); } catch { /* best effort */ }
     // remove the album's entire storage folder (all photos + tiers) from disk
     try { fs.rmSync(path.join(ROOT, String(v), String(req.params.id)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
     res.json({ ok: true });
@@ -420,6 +424,10 @@ router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
     });
     if (!p) return res.status(404).json({ error: 'Not found' });
 
+    // ☁️ drop this photo's faces from the album's Rekognition collection too,
+    // otherwise AWS keeps storing faces whose photo no longer exists
+    try { await forgetPhotoFacesAWS(req.params.id, req.params.photoId); } catch { /* best effort */ }
+
     await prisma.photos.deleteMany({ where });
 
     // remove all 3 tiers from disk (original + 2200px full + thumb); ignore if already gone
@@ -473,23 +481,24 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
     if (!req.file) return res.status(400).json({ error: 'No selfie uploaded' });
 
     const engine = await getSetting('face_engine', 'vladmandic');
-    const photos = await prisma.photos.findMany({
-      where: { album_id: id, vendor_id: v, face_indexed: true, face_count: { gt: 0 } }, // 🔒 tenancy
-      select: { id: true, faces: true },
-    });
 
     let ids = [];
     if (engine === 'aws') {
-      // AWS: candidates carry stored jpeg bytes (imgB64) from indexing
-      const candidates = [];
-      for (const p of photos) {
-        for (const f of (p.faces || [])) { if (f.imgB64) { candidates.push({ photo_id: p.id, imgB64: f.imgB64 }); break; } }
-      }
-      const matches = await findMatchesAWS(req.file.path, candidates, 90);
+      // ☁️ one call: AWS searches this album's Rekognition collection
+      const matches = await searchBySelfie(id, req.file.path, 80);
       fs.unlinkSync(req.file.path);
-      const seen = new Set();
-      for (const m of matches) { if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); } }
+      if (matches.length) {
+        const rows = await prisma.album_faces.findMany({
+          where: { album_id: id, vendor_id: v, rekognition_face_id: { in: matches.map(m => m.faceId) } }, // 🔒 tenancy
+          select: { photo_id: true },
+        });
+        ids = [...new Set(rows.map(r => r.photo_id))];
+      }
     } else {
+      const photos = await prisma.photos.findMany({
+        where: { album_id: id, vendor_id: v, face_indexed: true, face_count: { gt: 0 } }, // 🔒 tenancy
+        select: { id: true, faces: true },
+      });
       // @vladmandic: descriptor vectors
       const q = await getFaceDescriptors(req.file.path);
       fs.unlinkSync(req.file.path);

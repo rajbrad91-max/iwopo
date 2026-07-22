@@ -8,13 +8,20 @@ import sharp from 'sharp';
 import { createRequire } from 'module';
 import prisma from '../config/prisma.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
-import { getFaceDescriptorsAWS, findMatchesAWS } from '../lib/faceAWS.js';
+import { searchBySelfie } from '../lib/faceAWS.js';
+import { albumPeopleAWS, photoIdsForPersonAWS } from '../lib/faceAWSIndex.js';
 import { getSetting } from '../lib/settings.js';
 import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
 const upload = multer({ dest: '/tmp/iwopo-selfie' });
+
+/** Was this album indexed with AWS? Its people live in album_faces, not face_clusters. */
+async function isAwsAlbum(albumId) {
+  const n = await prisma.album_faces.count({ where: { album_id: Number(albumId) } });
+  return n > 0;
+}
 
 // 📶 photos read in filename order, case-insensitive, with digit runs zero-padded
 // so they compare numerically (IMG_2 before IMG_10). This ordering is a Postgres
@@ -246,20 +253,23 @@ router.post('/:token/selfie', upload.single('selfie'), async (req, res) => {
       select: { face_engine: true },
     });
     const engine = eng?.face_engine || await getSetting('face_engine', 'vladmandic');
-    const photos = await prisma.photos.findMany({
-      where: { album_id: a.id, face_indexed: true, face_count: { gt: 0 } },
-      select: { id: true, faces: true },
-    });
 
     let ids = [];
     if (engine === 'aws') {
-      const candidates = [];
-      for (const p of photos) for (const f of (p.faces || [])) { if (f.imgB64) { candidates.push({ photo_id: p.id, imgB64: f.imgB64 }); break; } }
-      const matches = await findMatchesAWS(req.file.path, candidates, 90);
+      // ☁️ one call: AWS searches its own collection for this album
+      const matches = await searchBySelfie(a.id, req.file.path, 80);
       fs.unlink(req.file.path, () => {});
-      const seen = new Set();
-      for (const m of matches) if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); }
+      if (!matches.length) return res.json({ matches: 0, photo_ids: [] });
+      const rows = await prisma.album_faces.findMany({
+        where: { album_id: a.id, rekognition_face_id: { in: matches.map(m => m.faceId) } }, // 🔒 this album only
+        select: { photo_id: true },
+      });
+      ids = [...new Set(rows.map(r => r.photo_id))];
     } else {
+      const photos = await prisma.photos.findMany({
+        where: { album_id: a.id, face_indexed: true, face_count: { gt: 0 } },
+        select: { id: true, faces: true },
+      });
       const q = await getFaceDescriptors(req.file.path);
       fs.unlink(req.file.path, () => {});
       if (!q.length) return res.status(400).json({ error: 'No face detected in your selfie — try another photo' });
@@ -281,6 +291,13 @@ router.get('/:token/faces', async (req, res) => {
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
 
     const eventId = req.query.event ? parseInt(req.query.event, 10) : null;
+
+    // ☁️ AWS albums keep their people in album_faces (FaceId based), not in
+    // face_clusters. One helper covers both the whole album and one event.
+    if (await isAwsAlbum(a.id)) {
+      return res.json({ faces: await albumPeopleAWS(a.id, eventId) });
+    }
+
     if (eventId) {
       // event-scoped: count each person's photos WITHIN this event only, hide anyone with none
       const grouped = await prisma.photo_faces.groupBy({
@@ -311,6 +328,18 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).end();
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
+
+    // ☁️ AWS: the crop was made at index time and lives on disk
+    if (await isAwsAlbum(a.id)) {
+      const person = await prisma.album_faces.findFirst({
+        where: { id: Number(req.params.clusterId), album_id: a.id },  // 🔒 must be in THIS album
+        select: { thumb_path: true },
+      });
+      if (!person?.thumb_path) return res.status(404).end();
+      const f = path.join(ROOT, person.thumb_path);
+      if (!fs.existsSync(f)) return res.status(404).end();
+      return res.sendFile(f);
+    }
 
     // NOTE: face_clusters.cover_photo_id has no FK, so Prisma generates no
     // relation for it — the cover photo must be fetched as a second query.
@@ -363,7 +392,9 @@ router.get('/:token/face/:clusterId/photos', async (req, res) => {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
-    const ids = await clusterPhotoIds(a.id, req.params.clusterId);
+    const ids = await isAwsAlbum(a.id)
+      ? await photoIdsForPersonAWS(a.id, req.params.clusterId)
+      : await clusterPhotoIds(a.id, req.params.clusterId);
     res.json({ photo_ids: ids });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
