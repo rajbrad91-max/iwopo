@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -11,24 +11,35 @@ function vid(req) {
 /* ── 🔔 NOTIFICATIONS ── */
 export async function notify(vendorId, title, body, type = 'info') {
   try {
-    await query('INSERT INTO notifications (vendor_id, type, title, body) VALUES ($1,$2,$3,$4)',
-      [vendorId, type, title, body || null]);
+    await prisma.notifications.create({
+      data: { vendor_id: Number(vendorId), type, title, body: body || null },
+    });
   } catch { /* never break main flow */ }
 }
 
 router.get('/', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const { rows } = await query(
-    'SELECT * FROM notifications WHERE vendor_id=$1 ORDER BY created_at DESC LIMIT 30', [v]);
-  const { rows: c } = await query(
-    'SELECT COUNT(*)::int AS unseen FROM notifications WHERE vendor_id=$1 AND seen_at IS NULL', [v]);
-  res.json({ notifications: rows, unseen: c[0].unseen });
+  try {
+    const v = Number(vid(req));
+    const notifications = await prisma.notifications.findMany({
+      where: { vendor_id: v },                   // 🔒 tenancy
+      orderBy: { created_at: 'desc' },
+      take: 30,
+    });
+    const unseen = await prisma.notifications.count({
+      where: { vendor_id: v, seen_at: null },    // 🔒 tenancy
+    });
+    res.json({ notifications, unseen });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/seen', requireAuth, async (req, res) => {
-  const v = vid(req);
-  await query('UPDATE notifications SET seen_at=NOW() WHERE vendor_id=$1 AND seen_at IS NULL', [v]);
-  res.json({ ok: true });
+  try {
+    await prisma.notifications.updateMany({
+      where: { vendor_id: Number(vid(req)), seen_at: null },   // 🔒 tenancy on the write
+      data: { seen_at: new Date() },
+    });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 export default router;

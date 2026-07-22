@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 
 const router = express.Router();
 
@@ -22,9 +22,11 @@ function clientIp(req) {
 // 🗳️ poll config + whether THIS ip already voted (and for what)
 router.get('/', async (req, res) => {
   try {
-    const ip = clientIp(req);
-    const { rows } = await query('SELECT choice FROM poll_votes WHERE ip=$1', [ip]);
-    res.json({ title: POLL_TITLE, options: OPTIONS, hints: HINTS, myVote: rows[0]?.choice || null });
+    const vote = await prisma.poll_votes.findFirst({
+      where: { ip: clientIp(req) },
+      select: { choice: true },
+    });
+    res.json({ title: POLL_TITLE, options: OPTIONS, hints: HINTS, myVote: vote?.choice || null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -35,10 +37,13 @@ router.post('/', async (req, res) => {
     const choice = (req.body.choice || '').toString();
     if (!OPTIONS.includes(choice)) return res.status(400).json({ error: 'Invalid choice' });
 
-    const existing = await query('SELECT choice FROM poll_votes WHERE ip=$1', [ip]);
-    if (existing.rows[0]) return res.status(409).json({ error: 'Already voted', myVote: existing.rows[0].choice });
+    const existing = await prisma.poll_votes.findFirst({ where: { ip }, select: { choice: true } });
+    if (existing) return res.status(409).json({ error: 'Already voted', myVote: existing.choice });
 
-    await query('INSERT INTO poll_votes (choice, ip) VALUES ($1,$2) ON CONFLICT (ip) DO NOTHING', [choice, ip]);
+    // the unique index on ip is the real guard against double votes
+    try {
+      await prisma.poll_votes.create({ data: { choice, ip } });
+    } catch { /* ON CONFLICT (ip) DO NOTHING — a racing vote already landed */ }
     res.json({ ok: true, myVote: choice });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -47,10 +52,10 @@ router.post('/', async (req, res) => {
 router.post('/results', async (req, res) => {
   try {
     if ((req.body.password || '') !== RESULTS_PASSWORD) return res.status(401).json({ error: 'Wrong password' });
-    const { rows } = await query('SELECT choice, COUNT(*)::int AS n FROM poll_votes GROUP BY choice', []);
+    const grouped = await prisma.poll_votes.groupBy({ by: ['choice'], _count: { _all: true } });
     const counts = {};
     for (const o of OPTIONS) counts[o] = 0;
-    for (const r of rows) if (counts[r.choice] !== undefined) counts[r.choice] = r.n;
+    for (const r of grouped) if (counts[r.choice] !== undefined) counts[r.choice] = r._count._all;
     const total = Object.values(counts).reduce((s, n) => s + n, 0);
     res.json({ counts, total, options: OPTIONS });
   } catch (e) { res.status(500).json({ error: e.message }); }
