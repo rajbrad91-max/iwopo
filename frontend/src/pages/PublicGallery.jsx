@@ -64,6 +64,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [delPicked, setDelPicked] = useState(false);     // bulk delete confirmation open
   const [sendOpen, setSendOpen] = useState(false);       // "Send to studio" note modal
   const [sendNote, setSendNote] = useState('');
+  const [sendDone, setSendDone] = useState(false);       // brief "Selection sent" confirmation
   const [slideshow, setSlideshow] = useState(false);
   const [faces, setFaces] = useState([]);           // face circles, most photos first
   const [activeFace, setActiveFace] = useState(null);
@@ -238,7 +239,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not send');
       setSendMsg(`Your selection of ${picked.size} photo${picked.size === 1 ? '' : 's'} was sent to the studio.`);
-      setSendOpen(false);
+      // confirm on the button first, then close so the sender sees it landed
+      setSendDone(true);
+      setTimeout(() => { setSendOpen(false); setSendDone(false); }, 1000);
     } catch (e) { setSendMsg(e.message || 'Could not send selection.'); }
     finally { setSendBusy(false); }
   }
@@ -593,9 +596,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
       {/* 📩 send selection to studio — with an optional note (admin) */}
       {sendOpen && (
-        <div className="pg-modal" onClick={() => !sendBusy && setSendOpen(false)}>
+        <div className="pg-modal" onClick={() => !sendBusy && !sendDone && setSendOpen(false)}>
           <form className="pg-modal-card" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); sendSelection(); }}>
-            <button type="button" className="pg-modal-x" onClick={() => !sendBusy && setSendOpen(false)} title="Close">✕</button>
+            <button type="button" className="pg-modal-x" onClick={() => !sendBusy && !sendDone && setSendOpen(false)} title="Close">✕</button>
             <h2 className="pg-modal-title">Send {nPicked} photo{nPicked === 1 ? '' : 's'} to the studio</h2>
             <p className="pg-modal-sub">Add a note if there's anything the studio should know — retouching requests, album order, or anything else.</p>
             <textarea
@@ -607,10 +610,10 @@ export default function PublicGallery({ token, embedded, onBack }) {
               autoFocus
             />
             <div className="pg-modal-acts">
-              <button className="pg-btn" type="submit" disabled={sendBusy}>
-                {sendBusy ? 'Sending…' : 'Send selection'}
+              <button className={`pg-btn ${sendDone ? 'is-done' : ''}`} type="submit" disabled={sendBusy || sendDone}>
+                {sendDone ? '✓ Selection sent' : sendBusy ? 'Sending…' : 'Send selection'}
               </button>
-              <button className="pg-btn is-ghost" type="button" onClick={() => setSendOpen(false)} disabled={sendBusy}>Cancel</button>
+              <button className="pg-btn is-ghost" type="button" onClick={() => setSendOpen(false)} disabled={sendBusy || sendDone}>Cancel</button>
             </div>
           </form>
         </div>

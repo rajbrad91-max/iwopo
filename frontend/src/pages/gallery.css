@@ -66,6 +66,8 @@
 }
 .pg-btn:hover { filter: brightness(1.1); }
 .pg-btn:disabled { opacity: .5; cursor: default; }
+/* brief success state after a selection is sent — stays solid even while disabled */
+.pg-btn.is-done, .pg-btn.is-done:disabled { background: #16a34a; color: #fff; opacity: 1; cursor: default; }
 .pg-err { color: #c1554a; margin-top: 14px; font-size: 13px; }
 
 /* ── 🎬 cover ── */
