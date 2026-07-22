@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 import archiver from 'archiver';
 import jwt from 'jsonwebtoken';
-import { query } from '../config/db.js';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
@@ -454,11 +453,12 @@ router.get('/file/:photoId/:type', async (req, res) => {
 // 🧠 index faces for an album (runs detection on all un-indexed photos)
 router.post('/:id/index-faces', requireAuth, async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
-    const { rows: a } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!a[0]) return res.status(404).json({ error: 'Album not found' });
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Album not found' });
     // run one throttled pass via the shared queue worker (single-worker, yields between photos)
-    const r = await indexAlbumNow(req.params.id);
+    const r = await indexAlbumNow(id);
     res.json({ requested: r.requested, remaining: r.remaining });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -466,14 +466,17 @@ router.post('/:id/index-faces', requireAuth, async (req, res) => {
 // 🔍 search album by selfie → returns matching photo IDs (vendor preview/testing)
 router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
-    const { rows: a } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!a[0]) return res.status(404).json({ error: 'Album not found' });
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Album not found' });
     if (!req.file) return res.status(400).json({ error: 'No selfie uploaded' });
 
     const engine = await getSetting('face_engine', 'vladmandic');
-    const { rows: photos } = await query(
-      'SELECT id, faces FROM photos WHERE album_id=$1 AND face_indexed=true AND face_count>0', [req.params.id]);
+    const photos = await prisma.photos.findMany({
+      where: { album_id: id, vendor_id: v, face_indexed: true, face_count: { gt: 0 } }, // 🔒 tenancy
+      select: { id: true, faces: true },
+    });
 
     let ids = [];
     if (engine === 'aws') {
@@ -508,18 +511,20 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
 router.get('/:id/favorites', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
-    const { rows } = await query(
-      `SELECT f.email, f.photo_id, f.created_at, p.filename,
-              p.event_id, e.name AS event_name
-         FROM favorites f
-         JOIN photos p ON p.id = f.photo_id
-         LEFT JOIN album_events e ON e.id = p.event_id
-        WHERE f.album_id = $1
-        ORDER BY e.name NULLS FIRST, f.email, f.created_at`,
-      [req.params.id]
-    );
+    const id = Number(req.params.id);
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    const favs = await prisma.favorites.findMany({
+      where: { album_id: id },                   // album already proven to belong to this vendor
+      orderBy: [{ email: 'asc' }, { created_at: 'asc' }],
+      include: { photos: { select: { filename: true, event_id: true, album_events: { select: { name: true } } } } },
+    });
+    const rows = favs.map(f => ({
+      email: f.email, photo_id: f.photo_id, created_at: f.created_at,
+      filename: f.photos?.filename,
+      event_id: f.photos?.event_id ?? null,
+      event_name: f.photos?.album_events?.name || null,
+    }));
     // group by event → then by email: [{ event_id, event_name, count, lists:[{email,count,photos}] }]
     const evMap = new Map();
     for (const r of rows) {
@@ -542,17 +547,23 @@ router.get('/:id/favorites', requireAuth, async (req, res) => {
 router.get('/:id/selection', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
-    const { rows } = await query(
-      `SELECT s.photo_id, s.created_at, p.filename, p.event_id, e.name AS event_name
-         FROM selections s
-         JOIN photos p ON p.id = s.photo_id
-         LEFT JOIN album_events e ON e.id = p.event_id
-        WHERE s.album_id = $1
-        ORDER BY e.name NULLS FIRST, p.filename`,
-      [req.params.id]
-    );
+    const id = Number(req.params.id);
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    const sels = await prisma.selections.findMany({
+      where: { album_id: id },                   // album already proven to belong to this vendor
+      include: { photos: { select: { filename: true, event_id: true, album_events: { select: { name: true } } } } },
+    });
+    const rows = sels.map(s => ({
+      photo_id: s.photo_id, created_at: s.created_at,
+      filename: s.photos?.filename,
+      event_id: s.photos?.event_id ?? null,
+      event_name: s.photos?.album_events?.name || null,
+    }));
+    // order by event name (ungrouped first), then filename — matches the previous SQL ordering
+    rows.sort((a, b) =>
+      (a.event_name || '').localeCompare(b.event_name || '') ||
+      (a.filename || '').localeCompare(b.filename || ''));
     const evMap = new Map();
     for (const r of rows) {
       const key = r.event_id == null ? 'none' : String(r.event_id);
@@ -561,13 +572,13 @@ router.get('/:id/selection', requireAuth, async (req, res) => {
     }
     const events = [...evMap.values()].map(ev => ({ ...ev, count: ev.photos.length }));
     // the note the client typed when sending, if any
-    const { rows: nr } = await query('SELECT note, updated_at, completed_at FROM selection_notes WHERE album_id=$1', [req.params.id]);
+    const note = await prisma.selection_notes.findUnique({ where: { album_id: id } });
     res.json({
       total: rows.length,
       events,
-      note: nr[0]?.note || '',
-      sent_at: nr[0]?.updated_at || null,
-      completed_at: nr[0]?.completed_at || null,
+      note: note?.note || '',
+      sent_at: note?.updated_at || null,
+      completed_at: note?.completed_at || null,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -576,16 +587,17 @@ router.get('/:id/selection', requireAuth, async (req, res) => {
 router.put('/:id/selection/complete', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
+    const id = Number(req.params.id);
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Not found' });
     const done = req.body?.completed !== false;
-    await query(
-      `INSERT INTO selection_notes (album_id, completed_at)
-       VALUES ($1, $2)
-       ON CONFLICT (album_id) DO UPDATE SET completed_at = EXCLUDED.completed_at`,
-      [req.params.id, done ? new Date() : null]
-    );
-    res.json({ ok: true, completed_at: done ? new Date() : null });
+    const stamp = done ? new Date() : null;
+    await prisma.selection_notes.upsert({
+      where: { album_id: id },
+      update: { completed_at: stamp },
+      create: { album_id: id, completed_at: stamp },
+    });
+    res.json({ ok: true, completed_at: stamp });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -593,10 +605,11 @@ router.put('/:id/selection/complete', requireAuth, async (req, res) => {
 router.delete('/:id/selection', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
-    await query('DELETE FROM selections WHERE album_id=$1', [req.params.id]);
-    await query('DELETE FROM selection_notes WHERE album_id=$1', [req.params.id]);
+    const id = Number(req.params.id);
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    await prisma.selections.deleteMany({ where: { album_id: id } });
+    await prisma.selection_notes.deleteMany({ where: { album_id: id } });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -607,18 +620,23 @@ router.get('/:id/selection.zip', async (req, res) => {
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
   let user;
   try { user = jwt.verify(tok, SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+  const id = Number(req.params.id);
   try {
-    const { rows: own } = await query('SELECT id, title FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, user.vendor_id]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
-    const { rows } = await query(
-      `SELECT p.storage_path, p.filename, p.id
-         FROM selections s JOIN photos p ON p.id = s.photo_id
-        WHERE s.album_id = $1
-        ORDER BY p.filename`,
-      [req.params.id]
-    );
+    const own = await prisma.albums.findFirst({
+      where: { id, vendor_id: user.vendor_id },   // 🔒 tenancy
+      select: { id: true, title: true },
+    });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    const sels = await prisma.selections.findMany({
+      where: { album_id: id },
+      include: { photos: { select: { id: true, storage_path: true, filename: true } } },
+    });
+    const rows = sels
+      .map(s => s.photos)
+      .filter(Boolean)
+      .sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
     if (!rows.length) return res.status(404).json({ error: 'Nothing selected' });
-    const safe = `${own[0].title || 'gallery'}-selection`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    const safe = `${own.title || 'gallery'}-selection`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);
     const archive = archiver('zip', { zlib: { level: 6 } });
     archive.on('error', () => { try { res.status(500).end(); } catch { /* stream already closed */ } });
