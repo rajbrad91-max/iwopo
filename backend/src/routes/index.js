@@ -1,9 +1,14 @@
 import express from 'express';
 import geoip from 'geoip-lite';
+import fs from 'fs';
+import path from 'path';
+import { GALLERIES_ROOT } from '../config/paths.js';
 import prisma from '../config/prisma.js';
+import { Prisma } from '@prisma/client';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { getAllSettings, setSetting } from '../lib/settings.js';
 import { queueStatus } from '../lib/faceQueue.js';
+import { deleteCollection } from '../lib/faceAWS.js';
 
 const router = express.Router();
 
@@ -25,16 +30,64 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
 });
 
 // 🔄 Super admin: reset ALL face indexing (for engine switch → re-index)
+//
+// This wipes face data platform-wide so every album re-picks its engine on the
+// next index. It must also tear down the AWS side: `album_faces` rows AND the
+// per-album Rekognition collections. Leaving those behind would orphan face data
+// on AWS (which is billed) while the local rows disappear, so an album would look
+// un-indexed while AWS still held its faces.
 router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
+    // which albums currently hold an AWS collection? (needed before we clear the flag)
+    const awsAlbums = await prisma.albums.findMany({
+      where: { has_collection: true },
+      select: { id: true },
+    });
+
     const r = await prisma.photos.updateMany({
-      data: { faces: null, face_count: 0, face_indexed: false, face_engine: null },
+      // Prisma.DbNull clears the column. A plain `null` on a Json field writes
+      // the JSON value `null` instead, which is not the same thing — the column
+      // stays non-NULL and every "faces IS NULL" check would miss it.
+      data: { faces: Prisma.DbNull, face_count: 0, face_indexed: false, face_engine: null },
     });
     // clear per-album engine locks + cluster flags so each album re-picks fresh on next index
-    await prisma.albums.updateMany({ data: { face_engine_lock: null, faces_clustered: false } });
+    await prisma.albums.updateMany({
+      data: { face_engine_lock: null, faces_clustered: false, has_collection: false },
+    });
     await prisma.photo_faces.deleteMany({});
     await prisma.face_clusters.deleteMany({});
-    res.json({ ok: true, reset: r.count });
+    await prisma.album_faces.deleteMany({});      // ☁️ AWS face rows
+
+    // ☁️ delete the collections themselves so AWS stops storing (and billing for)
+    // faces whose photos we just un-indexed. Best effort per album — one failure
+    // must not abort the rest.
+    let collectionsDeleted = 0;
+    for (const a of awsAlbums) {
+      try { await deleteCollection(a.id); collectionsDeleted++; }
+      catch (e) { console.error(`[reindex-all] collection ${a.id}:`, e.message); }
+    }
+
+    // remove the cropped face circles from disk — they're regenerated on re-index
+    let thumbDirs = 0;
+    try {
+      for (const vendorDir of fs.readdirSync(GALLERIES_ROOT, { withFileTypes: true })) {
+        if (!vendorDir.isDirectory()) continue;
+        const vPath = path.join(GALLERIES_ROOT, vendorDir.name);
+        for (const albumDir of fs.readdirSync(vPath, { withFileTypes: true })) {
+          if (!albumDir.isDirectory()) continue;
+          const faceDir = path.join(vPath, albumDir.name, 'faces');
+          if (fs.existsSync(faceDir)) { fs.rmSync(faceDir, { recursive: true, force: true }); thumbDirs++; }
+        }
+      }
+    } catch (e) { console.error('[reindex-all] face thumb cleanup:', e.message); }
+
+    res.json({
+      ok: true,
+      reset: r.count,                    // photos cleared
+      collections_deleted: collectionsDeleted,
+      face_thumb_dirs_removed: thumbDirs,
+      note: 'Face data cleared. Albums re-index on the next upload or when you press Index on an album.',
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
