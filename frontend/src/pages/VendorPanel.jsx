@@ -567,7 +567,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
             <section className="gal-card-sec">
               <h4 className="gal-sec-h">📋 Details</h4>
               {bookings.length > 0 && (
-                <div><label className="lbl">📞 Auto-fill from a booking</label>
+                <div><label className="lbl">Auto-fill from a booking</label>
                   <select className="gal-input" defaultValue="" onChange={e => pickBooking(e.target.value)}>
                     <option value="">— Pick a booking —</option>
                     {bookings.map(b => <option key={b.id} value={b.id}>{b.name}{b.phone ? ` · ${b.phone}` : ''}</option>)}
