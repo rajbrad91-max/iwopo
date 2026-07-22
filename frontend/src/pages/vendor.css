@@ -883,8 +883,8 @@
 .gal-pw-block .gal-pw-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .gal-pw-block .gal-prefix { width: 100%; }
 .gal-pw-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-/* the cover chooser is a button, not a field — keep it button-sized */
-.gal-two-left .gal-cover-btn { display: inline-flex; width: auto; align-self: flex-start; padding: 9px 16px; }
+/* the cover chooser sits under the preview — button-sized, centered */
+.gal-two-right .gal-cover-btn { display: inline-flex; width: auto; align-self: center; padding: 9px 16px; }
 .gal-cover-empty {
   border: 1.5px dashed var(--line); border-radius: 10px;
   padding: 30px 18px; text-align: center; color: var(--muted); font-size: 12.5px;

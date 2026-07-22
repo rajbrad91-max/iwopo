@@ -599,14 +599,6 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
                 </datalist>
               </div>
 
-              <div>
-                <label className="lbl">🖼️ Cover photo</label>
-                <label className="gal-cover-btn">
-                  {coverFile ? `✅ ${coverFile.name.slice(0, 18)}…` : (edit?.cover_photo ? '🖼️ Replace cover' : '📤 Choose cover')}
-                  <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
-                </label>
-              </div>
-
               <div className="gal-pw-block">
                 <div className="gal-pw-head">
                   🔑 Access passwords
@@ -641,9 +633,20 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
                     focus={coverFocus} onFocus={setCoverFocus}
                     view={focusView} onView={setFocusView}
                   />
+                  <label className="gal-cover-btn">
+                    {coverFile ? `✅ ${coverFile.name.slice(0, 18)}…` : '🖼️ Replace cover'}
+                    <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
+                  </label>
                 </>
               ) : (
-                <div className="gal-cover-empty">No cover photo yet — choose one to set its framing.</div>
+                <>
+                  <label className="lbl">🖼️ Cover photo</label>
+                  <div className="gal-cover-empty">No cover photo yet — choose one to set its framing.</div>
+                  <label className="gal-cover-btn">
+                    📤 Choose cover
+                    <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
+                  </label>
+                </>
               )}
             </div>
           </div>
