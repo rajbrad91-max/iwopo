@@ -566,6 +566,14 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
 
             <section className="gal-card-sec">
               <h4 className="gal-sec-h">📋 Details</h4>
+              {bookings.length > 0 && (
+                <div><label className="lbl">📞 Auto-fill from a booking</label>
+                  <select className="gal-input" defaultValue="" onChange={e => pickBooking(e.target.value)}>
+                    <option value="">— Pick a booking —</option>
+                    {bookings.map(b => <option key={b.id} value={b.id}>{b.name}{b.phone ? ` · ${b.phone}` : ''}</option>)}
+                  </select>
+                </div>
+              )}
               <div><label className="lbl">Gallery Name *</label>
                 <input className="gal-input" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="Susan &amp; Mike Wedding" />
               </div>
@@ -575,14 +583,6 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
                   {['Wedding', 'Engagement', 'Pre-Wedding', 'Reception', 'Birthday', 'Portrait', 'Event', 'Other'].map(c => <option key={c} value={c} />)}
                 </datalist>
               </div>
-              {bookings.length > 0 && (
-                <div><label className="lbl">📞 Auto-fill from a booking</label>
-                  <select className="gal-input" defaultValue="" onChange={e => pickBooking(e.target.value)}>
-                    <option value="">— Pick a booking —</option>
-                    {bookings.map(b => <option key={b.id} value={b.id}>{b.name}{b.phone ? ` · ${b.phone}` : ''}</option>)}
-                  </select>
-                </div>
-              )}
             </section>
 
             <section className="gal-card-sec">
