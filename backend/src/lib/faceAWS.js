@@ -141,31 +141,3 @@ export async function deleteFaces(albumId, faceIds) {
     if (e.name !== 'ResourceNotFoundException') throw e;
   }
 }
-
-/**
- * Crop a face out of its photo for the circle shown to clients.
- * boundingBox is fractional (0-1), as AWS returns it.
- */
-export async function cropFaceThumb(imagePath, boundingBox, outPath, pad = 0.25) {
-  const meta = await sharp(imagePath).metadata();
-  const W = meta.width || 0, H = meta.height || 0;
-  if (!W || !H || !boundingBox) return false;
-
-  const bw = (boundingBox.Width || 0) * W;
-  const bh = (boundingBox.Height || 0) * H;
-  const cx = ((boundingBox.Left || 0) + (boundingBox.Width || 0) / 2) * W;
-  const cy = ((boundingBox.Top || 0) + (boundingBox.Height || 0) / 2) * H;
-
-  // square crop around the face centre so circles never look squashed
-  const side = Math.max(bw, bh) * (1 + pad * 2);
-  const left = Math.max(0, Math.min(Math.round(cx - side / 2), W - 1));
-  const top = Math.max(0, Math.min(Math.round(cy - side / 2), H - 1));
-  const size = Math.max(48, Math.min(Math.round(side), W - left, H - top));
-
-  await sharp(imagePath)
-    .extract({ left, top, width: size, height: size })
-    .resize(256, 256, { fit: 'cover' })
-    .webp({ quality: 82 })
-    .toFile(outPath);
-  return true;
-}

@@ -758,7 +758,6 @@ model album_faces {
   collection_id       String        @db.VarChar(191)
   bounding_box        Json?
   confidence          Decimal?      @db.Decimal(5, 2)
-  thumb_path          String?
   occurrence_count    Int           @default(1)
   matched_face_id     Int?
   is_processed        Boolean       @default(false)

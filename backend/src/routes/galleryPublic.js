@@ -23,6 +23,27 @@ async function isAwsAlbum(albumId) {
   return n > 0;
 }
 
+/**
+ * Face bounding boxes arrive in two shapes and this returns pixels for both:
+ *   AWS   → { Left, Top, Width, Height } as fractions of the image (0-1)
+ *   local → { _x, _y, _width, _height } (or x/y/width/height) already in pixels
+ * Returns null when there's nothing usable, so the caller can fall back to
+ * serving the whole photo.
+ */
+function normaliseBox(raw, imgW, imgH) {
+  if (!raw || !imgW || !imgH) return null;
+  const x = raw.Left ?? raw._x ?? raw.x;
+  const y = raw.Top ?? raw._y ?? raw.y;
+  const w = raw.Width ?? raw._width ?? raw.width;
+  const h = raw.Height ?? raw._height ?? raw.height;
+  if (x == null || y == null || w == null || h == null) return null;
+  // fractional (AWS) if every value is within 0-1; otherwise already pixels
+  const fractional = w <= 1 && h <= 1 && x <= 1 && y <= 1;
+  return fractional
+    ? { x: x * imgW, y: y * imgH, w: w * imgW, h: h * imgH }
+    : { x, y, w, h };
+}
+
 // 📶 photos read in filename order, case-insensitive, with digit runs zero-padded
 // so they compare numerically (IMG_2 before IMG_10). This ordering is a Postgres
 // regexp expression that Prisma's orderBy can't express, so these reads use
@@ -322,55 +343,65 @@ router.get('/:token/faces', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 🖼️ the circular thumbnail for one person — the face cropped out of its photo
+// 🖼️ the circular thumbnail for one person — the face cropped out of its photo.
+//
+// Both engines crop ON DEMAND from the photo already on disk. Nothing extra is
+// stored: AWS gives a fractional bounding box (0-1), the local engine gives a
+// pixel box, and this normalises the two. An earlier version wrote a separate
+// crop file per AWS face at index time — ~11 KB each, which is ~570 MB on a
+// 20k-photo album for images we can generate in a few ms from data we already
+// have.
 router.get('/:token/face/:clusterId', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).end();
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
 
-    // ☁️ AWS: the crop was made at index time and lives on disk
+    let boxRaw = null, relPath = null;
+
     if (await isAwsAlbum(a.id)) {
       const person = await prisma.album_faces.findFirst({
         where: { id: Number(req.params.clusterId), album_id: a.id },  // 🔒 must be in THIS album
-        select: { thumb_path: true },
+        select: { bounding_box: true, photo_id: true },
       });
-      if (!person?.thumb_path) return res.status(404).end();
-      const f = path.join(ROOT, person.thumb_path);
-      if (!fs.existsSync(f)) return res.status(404).end();
-      return res.sendFile(f);
+      if (!person) return res.status(404).end();
+      const photo = await prisma.photos.findFirst({
+        where: { id: person.photo_id, album_id: a.id },               // 🔒 still scoped to this album
+        select: { preview_path: true },
+      });
+      if (!photo?.preview_path) return res.status(404).end();
+      boxRaw = person.bounding_box;
+      relPath = photo.preview_path;
+    } else {
+      // NOTE: face_clusters.cover_photo_id has no FK, so Prisma generates no
+      // relation for it — the cover photo must be fetched as a second query.
+      const cluster = await prisma.face_clusters.findFirst({
+        where: { id: Number(req.params.clusterId), album_id: a.id },  // 🔒 cluster must be in THIS album
+        select: { cover_box: true, cover_photo_id: true },
+      });
+      if (!cluster?.cover_photo_id) return res.status(404).end();
+      const coverPhoto = await prisma.photos.findFirst({
+        where: { id: cluster.cover_photo_id, album_id: a.id },        // 🔒 still scoped to this album
+        select: { preview_path: true },
+      });
+      if (!coverPhoto?.preview_path) return res.status(404).end();
+      boxRaw = cluster.cover_box;
+      relPath = coverPhoto.preview_path;
     }
 
-    // NOTE: face_clusters.cover_photo_id has no FK, so Prisma generates no
-    // relation for it — the cover photo must be fetched as a second query.
-    const cluster = await prisma.face_clusters.findFirst({
-      where: { id: Number(req.params.clusterId), album_id: a.id },   // 🔒 cluster must be in THIS album
-      select: { cover_box: true, cover_photo_id: true },
-    });
-    if (!cluster?.cover_photo_id) return res.status(404).end();
-    const coverPhoto = await prisma.photos.findFirst({
-      where: { id: cluster.cover_photo_id, album_id: a.id },         // 🔒 still scoped to this album
-      select: { preview_path: true },
-    });
-    if (!coverPhoto?.preview_path) return res.status(404).end();
-    const c = { cover_box: cluster.cover_box, preview_path: coverPhoto.preview_path };
-
-    const full = path.join(ROOT, c.preview_path);
+    const full = path.join(ROOT, relPath);
     if (!fs.existsSync(full)) return res.status(404).end();
 
-    const box = c.cover_box || {};
-    const bx = box._x ?? box.x, by = box._y ?? box.y;
-    const bw = box._width ?? box.width, bh = box._height ?? box.height;
-
-    // no box (AWS crops) → just serve the photo and let the browser round it
-    if (bw == null) { res.type('webp'); return res.sendFile(full); }
-
     const meta = await sharp(full).metadata();
+    const box = normaliseBox(boxRaw, meta.width, meta.height);
+    // no usable box → serve the whole photo and let the browser round it
+    if (!box) { res.type('webp'); return res.sendFile(full); }
+
     // pad the crop out so it's a head-and-shoulders circle, not a tight face
-    const pad = Math.round(Math.max(bw, bh) * 0.45);
-    const left = Math.max(0, Math.round(bx - pad));
-    const top = Math.max(0, Math.round(by - pad));
-    const size = Math.round(Math.max(bw, bh) + pad * 2);
+    const pad = Math.round(Math.max(box.w, box.h) * 0.45);
+    const left = Math.max(0, Math.round(box.x - pad));
+    const top = Math.max(0, Math.round(box.y - pad));
+    const size = Math.round(Math.max(box.w, box.h) + pad * 2);
     const width = Math.min(size, meta.width - left);
     const height = Math.min(size, meta.height - top);
 
