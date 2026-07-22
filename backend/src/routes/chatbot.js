@@ -1,6 +1,6 @@
 import express from 'express';
 import crypto from 'crypto';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { generateReply, isActiveSubscriber } from '../lib/tasveer.js';
 
@@ -39,15 +39,21 @@ function emptyKnowledge(vendorId) {
 // 📋 subscribers list (only vendors who subscribed to the chatbot)
 router.get('/subscribers', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT s.vendor_id, s.active, s.share_token, s.access_code, s.subscribed_at,
-              v.business_name, v.email,
-              (k.vendor_id IS NOT NULL) AS has_knowledge
-       FROM chatbot_subscribers s
-       JOIN vendors v ON v.id = s.vendor_id
-       LEFT JOIN chatbot_knowledge k ON k.vendor_id = s.vendor_id
-       ORDER BY s.subscribed_at DESC`);
-    res.json({ subscribers: rows });
+    const rows = await prisma.chatbot_subscribers.findMany({
+      orderBy: { subscribed_at: 'desc' },
+      include: { vendors: { select: { business_name: true, email: true } } },
+    });
+    // which of these vendors already have a knowledge row?
+    const known = await prisma.chatbot_knowledge.findMany({ select: { vendor_id: true } });
+    const knownSet = new Set(known.map(k => k.vendor_id));
+    const subscribers = rows.map(({ vendors, ...s }) => ({
+      vendor_id: s.vendor_id, active: s.active, share_token: s.share_token,
+      access_code: s.access_code, subscribed_at: s.subscribed_at,
+      business_name: vendors?.business_name ?? null,
+      email: vendors?.email ?? null,
+      has_knowledge: knownSet.has(s.vendor_id),
+    }));
+    res.json({ subscribers });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -56,10 +62,12 @@ router.post('/subscribers', requireAuth, requireSuperAdmin, async (req, res) => 
   const { vendor_id } = req.body;
   if (!vendor_id) return res.status(400).json({ error: 'vendor_id required' });
   try {
-    const token = crypto.randomBytes(8).toString('hex');
-    await query(
-      `INSERT INTO chatbot_subscribers (vendor_id, share_token) VALUES ($1,$2)
-       ON CONFLICT (vendor_id) DO NOTHING`, [vendor_id, token]);
+    // ON CONFLICT (vendor_id) DO NOTHING — leave an existing subscription alone
+    await prisma.chatbot_subscribers.upsert({
+      where: { vendor_id: Number(vendor_id) },
+      update: {},
+      create: { vendor_id: Number(vendor_id), share_token: crypto.randomBytes(8).toString('hex') },
+    });
     res.status(201).json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -67,18 +75,19 @@ router.post('/subscribers', requireAuth, requireSuperAdmin, async (req, res) => 
 // 🔌 toggle active / inactive
 router.put('/subscribers/:vendorId/active', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rows } = await query(
-      'UPDATE chatbot_subscribers SET active=$1 WHERE vendor_id=$2 RETURNING active',
-      [!!req.body.active, req.params.vendorId]);
-    if (!rows[0]) return res.status(404).json({ error: 'Not a subscriber' });
-    res.json({ active: rows[0].active });
+    const { count } = await prisma.chatbot_subscribers.updateMany({
+      where: { vendor_id: Number(req.params.vendorId) },
+      data: { active: !!req.body.active },
+    });
+    if (!count) return res.status(404).json({ error: 'Not a subscriber' });
+    res.json({ active: !!req.body.active });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🗑️ remove a subscriber
 router.delete('/subscribers/:vendorId', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    await query('DELETE FROM chatbot_subscribers WHERE vendor_id=$1', [req.params.vendorId]);
+    await prisma.chatbot_subscribers.deleteMany({ where: { vendor_id: Number(req.params.vendorId) } });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -86,26 +95,34 @@ router.delete('/subscribers/:vendorId', requireAuth, requireSuperAdmin, async (r
 // 🔑 set the access code for the shareable fill-in link
 router.put('/subscribers/:vendorId/code', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rows } = await query(
-      'UPDATE chatbot_subscribers SET access_code=$1 WHERE vendor_id=$2 RETURNING access_code, share_token',
-      [(req.body.access_code || '').trim() || null, req.params.vendorId]);
-    if (!rows[0]) return res.status(404).json({ error: 'Not a subscriber' });
-    res.json({ access_code: rows[0].access_code, share_token: rows[0].share_token });
+    const vendorId = Number(req.params.vendorId);
+    const { count } = await prisma.chatbot_subscribers.updateMany({
+      where: { vendor_id: vendorId },
+      data: { access_code: (req.body.access_code || '').trim() || null },
+    });
+    if (!count) return res.status(404).json({ error: 'Not a subscriber' });
+    const s = await prisma.chatbot_subscribers.findUnique({
+      where: { vendor_id: vendorId },
+      select: { access_code: true, share_token: true },
+    });
+    res.json({ access_code: s.access_code, share_token: s.share_token });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 📚 knowledge — read (super admin)
 router.get('/knowledge/:vendorId', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rows: sub } = await query(
-      `SELECT s.share_token, s.access_code, s.active, v.business_name
-       FROM chatbot_subscribers s JOIN vendors v ON v.id=s.vendor_id WHERE s.vendor_id=$1`,
-      [req.params.vendorId]);
-    if (!sub[0]) return res.status(404).json({ error: 'Not a subscriber' });
-    const { rows } = await query('SELECT * FROM chatbot_knowledge WHERE vendor_id=$1', [req.params.vendorId]);
+    const vendorId = Number(req.params.vendorId);
+    const sub = await prisma.chatbot_subscribers.findUnique({
+      where: { vendor_id: vendorId },
+      select: { share_token: true, access_code: true, active: true, vendors: { select: { business_name: true } } },
+    });
+    if (!sub) return res.status(404).json({ error: 'Not a subscriber' });
+    const knowledge = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: vendorId } });
+    const { vendors, ...subRest } = sub;
     res.json({
-      knowledge: rows[0] || emptyKnowledge(Number(req.params.vendorId)),
-      subscriber: sub[0],
+      knowledge: knowledge || emptyKnowledge(vendorId),
+      subscriber: { ...subRest, business_name: vendors?.business_name ?? null },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -120,14 +137,13 @@ router.put('/knowledge/:vendorId', requireAuth, requireSuperAdmin, async (req, r
 
 // shared upsert used by both super-admin edit and the public fill-in form
 async function saveKnowledge(vendorId, body) {
-  const vals = KNOWLEDGE_FIELDS.map(f => (body[f] ?? '').toString());
-  const cols = KNOWLEDGE_FIELDS.join(', ');
-  const params = KNOWLEDGE_FIELDS.map((_, i) => `$${i + 2}`).join(', ');
-  const updates = KNOWLEDGE_FIELDS.map((f, i) => `${f}=$${i + 2}`).join(', ');
-  await query(
-    `INSERT INTO chatbot_knowledge (vendor_id, ${cols}) VALUES ($1, ${params})
-     ON CONFLICT (vendor_id) DO UPDATE SET ${updates}, updated_at=now()`,
-    [vendorId, ...vals]);
+  const data = {};
+  for (const f of KNOWLEDGE_FIELDS) data[f] = (body[f] ?? '').toString();
+  await prisma.chatbot_knowledge.upsert({
+    where: { vendor_id: Number(vendorId) },
+    update: { ...data, updated_at: new Date() },
+    create: { vendor_id: Number(vendorId), ...data },
+  });
 }
 
 // ── 🌐 PUBLIC (vendor fills their own knowledge via share link) ──
@@ -135,36 +151,38 @@ async function saveKnowledge(vendorId, body) {
 // meta for the fill-in page (does it exist? is a code required?)
 router.get('/fill/:token', async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT s.vendor_id, s.access_code, s.active, v.business_name
-       FROM chatbot_subscribers s JOIN vendors v ON v.id=s.vendor_id WHERE s.share_token=$1`,
-      [req.params.token]);
-    if (!rows[0]) return res.status(404).json({ error: 'Link not found' });
-    res.json({ business_name: rows[0].business_name, needs_code: !!rows[0].access_code });
+    const s = await prisma.chatbot_subscribers.findFirst({
+      where: { share_token: req.params.token },   // the token is the access key
+      select: { vendor_id: true, access_code: true, active: true, vendors: { select: { business_name: true } } },
+    });
+    if (!s) return res.status(404).json({ error: 'Link not found' });
+    res.json({ business_name: s.vendors?.business_name ?? null, needs_code: !!s.access_code });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // unlock with the access code → returns the current knowledge to edit
 router.post('/fill/:token/unlock', async (req, res) => {
   try {
-    const { rows } = await query(
-      'SELECT vendor_id, access_code FROM chatbot_subscribers WHERE share_token=$1', [req.params.token]);
-    const s = rows[0];
+    const s = await prisma.chatbot_subscribers.findFirst({
+      where: { share_token: req.params.token },
+      select: { vendor_id: true, access_code: true },
+    });
     if (!s) return res.status(404).json({ error: 'Link not found' });
     if (s.access_code && (req.body.code || '') !== s.access_code) {
       return res.status(401).json({ error: 'Wrong access code' });
     }
-    const { rows: k } = await query('SELECT * FROM chatbot_knowledge WHERE vendor_id=$1', [s.vendor_id]);
-    res.json({ knowledge: k[0] || emptyKnowledge(s.vendor_id), fields: KNOWLEDGE_FIELDS });
+    const k = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: s.vendor_id } });
+    res.json({ knowledge: k || emptyKnowledge(s.vendor_id), fields: KNOWLEDGE_FIELDS });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // vendor submits their filled knowledge
 router.post('/fill/:token', async (req, res) => {
   try {
-    const { rows } = await query(
-      'SELECT vendor_id, access_code FROM chatbot_subscribers WHERE share_token=$1', [req.params.token]);
-    const s = rows[0];
+    const s = await prisma.chatbot_subscribers.findFirst({
+      where: { share_token: req.params.token },
+      select: { vendor_id: true, access_code: true },
+    });
     if (!s) return res.status(404).json({ error: 'Link not found' });
     if (s.access_code && (req.body.code || '') !== s.access_code) {
       return res.status(401).json({ error: 'Wrong access code' });
@@ -177,34 +195,50 @@ router.post('/fill/:token', async (req, res) => {
 // 💰 cost + usage per vendor (super admin)
 router.get('/costs', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT u.vendor_id, v.business_name,
-              SUM(u.input_tokens)::int  AS input_tokens,
-              SUM(u.output_tokens)::int AS output_tokens,
-              SUM(u.cost_usd)::numeric(12,4) AS cost_usd,
-              COUNT(*)::int AS messages,
-              MAX(u.created_at) AS last_used
-       FROM chatbot_usage u JOIN vendors v ON v.id=u.vendor_id
-       GROUP BY u.vendor_id, v.business_name
-       ORDER BY cost_usd DESC`);
-    const total = rows.reduce((s, r) => s + Number(r.cost_usd || 0), 0);
-    res.json({ vendors: rows, total_usd: Number(total.toFixed(4)) });
+    const grouped = await prisma.chatbot_usage.groupBy({
+      by: ['vendor_id'],
+      _sum: { input_tokens: true, output_tokens: true, cost_usd: true },
+      _count: { _all: true },
+      _max: { created_at: true },
+    });
+    // attach the business name for each vendor in the roll-up
+    const names = await prisma.vendors.findMany({
+      where: { id: { in: grouped.map(g => g.vendor_id) } },
+      select: { id: true, business_name: true },
+    });
+    const nameBy = new Map(names.map(v => [v.id, v.business_name]));
+    const vendors = grouped
+      .map(g => ({
+        vendor_id: g.vendor_id,
+        business_name: nameBy.get(g.vendor_id) ?? null,
+        input_tokens: Number(g._sum.input_tokens || 0),
+        output_tokens: Number(g._sum.output_tokens || 0),
+        cost_usd: Number(g._sum.cost_usd || 0).toFixed(4),
+        messages: g._count._all,
+        last_used: g._max.created_at,
+      }))
+      .sort((a, b) => Number(b.cost_usd) - Number(a.cost_usd));
+    const total = vendors.reduce((s, r) => s + Number(r.cost_usd || 0), 0);
+    res.json({ vendors, total_usd: Number(total.toFixed(4)) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ❓ pending (unanswered) questions for a vendor
 router.get('/pending/:vendorId', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rows } = await query(
-      "SELECT * FROM chatbot_pending WHERE vendor_id=$1 AND status='pending' ORDER BY id DESC", [req.params.vendorId]);
-    res.json({ pending: rows });
+    const pending = await prisma.chatbot_pending.findMany({
+      where: { vendor_id: Number(req.params.vendorId), status: 'pending' },
+      orderBy: { id: 'desc' },
+    });
+    res.json({ pending });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.put('/pending/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const status = req.body.dismiss ? 'dismissed' : 'answered';
-    await query('UPDATE chatbot_pending SET answer=$1, status=$2 WHERE id=$3',
-      [req.body.answer || null, status, req.params.id]);
+    await prisma.chatbot_pending.update({
+      where: { id: Number(req.params.id) },
+      data: { answer: req.body.answer || null, status: req.body.dismiss ? 'dismissed' : 'answered' },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -212,14 +246,20 @@ router.put('/pending/:id', requireAuth, requireSuperAdmin, async (req, res) => {
 // 📨 visitor messages left for a vendor
 router.get('/messages/:vendorId', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const { rows } = await query(
-      'SELECT * FROM chatbot_messages WHERE vendor_id=$1 ORDER BY id DESC LIMIT 100', [req.params.vendorId]);
-    res.json({ messages: rows });
+    const messages = await prisma.chatbot_messages.findMany({
+      where: { vendor_id: Number(req.params.vendorId) },
+      orderBy: { id: 'desc' },
+      take: 100,
+    });
+    res.json({ messages });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.put('/messages/:id/read', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    await query("UPDATE chatbot_messages SET status='read' WHERE id=$1", [req.params.id]);
+    await prisma.chatbot_messages.update({
+      where: { id: Number(req.params.id) },
+      data: { status: 'read' },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -245,8 +285,8 @@ router.post('/chat/:vendorId', async (req, res) => {
       return res.json({ reply: "Thanks for all the questions! For anything more, please reach out to the team directly.", done: true });
     }
 
-    const { rows: v } = await query('SELECT business_name FROM vendors WHERE id=$1', [vendorId]);
-    const out = await generateReply(vendorId, v[0]?.business_name || '', text, history, session);
+    const vendor = await prisma.vendors.findUnique({ where: { id: vendorId }, select: { business_name: true } });
+    const out = await generateReply(vendorId, vendor?.business_name || '', text, history, session);
     res.json({ reply: out.reply, lead_saved: out.lead_saved, done: false });
   } catch (e) {
     console.error('chat error', e.message);
@@ -261,9 +301,11 @@ function vid(req) { return req.user.vendor_id; }
 // am I subscribed? (drives the panel: history vs upsell)
 router.get('/my/status', requireAuth, async (req, res) => {
   try {
-    const { rows } = await query(
-      'SELECT active FROM chatbot_subscribers WHERE vendor_id=$1', [vid(req)]);
-    res.json({ subscribed: !!rows[0], active: !!rows[0]?.active });
+    const sub = await prisma.chatbot_subscribers.findUnique({
+      where: { vendor_id: vid(req) },             // 🔒 tenancy — own row only
+      select: { active: true },
+    });
+    res.json({ subscribed: !!sub, active: !!sub?.active });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -271,14 +313,18 @@ router.get('/my/status', requireAuth, async (req, res) => {
 router.get('/my/history', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const { rows: sub } = await query('SELECT active FROM chatbot_subscribers WHERE vendor_id=$1', [v]);
-    if (!sub[0]) return res.status(403).json({ error: 'Not subscribed' });
+    const sub = await prisma.chatbot_subscribers.findUnique({
+      where: { vendor_id: v },                    // 🔒 tenancy
+      select: { active: true },
+    });
+    if (!sub) return res.status(403).json({ error: 'Not subscribed' });
 
-    const { rows } = await query(
-      `SELECT session, role, content, created_at
-       FROM chatbot_transcripts
-       WHERE vendor_id=$1 AND created_at > now() - interval '30 days'
-       ORDER BY session, id`, [v]);
+    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);   // interval '30 days'
+    const rows = await prisma.chatbot_transcripts.findMany({
+      where: { vendor_id: v, created_at: { gt: since } },          // 🔒 tenancy
+      select: { session: true, role: true, content: true, created_at: true },
+      orderBy: [{ session: 'asc' }, { id: 'asc' }],
+    });
 
     // group rows into conversations keyed by session
     const bySession = new Map();
