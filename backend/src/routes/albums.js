@@ -241,79 +241,101 @@ Thank you for choosing us! 💛`;
 // 🔒 upload/replace cover photo → webp 1200px
 router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Not found' });
     if (!req.file) return res.status(400).json({ error: 'No file' });
-    const dir = path.join(ROOT, String(req.params.id));
+    const dir = path.join(ROOT, String(id));
     fs.mkdirSync(dir, { recursive: true });
     const fname = `cover_${Date.now()}.webp`;
     await sharp(req.file.path).rotate().resize(1200, 1200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fname));
     fs.unlink(req.file.path, () => {});
-    const { rows } = await query('UPDATE albums SET cover_photo=$1 WHERE id=$2 RETURNING *', [fname, req.params.id]);
-    res.json({ album: rows[0] });
+    await prisma.albums.updateMany({ where: { id, vendor_id: v }, data: { cover_photo: fname } });
+    const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
+    res.json({ album });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🎯 save the cover focal point ("X% Y%") so covers frame well on any aspect ratio
 router.put('/:id/cover-focus', requireAuth, async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
     const focus = (req.body.focus || '50% 50%').trim();
     // validate: two percentages like "37% 62%"
     if (!/^\d{1,3}%\s\d{1,3}%$/.test(focus)) return res.status(400).json({ error: 'Bad focus format' });
-    const { rows } = await query('UPDATE albums SET cover_focus=$1 WHERE id=$2 RETURNING *', [focus, req.params.id]);
-    res.json({ album: rows[0] });
+    const { count } = await prisma.albums.updateMany({ where: { id, vendor_id: v }, data: { cover_focus: focus } }); // 🔒 tenancy
+    if (!count) return res.status(404).json({ error: 'Not found' });
+    const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
+    res.json({ album });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🌐 public cover image
 router.get('/cover/:id', async (req, res) => {
   try {
-    const { rows } = await query('SELECT cover_photo FROM albums WHERE id=$1', [req.params.id]);
-    if (!rows[0] || !rows[0].cover_photo) return res.status(404).end();
-    res.sendFile(path.join(ROOT, String(req.params.id), rows[0].cover_photo));
+    const a = await prisma.albums.findUnique({
+      where: { id: Number(req.params.id) },
+      select: { cover_photo: true },
+    });
+    if (!a?.cover_photo) return res.status(404).end();
+    res.sendFile(path.join(ROOT, String(req.params.id), a.cover_photo));
   } catch { res.status(404).end(); }
 });
 
 // 🔒 album detail + photos (tenant-checked)
 router.get('/:id', requireAuth, async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
-    const { rows: a } = await query('SELECT * FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!a[0]) return res.status(404).json({ error: 'Album not found' });
-    const { rows: photos } = await query('SELECT * FROM photos WHERE album_id=$1 ORDER BY created_at', [req.params.id]);
-    const { rows: events } = await query('SELECT id, name, sort_order FROM album_events WHERE album_id=$1 ORDER BY sort_order, id', [req.params.id]);
-    res.json({ album: a[0], photos, events });
+    const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });   // 🔒 tenancy
+    if (!album) return res.status(404).json({ error: 'Album not found' });
+    const photos = await prisma.photos.findMany({
+      where: { album_id: id, vendor_id: v },        // 🔒 tenancy
+      orderBy: { created_at: 'asc' },
+    });
+    const events = await prisma.album_events.findMany({
+      where: { album_id: id, vendor_id: v },        // 🔒 tenancy
+      select: { id: true, name: true, sort_order: true },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+    });
+    res.json({ album, photos, events });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 events CRUD (per-client mode)
 router.post('/:id/events', requireAuth, async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   try {
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Album not found' });
-    const { rows: mx } = await query('SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM album_events WHERE album_id=$1', [req.params.id]);
-    const { rows } = await query(
-      'INSERT INTO album_events (album_id, vendor_id, name, sort_order) VALUES ($1,$2,$3,$4) RETURNING id, name, sort_order',
-      [req.params.id, v, name, mx[0].n]);
-    res.status(201).json({ event: rows[0] });
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+    const top = await prisma.album_events.aggregate({
+      where: { album_id: id },
+      _max: { sort_order: true },
+    });
+    const event = await prisma.album_events.create({
+      data: { album_id: id, vendor_id: v, name, sort_order: (top._max.sort_order || 0) + 1 },
+      select: { id: true, name: true, sort_order: true },
+    });
+    res.status(201).json({ event });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
   const v = vid(req);
   const { name } = req.body;
   try {
-    const { rows } = await query(
-      'UPDATE album_events SET name=COALESCE($1,name) WHERE id=$2 AND album_id=$3 AND vendor_id=$4 RETURNING id, name',
-      [name || null, req.params.eventId, req.params.id, v]);
-    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-    res.json({ event: rows[0] });
+    const where = { id: Number(req.params.eventId), album_id: Number(req.params.id), vendor_id: v }; // 🔒 tenancy
+    const { count } = await prisma.album_events.updateMany({
+      where,
+      data: name ? { name } : {},                 // COALESCE($1,name): blank keeps the current name
+    });
+    if (!count) return res.status(404).json({ error: 'Not found' });
+    const event = await prisma.album_events.findFirst({ where, select: { id: true, name: true } });
+    res.json({ event });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
