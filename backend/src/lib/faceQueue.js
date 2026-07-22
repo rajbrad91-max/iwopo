@@ -15,7 +15,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { getFaceDescriptors } from './faceEngine.js';
 import { getFaceDescriptorsAWS } from './faceAWS.js';
 import { getSetting } from './settings.js';
@@ -38,8 +38,7 @@ let running = false;
 // how many photos are still un-indexed system-wide (backlog depth)
 export async function backlogDepth() {
   try {
-    const { rows } = await query('SELECT COUNT(*)::int AS n FROM photos WHERE face_indexed=false');
-    return rows[0]?.n || 0;
+    return await prisma.photos.count({ where: { face_indexed: false } });
   } catch { return 0; }
 }
 
@@ -58,8 +57,11 @@ function allowedConcurrency() {
 async function resolveAlbumEngine(albumId) {
   // already locked? reuse it, no matter the current mode/backlog
   try {
-    const { rows } = await query('SELECT face_engine_lock FROM albums WHERE id=$1', [albumId]);
-    if (rows[0]?.face_engine_lock) return rows[0].face_engine_lock;
+    const a = await prisma.albums.findUnique({
+      where: { id: Number(albumId) },
+      select: { face_engine_lock: true },
+    });
+    if (a?.face_engine_lock) return a.face_engine_lock;
   } catch { /* fall through to pick */ }
 
   // not locked yet → pick per the admin's mode, then persist the choice
@@ -73,7 +75,13 @@ async function resolveAlbumEngine(albumId) {
     const depth = await backlogDepth();
     engine = depth > BACKLOG_AWS_LINE ? 'aws' : 'local';
   }
-  try { await query('UPDATE albums SET face_engine_lock=$1 WHERE id=$2 AND face_engine_lock IS NULL', [engine, albumId]); } catch { /* best effort */ }
+  // the WHERE face_engine_lock IS NULL guard keeps the first writer's choice
+  try {
+    await prisma.albums.updateMany({
+      where: { id: Number(albumId), face_engine_lock: null },
+      data: { face_engine_lock: engine },
+    });
+  } catch { /* best effort */ }
   return engine;
 }
 
@@ -106,8 +114,10 @@ async function indexPhoto(p, engine) {
   const found = engine === 'aws'
     ? await getFaceDescriptorsAWS(full)
     : await getFaceDescriptors(full);
-  await query('UPDATE photos SET faces=$1, face_count=$2, face_indexed=true, face_engine=$3 WHERE id=$4',
-    [JSON.stringify(found), found.length, engine, p.id]);
+  await prisma.photos.update({
+    where: { id: p.id },
+    data: { faces: found, face_count: found.length, face_indexed: true, face_engine: engine },
+  });
 }
 
 async function indexOneAlbum(albumId) {
@@ -115,8 +125,11 @@ async function indexOneAlbum(albumId) {
 
   let photos;
   try {
-    ({ rows: photos } = await query(
-      'SELECT id, preview_path FROM photos WHERE album_id=$1 AND face_indexed=false ORDER BY id', [albumId]));
+    photos = await prisma.photos.findMany({
+      where: { album_id: Number(albumId), face_indexed: false },
+      select: { id: true, preview_path: true },
+      orderBy: { id: 'asc' },
+    });
   } catch { return; }
 
   let i = 0;
@@ -140,10 +153,11 @@ async function indexOneAlbum(albumId) {
 
 // manual full re-index (vendor/admin button) — still adaptive + throttled
 export async function indexAlbumNow(albumId) {
-  const before = await query('SELECT COUNT(*)::int AS n FROM photos WHERE album_id=$1 AND face_indexed=false', [albumId]);
+  const where = { album_id: Number(albumId), face_indexed: false };
+  const before = await prisma.photos.count({ where });
   await indexOneAlbum(albumId);
-  const after = await query('SELECT COUNT(*)::int AS n FROM photos WHERE album_id=$1 AND face_indexed=false', [albumId]);
-  return { requested: before.rows[0]?.n || 0, remaining: after.rows[0]?.n || 0 };
+  const after = await prisma.photos.count({ where });
+  return { requested: before, remaining: after };
 }
 
 // live status for the super-panel dashboard

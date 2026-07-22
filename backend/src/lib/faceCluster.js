@@ -10,7 +10,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 
 import fs from 'fs';
 import path from 'path';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { findMatchesAWS } from './faceAWS.js';
 
 const ROOT = GALLERIES_ROOT;
@@ -52,9 +52,10 @@ function meanDescriptor(list) {
 
 /** Pull every usable face in the album, flattened to one row per face. */
 async function collectFaces(albumId) {
-  const { rows } = await query(
-    `SELECT id, faces, face_engine FROM photos
-     WHERE album_id=$1 AND face_indexed=true AND face_count > 0`, [albumId]);
+  const rows = await prisma.photos.findMany({
+    where: { album_id: Number(albumId), face_indexed: true, face_count: { gt: 0 } },
+    select: { id: true, faces: true, face_engine: true },
+  });
 
   const faces = [];
   for (const p of rows) {
@@ -151,14 +152,17 @@ async function clusterAWS(faces) {
 
 /** Rebuild every cluster for one album. Safe to re-run. */
 export async function clusterAlbum(albumId) {
-  const { rows: alb } = await query('SELECT id, vendor_id FROM albums WHERE id=$1', [albumId]);
-  if (!alb[0]) return { clusters: 0 };
-  const vendorId = alb[0].vendor_id;
+  const alb = await prisma.albums.findUnique({
+    where: { id: Number(albumId) },
+    select: { id: true, vendor_id: true },
+  });
+  if (!alb) return { clusters: 0 };
+  const vendorId = alb.vendor_id;
 
   const faces = await collectFaces(albumId);
   if (!faces.length) {
-    await query('DELETE FROM face_clusters WHERE album_id=$1', [albumId]);
-    await query('UPDATE albums SET faces_clustered=true WHERE id=$1', [albumId]);
+    await prisma.face_clusters.deleteMany({ where: { album_id: Number(albumId) } });
+    await prisma.albums.update({ where: { id: Number(albumId) }, data: { faces_clustered: true } });
     return { clusters: 0 };
   }
 
@@ -166,7 +170,7 @@ export async function clusterAlbum(albumId) {
   const groups = engine === 'aws' ? await clusterAWS(faces) : clusterLocal(faces);
 
   // start clean so re-running never duplicates people
-  await query('DELETE FROM face_clusters WHERE album_id=$1', [albumId]);
+  await prisma.face_clusters.deleteMany({ where: { album_id: Number(albumId) } });
 
   let saved = 0;
   for (const g of groups) {
@@ -177,45 +181,45 @@ export async function clusterAlbum(albumId) {
     // the circle uses the clearest face we found for this person
     const cover = g.faces.reduce((a, b) => (b.score > a.score ? b : a), g.faces[0]);
 
-    const { rows } = await query(
-      `INSERT INTO face_clusters
-         (album_id, vendor_id, engine, centroid, cover_photo_id, cover_box, photo_count)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [albumId, vendorId, engine,
-       g.centroid ? JSON.stringify(g.centroid) : null,
-       cover.photo_id,
-       cover.box ? JSON.stringify(cover.box) : null,
-       photoIds.length]);
+    const created = await prisma.face_clusters.create({
+      data: {
+        album_id: Number(albumId), vendor_id: vendorId, engine,
+        centroid: g.centroid ?? null,        // Json columns — no manual stringify
+        cover_photo_id: cover.photo_id,
+        cover_box: cover.box ?? null,
+        photo_count: photoIds.length,
+      },
+      select: { id: true },
+    });
 
-    const clusterId = rows[0].id;
-    for (const pid of photoIds) {
-      await query(
-        'INSERT INTO photo_faces (cluster_id, photo_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-        [clusterId, pid]);
-    }
+    await prisma.photo_faces.createMany({
+      data: photoIds.map(pid => ({ cluster_id: created.id, photo_id: pid })),
+      skipDuplicates: true,                  // ON CONFLICT DO NOTHING
+    });
     saved++;
   }
 
-  await query('UPDATE albums SET faces_clustered=true WHERE id=$1', [albumId]);
+  await prisma.albums.update({ where: { id: Number(albumId) }, data: { faces_clustered: true } });
   return { clusters: saved, faces: faces.length, engine };
 }
 
 /** The face circles for an album, biggest group first. */
 export async function albumClusters(albumId) {
-  const { rows } = await query(
-    `SELECT c.id, c.photo_count, c.cover_photo_id, c.cover_box
-     FROM face_clusters c
-     WHERE c.album_id=$1
-     ORDER BY c.photo_count DESC, c.id ASC`, [albumId]);
-  return rows;
+  return prisma.face_clusters.findMany({
+    where: { album_id: Number(albumId) },
+    select: { id: true, photo_count: true, cover_photo_id: true, cover_box: true },
+    orderBy: [{ photo_count: 'desc' }, { id: 'asc' }],
+  });
 }
 
 /** Which photos a given person appears in. */
 export async function clusterPhotoIds(albumId, clusterId) {
-  const { rows } = await query(
-    `SELECT pf.photo_id
-     FROM photo_faces pf
-     JOIN face_clusters c ON c.id = pf.cluster_id
-     WHERE c.album_id=$1 AND c.id=$2`, [albumId, clusterId]);
+  const rows = await prisma.photo_faces.findMany({
+    where: {
+      cluster_id: Number(clusterId),
+      face_clusters: { album_id: Number(albumId) },   // 🔒 cluster must be in THIS album
+    },
+    select: { photo_id: true },
+  });
   return rows.map(r => r.photo_id);
 }

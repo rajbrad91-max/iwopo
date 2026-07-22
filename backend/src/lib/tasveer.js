@@ -3,7 +3,7 @@
 // vendor's knowledge base, three tools (save_lead / log_unanswered / leave_message),
 // Claude API call, token+cost tracking per vendor.
 
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { getSetting } from './settings.js';
 import { notify } from '../routes/notifications.js';
 
@@ -15,13 +15,16 @@ const PRICE_IN = 3 / 1_000_000;    // $3 / 1M input tokens
 const PRICE_OUT = 15 / 1_000_000;  // $15 / 1M output tokens
 
 export async function getKnowledge(vendorId) {
-  const { rows } = await query('SELECT * FROM chatbot_knowledge WHERE vendor_id=$1', [vendorId]);
-  return rows[0] || {};
+  const k = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: Number(vendorId) } });
+  return k || {};
 }
 
 export async function isActiveSubscriber(vendorId) {
-  const { rows } = await query('SELECT active FROM chatbot_subscribers WHERE vendor_id=$1', [vendorId]);
-  return !!rows[0]?.active;
+  const s = await prisma.chatbot_subscribers.findUnique({
+    where: { vendor_id: Number(vendorId) },
+    select: { active: true },
+  });
+  return !!s?.active;
 }
 
 /** Build the system prompt from this vendor's knowledge (safety rules stay locked in code). */
@@ -197,11 +200,20 @@ export async function saveLeadFromChat(vendorId, input) {
   add('Notes', input.notes);
   const notes = ['— From Tasveer (chatbot) —', ...extras].join('\n');
 
-  await query(
-    `INSERT INTO leads (vendor_id, name, email, phone, event_type, event_date, location, guests, instagram, notes, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'new')`,
-    [vendorId, name, input.email || null, input.phone || null, input.event_type || null,
-     eventDate, input.location || null, guests, input.instagram || null, notes]);
+  await prisma.leads.create({
+    data: {
+      vendor_id: Number(vendorId), name,
+      email: input.email || null,
+      phone: input.phone || null,
+      event_type: input.event_type || null,
+      event_date: eventDate,
+      location: input.location || null,
+      guests,
+      instagram: input.instagram || null,
+      notes,
+      status: 'new',
+    },
+  });
 
   // 🔔 tell the vendor a booking came in through the chatbot
   const bits = [input.event_type, input.event_date, input.location].filter(Boolean).join(' · ');
@@ -212,14 +224,20 @@ export async function saveLeadFromChat(vendorId, input) {
 export async function logUnanswered(vendorId, question, session) {
   const q = (question || '').trim();
   if (!q) return;
-  await query('INSERT INTO chatbot_pending (vendor_id, question, session) VALUES ($1,$2,$3)', [vendorId, q, session || null]);
+  await prisma.chatbot_pending.create({
+    data: { vendor_id: Number(vendorId), question: q, session: session || null },
+  });
 }
 
 export async function leaveMessage(vendorId, input, session) {
   const m = (input.message || '').trim();
   if (!m) return;
-  await query('INSERT INTO chatbot_messages (vendor_id, message, name, contact, session) VALUES ($1,$2,$3,$4,$5)',
-    [vendorId, m, input.name || null, input.contact || null, session || null]);
+  await prisma.chatbot_messages.create({
+    data: {
+      vendor_id: Number(vendorId), message: m,
+      name: input.name || null, contact: input.contact || null, session: session || null,
+    },
+  });
 
   // 🔔 a visitor left a message for the team
   const who = input.name ? input.name : 'A visitor';
@@ -243,27 +261,33 @@ async function recordUsage(vendorId, session, usage) {
   const inTok = usage?.input_tokens || 0;
   const outTok = usage?.output_tokens || 0;
   const cost = inTok * PRICE_IN + outTok * PRICE_OUT;
-  await query(
-    'INSERT INTO chatbot_usage (vendor_id, session, input_tokens, output_tokens, cost_usd) VALUES ($1,$2,$3,$4,$5)',
-    [vendorId, session || null, inTok, outTok, cost.toFixed(6)]);
+  await prisma.chatbot_usage.create({
+    data: {
+      vendor_id: Number(vendorId), session: session || null,
+      input_tokens: inTok, output_tokens: outTok, cost_usd: Number(cost.toFixed(6)),
+    },
+  });
 }
 
 /** 💬 Save both sides of the exchange to the transcript (vendors read this). */
 async function saveTranscript(vendorId, session, userText, botText) {
   if (!session) return;
   try {
-    await query(
-      `INSERT INTO chatbot_transcripts (vendor_id, session, role, content)
-       VALUES ($1,$2,'user',$3), ($1,$2,'assistant',$4)`,
-      [vendorId, session, userText, botText]);
+    await prisma.chatbot_transcripts.createMany({
+      data: [
+        { vendor_id: Number(vendorId), session, role: 'user', content: userText },
+        { vendor_id: Number(vendorId), session, role: 'assistant', content: botText },
+      ],
+    });
   } catch { /* never break the chat over a transcript write */ }
 }
 
 /** 🗑️ Delete transcripts older than 30 days (called on a timer). */
 export async function purgeOldTranscripts() {
   try {
-    const r = await query("DELETE FROM chatbot_transcripts WHERE created_at < now() - interval '30 days'");
-    if (r.rowCount) console.log(`🗑️ purged ${r.rowCount} old chat transcript rows`);
+    const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000);   // interval '30 days'
+    const r = await prisma.chatbot_transcripts.deleteMany({ where: { created_at: { lt: cutoff } } });
+    if (r.count) console.log(`🗑️ purged ${r.count} old chat transcript rows`);
   } catch (e) { console.error('transcript purge failed:', e.message); }
 }
 // run at boot, then daily
