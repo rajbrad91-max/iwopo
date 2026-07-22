@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import multer from 'multer';
 import sharp from 'sharp';
 import { createRequire } from 'module';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
 import { getFaceDescriptorsAWS, findMatchesAWS } from '../lib/faceAWS.js';
 import { getSetting } from '../lib/settings.js';
@@ -17,10 +17,30 @@ const archiver = require('archiver');
 const upload = multer({ dest: '/tmp/iwopo-selfie' });
 
 // 📶 photos read in filename order, case-insensitive, with digit runs zero-padded
-// so they compare numerically (IMG_2 before IMG_10).
-const NAT_ORDER = `
-  regexp_replace(lower(filename), '(\\d+)', lpad('\\1', 10, '0'), 'g') ASC,
-  id ASC`;
+// so they compare numerically (IMG_2 before IMG_10). This ordering is a Postgres
+// regexp expression that Prisma's orderBy can't express, so these reads use
+// $queryRawUnsafe with bound parameters — the only raw SQL in the app.
+// NOTE: the regex backslashes must survive JS string escaping, hence \\d / \\1.
+const NAT_SORT = `ORDER BY regexp_replace(lower(filename), '(\\d+)', lpad('\\1', 10, '0'), 'g') ASC, id ASC`;
+
+async function photosInAlbum(albumId) {
+  return prisma.$queryRawUnsafe(
+    `SELECT id, filename, event_id, face_count FROM photos WHERE album_id = $1 ${NAT_SORT}`,
+    albumId
+  );
+}
+async function photosInEvent(albumId, eventId) {
+  return prisma.$queryRawUnsafe(
+    `SELECT * FROM photos WHERE album_id = $1 AND event_id = $2 ${NAT_SORT}`,
+    albumId, eventId
+  );
+}
+async function allPhotoRowsInAlbum(albumId) {
+  return prisma.$queryRawUnsafe(
+    `SELECT * FROM photos WHERE album_id = $1 ${NAT_SORT}`,
+    albumId
+  );
+}
 
 const THEME_DEFAULTS = {
   heading_font: 'Playfair Display', body_font: 'Jost',
@@ -29,8 +49,8 @@ const THEME_DEFAULTS = {
   tagline_text: '',
 };
 async function getTheme(vendorId) {
-  const { rows } = await query('SELECT * FROM gallery_theme WHERE vendor_id=$1', [vendorId]);
-  return rows[0] || { ...THEME_DEFAULTS };
+  const t = await prisma.gallery_theme.findUnique({ where: { vendor_id: vendorId } });
+  return t || { ...THEME_DEFAULTS };
 }
 
 const router = express.Router();
@@ -54,23 +74,29 @@ function checkViewToken(vt, albumId) {
 setInterval(() => { const now = Date.now(); for (const [k, v] of viewTokens) if (v.exp < now) viewTokens.delete(k); }, 3600 * 1000);
 
 async function findAlbum(token) {
-  const { rows } = await query('SELECT * FROM albums WHERE public_token=$1', [token]);
-  return rows[0] || null;
+  return prisma.albums.findFirst({ where: { public_token: token } });
 }
 
 // 🌐 whole-gallery index: list all albums for a vendor (covers + names + album tokens)
 router.get('/vendor/:token', async (req, res) => {
   try {
-    const { rows: v } = await query('SELECT id, business_name FROM vendors WHERE gallery_token=$1', [req.params.token]);
-    if (!v[0]) return res.status(404).json({ error: 'Gallery not found' });
-    const { rows: albums } = await query(
-      `SELECT a.public_token, a.title, a.category, a.cover_photo,
-              (SELECT COUNT(*)::int FROM photos p WHERE p.album_id=a.id) AS photo_count
-       FROM albums a WHERE a.vendor_id=$1 ORDER BY a.created_at DESC NULLS LAST, a.id DESC`, [v[0].id]);
+    const v = await prisma.vendors.findFirst({
+      where: { gallery_token: req.params.token },
+      select: { id: true, business_name: true },
+    });
+    if (!v) return res.status(404).json({ error: 'Gallery not found' });
+    const albums = await prisma.albums.findMany({
+      where: { vendor_id: v.id },                 // 🔒 only this vendor's galleries
+      orderBy: [{ created_at: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
+      select: {
+        public_token: true, title: true, category: true, cover_photo: true,
+        _count: { select: { photos: true } },
+      },
+    });
     res.json({
-      vendor: { name: v[0].business_name },
-      theme: await getTheme(v[0].id),
-      albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: a.photo_count })),
+      vendor: { name: v.business_name },
+      theme: await getTheme(v.id),
+      albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: a._count.photos })),
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -89,9 +115,9 @@ router.get('/:token', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Gallery not found' });
-    const { rows: c } = await query('SELECT COUNT(*)::int AS n FROM photos WHERE album_id=$1', [a.id]);
+    const n = await prisma.photos.count({ where: { album_id: a.id } });
     const theme = await getTheme(a.vendor_id);
-    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: c[0].n, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme });
+    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -117,12 +143,14 @@ router.post('/:token/auth', async (req, res) => {
     else if (a.guest_password && pw === a.guest_password) role = 'guest';
     if (!role) return res.status(401).json({ error: 'Wrong password' });
 
-    const { rows: photos } = await query(
-      `SELECT id, filename, event_id, face_count FROM photos
-       WHERE album_id=$1 ORDER BY ${NAT_ORDER}`, [a.id]);
+    const photos = await photosInAlbum(a.id);     // natural filename order
     const theme = await getTheme(a.vendor_id);
     // per-client: photos are always grouped under events
-    const { rows: events } = await query('SELECT id, name FROM album_events WHERE album_id=$1 ORDER BY sort_order, id', [a.id]);
+    const events = await prisma.album_events.findMany({
+      where: { album_id: a.id },
+      select: { id: true, name: true },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+    });
     const faceReady = photos.some(p => (p.face_count || 0) > 0);
     const vt = makeViewToken(a.id, role);
     res.json({
@@ -138,8 +166,9 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).end();
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
-    const { rows } = await query('SELECT * FROM photos WHERE id=$1 AND album_id=$2', [req.params.photoId, a.id]);
-    const p = rows[0];
+    const p = await prisma.photos.findFirst({
+      where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 photo must be in THIS album
+    });
     if (!p) return res.status(404).end();
     // 3 tiers: orig (download/zoom 1:1) · full 2200px (preview_path, default display) · thumb (grid)
     let rel;
@@ -158,8 +187,9 @@ router.get('/:token/download/:photoId', async (req, res) => {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).end();
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
-    const { rows } = await query('SELECT * FROM photos WHERE id=$1 AND album_id=$2', [req.params.photoId, a.id]);
-    const p = rows[0];
+    const p = await prisma.photos.findFirst({
+      where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 tenancy
+    });
     if (!p) return res.status(404).end();
     const full = path.join(ROOT, p.storage_path);
     if (!fs.existsSync(full)) return res.status(404).end();
@@ -177,13 +207,14 @@ router.get('/:token/download-all', async (req, res) => {
     const eventId = req.query.event ? parseInt(req.query.event, 10) : null;
     let photos, zipLabel = a.title || 'gallery';
     if (eventId) {
-      const r = await query(`SELECT * FROM photos WHERE album_id=$1 AND event_id=$2 ORDER BY ${NAT_ORDER}`, [a.id, eventId]);
-      photos = r.rows;
-      const ev = await query('SELECT name FROM album_events WHERE id=$1 AND album_id=$2', [eventId, a.id]);
-      if (ev.rows[0]) zipLabel = `${a.title}-${ev.rows[0].name}`;
+      photos = await photosInEvent(a.id, eventId);
+      const ev = await prisma.album_events.findFirst({
+        where: { id: eventId, album_id: a.id },    // 🔒 event must belong to this album
+        select: { name: true },
+      });
+      if (ev) zipLabel = `${a.title}-${ev.name}`;
     } else {
-      const r = await query(`SELECT * FROM photos WHERE album_id=$1 ORDER BY ${NAT_ORDER}`, [a.id]);
-      photos = r.rows;
+      photos = await allPhotoRowsInAlbum(a.id);
     }
     if (!photos.length) return res.status(404).json({ error: 'No photos' });
 
@@ -210,10 +241,15 @@ router.post('/:token/selfie', upload.single('selfie'), async (req, res) => {
 
     // 🔒 use the engine this album was actually indexed with (per-album lock).
     // Fall back to the global default if older photos have no engine recorded.
-    const { rows: eng } = await query(
-      "SELECT face_engine FROM photos WHERE album_id=$1 AND face_indexed=true AND face_engine IS NOT NULL LIMIT 1", [a.id]);
-    const engine = eng[0]?.face_engine || await getSetting('face_engine', 'vladmandic');
-    const { rows: photos } = await query('SELECT id, faces FROM photos WHERE album_id=$1 AND face_indexed=true AND face_count>0', [a.id]);
+    const eng = await prisma.photos.findFirst({
+      where: { album_id: a.id, face_indexed: true, face_engine: { not: null } },
+      select: { face_engine: true },
+    });
+    const engine = eng?.face_engine || await getSetting('face_engine', 'vladmandic');
+    const photos = await prisma.photos.findMany({
+      where: { album_id: a.id, face_indexed: true, face_count: { gt: 0 } },
+      select: { id: true, faces: true },
+    });
 
     let ids = [];
     if (engine === 'aws') {
@@ -247,16 +283,19 @@ router.get('/:token/faces', async (req, res) => {
     const eventId = req.query.event ? parseInt(req.query.event, 10) : null;
     if (eventId) {
       // event-scoped: count each person's photos WITHIN this event only, hide anyone with none
-      const { rows } = await query(
-        `SELECT c.id, COUNT(pf.photo_id)::int AS count
-         FROM face_clusters c
-         JOIN photo_faces pf ON pf.cluster_id = c.id
-         JOIN photos p ON p.id = pf.photo_id AND p.event_id = $2
-         WHERE c.album_id = $1
-         GROUP BY c.id
-         HAVING COUNT(pf.photo_id) > 0
-         ORDER BY COUNT(pf.photo_id) DESC, c.id ASC`, [a.id, eventId]);
-      return res.json({ faces: rows.map(r => ({ id: r.id, count: r.count })) });
+      const grouped = await prisma.photo_faces.groupBy({
+        by: ['cluster_id'],
+        where: {
+          face_clusters: { album_id: a.id },      // 🔒 clusters of THIS album
+          photos: { event_id: eventId },
+        },
+        _count: { photo_id: true },
+      });
+      const faces = grouped
+        .filter(g => g.cluster_id != null && g._count.photo_id > 0)   // HAVING COUNT > 0
+        .map(g => ({ id: g.cluster_id, count: g._count.photo_id }))
+        .sort((x, y) => y.count - x.count || x.id - y.id);
+      return res.json({ faces });
     }
 
     const clusters = await albumClusters(a.id);
@@ -273,12 +312,12 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     if (!a) return res.status(404).end();
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
 
-    const { rows } = await query(
-      `SELECT c.cover_box, p.preview_path
-       FROM face_clusters c JOIN photos p ON p.id = c.cover_photo_id
-       WHERE c.id=$1 AND c.album_id=$2`, [req.params.clusterId, a.id]);
-    const c = rows[0];
-    if (!c) return res.status(404).end();
+    const cluster = await prisma.face_clusters.findFirst({
+      where: { id: Number(req.params.clusterId), album_id: a.id },   // 🔒 cluster must be in THIS album
+      select: { cover_box: true, photos: { select: { preview_path: true } } },
+    });
+    if (!cluster || !cluster.photos) return res.status(404).end();
+    const c = { cover_box: cluster.cover_box, preview_path: cluster.photos.preview_path };
 
     const full = path.join(ROOT, c.preview_path);
     if (!fs.existsSync(full)) return res.status(404).end();
@@ -336,23 +375,27 @@ router.post('/:token/selection', async (req, res) => {
     if (!a) return res.status(404).json({ error: 'Not found' });
     if (!requireAdmin(req.query.vt, a.id)) return res.status(403).json({ error: 'Admin access required' });
     const ids = Array.isArray(req.body?.photo_ids) ? req.body.photo_ids.map(n => parseInt(n, 10)).filter(Boolean) : [];
-    // only keep ids that actually belong to this album
-    const { rows: valid } = await query('SELECT id FROM photos WHERE album_id=$1', [a.id]);
-    const allow = new Set(valid.map(r => r.id));
-    const keep = ids.filter(id => allow.has(id));
+    // only keep ids that actually belong to this album 🔒
+    const valid = await prisma.photos.findMany({
+      where: { album_id: a.id, id: { in: ids } },
+      select: { id: true },
+    });
+    const keep = valid.map(r => r.id);
     // replace the album's selection with the new set
-    await query('DELETE FROM selections WHERE album_id=$1', [a.id]);
-    for (const id of keep) {
-      await query('INSERT INTO selections (album_id, photo_id) VALUES ($1,$2) ON CONFLICT (album_id, photo_id) DO NOTHING', [a.id, id]);
+    await prisma.selections.deleteMany({ where: { album_id: a.id } });
+    if (keep.length) {
+      await prisma.selections.createMany({
+        data: keep.map(id => ({ album_id: a.id, photo_id: id })),
+        skipDuplicates: true,                      // ON CONFLICT DO NOTHING
+      });
     }
     // save the note the client sent along with the selection (blank clears it)
     const note = String(req.body?.note || '').trim().slice(0, 4000);
-    await query(
-      `INSERT INTO selection_notes (album_id, note, updated_at)
-       VALUES ($1,$2,now())
-       ON CONFLICT (album_id) DO UPDATE SET note = EXCLUDED.note, updated_at = now()`,
-      [a.id, note]
-    );
+    await prisma.selection_notes.upsert({
+      where: { album_id: a.id },
+      update: { note, updated_at: new Date() },
+      create: { album_id: a.id, note, updated_at: new Date() },
+    });
     res.json({ ok: true, count: keep.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -363,12 +406,14 @@ router.delete('/:token/photo/:photoId', async (req, res) => {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
     if (!requireAdmin(req.query.vt, a.id)) return res.status(403).json({ error: 'Admin access required' });
-    const { rows } = await query(
-      'SELECT storage_path, preview_path, thumb_path FROM photos WHERE id=$1 AND album_id=$2',
-      [req.params.photoId, a.id]);
-    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-    await query('DELETE FROM photos WHERE id=$1 AND album_id=$2', [req.params.photoId, a.id]);
-    for (const rel of [rows[0].storage_path, rows[0].preview_path, rows[0].thumb_path]) {
+    const where = { id: Number(req.params.photoId), album_id: a.id };   // 🔒 tenancy
+    const p = await prisma.photos.findFirst({
+      where,
+      select: { storage_path: true, preview_path: true, thumb_path: true },
+    });
+    if (!p) return res.status(404).json({ error: 'Not found' });
+    await prisma.photos.deleteMany({ where });
+    for (const rel of [p.storage_path, p.preview_path, p.thumb_path]) {
       if (!rel) continue;
       try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* already gone — fine */ }
     }
@@ -390,10 +435,10 @@ router.get('/:token/favorites', async (req, res) => {
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
     const email = normEmail(req.query.email);
     if (!validEmail(email)) return res.json({ photo_ids: [] });
-    const { rows } = await query(
-      'SELECT photo_id FROM favorites WHERE album_id=$1 AND email=$2',
-      [a.id, email]
-    );
+    const rows = await prisma.favorites.findMany({
+      where: { album_id: a.id, email },            // 🔒 scoped to this album + this person
+      select: { photo_id: true },
+    });
     res.json({ photo_ids: rows.map(r => r.photo_id) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -408,14 +453,13 @@ router.post('/:token/favorites', async (req, res) => {
     const photoId = parseInt(req.body?.photo_id, 10);
     if (!validEmail(email)) return res.status(400).json({ error: 'A valid email is required' });
     if (!photoId) return res.status(400).json({ error: 'photo_id required' });
-    // make sure the photo really belongs to this album
-    const { rows: pr } = await query('SELECT id FROM photos WHERE id=$1 AND album_id=$2', [photoId, a.id]);
-    if (!pr[0]) return res.status(404).json({ error: 'Photo not found' });
-    await query(
-      `INSERT INTO favorites (album_id, photo_id, email)
-       VALUES ($1,$2,$3) ON CONFLICT (album_id, photo_id, email) DO NOTHING`,
-      [a.id, photoId, email]
-    );
+    // make sure the photo really belongs to this album 🔒
+    const pr = await prisma.photos.findFirst({ where: { id: photoId, album_id: a.id }, select: { id: true } });
+    if (!pr) return res.status(404).json({ error: 'Photo not found' });
+    await prisma.favorites.createMany({
+      data: [{ album_id: a.id, photo_id: photoId, email }],
+      skipDuplicates: true,                        // ON CONFLICT DO NOTHING
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -429,7 +473,7 @@ router.delete('/:token/favorites/:photoId', async (req, res) => {
     const email = normEmail(req.query.email);
     const photoId = parseInt(req.params.photoId, 10);
     if (!validEmail(email) || !photoId) return res.status(400).json({ error: 'email and photo_id required' });
-    await query('DELETE FROM favorites WHERE album_id=$1 AND photo_id=$2 AND email=$3', [a.id, photoId, email]);
+    await prisma.favorites.deleteMany({ where: { album_id: a.id, photo_id: photoId, email } }); // 🔒 tenancy
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
