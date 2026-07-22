@@ -337,15 +337,7 @@ function FocalPicker({ src, focus, onFocus, view, onView }) {
   function onUp() { dragging.current = false; }
 
   return (
-    <div className="fp-wrap">
-      <div className="fp-side">
-        <span className="fp-hint">🎯 Click or drag on the preview to set the frame's center</span>
-        <div className="fp-toggle">
-          <button type="button" className={`fp-tog ${view === 'desktop' ? 'on' : ''}`} onClick={() => onView('desktop')}>🖥️ Desktop</button>
-          <button type="button" className={`fp-tog ${view === 'mobile' ? 'on' : ''}`} onClick={() => onView('mobile')}>📱 Mobile</button>
-        </div>
-        <div className="fp-note">Preview shows how the cover crops in this view. The dot marks the point kept centered.</div>
-      </div>
+    <div className="fp-frame-wrap">
       <div
         ref={ref}
         className={`fp-frame ${view === 'mobile' ? 'fp-mobile' : 'fp-desktop'}`}
@@ -355,6 +347,20 @@ function FocalPicker({ src, focus, onFocus, view, onView }) {
       >
         <div className="fp-dot" style={{ left: `${fx}%`, top: `${fy}%` }} />
       </div>
+    </div>
+  );
+}
+
+// the hint + desktop/mobile toggle + note that sit beside the preview
+function FocalControls({ view, onView }) {
+  return (
+    <div className="fp-side">
+      <label className="lbl">🎯 Cover framing</label>
+      <div className="fp-toggle">
+        <button type="button" className={`fp-tog ${view === 'desktop' ? 'on' : ''}`} onClick={() => onView('desktop')}>🖥️ Desktop</button>
+        <button type="button" className={`fp-tog ${view === 'mobile' ? 'on' : ''}`} onClick={() => onView('mobile')}>📱 Mobile</button>
+      </div>
+      <div className="fp-note">Click or drag on the preview to set the frame's center. The dot marks the point kept centered in this view.</div>
     </div>
   );
 }
@@ -581,47 +587,63 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
 
           <div className="gal-grid">
             <div className="gal-full"><label className="lbl">Gallery Name *</label><input className="gal-input" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="Susan & Mike Wedding" /></div>
-            <div><label className="lbl">Category</label>
-              <input className="gal-input" list="gal-cat-list" value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="Wedding" />
-              <datalist id="gal-cat-list">
-                {['Wedding', 'Engagement', 'Pre-Wedding', 'Reception', 'Birthday', 'Portrait', 'Event', 'Other'].map(c => <option key={c} value={c} />)}
-              </datalist>
-            </div>
-            <div className="gal-full gal-cover-row">
-              <label className="lbl">🖼️ Cover photo</label>
-              <label className="gal-cover-btn">
-                {coverFile ? `✅ ${coverFile.name.slice(0, 18)}…` : (edit?.cover_photo ? '🖼️ Replace cover' : '📤 Choose cover')}
-                <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
-              </label>
+          </div>
+
+          {/* left: settings stacked · right: live cover preview */}
+          <div className="gal-two">
+            <div className="gal-two-left">
+              <div><label className="lbl">Category</label>
+                <input className="gal-input" list="gal-cat-list" value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="Wedding" />
+                <datalist id="gal-cat-list">
+                  {['Wedding', 'Engagement', 'Pre-Wedding', 'Reception', 'Birthday', 'Portrait', 'Event', 'Other'].map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+
+              <div>
+                <label className="lbl">🖼️ Cover photo</label>
+                <label className="gal-cover-btn">
+                  {coverFile ? `✅ ${coverFile.name.slice(0, 18)}…` : (edit?.cover_photo ? '🖼️ Replace cover' : '📤 Choose cover')}
+                  <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
+                </label>
+              </div>
+
               {(coverFile || edit?.cover_photo) && (
+                <FocalControls view={focusView} onView={setFocusView} />
+              )}
+
+              <div className="gal-pw-block">
+                <div className="gal-pw-head">
+                  🔑 Access passwords
+                  <span className="gal-pw-tools">
+                    <input className="gal-prefix" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix" title="Guest password prefix" />
+                    <input className="gal-prefix" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix" title="Admin password prefix" />
+                  </span>
+                </div>
+                <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
+                  <div className="gal-pw-wrap">
+                    <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
+                    <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
+                  </div>
+                </div>
+                <div><label className="lbl">🔐 Admin password</label>
+                  <div className="gal-pw-wrap">
+                    <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
+                    <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="gal-two-right">
+              {(coverFile || edit?.cover_photo) ? (
                 <FocalPicker
                   src={coverFile ? URL.createObjectURL(coverFile) : `${api.albumCoverUrl(edit.id)}?t=${edit.cover_photo}`}
                   focus={coverFocus} onFocus={setCoverFocus}
                   view={focusView} onView={setFocusView}
                 />
+              ) : (
+                <div className="gal-cover-empty">No cover photo yet — choose one to set its framing.</div>
               )}
-            </div>
-          </div>
-
-          <div className="gal-pw-head">
-            🔑 Access passwords
-            <span className="gal-pw-tools">
-              <input className="gal-prefix" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix" title="Guest password prefix" />
-              <input className="gal-prefix" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix" title="Admin password prefix" />
-            </span>
-          </div>
-          <div className="gal-grid">
-            <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
-              <div className="gal-pw-wrap">
-                <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
-                <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
-              </div>
-            </div>
-            <div><label className="lbl">🔐 Admin password</label>
-              <div className="gal-pw-wrap">
-                <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
-                <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
-              </div>
             </div>
           </div>
 
