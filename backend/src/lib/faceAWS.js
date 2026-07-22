@@ -1,6 +1,7 @@
 // 🧠 AWS Rekognition face engine — matches faceEngine.js interface (swappable)
 import { RekognitionClient, DetectFacesCommand, CompareFacesCommand } from '@aws-sdk/client-rekognition';
 import sharp from 'sharp';
+import fs from 'fs';
 import { getSetting } from './settings.js';
 
 async function client() {
@@ -35,8 +36,25 @@ export async function getFaceDescriptorsAWS(imagePath) {
 
 // Compare a selfie against candidate photos using AWS CompareFaces.
 // candidates: [{ photo_id, imgB64 }]
-export async function findMatchesAWS(selfiePath, candidates, threshold = 90) {
-  const selfie = await sharp(selfiePath).jpeg().toBuffer();
+// Accepts EITHER a file path (selfie search from an upload) OR a base64 JPEG
+// string (cluster-vs-cluster comparison, where the image is already in memory).
+// sharp() cannot read a base64 string, so it must be decoded to a Buffer first —
+// passing the raw string made every comparison throw "unsupported image format",
+// which clusterAWS() swallowed, so no two faces ever matched and AWS clustering
+// silently produced zero circles.
+//
+// NOTE: base64 legitimately contains '/' and '+', so a slash is NOT a reliable
+// "this is a path" signal. Detect a real path instead: short, and pointing at a
+// file that exists on disk.
+function toImageInput(src) {
+  if (Buffer.isBuffer(src)) return src;
+  if (typeof src !== 'string') return src;
+  const looksLikePath = src.length < 4096 && !src.includes('\n') && fs.existsSync(src);
+  return looksLikePath ? src : Buffer.from(src, 'base64');
+}
+
+export async function findMatchesAWS(selfieSrc, candidates, threshold = 90) {
+  const selfie = await sharp(toImageInput(selfieSrc)).jpeg().toBuffer();
   const rek = await client();
   const matched = [];
   for (const c of candidates) {
