@@ -138,8 +138,8 @@ const THEME_DEFAULTS = {
 router.get('/theme', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const { rows } = await query('SELECT * FROM gallery_theme WHERE vendor_id=$1', [v]);
-    res.json({ theme: rows[0] || { ...THEME_DEFAULTS } });
+    const theme = await prisma.gallery_theme.findUnique({ where: { vendor_id: v } }); // 🔒 tenancy
+    res.json({ theme: theme || { ...THEME_DEFAULTS } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -148,44 +148,53 @@ router.put('/theme', requireAuth, async (req, res) => {
   const v = vid(req);
   const t = { ...THEME_DEFAULTS, ...req.body };
   try {
-    await query(
-      `INSERT INTO gallery_theme (vendor_id, heading_font, body_font, bg_color, heading_color, accent_color, sub_color, title_text, subtitle_text, tagline_text)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       ON CONFLICT (vendor_id) DO UPDATE SET
-         heading_font=$2, body_font=$3, bg_color=$4, heading_color=$5, accent_color=$6, sub_color=$7,
-         title_text=$8, subtitle_text=$9, tagline_text=$10`,
-      [v, t.heading_font, t.body_font, t.bg_color, t.heading_color, t.accent_color, t.sub_color, t.title_text, t.subtitle_text, t.tagline_text]);
+    const data = {
+      heading_font: t.heading_font, body_font: t.body_font,
+      bg_color: t.bg_color, heading_color: t.heading_color, accent_color: t.accent_color,
+      sub_color: t.sub_color, title_text: t.title_text, subtitle_text: t.subtitle_text,
+      tagline_text: t.tagline_text,
+    };
+    await prisma.gallery_theme.upsert({
+      where: { vendor_id: v },                    // 🔒 tenancy
+      update: data,
+      create: { vendor_id: v, ...data },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   const { title, category, guest_username, guest_password, admin_username, admin_password,
     client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai } = req.body;
   try {
-    const { rows: own } = await query('SELECT id FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    if (!own[0]) return res.status(404).json({ error: 'Not found' });
-    const { rows } = await query(
-      `UPDATE albums SET
-        title=COALESCE($1,title), category=$2,
-        guest_username=$3, guest_password=$4, admin_username=$5, admin_password=$6,
-        client_email=$7, exp_enabled=$8, exp_from_date=$9, exp_date=$10, exp_notes=$11, face_ai=$12
-       WHERE id=$13 RETURNING *`,
-      [title || null, category || null, guest_username || null, guest_password || null,
-       admin_username || null, admin_password || null, client_email || null,
-       !!exp_enabled, exp_from_date || null, exp_date || null, exp_notes || null, !!face_ai,
-       req.params.id]);
-    res.json({ album: rows[0] });
+    // 🔒 tenancy: scope the update itself by vendor, so it can't touch another vendor's album
+    const data = {
+      category: category || null,
+      guest_username: guest_username || null, guest_password: guest_password || null,
+      admin_username: admin_username || null, admin_password: admin_password || null,
+      client_email: client_email || null,
+      exp_enabled: !!exp_enabled,
+      exp_from_date: exp_from_date ? new Date(exp_from_date) : null,
+      exp_date: exp_date ? new Date(exp_date) : null,
+      exp_notes: exp_notes || null,
+      face_ai: !!face_ai,
+    };
+    if (title) data.title = title;              // COALESCE($1,title): keep existing when blank
+    const { count } = await prisma.albums.updateMany({ where: { id, vendor_id: v }, data });
+    if (!count) return res.status(404).json({ error: 'Not found' });
+    const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
+    res.json({ album });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 email gallery instructions to client
 router.post('/:id/email-instructions', requireAuth, async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
-    const { rows } = await query('SELECT * FROM albums WHERE id=$1 AND vendor_id=$2', [req.params.id, v]);
-    const a = rows[0];
+    const a = await prisma.albums.findFirst({ where: { id, vendor_id: v } });   // 🔒 tenancy
     if (!a) return res.status(404).json({ error: 'Not found' });
 
     // recipient: explicit override from popup, else album's stored client_email
@@ -195,8 +204,11 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     // body: popup sends already-filled text; otherwise fall back to template + fill
     let body = req.body.body;
     if (!body) {
-      const { rows: st } = await query('SELECT instructions_template FROM album_settings WHERE vendor_id=$1', [v]);
-      body = (st[0]?.instructions_template || DEFAULT_INSTRUCTIONS)
+      const st = await prisma.album_settings.findUnique({
+        where: { vendor_id: v },                // 🔒 tenancy
+        select: { instructions_template: true },
+      });
+      body = (st?.instructions_template || DEFAULT_INSTRUCTIONS)
         .replaceAll('{client_name}', a.title || 'Client')
         .replaceAll('{admin_password}', a.admin_password || '')
         .replaceAll('{guest_password}', a.guest_password || '');
@@ -204,7 +216,7 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
 
     // remember the entered email on the album for next time
     if (req.body.email && req.body.email !== a.client_email) {
-      await query('UPDATE albums SET client_email=$1 WHERE id=$2', [to, a.id]);
+      await prisma.albums.updateMany({ where: { id: a.id, vendor_id: v }, data: { client_email: to } });
     }
 
     const lead = { vendor_id: v, email: to, name: a.title };
