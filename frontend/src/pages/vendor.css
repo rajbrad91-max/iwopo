@@ -870,42 +870,43 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
 }
 
-/* 🎯 cover focal-point picker */
-/* compact two-column form: fields on the left at a readable width, preview on the right */
-.gal-two { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 340px); gap: 28px; align-items: start; margin-top: 14px; justify-content: start; }
-/* keep the top fields in line with the columns below instead of stretching edge-to-edge */
-.gal-top-row, .gal-form .gal-pick { max-width: 748px; }
-.gal-two-left { display: flex; flex-direction: column; gap: 13px; }
-.gal-two-right { position: sticky; top: 0; display: flex; flex-direction: column; gap: 8px; }
-/* the two password fields sit side by side — they're short values */
-.gal-pw-block { display: flex; flex-direction: column; gap: 10px; padding-top: 13px; border-top: 1px solid var(--line); }
-.gal-pw-block .gal-pw-head { margin: 0; padding-top: 0; border-top: none; flex-direction: column; align-items: stretch; gap: 8px; }
-.gal-pw-block .gal-pw-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.gal-pw-block .gal-prefix { width: 100%; }
-.gal-pw-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-/* the cover chooser sits under the preview — button-sized, centered */
-.gal-two-right .gal-cover-btn { display: inline-flex; width: auto; align-self: center; padding: 9px 16px; }
+/* 🎨 album form — three grouped cards sharing the panel width */
+.gal-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+.gal-card-sec {
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 16px 18px;
+}
+.gal-sec-h { margin: 0; font-size: 13px; font-weight: 800; color: var(--text); letter-spacing: .02em; }
+.gal-sec-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gal-sec-note { font-size: 11.5px; color: var(--muted); line-height: 1.55; margin-top: auto; padding-top: 4px; }
+.gal-prefix-full { width: 100%; margin-top: 6px; }
+.gal-cover-btn { margin-top: auto; }
 .gal-cover-empty {
   border: 1.5px dashed var(--line); border-radius: 10px;
-  padding: 30px 18px; text-align: center; color: var(--muted); font-size: 12.5px;
-  background: var(--panel-2);
+  padding: 34px 18px; text-align: center; color: var(--muted); font-size: 12.5px;
+  background: var(--panel);
 }
+/* focal picker inside the cover card */
 .fp-frame-wrap { width: 100%; }
-/* framing controls sit directly above the preview */
 .fp-side { display: flex; flex-direction: column; gap: 6px; }
 .fp-side .lbl { margin: 0; }
 .fp-toggle { display: inline-flex; gap: 4px; }
-.fp-tog { font-size: 11.5px; padding: 4px 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); border-radius: 20px; cursor: pointer; }
+.fp-tog { font-size: 12px; padding: 4px 9px; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 20px; cursor: pointer; line-height: 1; }
 .fp-tog.on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; font-weight: 700; }
 .fp-frame { position: relative; width: 100%; background-size: cover; background-repeat: no-repeat; border-radius: 10px; border: 1px solid var(--line); cursor: crosshair; overflow: hidden; touch-action: none; }
 .fp-desktop { aspect-ratio: 16 / 7; }   /* matches the wide desktop cover band */
-.fp-mobile { aspect-ratio: 9 / 14; max-width: 190px; margin: 0 auto; }  /* tall mobile cover */
+.fp-mobile { aspect-ratio: 9 / 14; max-width: 170px; margin: 0 auto; }  /* tall mobile cover */
 .fp-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; background: #2dd4bf88; box-shadow: 0 0 0 2px #06231f88, 0 2px 8px rgba(0,0,0,.4); transform: translate(-50%, -50%); pointer-events: none; }
 .fp-note { font-size: 11px; color: var(--muted); line-height: 1.5; }
-@media (max-width: 860px) {
-  .gal-two { grid-template-columns: 1fr; gap: 16px; }
-  .gal-two-right { position: static; }
-}
 
 /* 🤖 Vendor AI Chat — history + upsell */
 .ac-head { margin-bottom: 16px; }

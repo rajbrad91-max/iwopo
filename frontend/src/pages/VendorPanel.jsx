@@ -351,20 +351,6 @@ function FocalPicker({ src, focus, onFocus, view, onView }) {
   );
 }
 
-// the hint + desktop/mobile toggle + note that sit beside the preview
-function FocalControls({ view, onView }) {
-  return (
-    <div className="fp-side">
-      <label className="lbl">🎯 Cover framing</label>
-      <div className="fp-toggle">
-        <button type="button" className={`fp-tog ${view === 'desktop' ? 'on' : ''}`} onClick={() => onView('desktop')}>🖥️ Desktop</button>
-        <button type="button" className={`fp-tog ${view === 'mobile' ? 'on' : ''}`} onClick={() => onView('mobile')}>📱 Mobile</button>
-      </div>
-      <div className="fp-note">Click or drag on the preview to set the frame's center. The dot marks the point kept centered in this view.</div>
-    </div>
-  );
-}
-
 function GalleriesView({ routeAlbum, onOpenAlbum }) {
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -575,80 +561,77 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
         <div className="table-wrap gal-form">
           <div className="gal-form-h">{edit ? '✏️ Edit Album' : '➕ New Album'}</div>
 
-          {bookings.length > 0 && (
-            <div className="gal-pick">
-              <label className="lbl">📞 Auto-fill from a confirmed booking</label>
-              <select className="gal-input" defaultValue="" onChange={e => pickBooking(e.target.value)}>
-                <option value="">— Pick a booking —</option>
-                {bookings.map(b => <option key={b.id} value={b.id}>{b.name}{b.phone ? ` · ${b.phone}` : ''}</option>)}
-              </select>
-            </div>
-          )}
+          {/* three grouped cards that share the panel width evenly */}
+          <div className="gal-cards">
 
-          <div className="gal-grid gal-top-row">
-            <div className="gal-full"><label className="lbl">Gallery Name *</label><input className="gal-input" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="Susan & Mike Wedding" /></div>
-          </div>
-
-          {/* left: settings stacked · right: live cover preview */}
-          <div className="gal-two">
-            <div className="gal-two-left">
+            <section className="gal-card-sec">
+              <h4 className="gal-sec-h">📋 Details</h4>
+              <div><label className="lbl">Gallery Name *</label>
+                <input className="gal-input" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="Susan &amp; Mike Wedding" />
+              </div>
               <div><label className="lbl">Category</label>
                 <input className="gal-input" list="gal-cat-list" value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="Wedding" />
                 <datalist id="gal-cat-list">
                   {['Wedding', 'Engagement', 'Pre-Wedding', 'Reception', 'Birthday', 'Portrait', 'Event', 'Other'].map(c => <option key={c} value={c} />)}
                 </datalist>
               </div>
+              {bookings.length > 0 && (
+                <div><label className="lbl">📞 Auto-fill from a booking</label>
+                  <select className="gal-input" defaultValue="" onChange={e => pickBooking(e.target.value)}>
+                    <option value="">— Pick a booking —</option>
+                    {bookings.map(b => <option key={b.id} value={b.id}>{b.name}{b.phone ? ` · ${b.phone}` : ''}</option>)}
+                  </select>
+                </div>
+              )}
+            </section>
 
-              <div className="gal-pw-block">
-                <div className="gal-pw-head">
-                  🔑 Access passwords
-                  <span className="gal-pw-tools">
-                    <input className="gal-prefix" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix" title="Guest password prefix" />
-                    <input className="gal-prefix" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix" title="Admin password prefix" />
-                  </span>
-                </div>
-                <div className="gal-pw-pair">
-                  <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
-                    <div className="gal-pw-wrap">
-                      <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
-                      <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
-                    </div>
+            <section className="gal-card-sec">
+              <div className="gal-sec-top">
+                <h4 className="gal-sec-h">🖼️ Cover</h4>
+                {(coverFile || edit?.cover_photo) && (
+                  <div className="fp-toggle">
+                    <button type="button" className={`fp-tog ${focusView === 'desktop' ? 'on' : ''}`} onClick={() => setFocusView('desktop')}>🖥️</button>
+                    <button type="button" className={`fp-tog ${focusView === 'mobile' ? 'on' : ''}`} onClick={() => setFocusView('mobile')}>📱</button>
                   </div>
-                  <div><label className="lbl">🔐 Admin password</label>
-                    <div className="gal-pw-wrap">
-                      <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
-                      <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
-            </div>
-
-            <div className="gal-two-right">
               {(coverFile || edit?.cover_photo) ? (
                 <>
-                  <FocalControls view={focusView} onView={setFocusView} />
                   <FocalPicker
                     src={coverFile ? URL.createObjectURL(coverFile) : `${api.albumCoverUrl(edit.id)}?t=${edit.cover_photo}`}
                     focus={coverFocus} onFocus={setCoverFocus}
                     view={focusView} onView={setFocusView}
                   />
-                  <label className="gal-cover-btn">
-                    {coverFile ? `✅ ${coverFile.name.slice(0, 18)}…` : '🖼️ Replace cover'}
-                    <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
-                  </label>
+                  <div className="fp-note">Click or drag on the preview to set what stays centered.</div>
                 </>
               ) : (
-                <>
-                  <label className="lbl">🖼️ Cover photo</label>
-                  <div className="gal-cover-empty">No cover photo yet — choose one to set its framing.</div>
-                  <label className="gal-cover-btn">
-                    📤 Choose cover
-                    <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
-                  </label>
-                </>
+                <div className="gal-cover-empty">No cover photo yet</div>
               )}
-            </div>
+              <label className="gal-cover-btn">
+                {coverFile ? `✅ ${coverFile.name.slice(0, 16)}…` : (edit?.cover_photo ? '🖼️ Replace cover' : '📤 Choose cover')}
+                <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
+              </label>
+            </section>
+
+            <section className="gal-card-sec">
+              <h4 className="gal-sec-h">🔑 Access</h4>
+              <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
+                <div className="gal-pw-wrap">
+                  <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
+                  <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
+                </div>
+                <input className="gal-prefix gal-prefix-full" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix" title="Guest password prefix" />
+              </div>
+              <div><label className="lbl">🔐 Admin password</label>
+                <div className="gal-pw-wrap">
+                  <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
+                  <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
+                </div>
+                <input className="gal-prefix gal-prefix-full" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix" title="Admin password prefix" />
+              </div>
+              <div className="gal-sec-note">Guests can view, download and favorite. The admin password also unlocks selecting, sending a selection, and deleting.</div>
+            </section>
+
           </div>
 
           <div className="gal-form-foot">
