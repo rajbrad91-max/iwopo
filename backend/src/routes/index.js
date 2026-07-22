@@ -1,6 +1,6 @@
 import express from 'express';
 import geoip from 'geoip-lite';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { getAllSettings, setSetting } from '../lib/settings.js';
 import { queueStatus } from '../lib/faceQueue.js';
@@ -27,12 +27,14 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
 // 🔄 Super admin: reset ALL face indexing (for engine switch → re-index)
 router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const r = await query('UPDATE photos SET faces=NULL, face_count=0, face_indexed=false, face_engine=NULL');
+    const r = await prisma.photos.updateMany({
+      data: { faces: null, face_count: 0, face_indexed: false, face_engine: null },
+    });
     // clear per-album engine locks + cluster flags so each album re-picks fresh on next index
-    await query('UPDATE albums SET face_engine_lock=NULL, faces_clustered=false');
-    await query('DELETE FROM photo_faces');
-    await query('DELETE FROM face_clusters');
-    res.json({ ok: true, reset: r.rowCount });
+    await prisma.albums.updateMany({ data: { face_engine_lock: null, faces_clustered: false } });
+    await prisma.photo_faces.deleteMany({});
+    await prisma.face_clusters.deleteMany({});
+    res.json({ ok: true, reset: r.count });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -98,27 +100,31 @@ router.get('/hello', (req, res) => {
 // 🔔 Super admin: live notification counts (topbar icons)
 router.get('/admin/counts', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const msgs = await query(`SELECT count(*)::int n FROM support_messages WHERE seen=false AND status='open'`);
-    const paid = await query(`SELECT count(*)::int n FROM vendors WHERE status='active' AND seen_by_admin=false`);
-    const trial = await query(`SELECT count(*)::int n FROM vendors WHERE status='trial' AND seen_by_admin=false`);
-    res.json({ messages: msgs.rows[0].n, paid: paid.rows[0].n, trials: trial.rows[0].n });
+    const [messages, paid, trials] = await Promise.all([
+      prisma.support_messages.count({ where: { seen: false, status: 'open' } }),
+      prisma.vendors.count({ where: { status: 'active', seen_by_admin: false } }),
+      prisma.vendors.count({ where: { status: 'trial', seen_by_admin: false } }),
+    ]);
+    res.json({ messages, paid, trials });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔔 mark a group seen: 'messages' | 'paid' | 'trials'
 router.put('/admin/counts/:group/seen', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    if (req.params.group === 'messages') await query(`UPDATE support_messages SET seen=true WHERE seen=false`);
-    else if (req.params.group === 'paid') await query(`UPDATE vendors SET seen_by_admin=true WHERE status='active'`);
-    else if (req.params.group === 'trials') await query(`UPDATE vendors SET seen_by_admin=true WHERE status='trial'`);
+    if (req.params.group === 'messages') await prisma.support_messages.updateMany({ where: { seen: false }, data: { seen: true } });
+    else if (req.params.group === 'paid') await prisma.vendors.updateMany({ where: { status: 'active' }, data: { seen_by_admin: true } });
+    else if (req.params.group === 'trials') await prisma.vendors.updateMany({ where: { status: 'trial' }, data: { seen_by_admin: true } });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 📨 support messages list (super admin)
 router.get('/admin/messages', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { rows } = await query(`SELECT * FROM support_messages ORDER BY created_at DESC`);
-  res.json({ messages: rows });
+  try {
+    const messages = await prisma.support_messages.findMany({ orderBy: { created_at: 'desc' } });
+    res.json({ messages });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 📨 public: submit a support message
@@ -126,36 +132,41 @@ router.post('/support', async (req, res) => {
   const { from_email, subject, body, vendor_id } = req.body;
   if (!from_email || !body) return res.status(400).json({ error: 'Email + message required' });
   try {
-    await query(`INSERT INTO support_messages (vendor_id, from_email, subject, body) VALUES ($1,$2,$3,$4)`,
-      [vendor_id || null, from_email, subject || null, body]);
+    await prisma.support_messages.create({
+      data: { vendor_id: vendor_id ? Number(vendor_id) : null, from_email, subject: subject || null, body },
+    });
     res.status(201).json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 Super admin: full services incl. country_prices (for editor)
 router.get('/admin/services', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { rows } = await query('SELECT * FROM services ORDER BY id');
-  res.json({ services: rows });
+  try {
+    const services = await prisma.services.findMany({ orderBy: { id: 'asc' } });
+    res.json({ services });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Public: list all services (legacy) — geo-priced
 router.get('/services', async (req, res) => {
-  const geo = geoFrom(req);
-  const { rows } = await query('SELECT * FROM services ORDER BY id');
-  const services = rows.map(s => {
-    const gp = geoPrice(s, geo);
-    const { country_prices, ...pub } = s; // 🔒 don't expose all-country pricing publicly
-    return { ...pub, price: gp.m, price_annual: gp.y ?? s.price_annual, currency: geo.currency, geo_code: geo.code };
-  });
-  res.json({ services, geo: geo.code, currency: geo.currency });
+  try {
+    const geo = geoFrom(req);
+    const rows = await prisma.services.findMany({ orderBy: { id: 'asc' } });
+    const services = rows.map(s => {
+      const gp = geoPrice(s, geo);
+      const { country_prices, ...pub } = s; // 🔒 don't expose all-country pricing publicly
+      return { ...pub, price: gp.m, price_annual: gp.y ?? s.price_annual, currency: geo.currency, geo_code: geo.code };
+    });
+    res.json({ services, geo: geo.code, currency: geo.currency });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Public: packages (3 tiers) with their items nested
 router.get('/packages', async (req, res) => {
   try {
     const geo = geoFrom(req);
-    const { rows: packages } = await query('SELECT * FROM packages ORDER BY sort_order');
-    const { rows: items } = await query('SELECT * FROM package_items ORDER BY package_id, sort_order');
+    const packages = await prisma.packages.findMany({ orderBy: { sort_order: 'asc' } });
+    const items = await prisma.package_items.findMany({ orderBy: [{ package_id: 'asc' }, { sort_order: 'asc' }] });
     const result = packages.map(p => {
       const gp = p.price_monthly != null ? geoPrice(p, geo, 'price_monthly', 'price_annual') : { m: p.price_monthly, y: p.price_annual };
       const { country_prices, ...pub } = p; // 🔒 hide all-country pricing from public
@@ -177,25 +188,31 @@ router.get('/packages', async (req, res) => {
 
 // 🔒 Super admin: full packages incl. country_prices (for editor)
 router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { rows: packages } = await query('SELECT * FROM packages ORDER BY sort_order');
-  const { rows: items } = await query('SELECT * FROM package_items ORDER BY package_id, sort_order');
-  const result = packages.map(p => ({
-    ...p,
-    included: items.filter(i => i.package_id === p.id && i.is_included),
-    addons: items.filter(i => i.package_id === p.id && i.is_addon),
-    standalone: items.filter(i => i.package_id === p.id && !i.is_included && !i.is_addon),
-  }));
-  res.json({ packages: result });
+  try {
+    const packages = await prisma.packages.findMany({ orderBy: { sort_order: 'asc' } });
+    const items = await prisma.package_items.findMany({ orderBy: [{ package_id: 'asc' }, { sort_order: 'asc' }] });
+    const result = packages.map(p => ({
+      ...p,
+      included: items.filter(i => i.package_id === p.id && i.is_included),
+      addons: items.filter(i => i.package_id === p.id && i.is_addon),
+      standalone: items.filter(i => i.package_id === p.id && !i.is_included && !i.is_addon),
+    }));
+    res.json({ packages: result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 Super admin: update a PACKAGE price
 router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
   const { price_monthly, price_annual, price_annual_regular } = req.body;
   try {
-    await query(
-      `UPDATE packages SET price_monthly=$1, price_annual=$2, price_annual_regular=$3 WHERE id=$4`,
-      [price_monthly ?? null, price_annual ?? null, price_annual_regular ?? null, req.params.id]
-    );
+    await prisma.packages.update({
+      where: { id: Number(req.params.id) },
+      data: {
+        price_monthly: price_monthly ?? null,
+        price_annual: price_annual ?? null,
+        price_annual_regular: price_annual_regular ?? null,
+      },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -204,10 +221,14 @@ router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, re
 router.put('/package-items/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
   const { price_monthly, price_annual, price_annual_regular } = req.body;
   try {
-    await query(
-      `UPDATE package_items SET price_monthly=$1, price_annual=$2, price_annual_regular=$3 WHERE id=$4`,
-      [price_monthly ?? null, price_annual ?? null, price_annual_regular ?? null, req.params.id]
-    );
+    await prisma.package_items.update({
+      where: { id: Number(req.params.id) },
+      data: {
+        price_monthly: price_monthly ?? null,
+        price_annual: price_annual ?? null,
+        price_annual_regular: price_annual_regular ?? null,
+      },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -216,10 +237,14 @@ router.put('/package-items/:id/price', requireAuth, requireSuperAdmin, async (re
 router.put('/services/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
   const { price, price_annual, price_annual_regular } = req.body;
   try {
-    await query(
-      `UPDATE services SET price=$1, price_annual=$2, price_annual_regular=$3 WHERE id=$4`,
-      [price ?? 0, price_annual ?? null, price_annual_regular ?? null, req.params.id]
-    );
+    await prisma.services.update({
+      where: { id: Number(req.params.id) },
+      data: {
+        price: price ?? 0,
+        price_annual: price_annual ?? null,
+        price_annual_regular: price_annual_regular ?? null,
+      },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -228,7 +253,10 @@ router.put('/services/:id/price', requireAuth, requireSuperAdmin, async (req, re
 router.put('/services/:id/tiers', requireAuth, requireSuperAdmin, async (req, res) => {
   const { tiers } = req.body;
   try {
-    await query(`UPDATE services SET tiers=$1 WHERE id=$2`, [JSON.stringify(tiers || []), req.params.id]);
+    await prisma.services.update({
+      where: { id: Number(req.params.id) },
+      data: { tiers: tiers || [] },              // Json column — no manual stringify
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -238,9 +266,12 @@ router.put('/services/:id/tiers', requireAuth, requireSuperAdmin, async (req, re
 router.put('/country-prices/:type/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   const { type, id } = req.params;
   const { country_prices } = req.body;
-  const table = type === 'package' ? 'packages' : 'services';
   try {
-    await query(`UPDATE ${table} SET country_prices=$1 WHERE id=$2`, [JSON.stringify(country_prices || {}), id]);
+    // the model is chosen from a fixed pair — never interpolated from user input
+    const data = { country_prices: country_prices || {} };
+    const where = { id: Number(id) };
+    if (type === 'package') await prisma.packages.update({ where, data });
+    else await prisma.services.update({ where, data });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -249,8 +280,10 @@ router.put('/country-prices/:type/:id', requireAuth, requireSuperAdmin, async (r
 // Public: list active offers
 // 🔒 Super admin: list all offers (coupons are internal)
 router.get('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { rows } = await query('SELECT * FROM offers ORDER BY created_at DESC');
-  res.json({ offers: rows });
+  try {
+    const offers = await prisma.offers.findMany({ orderBy: { created_at: 'desc' } });
+    res.json({ offers });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 Create offer
@@ -258,14 +291,19 @@ router.post('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
   const { code, label, percent_off, starts_at, ends_at, applies_to } = req.body;
   if (!code || !percent_off) return res.status(400).json({ error: 'Missing code or percent' });
   try {
-    const { rows } = await query(
-      `INSERT INTO offers (code,label,percent_off,starts_at,ends_at,applies_to)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [code.toUpperCase(), label || null, percent_off, starts_at || null, ends_at || null, applies_to || 'all']
-    );
-    res.status(201).json({ offer: rows[0] });
+    const offer = await prisma.offers.create({
+      data: {
+        code: code.toUpperCase(),
+        label: label || null,
+        percent_off,
+        starts_at: starts_at ? new Date(starts_at) : null,
+        ends_at: ends_at ? new Date(ends_at) : null,
+        applies_to: applies_to || 'all',
+      },
+    });
+    res.status(201).json({ offer });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ error: 'Code already exists' });
+    if (e.code === 'P2002' || e.code === '23505') return res.status(409).json({ error: 'Code already exists' });
     res.status(500).json({ error: e.message });
   }
 });
@@ -274,14 +312,18 @@ router.post('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
 // applies_to: 'all' | 'service:ID' | 'package:ID'
 router.get('/offers/validate/:code', async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT * FROM offers WHERE code=$1 AND active=true
-       AND (starts_at IS NULL OR starts_at<=CURRENT_DATE)
-       AND (ends_at IS NULL OR ends_at>=CURRENT_DATE)`,
-      [req.params.code.toUpperCase()]
-    );
-    if (!rows[0]) return res.status(404).json({ valid: false, error: 'Invalid or expired code' });
-    const offer = rows[0];
+    const today = new Date();
+    const offer = await prisma.offers.findFirst({
+      where: {
+        code: req.params.code.toUpperCase(),
+        active: true,
+        AND: [
+          { OR: [{ starts_at: null }, { starts_at: { lte: today } }] },
+          { OR: [{ ends_at: null }, { ends_at: { gte: today } }] },
+        ],
+      },
+    });
+    if (!offer) return res.status(404).json({ valid: false, error: 'Invalid or expired code' });
     // optional target check: ?target=service:12 or package:1
     const { target } = req.query;
     if (offer.applies_to !== 'all' && target && offer.applies_to !== target) {
@@ -293,12 +335,19 @@ router.get('/offers/validate/:code', async (req, res) => {
 
 // 🔒 Toggle / delete offer
 router.put('/offers/:id/toggle', requireAuth, requireSuperAdmin, async (req, res) => {
-  await query('UPDATE offers SET active = NOT active WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const id = Number(req.params.id);
+    const cur = await prisma.offers.findUnique({ where: { id }, select: { active: true } });
+    if (!cur) return res.status(404).json({ error: 'Not found' });
+    await prisma.offers.update({ where: { id }, data: { active: !cur.active } });   // active = NOT active
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.delete('/offers/:id', requireAuth, requireSuperAdmin, async (req, res) => {
-  await query('DELETE FROM offers WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    await prisma.offers.deleteMany({ where: { id: Number(req.params.id) } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 👥 REFERRALS (email-based, reward on paid signup)
@@ -310,20 +359,19 @@ router.post('/referrals', async (req, res) => {
     return res.status(400).json({ error: "Can't refer yourself" });
   try {
     // friend must be NEW (not already a user)
-    const exists = await query('SELECT id FROM users WHERE email=$1', [friend_email]);
-    if (exists.rows.length) return res.status(409).json({ error: 'That email already has an account' });
-    const { rows } = await query(
-      `INSERT INTO referrals (referrer_email, friend_email) VALUES ($1,$2) RETURNING *`,
-      [referrer_email, friend_email]
-    );
-    res.status(201).json({ referral: rows[0] });
+    const exists = await prisma.users.findFirst({ where: { email: friend_email }, select: { id: true } });
+    if (exists) return res.status(409).json({ error: 'That email already has an account' });
+    const referral = await prisma.referrals.create({ data: { referrer_email, friend_email } });
+    res.status(201).json({ referral });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 Super admin: list all referrals
 router.get('/referrals', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { rows } = await query('SELECT * FROM referrals ORDER BY created_at DESC');
-  res.json({ referrals: rows });
+  try {
+    const referrals = await prisma.referrals.findMany({ orderBy: { created_at: 'desc' } });
+    res.json({ referrals });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 export default router;

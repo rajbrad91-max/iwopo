@@ -1,6 +1,6 @@
 import express from 'express';
 import nodemailer from 'nodemailer';
-import { query } from '../config/db.js';
+import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -20,8 +20,8 @@ function vid(req) {
 }
 
 async function getSettings(v) {
-  const { rows } = await query('SELECT * FROM email_settings WHERE vendor_id=$1', [v]);
-  return rows[0] || { mode: 'platform' };
+  const s = await prisma.email_settings.findUnique({ where: { vendor_id: Number(v) } }); // 🔒 tenancy
+  return s || { mode: 'platform' };
 }
 
 // GET /api/email/settings
@@ -43,14 +43,21 @@ router.put('/settings', requireAuth, async (req, res) => {
   try {
     const cur = await getSettings(v);
     const pass = (b.smtp_pass && b.smtp_pass !== '••••••') ? b.smtp_pass : (cur.smtp_pass || null);
-    await query(
-      `INSERT INTO email_settings (vendor_id, mode, smtp_host, smtp_port, smtp_user, smtp_pass, from_name, from_email, notify_email)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-       ON CONFLICT (vendor_id) DO UPDATE SET
-        mode=$2, smtp_host=$3, smtp_port=$4, smtp_user=$5, smtp_pass=$6,
-        from_name=$7, from_email=$8, notify_email=$9, updated_at=NOW()`,
-      [v, b.mode || 'platform', b.smtp_host || null, b.smtp_port || 587,
-       b.smtp_user || null, pass, b.from_name || null, b.from_email || null, b.notify_email || null]);
+    const data = {
+      mode: b.mode || 'platform',
+      smtp_host: b.smtp_host || null,
+      smtp_port: b.smtp_port || 587,
+      smtp_user: b.smtp_user || null,
+      smtp_pass: pass,
+      from_name: b.from_name || null,
+      from_email: b.from_email || null,
+      notify_email: b.notify_email || null,
+    };
+    await prisma.email_settings.upsert({
+      where: { vendor_id: Number(v) },            // 🔒 tenancy
+      update: { ...data, updated_at: new Date() },
+      create: { vendor_id: Number(v), ...data },
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -73,40 +80,55 @@ function transporterFor(s) {
 
 /* ── 📑 EMAIL TEMPLATES ── */
 router.get('/templates', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const { rows } = await query('SELECT * FROM email_templates WHERE vendor_id=$1 ORDER BY id', [v]);
-  res.json({ templates: rows });
+  try {
+    const templates = await prisma.email_templates.findMany({
+      where: { vendor_id: Number(vid(req)) },     // 🔒 tenancy
+      orderBy: { id: 'asc' },
+    });
+    res.json({ templates });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/templates', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const { name, subject, body } = req.body;
-  if (!name || !subject || !body) return res.status(400).json({ error: 'Name, subject, body required' });
-  const { rows } = await query(
-    'INSERT INTO email_templates (vendor_id, name, subject, body) VALUES ($1,$2,$3,$4) RETURNING *',
-    [v, name, subject, body]);
-  res.status(201).json({ template: rows[0] });
+  try {
+    const v = vid(req);
+    const { name, subject, body } = req.body;
+    if (!name || !subject || !body) return res.status(400).json({ error: 'Name, subject, body required' });
+    const template = await prisma.email_templates.create({
+      data: { vendor_id: Number(v), name, subject, body },   // 🔒 tenancy
+    });
+    res.status(201).json({ template });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/templates/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const { rows: own } = await query('SELECT vendor_id FROM email_templates WHERE id=$1', [req.params.id]);
-  if (!own[0]) return res.status(404).json({ error: 'Not found' });
-  if (req.user.role !== 'super_admin' && own[0].vendor_id !== v) return res.status(403).json({ error: 'Forbidden' });
-  const { name, subject, body } = req.body;
-  const { rows } = await query(
-    `UPDATE email_templates SET name=COALESCE($1,name), subject=COALESCE($2,subject), body=COALESCE($3,body)
-     WHERE id=$4 RETURNING *`, [name ?? null, subject ?? null, body ?? null, req.params.id]);
-  res.json({ template: rows[0] });
+  try {
+    const v = vid(req);
+    const id = Number(req.params.id);
+    const own = await prisma.email_templates.findUnique({ where: { id }, select: { vendor_id: true } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    const { name, subject, body } = req.body;
+    // COALESCE($n, col): only overwrite what was supplied
+    const data = {};
+    if (name !== undefined && name !== null) data.name = name;
+    if (subject !== undefined && subject !== null) data.subject = subject;
+    if (body !== undefined && body !== null) data.body = body;
+    const template = await prisma.email_templates.update({ where: { id }, data });
+    res.json({ template });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete('/templates/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const { rows: own } = await query('SELECT vendor_id FROM email_templates WHERE id=$1', [req.params.id]);
-  if (!own[0]) return res.status(404).json({ error: 'Not found' });
-  if (req.user.role !== 'super_admin' && own[0].vendor_id !== v) return res.status(403).json({ error: 'Forbidden' });
-  await query('DELETE FROM email_templates WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const v = vid(req);
+    const id = Number(req.params.id);
+    const own = await prisma.email_templates.findUnique({ where: { id }, select: { vendor_id: true } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    await prisma.email_templates.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/email/lead/:leadId → send email to the lead's client
@@ -114,11 +136,10 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
   const { subject, body } = req.body;
   if (!subject || !body) return res.status(400).json({ error: 'Subject + body required' });
   try {
-    const { rows: leads } = await query('SELECT * FROM leads WHERE id=$1', [req.params.leadId]);
-    const lead = leads[0];
+    const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req))
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Forbidden' });     // 🔒 tenancy
     if (!lead.email) return res.status(400).json({ error: 'Lead has no email' });
 
     const s = await getSettings(lead.vendor_id);
