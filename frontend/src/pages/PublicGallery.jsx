@@ -603,7 +603,16 @@ export default function PublicGallery({ token, embedded, onBack }) {
           The list itself scrolls, so hundreds of people stay manageable. */}
       <div ref={gridRef} />
 
-      {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
+      {selfieMsg && (
+        <div className="pg-note">
+          <span>{selfieMsg}</span>
+          {/* a second way out, right next to the result — someone who scrolled
+              into the photos shouldn't have to hunt back up for "Show all" */}
+          {matchIds !== null && (
+            <button type="button" className="pg-note-clear" onClick={clearFace}>Show all photos</button>
+          )}
+        </div>
+      )}
 
       {(onBack || session.events.length > 0) && (
         <nav className="pg-scenes">
@@ -655,7 +664,10 @@ export default function PublicGallery({ token, embedded, onBack }) {
           {/* action circles — same size as faces, pinned outside the scroll strip
               so they stay reachable without scrolling to the end */}
           <div className="pg-people-acts">
-            {activeFace && (
+            {/* Shown whenever the grid is filtered — by tapping a face OR by a
+                selfie search. A selfie sets matchIds without activeFace, so
+                checking activeFace alone left people stuck with no way back. */}
+            {(activeFace || matchIds !== null) && (
               <button className="pg-facebtn is-on" onClick={clearFace} title="Show all photos">
                 <span className="pg-facebtn-ic">{IconClose}</span>
                 <span className="pg-facebtn-lbl">Show all</span>

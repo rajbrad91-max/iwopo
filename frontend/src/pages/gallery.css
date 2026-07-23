@@ -323,6 +323,28 @@
   font-size: 12px;
   letter-spacing: .1em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+/* "Show all photos" beside the selfie result — a second way out of a filtered
+   view for anyone who has already scrolled past the face bar */
+.pg-note-clear {
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--pg-accent) 45%, transparent);
+  color: var(--pg-accent);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  padding: 5px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background .16s, border-color .16s;
+}
+.pg-note-clear:hover {
+  background: color-mix(in srgb, var(--pg-accent) 12%, transparent);
+  border-color: var(--pg-accent);
 }
 
 /* ── scenes (events) ── */
