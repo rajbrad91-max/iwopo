@@ -383,8 +383,9 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
 
     let boxRaw = null, relPath = null;
+    const isAws = await isAwsAlbum(a.id);
 
-    if (await isAwsAlbum(a.id)) {
+    if (isAws) {
       const person = await prisma.album_faces.findFirst({
         where: { id: Number(req.params.clusterId), album_id: a.id },  // 🔒 must be in THIS album
         select: { bounding_box: true, photo_id: true },
@@ -423,9 +424,16 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     if (!box) { res.type('webp'); return res.sendFile(full); }
 
     // 🔍 Crop tight enough that the face fills the circle. The padding is a
-    // fraction of the face size added on each side — 0.45 produced a
-    // head-and-shoulders shot where the face was small in the frame.
-    const PAD = 0.18;
+    // fraction of the face size added on each side.
+    //
+    // The two engines report different box shapes for the same face, so they
+    // need different padding to LOOK the same in the circle. Measured on one
+    // photo, three faces:
+    //   AWS   box aspect h/w ≈ 1.32, avg max side 154 px
+    //   local box aspect h/w ≈ 1.57, avg max side 198 px  (~29% taller)
+    // face-api includes noticeably more forehead and jaw, so applying AWS's
+    // 0.18 to it produced a visibly wider crop with a smaller-looking face.
+    const PAD = isAws ? 0.18 : 0.03;
     const faceSize = Math.max(box.w, box.h);
     const size = Math.round(faceSize * (1 + PAD * 2));
 
