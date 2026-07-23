@@ -20,6 +20,8 @@ const Icon = ({ d, ...rest }) => (
   </svg>
 );
 const IconClose = <Icon d={<><path d="M6 6l12 12" /><path d="M18 6L6 18" /></>} />;
+// two overlapping people → "show every face in a grid"
+const IconPeople = <Icon d={<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0111 0" /><path d="M16 5.2a3.2 3.2 0 010 5.9" /><path d="M17.5 13.4A5.5 5.5 0 0120.5 18.3" /></>} />;
 // magnifier with a person in the lens → "find me / search for my face"
 const IconUser = <Icon d={<><circle cx="10" cy="10" r="7.5" /><path d="M15.5 15.5L21 21" /><circle cx="10" cy="8" r="2.2" /><path d="M6.2 13.2a3.9 3.9 0 017.6 0" /></>} />;
 // down-arrow into a tray → clearly "download to device"
@@ -67,11 +69,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [faces, setFaces] = useState([]);           // face circles, most photos first
   const [activeFace, setActiveFace] = useState(null);
   const [findMeOpen, setFindMeOpen] = useState(false);
+  const [allFacesOpen, setAllFacesOpen] = useState(false);  // "More" → every face in a grid
   // The face strip scrolls horizontally with snap points rather than trying to
   // fit an exact number of circles. Measuring "how many fit" was off by a few
-  // pixels on narrow screens, so the last circle rendered half-clipped. Letting
-  // it scroll removes the whole problem and shows every person without a
-  // More/Fewer toggle.
+  // pixels on narrow screens, so the last circle rendered half-clipped.
+  // Scrolling is fine for a handful of people; "More" opens a scrollable grid,
+  // which is the only sane way to browse an album with hundreds of faces.
   const selfieInput = useRef(null);
   const cameraInput = useRef(null);
   const gridRef = useRef(null);
@@ -595,6 +598,31 @@ export default function PublicGallery({ token, embedded, onBack }) {
         </div>
       )}
 
+      {/* 👥 everyone in this gallery — a scrollable grid, so an album with
+          hundreds of people is still browsable (a long swipe strip is not) */}
+      {allFacesOpen && (
+        <div className="pg-modal" onClick={() => setAllFacesOpen(false)}>
+          <div className="pg-modal-card pg-faces-modal" onClick={e => e.stopPropagation()}>
+            <button type="button" className="pg-modal-x" onClick={() => setAllFacesOpen(false)} title="Close">✕</button>
+            <h2 className="pg-modal-title">Everyone in this gallery</h2>
+            <p className="pg-modal-sub">{faces.length} {faces.length === 1 ? 'person' : 'people'} — tap someone to see just their photos.</p>
+            <div className="pg-faces-grid">
+              {faces.map(f => (
+                <button
+                  key={f.id}
+                  className={`pg-face ${activeFace === f.id ? 'is-on' : ''}`}
+                  onClick={() => { pickFace(f); setAllFacesOpen(false); }}
+                  title={`${f.count} photo${f.count === 1 ? '' : 's'}`}
+                >
+                  <img src={faceUrl(f.id)} alt="" loading="lazy" />
+                  <span className="pg-face-n">{f.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div ref={gridRef} />
 
       {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
@@ -655,6 +683,15 @@ export default function PublicGallery({ token, embedded, onBack }) {
                 <span className="pg-facebtn-lbl">Show all</span>
               </button>
             )}
+            <button
+              className="pg-facebtn"
+              onClick={() => setAllFacesOpen(true)}
+              disabled={faces.length === 0}
+              title={`See everyone in this gallery (${faces.length})`}
+            >
+              <span className="pg-facebtn-ic">{IconPeople}</span>
+              <span className="pg-facebtn-lbl">More</span>
+            </button>
             <button className="pg-facebtn" onClick={() => setFindMeOpen(true)} disabled={selfieBusy} title="Find photos of yourself">
               <span className="pg-facebtn-ic">{IconUser}</span>
               <span className="pg-facebtn-lbl">{selfieBusy ? '…' : 'Find me'}</span>

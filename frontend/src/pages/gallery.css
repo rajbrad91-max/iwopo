@@ -212,6 +212,21 @@
 .pg-faces { flex: 1 1 auto; }
 .pg-people-acts { display: flex; gap: 14px 10px; align-items: flex-start; flex: 0 0 auto; margin-left: auto; padding-left: 10px; }
 
+/* 👥 "More" → every face in a scrollable grid. The strip is fine for a few
+   people; an album with hundreds needs a grid you can scan, not a long swipe. */
+.pg-faces-modal { max-width: 620px; width: 100%; }
+.pg-faces-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 16px 10px;
+  max-height: min(58vh, 460px);
+  overflow-y: auto;
+  padding: 4px 2px;
+  margin-top: 4px;
+}
+.pg-faces-grid .pg-face { width: 100%; }
+.pg-faces-grid .pg-face img { width: 64px; height: 64px; }
+
 /* ── 🤳 find-me popup ── */
 .pg-modal {
   position: fixed; inset: 0; z-index: 70;
