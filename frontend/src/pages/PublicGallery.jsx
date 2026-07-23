@@ -603,16 +603,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
           The list itself scrolls, so hundreds of people stay manageable. */}
       <div ref={gridRef} />
 
-      {selfieMsg && (
-        <div className="pg-note">
-          <span>{selfieMsg}</span>
-          {/* a second way out, right next to the result — someone who scrolled
-              into the photos shouldn't have to hunt back up for "Show all" */}
-          {matchIds !== null && (
-            <button type="button" className="pg-note-clear" onClick={clearFace}>Show all photos</button>
-          )}
-        </div>
-      )}
+      {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
 
       {(onBack || session.events.length > 0) && (
         <nav className="pg-scenes">
