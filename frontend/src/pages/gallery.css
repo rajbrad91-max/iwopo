@@ -160,19 +160,31 @@
   padding: 16px clamp(14px, 3vw, 28px);
   border-bottom: 1px solid color-mix(in srgb, var(--pg-head) 8%, transparent);
 }
+/* 👥 the face strip scrolls sideways rather than trying to fit an exact number
+   of circles. Measuring how many fit was a few pixels out on narrow screens, so
+   the last circle rendered half-clipped; scrolling removes the problem entirely
+   and every person stays reachable. */
 .pg-faces {
   display: flex; gap: 10px; align-items: flex-start;
-  flex-wrap: nowrap;             /* collapsed: strictly one row, so no second row can peek */
+  flex-wrap: nowrap;
   justify-content: flex-start;
   min-width: 0;
-  overflow: hidden;              /* circles past the row edge are clipped, revealed by "More" */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;   /* settles on a circle, but never fights a flick */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;  /* swiping the strip won't navigate back */
+  scroll-padding-left: 2px;
   padding-bottom: 2px;
 }
-.pg-faces.is-expanded { flex-wrap: wrap; gap: 14px 10px; overflow: visible; }
+/* keep the scrollbar out of the way — the strip is obviously swipeable */
+.pg-faces::-webkit-scrollbar { height: 0; }
+.pg-faces { scrollbar-width: none; }
 .pg-faces-empty { color: var(--pg-sub); font-size: 13px; padding: 18px 0; white-space: nowrap; }
 
 .pg-face {
   flex: 0 0 auto;
+  scroll-snap-align: start;      /* a flick lands on a circle, never mid-face */
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   background: none; border: none;
   padding: 0;

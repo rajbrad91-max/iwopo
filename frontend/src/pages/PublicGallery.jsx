@@ -20,8 +20,6 @@ const Icon = ({ d, ...rest }) => (
   </svg>
 );
 const IconClose = <Icon d={<><path d="M6 6l12 12" /><path d="M18 6L6 18" /></>} />;
-// two overlapping people → "show more faces/people"
-const IconPeople = <Icon d={<><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0111 0" /><path d="M16 5.2a3.2 3.2 0 010 5.9" /><path d="M17.5 13.4A5.5 5.5 0 0120.5 18.3" /></>} />;
 // magnifier with a person in the lens → "find me / search for my face"
 const IconUser = <Icon d={<><circle cx="10" cy="10" r="7.5" /><path d="M15.5 15.5L21 21" /><circle cx="10" cy="8" r="2.2" /><path d="M6.2 13.2a3.9 3.9 0 017.6 0" /></>} />;
 // down-arrow into a tray → clearly "download to device"
@@ -68,34 +66,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [slideshow, setSlideshow] = useState(false);
   const [faces, setFaces] = useState([]);           // face circles, most photos first
   const [activeFace, setActiveFace] = useState(null);
-  const [allFaces, setAllFaces] = useState(false);  // "More Faces" → show every circle
   const [findMeOpen, setFindMeOpen] = useState(false);
-  const [fitCount, setFitCount] = useState(0);      // how many circles fit exactly one row (0 = not measured yet)
-  const facesRef = useRef(null);                    // the collapsed face row, for measuring
-
-  // Measure how many circles fit ONE row at the current width, so the collapsed
-  // row fills edge-to-edge with no dead space. The row is nowrap+clipped, so we
-  // count items whose right edge stays within the container. Re-measures on resize.
-  useEffect(() => {
-    const el = facesRef.current;
-    if (!el) return;
-    const measure = () => {
-      const items = el.querySelectorAll('.pg-face');
-      if (!items.length) { setFitCount(0); return; }
-      const box = el.getBoundingClientRect();
-      let n = 0;
-      for (const it of items) {
-        const r = it.getBoundingClientRect();
-        if (r.right <= box.right + 1) n++; else break;
-      }
-      setFitCount(n);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    window.addEventListener('resize', measure);
-    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
-  }, [faces.length, allFaces]);
+  // The face strip scrolls horizontally with snap points rather than trying to
+  // fit an exact number of circles. Measuring "how many fit" was off by a few
+  // pixels on narrow screens, so the last circle rendered half-clipped. Letting
+  // it scroll removes the whole problem and shows every person without a
+  // More/Fewer toggle.
   const selfieInput = useRef(null);
   const cameraInput = useRef(null);
   const gridRef = useRef(null);
@@ -655,7 +631,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
       {/* bar 2 — the people in this gallery */}
       {(faces.length > 0 || session.faceReady) && (
         <div className="pg-people">
-          <div ref={facesRef} className={`pg-faces ${allFaces ? 'is-expanded' : ''}`}>
+          <div className="pg-faces">
             {faces.map(f => (
               <button
                 key={f.id}
@@ -670,7 +646,8 @@ export default function PublicGallery({ token, embedded, onBack }) {
             {faces.length === 0 && <span className="pg-faces-empty">Finding faces…</span>}
           </div>
 
-          {/* action circles — same size as faces, always visible at the row's end */}
+          {/* action circles — same size as faces, pinned outside the scroll strip
+              so they stay reachable without scrolling to the end */}
           <div className="pg-people-acts">
             {activeFace && (
               <button className="pg-facebtn is-on" onClick={clearFace} title="Show all photos">
@@ -678,15 +655,6 @@ export default function PublicGallery({ token, embedded, onBack }) {
                 <span className="pg-facebtn-lbl">Show all</span>
               </button>
             )}
-            <button
-              className="pg-facebtn"
-              onClick={() => setAllFaces(v => !v)}
-              disabled={faces.length <= fitCount && !allFaces}
-              title={allFaces ? 'Show fewer faces' : 'Show more faces'}
-            >
-              <span className="pg-facebtn-ic">{IconPeople}</span>
-              <span className="pg-facebtn-lbl">{allFaces ? 'Fewer' : 'More'}</span>
-            </button>
             <button className="pg-facebtn" onClick={() => setFindMeOpen(true)} disabled={selfieBusy} title="Find photos of yourself">
               <span className="pg-facebtn-ic">{IconUser}</span>
               <span className="pg-facebtn-lbl">{selfieBusy ? '…' : 'Find me'}</span>
