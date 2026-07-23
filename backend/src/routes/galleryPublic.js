@@ -158,6 +158,31 @@ router.get('/:token/cover', async (req, res) => {
   } catch { res.status(404).end(); }
 });
 
+// 🔑 resume with a saved view token — same payload as /auth, no password.
+// Lets a client close the browser and come back without logging in again,
+// while the token itself still expires on the server after 6h.
+router.get('/:token/session', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: 'Gallery not found' });
+    const rec = checkViewToken(req.query.vt, a.id);          // 🔒 token must match THIS album
+    if (!rec) return res.status(401).json({ error: 'Session expired' });
+
+    const photos = await photosInAlbum(a.id);                // re-read, so edits show up
+    const theme = await getTheme(a.vendor_id);
+    const events = await prisma.album_events.findMany({
+      where: { album_id: a.id },
+      select: { id: true, name: true },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+    });
+    const faceReady = photos.some(p => (p.face_count || 0) > 0);
+    res.json({
+      role: rec.role, vt: req.query.vt, title: a.title, mode: 'per_client', theme, events, faceReady,
+      photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0 })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 🔑 authenticate with guest/admin password → returns photo list + view token
 router.post('/:token/auth', async (req, res) => {
   try {

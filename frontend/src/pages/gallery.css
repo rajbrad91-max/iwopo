@@ -325,6 +325,40 @@
   text-transform: uppercase;
 }
 
+/* 🚪 sign out — floats over the cover, top right, above the cover image */
+.pg-signout {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  z-index: 4;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.34);
+  background: rgba(20,20,24,.42);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-family: var(--pg-bfont);
+  font-size: 11.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .16s, border-color .16s;
+}
+.pg-signout:hover { background: rgba(20,20,24,.62); border-color: rgba(255,255,255,.55); }
+.pg-signout .pg-ico-svg { width: 15px; height: 15px; }
+/* a plain (no photo) cover is light, so the pill needs dark text to stay legible */
+.pg-cover.is-plain .pg-signout {
+  border-color: color-mix(in srgb, var(--pg-head) 22%, transparent);
+  background: color-mix(in srgb, var(--pg-bg) 70%, transparent);
+  color: var(--pg-head);
+}
+@media (max-width: 560px) {
+  .pg-signout { padding: 7px 11px; font-size: 10.5px; gap: 5px; }
+  .pg-signout span { display: none; }   /* icon only — the cover is tight on phones */
+  .pg-signout .pg-ico-svg { width: 17px; height: 17px; }
+}
+
 /* ── scenes (events) ── */
 .pg-scenes {
   display: flex; gap: 26px; flex-wrap: wrap; align-items: center;

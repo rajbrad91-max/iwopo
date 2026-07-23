@@ -30,6 +30,8 @@ const IconDownload = <Icon d={<><path d="M12 4v10" /><path d="M8 10.5l4 4 4-4" /
 const IconStar = <Icon d={<><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" /></>} />;
 // trash can → "delete photo" (admin only)
 const IconTrash = <Icon d={<><path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" /><path d="M6 7l1 12a1 1 0 001 1h8a1 1 0 001-1l1-12" /><path d="M10 11v6" /><path d="M14 11v6" /></>} />;
+// door with an arrow leaving → "sign out of this gallery"
+const IconSignOut = <Icon d={<><path d="M15 4h3a1 1 0 011 1v14a1 1 0 01-1 1h-3" /><path d="M10 8l-4 4 4 4" /><path d="M6 12h9" /></>} />;
 
 export default function PublicGallery({ token, embedded, onBack }) {
   const [meta, setMeta] = useState(null);
@@ -108,6 +110,52 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
   // ⭐ remember the client's email across visits/devices (localStorage, not just session)
   const favEmailKey = `pg-fav-email-${token}`;
+
+  // 🔑 Stay signed in across reloads, back/forward and closing the browser.
+  // The view token is valid for 6h server-side, so we keep it for the same
+  // window and no longer. Two things can still invalidate it early: the API
+  // restarting (view tokens live in memory) and clearing browser data — in both
+  // cases the saved session simply fails its check and the password screen
+  // returns, which is the behaviour people already expect.
+  const sessionKey = `pg-session-${token}`;
+  const saveSession = (d) => {
+    try {
+      window.localStorage?.setItem(sessionKey, JSON.stringify({
+        vt: d.vt, role: d.role, exp: Date.now() + 6 * 3600 * 1000,
+      }));
+    } catch { /* storage unavailable — session stays in memory only */ }
+  };
+
+  // On load, try the saved token before showing the password screen. The photo
+  // list is re-fetched rather than cached, so a gallery edited since the last
+  // visit shows the current photos.
+  const [restoring, setRestoring] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let saved = null;
+      try { saved = JSON.parse(window.localStorage?.getItem(sessionKey) || 'null'); } catch { /* ignore */ }
+      if (!saved?.vt || !saved.exp || saved.exp < Date.now()) {
+        try { window.localStorage?.removeItem(sessionKey); } catch { /* ignore */ }
+        if (!cancelled) setRestoring(false);
+        return;
+      }
+      try {
+        const r = await fetch(`${API}/${token}/session?vt=${saved.vt}`);
+        if (!r.ok) throw new Error('expired');
+        const d = await r.json();
+        if (cancelled) return;
+        setSession(d);
+        if (d.events && d.events.length > 0) setActiveEvent(d.events[0].id);
+      } catch {
+        try { window.localStorage?.removeItem(sessionKey); } catch { /* ignore */ }
+      } finally {
+        if (!cancelled) setRestoring(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token, sessionKey]);
+
   useEffect(() => {
     try {
       const saved = window.localStorage?.getItem(favEmailKey);
@@ -146,9 +194,18 @@ export default function PublicGallery({ token, embedded, onBack }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'That password did not match');
       setSession(d);
+      saveSession(d);
       if (d.events && d.events.length > 0) setActiveEvent(d.events[0].id);
     } catch (e) { setAuthErr(e.message); }
     finally { setAuthing(false); }
+  }
+
+  // 🚪 leave the gallery — for a shared or borrowed device
+  function signOut() {
+    try { window.localStorage?.removeItem(sessionKey); } catch { /* ignore */ }
+    setSession(null);
+    setActiveFace(null); setMatchIds(null); setSelfieMsg('');
+    setPicked(new Set()); setPickedOnly(false);
   }
 
   const photoUrl = (id, type) => `${API}/${token}/photo/${id}/${type}?vt=${session.vt}`;
@@ -448,6 +505,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
   if (err) return <div className="pg-wrap" style={styleVars}><div className="pg-state">{err}</div></div>;
   if (!meta) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
+  // hold the password screen back while a saved session is being checked, so a
+  // returning visitor doesn't see the login flash past
+  if (restoring && !session) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
 
   const coverUrl = meta.album.cover ? `${API}/${token}/cover` : null;
 
@@ -486,6 +546,13 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
       <section className={`pg-cover ${coverUrl ? '' : 'is-plain'}`}>
         {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})`, backgroundPosition: meta.album.cover_focus || '50% 50%' }} />}
+        {/* 🚪 sign out — sits over the cover, top right. Sessions now persist
+            across visits, so there has to be a deliberate way to leave one on a
+            shared or borrowed device. */}
+        <button className="pg-signout" onClick={signOut} title="Sign out of this gallery">
+          {IconSignOut}
+          <span>Sign out</span>
+        </button>
         <div className="pg-cover-inner">
           <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
           <h1 className="pg-cover-title">{session.title}</h1>
