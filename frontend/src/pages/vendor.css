@@ -560,6 +560,42 @@
 .dash.sidebar-collapsed .nav-group { opacity:0; }
 .dash.sidebar-collapsed .nav-item, .dash.sidebar-collapsed .logout { justify-content:center; }
 
+/* 🔴 unread-lead badge on the sidebar. Pushed to the right edge of the row so it
+   reads as a count, not part of the label. */
+.nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+/* collapsed rail: no room for a pill, so it becomes a dot pinned to the icon */
+.dash.sidebar-collapsed .nav-badge {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  min-width: 8px;
+  height: 8px;
+  padding: 0;
+  font-size: 0;          /* hide the number, keep the alert */
+  line-height: 0;
+}
+.dash.sidebar-collapsed .nav-item { position: relative; }
+/* on mobile the sidebar is a full drawer even when "collapsed", so the pill returns */
+@media (max-width:820px){
+  .dash.sidebar-collapsed .nav-badge {
+    position: static; min-width: 20px; height: 20px;
+    padding: 0 6px; font-size: 11px; line-height: 20px;
+  }
+}
+
 /* ═══════════ 📱 RESPONSIVE ═══════════ */
 
 /* Tablet (≤1000px): stack dashboard */

@@ -46,8 +46,31 @@ export default function VendorPanel({ onLogout }) {
 
   // 🗝️ single access check used everywhere
   const has = (key) => !!features && (features.includes('*') || features.includes(key));
-  // 📱 nav → also close sidebar on mobile
-  const go = (t) => { setTab(t); if (window.innerWidth <= 820) setCollapsed(true); };
+  // 🔴 how many leads are still status='new' — drives the sidebar badge.
+  // Polled rather than derived from the leads list, because the badge has to be
+  // right on every tab, not just when Leads is open.
+  const [newLeadCount, setNewLeadCount] = useState(0);
+  const refreshLeadCount = () =>
+    api.leadsUnreadCount().then(d => setNewLeadCount(d.count || 0)).catch(() => {});
+
+  useEffect(() => {
+    if (!has('leads')) return;
+    refreshLeadCount();
+    const t = setInterval(refreshLeadCount, 60000);   // a minute is plenty for an inbox badge
+    // catch up immediately when the vendor returns to the tab
+    const onVis = () => { if (!document.hidden) refreshLeadCount(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVis); };
+  }, [features]);
+
+  // 📱 nav → also close sidebar on mobile.
+  // Re-check the badge on every tab change too: opening a lead marks it read, so
+  // navigating away and back should show the new count without waiting a minute.
+  const go = (t) => {
+    setTab(t);
+    if (window.innerWidth <= 820) setCollapsed(true);
+    if (has('leads')) refreshLeadCount();
+  };
 
   useEffect(() => { load(); }, []);
 
@@ -87,7 +110,7 @@ export default function VendorPanel({ onLogout }) {
         </div>
         <div className="nav-group">WORK</div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => go('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></div>
-        {has('leads') && <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => go('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span></div>}
+        {has('leads') && <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => go('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span>{newLeadCount > 0 && <span className="nav-badge" title={`${newLeadCount} new lead${newLeadCount === 1 ? '' : 's'}`}>{newLeadCount > 99 ? '99+' : newLeadCount}</span>}</div>}
         {has('leads') && <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => go('bookings')}><span className="nav-ic">📅</span><span className="nav-txt">Bookings</span></div>}
         {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => go('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></div>}
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">My Crew</span></div>}

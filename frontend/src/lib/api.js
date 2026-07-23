@@ -170,6 +170,7 @@ export const api = {
     request('/referrals', { method: 'POST', body: JSON.stringify({ referrer_email, friend_email }) }),
   createLead: (data) => request('/leads', { method: 'POST', body: JSON.stringify(data) }),
   leads: (vendorId) => request(`/leads${vendorId ? `?vendor_id=${vendorId}` : ''}`),
+  leadsUnreadCount: () => request('/leads/unread-count'),
   lead: (id) => request(`/leads/${id}`),
   updateLead: (id, data) => request(`/leads/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   mySettings: () => request('/me/settings'),

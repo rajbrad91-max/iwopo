@@ -19,6 +19,19 @@ function scope(vid, extra = {}) {
   return vid ? { vendor_id: Number(vid), ...extra } : extra;
 }
 
+// GET /api/leads/unread-count → how many NEW leads, for the sidebar badge 🔴
+// Deliberately tiny and separate from the list route so the panel can poll it
+// cheaply without pulling every lead row.
+router.get('/unread-count', requireAuth, async (req, res) => {
+  const vid = vendorIdFor(req);
+  try {
+    const count = await prisma.leads.count({
+      where: scope(vid, { archived_at: null, status: 'new' }),   // 🔒 tenancy
+    });
+    res.json({ count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/leads  → list (vendor-scoped 🔒, active only)
 router.get('/', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
