@@ -397,18 +397,34 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     // no usable box → serve the whole photo and let the browser round it
     if (!box) { res.type('webp'); return res.sendFile(full); }
 
-    // pad the crop out so it's a head-and-shoulders circle, not a tight face
-    const pad = Math.round(Math.max(box.w, box.h) * 0.45);
-    const left = Math.max(0, Math.round(box.x - pad));
-    const top = Math.max(0, Math.round(box.y - pad));
-    const size = Math.round(Math.max(box.w, box.h) + pad * 2);
+    // 🔍 Crop tight enough that the face fills the circle. The padding is a
+    // fraction of the face size added on each side — 0.45 produced a
+    // head-and-shoulders shot where the face was small in the frame.
+    const PAD = 0.18;
+    const faceSize = Math.max(box.w, box.h);
+    const size = Math.round(faceSize * (1 + PAD * 2));
+
+    // Centre the crop on the face, and nudge it up slightly: a box centred on
+    // the detected face puts the chin mid-circle and crops the forehead, so
+    // biasing upward keeps the whole head in view.
+    const cx = box.x + box.w / 2;
+    const cy = box.y + box.h / 2 - faceSize * 0.06;
+
+    let left = Math.round(cx - size / 2);
+    let top = Math.round(cy - size / 2);
+    // keep the square inside the image rather than shrinking it, so faces near
+    // an edge stay the same scale as the rest
+    left = Math.max(0, Math.min(left, meta.width - size));
+    top = Math.max(0, Math.min(top, meta.height - size));
     const width = Math.min(size, meta.width - left);
     const height = Math.min(size, meta.height - top);
 
     const buf = await sharp(full)
       .extract({ left, top, width, height })
-      .resize(160, 160, { fit: 'cover' })
-      .webp({ quality: 80 })
+      // 256 rather than 160: circles render around 72-96 CSS px, which is
+      // 200-290 device px on a retina phone — 160 looked soft there.
+      .resize(256, 256, { fit: 'cover' })
+      .webp({ quality: 82 })
       .toBuffer();
 
     res.type('webp');
