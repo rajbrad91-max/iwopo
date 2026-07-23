@@ -19,6 +19,17 @@ router.get('/:vendorId', async (req, res) => {
     });
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
     const s = await prisma.inquiry_settings.findUnique({ where: { vendor_id: vendorId } }) || DEFAULTS;
+
+    // 🚫 never cache this. Express adds an ETag, and with no Cache-Control the
+    // browser applies heuristic caching — it revalidates, gets a 304, and keeps
+    // showing the OLD settings. A vendor would save a change, see the database
+    // update, and the public form would still render the previous version.
+    // app.set('etag', false) in server.js stops the ETag being generated at all,
+    // so a conditional request can't come back 304 either.
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
     res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '' } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
