@@ -598,31 +598,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
         </div>
       )}
 
-      {/* 👥 everyone in this gallery — a scrollable grid, so an album with
-          hundreds of people is still browsable (a long swipe strip is not) */}
-      {allFacesOpen && (
-        <div className="pg-modal" onClick={() => setAllFacesOpen(false)}>
-          <div className="pg-modal-card pg-faces-modal" onClick={e => e.stopPropagation()}>
-            <button type="button" className="pg-modal-x" onClick={() => setAllFacesOpen(false)} title="Close">✕</button>
-            <h2 className="pg-modal-title">Everyone in this gallery</h2>
-            <p className="pg-modal-sub">{faces.length} {faces.length === 1 ? 'person' : 'people'} — tap someone to see just their photos.</p>
-            <div className="pg-faces-grid">
-              {faces.map(f => (
-                <button
-                  key={f.id}
-                  className={`pg-face ${activeFace === f.id ? 'is-on' : ''}`}
-                  onClick={() => { pickFace(f); setAllFacesOpen(false); }}
-                  title={`${f.count} photo${f.count === 1 ? '' : 's'}`}
-                >
-                  <img src={faceUrl(f.id)} alt="" loading="lazy" />
-                  <span className="pg-face-n">{f.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* 👥 everyone in this gallery — expands inline under the strip rather than
+          as a popup, so the faces stay in place with the gallery behind them.
+          The list itself scrolls, so hundreds of people stay manageable. */}
       <div ref={gridRef} />
 
       {selfieMsg && <div className="pg-note">{selfieMsg}</div>}
@@ -659,7 +637,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
       {/* bar 2 — the people in this gallery */}
       {(faces.length > 0 || session.faceReady) && (
         <div className="pg-people">
-          <div className="pg-faces">
+          <div className={`pg-faces ${allFacesOpen ? 'is-expanded' : ''}`}>
             {faces.map(f => (
               <button
                 key={f.id}
@@ -684,13 +662,13 @@ export default function PublicGallery({ token, embedded, onBack }) {
               </button>
             )}
             <button
-              className="pg-facebtn"
-              onClick={() => setAllFacesOpen(true)}
+              className={`pg-facebtn ${allFacesOpen ? 'is-on' : ''}`}
+              onClick={() => setAllFacesOpen(v => !v)}
               disabled={faces.length === 0}
-              title={`See everyone in this gallery (${faces.length})`}
+              title={allFacesOpen ? 'Show fewer faces' : `See everyone in this gallery (${faces.length})`}
             >
               <span className="pg-facebtn-ic">{IconPeople}</span>
-              <span className="pg-facebtn-lbl">More</span>
+              <span className="pg-facebtn-lbl">{allFacesOpen ? 'Fewer' : 'More'}</span>
             </button>
             <button className="pg-facebtn" onClick={() => setFindMeOpen(true)} disabled={selfieBusy} title="Find photos of yourself">
               <span className="pg-facebtn-ic">{IconUser}</span>

@@ -180,6 +180,25 @@
 /* keep the scrollbar out of the way — the strip is obviously swipeable */
 .pg-faces::-webkit-scrollbar { height: 0; }
 .pg-faces { scrollbar-width: none; }
+
+/* 👥 "More" → wrap every face into rows right here, under the strip. The block
+   itself scrolls once it gets tall, so an album with hundreds of people stays
+   usable without pushing the photos off screen. */
+.pg-faces.is-expanded {
+  flex-wrap: wrap;
+  gap: 14px 10px;
+  overflow-x: visible;
+  overflow-y: auto;
+  max-height: min(46vh, 340px);
+  scroll-snap-type: none;
+  padding-right: 2px;
+}
+.pg-faces.is-expanded::-webkit-scrollbar { width: 6px; }
+.pg-faces.is-expanded::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--pg-head) 18%, transparent);
+  border-radius: 3px;
+}
+.pg-faces.is-expanded { scrollbar-width: thin; }
 .pg-faces-empty { color: var(--pg-sub); font-size: 13px; padding: 18px 0; white-space: nowrap; }
 
 .pg-face {
@@ -211,21 +230,9 @@
 /* faces take the available width; action circles pin to the right edge, always */
 .pg-faces { flex: 1 1 auto; }
 .pg-people-acts { display: flex; gap: 14px 10px; align-items: flex-start; flex: 0 0 auto; margin-left: auto; padding-left: 10px; }
-
-/* 👥 "More" → every face in a scrollable grid. The strip is fine for a few
-   people; an album with hundreds needs a grid you can scan, not a long swipe. */
-.pg-faces-modal { max-width: 620px; width: 100%; }
-.pg-faces-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
-  gap: 16px 10px;
-  max-height: min(58vh, 460px);
-  overflow-y: auto;
-  padding: 4px 2px;
-  margin-top: 4px;
-}
-.pg-faces-grid .pg-face { width: 100%; }
-.pg-faces-grid .pg-face img { width: 64px; height: 64px; }
+/* the action circles sit at the top when the face list is expanded, so they
+   don't drift down the page as rows appear */
+.pg-people:has(.pg-faces.is-expanded) .pg-people-acts { align-self: flex-start; }
 
 /* ── 🤳 find-me popup ── */
 .pg-modal {
