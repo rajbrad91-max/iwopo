@@ -67,6 +67,22 @@ app.get('/', (req, res) => {
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
+// 🛡️ Error handler. Without one Express falls back to its default, which renders
+// an HTML stack trace exposing server file paths — on public endpoints like the
+// inquiry form that is an information leak. Malformed JSON is a client mistake
+// (400), anything else is logged server-side and reported generically.
+// The 4-argument signature is required: Express identifies error handlers by arity.
+app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
+  if (err?.type === 'entity.parse.failed' || err instanceof SyntaxError) {
+    return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body too large' });
+  }
+  console.error('[api] unhandled error:', err?.message || err);
+  res.status(500).json({ error: 'Something went wrong. Please try again.' });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
 });
