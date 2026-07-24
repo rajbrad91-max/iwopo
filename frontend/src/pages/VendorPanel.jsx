@@ -191,12 +191,45 @@ export default function VendorPanel({ onLogout }) {
   );
 }
 
+/** "2h ago" / "3d ago" / "24 Jul" — relative for the first week, then a date,
+ *  because "34d ago" stops meaning anything and by then the date is more use. */
+function sinceLabel(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d)) return '';
+  const mins = Math.floor((Date.now() - d) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days <= 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 function NotifBell() {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ notifications: [], unseen: 0 });
+  const boxRef = useRef(null);
 
   useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
   function load() { api.notifications().then(setData).catch(() => {}); }
+
+  // Close on a click anywhere else, or on Escape. Without this the panel stayed
+  // open over whatever the vendor clicked next, which reads as a stuck menu.
+  // Listening on mousedown rather than click means it closes before the click
+  // lands, so pressing a button behind it still does what you'd expect.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
   async function toggle() {
     const next = !open;
@@ -208,24 +241,32 @@ function NotifBell() {
   }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <button className="hdr-icon" onClick={toggle} style={{ position: 'relative' }}>
+    <div className="nb-wrap" ref={boxRef}>
+      <button className="hdr-icon nb-btn" onClick={toggle} aria-label="Notifications">
         🔔
-        {data.unseen > 0 && (
-          <span style={{ position: 'absolute', top: -5, right: -5, background: '#fb7185', color: '#fff', borderRadius: 12, fontSize: 10, fontWeight: 800, padding: '2px 6px' }}>{data.unseen}</span>
-        )}
+        {data.unseen > 0 && <span className="nb-count">{data.unseen > 99 ? '99+' : data.unseen}</span>}
       </button>
+
       {open && (
-        <div style={{ position: 'absolute', right: 0, top: 44, width: 320, maxHeight: 400, overflowY: 'auto', background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 12, zIndex: 40, boxShadow: '0 10px 30px #00000060' }}>
+        <div className="nb-panel">
+          <div className="nb-head">
+            <span>Notifications</span>
+            <button type="button" className="nb-x" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+          </div>
+
           {data.notifications.length === 0 ? (
-            <div style={{ padding: 20, color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>No notifications yet 🔕</div>
-          ) : data.notifications.map(n => (
-            <div key={n.id} style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>
-              <div style={{ fontWeight: 700 }}>{n.title}</div>
-              {n.body && <div style={{ color: 'var(--muted)', marginTop: 2 }}>{n.body}</div>}
-              <div style={{ color: '#4a6169', fontSize: 10.5, marginTop: 3 }}>{String(n.created_at).slice(0, 16).replace('T', ' ')}</div>
-            </div>
-          ))}
+            <p className="nb-empty">🔕 Nothing yet — new leads and client activity will show up here.</p>
+          ) : (
+            <ul className="nb-list">
+              {data.notifications.map(n => (
+                <li key={n.id} className="nb-item">
+                  <p className="nb-title">{n.title}</p>
+                  {n.body && <p className="nb-body">{n.body}</p>}
+                  <p className="nb-when">{sinceLabel(n.created_at)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>

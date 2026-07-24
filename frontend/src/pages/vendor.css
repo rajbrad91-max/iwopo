@@ -762,6 +762,57 @@
 .em-foot button:disabled { opacity: .6; cursor: default; }
 @media (max-width: 560px) { .em-row2 { grid-template-columns: 1fr; } }
 
+/* 🔔 notification bell + dropdown */
+.nb-wrap { position: relative; }
+.nb-btn { position: relative; }
+.nb-count {
+  position: absolute; top: -5px; right: -5px;
+  min-width: 18px; padding: 0 5px; border-radius: 20px;
+  background: #fb7185; color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 18px; text-align: center;
+  border: 2px solid var(--panel);
+}
+.nb-panel {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 60;
+  width: min(360px, calc(100vw - 32px));
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 16px 44px #00000070, 0 0 0 1px #ffffff08;
+  overflow: hidden;
+}
+/* little arrow pointing at the bell, so the panel reads as attached to it */
+.nb-panel::before {
+  content: ''; position: absolute; top: -6px; right: 16px;
+  width: 10px; height: 10px; transform: rotate(45deg);
+  background: var(--panel);
+  border-left: 1px solid var(--line); border-top: 1px solid var(--line);
+}
+.nb-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px; border-bottom: 1px solid var(--line);
+  font-size: 13px; font-weight: 700; color: var(--text);
+}
+.nb-x {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 14px; line-height: 1; padding: 2px 4px;
+}
+.nb-x:hover { color: var(--text); }
+.nb-empty {
+  margin: 0; padding: 30px 22px; text-align: center;
+  color: var(--muted); font-size: 13px; line-height: 1.6;
+}
+.nb-list {
+  list-style: none; margin: 0; padding: 0;
+  max-height: min(420px, 60vh); overflow-y: auto;
+}
+.nb-item { padding: 13px 16px; border-bottom: 1px solid var(--line); }
+.nb-item:last-child { border-bottom: none; }
+.nb-item:hover { background: var(--panel-2); }
+.nb-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.4; }
+.nb-body { margin: 3px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.nb-when { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); opacity: .75; }
+
 /* ═══════════ 📱 RESPONSIVE ═══════════ */
 
 /* Tablet (≤1000px): stack dashboard */
