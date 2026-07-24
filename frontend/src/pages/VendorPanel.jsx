@@ -1674,6 +1674,8 @@ function LeadsView() {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  // 📤 which lead is mid-send, so its button can show progress
+  const [sendingId, setSendingId] = useState(null);
 
   // 🗑️ bin click: 1st click → enter select mode; if items checked → delete; if in mode w/ none → exit
   function onBinClick() {
@@ -1713,6 +1715,27 @@ function LeadsView() {
   async function restore(id, e) {
     e.stopPropagation();
     try { await api.restoreLead(id); load(); } catch {}
+  }
+
+  // 📤 Email the packages straight from the list, so a vendor doesn't have to
+  // open a lead just to send. Confirms first — this sends a real email — and
+  // reloads afterwards so the status badge reflects whatever the send changed.
+  async function sendPkgs(l, e) {
+    e.stopPropagation();                        // don't open the lead behind it
+    if (sendingId) return;
+    if (!confirm(`Email the packages to ${l.name} at ${l.email}?`)) return;
+    setSendingId(l.id);
+    try {
+      await api.sendPackages(l.id);
+      setMsg(`📤 Sent to ${l.email}`);
+      setTimeout(() => setMsg(''), 2500);
+      load();
+    } catch (err) {
+      setMsg('⚠️ ' + (err.message || 'Could not send'));
+      setTimeout(() => setMsg(''), 3500);
+    } finally {
+      setSendingId(null);
+    }
   }
 
   if (sel) return <LeadDetail lead={sel} onBack={() => { setSel(null); load(); }} />;
@@ -1807,7 +1830,22 @@ function LeadsView() {
                 <td data-label="Status"><span className={`badge ${l.status === 'booked' ? 'active' : 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
                 <td data-label="Actions">
                   {view === 'active'
-                    ? <span className="lead-restore" onClick={e => { e.stopPropagation(); setSel(l); }}>👁️ Open</span>
+                    ? <div className="lead-actions">
+                        {/* 📤 send from the list — no need to open the lead first.
+                            Only offered once a package is assigned and an email
+                            exists, since the mail has nothing to link to otherwise. */}
+                        {l.package_name && l.email && (
+                          <button
+                            className="lead-send"
+                            disabled={sendingId === l.id}
+                            onClick={e => sendPkgs(l, e)}
+                            title={`Email the packages to ${l.email}`}
+                          >
+                            {sendingId === l.id ? '⏳ Sending…' : '📤 Send Packages'}
+                          </button>
+                        )}
+                        <span className="lead-restore" onClick={e => { e.stopPropagation(); setSel(l); }}>👁️ Open</span>
+                      </div>
                     : <span className="lead-restore" onClick={e => restore(l.id, e)}>↩️ Restore</span>}
                 </td>
               </tr>

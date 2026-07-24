@@ -619,6 +619,24 @@
   font-size: 12px;
 }
 
+/* 📤 Send Packages, in the Actions column beside Open */
+.lead-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.lead-send {
+  background: var(--brand);
+  color: #06231f;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter .15s;
+}
+.lead-send:hover { filter: brightness(1.08); }
+.lead-send:disabled { opacity: .6; cursor: default; }
+
 /* ═══════════ 📱 RESPONSIVE ═══════════ */
 
 /* Tablet (≤1000px): stack dashboard */
