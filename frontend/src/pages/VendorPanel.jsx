@@ -1729,13 +1729,12 @@ function LeadsView() {
     ? byFilter.filter(l => `${l.name} ${l.email} ${l.phone} ${l.event_type} ${l.location}`.toLowerCase().includes(search.toLowerCase()))
     : byFilter;
 
-  // 🔢 A stable number per lead: #1 is the vendor's first ever lead, counting up.
-  // Derived from the full list rather than the visible rows, so filtering to
-  // "Booked" or searching doesn't renumber anything — lead #4 stays #4.
-  const seq = new Map(
-    [...leads].sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || a.id - b.id)
-              .map((l, i) => [l.id, i + 1])
-  );
+  // 🔢 Row number, counting down the table: the top row is #1. The list arrives
+  // newest-first, so numbering follows that order rather than creation order —
+  // otherwise the newest lead showed the highest number at the top and the
+  // column read backwards. Built from the full list, not the visible rows, so
+  // filtering or searching never renumbers what's left.
+  const seq = new Map(leads.map((l, i) => [l.id, i + 1]));
   const seqOf = (id) => seq.get(id) ?? '—';
   const TILES = [
     ['all', '📋', 'Total Leads'],
@@ -2452,19 +2451,10 @@ function BookingsView() {
   const inYear = bookings.filter(b => { const d = b.event_date && new Date(b.event_date); return d && d.getFullYear() === now.getFullYear(); }).length;
   const nextYear = bookings.filter(b => { const d = b.event_date && new Date(b.event_date); return d && d.getFullYear() === now.getFullYear() + 1; }).length;
 
-  // 🔢 Booking number, ordered by event date — #1 is the earliest booked event.
-  // Built from the whole list, not the filtered rows, so searching never
-  // renumbers: booking #7 reads as #7 whether or not it matches the search.
-  const bkSeq = new Map(
-    [...bookings].sort((a, b) => {
-      const da = a.event_date ? new Date(a.event_date) : null;
-      const db = b.event_date ? new Date(b.event_date) : null;
-      if (da && db && +da !== +db) return da - db;
-      if (da && !db) return -1;          // dated bookings before undated ones
-      if (!da && db) return 1;
-      return a.id - b.id;
-    }).map((b, i) => [b.id, i + 1])
-  );
+  // 🔢 Booking number, counting down the table so the top row is #1 — matching
+  // the order the rows are actually rendered in. Built from the full list, not
+  // the filtered rows, so searching never renumbers what's left.
+  const bkSeq = new Map(bookings.map((b, i) => [b.id, i + 1]));
   const seqOf = (id) => bkSeq.get(id) ?? '—';
 
   // 🔍 search across client, event, date, location, phone, email
