@@ -1899,10 +1899,16 @@ function LeadDetail({ lead, onBack }) {
     try { await api.setGateway(lead.id, next); setPkgMsg(next ? '🔒 Secure login ON' : '🔓 Secure login OFF'); setTimeout(() => setPkgMsg(''), 1500); }
     catch (e) { setGateway(!next); setPkgMsg('⚠️ ' + e.message); }
   }
+  // 📤 Emails the packages to the client. Same endpoint as the button in the
+  // leads table, and it confirms first for the same reason: this sends a real
+  // email, and a misclick can't be taken back.
   async function sendPackages() {
+    if (pkgBusy) return;
+    if (!lead.email) { setPkgMsg('⚠️ This lead has no email address'); setTimeout(() => setPkgMsg(''), 3000); return; }
+    if (!confirm(`Email the packages to ${lead.name} at ${lead.email}?`)) return;
     setPkgBusy(true); setPkgMsg('');
-    try { await api.sendPackages(lead.id); setPkgMsg('✅ Packages sent!'); setTimeout(() => setPkgMsg(''), 2500); }
-    catch (e) { setPkgMsg('⚠️ ' + (e.message || 'Failed')); }
+    try { await api.sendPackages(lead.id); setPkgMsg(`📤 Sent to ${lead.email}`); setTimeout(() => setPkgMsg(''), 2500); }
+    catch (e) { setPkgMsg('⚠️ ' + (e.message || 'Failed')); setTimeout(() => setPkgMsg(''), 3500); }
     finally { setPkgBusy(false); }
   }
 
