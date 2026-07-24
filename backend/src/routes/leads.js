@@ -74,48 +74,10 @@ router.get('/', requireAuth, async (req, res) => {
     const rows = await prisma.leads.findMany({
       where: scope(vid, { archived_at: null }),
       orderBy: { created_at: 'desc' },
-      include: { vendor_packages: { select: { name: true, base_price: true, included_hours: true, per_hour_price: true } } },
+      include: { vendor_packages: { select: { name: true } } },
     });
-
-    // 💰 What each lead is worth, so the list can show it without opening every
-    // one. Payments are summed in a single grouped query rather than per lead —
-    // a vendor with 200 leads would otherwise fire 200 round trips.
-    const paidByLead = new Map();
-    if (rows.length) {
-      const sums = await prisma.payments.groupBy({
-        by: ['lead_id'],
-        where: { lead_id: { in: rows.map(r => r.id) } },   // 🔒 only this vendor's leads
-        _sum: { amount: true },
-      });
-      sums.forEach(s => paidByLead.set(s.lead_id, Number(s._sum.amount || 0)));
-    }
-
-    const leads = rows.map(({ vendor_packages, ...l }) => {
-      // mirrors moneySummary() in payments.js: override wins, else package base
-      // plus any hours beyond what the package includes, then the discount
-      const snap = l.package_snapshot
-        ? (typeof l.package_snapshot === 'string' ? JSON.parse(l.package_snapshot) : l.package_snapshot)
-        : vendor_packages;
-      let total = l.price_override != null ? Number(l.price_override) : null;
-      if (total == null && snap) {
-        const base = Number(snap.base_price) || 0;
-        const inclHrs = Number(snap.included_hours) || 0;
-        const perHr = Number(snap.per_hour_price) || 0;
-        const hrs = Number(l.hours) || 0;
-        total = base + (hrs > inclHrs ? (hrs - inclHrs) * perHr : 0);
-      }
-      total = total ?? 0;
-      const finalTotal = Math.max(total - (Number(l.discount_percent) || 0) / 100 * total, 0);
-      const paid = paidByLead.get(l.id) || 0;
-
-      return {
-        ...l,
-        package_name: vendor_packages?.name ?? null,
-        total: +finalTotal.toFixed(2),
-        paid: +paid.toFixed(2),
-        balance: +(finalTotal - paid).toFixed(2),
-      };
-    });
+    // keep the old shape: package_name flattened onto the lead
+    const leads = rows.map(({ vendor_packages, ...l }) => ({ ...l, package_name: vendor_packages?.name ?? null }));
     res.json({ leads });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

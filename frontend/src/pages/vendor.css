@@ -620,10 +620,12 @@
 }
 
 /* 📤 Send Packages, in the Actions column.
-   Cells default to vertical-align: baseline, which works for text but leaves a
-   flex container sitting lower than the text beside it — the button looked
-   dropped relative to the Status badge. Middle-aligning the row's cells lines
-   everything up whatever each one contains. */
+   Header and body cells are both right-aligned and middle-aligned so the button
+   sits under the word "Actions" and level with the Status badge beside it —
+   cells default to vertical-align: baseline, which text can share but a flex
+   container can't, so the button hung low. */
+.leads-table th.col-actions,
+.leads-table td.col-actions { text-align: right; }
 .leads-table tbody td { vertical-align: middle; }
 .lead-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .lead-send {
@@ -644,19 +646,6 @@
 }
 .lead-send:hover { filter: brightness(1.08); }
 .lead-send:disabled { opacity: .6; cursor: default; }
-
-/* 💰 Value column — the total, with what's still owed underneath */
-.col-money { white-space: nowrap; }
-.lead-total { font-variant-numeric: tabular-nums; font-weight: 600; }
-.lead-owing {
-  display: block; margin-top: 1px;
-  font-size: 10.5px; color: #fbbf24;
-  font-variant-numeric: tabular-nums;
-}
-.lead-owing.is-paid { color: #4ade80; }
-
-/* 📅 Received — relative age, muted so it doesn't compete with the event date */
-.col-when { white-space: nowrap; color: var(--muted); font-size: 12px; }
 
 /* 🔵 leads the vendor hasn't opened yet: a left marker and a bolder name, so
    new work is visible without reading the Status column */
