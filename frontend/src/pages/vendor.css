@@ -327,8 +327,6 @@
 .bk-tog-btn:first-child { border-radius: 9px 0 0 9px; border-right: none; }
 .bk-tog-btn:last-child { border-radius: 0 9px 9px 0; }
 .bk-tog-btn.is-on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
-.bk-paid { color: #4ade80; }
-.bk-due { color: #fbbf24; }
 
 /* 🗓️ clickable calendar event card */
 .cal-evt { padding: 14px; margin-top: 10px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: border-color .15s; }

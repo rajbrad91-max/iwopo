@@ -2689,19 +2689,20 @@ function BookingsView() {
       {mode === 'calendar' ? <CalendarView onOpen={setSel} filter={term} /> : (
         <div className="table-wrap">
           <table>
-            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th></tr></thead>
+            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Status</th></tr></thead>
             <tbody>
               {shown.length === 0 ? (
-                <tr><td colSpan="7" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
+                <tr><td colSpan="6" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
               ) : shown.map(b => (
                 <tr key={b.id} className="row-clickable" onClick={() => setSel(b)}>
                   <td className="col-num" data-label="#">{seqOf(b.id)}</td>
                   <td className="biz">{b.name}</td>
                   <td>{b.event_type}</td>
                   <td>{b.event_date ? String(b.event_date).slice(0, 10) : '—'}</td>
-                  <td>${b.money?.final_total ?? 0}</td>
-                  <td className="bk-paid">${b.money?.paid ?? 0}</td>
-                  <td className={b.money?.balance > 0 ? 'bk-due' : 'bk-paid'}>${b.money?.balance ?? 0}</td>
+                  {/* the hours they've booked you for — what a vendor checks
+                      when planning a day, rather than the money */}
+                  <td>{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
+                  <td><span className="badge active">✅ Booked</span></td>
                 </tr>
               ))}
             </tbody>
