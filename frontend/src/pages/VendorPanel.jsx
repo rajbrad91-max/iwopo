@@ -1662,6 +1662,23 @@ function AddLeadModal({ vendorId, onClose, onSaveDone }) {
   );
 }
 
+/** "2h ago" / "3d ago" / "24 Jul" — how long a lead has been waiting.
+ *  Relative for the first week, then a date: "34d ago" stops meaning anything,
+ *  and by then a vendor would rather see when it actually landed. */
+function sinceLabel(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return '—';
+  const mins = Math.floor((Date.now() - d) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days <= 7) return `${days}d ago`;
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 function LeadsView() {
   const [leads, setLeads] = useState([]);
   const [sel, setSel] = useState(null);
@@ -1808,14 +1825,14 @@ function LeadsView() {
 
       <div className="table-wrap">
         <table className="leads-table">
-          <thead><tr>{view === 'active' && selectMode && <th className="col-check"></th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr>{view === 'active' && selectMode && <th className="col-check"></th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th className="col-money">Value</th><th className="col-when">Received</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="9" className="empty">Loading…</td></tr>
+              <tr><td colSpan="11" className="empty">Loading…</td></tr>
             ) : shown.length === 0 ? (
-              <tr><td colSpan="9" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
+              <tr><td colSpan="11" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
             ) : shown.map(l => (
-              <tr key={l.id} onClick={() => { if (view !== 'active') return; if (selectMode) { setChecked(c => c.includes(l.id) ? c.filter(x => x !== l.id) : [...c, l.id]); } else { setSel(l); } }} className={view === 'active' ? 'row-clickable' : ''}>
+              <tr key={l.id} onClick={() => { if (view !== 'active') return; if (selectMode) { setChecked(c => c.includes(l.id) ? c.filter(x => x !== l.id) : [...c, l.id]); } else { setSel(l); } }} className={`${view === 'active' ? 'row-clickable' : ''}${view === 'active' && !l.seen_at ? ' is-unread' : ''}`}>
                 {view === 'active' && selectMode && (
                   <td className="cell-check" onClick={e => toggleCheck(l.id, e)}>
                     <input type="checkbox" readOnly checked={checked.includes(l.id)} className="lead-check" />
@@ -1827,6 +1844,23 @@ function LeadsView() {
                 <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
                 <td data-label="Location">{l.location || '—'}</td>
                 <td data-label="Packages">{l.package_name || '—'}</td>
+                {/* 💰 what this lead is worth, after any discount. Shows what's
+                    still owed underneath once something has been paid, so a
+                    vendor can see at a glance which jobs are settled. */}
+                <td className="col-money" data-label="Value">
+                  {l.total > 0 ? (
+                    <>
+                      <span className="lead-total">${Number(l.total).toLocaleString()}</span>
+                      {l.paid > 0 && (
+                        <span className={`lead-owing ${l.balance <= 0 ? 'is-paid' : ''}`}>
+                          {l.balance <= 0 ? 'paid' : `$${Number(l.balance).toLocaleString()} due`}
+                        </span>
+                      )}
+                    </>
+                  ) : '—'}
+                </td>
+                {/* 📅 how long the inquiry has been sitting */}
+                <td className="col-when" data-label="Received">{sinceLabel(l.created_at)}</td>
                 <td data-label="Status"><span className={`badge ${l.status === 'booked' ? 'active' : 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
                 <td data-label="Actions">
                   {view === 'active'
