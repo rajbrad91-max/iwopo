@@ -240,6 +240,19 @@
   }
   .leads-table td[data-label="Status"]::before { display: none; }
 
+  /* 🔢 on mobile each row is a card, so the number sits inline with the name
+     rather than as its own stacked "#" block */
+  .leads-table td.col-num,
+  .dash table td.col-num {
+    grid-column: 1 / -1;
+    flex-direction: row; align-items: baseline;
+    padding: 0; margin-bottom: 2px;
+    text-align: left; width: auto;
+    font-size: 11px; font-weight: 700;
+  }
+  .leads-table td.col-num::before,
+  .dash table td.col-num::before { content: '#'; margin-right: 1px; }
+
   /* detail cells: stacked label + value, compact */
   .leads-table td {
     display: flex; flex-direction: column; gap: 1px;
@@ -594,6 +607,16 @@
     position: static; min-width: 20px; height: 20px;
     padding: 0 6px; font-size: 11px; line-height: 20px;
   }
+}
+
+/* 🔢 row-number column on Leads and Bookings. Narrow, muted and tabular so the
+   digits line up — it's a reference, not something to read first. */
+.dash .col-num {
+  width: 44px;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 
 /* ═══════════ 📱 RESPONSIVE ═══════════ */

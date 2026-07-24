@@ -1728,6 +1728,15 @@ function LeadsView() {
   const shown = search.trim()
     ? byFilter.filter(l => `${l.name} ${l.email} ${l.phone} ${l.event_type} ${l.location}`.toLowerCase().includes(search.toLowerCase()))
     : byFilter;
+
+  // 🔢 A stable number per lead: #1 is the vendor's first ever lead, counting up.
+  // Derived from the full list rather than the visible rows, so filtering to
+  // "Booked" or searching doesn't renumber anything — lead #4 stays #4.
+  const seq = new Map(
+    [...leads].sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || a.id - b.id)
+              .map((l, i) => [l.id, i + 1])
+  );
+  const seqOf = (id) => seq.get(id) ?? '—';
   const TILES = [
     ['all', '📋', 'Total Leads'],
     ['new', '🆕', 'New'],
@@ -1777,12 +1786,12 @@ function LeadsView() {
 
       <div className="table-wrap">
         <table className="leads-table">
-          <thead><tr>{view === 'active' && selectMode && <th className="col-check"></th>}<th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr>{view === 'active' && selectMode && <th className="col-check"></th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="8" className="empty">Loading…</td></tr>
+              <tr><td colSpan="9" className="empty">Loading…</td></tr>
             ) : shown.length === 0 ? (
-              <tr><td colSpan="8" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
+              <tr><td colSpan="9" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
             ) : shown.map(l => (
               <tr key={l.id} onClick={() => { if (view !== 'active') return; if (selectMode) { setChecked(c => c.includes(l.id) ? c.filter(x => x !== l.id) : [...c, l.id]); } else { setSel(l); } }} className={view === 'active' ? 'row-clickable' : ''}>
                 {view === 'active' && selectMode && (
@@ -1790,6 +1799,7 @@ function LeadsView() {
                     <input type="checkbox" readOnly checked={checked.includes(l.id)} className="lead-check" />
                   </td>
                 )}
+                <td className="col-num" data-label="#">{seqOf(l.id)}</td>
                 <td className="biz" data-label="Client">{l.name}</td>
                 <td data-label="Event">{l.event_type}</td>
                 <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
@@ -2442,6 +2452,21 @@ function BookingsView() {
   const inYear = bookings.filter(b => { const d = b.event_date && new Date(b.event_date); return d && d.getFullYear() === now.getFullYear(); }).length;
   const nextYear = bookings.filter(b => { const d = b.event_date && new Date(b.event_date); return d && d.getFullYear() === now.getFullYear() + 1; }).length;
 
+  // 🔢 Booking number, ordered by event date — #1 is the earliest booked event.
+  // Built from the whole list, not the filtered rows, so searching never
+  // renumbers: booking #7 reads as #7 whether or not it matches the search.
+  const bkSeq = new Map(
+    [...bookings].sort((a, b) => {
+      const da = a.event_date ? new Date(a.event_date) : null;
+      const db = b.event_date ? new Date(b.event_date) : null;
+      if (da && db && +da !== +db) return da - db;
+      if (da && !db) return -1;          // dated bookings before undated ones
+      if (!da && db) return 1;
+      return a.id - b.id;
+    }).map((b, i) => [b.id, i + 1])
+  );
+  const seqOf = (id) => bkSeq.get(id) ?? '—';
+
   // 🔍 search across client, event, date, location, phone, email
   const term = q.trim().toLowerCase();
   const match = (b) => !term || [b.name, b.event_type, b.event_date, b.location, b.phone, b.email]
@@ -2474,12 +2499,13 @@ function BookingsView() {
       {mode === 'calendar' ? <CalendarView onOpen={setSel} filter={term} /> : (
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Client</th><th>Event</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th></tr></thead>
+            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th></tr></thead>
             <tbody>
               {shown.length === 0 ? (
-                <tr><td colSpan="6" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
+                <tr><td colSpan="7" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
               ) : shown.map(b => (
                 <tr key={b.id} className="row-clickable" onClick={() => setSel(b)}>
+                  <td className="col-num" data-label="#">{seqOf(b.id)}</td>
                   <td className="biz">{b.name}</td>
                   <td>{b.event_type}</td>
                   <td>{b.event_date ? String(b.event_date).slice(0, 10) : '—'}</td>
