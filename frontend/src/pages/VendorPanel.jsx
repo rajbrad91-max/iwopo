@@ -2124,11 +2124,8 @@ function LeadDetail({ lead, onBack }) {
         );
       })()}
 
-      </div>
-
-      <div className="lead-right">
-
-      {/* 📦 Packages */}
+      {/* 📦 Packages — in the left column under the event details, since it's
+          part of reading the enquiry rather than a side action */}
       <div className="ld-card">
         <div className="ld-card-h">
           📦 Packages
@@ -2204,6 +2201,10 @@ function LeadDetail({ lead, onBack }) {
         )}
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
       </div>
+
+      </div>
+
+      <div className="lead-right">
 
       {/* 💰 Payment */}
       <MoneySection lead={lead} />
