@@ -150,32 +150,4 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PUT /api/vendor-packages/assign/:leadId → link lead to package (+snapshot)
-router.put('/assign/:leadId', requireAuth, async (req, res) => {
-  const v = vid(req);
-  const leadId = Number(req.params.leadId);
-  const { package_id } = req.body;
-  try {
-    const lead = await prisma.leads.findUnique({ where: { id: leadId }, select: { vendor_id: true } });
-    if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== v)
-      return res.status(403).json({ error: 'Forbidden' });    // 🔒 tenancy
-
-    let snapshot = null;
-    if (package_id) {
-      // 🔒 the package must belong to the same vendor as the lead
-      const pkg = await prisma.vendor_packages.findFirst({
-        where: { id: Number(package_id), vendor_id: lead.vendor_id },
-      });
-      if (!pkg) return res.status(400).json({ error: 'Package not valid for this vendor' });
-      snapshot = pkg;                                         // Json column — stored as-is
-    }
-    const updated = await prisma.leads.update({
-      where: { id: leadId },
-      data: { package_id: package_id ? Number(package_id) : null, package_snapshot: snapshot, updated_at: new Date() },
-    });
-    res.json({ lead: updated });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 export default router;

@@ -188,8 +188,6 @@ export const api = {
   addVendorPackage: (name, template_id) => request('/vendor-packages', { method: 'POST', body: JSON.stringify({ name, template_id }) }),
   updateVendorPackage: (id, data) => request(`/vendor-packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVendorPackage: (id) => request(`/vendor-packages/${id}`, { method: 'DELETE' }),
-  assignPackage: (leadId, package_id) => request(`/vendor-packages/assign/${leadId}`,
-    { method: 'PUT', body: JSON.stringify({ package_id }) }),
   // 📦 a lead's own copy of the packages it was offered
   leadPackages: (leadId) => request(`/lead-packages/${leadId}`),
   loadLeadPackages: (leadId, template_id) => request(`/lead-packages/${leadId}/load`,
