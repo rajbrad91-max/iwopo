@@ -1,7 +1,20 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import './inquiry.css';
+import './portal.css';
 
+/**
+ * 🌐 The client's view of their booking.
+ *
+ * Runs as three steps, the same order PerfectPoses uses:
+ *   1. choose a package
+ *   2. read and sign the contract
+ *   3. arrange payment
+ *
+ * Each step unlocks the next, so a client can't be asked to pay for something
+ * they haven't agreed to. Where the vendor hasn't raised a contract, step 2 is
+ * skipped rather than blocking the client.
+ */
 export default function ClientPortal({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -15,14 +28,14 @@ export default function ClientPortal({ token }) {
 
   async function pick(id) {
     setBusy(true); setMsg('');
-    try { await api.portalPick(token, id); setMsg('✅ Package selected!'); load(); }
+    try { await api.portalPick(token, id); setMsg('✅ Package selected'); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
 
   async function officeVisit() {
     setBusy(true);
-    try { await api.portalOfficeVisit(token); setMsg('🏢 Request sent — we\'ll contact you to arrange payment!'); }
+    try { await api.portalOfficeVisit(token); setMsg('🏢 Request sent — we\'ll be in touch to arrange payment'); }
     catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
@@ -30,60 +43,86 @@ export default function ClientPortal({ token }) {
   if (err) return <div className="iq-wrap"><div className="iq-card">⚠️ {err}</div></div>;
   if (!data) return <div className="iq-wrap"><div className="iq-card">Loading…</div></div>;
 
-  const { lead, business_name, templates, packages, money } = data;
-  const byTpl = (tid) => packages.filter(p => p.template_id === tid);
+  const { lead, business_name, packages, money, contract } = data;
+  const chosen = packages.find(p => p.id === lead.package_id);
+  const signed = !!contract?.signed_at;
+  // step 2 only exists once the vendor has raised a contract
+  const needsSigning = !!contract && !signed;
 
   return (
     <div className="iq-wrap">
-      <div className="iq-card" style={{ maxWidth: 720 }}>
+      <div className="iq-card po-card">
         <div className="iq-brand"><img src="/logo_icon.png" alt="" className="iq-brand-img" /> {business_name}</div>
-        <p className="iq-sub">Hi {lead.name} 👋 — your {lead.event_type} {lead.event_date ? `on ${String(lead.event_date).slice(0, 10)}` : ''}</p>
+        <p className="iq-sub">
+          Hi {lead.name} 👋 — your {lead.event_type}
+          {lead.event_date ? ` on ${String(lead.event_date).slice(0, 10)}` : ''}
+        </p>
 
-        {msg && <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 12, background: msg[0] === '⚠' ? '#fb718522' : '#4ade8022', color: msg[0] === '⚠' ? '#fb7185' : '#4ade80', fontSize: 13 }}>{msg}</div>}
+        {/* where they are in the journey */}
+        <ol className="po-steps">
+          <li className={chosen ? 'is-done' : 'is-now'}>📦 Choose</li>
+          <li className={signed ? 'is-done' : (chosen && needsSigning ? 'is-now' : '')}>📄 Sign</li>
+          <li className={chosen && (signed || !contract) ? 'is-now' : ''}>💳 Pay</li>
+        </ol>
 
-        <h3 style={{ margin: '10px 0' }}>📦 Choose your package</h3>
-        {templates.map(t => {
-          const list = byTpl(t.id);
-          if (!list.length) return null;
-          return (
-            <div key={t.id} style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 13, color: '#7c9199', marginBottom: 8, fontWeight: 700 }}>✨ {t.name}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
-                {list.map(p => {
-                  const selected = lead.package_id === p.id;
-                  const inc = Array.isArray(p.inclusions) ? p.inclusions : [];
-                  return (
-                    <div key={p.id} onClick={() => !busy && pick(p.id)}
-                      style={{ border: `2px solid ${selected ? '#2dd4bf' : '#223238'}`, borderRadius: 12, padding: 14, cursor: 'pointer', background: selected ? '#2dd4bf14' : '#0d1417' }}>
-                      <div style={{ fontWeight: 800 }}>{selected ? '✅ ' : ''}{p.name}</div>
-                      <div style={{ color: '#2dd4bf', fontWeight: 800, fontSize: 18, margin: '6px 0' }}>${Number(p.base_price).toFixed(0)}</div>
-                      <div style={{ fontSize: 11.5, color: '#7c9199' }}>{p.included_hours}h included · ${Number(p.per_hour_price).toFixed(0)}/extra hr</div>
-                      {inc.slice(0, 4).map((x, i) => <div key={i} style={{ fontSize: 11.5, marginTop: 4 }}>✓ {x}</div>)}
-                      {inc.length > 4 && <div style={{ fontSize: 11, color: '#7c9199', marginTop: 3 }}>+{inc.length - 4} more…</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+        {msg && <div className={`po-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
 
-        {lead.package_id && (
+        {/* ── 1. packages ── */}
+        <h3 className="po-h">📦 {chosen ? 'Your package' : 'Choose your package'}</h3>
+        <div className="po-grid">
+          {packages.map(p => {
+            const isChosen = lead.package_id === p.id;
+            const inc = Array.isArray(p.inclusions) ? p.inclusions : [];
+            return (
+              <button key={p.id} type="button" disabled={busy}
+                className={`po-pkg ${isChosen ? 'is-chosen' : ''}`}
+                onClick={() => !busy && pick(p.id)}>
+                <div className="po-pkg-name">{isChosen ? '✅ ' : ''}{p.name}</div>
+                <div className="po-pkg-price">${Number(p.base_price).toFixed(0)}</div>
+                {inc.map((x, i) => <div key={i} className="po-pkg-inc">✓ {x}</div>)}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── 2. contract ── */}
+        {chosen && contract && (
           <>
-            <h3 style={{ margin: '14px 0 8px' }}>💰 Your balance</h3>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
-              <span style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '8px 12px' }}>💵 Total: <b>${money.final_total}</b></span>
-              <span style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 8, padding: '8px 12px' }}>🔐 Deposit: <b>${money.deposit_amount}</b></span>
-              <span style={{ background: '#4ade8018', border: '1px solid #4ade8044', borderRadius: 8, padding: '8px 12px', color: '#4ade80' }}>✅ Paid: <b>${money.paid}</b></span>
-              <span style={{ background: '#fbbf2418', border: '1px solid #fbbf2444', borderRadius: 8, padding: '8px 12px', color: '#fbbf24' }}>⏳ Due: <b>${money.balance}</b></span>
+            <h3 className="po-h">📄 {signed ? 'Your contract' : 'Review your contract'}</h3>
+            {signed ? (
+              <div className="po-signed">
+                ✅ Signed by <b>{contract.signed_name}</b> on {String(contract.signed_at).slice(0, 10)}
+                <a className="po-link" href={`/sign/${contract.token}`}>View contract</a>
+              </div>
+            ) : (
+              <>
+                <p className="po-note">Please read and sign before we confirm your booking.</p>
+                <a className="iq-btn po-btn" href={`/sign/${contract.token}`}>📄 Read &amp; sign the contract</a>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── 3. payment — only once there's nothing left to sign ── */}
+        {chosen && !needsSigning && (
+          <>
+            <h3 className="po-h">💰 Your balance</h3>
+            <div className="po-money">
+              <span className="po-chip">💵 Total <b>${money.final_total}</b></span>
+              <span className="po-chip">🔐 Deposit <b>${money.deposit_amount}</b></span>
+              <span className="po-chip is-paid">✅ Paid <b>${money.paid}</b></span>
+              <span className="po-chip is-due">⏳ Due <b>${money.balance}</b></span>
             </div>
-            <button className="iq-btn" onClick={officeVisit} disabled={busy} style={{ marginTop: 16 }}>
+            <button className="iq-btn po-btn" onClick={officeVisit} disabled={busy}>
               🏢 Arrange payment with us
             </button>
-            <p style={{ fontSize: 11, color: '#7c9199', textAlign: 'center', marginTop: 8 }}>
-              We'll reach out to arrange e-transfer or in-person payment 💳
-            </p>
+            <p className="po-note po-center">We&apos;ll reach out to arrange e-transfer or in-person payment 💳</p>
           </>
+        )}
+
+        {/* nudge them to the step they're actually on */}
+        {chosen && needsSigning && (
+          <p className="po-note po-center">💡 Payment options appear once your contract is signed.</p>
         )}
       </div>
     </div>

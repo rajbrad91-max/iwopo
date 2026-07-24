@@ -30,12 +30,15 @@ router.get('/:token', async (req, res) => {
 
     // Fall back to the vendor's folder for leads created before per-lead
     // packages existed, so an old link doesn't suddenly show nothing.
-    let templates = [], packages = [];
+    let templates = [], packages = [], selectedId = lead.package_id;
     if (leadPkgs.length) {
       packages = leadPkgs.map(p => ({
         id: p.id, name: p.name, base_price: p.price,
         inclusions: p.inclusions, included_hours: null, per_hour_price: null,
       }));
+      // leads.package_id has a foreign key to vendor_packages so it can't hold
+      // one of these ids — the chosen one is flagged on the row instead
+      selectedId = leadPkgs.find(p => p.is_selected)?.id ?? null;
     } else {
       const tplWhere = { vendor_id: lead.vendor_id };           // 🔒 tenancy
       if (lead.package_template_id) tplWhere.id = lead.package_template_id;
@@ -49,13 +52,23 @@ router.get('/:token', async (req, res) => {
       });
     }
     const money = await moneySummary(lead);
+
+    // 📄 The contract for this booking, if the vendor has raised one. The client
+    // journey runs packages → contract → payment, so the portal needs to know
+    // whether there's something to sign and whether they've already signed it.
+    const contract = await prisma.contracts.findFirst({
+      where: { lead_id: lead.id },                              // 🔒 tenancy via the lead
+      orderBy: { id: 'desc' },
+      select: { id: true, title: true, token: true, status: true, signed_at: true, signed_name: true },
+    });
+
     res.json({
       lead: {
         name: lead.name, event_type: lead.event_type, event_date: lead.event_date,
-        hours: lead.hours, package_id: lead.package_id, status: lead.status,
+        hours: lead.hours, package_id: selectedId, status: lead.status,
       },
       business_name: vendor?.business_name,
-      templates, packages, money,
+      templates, packages, money, contract,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -79,6 +92,9 @@ router.post('/:token/pick', async (req, res) => {
         prisma.lead_packages.update({ where: { id: own.id }, data: { is_selected: true } }),
         prisma.leads.update({
           where: { id: lead.id },
+          // package_id is left alone: it has a foreign key to vendor_packages,
+          // so it can't hold a lead_packages id. The chosen one is marked with
+          // is_selected above and the snapshot carries the detail.
           data: { package_snapshot: snapshot, updated_at: new Date() },
         }),
       ]);
