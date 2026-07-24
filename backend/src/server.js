@@ -71,8 +71,11 @@ app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 // an HTML stack trace exposing server file paths — on public endpoints like the
 // inquiry form that is an information leak. Malformed JSON is a client mistake
 // (400), anything else is logged server-side and reported generically.
-// The 4-argument signature is required: Express identifies error handlers by arity.
-app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
+//
+// The 4th parameter is required even though it's unused: Express decides a
+// function is an error handler by its arity, so removing `next` would silently
+// turn this back into ordinary middleware and the leak would return.
+app.use((err, req, res, next) => {
   if (err?.type === 'entity.parse.failed' || err instanceof SyntaxError) {
     return res.status(400).json({ error: 'Invalid JSON in request body' });
   }
@@ -80,7 +83,7 @@ app.use((err, req, res, next) => {   // eslint-disable-line no-unused-vars
     return res.status(413).json({ error: 'Request body too large' });
   }
   console.error('[api] unhandled error:', err?.message || err);
-  res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
 app.listen(PORT, () => {
