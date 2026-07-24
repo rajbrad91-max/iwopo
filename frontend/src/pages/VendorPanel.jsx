@@ -2665,23 +2665,23 @@ function FieldBuilder({ fields, setFields }) {
           {f.type === 'hours' && (() => {
             const times = fields.filter(x => x.type === 'time' && x.label);
             if (!times.length) return (
-              <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+              <p className="fb-hint">
                 💡 Add two <strong>🕐 Time</strong> fields to calculate hours automatically.
               </p>
             );
             return (
-              <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <div className="fb-pair">
                 <div>
-                  <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Calculate from ⏱️</label>
-                  <select style={{ ...box, fontSize: 12 }} value={f.from_field || ''}
+                  <label className="fb-label">Calculate from ⏱️</label>
+                  <select className="fb-select" value={f.from_field || ''}
                     onChange={e => upd(i, { from_field: e.target.value })}>
                     <option value="">Client types it</option>
                     {times.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>…until</label>
-                  <select style={{ ...box, fontSize: 12 }} value={f.to_field || ''}
+                  <label className="fb-label">…until</label>
+                  <select className="fb-select" value={f.to_field || ''}
                     onChange={e => upd(i, { to_field: e.target.value })}>
                     <option value="">Client types it</option>
                     {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
@@ -2700,7 +2700,7 @@ function FieldBuilder({ fields, setFields }) {
               It's the same maps_to mechanism as the dropdown below, surfaced as a
               checkbox because filling that column is what vendors actually ask for. */}
           {cols.some(c => c.key === 'event_type' && c.types.includes(f.type)) && (
-            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+            <label className="fb-check">
               <input
                 type="checkbox"
                 checked={f.maps_to === 'event_type'}
@@ -2713,7 +2713,7 @@ function FieldBuilder({ fields, setFields }) {
                   }));
                 }}
               />
-              Show in the <strong style={{ color: 'var(--text)' }}>Event</strong> column on Leads
+              Show in the <strong>Event</strong> column on Leads
             </label>
           )}
 
@@ -2723,12 +2723,12 @@ function FieldBuilder({ fields, setFields }) {
               event_type is excluded — the checkbox above owns that one, so the
               same setting never appears in two controls. */}
           {cols.some(c => c.key !== 'event_type' && c.types.includes(f.type)) && (
-            <div style={{ marginTop: 8 }}>
-              <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>
+            <div className="fb-map">
+              <label className="fb-label">
                 Where should this answer appear? 🔗
               </label>
               <select
-                style={{ ...box, fontSize: 12 }}
+                className="fb-select"
                 value={f.maps_to === 'event_type' ? '' : (f.maps_to || '')}
                 disabled={f.maps_to === 'event_type'}
                 onChange={e => upd(i, { maps_to: e.target.value })}
@@ -2742,7 +2742,7 @@ function FieldBuilder({ fields, setFields }) {
                   </option>;
                 })}
               </select>
-              <p style={{ fontSize: 10.5, color: 'var(--muted)', margin: '4px 0 0', lineHeight: 1.45 }}>
+              <p className="fb-hint">
                 {f.maps_to === 'event_type'
                   ? <>📋 Already showing in the <strong>Event</strong> column — untick above to change this.</>
                   : f.maps_to
@@ -2790,14 +2790,14 @@ function InqFormSettings({ user }) {
     <div style={{ maxWidth: 560 }}>
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
-        <p className="sub" style={{ marginBottom: 14 }}>
-          Your link: <b style={{ color: '#2dd4bf' }}>iwopo.com/inquiry/{user?.vendor_id}</b> 🔗
+        <p className="sub inq-link-row">
+          Your link: <b className="inq-link">iwopo.com/inquiry/{user?.vendor_id}</b> 🔗
           {' · '}
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they
               last looked at may still be open in another tab. */}
           <a href={`/inquiry/${user?.vendor_id}?v=${Date.now()}`} target="_blank" rel="noreferrer"
-            style={{ color: '#2dd4bf', textDecoration: 'underline' }}>
+            className="inq-preview">
             👁️ Preview
           </a>
         </p>

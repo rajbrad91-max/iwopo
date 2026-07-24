@@ -663,6 +663,29 @@
 .leads-table tbody tr.is-unread .biz { font-weight: 700; }
 .leads-table tbody tr.is-unread td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
 
+/* 🏗️ inquiry form builder — field settings */
+.fb-label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+.fb-select {
+  width: 100%; padding: 8px; font-size: 12px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 8px; color: var(--text); font-family: inherit;
+}
+.fb-select:disabled { opacity: .55; cursor: not-allowed; }
+.fb-hint { font-size: 10.5px; color: var(--muted); margin: 4px 0 0; line-height: 1.45; }
+.fb-hint strong { color: var(--text); }
+.fb-pair { margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.fb-map { margin-top: 8px; }
+.fb-check {
+  display: flex; align-items: center; gap: 6px; margin-top: 6px;
+  font-size: 12px; color: var(--muted); cursor: pointer;
+}
+.fb-check strong { color: var(--text); }
+
+/* the vendor's public inquiry link + preview */
+.inq-link-row { margin-bottom: 14px; }
+.inq-link { color: var(--brand); }
+.inq-preview { color: var(--brand); text-decoration: underline; }
+
 /* ═══════════ 📱 RESPONSIVE ═══════════ */
 
 /* Tablet (≤1000px): stack dashboard */
