@@ -64,17 +64,13 @@ export default function VendorPanel({ onLogout }) {
   }, [features]);
 
   // 📱 nav → also close sidebar on mobile.
-  // Opening Leads marks them read and clears the badge straight away; leaving the
-  // badge up while the vendor is looking at the list would be meaningless.
+  // The badge is NOT cleared here: it counts leads the vendor hasn't opened, and
+  // wiping it just for landing on the list made it meaningless — you'd never see
+  // which lead was actually new. Opening a lead clears that lead (see LeadsView).
   const go = (t) => {
     setTab(t);
     if (window.innerWidth <= 820) setCollapsed(true);
-    if (t === 'leads' && has('leads')) {
-      setNewLeadCount(0);                                   // optimistic — the row is right there
-      api.markLeadsSeen().catch(() => refreshLeadCount());  // if it failed, put the true count back
-    } else if (has('leads')) {
-      refreshLeadCount();
-    }
+    if (has('leads')) refreshLeadCount();
   };
 
   useEffect(() => { load(); }, []);
@@ -1764,6 +1760,17 @@ function LeadsView() {
     quoted: leads.filter(l => l.status === 'quoted').length,
     booked: leads.filter(l => l.status === 'booked').length,
   };
+  // 👁️ Open a lead — and mark just that one read, so the sidebar badge counts
+  // leads the vendor hasn't looked at rather than clearing wholesale on arrival.
+  // Optimistic: the row un-bolds immediately, and the count is re-read on close.
+  function openLead(l) {
+    setSel(l);
+    if (!l.seen_at) {
+      setLeads(ls => ls.map(x => x.id === l.id ? { ...x, seen_at: new Date().toISOString() } : x));
+      api.markLeadsSeen(l.id).catch(() => {});
+    }
+  }
+
   const byFilter = filter === 'all' ? leads : leads.filter(l => l.status === filter);
   const shown = search.trim()
     ? byFilter.filter(l => `${l.name} ${l.email} ${l.phone} ${l.event_type} ${l.location}`.toLowerCase().includes(search.toLowerCase()))
@@ -1832,7 +1839,7 @@ function LeadsView() {
             ) : shown.length === 0 ? (
               <tr><td colSpan="11" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
             ) : shown.map(l => (
-              <tr key={l.id} onClick={() => { if (view !== 'active') return; if (selectMode) { setChecked(c => c.includes(l.id) ? c.filter(x => x !== l.id) : [...c, l.id]); } else { setSel(l); } }} className={`${view === 'active' ? 'row-clickable' : ''}${view === 'active' && !l.seen_at ? ' is-unread' : ''}`}>
+              <tr key={l.id} onClick={() => { if (view !== 'active') return; if (selectMode) { setChecked(c => c.includes(l.id) ? c.filter(x => x !== l.id) : [...c, l.id]); } else { openLead(l); } }} className={`${view === 'active' ? 'row-clickable' : ''}${view === 'active' && !l.seen_at ? ' is-unread' : ''}`}>
                 {view === 'active' && selectMode && (
                   <td className="cell-check" onClick={e => toggleCheck(l.id, e)}>
                     <input type="checkbox" readOnly checked={checked.includes(l.id)} className="lead-check" />

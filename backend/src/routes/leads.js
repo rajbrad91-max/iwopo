@@ -44,14 +44,23 @@ router.get('/mappable-columns', requireAuth, async (req, res) => {
 });
 
 // PUT /api/leads/mark-seen → clear the sidebar badge.
-// Stamps seen_at on this vendor's unread leads. Status is left alone, so a lead
-// the vendor has merely glanced at still counts as "New" in the pipeline filters.
+// Body may carry { id } to mark ONE lead read; without it every unread lead for
+// this vendor is stamped. Per-lead is what the panel uses — the badge should
+// count leads the vendor hasn't opened, not leads they haven't glanced past in
+// a list. Status is left alone, so a lead merely opened still counts as "New"
+// in the pipeline filters.
 router.put('/mark-seen', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   if (!vid) return res.status(400).json({ error: 'No vendor' });
+  const one = req.body?.id ? Number(req.body.id) : null;
   try {
     const { count } = await prisma.leads.updateMany({
-      where: { vendor_id: Number(vid), archived_at: null, seen_at: null },   // 🔒 tenancy on the write
+      where: {
+        vendor_id: Number(vid),                 // 🔒 tenancy on the write
+        archived_at: null,
+        seen_at: null,
+        ...(one ? { id: one } : {}),
+      },
       data: { seen_at: new Date() },
     });
     res.json({ ok: true, cleared: count });
