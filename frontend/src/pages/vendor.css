@@ -375,7 +375,10 @@
 /* 📋 Lead detail — view + edit */
 .ld-wrap { padding: 24px; max-width: 640px; }
 .ld-h2 { margin: 4px 0 20px; font-size: 22px; letter-spacing: -.2px; }
-.ld-topbar { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.ld-topbar { display: flex; justify-content: space-between; margin-bottom: 8px; gap: 10px; flex-wrap: wrap; }
+/* the action buttons stay together on the right, so adding Send Packages
+   doesn't push Edit Details into the middle of the bar */
+.ld-topbar-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .ld-edit-btn, .ld-save { background: #2dd4bf; color: #06231f; }
 .ld-cancel { margin-bottom: 16px; }
 .ld-save { margin-top: 14px; width: 100%; }

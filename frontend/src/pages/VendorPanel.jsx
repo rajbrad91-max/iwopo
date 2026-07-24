@@ -1964,10 +1964,26 @@ function LeadDetail({ lead, onBack }) {
     <div className="ld-view">
       <div className="ld-topbar">
         <button className="refresh" onClick={onBack}>← Back to leads</button>
-        <button className="refresh ld-edit-btn" onClick={() => { setF({ ...lead }); setEdit(true); }}>✏️ Edit Details</button>
+        <div className="ld-topbar-acts">
+          {/* 📤 Same action as the button in the Packages card below — both call
+              sendPackages(), so they share one busy state and one result
+              message. Up here it's reachable without scrolling, which is where a
+              vendor looks after reading the lead over. Hidden until a package is
+              assigned and the client has an email, since the mail would have
+              nothing to link to. */}
+          {pkgId && lead.email && (
+            <button className="refresh bx-primary" onClick={sendPackages} disabled={pkgBusy}>
+              {pkgBusy ? '⏳ Sending…' : '📤 Send Packages'}
+            </button>
+          )}
+          <button className="refresh ld-edit-btn" onClick={() => { setF({ ...lead }); setEdit(true); }}>✏️ Edit Details</button>
+        </div>
       </div>
       <h2 className="ld-h2">{lead.name} · {lead.event_type}</h2>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
+      {/* the send result, shown up here too — otherwise pressing Send Packages
+          from the topbar gives no feedback without scrolling to the card */}
+      {pkgMsg && <div className="ld-msg is-ok">{pkgMsg}</div>}
 
       <div className="lead-grid">
       <div className="lead-left">
