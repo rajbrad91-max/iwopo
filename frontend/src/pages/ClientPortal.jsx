@@ -1,23 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import './inquiry.css';
 import './portal.css';
 
 /**
- * 🌐 The client's view of their booking.
- *
- * Three steps, in the order PerfectPoses uses:
- *   1. choose a package
- *   2. read and sign the contract
- *   3. arrange payment
+ * 🌐 The client's view of their booking: choose → sign → pay.
  *
  * Each step unlocks the next, so a client is never asked to pay for something
- * they haven't agreed to. If the vendor hasn't raised a contract, step 2 is
- * skipped rather than blocking them.
+ * they haven't agreed to. Where the vendor hasn't raised a contract, the sign
+ * step is skipped rather than blocking them.
  *
- * Styling follows the vendor's inquiry-form branding — colour, theme and font —
- * so a client sees one business throughout, not a form in one skin and a
- * booking page in another.
+ * Deliberately a full page rather than a form card — this is the page where
+ * someone spends four figures, so it should read like a studio's own site. The
+ * vendor's brand colour drives the accent throughout.
  */
 export default function ClientPortal({ token }) {
   const [data, setData] = useState(null);
@@ -29,6 +23,18 @@ export default function ClientPortal({ token }) {
   function load() {
     api.portal(token).then(setData).catch(e => setErr(e.message));
   }
+
+  // Playfair for the headings and prices — it's what makes the page read as a
+  // studio rather than an admin screen. Loaded here rather than in index.html
+  // so the vendor panel isn't paying for a font it never uses.
+  useEffect(() => {
+    const href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&display=swap';
+    if (document.querySelector(`link[href="${href}"]`)) return;
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = href;
+    document.head.appendChild(l);
+  }, []);
 
   async function pick(id) {
     setBusy(true); setMsg('');
@@ -44,53 +50,54 @@ export default function ClientPortal({ token }) {
     finally { setBusy(false); }
   }
 
-  if (err) return <div className="iq-wrap"><div className="iq-card">⚠️ {err}</div></div>;
-  if (!data) return <div className="iq-wrap"><div className="iq-card">Loading…</div></div>;
+  if (err) return <div className="po-page"><p className="po-state">⚠️ {err}</p></div>;
+  if (!data) return <div className="po-page"><p className="po-state">Loading…</p></div>;
 
   const { lead, business_name, packages, money, contract, branding = {} } = data;
   const chosen = packages.find(p => p.id === lead.package_id);
   const signed = !!contract?.signed_at;
   const needsSigning = !!contract && !signed;
   const canPay = !!chosen && !needsSigning;
-
-  const brand = branding.brand_color || '#C9A86A';
-  const font = branding.font || 'Inter';
-
-  // which step the client is on now — drives the progress strip
   const step = !chosen ? 1 : (needsSigning ? 2 : 3);
 
-  return (
-    <div className="iq-wrap" style={{ fontFamily: `'${font}', sans-serif`, '--brand': brand }}>
-      <div className={`iq-card po-card iq-theme-${branding.theme || 'classic'}`}>
+  const eventDate = lead.event_date
+    ? new Date(lead.event_date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
 
-        <header className="po-top">
-          {branding.logo_path
-            ? <img className="po-logo" src={`/api/me/logo/${branding.logo_path}`} alt="" />
-            : <div className="po-logo po-logo-fallback">{(business_name || '?')[0]}</div>}
-          <div>
-            <h1 className="po-biz">{business_name}</h1>
-            <p className="po-hi">
-              Hi {lead.name} — your {lead.event_type}
-              {lead.event_date ? ` on ${new Date(lead.event_date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
-            </p>
-          </div>
-        </header>
+  return (
+    <div className="po-page" style={{ '--brand': branding.brand_color || '#b8922a' }}>
+
+      <header className="po-hd">
+        {branding.logo_path && <img className="po-logo" src={`/api/me/logo/${branding.logo_path}`} alt="" />}
+        <p className="po-biz">{business_name}</p>
+        <h1 className="po-title">Hello <em>{lead.name}</em></h1>
+        <p className="po-meta">
+          Your <strong>{lead.event_type}</strong>{eventDate ? <> on <strong>{eventDate}</strong></> : null}
+        </p>
 
         <ol className="po-steps">
-          {[[1, '📦', 'Choose'], [2, '📄', 'Sign'], [3, '💳', 'Pay']].map(([n, icon, label]) => (
+          {[[1, 'Choose'], [2, 'Sign'], [3, 'Pay']].map(([n, label]) => (
             <li key={n} className={step > n ? 'is-done' : step === n ? 'is-now' : ''}>
-              <span className="po-step-n">{step > n ? '✓' : icon}</span>
-              <span className="po-step-l">{label}</span>
+              <span className="po-dot">{step > n ? '✓' : n}</span>
+              <span>{label}</span>
             </li>
           ))}
         </ol>
+      </header>
 
+      <main className="po-main">
         {msg && <div className={`po-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
 
         {/* ── 1. packages ── */}
         <section className="po-sec">
+          <p className="po-eyebrow">Step one</p>
           <h2 className="po-h">{chosen ? 'Your package' : 'Choose your package'}</h2>
-          {!chosen && <p className="po-lead">Tap the one you&apos;d like — you can change your mind before paying.</p>}
+          <p className="po-lead">
+            {chosen
+              ? 'You can still change this before you pay.'
+              : 'Tap the one you\u2019d like. Nothing is confirmed until you sign.'}
+          </p>
+
           <div className="po-grid">
             {packages.map(p => {
               const isChosen = lead.package_id === p.id;
@@ -99,12 +106,21 @@ export default function ClientPortal({ token }) {
                 <button key={p.id} type="button" disabled={busy}
                   className={`po-pkg ${isChosen ? 'is-chosen' : ''}`}
                   onClick={() => !busy && pick(p.id)}>
-                  {isChosen && <span className="po-pkg-tick">✓ Selected</span>}
-                  <h3 className="po-pkg-name">{p.name}</h3>
-                  <p className="po-pkg-price">${Number(p.base_price).toLocaleString()}</p>
-                  <ul className="po-pkg-inc">
-                    {inc.map((x, i) => <li key={i}>{x}</li>)}
-                  </ul>
+                  {isChosen && <span className="po-pkg-badge">Selected</span>}
+                  <div className="po-pkg-hd">
+                    <h3 className="po-pkg-name">{p.name}</h3>
+                    <p className="po-pkg-price">
+                      <span className="po-pkg-cur">$</span>
+                      <span className="po-pkg-amt">{Number(p.base_price).toLocaleString()}</span>
+                    </p>
+                  </div>
+                  {inc.length > 0 && (
+                    <div className="po-pkg-body">
+                      <p className="po-inc-label">What&apos;s included</p>
+                      <ul className="po-inc">{inc.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                    </div>
+                  )}
+                  <p className="po-pkg-foot">{isChosen ? '✓ Chosen' : 'Choose this →'}</p>
                 </button>
               );
             })}
@@ -114,18 +130,24 @@ export default function ClientPortal({ token }) {
         {/* ── 2. contract ── */}
         {chosen && contract && (
           <section className="po-sec">
+            <p className="po-eyebrow">Step two</p>
             <h2 className="po-h">Your contract</h2>
             {signed ? (
-              <div className="po-done-box">
-                <strong>✅ Signed</strong>
-                <span>by {contract.signed_name} on {new Date(contract.signed_at).toLocaleDateString()}</span>
-                <a className="po-link" href={`/sign/${contract.token}`}>View a copy</a>
+              <div className="po-panel is-done">
+                <div className="po-panel-icon">✅</div>
+                <h3 className="po-panel-t">Signed &amp; confirmed</h3>
+                <p className="po-panel-p no-gap">
+                  by {contract.signed_name} on {new Date(contract.signed_at).toLocaleDateString()} ·{' '}
+                  <a className="po-link" href={`/sign/${contract.token}`}>View a copy</a>
+                </p>
               </div>
             ) : (
-              <>
-                <p className="po-lead">Please read it through and sign to confirm your booking.</p>
-                <a className="po-cta" href={`/sign/${contract.token}`}>📄 Read &amp; sign</a>
-              </>
+              <div className="po-panel">
+                <div className="po-panel-icon">📄</div>
+                <h3 className="po-panel-t">{contract.title || 'Coverage agreement'}</h3>
+                <p className="po-panel-p">Please read it through and sign to confirm your date.</p>
+                <a className="po-cta" href={`/sign/${contract.token}`}>Read &amp; sign</a>
+              </div>
             )}
           </section>
         )}
@@ -133,24 +155,36 @@ export default function ClientPortal({ token }) {
         {/* ── 3. payment ── */}
         {canPay && (
           <section className="po-sec">
-            <h2 className="po-h">Payment</h2>
-            <dl className="po-money">
-              <div><dt>Total</dt><dd>${Number(money.final_total).toLocaleString()}</dd></div>
-              <div><dt>Deposit to confirm</dt><dd>${Number(money.deposit_amount).toLocaleString()}</dd></div>
-              {money.paid > 0 && <div className="is-paid"><dt>Paid</dt><dd>${Number(money.paid).toLocaleString()}</dd></div>}
-              <div className="is-due"><dt>Still due</dt><dd>${Number(money.balance).toLocaleString()}</dd></div>
+            <p className="po-eyebrow">Step three</p>
+            <h2 className="po-h">Secure your date</h2>
+            <p className="po-lead">A deposit confirms your booking. The balance is due closer to the day.</p>
+
+            <dl className="po-bill">
+              <div><dt>Package total</dt><dd>${Number(money.final_total).toLocaleString()}</dd></div>
+              {money.paid > 0 && (
+                <div className="is-paid"><dt>Already paid</dt><dd>${Number(money.paid).toLocaleString()}</dd></div>
+              )}
+              <div className="is-due">
+                <dt>{money.paid > 0 ? 'Balance due' : 'Deposit to confirm'}</dt>
+                <dd>${Number(money.paid > 0 ? money.balance : money.deposit_amount).toLocaleString()}</dd>
+              </div>
             </dl>
+
             <button type="button" className="po-cta" onClick={officeVisit} disabled={busy}>
-              🏢 Arrange payment
+              Arrange payment
             </button>
             <p className="po-fine">We&apos;ll be in touch to arrange e-transfer or an in-person payment.</p>
           </section>
         )}
 
         {chosen && needsSigning && (
-          <p className="po-fine po-locked">🔒 Payment options appear once your contract is signed.</p>
+          <p className="po-fine">🔒 Payment opens once your contract is signed.</p>
         )}
-      </div>
+      </main>
+
+      <footer className="po-ft">
+        Questions? Just reply to our email — we&apos;re happy to help.
+      </footer>
     </div>
   );
 }

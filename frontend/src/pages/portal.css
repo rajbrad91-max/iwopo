@@ -1,140 +1,241 @@
 /* 🌐 Client portal — choose → sign → pay.
-   Sits on the same light palette as the inquiry form, and takes its accent from
-   the vendor's --brand so a client sees one business from enquiry to booking. */
+ *
+ * Full-page layout rather than a card floating on a coloured slab: the client
+ * is on a real page about their booking, not filling in another form. Takes its
+ * accent from the vendor's --brand so a wedding photographer's gold and a DJ's
+ * purple both look deliberate.
+ *
+ * Type is the main lift — a serif for headings and prices against a plain sans
+ * for everything else, which is what makes PerfectPoses read as a studio rather
+ * than a dashboard.
+ */
 
-.po-card { max-width: 760px; }
+.po-page {
+  --line: #e8e0d0;
+  --ink: #1f1810;
+  --body: #4a3f30;
+  --soft: #8a7c68;
+  --paper: #faf8f4;
+  --tint: color-mix(in srgb, var(--brand, #b8922a) 8%, #fff);
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
 
 /* ── header ───────────────────────────────────────────────── */
-.po-top { display: flex; align-items: center; gap: 14px; }
+.po-hd {
+  text-align: center;
+  padding: 48px 24px 36px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand, #b8922a) 10%, #fff) 0%, var(--paper) 100%);
+  border-bottom: 1px solid var(--line);
+}
 .po-logo {
-  width: 52px; height: 52px; border-radius: 12px;
-  object-fit: contain; background: #fff; flex: 0 0 auto;
-  border: 1px solid #E0D6C8;
+  width: 60px; height: 60px; border-radius: 50%;
+  object-fit: cover; margin: 0 auto 16px; display: block;
+  border: 2px solid #fff;
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--brand, #b8922a) 22%, transparent);
 }
-.po-logo-fallback {
-  display: flex; align-items: center; justify-content: center;
-  background: var(--brand, #C9A86A); color: #fff;
-  font-size: 22px; font-weight: 800; border: none;
+.po-biz {
+  font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
+  color: var(--brand, #b8922a); margin: 0 0 12px;
 }
-.po-biz { margin: 0; font-size: 21px; font-weight: 800; color: #3D3530; letter-spacing: -.2px; }
-.po-hi { margin: 3px 0 0; font-size: 13.5px; color: #7A6A55; }
+.po-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(30px, 5vw, 42px); font-weight: 400; line-height: 1.15;
+  color: var(--ink); margin: 0 0 10px;
+}
+.po-title em { color: var(--brand, #b8922a); font-style: italic; }
+.po-meta { font-size: 16px; color: var(--soft); margin: 0; }
+.po-meta strong { color: var(--ink); font-weight: 600; }
 
 /* ── progress ─────────────────────────────────────────────── */
 .po-steps {
-  display: flex; gap: 6px; list-style: none;
-  margin: 22px 0 4px; padding: 0;
+  display: flex; justify-content: center; gap: 0;
+  list-style: none; margin: 0; padding: 26px 24px 0;
 }
 .po-steps li {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 10px 8px; border-radius: 10px;
-  background: #EFEAE2; color: #A89985;
-  font-size: 12.5px; font-weight: 700;
+  display: flex; align-items: center; gap: 9px;
+  font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: #bfb3a0;
 }
-.po-steps li.is-now {
-  background: var(--brand, #C9A86A); color: #fff;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--brand, #C9A86A) 40%, transparent);
+.po-steps li + li::before {
+  content: ''; width: 44px; height: 1px; background: var(--line); margin: 0 14px;
 }
-.po-steps li.is-done { background: #E7DFCF; color: #6B5F55; }
-.po-step-n { font-size: 13px; }
+.po-steps .po-dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #fff; border: 1px solid var(--line);
+  font-size: 11px; font-weight: 700;
+}
+.po-steps li.is-now { color: var(--ink); }
+.po-steps li.is-now .po-dot {
+  background: var(--brand, #b8922a); border-color: var(--brand, #b8922a); color: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #b8922a) 14%, transparent);
+}
+.po-steps li.is-done { color: var(--soft); }
+.po-steps li.is-done .po-dot {
+  background: color-mix(in srgb, var(--brand, #b8922a) 16%, #fff);
+  border-color: color-mix(in srgb, var(--brand, #b8922a) 40%, #fff);
+  color: var(--brand, #b8922a);
+}
 
-/* ── sections ─────────────────────────────────────────────── */
-.po-sec { margin-top: 28px; }
+/* ── body ─────────────────────────────────────────────────── */
+.po-main { max-width: 1040px; margin: 0 auto; padding: 40px 24px 64px; }
+.po-sec + .po-sec { margin-top: 52px; }
+
+.po-eyebrow {
+  text-align: center; font-size: 11px; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--brand, #b8922a); margin: 0 0 8px;
+}
 .po-h {
-  margin: 0 0 4px; font-size: 17px; font-weight: 800;
-  color: #3D3530; letter-spacing: -.2px;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 30px; font-weight: 400; color: var(--ink);
+  text-align: center; margin: 0 0 8px;
 }
-.po-lead { margin: 0 0 14px; font-size: 13.5px; color: #7A6A55; }
+.po-lead { text-align: center; color: var(--soft); margin: 0 auto 28px; max-width: 44ch; }
 
-.po-msg { padding: 11px 14px; border-radius: 10px; margin-top: 16px; font-size: 13px; }
-.po-msg.is-ok { background: #e8f5ec; color: #2f7d4f; }
-.po-msg.is-err { background: #fbeaea; color: #b4433a; }
+.po-msg {
+  max-width: 520px; margin: 0 auto 24px;
+  padding: 12px 16px; border-radius: 10px; font-size: 14px; text-align: center;
+}
+.po-msg.is-ok { background: #edf7f0; color: #2b6e47; }
+.po-msg.is-err { background: #fbeeee; color: #a83a30; }
 
 /* ── packages ─────────────────────────────────────────────── */
 .po-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 22px; align-items: start;
 }
 .po-pkg {
-  position: relative; text-align: left; cursor: pointer; font-family: inherit;
-  padding: 18px; border-radius: 14px;
-  background: #fff; border: 2px solid #E8E0D4;
-  transition: border-color .15s, transform .15s, box-shadow .15s;
+  position: relative; display: flex; flex-direction: column;
+  text-align: left; font-family: inherit; cursor: pointer;
+  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+  padding: 0; overflow: hidden;
+  box-shadow: 0 4px 22px rgba(184, 146, 42, .06);
+  transition: transform .18s, box-shadow .18s, border-color .18s;
 }
 .po-pkg:hover:not(:disabled) {
-  border-color: var(--brand, #C9A86A);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(74,62,61,.09);
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--brand, #b8922a) 45%, #fff);
+  box-shadow: 0 12px 34px rgba(184, 146, 42, .16);
 }
-.po-pkg:disabled { opacity: .65; cursor: default; }
+.po-pkg:disabled { opacity: .7; cursor: default; }
 .po-pkg.is-chosen {
-  border-color: var(--brand, #C9A86A);
-  background: color-mix(in srgb, var(--brand, #C9A86A) 7%, #fff);
+  border: 2px solid var(--brand, #b8922a);
+  box-shadow: 0 10px 40px color-mix(in srgb, var(--brand, #b8922a) 22%, transparent);
 }
-.po-pkg-tick {
-  position: absolute; top: 12px; right: 12px;
-  padding: 3px 9px; border-radius: 20px;
-  background: var(--brand, #C9A86A); color: #fff;
-  font-size: 10px; font-weight: 800; letter-spacing: .03em;
+.po-pkg-badge {
+  position: absolute; top: 14px; right: 14px; z-index: 2;
+  padding: 4px 12px; border-radius: 20px;
+  background: var(--brand, #b8922a); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
-.po-pkg-name { margin: 0; font-size: 15px; font-weight: 800; color: #3D3530; }
+.po-pkg-hd {
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand, #b8922a) 18%, #fff);
+}
+.po-pkg-name {
+  margin: 0 0 12px; font-size: 13px; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--brand, #b8922a);
+}
 .po-pkg-price {
-  margin: 6px 0 12px; font-size: 26px; font-weight: 800;
-  color: var(--brand, #C9A86A); letter-spacing: -.5px;
+  margin: 0; display: flex; align-items: baseline; gap: 3px;
+  font-family: 'Playfair Display', Georgia, serif;
 }
-.po-pkg-inc { list-style: none; margin: 0; padding: 0; }
-.po-pkg-inc li {
-  position: relative; padding: 3px 0 3px 18px;
-  font-size: 12.5px; color: #6B5F55; line-height: 1.45;
+.po-pkg-cur { font-size: 22px; font-weight: 500; color: var(--brand, #b8922a); }
+.po-pkg-amt { font-size: 48px; font-weight: 700; color: var(--ink); line-height: 1; }
+.po-pkg-body { padding: 22px 24px 26px; flex: 1; }
+.po-inc-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--soft); margin: 0 0 14px;
 }
-.po-pkg-inc li::before {
-  content: '✓'; position: absolute; left: 0;
-  color: var(--brand, #C9A86A); font-weight: 800;
+.po-inc { list-style: none; margin: 0; padding: 0; }
+.po-inc li {
+  position: relative; padding: 0 0 11px 24px;
+  font-size: 15px; color: var(--body); line-height: 1.45;
+}
+.po-inc li::before {
+  content: '✦'; position: absolute; left: 0; top: 0;
+  color: var(--brand, #b8922a); font-size: 13px;
+}
+.po-pkg-foot {
+  padding: 0 24px 24px; font-size: 13px; font-weight: 600;
+  color: var(--brand, #b8922a); letter-spacing: .04em;
 }
 
 /* ── contract ─────────────────────────────────────────────── */
-.po-done-box {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 14px 16px; border-radius: 12px;
-  background: #e8f5ec; color: #2f7d4f; font-size: 13.5px;
+.po-panel {
+  max-width: 620px; margin: 0 auto;
+  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+  padding: 30px; text-align: center;
+  box-shadow: 0 4px 22px rgba(184, 146, 42, .06);
 }
-.po-done-box strong { font-weight: 800; }
-.po-link { margin-left: auto; color: #2f7d4f; text-decoration: underline; font-size: 12.5px; }
+.po-panel.is-done { background: #f4faf6; border-color: #cfe7d8; }
+.po-panel-icon { font-size: 30px; margin-bottom: 10px; }
+.po-panel-t { font-family: 'Playfair Display', Georgia, serif; font-size: 21px; color: var(--ink); margin: 0 0 6px; }
+.po-panel-p { color: var(--soft); margin: 0 0 22px; font-size: 15px; }
+.po-panel-p.no-gap { margin-bottom: 0; }
+.po-link { color: var(--brand, #b8922a); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── money ────────────────────────────────────────────────── */
-.po-money {
-  margin: 0 0 18px; padding: 0;
-  border: 1px solid #E8E0D4; border-radius: 12px; overflow: hidden;
+.po-bill {
+  max-width: 480px; margin: 0 auto 24px; padding: 0;
+  background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
 }
-.po-money > div {
+.po-bill > div {
   display: flex; justify-content: space-between; align-items: baseline;
-  padding: 12px 16px; border-bottom: 1px solid #F0EBE2;
+  padding: 15px 22px; border-bottom: 1px solid #f2ece0;
 }
-.po-money > div:last-child { border-bottom: none; }
-.po-money dt { margin: 0; font-size: 13px; color: #7A6A55; }
-.po-money dd { margin: 0; font-size: 15px; font-weight: 700; color: #3D3530; font-variant-numeric: tabular-nums; }
-.po-money .is-paid { background: #f2faf5; }
-.po-money .is-paid dd { color: #2f7d4f; }
-.po-money .is-due { background: #fdf9f1; }
-.po-money .is-due dd { color: var(--brand, #C9A86A); font-size: 17px; }
+.po-bill > div:last-child { border-bottom: none; }
+.po-bill dt { margin: 0; font-size: 14px; color: var(--soft); }
+.po-bill dd {
+  margin: 0; font-size: 17px; font-weight: 600; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.po-bill .is-paid { background: #f4faf6; }
+.po-bill .is-paid dd { color: #2b6e47; }
+.po-bill .is-due { background: var(--tint); }
+.po-bill .is-due dt { color: var(--ink); font-weight: 600; }
+.po-bill .is-due dd {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 24px; font-weight: 700; color: var(--brand, #b8922a);
+}
 
 /* ── buttons ──────────────────────────────────────────────── */
 .po-cta {
-  display: block; width: 100%; box-sizing: border-box;
-  padding: 15px; border: none; border-radius: 12px;
-  background: #4A3E3D; color: #F5F0EA;
-  font-size: 15px; font-weight: 800; font-family: inherit;
+  display: block; width: 100%; max-width: 340px; margin: 0 auto;
+  box-sizing: border-box; padding: 15px 28px;
+  border: none; border-radius: 50px;
+  background: var(--brand, #b8922a); color: #fff;
+  font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: .02em;
   text-align: center; text-decoration: none; cursor: pointer;
-  transition: background .15s;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand, #b8922a) 32%, transparent);
+  transition: transform .15s, box-shadow .15s;
 }
-.po-cta:hover { background: #3D3530; }
-.po-cta:disabled { opacity: .6; cursor: default; }
-
-.po-fine { margin: 10px 0 0; font-size: 12px; color: #8A7B6E; text-align: center; line-height: 1.5; }
-.po-locked {
-  margin-top: 22px; padding: 14px; border-radius: 12px;
-  background: #EFEAE2; color: #7A6A55; font-weight: 600;
+.po-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 22px color-mix(in srgb, var(--brand, #b8922a) 40%, transparent);
 }
+.po-cta:disabled { opacity: .6; cursor: default; box-shadow: none; }
 
-@media (max-width: 520px) {
-  .po-steps li { flex-direction: column; gap: 3px; font-size: 11px; padding: 9px 4px; }
-  .po-grid { grid-template-columns: 1fr; }
+.po-fine { text-align: center; font-size: 13px; color: var(--soft); margin: 14px 0 0; }
+
+/* ── footer ───────────────────────────────────────────────── */
+.po-ft {
+  text-align: center; padding: 30px 24px 44px;
+  border-top: 1px solid var(--line); color: var(--soft); font-size: 14px;
+}
+.po-ft a { color: var(--brand, #b8922a); text-decoration: none; font-weight: 600; }
+
+.po-state { text-align: center; padding: 80px 24px; color: var(--soft); }
+
+@media (max-width: 640px) {
+  .po-steps li + li::before { width: 18px; margin: 0 8px; }
+  .po-steps li { font-size: 10px; letter-spacing: .05em; }
+  .po-main { padding: 30px 18px 48px; }
+  .po-sec + .po-sec { margin-top: 40px; }
 }
