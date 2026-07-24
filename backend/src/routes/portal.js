@@ -17,7 +17,7 @@ router.get('/:token', async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Link not found' });
     const vendor = await prisma.vendors.findUnique({
       where: { id: lead.vendor_id },
-      select: { business_name: true },
+      select: { business_name: true, logo_path: true },
     });
     // The packages this client was actually offered — their own copy, taken
     // when the vendor loaded the folder. Reading the lead's set rather than the
@@ -62,12 +62,25 @@ router.get('/:token', async (req, res) => {
       select: { id: true, title: true, token: true, status: true, signed_at: true, signed_name: true },
     });
 
+    // 🎨 the vendor's branding, so the portal looks like the inquiry form the
+    // client already filled in rather than a different company's page
+    const brand = await prisma.inquiry_settings.findUnique({
+      where: { vendor_id: lead.vendor_id },                     // 🔒 tenancy
+      select: { brand_color: true, theme: true, font: true },
+    });
+
     res.json({
       lead: {
         name: lead.name, event_type: lead.event_type, event_date: lead.event_date,
         hours: lead.hours, package_id: selectedId, status: lead.status,
       },
       business_name: vendor?.business_name,
+      branding: {
+        brand_color: brand?.brand_color || '#C9A86A',
+        theme: brand?.theme || 'classic',
+        font: brand?.font || 'Inter',
+        logo_path: vendor?.logo_path || null,
+      },
       templates, packages, money, contract,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
