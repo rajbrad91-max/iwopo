@@ -2613,21 +2613,46 @@ function FieldBuilder({ fields, setFields }) {
             <input type="checkbox" checked={f.required} onChange={e => upd(i, { required: e.target.checked })} /> Required
           </label>
 
+          {/* 📋 "Show on leads" — fills the EVENT column of the leads table.
+              Only one field can, so ticking this unticks whichever field had it.
+              It's the same maps_to mechanism as the dropdown below, surfaced as a
+              checkbox because filling that column is what vendors actually ask for. */}
+          {cols.some(c => c.key === 'event_type' && c.types.includes(f.type)) && (
+            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <input
+                type="checkbox"
+                checked={f.maps_to === 'event_type'}
+                onChange={e => {
+                  const on = e.target.checked;
+                  setFields(fields.map((o, idx) => {
+                    if (idx === i) return { ...o, maps_to: on ? 'event_type' : '' };
+                    // only one field may own the column — release it from any other
+                    return on && o.maps_to === 'event_type' ? { ...o, maps_to: '' } : o;
+                  }));
+                }}
+              />
+              Show in the <strong style={{ color: 'var(--text)' }}>Event</strong> column on Leads
+            </label>
+          )}
+
           {/* 🔗 optional link to a real lead column, so the answer shows in
               Bookings / Calendar / the lead details rather than only in the
-              custom-answers list. Only columns this field's type can fill. */}
-          {cols.some(c => c.types.includes(f.type)) && (
+              custom-answers list. Only columns this field's type can fill.
+              event_type is excluded — the checkbox above owns that one, so the
+              same setting never appears in two controls. */}
+          {cols.some(c => c.key !== 'event_type' && c.types.includes(f.type)) && (
             <div style={{ marginTop: 8 }}>
               <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>
                 Where should this answer appear? 🔗
               </label>
               <select
                 style={{ ...box, fontSize: 12 }}
-                value={f.maps_to || ''}
+                value={f.maps_to === 'event_type' ? '' : (f.maps_to || '')}
+                disabled={f.maps_to === 'event_type'}
                 onChange={e => upd(i, { maps_to: e.target.value })}
               >
                 <option value="">📋 In the answers list only</option>
-                {cols.filter(c => c.types.includes(f.type)).map(c => {
+                {cols.filter(c => c.key !== 'event_type' && c.types.includes(f.type)).map(c => {
                   // one column can only be fed by one field
                   const taken = fields.some((o, oi) => oi !== i && o.maps_to === c.key);
                   return <option key={c.key} value={c.key} disabled={taken}>
@@ -2636,9 +2661,11 @@ function FieldBuilder({ fields, setFields }) {
                 })}
               </select>
               <p style={{ fontSize: 10.5, color: 'var(--muted)', margin: '4px 0 0', lineHeight: 1.45 }}>
-                {f.maps_to
-                  ? <>⭐ Shows as <strong>{cols.find(c => c.key === f.maps_to)?.label}</strong> on the lead, and in Bookings, Calendar and contracts.</>
-                  : <>📋 Saved with the inquiry and shown in the lead&apos;s answers list. Pick a field above to also show it on the lead card.</>}
+                {f.maps_to === 'event_type'
+                  ? <>📋 Already showing in the <strong>Event</strong> column — untick above to change this.</>
+                  : f.maps_to
+                    ? <>⭐ Shows as <strong>{cols.find(c => c.key === f.maps_to)?.label}</strong> on the lead, and in Bookings, Calendar and contracts.</>
+                    : <>📋 Saved with the inquiry and shown in the lead&apos;s answers list. Pick a field above to also show it on the lead card.</>}
               </p>
             </div>
           )}
