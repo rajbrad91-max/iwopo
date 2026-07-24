@@ -2373,6 +2373,8 @@ function expiryText(startedAt, hours) {
 
 function MoneySection({ lead }) {
   const [data, setData] = useState(null);
+  // the client pressed "Pay directly" — the vendor confirms once funds arrive
+  const [claimed, setClaimed] = useState(!!lead.payment_claimed_at);
   const [amt, setAmt] = useState('');
   const [method, setMethod] = useState('manual');
   const [money, setMoney] = useState({ deposit_percent: lead.deposit_percent ?? 30, discount_percent: lead.discount_percent ?? 0, price_override: lead.price_override ?? '' });
@@ -2383,6 +2385,27 @@ function MoneySection({ lead }) {
   useEffect(() => { load(); }, []);
   async function load() {
     try { const d = await api.leadPayments(lead.id); setData(d); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
+  }
+
+  // Confirm the money actually landed. This is what records the payment —
+  // nothing counts as paid on a client's word, which is why the claim and the
+  // confirmation are deliberately separate.
+  async function settleClaim(dismiss) {
+    let amount = null;
+    if (!dismiss) {
+      const suggested = data?.summary?.balance ?? data?.summary?.deposit_amount ?? '';
+      const entered = prompt('How much did you receive?', suggested);
+      if (entered === null) return;
+      amount = Number(entered);
+      if (!amount || amount <= 0) return;
+    } else if (!confirm('Dismiss this? No payment will be recorded.')) {
+      return;
+    }
+    try {
+      const d = await api.confirmPaymentClaim(lead.id, dismiss ? { dismiss: true } : { amount, method: 'direct' });
+      setData(d);
+      setClaimed(false);
+    } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
   }
   async function saveMoney() {
     try {
@@ -2419,6 +2442,19 @@ function MoneySection({ lead }) {
   const pending = sum ? sum.balance : null;
   return (
     <div className="ms-wrap">
+      {/* 💰 the client says they've paid — confirm it once the money is in.
+          Sits at the top because it's the one thing here that needs an action. */}
+      {claimed && (
+        <div className="ms-claim">
+          <p className="ms-claim-t">💰 {lead.name || 'The client'} says they&apos;ve paid</p>
+          <p className="ms-claim-b">Confirm once the money is in your account — that&apos;s what records it.</p>
+          <div className="ms-claim-acts">
+            <button type="button" className="is-primary" onClick={() => settleClaim(false)}>✅ Confirm received</button>
+            <button type="button" onClick={() => settleClaim(true)}>Not yet</button>
+          </div>
+        </div>
+      )}
+
       {/* Status dropdown + web-payment toggle in one row */}
       <div className="ms-top-row">
         <div className="ms-status-row">

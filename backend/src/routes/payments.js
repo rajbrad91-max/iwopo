@@ -94,6 +94,50 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
 });
 
 // DELETE /api/payments/:id
+/* ✅ PUT /api/payments/lead/:leadId/confirm-claim
+ *
+ * The client pressed "I've paid" in their portal; this is the vendor saying the
+ * money actually arrived. Recording it here rather than when the client claims
+ * is the whole point — nothing counts as paid on a client's word.
+ *
+ * Records a real payment for the amount the vendor confirms, then clears the
+ * claim so the prompt disappears. Dismissing without payment (the client was
+ * mistaken) just clears the flag.
+ */
+router.put('/lead/:leadId/confirm-claim', requireAuth, async (req, res) => {
+  const { amount, method, note, dismiss } = req.body;
+  try {
+    const lead = await leadFor(req, res, req.params.leadId);   // 🔒 tenancy + 403
+    if (!lead) return;
+    if (!lead.payment_claimed_at) return res.status(400).json({ error: 'No payment claim on this lead' });
+
+    if (!dismiss) {
+      if (!amount || Number(amount) <= 0) return res.status(400).json({ error: 'Valid amount required' });
+      await prisma.payments.create({
+        data: {
+          vendor_id: lead.vendor_id,           // 🔒 stamped from the owning lead, never the body
+          lead_id: lead.id,
+          amount: Number(amount),
+          method: method || 'direct',
+          note: note || 'Confirmed from client claim',
+        },
+      });
+    }
+
+    await prisma.leads.update({
+      where: { id: lead.id },
+      data: { payment_claimed_at: null, updated_at: new Date() },
+    });
+
+    const payments = await prisma.payments.findMany({
+      where: { lead_id: lead.id },
+      orderBy: { paid_at: 'desc' },
+    });
+    const fresh = await prisma.leads.findUnique({ where: { id: lead.id } });
+    res.json({ payments, summary: await moneySummary(fresh) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.delete('/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   try {

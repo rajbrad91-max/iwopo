@@ -331,7 +331,10 @@ export const api = {
   deleteEmailTemplate: (id) => request(`/email/templates/${id}`, { method: 'DELETE' }),
   portal: (token) => request(`/portal/${token}`),
   portalPick: (token, package_id) => request(`/portal/${token}/pick`, { method: 'POST', body: JSON.stringify({ package_id }) }),
-  portalOfficeVisit: (token) => request(`/portal/${token}/office-visit`, { method: 'POST' }),
+  // client says they've paid directly — a claim the vendor confirms separately
+  portalPayDirect: (token) => request(`/portal/${token}/pay-direct`, { method: 'POST' }),
+  confirmPaymentClaim: (leadId, data) => request(`/payments/lead/${leadId}/confirm-claim`,
+    { method: 'PUT', body: JSON.stringify(data) }),
   myServices: () => request('/vendors/me/services'),
   myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>

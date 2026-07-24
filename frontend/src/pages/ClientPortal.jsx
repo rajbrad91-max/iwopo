@@ -43,9 +43,10 @@ export default function ClientPortal({ token }) {
     finally { setBusy(false); }
   }
 
-  async function officeVisit() {
-    setBusy(true);
-    try { await api.portalOfficeVisit(token); setMsg('🏢 Request sent — we\'ll be in touch to arrange payment'); }
+  async function payDirect() {
+    if (!confirm('Confirm you\u2019ve sent the payment? We\u2019ll check and get back to you.')) return;
+    setBusy(true); setMsg('');
+    try { await api.portalPayDirect(token); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
@@ -58,6 +59,7 @@ export default function ClientPortal({ token }) {
   const signed = !!contract?.signed_at;
   const needsSigning = !!contract && !signed;
   const canPay = !!chosen && !needsSigning;
+  const claimed = !!lead.payment_claimed_at;   // said they've paid, awaiting the vendor
   const step = !chosen ? 1 : (needsSigning ? 2 : 3);
 
   const eventDate = lead.event_date
@@ -157,23 +159,41 @@ export default function ClientPortal({ token }) {
           <section className="po-sec">
             <p className="po-eyebrow">Step three</p>
             <h2 className="po-h">Secure your date</h2>
-            <p className="po-lead">A deposit confirms your booking. The balance is due closer to the day.</p>
 
-            <dl className="po-bill">
-              <div><dt>Package total</dt><dd>${Number(money.final_total).toLocaleString()}</dd></div>
-              {money.paid > 0 && (
-                <div className="is-paid"><dt>Already paid</dt><dd>${Number(money.paid).toLocaleString()}</dd></div>
-              )}
-              <div className="is-due">
-                <dt>{money.paid > 0 ? 'Balance due' : 'Deposit to confirm'}</dt>
-                <dd>${Number(money.paid > 0 ? money.balance : money.deposit_amount).toLocaleString()}</dd>
+            {claimed ? (
+              /* they've told us they paid — waiting on the vendor to confirm */
+              <div className="po-panel is-done">
+                <div className="po-panel-icon">⏳</div>
+                <h3 className="po-panel-t">Thank you — we&apos;re checking</h3>
+                <p className="po-panel-p no-gap">
+                  You told us the payment is on its way. We&apos;ll confirm as soon as it lands
+                  and your date is locked in.
+                </p>
               </div>
-            </dl>
+            ) : (
+              <>
+                <p className="po-lead">A deposit confirms your booking. The balance is due closer to the day.</p>
 
-            <button type="button" className="po-cta" onClick={officeVisit} disabled={busy}>
-              Arrange payment
-            </button>
-            <p className="po-fine">We&apos;ll be in touch to arrange e-transfer or an in-person payment.</p>
+                <dl className="po-bill">
+                  <div><dt>Package total</dt><dd>${Number(money.final_total).toLocaleString()}</dd></div>
+                  {money.paid > 0 && (
+                    <div className="is-paid"><dt>Already paid</dt><dd>${Number(money.paid).toLocaleString()}</dd></div>
+                  )}
+                  <div className="is-due">
+                    <dt>{money.paid > 0 ? 'Balance due' : 'Deposit to confirm'}</dt>
+                    <dd>${Number(money.paid > 0 ? money.balance : money.deposit_amount).toLocaleString()}</dd>
+                  </div>
+                </dl>
+
+                <button type="button" className="po-cta" onClick={payDirect} disabled={busy}>
+                  💳 Pay directly
+                </button>
+                <p className="po-fine">
+                  Send an e-transfer, or pay by cash or card in person. Press this once you have —
+                  we&apos;ll confirm it and lock in your date.
+                </p>
+              </>
+            )}
           </section>
         )}
 

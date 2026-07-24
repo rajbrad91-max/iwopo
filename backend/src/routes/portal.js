@@ -73,6 +73,7 @@ router.get('/:token', async (req, res) => {
       lead: {
         name: lead.name, event_type: lead.event_type, event_date: lead.event_date,
         hours: lead.hours, package_id: selectedId, status: lead.status,
+        payment_claimed_at: lead.payment_claimed_at,
       },
       business_name: vendor?.business_name,
       branding: {
@@ -140,12 +141,50 @@ router.post('/:token/pick', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* 🌐 PUBLIC: POST /api/portal/:token/office-visit → client requests to pay in person */
-router.post('/:token/office-visit', async (req, res) => {
+/* 🌐 PUBLIC: POST /api/portal/:token/pay-direct
+ *
+ * The client says they've paid — by e-transfer, cash or card in person. This
+ * doesn't record money: it raises a claim the vendor confirms once they've
+ * actually seen the funds. Nothing is marked paid on a client's word alone.
+ *
+ * Gated on a signed contract. Hiding the button in the portal isn't enough —
+ * this endpoint is public, so without the check a client could skip straight
+ * past the agreement by posting to it directly.
+ */
+router.post('/:token/pay-direct', async (req, res) => {
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
-    notify(lead.vendor_id, `🏢 ${lead.name || 'Client'} wants to pay in person`, `Lead #${lead.id}`, 'payment');
+
+    const chosen = await prisma.lead_packages.findFirst({
+      where: { lead_id: lead.id, is_selected: true },           // 🔒 tenancy via the lead
+      select: { name: true, price: true },
+    });
+    if (!chosen && !lead.package_id) {
+      return res.status(400).json({ error: 'Please choose a package first' });
+    }
+
+    const contract = await prisma.contracts.findFirst({
+      where: { lead_id: lead.id },                              // 🔒 tenancy via the lead
+      orderBy: { id: 'desc' },
+      select: { signed_at: true },
+    });
+    if (contract && !contract.signed_at) {
+      return res.status(409).json({ error: 'Please sign your contract before arranging payment' });
+    }
+
+    await prisma.leads.update({
+      where: { id: lead.id },
+      data: { payment_claimed_at: new Date(), updated_at: new Date() },
+    });
+
+    const amount = chosen?.price ?? null;
+    notify(
+      lead.vendor_id,
+      `💰 ${lead.name || 'Client'} says they've paid`,
+      `${chosen?.name || 'Booking'}${amount ? ` · $${Number(amount).toFixed(0)}` : ''} · confirm when the funds arrive`,
+      'payment',
+    );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
