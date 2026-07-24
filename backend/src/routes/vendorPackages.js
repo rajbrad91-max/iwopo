@@ -150,6 +150,42 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// PUT /api/vendor-packages/assign-folder/:leadId → send a whole folder to a lead.
+// The vendor picks the folder ("Wedding", "Corporate"); the client picks a
+// package from it in their portal. Without this the portal showed every folder
+// the vendor owned, so a wedding client saw the corporate pricing too.
+router.put('/assign-folder/:leadId', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const leadId = Number(req.params.leadId);
+  const { template_id } = req.body;
+  try {
+    const lead = await prisma.leads.findUnique({ where: { id: leadId }, select: { vendor_id: true } });
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== v)
+      return res.status(403).json({ error: 'Forbidden' });      // 🔒 tenancy
+
+    let tplId = null;
+    if (template_id) {
+      // the folder must belong to this lead's vendor, not merely exist
+      const tpl = await prisma.package_templates.findFirst({
+        where: { id: Number(template_id), vendor_id: lead.vendor_id },   // 🔒 tenancy
+        select: { id: true },
+      });
+      if (!tpl) return res.status(404).json({ error: 'Package folder not found' });
+      tplId = tpl.id;
+    }
+
+    // changing the folder clears any package the client had already chosen from
+    // the old one — it would otherwise sit on the lead pointing somewhere the
+    // client can no longer see
+    const updated = await prisma.leads.update({
+      where: { id: leadId },
+      data: { package_template_id: tplId, package_id: null, package_snapshot: null, updated_at: new Date() },
+    });
+    res.json({ lead: updated });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUT /api/vendor-packages/assign/:leadId → link lead to package (+snapshot)
 router.put('/assign/:leadId', requireAuth, async (req, res) => {
   const v = vid(req);

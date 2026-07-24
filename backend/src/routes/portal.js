@@ -19,13 +19,21 @@ router.get('/:token', async (req, res) => {
       where: { id: lead.vendor_id },
       select: { business_name: true },
     });
-    // packages grouped by template — scoped to the lead's own vendor 🔒
+    // Packages the client may choose from — the folder the vendor sent, not
+    // every folder they own. A wedding client seeing corporate pricing is both
+    // confusing and commercially unhelpful. Falls back to everything for leads
+    // created before folders were assignable.
+    const tplWhere = { vendor_id: lead.vendor_id };            // 🔒 tenancy
+    if (lead.package_template_id) tplWhere.id = lead.package_template_id;
     const templates = await prisma.package_templates.findMany({
-      where: { vendor_id: lead.vendor_id },
+      where: tplWhere,
       orderBy: { id: 'asc' },
     });
     const packages = await prisma.vendor_packages.findMany({
-      where: { vendor_id: lead.vendor_id },
+      where: {
+        vendor_id: lead.vendor_id,                             // 🔒 tenancy
+        ...(lead.package_template_id ? { template_id: lead.package_template_id } : {}),
+      },
       orderBy: { base_price: 'asc' },
     });
     const money = await moneySummary(lead);
@@ -48,7 +56,13 @@ router.post('/:token/pick', async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Link not found' });
     // 🔒 the package must belong to the lead's vendor
     const p = await prisma.vendor_packages.findFirst({
-      where: { id: Number(package_id), vendor_id: lead.vendor_id },
+      where: {
+        id: Number(package_id),
+        vendor_id: lead.vendor_id,                             // 🔒 tenancy
+        // and only from the folder the vendor actually sent — the portal hides
+        // the others, but the id could still be posted directly
+        ...(lead.package_template_id ? { template_id: lead.package_template_id } : {}),
+      },
     });
     if (!p) return res.status(400).json({ error: 'Package not found' });
     const snapshot = {

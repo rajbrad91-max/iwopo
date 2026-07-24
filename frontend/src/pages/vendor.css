@@ -675,6 +675,17 @@
 .inq-link { color: var(--brand); }
 .inq-preview { color: var(--brand); text-decoration: underline; }
 
+/* 📦 what's inside the chosen package folder, listed under the dropdown */
+.ld-pkg-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.ld-pkg-list li {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+}
+.ld-pkg-list li:last-child { border-bottom: none; }
+.ld-pkg-price { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); }
+.ld-pkg-picked { color: var(--brand); font-size: 11px; font-weight: 700; }
+.ld-pkg-empty { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+
 /* ═══════════ 📱 RESPONSIVE ═══════════ */
 
 /* Tablet (≤1000px): stack dashboard */

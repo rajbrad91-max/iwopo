@@ -1833,16 +1833,18 @@ function LeadsView() {
                 <td data-label="Event">{l.event_type}</td>
                 <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
                 <td data-label="Location">{l.location || '—'}</td>
-                <td data-label="Packages">{l.package_name || '—'}</td>
+                {/* the folder that was sent, or the package once the client
+                    has chosen one from it */}
+                <td data-label="Packages">{l.package_name || (l.package_template_id ? `📁 ${l.template_name || 'Sent'}` : '—')}</td>
                 <td data-label="Status"><span className={`badge ${l.status === 'booked' ? 'active' : 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
                 <td className="col-actions" data-label="Actions">
                   {view === 'active'
                     ? <div className="lead-actions">
                         {/* 📤 send from the list — no need to open the lead first.
-                            Only offered once a package is assigned and an email
-                            exists, since the mail has nothing to link to otherwise.
-                            There's no Open button: the whole row is clickable. */}
-                        {l.package_name && l.email && (
+                            Needs a folder assigned and an email, since the mail
+                            has nothing to link to otherwise. There's no Open
+                            button: the whole row is clickable. */}
+                        {l.package_template_id && l.email && (
                           <button
                             className="lead-send"
                             disabled={sendingId === l.id}
@@ -1875,8 +1877,11 @@ function LeadDetail({ lead, onBack }) {
   const setEAns = (id, v) => setEAnswers(s => ({ ...s, [id]: v }));
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const [pkgs, setPkgs] = useState([]);
-  const [pkgId, setPkgId] = useState(lead.package_id || '');
+  // 📦 The vendor sends a FOLDER of packages; the client picks one from it in
+  // their portal. Holding the folder here rather than a single package is what
+  // stops a wedding client being shown the corporate pricing too.
+  const [tpls, setTpls] = useState([]);
+  const [tplId, setTplId] = useState(lead.package_template_id || '');
   const [gateway, setGateway] = useState(!!lead.gateway_enabled);
   const [pkgBusy, setPkgBusy] = useState(false);
   const [pkgMsg, setPkgMsg] = useState('');
@@ -1920,19 +1925,18 @@ function LeadDetail({ lead, onBack }) {
   }
 
   useEffect(() => {
-    api.pkgTemplates().then(d => {
-      const all = [];
-      (d.templates || []).forEach(t => (t.packages || []).forEach(p => all.push({ ...p, tplName: t.name })));
-      setPkgs(all);
-    }).catch(() => {});
+    // folders, each with the packages inside it — the dropdown lists the folders
+    // and the count, so the vendor sees what they're about to send
+    api.pkgTemplates().then(d => setTpls(d.templates || [])).catch(() => {});
   }, []);
 
-  async function assignPkg(id) {
-    setPkgId(id);
+  async function assignFolder(id) {
+    setTplId(id);
     try {
-      await api.assignPackage(lead.id, id || null);
-      setMsg('✅ Package updated'); setTimeout(() => setMsg(''), 1500);
-    } catch (e) { setMsg('⚠️ ' + e.message); }
+      await api.assignFolder(lead.id, id || null);
+      setMsg(id ? '✅ Packages ready to send' : '✅ Packages cleared');
+      setTimeout(() => setMsg(''), 1800);
+    } catch (e) { setMsg('⚠️ ' + e.message); setTplId(lead.package_template_id || ''); }
   }
 
   async function save() {
@@ -2044,10 +2048,31 @@ function LeadDetail({ lead, onBack }) {
       {/* 📦 Packages */}
       <div className="ld-card">
         <div className="ld-card-h">📦 Packages</div>
-        <select className="ld-select ld-pkg-select" value={pkgId} onChange={e => assignPkg(e.target.value)}>
-          <option value="">— No package —</option>
-          {pkgs.map(p => <option key={p.id} value={p.id}>{p.tplName} → {p.name} (${Number(p.base_price).toFixed(0)})</option>)}
+        <select className="ld-select ld-pkg-select" value={tplId} onChange={e => assignFolder(e.target.value)}>
+          <option value="">— No packages —</option>
+          {tpls.map(t => (
+            <option key={t.id} value={t.id}>
+              📁 {t.name} ({(t.packages || []).length} package{(t.packages || []).length === 1 ? '' : 's'})
+            </option>
+          ))}
         </select>
+        {/* what's inside the chosen folder, so the vendor can see what the
+            client will be offered without leaving the lead */}
+        {tplId && (() => {
+          const inside = (tpls.find(t => String(t.id) === String(tplId))?.packages) || [];
+          if (!inside.length) return <p className="ld-pkg-empty">This folder has no packages yet.</p>;
+          return (
+            <ul className="ld-pkg-list">
+              {inside.map(p => (
+                <li key={p.id}>
+                  <span>{p.name}</span>
+                  <span className="ld-pkg-price">${Number(p.base_price).toFixed(0)}</span>
+                  {lead.package_id === p.id && <span className="ld-pkg-picked">✓ client picked</span>}
+                </li>
+              ))}
+            </ul>
+          );
+        })()}
         <div className="ld-btn-row">
           <button className="refresh bx-primary ld-btn-sm" onClick={sendPackages} disabled={pkgBusy}>{pkgBusy ? 'Sending…' : '📤 Send Packages'}</button>
           <button className={`refresh ld-gate ld-btn-sm ${gateway ? 'is-on' : ''}`} onClick={toggleGateway}>🔒 Secure Login {gateway ? 'ON' : 'OFF'}</button>

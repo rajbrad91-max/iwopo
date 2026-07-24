@@ -74,10 +74,18 @@ router.get('/', requireAuth, async (req, res) => {
     const rows = await prisma.leads.findMany({
       where: scope(vid, { archived_at: null }),
       orderBy: { created_at: 'desc' },
-      include: { vendor_packages: { select: { name: true } } },
+      include: {
+        vendor_packages: { select: { name: true } },
+        package_templates: { select: { name: true } },
+      },
     });
-    // keep the old shape: package_name flattened onto the lead
-    const leads = rows.map(({ vendor_packages, ...l }) => ({ ...l, package_name: vendor_packages?.name ?? null }));
+    // keep the old shape: package_name flattened onto the lead, plus the folder
+    // name so the list can show what was sent before the client has picked
+    const leads = rows.map(({ vendor_packages, package_templates, ...l }) => ({
+      ...l,
+      package_name: vendor_packages?.name ?? null,
+      template_name: package_templates?.name ?? null,
+    }));
     res.json({ leads });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -188,7 +188,11 @@ export const api = {
   addVendorPackage: (name, template_id) => request('/vendor-packages', { method: 'POST', body: JSON.stringify({ name, template_id }) }),
   updateVendorPackage: (id, data) => request(`/vendor-packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVendorPackage: (id) => request(`/vendor-packages/${id}`, { method: 'DELETE' }),
-  assignPackage: (leadId, package_id) => request(`/vendor-packages/assign/${leadId}`, { method: 'PUT', body: JSON.stringify({ package_id }) }),
+  assignPackage: (leadId, package_id) => request(`/vendor-packages/assign/${leadId}`,
+    { method: 'PUT', body: JSON.stringify({ package_id }) }),
+  // send a whole folder of packages; the client picks one from it in the portal
+  assignFolder: (leadId, template_id) => request(`/vendor-packages/assign-folder/${leadId}`,
+    { method: 'PUT', body: JSON.stringify({ template_id }) }),
   leadPayments: (leadId) => request(`/payments/lead/${leadId}`),
   addPayment: (leadId, amount, method, note) => request(`/payments/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ amount, method, note }) }),
   deletePayment: (id) => request(`/payments/${id}`, { method: 'DELETE' }),
