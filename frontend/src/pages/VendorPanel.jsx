@@ -2688,7 +2688,17 @@ function InqFormSettings({ user }) {
   async function save() {
     setMsg('');
     setSaving(true);
-    try { await api.saveInquirySettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 2500); }
+    try {
+      await api.saveInquirySettings(s);
+      // Re-read from the server rather than trusting the local copy. A save that
+      // half-succeeded, or a second tab editing the same form, would otherwise
+      // leave the panel showing something the public form never received —
+      // "✅ Saved" while the two quietly disagree.
+      const fresh = await api.inquirySettings(user?.vendor_id);
+      setS(fresh.settings);
+      setMsg('✅ Saved');
+      setTimeout(() => setMsg(''), 2500);
+    }
     catch (e) { setMsg('⚠️ ' + e.message); }
     setSaving(false);
   }
@@ -2698,7 +2708,17 @@ function InqFormSettings({ user }) {
     <div style={{ maxWidth: 560 }}>
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
-        <p className="sub" style={{ marginBottom: 14 }}>Your link: <b style={{ color: '#2dd4bf' }}>iwopo.com/inquiry/{user?.vendor_id}</b> 🔗</p>
+        <p className="sub" style={{ marginBottom: 14 }}>
+          Your link: <b style={{ color: '#2dd4bf' }}>iwopo.com/inquiry/{user?.vendor_id}</b> 🔗
+          {' · '}
+          {/* opens the live public form, so a vendor can check a change landed
+              without hunting for the URL. Cache-busted because the page they
+              last looked at may still be open in another tab. */}
+          <a href={`/inquiry/${user?.vendor_id}?v=${Date.now()}`} target="_blank" rel="noreferrer"
+            style={{ color: '#2dd4bf', textDecoration: 'underline' }}>
+            👁️ Preview
+          </a>
+        </p>
 
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Brand name</label>
         <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
