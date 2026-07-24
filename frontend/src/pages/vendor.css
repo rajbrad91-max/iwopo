@@ -619,17 +619,25 @@
   font-size: 12px;
 }
 
-/* 📤 Send Packages, in the Actions column beside Open */
+/* 📤 Send Packages, in the Actions column.
+   Cells default to vertical-align: baseline, which works for text but leaves a
+   flex container sitting lower than the text beside it — the button looked
+   dropped relative to the Status badge. Middle-aligning the row's cells lines
+   everything up whatever each one contains. */
+.leads-table tbody td { vertical-align: middle; }
 .lead-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .lead-send {
+  display: inline-flex;
+  align-items: center;
   background: var(--brand);
   color: #06231f;
   border: none;
   border-radius: 7px;
-  padding: 5px 10px;
+  padding: 6px 11px;
   font-size: 12px;
   font-weight: 700;
   font-family: inherit;
+  line-height: 1.2;
   cursor: pointer;
   white-space: nowrap;
   transition: filter .15s;
