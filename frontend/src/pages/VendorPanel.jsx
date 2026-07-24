@@ -1833,7 +1833,8 @@ function LeadsView() {
                     ? <div className="lead-actions">
                         {/* 📤 send from the list — no need to open the lead first.
                             Only offered once a package is assigned and an email
-                            exists, since the mail has nothing to link to otherwise. */}
+                            exists, since the mail has nothing to link to otherwise.
+                            There's no Open button: the whole row is clickable. */}
                         {l.package_name && l.email && (
                           <button
                             className="lead-send"
@@ -1844,7 +1845,6 @@ function LeadsView() {
                             {sendingId === l.id ? '⏳ Sending…' : '📤 Send Packages'}
                           </button>
                         )}
-                        <span className="lead-restore" onClick={e => { e.stopPropagation(); setSel(l); }}>👁️ Open</span>
                       </div>
                     : <span className="lead-restore" onClick={e => restore(l.id, e)}>↩️ Restore</span>}
                 </td>
