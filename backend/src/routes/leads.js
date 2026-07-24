@@ -206,7 +206,7 @@ const MAPPABLE_COLUMNS = {
   timing_from:    { label: 'Timing From',       types: ['time'] },
   timing_to:      { label: 'Timing To',         types: ['time'] },
   location:       { label: 'Location',          types: ['location', 'text'] },
-  hours:          { label: 'Hours',             types: ['dropdown', 'text'] },
+  hours:          { label: 'Hours',             types: ['hours', 'dropdown', 'text'] },
   guests:         { label: 'Est. Guests',       types: ['text', 'dropdown'] },
   gr_bride:       { label: 'Getting Ready — Bride (yes/no)',  types: ['checkbox'] },
   gr_bride_venue: { label: 'Getting Ready — Bride venue',     types: ['location', 'text'] },

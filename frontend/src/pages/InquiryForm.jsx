@@ -158,7 +158,8 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes }
           <div className="iq-grid">
             {c.custom_fields.map(fld => (
               <div key={fld.id} className={fld.type === 'checkbox' ? 'iq-full' : ''}>
-                <CustomField fld={fld} value={answers[fld.id]} onChange={v => setAns(fld.id, v)} />
+                <CustomField fld={fld} value={answers[fld.id]} onChange={v => setAns(fld.id, v)}
+                  answers={answers} fields={c.custom_fields} />
               </div>
             ))}
           </div>
@@ -175,7 +176,38 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes }
   );
 }
 
-function CustomField({ fld, value, onChange }) {
+/**
+ * ⏱️ Hours between two "HH:MM" times, as a decimal.
+ * An end time earlier than the start is read as running past midnight — a
+ * reception from 20:00 to 01:00 is 5 hours, not minus fifteen.
+ * Returns null when either time is missing or unparseable.
+ */
+export function hoursBetween(from, to) {
+  const parse = (t) => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
+    if (!m) return null;
+    const h = +m[1], mi = +m[2];
+    if (h > 23 || mi > 59) return null;
+    return h * 60 + mi;
+  };
+  const a = parse(from), b = parse(to);
+  if (a === null || b === null) return null;
+  const mins = b >= a ? b - a : (1440 - a) + b;   // wrap past midnight
+  return mins / 60;
+}
+
+/** "6 hrs 30 min" / "1 hr" / "45 min" — the wording vendors already use. */
+export function formatHours(dec) {
+  if (dec === null || dec === undefined) return '';
+  const total = Math.round(dec * 60);
+  const h = Math.floor(total / 60), m = total % 60;
+  if (!h && !m) return '0 min';
+  if (!h) return `${m} min`;
+  const hp = `${h} hr${h === 1 ? '' : 's'}`;
+  return m ? `${hp} ${m} min` : hp;
+}
+
+function CustomField({ fld, value, onChange, answers, fields }) {
   const label = <label>{fld.label}{fld.required && ' *'}</label>;
 
   if (fld.type === 'dropdown') return (<>
@@ -198,6 +230,10 @@ function CustomField({ fld, value, onChange }) {
   if (fld.type === 'location') return (<>{label}
     <LocationField value={value || ''} onChange={onChange} /></>);
 
+  if (fld.type === 'hours') return (
+    <HoursField fld={fld} value={value} onChange={onChange} answers={answers} fields={fields} />
+  );
+
   if (fld.type === 'checkbox') return (
     <label className="iq-check-row">
       <input type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)} />
@@ -206,6 +242,53 @@ function CustomField({ fld, value, onChange }) {
   );
 
   return null;
+}
+
+/**
+ * ⏱️ Hours field. Works out its own value from the form's "from" and "to" time
+ * fields, which the vendor picks when building the form (from_field / to_field).
+ * The client can still type over it — a shoot with a break in the middle isn't
+ * simply end minus start — and a manual value is kept until they clear it.
+ */
+function HoursField({ fld, value, onChange, answers, fields }) {
+  const [manual, setManual] = useState(false);
+
+  const fromId = fld.from_field;
+  const toId = fld.to_field;
+  const from = fromId ? answers?.[fromId] : null;
+  const to = toId ? answers?.[toId] : null;
+  const auto = formatHours(hoursBetween(from, to));
+
+  // Fill from the times unless the client has typed their own figure.
+  // `value` and `onChange` are deliberately not dependencies: including them
+  // would re-run this on every keystroke and fight the manual entry.
+  useEffect(() => {
+    if (manual) return;
+    if (auto && auto !== value) onChange(auto);
+    if (!auto && value) onChange('');
+  }, [auto, manual]);
+
+  const fromLabel = fields?.find(f => f.id === fromId)?.label;
+  const toLabel = fields?.find(f => f.id === toId)?.label;
+  const linked = fromId && toId;
+
+  return (<>
+    <label>
+      {fld.label}{fld.required && ' *'}
+      {linked && !manual && <span className="iq-auto-tag">auto</span>}
+    </label>
+    <input
+      value={value || ''}
+      placeholder={linked ? `From ${fromLabel || 'start'} → ${toLabel || 'end'}` : 'e.g. 6 hrs 30 min'}
+      onChange={e => { setManual(true); onChange(e.target.value); }}
+    />
+    {linked && manual && (
+      <button type="button" className="iq-auto-reset"
+        onClick={() => { setManual(false); onChange(auto || ''); }}>
+        ↻ recalculate from times
+      </button>
+    )}
+  </>);
 }
 
 function LocationField({ value, onChange }) {

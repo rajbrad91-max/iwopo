@@ -2518,6 +2518,7 @@ const FIELD_TYPES = [
   { t: 'text', label: '✏️ Text' },
   { t: 'date', label: '📅 Date' },
   { t: 'time', label: '🕐 Time' },
+  { t: 'hours', label: '⏱️ Hours' },
   { t: 'location', label: '📍 Location' },
   { t: 'checkbox', label: '☑️ Checkbox' },
 ];
@@ -2576,6 +2577,37 @@ function FieldBuilder({ fields, setFields }) {
               <button className="refresh" onClick={() => upd(i, { options: [...f.options, 'Option ' + (f.options.length + 1)] })} style={{ padding: '4px 10px', fontSize: 11 }}>+ option</button>
             </div>
           )}
+
+          {/* ⏱️ an Hours field can calculate itself from two Time fields on the
+              same form. Only Time fields are offered, and only ones that exist. */}
+          {f.type === 'hours' && (() => {
+            const times = fields.filter(x => x.type === 'time' && x.label);
+            if (!times.length) return (
+              <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+                💡 Add two <strong>🕐 Time</strong> fields to calculate hours automatically.
+              </p>
+            );
+            return (
+              <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>Calculate from ⏱️</label>
+                  <select style={{ ...box, fontSize: 12 }} value={f.from_field || ''}
+                    onChange={e => upd(i, { from_field: e.target.value })}>
+                    <option value="">Client types it</option>
+                    {times.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--muted)', display: 'block', marginBottom: 3 }}>…until</label>
+                  <select style={{ ...box, fontSize: 12 }} value={f.to_field || ''}
+                    onChange={e => upd(i, { to_field: e.target.value })}>
+                    <option value="">Client types it</option>
+                    {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            );
+          })()}
 
           <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
             <input type="checkbox" checked={f.required} onChange={e => upd(i, { required: e.target.checked })} /> Required
