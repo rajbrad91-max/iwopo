@@ -169,7 +169,13 @@ router.post('/:token/pay-direct', async (req, res) => {
       orderBy: { id: 'desc' },
       select: { signed_at: true },
     });
-    if (contract && !contract.signed_at) {
+    // A signed contract is required — no contract at all is not a free pass.
+    // The portal hides the button, but this endpoint is public, so the rule has
+    // to live here or a client can post straight past the agreement.
+    if (!contract) {
+      return res.status(409).json({ error: 'Your contract isn\u2019t ready yet — we\u2019ll email you when it is' });
+    }
+    if (!contract.signed_at) {
       return res.status(409).json({ error: 'Please sign your contract before arranging payment' });
     }
 

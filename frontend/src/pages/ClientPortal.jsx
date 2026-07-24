@@ -57,10 +57,12 @@ export default function ClientPortal({ token }) {
   const { lead, business_name, packages, money, contract, branding = {} } = data;
   const chosen = packages.find(p => p.id === lead.package_id);
   const signed = !!contract?.signed_at;
-  const needsSigning = !!contract && !signed;
-  const canPay = !!chosen && !needsSigning;
+  // Payment requires a SIGNED contract — full stop. A lead with no contract yet
+  // isn't ready to pay either: it means the vendor hasn't raised one, and the
+  // client would otherwise sail past the one step that must not be skippable.
+  const canPay = !!chosen && signed;
   const claimed = !!lead.payment_claimed_at;   // said they've paid, awaiting the vendor
-  const step = !chosen ? 1 : (needsSigning ? 2 : 3);
+  const step = !chosen ? 1 : (!signed ? 2 : 3);
 
   const eventDate = lead.event_date
     ? new Date(lead.event_date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
@@ -130,7 +132,7 @@ export default function ClientPortal({ token }) {
         </section>
 
         {/* ── 2. contract ── */}
-        {chosen && contract && (
+        {chosen && (
           <section className="po-sec">
             <p className="po-eyebrow">Step two</p>
             <h2 className="po-h">Your contract</h2>
@@ -143,12 +145,23 @@ export default function ClientPortal({ token }) {
                   <a className="po-link" href={`/sign/${contract.token}`}>View a copy</a>
                 </p>
               </div>
-            ) : (
+            ) : contract ? (
               <div className="po-panel">
                 <div className="po-panel-icon">📄</div>
                 <h3 className="po-panel-t">{contract.title || 'Coverage agreement'}</h3>
                 <p className="po-panel-p">Please read it through and sign to confirm your date.</p>
                 <a className="po-cta" href={`/sign/${contract.token}`}>Read &amp; sign</a>
+              </div>
+            ) : (
+              /* the vendor hasn't raised one yet — say so rather than letting the
+                 client walk straight into paying for an unsigned booking */
+              <div className="po-panel">
+                <div className="po-panel-icon">⏳</div>
+                <h3 className="po-panel-t">On its way</h3>
+                <p className="po-panel-p no-gap">
+                  We&apos;re preparing your contract now. You&apos;ll get an email the moment
+                  it&apos;s ready to sign.
+                </p>
               </div>
             )}
           </section>
@@ -197,7 +210,7 @@ export default function ClientPortal({ token }) {
           </section>
         )}
 
-        {chosen && needsSigning && (
+        {chosen && !signed && (
           <p className="po-fine">🔒 Payment opens once your contract is signed.</p>
         )}
       </main>
