@@ -1964,7 +1964,7 @@ function LeadDetail({ lead, onBack }) {
     <div className="ld-view">
       <div className="ld-topbar">
         <button className="refresh" onClick={onBack}>← Back to leads</button>
-        <button className="refresh ld-edit-btn" onClick={() => { setF({ ...lead }); setEdit(true); }}>✏️ Edit</button>
+        <button className="refresh ld-edit-btn" onClick={() => { setF({ ...lead }); setEdit(true); }}>✏️ Edit Details</button>
       </div>
       <h2 className="ld-h2">{lead.name} · {lead.event_type}</h2>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
