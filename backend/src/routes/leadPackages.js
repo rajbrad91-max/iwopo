@@ -22,7 +22,7 @@ function vid(req) {
 async function ownedLead(req, leadId) {
   const lead = await prisma.leads.findUnique({
     where: { id: Number(leadId) },
-    select: { id: true, vendor_id: true, packages_sent_at: true },
+    select: { id: true, vendor_id: true, packages_sent_at: true, status: true },
   });
   if (!lead) return null;
   if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return null;
@@ -148,7 +148,15 @@ router.put('/:leadId/lock/set', requireAuth, async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     await prisma.leads.update({
       where: { id: lead.id },
-      data: { packages_sent_at: locked ? new Date() : null, updated_at: new Date() },
+      data: {
+        packages_sent_at: locked ? new Date() : null,
+        // Sending the offer moves the lead along the pipeline. Only from 'new':
+        // a lead that's already booked shouldn't drop back a stage because the
+        // vendor re-sent their packages, and unlocking to make an edit isn't an
+        // un-send — the client has already seen them.
+        ...(locked && lead.status === 'new' ? { status: 'quoted' } : {}),
+        updated_at: new Date(),
+      },
     });
     res.json({ ok: true, locked: !!locked });
   } catch (e) { res.status(500).json({ error: e.message }); }

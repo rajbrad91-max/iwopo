@@ -1,13 +1,87 @@
 import express from 'express';
+import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { moneySummary } from './payments.js';
 import { notify } from './notifications.js';
+import { fillPlaceholders, audit, templateForLead, templateText } from './contracts.js';
 
 const router = express.Router();
 
 // helper: lead by client token (the token itself is the access key)
 async function leadByToken(token) {
   return prisma.leads.findFirst({ where: { client_token: token } });
+}
+
+function ipOf(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  return (fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress || '').replace('::ffff:', '');
+}
+
+/**
+ * 📄 Keep the contract honest about which package it is for.
+ *
+ * The contract body is built with the package name and the prices baked into
+ * it, so once the client picks a different package the document no longer
+ * describes what they'd be agreeing to. Whenever the choice changes:
+ *
+ *   • a SIGNED contract for the old package is VOIDED — a signature only ever
+ *     applies to what was actually signed, so it can't carry over — and a fresh
+ *     one is raised for the new package
+ *   • an UNSIGNED one is rebuilt in place from the same template, dropping any
+ *     initials the client had tapped so far
+ *
+ * Best effort: a portal that can't rebuild the contract should still let the
+ * client change their mind, so failures are logged rather than thrown.
+ */
+async function reconcileContract(lead, newPackageId, ip) {
+  const latest = await prisma.contracts.findFirst({
+    where: { lead_id: lead.id },                                // 🔒 tenancy via the lead
+    orderBy: { id: 'desc' },
+  });
+  if (!latest) return;
+  if (latest.package_id != null && Number(latest.package_id) === Number(newPackageId)) return;
+
+  // rebuild the wording for the package the client is actually on now
+  const fresh = await prisma.leads.findUnique({ where: { id: lead.id } });
+  const vendor = await prisma.vendors.findUnique({
+    where: { id: lead.vendor_id }, select: { business_name: true },
+  });
+  const tpl = await templateForLead(fresh, latest.template_id);
+  const body = tpl
+    ? await fillPlaceholders(templateText(tpl), fresh, vendor?.business_name)
+    : null;
+
+  if (latest.status === 'signed') {
+    await prisma.contracts.update({
+      where: { id: latest.id },
+      data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
+    });
+    await audit(latest.id, 'voided', ip, { reason: 'package_changed_after_signing', from: latest.package_id, to: newPackageId });
+    if (!body) return;                     // no template to rebuild from — vendor raises one
+    const replacement = await prisma.contracts.create({
+      data: {
+        vendor_id: lead.vendor_id,         // 🔒 stamped from the owning lead
+        lead_id: lead.id,
+        token: crypto.randomBytes(24).toString('hex'),
+        title: latest.title, body, status: 'sent',
+        package_id: newPackageId, template_id: latest.template_id,
+      },
+    });
+    await audit(replacement.id, 'created', ip, { reason: 'package_changed', replaces: latest.id });
+    return;
+  }
+
+  await prisma.contracts.update({
+    where: { id: latest.id },
+    data: {
+      ...(body ? { body } : {}),
+      package_id: newPackageId,
+      // a part-done signing belongs to the old wording, so it starts over
+      initials: [], signature_data: null, signed_name: null,
+      status: 'sent', viewed_at: null, updated_at: new Date(),
+    },
+  });
+  await audit(latest.id, 'package_changed', ip, { from: latest.package_id, to: newPackageId });
 }
 
 /* 🌐 PUBLIC: GET /api/portal/:token → lead + vendor packages + money */
@@ -56,10 +130,15 @@ router.get('/:token', async (req, res) => {
     // 📄 The contract for this booking, if the vendor has raised one. The client
     // journey runs packages → contract → payment, so the portal needs to know
     // whether there's something to sign and whether they've already signed it.
+    // The body comes too: the client signs it inside the portal rather than
+    // being sent off to a separate page in someone else's styling.
     const contract = await prisma.contracts.findFirst({
-      where: { lead_id: lead.id },                              // 🔒 tenancy via the lead
+      where: { lead_id: lead.id, status: { not: 'voided' } },    // 🔒 tenancy via the lead
       orderBy: { id: 'desc' },
-      select: { id: true, title: true, token: true, status: true, signed_at: true, signed_name: true },
+      select: {
+        id: true, title: true, token: true, status: true, body: true,
+        initials: true, signed_at: true, signed_name: true, package_id: true,
+      },
     });
 
     // 🎨 the vendor's branding, so the portal looks like the inquiry form the
@@ -72,6 +151,7 @@ router.get('/:token', async (req, res) => {
     res.json({
       lead: {
         name: lead.name, event_type: lead.event_type, event_date: lead.event_date,
+        location: lead.location,
         hours: lead.hours, package_id: selectedId, status: lead.status,
         payment_claimed_at: lead.payment_claimed_at,
       },
@@ -113,6 +193,7 @@ router.post('/:token/pick', async (req, res) => {
         }),
       ]);
       const updated = await prisma.leads.findUnique({ where: { id: lead.id } });
+      await reconcileContract(lead, own.id, ipOf(req));
       notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${own.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
       return res.json({ lead: updated, money: await moneySummary(updated) });
     }
@@ -136,6 +217,7 @@ router.post('/:token/pick', async (req, res) => {
       where: { id: lead.id },
       data: { package_id: p.id, package_snapshot: snapshot, updated_at: new Date() },
     });
+    await reconcileContract(lead, p.id, ipOf(req));
     notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${p.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
     res.json({ ok: true, money: await moneySummary(updated) });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -165,13 +247,15 @@ router.post('/:token/pay-direct', async (req, res) => {
     }
 
     const contract = await prisma.contracts.findFirst({
-      where: { lead_id: lead.id },                              // 🔒 tenancy via the lead
+      where: { lead_id: lead.id, status: { not: 'voided' } },    // 🔒 tenancy via the lead
       orderBy: { id: 'desc' },
       select: { signed_at: true },
     });
     // A signed contract is required — no contract at all is not a free pass.
-    // The portal hides the button, but this endpoint is public, so the rule has
-    // to live here or a client can post straight past the agreement.
+    // Voided ones are excluded above: a signature only ever covered the package
+    // it was given for, so once the client switches it stops being consent to
+    // anything. The portal hides the button, but this endpoint is public, so the
+    // rule has to live here or a client can post straight past the agreement.
     if (!contract) {
       return res.status(409).json({ error: 'Your contract isn\u2019t ready yet — we\u2019ll email you when it is' });
     }

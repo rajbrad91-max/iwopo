@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, getUser, clearSession } from '../lib/api';
+import { api, getUser, clearSession, fmtDateTime } from '../lib/api';
 import { COUNTRIES } from '../lib/countries';
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -1158,7 +1158,7 @@ function ChatbotCosts() {
                   <td>{Number(v.input_tokens).toLocaleString()}</td>
                   <td>{Number(v.output_tokens).toLocaleString()}</td>
                   <td><b>${Number(v.cost_usd).toFixed(4)}</b></td>
-                  <td>{v.last_used ? new Date(v.last_used).toLocaleDateString() : '—'}</td>
+                  <td>{v.last_used ? fmtDateTime(v.last_used, { dateOnly: true }) : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -1282,7 +1282,7 @@ function ChatbotInbox({ vendorId }) {
             <div key={m.id} className={`cb-vmsg ${m.status === 'unread' ? 'unread' : ''}`}>
               <div className="cb-vmsg-top">
                 <span className="cb-vmsg-who">{m.name || 'Visitor'}{m.contact ? ` · ${m.contact}` : ''}</span>
-                <span className="cb-vmsg-date">{new Date(m.created_at).toLocaleDateString()}</span>
+                <span className="cb-vmsg-date">{fmtDateTime(m.created_at, { dateOnly: true })}</span>
               </div>
               <div className="cb-vmsg-body">{m.message}</div>
               {m.status === 'unread' && <button className="cb-mark" onClick={() => markRead(m)}>Mark read</button>}

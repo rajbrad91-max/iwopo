@@ -14,14 +14,39 @@ function ipOf(req) {
   const fwd = req.headers['x-forwarded-for'];
   return (fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress || '').replace('::ffff:', '');
 }
-async function audit(contractId, event, ip, meta) {
+export async function audit(contractId, event, ip, meta) {
   await prisma.contract_audit.create({
     data: { contract_id: contractId, event, ip: ip || null, meta: meta ?? null },
   });
 }
 
+/**
+ * 📄 Pick the contract template for a lead: prefer one whose event_type matches,
+ * otherwise the vendor's first. Shared by preview, creation and the portal's
+ * regeneration path so all three draw from the same template.
+ */
+export async function templateForLead(lead, templateId = null) {
+  if (templateId) {
+    return prisma.contract_templates.findFirst({
+      where: { id: Number(templateId), vendor_id: lead.vendor_id },   // 🔒 tenancy
+    });
+  }
+  const tpls = await prisma.contract_templates.findMany({
+    where: { vendor_id: lead.vendor_id },                             // 🔒 tenancy
+    orderBy: { id: 'asc' },
+  });
+  if (!tpls.length) return null;
+  return tpls.find(x => x.event_type && lead.event_type
+    && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || tpls[0];
+}
+
+/** The template's three parts joined into one body, ready for placeholder fill. */
+export function templateText(t) {
+  return [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+}
+
 // 🔤 Fill placeholders from lead + package + money
-async function fillPlaceholders(text, lead, businessName) {
+export async function fillPlaceholders(text, lead, businessName) {
   const money = await moneySummary(lead);
   let pkgName = '—';
   if (lead.package_snapshot) {
@@ -149,19 +174,28 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
-    let text = body, ctTitle = title || 'Service Agreement';
+    let text = body, ctTitle = title || 'Service Agreement', tplId = null;
     if (template_id) {
-      const t = await prisma.contract_templates.findFirst({
-        where: { id: Number(template_id), vendor_id: lead.vendor_id },   // 🔒 tenancy
-      });
+      const t = await templateForLead(lead, template_id);
       if (!t) return res.status(400).json({ error: 'Template not found' });
-      text = [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+      text = templateText(t);
       ctTitle = title || t.name;
+      tplId = t.id;
     }
     if (!text || !text.trim()) return res.status(400).json({ error: 'Contract text required' });
 
     const vendor = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });
     const filled = await fillPlaceholders(text, lead, vendor?.business_name);
+
+    // Which package this contract was drawn for. The body carries the package
+    // name and the prices, so if the client later picks a different one the
+    // contract no longer describes what they're agreeing to — the portal uses
+    // this to spot that and rebuild it. Kept FK-free because it can hold either
+    // a lead_packages id or, for older leads, a vendor_packages one.
+    const chosen = await prisma.lead_packages.findFirst({
+      where: { lead_id: lead.id, is_selected: true },                  // 🔒 tenancy via the lead
+      select: { id: true },
+    });
 
     const contract = await prisma.contracts.create({
       data: {
@@ -169,6 +203,8 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
         lead_id: lead.id,
         token: crypto.randomBytes(24).toString('hex'),
         title: ctTitle, body: filled, status: 'sent',
+        package_id: chosen?.id ?? lead.package_id ?? null,
+        template_id: tplId,
       },
     });
     await audit(contract.id, 'created', ipOf(req));
@@ -183,15 +219,10 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
-    // pick template: match event_type first, else the first template
-    const tpls = await prisma.contract_templates.findMany({
-      where: { vendor_id: lead.vendor_id },     // 🔒 tenancy
-      orderBy: { id: 'asc' },
-    });
-    if (!tpls.length) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
-    const t = tpls.find(x => x.event_type && lead.event_type && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || tpls[0];
+    const t = await templateForLead(lead);
+    if (!t) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
 
-    const text = [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+    const text = templateText(t);
     const vendor = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });
     const filled = await fillPlaceholders(text, lead, vendor?.business_name);
     res.json({ title: t.name, body: filled, template_name: t.name });

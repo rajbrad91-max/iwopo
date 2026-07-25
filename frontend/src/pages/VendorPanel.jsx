@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, getUser, clearSession, getAuthToken } from '../lib/api';
-import { fmtTime } from '../lib/api';
+import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { PROFESSIONS, LeadFormBody } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
@@ -89,6 +88,7 @@ export default function VendorPanel({ onLogout }) {
       else document.documentElement.removeAttribute('data-theme');
       localStorage.setItem('vf_theme', th);
       localStorage.setItem('vf_time_format', st?.settings?.time_format || '12h');
+      localStorage.setItem('vf_timezone', st?.settings?.timezone || '');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -296,25 +296,67 @@ function NotifBell({ onOpen }) {
 }
 
 // 🤖 Vendor AI Chat — conversation history (subscribed) or upsell (not)
+// 📚 The fields the vendor fills in so their assistant knows the business.
+// Order and wording are what the vendor reads, so they live here rather than
+// being derived from the API's field list.
+const KB_FIELDS = [
+  ['bot_name', "Assistant's name", 'input', 'What your assistant calls itself. Defaults to Tasveer.'],
+  ['tagline', 'About us', 'area', 'A sentence or two about the business.'],
+  ['about_team', 'About the team', 'area', 'Who you are, how long you have been going.'],
+  ['contact', 'Contact info', 'area', 'Phone, email, how people reach you.'],
+  ['service_area', 'Service area', 'area', 'Where you work, and how far you travel.'],
+  ['hours', 'Hours', 'area', 'When you are reachable.'],
+  ['services', 'Services offered', 'area', 'Photo, video, albums, anything else.'],
+  ['languages', 'Languages spoken', 'area', 'So it can reply in the right one.'],
+  ['delivery_time', 'Delivery time', 'area', 'How long clients wait for photos or video.'],
+  ['packages', 'What packages include', 'area', 'Describe inclusions. Prices are only shared if you put them here.'],
+  ['policies', 'Policies', 'area', 'Booking, deposit, travel, cancellation.'],
+  ['faqs', 'Common questions', 'area', 'Question and answer pairs it should use first.'],
+  ['avoid_topics', 'Things to avoid', 'area', 'Anything it should never discuss.'],
+  ['tone_notes', 'Tone', 'area', 'How it should sound.'],
+  ['notes', 'Other notes', 'area', 'Anything else worth knowing.'],
+];
+
 function AiChatVendorView({ goServices }) {
   const [status, setStatus] = useState(null);
   const [convos, setConvos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(null);
+  const [tab, setTab] = useState('chats');          // chats | knowledge
+  const [kb, setKb] = useState(null);
+  const [kbMsg, setKbMsg] = useState('');
+  const [kbBusy, setKbBusy] = useState(false);
 
   useEffect(() => {
     api.myChatbotStatus()
       .then(s => {
         setStatus(s);
         if (s.subscribed) {
-          return api.myChatbotHistory()
-            .then(d => setConvos(d.conversations || []))
-            .catch(() => {});
+          return Promise.all([
+            api.myChatbotHistory().then(d => setConvos(d.conversations || [])).catch(() => {}),
+            api.myChatbotKnowledge().then(d => setKb(d.knowledge || {})).catch(() => {}),
+          ]);
         }
       })
       .catch(() => setStatus({ subscribed: false }))
       .finally(() => setLoading(false));
   }, []);
+
+  async function saveKb() {
+    setKbBusy(true); setKbMsg('');
+    try {
+      await api.saveMyChatbotKnowledge(kb || {});
+      setKbMsg('✅ Saved');
+      setTimeout(() => setKbMsg(''), 1600);
+    } catch (e) { setKbMsg('⚠️ ' + e.message); }
+    finally { setKbBusy(false); }
+  }
+
+  // the assistant's own name, used everywhere it's referred to
+  const botName = (kb?.bot_name || '').trim() || 'Tasveer';
+  // a conversation is titled by whoever was in it; the name is learned when the
+  // visitor books or leaves a message, so older chats stay anonymous
+  const titleOf = (c) => c.visitor_name || 'Visitor';
 
   if (loading) return <div className="loading">Loading…</div>;
 
@@ -358,11 +400,11 @@ function AiChatVendorView({ goServices }) {
         <button className="refresh ac-back" onClick={() => setOpen(null)}>← All conversations</button>
         <div className="table-wrap ac-thread">
           <div className="ac-thread-head">
-            💬 Conversation · {new Date(open.messages[0].at).toLocaleString()}
+            👤 {titleOf(open)} · {fmtDateTime(open.messages[0].at)}
           </div>
           {open.messages.map((m, i) => (
             <div key={i} className={`ac-msg ${m.role}`}>
-              <div className="ac-msg-who">{m.role === 'user' ? '👤 Visitor' : '🤖 Tasveer'}</div>
+              <div className="ac-msg-who">{m.role === 'user' ? `👤 ${titleOf(open)}` : `🤖 ${botName}`}</div>
               <div className="ac-msg-text">{m.content}</div>
             </div>
           ))}
@@ -371,18 +413,49 @@ function AiChatVendorView({ goServices }) {
     );
   }
 
-  // 📜 conversation list
+  // 📜 conversations + knowledge
   return (
     <>
       <div className="ac-head">
         <div>
-          <div className="ac-title">💬 Chat History</div>
-          <div className="ac-sub">{convos.length} conversation{convos.length === 1 ? '' : 's'} · kept for 30 days</div>
+          <div className="ac-title">🤖 {botName}</div>
+          <div className="ac-sub">
+            {tab === 'chats'
+              ? `${convos.length} conversation${convos.length === 1 ? '' : 's'} · kept for 30 days`
+              : 'What your assistant knows about your business'}
+          </div>
+        </div>
+        <div className="ac-tabs">
+          <button type="button" className={`ac-tab ${tab === 'chats' ? 'is-on' : ''}`} onClick={() => setTab('chats')}>💬 Conversations</button>
+          <button type="button" className={`ac-tab ${tab === 'knowledge' ? 'is-on' : ''}`} onClick={() => setTab('knowledge')}>📚 Knowledge</button>
         </div>
       </div>
 
-      {convos.length === 0 ? (
-        <div className="table-wrap ac-empty">No conversations yet. When visitors chat with Tasveer, they'll appear here 💬</div>
+      {tab === 'knowledge' ? (
+        <div className="table-wrap ac-kb">
+          {KB_FIELDS.map(([key, label, kind, hint]) => (
+            <div className="ac-kb-row" key={key}>
+              <label className="ac-kb-label" htmlFor={`kb-${key}`}>{label}</label>
+              <p className="ac-kb-hint">{hint}</p>
+              {kind === 'input' ? (
+                <input id={`kb-${key}`} className="ac-kb-input" value={kb?.[key] || ''}
+                  placeholder="Tasveer"
+                  onChange={e => setKb(s => ({ ...s, [key]: e.target.value }))} />
+              ) : (
+                <textarea id={`kb-${key}`} className="ac-kb-area" rows={3} value={kb?.[key] || ''}
+                  onChange={e => setKb(s => ({ ...s, [key]: e.target.value }))} />
+              )}
+            </div>
+          ))}
+          <div className="ac-kb-foot">
+            {kbMsg && <span className="ac-kb-msg">{kbMsg}</span>}
+            <button className="refresh" onClick={saveKb} disabled={kbBusy}>
+              {kbBusy ? 'Saving…' : '💾 Save knowledge'}
+            </button>
+          </div>
+        </div>
+      ) : convos.length === 0 ? (
+        <div className="table-wrap ac-empty">No conversations yet. When visitors chat with {botName}, they&apos;ll appear here 💬</div>
       ) : (
         <div className="ac-list">
           {convos.map(c => {
@@ -390,10 +463,11 @@ function AiChatVendorView({ goServices }) {
             return (
               <div key={c.session} className="ac-card" onClick={() => setOpen(c)}>
                 <div className="ac-card-main">
+                  <div className="ac-card-who">👤 {titleOf(c)}</div>
                   <div className="ac-card-snippet">{first ? first.content : '—'}</div>
                   <div className="ac-card-meta">{c.messages.length} messages</div>
                 </div>
-                <div className="ac-card-date">{new Date(c.last_at).toLocaleDateString()}</div>
+                <div className="ac-card-date">{fmtDateTime(c.last_at, { dateOnly: true })}</div>
               </div>
             );
           })}
@@ -1314,7 +1388,7 @@ function AlbumDetail({ albumId, onBack }) {
                 <div className="ad-sel-bar">
                   <div className="ad-fav-total">
                     {selData.total} photo{selData.total === 1 ? '' : 's'} selected across {selData.events.length} event{selData.events.length === 1 ? '' : 's'}
-                    {selData.sent_at && <span className="ad-sel-when"> · sent {new Date(selData.sent_at).toLocaleString()}</span>}
+                    {selData.sent_at && <span className="ad-sel-when"> · sent {fmtDateTime(selData.sent_at)}</span>}
                     {selData.completed_at && <span className="ad-sel-done">✓ Completed</span>}
                   </div>
                   <div className="ad-sel-acts">
@@ -1601,12 +1675,11 @@ function DashHome({ goTab }) {
   const photoSel = albums.reduce((n, a) => n + (Number(a.selected_count) > 0 ? 1 : 0), 0);
   const recent = leads.slice(0, 6);
   const upcoming = bookings
-    .filter(b => b.event_date && new Date(b.event_date) >= new Date(new Date().toDateString()))
-    .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+    .filter(b => b.event_date && eventDateValue(b.event_date) >= new Date(new Date().toDateString()))
+    .sort((a, b) => eventDateValue(a.event_date) - eventDateValue(b.event_date))
     .slice(0, 6);
   const SB = { new: 'trial', quoted: 'trial', booked: 'active' };
-  const mName = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-  const dParts = (d) => { const x = new Date(d); return { day: x.getDate(), mon: mName[x.getMonth()], dow: x.toLocaleDateString('en',{weekday:'long'}) }; };
+  const dParts = (d) => eventDateParts(d);
 
   return (
     <>
@@ -2188,6 +2261,9 @@ function LeadDetail({ lead, onBack }) {
           if (!has(v)) return null;
           if (v === true) return '✅ Yes';
           if (f.type === 'date') return String(v).slice(0, 10);
+          // the form stores a time answer as plain "HH:MM", so it reads back in
+          // whichever clock the vendor set in their preferences
+          if (f.type === 'time') return fmtTime(v);
           return String(v);
         };
 
@@ -2762,9 +2838,9 @@ function BookingsView() {
   if (sel) return <LeadDetail lead={sel} onBack={() => setSel(null)} />;
 
   const now = new Date();
-  const inMonth = bookings.filter(b => { const d = b.event_date && new Date(b.event_date); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
-  const inYear = bookings.filter(b => { const d = b.event_date && new Date(b.event_date); return d && d.getFullYear() === now.getFullYear(); }).length;
-  const nextYear = bookings.filter(b => { const d = b.event_date && new Date(b.event_date); return d && d.getFullYear() === now.getFullYear() + 1; }).length;
+  const inMonth = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
+  const inYear = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getFullYear() === now.getFullYear(); }).length;
+  const nextYear = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getFullYear() === now.getFullYear() + 1; }).length;
 
   // 🔢 Booking number, counting down the table so the top row is #1 — matching
   // the order the rows are actually rendered in. Built from the full list, not
@@ -3312,6 +3388,7 @@ function SettingsView({ user }) {
     else document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('vf_theme', next.theme || 'dark');
     localStorage.setItem('vf_time_format', next.time_format || '12h');
+    localStorage.setItem('vf_timezone', next.timezone || '');
     try { await api.saveSettings(next); setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500); } catch {}
   }
   async function saveEmail() {

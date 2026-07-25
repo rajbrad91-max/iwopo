@@ -1,7 +1,10 @@
 // 🔌 API helper — talks to the backend
 const BASE = '/api';
 
-// 🕐 format a "HH:MM" (24h) string per the vendor's saved preference
+// 🕐 format a "HH:MM" (24h) string per the vendor's saved preference.
+// These are wall-clock answers off the inquiry form — an event starting at
+// 11:58 starts at 11:58 wherever you read it — so the timezone deliberately
+// isn't applied here. That's only for real instants, see fmtDateTime.
 export function fmtTime(t) {
   if (!t) return '';
   const m = String(t).match(/^(\d{1,2}):(\d{2})/);
@@ -13,6 +16,57 @@ export function fmtTime(t) {
   h = h % 12 || 12;
   return `${h}:${min} ${ap}`;
 }
+
+// 🌍 A stored timestamp is a real moment in time, so it's shown in the vendor's
+// own timezone and clock format rather than the browser's. A vendor in Vancouver
+// checking their panel while travelling should still read times the way their
+// business runs, not the way the airport does.
+export function fmtDateTime(ts, { dateOnly = false } = {}) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return String(ts);
+  const tz = localStorage.getItem('vf_timezone') || undefined;
+  const opts = { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz };
+  if (!dateOnly) {
+    opts.hour = 'numeric';
+    opts.minute = '2-digit';
+    opts.hour12 = (localStorage.getItem('vf_time_format') || '12h') !== '24h';
+  }
+  try { return d.toLocaleString(undefined, opts); }
+  catch { return d.toLocaleString(); }   // a bad saved timezone shouldn't blank the row
+}
+
+// 📅 An event date is a CALENDAR DAY, not a moment. Postgres stores it as a
+// `date`, but it arrives here as "2028-10-29T00:00:00.000Z" — UTC midnight —
+// so `new Date(v)` then reads back as the 28th for anyone west of UTC. A
+// Vancouver photographer was being shown the day before every wedding.
+// Reading the Y-M-D straight off the string keeps the day the vendor typed.
+function ymd(v) {
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+
+export function fmtEventDate(v, { long = false } = {}) {
+  const d = ymd(v);
+  if (!d) return v ? String(v) : '';
+  return d.toLocaleDateString(undefined, long
+    ? { day: 'numeric', month: 'long', year: 'numeric' }
+    : { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Day number, short month and weekday for an event date — no timezone shift. */
+export function eventDateParts(v) {
+  const d = ymd(v);
+  if (!d) return { day: '—', mon: '', dow: '' };
+  return {
+    day: d.getDate(),
+    mon: d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase(),
+    dow: d.toLocaleDateString(undefined, { weekday: 'long' }),
+  };
+}
+
+/** The same calendar day as a sortable/comparable local Date, or null. */
+export function eventDateValue(v) { return ymd(v); }
 
 // 🗂️ Session storage is PER TAB, so a super-admin tab and a vendor tab can be
 // open side by side without overwriting each other. localStorage is shared
@@ -143,6 +197,8 @@ export const api = {
   // vendor-side
   myChatbotStatus: () => request('/chatbot/my/status'),
   myChatbotHistory: () => request('/chatbot/my/history'),
+  myChatbotKnowledge: () => request('/chatbot/my/knowledge'),
+  saveMyChatbotKnowledge: (body) => request('/chatbot/my/knowledge', { method: 'PUT', body: JSON.stringify(body) }),
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   vendorFeatures: (id) => request(`/vendors/${id}/features`),
   setVendorFeature: (id, key, body) => request(`/vendors/${id}/features/${key}`, { method: 'PUT', body: JSON.stringify(body) }),

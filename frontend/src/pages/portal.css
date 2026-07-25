@@ -64,23 +64,35 @@
 .po-steps li + li::before {
   content: ''; width: 44px; height: 1px; background: var(--line); margin: 0 14px;
 }
-.po-steps .po-dot {
+/* Each step is a button so a client can walk back to one they've already
+   cleared. Steps ahead of them are disabled — the journey only skips forward
+   when the booking itself does. */
+.po-step-hit {
+  display: flex; align-items: center; gap: 9px;
+  background: none; border: none; padding: 0;
+  font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit;
+  cursor: pointer;
+}
+.po-step-hit:disabled { cursor: default; }
+.po-step-hit:focus-visible { outline: 2px solid var(--brand, #b8922a); outline-offset: 4px; border-radius: 4px; }
+.po-steps .po-dot-n {
   width: 26px; height: 26px; border-radius: 50%;
   display: grid; place-items: center;
   background: #fff; border: 1px solid var(--line);
   font-size: 11px; font-weight: 700;
 }
 .po-steps li.is-now { color: var(--ink); }
-.po-steps li.is-now .po-dot {
+.po-steps li.is-now .po-dot-n {
   background: var(--brand, #b8922a); border-color: var(--brand, #b8922a); color: #fff;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #b8922a) 14%, transparent);
 }
 .po-steps li.is-done { color: var(--soft); }
-.po-steps li.is-done .po-dot {
+.po-steps li.is-done .po-dot-n {
   background: color-mix(in srgb, var(--brand, #b8922a) 16%, #fff);
   border-color: color-mix(in srgb, var(--brand, #b8922a) 40%, #fff);
   color: var(--brand, #b8922a);
 }
+.po-step-hit:not(:disabled):hover .po-step-lbl { color: var(--brand, #b8922a); }
 
 /* ── body ─────────────────────────────────────────────────── */
 .po-main { max-width: 1040px; margin: 0 auto; padding: 40px 24px 64px; }
@@ -179,7 +191,6 @@
 .po-panel-t { font-family: 'Playfair Display', Georgia, serif; font-size: 21px; color: var(--ink); margin: 0 0 6px; }
 .po-panel-p { color: var(--soft); margin: 0 0 22px; font-size: 15px; }
 .po-panel-p.no-gap { margin-bottom: 0; }
-.po-link { color: var(--brand, #b8922a); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── money ────────────────────────────────────────────────── */
 .po-bill {
@@ -238,4 +249,135 @@
   .po-steps li { font-size: 10px; letter-spacing: .05em; }
   .po-main { padding: 30px 18px 48px; }
   .po-sec + .po-sec { margin-top: 40px; }
+}
+
+/* ── summary strip ────────────────────────────────────────── */
+/* Label above value, the way PerfectPoses does it: the client can see what
+   they're agreeing to without scrolling back to step one. */
+.po-strip {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 34px;
+  padding: 16px 24px; background: #fff;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.po-strip-i { text-align: center; }
+.po-strip-l {
+  display: block; font-size: 10px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--soft); margin-bottom: 4px;
+}
+.po-strip-v { display: block; font-size: 15px; font-weight: 600; color: var(--ink); }
+
+/* ── the contract itself ──────────────────────────────────── */
+.po-doc {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 34px 36px; margin: 26px 0 8px;
+  white-space: pre-wrap; text-align: left;
+  font-size: 15px; line-height: 1.75; color: var(--body);
+  max-height: 60vh; overflow-y: auto;
+}
+
+/* An initial marker: a tab to tap, which fills in with the client's initials
+   in a hand. The next one due carries a ring so nothing gets hunted for. */
+.po-tab {
+  display: inline-block; margin: 0 5px; padding: 4px 14px;
+  border: 1.5px dashed var(--brand, #b8922a);
+  background: color-mix(in srgb, var(--brand, #b8922a) 9%, #fff);
+  border-radius: 7px; cursor: pointer;
+  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--brand, #b8922a);
+}
+.po-tab.is-filled {
+  background: none; border: none; border-bottom: 1.5px solid var(--ink);
+  border-radius: 0; padding: 0 16px 2px; cursor: default;
+  font-family: 'Segoe Script', 'Brush Script MT', 'Snell Roundhand', cursive;
+  font-size: 23px; font-weight: 400; letter-spacing: .5px; text-transform: none;
+  color: var(--ink);
+}
+.po-tab.is-next { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #b8922a) 22%, transparent); }
+
+/* ── signing ──────────────────────────────────────────────── */
+.po-sign-grid {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 24px 26px; margin-top: 18px; text-align: left;
+}
+.po-label {
+  display: block; font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--soft); margin-bottom: 7px;
+}
+.po-input {
+  width: 100%; padding: 12px 14px; font-size: 15px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 9px;
+}
+.po-input:focus { outline: none; border-color: var(--brand, #b8922a); }
+.po-pad-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-top: 20px;
+}
+.po-clear {
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--soft); text-decoration: underline; text-underline-offset: 3px;
+}
+.po-clear:hover { color: var(--brand, #b8922a); }
+/* the pad inherits `color` so the stroke is drawn in the ink colour */
+.po-pad {
+  display: block; width: 100%; height: 170px; color: var(--ink);
+  background: var(--paper);
+  border: 1.5px dashed color-mix(in srgb, var(--brand, #b8922a) 55%, #fff);
+  border-radius: 10px; touch-action: none;
+}
+
+/* Sticky so the client never has to scroll back up to sign, and always knows
+   how many initials are left. */
+.po-signbar {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;
+  margin-top: 18px; padding: 13px 18px;
+  background: color-mix(in srgb, #fff 94%, transparent);
+  border: 1px solid var(--line); border-radius: 12px;
+}
+.po-signbar-status {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600; color: var(--ink);
+}
+.po-dots { display: flex; gap: 4px; }
+.po-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #fff; border: 1px solid color-mix(in srgb, var(--brand, #b8922a) 45%, #fff);
+}
+.po-dot.is-on { background: var(--brand, #b8922a); border-color: var(--brand, #b8922a); }
+.po-cta-sm { width: auto; padding: 12px 28px; font-size: 14px; }
+
+/* ── continue button on a revisited step ──────────────────── */
+.po-next {
+  display: block; margin: 28px auto 0; padding: 13px 30px;
+  background: none; border: 1.5px solid var(--brand, #b8922a); border-radius: 10px;
+  font-size: 15px; font-weight: 600; color: var(--brand, #b8922a); cursor: pointer;
+}
+.po-next:hover { background: color-mix(in srgb, var(--brand, #b8922a) 10%, #fff); }
+
+/* ── signed! ──────────────────────────────────────────────── */
+.po-cheer {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; padding: 40px;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+}
+.po-cheer-box { text-align: center; max-width: 380px; }
+.po-check {
+  width: 78px; height: 78px; margin: 0 auto 20px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--brand, #b8922a); color: #fff; font-size: 34px;
+  animation: po-pop .4s cubic-bezier(.175, .885, .32, 1.275);
+}
+@keyframes po-pop { from { transform: scale(0); } to { transform: scale(1); } }
+.po-cheer-t { font-family: 'Playfair Display', Georgia, serif; font-size: 27px; font-weight: 600; color: var(--ink); margin: 0 0 8px; }
+.po-cheer-p { font-size: 15px; color: var(--soft); margin: 0; line-height: 1.6; }
+
+@media (max-width: 640px) {
+  .po-doc { padding: 22px 18px; max-height: none; }
+  .po-strip { gap: 18px; }
+  .po-steps { padding-inline: 10px; }
+  .po-steps li + li::before { width: 20px; margin: 0 7px; }
+  .po-steps li { font-size: 10px; letter-spacing: .04em; }
+  .po-signbar { gap: 10px; }
 }

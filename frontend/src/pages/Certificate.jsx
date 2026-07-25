@@ -15,7 +15,19 @@ export default function Certificate({ token }) {
   if (!data) return <div style={wrap}><div style={card}>Loading…</div></div>;
 
   const c = data.certificate;
-  const fmt = (d) => d ? new Date(d).toLocaleString() : '—';
+  // ⚖️ This is evidence. A timestamp that renders differently depending on who
+  // opens it is worthless in a dispute, so every time on the certificate is
+  // shown in UTC and says so, rather than in the reader's local zone.
+  const fmt = (d) => {
+    if (!d) return '—';
+    const x = new Date(d);
+    if (Number.isNaN(x.getTime())) return String(d);
+    return x.toLocaleString('en-GB', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false, timeZone: 'UTC',
+    }) + ' UTC';
+  };
   const EV = { created: '📄 Created', viewed: '👀 Viewed by client', signed: '✍️ Signed', finalized: '🔐 Finalized' };
 
   return (

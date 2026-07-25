@@ -23,6 +23,9 @@ setInterval(() => {
 }, RATE_WINDOW);
 
 const KNOWLEDGE_FIELDS = [
+  // what the assistant calls itself — the vendor's own name for their bot,
+  // so it introduces itself as part of THEIR team rather than a shared default
+  'bot_name',
   'business_name', 'tagline', 'about_team', 'service_area', 'contact', 'hours',
   'services', 'languages', 'delivery_time', 'packages', 'faqs', 'policies',
   'avoid_topics', 'tone_notes', 'notes',
@@ -322,20 +325,55 @@ router.get('/my/history', requireAuth, async (req, res) => {
     const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);   // interval '30 days'
     const rows = await prisma.chatbot_transcripts.findMany({
       where: { vendor_id: v, created_at: { gt: since } },          // 🔒 tenancy
-      select: { session: true, role: true, content: true, created_at: true },
+      select: { session: true, role: true, content: true, created_at: true, visitor_name: true },
       orderBy: [{ session: 'asc' }, { id: 'asc' }],
     });
 
     // group rows into conversations keyed by session
     const bySession = new Map();
     for (const r of rows) {
-      if (!bySession.has(r.session)) bySession.set(r.session, { session: r.session, started_at: r.created_at, messages: [] });
+      if (!bySession.has(r.session)) bySession.set(r.session, { session: r.session, started_at: r.created_at, visitor_name: null, messages: [] });
       const c = bySession.get(r.session);
       c.messages.push({ role: r.role, content: r.content, at: r.created_at });
+      // the name is learned partway through a chat, so any row that carries it
+      // names the whole conversation
+      if (r.visitor_name && !c.visitor_name) c.visitor_name = r.visitor_name;
       c.last_at = r.created_at;
     }
     const conversations = [...bySession.values()].sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
     res.json({ conversations });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 📚 MY knowledge — the vendor editing their own assistant from their panel.
+// This used to be reachable only by a super admin, or by the vendor following a
+// share link, which meant the person who actually knows the answers couldn't
+// correct them from the place they work every day.
+router.get('/my/knowledge', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const sub = await prisma.chatbot_subscribers.findUnique({
+      where: { vendor_id: v },                    // 🔒 tenancy — own row only
+      select: { active: true },
+    });
+    if (!sub) return res.status(403).json({ error: 'Not subscribed' });
+    const knowledge = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: v } });
+    res.json({ knowledge: knowledge || emptyKnowledge(v), fields: KNOWLEDGE_FIELDS });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/my/knowledge', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const sub = await prisma.chatbot_subscribers.findUnique({
+      where: { vendor_id: v },                    // 🔒 tenancy — own row only
+      select: { active: true },
+    });
+    if (!sub) return res.status(403).json({ error: 'Not subscribed' });
+    // 🔒 the id comes from the token, never the body, so a vendor can only ever
+    // write their own knowledge no matter what they post
+    await saveKnowledge(v, req.body);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

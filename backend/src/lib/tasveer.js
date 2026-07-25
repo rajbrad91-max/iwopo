@@ -30,6 +30,9 @@ export async function isActiveSubscriber(vendorId) {
 /** Build the system prompt from this vendor's knowledge (safety rules stay locked in code). */
 export function buildSystemPrompt(k, businessName) {
   const biz = (k.business_name || businessName || 'our studio').trim();
+  // The vendor names their own assistant. "Tasveer" stays the default so every
+  // existing subscriber reads exactly as before until they choose otherwise.
+  const bot = (k.bot_name || '').trim() || 'Tasveer';
   const sec = (title, val) => (val && String(val).trim() ? `${title}:\n${String(val).trim()}\n\n` : '');
 
   let kb = '';
@@ -48,11 +51,11 @@ export function buildSystemPrompt(k, businessName) {
   kb += sec('THINGS TO AVOID', k.avoid_topics);
   kb += sec('TONE / PERSONALITY', k.tone_notes);
 
-  return `Your name is Tasveer, part of the ${biz} team, chatting with visitors on the website. Speak naturally in first person ("we", "us", "I") - warm, friendly, relaxed and human, like a kind, down-to-earth person from the business.
+  return `Your name is ${bot}, part of the ${biz} team, chatting with visitors on the website. Speak naturally in first person ("we", "us", "I") - warm, friendly, relaxed and human, like a kind, down-to-earth person from the business.
 
 VOICE:
 - Be human and personable - everyday language, light warmth, real reactions ("Oh lovely!", "Congratulations!"). Never robotic, scripted or corporate; avoid stiff phrases like "How may I assist you".
-- Never say you are an AI, bot, assistant or language model. You are simply Tasveer from the team. If asked point-blank whether you're a bot/AI/real person, don't confirm or deny mechanically - stay in character, keep it light ("I'm Tasveer from the ${biz} team - happy to help!") and carry on.
+- Never say you are an AI, bot, assistant or language model. You are simply ${bot} from the team. If asked point-blank whether you're a bot/AI/real person, don't confirm or deny mechanically - stay in character, keep it light ("I'm ${bot} from the ${biz} team - happy to help!") and carry on.
 - Be brief: usually 1-2 short sentences, like a friendly person texting. Answer ONLY what was asked; don't volunteer extra background unless asked.
 - No filler closers ("Is there anything else I can help with?") - just answer and stop. Only ask a follow-up when you genuinely need a detail.
 - Avoid bullet lists unless asked. Mirror the visitor's energy and length. At most one tasteful emoji occasionally.
@@ -198,7 +201,7 @@ export async function saveLeadFromChat(vendorId, input) {
   add('Best time to call', input.callback_time);
   if (input.event_date && !eventDate) add('Event date (as stated)', input.event_date);
   add('Notes', input.notes);
-  const notes = ['— From Tasveer (chatbot) —', ...extras].join('\n');
+  const notes = ['— From the website chat —', ...extras].join('\n');
 
   const lead = await prisma.leads.create({
     data: {
@@ -257,6 +260,25 @@ export async function flagIssue(vendorId, input) {
     summary.slice(0, 300),
     upset ? 'upset' : 'trouble',
     { type: 'aichat' });
+}
+
+/**
+ * 👤 Name this conversation once the visitor tells us who they are.
+ *
+ * The transcript is keyed by session alone, so the vendor's history read as a
+ * wall of anonymous chats even when the visitor had introduced themselves.
+ * Stamping every row of the session means the name is there whichever row the
+ * panel happens to read first, and later rows inherit it too.
+ */
+async function nameSession(vendorId, session, name) {
+  const n = (name || '').trim().slice(0, 120);
+  if (!n || !session) return;
+  try {
+    await prisma.chatbot_transcripts.updateMany({
+      where: { vendor_id: Number(vendorId), session },   // 🔒 tenancy on the write
+      data: { visitor_name: n },
+    });
+  } catch { /* naming is a nicety — never break the chat over it */ }
 }
 
 /** Record token usage + cost for this vendor. */
@@ -348,9 +370,16 @@ export async function generateReply(vendorId, businessName, text, history = [], 
     for (const block of (body.content || [])) {
       if (block.type === 'text') reply += block.text;
       else if (block.type === 'tool_use') {
-        if (block.name === 'save_lead') { await saveLeadFromChat(vendorId, block.input || {}); leadSaved = true; }
+        if (block.name === 'save_lead') {
+          await saveLeadFromChat(vendorId, block.input || {});
+          await nameSession(vendorId, session, block.input?.name);
+          leadSaved = true;
+        }
         else if (block.name === 'log_unanswered') await logUnanswered(vendorId, block.input?.question, session);
-        else if (block.name === 'leave_message') await leaveMessage(vendorId, block.input || {}, session);
+        else if (block.name === 'leave_message') {
+          await leaveMessage(vendorId, block.input || {}, session);
+          await nameSession(vendorId, session, block.input?.name);
+        }
         else if (block.name === 'flag_issue') await flagIssue(vendorId, block.input || {});
       }
     }

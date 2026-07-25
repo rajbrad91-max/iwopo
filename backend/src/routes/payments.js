@@ -69,6 +69,17 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 💰 Money arriving is what confirms a booking, so the lead moves to 'booked'
+// (shown as "Booking Confirmed") the moment the first payment is recorded —
+// whether the vendor entered it by hand or confirmed a client's claim. Guarded
+// so an already-booked lead isn't rewritten on every later instalment.
+async function markBooked(leadId) {
+  await prisma.leads.updateMany({
+    where: { id: Number(leadId), status: { not: 'booked' } },
+    data: { status: 'booked', updated_at: new Date() },
+  });
+}
+
 // POST /api/payments/lead/:leadId → add payment
 router.post('/lead/:leadId', requireAuth, async (req, res) => {
   const { amount, method, note } = req.body;
@@ -85,6 +96,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
         note: note || null,
       },
     });
+    await markBooked(lead.id);
     const payments = await prisma.payments.findMany({
       where: { lead_id: lead.id },
       orderBy: { paid_at: 'desc' },
@@ -122,6 +134,7 @@ router.put('/lead/:leadId/confirm-claim', requireAuth, async (req, res) => {
           note: note || 'Confirmed from client claim',
         },
       });
+      await markBooked(lead.id);
     }
 
     await prisma.leads.update({
