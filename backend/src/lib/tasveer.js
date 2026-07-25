@@ -200,7 +200,7 @@ export async function saveLeadFromChat(vendorId, input) {
   add('Notes', input.notes);
   const notes = ['— From Tasveer (chatbot) —', ...extras].join('\n');
 
-  await prisma.leads.create({
+  const lead = await prisma.leads.create({
     data: {
       vendor_id: Number(vendorId), name,
       email: input.email || null,
@@ -218,7 +218,8 @@ export async function saveLeadFromChat(vendorId, input) {
   // 🔔 tell the vendor a booking came in through the chatbot
   const bits = [input.event_type, input.event_date, input.location].filter(Boolean).join(' · ');
   await notify(vendorId, `📋 New lead from AI Chat: ${name}`,
-    bits || (input.phone ? `Phone: ${input.phone}` : 'Details in Leads'), 'lead');
+    bits || (input.phone ? `Phone: ${input.phone}` : 'Details in Leads'), 'lead',
+    { type: 'lead', id: lead.id });
 }
 
 export async function logUnanswered(vendorId, question, session) {
@@ -241,7 +242,8 @@ export async function leaveMessage(vendorId, input, session) {
 
   // 🔔 a visitor left a message for the team
   const who = input.name ? input.name : 'A visitor';
-  await notify(vendorId, `📨 ${who} left a message for you`, m.slice(0, 200), 'message');
+  await notify(vendorId, `📨 ${who} left a message for you`, m.slice(0, 200), 'message',
+    { type: 'aichat' });
 }
 
 /** 😠⚠️ Visitor upset, or Tasveer couldn't help — alert the vendor. */
@@ -253,7 +255,8 @@ export async function flagIssue(vendorId, input) {
     vendorId,
     upset ? '😠 A visitor seemed upset in AI Chat' : '⚠️ AI Chat had trouble helping a visitor',
     summary.slice(0, 300),
-    upset ? 'upset' : 'trouble');
+    upset ? 'upset' : 'trouble',
+    { type: 'aichat' });
 }
 
 /** Record token usage + cost for this vendor. */

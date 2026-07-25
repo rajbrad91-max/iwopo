@@ -96,6 +96,13 @@ export default function VendorPanel({ onLogout }) {
     }
   }
 
+  // 🔔 A notification knows what it's about, so send the vendor straight there
+  // rather than dropping them on a list to go and find it themselves.
+  function openNotification(n) {
+    if (n.link_type === 'lead' && n.link_id) navigate({ tab: 'leads', lead: String(n.link_id) });
+    else if (n.link_type === 'aichat') navigate({ tab: 'aichat' });
+  }
+
   function handleLogout() { clearSession(); onLogout(); }
 
   const active = services.filter(s => s.enabled);
@@ -139,7 +146,7 @@ export default function VendorPanel({ onLogout }) {
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {has('calendar') && <button className={`hdr-icon ${tab==='calendar'?'active':''}`} onClick={() => setTab(tab === 'calendar' ? 'dashboard' : 'calendar')} title="Quick Calendar">🗓️</button>}
-            <NotifBell />
+            <NotifBell onOpen={openNotification} />
           </div>
         </div>
 
@@ -149,7 +156,7 @@ export default function VendorPanel({ onLogout }) {
         ) : loading ? <div className="loading">Loading…</div> : tab === 'refer' ? (
           <ReferForm user={user} />
         ) : tab === 'leads' ? (
-          <LeadsView />
+          <LeadsView routeLead={route.lead} onOpenLead={(id) => navigate({ tab: 'leads', lead: id ? String(id) : null })} />
         ) : tab === 'bookings' ? (
           <BookingsView />
         ) : tab === 'contracts' ? (
@@ -207,7 +214,7 @@ function sinceLabel(ts) {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
-function NotifBell() {
+function NotifBell({ onOpen }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ notifications: [], unseen: 0 });
   const boxRef = useRef(null);
@@ -258,13 +265,28 @@ function NotifBell() {
             <p className="nb-empty">🔕 Nothing yet — new leads and client activity will show up here.</p>
           ) : (
             <ul className="nb-list">
-              {data.notifications.map(n => (
-                <li key={n.id} className="nb-item">
-                  <p className="nb-title">{n.title}</p>
-                  {n.body && <p className="nb-body">{n.body}</p>}
-                  <p className="nb-when">{sinceLabel(n.created_at)}</p>
-                </li>
-              ))}
+              {data.notifications.map(n => {
+                const body = (
+                  <>
+                    <p className="nb-title">{n.title}</p>
+                    {n.body && <p className="nb-body">{n.body}</p>}
+                    <p className="nb-when">{sinceLabel(n.created_at)}</p>
+                  </>
+                );
+                // Only rows that know what they're about are clickable. Anything
+                // raised before link_type existed still reads fine, it just sits
+                // there rather than pretending to be a link that goes nowhere.
+                return (
+                  <li key={n.id} className={`nb-item ${n.link_type ? 'is-link' : ''}`}>
+                    {n.link_type ? (
+                      <button type="button" className="nb-hit"
+                        onClick={() => { setOpen(false); onOpen(n); }}>
+                        {body}
+                      </button>
+                    ) : body}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -1700,9 +1722,8 @@ function AddLeadModal({ vendorId, onClose, onSaveDone }) {
   );
 }
 
-function LeadsView() {
+function LeadsView({ routeLead, onOpenLead }) {
   const [leads, setLeads] = useState([]);
-  const [sel, setSel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('active'); // active | history
   const [filter, setFilter] = useState('all'); // all | new | quoted | booked
@@ -1740,6 +1761,24 @@ function LeadsView() {
     finally { setLoading(false); }
   }
 
+  // 🔗 Which lead is open comes from the URL, not from local state — the same
+  // shape GalleriesView uses. Until the list has loaded there's nothing to match
+  // against, so the table shows briefly and then the detail takes over.
+  const sel = routeLead ? leads.find(l => String(l.id) === String(routeLead)) || null : null;
+  // A lead can be linked to and still not be in this list: archived leads only
+  // exist under History. Say so rather than showing the table as though the
+  // click did nothing.
+  const missingLead = !!routeLead && !loading && !sel;
+
+  // Opening a lead marks that one read, so the sidebar badge keeps counting
+  // leads the vendor hasn't looked at rather than clearing wholesale on arrival.
+  // Optimistic: the row un-bolds immediately, and the count is re-read on close.
+  useEffect(() => {
+    if (!sel || sel.seen_at) return;
+    setLeads(ls => ls.map(x => x.id === sel.id ? { ...x, seen_at: new Date().toISOString() } : x));
+    api.markLeadsSeen(sel.id).catch(() => {});
+  }, [sel?.id]);
+
   function toggleCheck(id, e) {
     e.stopPropagation();
     setChecked(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
@@ -1764,7 +1803,7 @@ function LeadsView() {
     setSendFor(l);
   }
 
-  if (sel) return <LeadDetail lead={sel} onBack={() => { setSel(null); load(); }} />;
+  if (sel) return <LeadDetail lead={sel} onBack={() => { onOpenLead(null); load(); }} />;
 
   // 📊 stat tiles + filtering
   const counts = {
@@ -1773,16 +1812,10 @@ function LeadsView() {
     quoted: leads.filter(l => l.status === 'quoted').length,
     booked: leads.filter(l => l.status === 'booked').length,
   };
-  // 👁️ Open a lead — and mark just that one read, so the sidebar badge counts
-  // leads the vendor hasn't looked at rather than clearing wholesale on arrival.
-  // Optimistic: the row un-bolds immediately, and the count is re-read on close.
-  function openLead(l) {
-    setSel(l);
-    if (!l.seen_at) {
-      setLeads(ls => ls.map(x => x.id === l.id ? { ...x, seen_at: new Date().toISOString() } : x));
-      api.markLeadsSeen(l.id).catch(() => {});
-    }
-  }
+  // 👁️ Opening a lead is a URL change, matching how galleries work. That's what
+  // lets a notification (or a pasted link) land on the right lead, and keeps the
+  // browser Back button meaningful instead of dropping out of the panel.
+  function openLead(l) { onOpenLead(l.id); }
 
   const byFilter = filter === 'all' ? leads : leads.filter(l => l.status === filter);
   const shown = search.trim()
@@ -1805,6 +1838,11 @@ function LeadsView() {
 
   return (
     <div>
+      {missingLead && (
+        <div className="err-banner">
+          🔍 That lead isn&apos;t in your active list — it may have been archived. Check History.
+        </div>
+      )}
       <div className="lead-topbar">
         {view === 'active' ? (
           <div className="lead-stats">

@@ -809,6 +809,17 @@
 .nb-item { padding: 13px 16px; border-bottom: 1px solid var(--line); }
 .nb-item:last-child { border-bottom: none; }
 .nb-item:hover { background: var(--panel-2); }
+/* 🔗 A notification that knows what it's about becomes a button filling the
+   row, so the whole item is the hit area rather than just the text. Padding
+   moves onto the button for the same reason. */
+.nb-item.is-link { padding: 0; }
+.nb-hit {
+  display: block; width: 100%; padding: 13px 16px;
+  background: none; border: none; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.nb-hit:hover .nb-title { color: var(--teal); }
+.nb-hit:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
 .nb-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.4; }
 .nb-body { margin: 3px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
 .nb-when { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); opacity: .75; }

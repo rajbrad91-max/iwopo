@@ -9,10 +9,27 @@ function vid(req) {
 }
 
 /* ── 🔔 NOTIFICATIONS ── */
-export async function notify(vendorId, title, body, type = 'info') {
+/**
+ * Raise a notification for a vendor.
+ *
+ * `link` is what the notification is ABOUT, so the bell can send the vendor
+ * straight there instead of dropping them on a list to go hunting. Shape:
+ *   { type: 'lead', id: 42 }   → opens that lead
+ *   { type: 'aichat' }         → opens the AI Chat tab (no single record)
+ * Left null the row still renders, it just isn't clickable — which is what
+ * every notification raised before this column existed will do.
+ */
+export async function notify(vendorId, title, body, type = 'info', link = null) {
   try {
     await prisma.notifications.create({
-      data: { vendor_id: Number(vendorId), type, title, body: body || null },
+      data: {
+        vendor_id: Number(vendorId),
+        type,
+        title,
+        body: body || null,
+        link_type: link?.type || null,
+        link_id: link?.id != null ? Number(link.id) : null,
+      },
     });
   } catch { /* never break main flow */ }
 }

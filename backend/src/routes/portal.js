@@ -113,7 +113,7 @@ router.post('/:token/pick', async (req, res) => {
         }),
       ]);
       const updated = await prisma.leads.findUnique({ where: { id: lead.id } });
-      notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${own.name}"`, `Lead #${lead.id}`, 'package');
+      notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${own.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
       return res.json({ lead: updated, money: await moneySummary(updated) });
     }
 
@@ -136,7 +136,7 @@ router.post('/:token/pick', async (req, res) => {
       where: { id: lead.id },
       data: { package_id: p.id, package_snapshot: snapshot, updated_at: new Date() },
     });
-    notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${p.name}"`, `Lead #${lead.id}`, 'package');
+    notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${p.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
     res.json({ ok: true, money: await moneySummary(updated) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -190,6 +190,7 @@ router.post('/:token/pay-direct', async (req, res) => {
       `💰 ${lead.name || 'Client'} says they've paid`,
       `${chosen?.name || 'Booking'}${amount ? ` · $${Number(amount).toFixed(0)}` : ''} · confirm when the funds arrive`,
       'payment',
+      { type: 'lead', id: lead.id },   // the confirm/deny banner lives on the lead
     );
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
