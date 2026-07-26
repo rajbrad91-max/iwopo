@@ -2437,7 +2437,8 @@ function ContractsBox({ lead }) {
     try { await api.voidContract(id); load(); } catch (e) { setMsg('⚠️ ' + e.message); }
   }
   function copyLink(token) {
-    navigator.clipboard?.writeText(`https://iwopo.com/sign/${token}`);
+    // current origin, so a link copied on staging doesn't point at the live site
+    navigator.clipboard?.writeText(`${window.location.origin}/sign/${token}`);
     setMsg('🔗 Link copied!'); setTimeout(() => setMsg(''), 1500);
   }
 
@@ -2782,39 +2783,86 @@ function AllInvoices() {
 function AllContracts() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Signed contracts on confirmed bookings are the finished record; everything
+  // else is still in flight. Default to the finished ones because that's what
+  // this list is usually consulted for, with a toggle so nothing is unreachable.
+  const [done, setDone] = useState(true);
   const S = { draft: '📝', sent: '📨', signed: '✅', void: '🚫' };
   useEffect(() => {
     api.allContracts().then(d => setList(d.contracts || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
   function copyLink(token) {
-    navigator.clipboard?.writeText(`https://iwopo.com/sign/${token}`);
+    // current origin, not a hard-coded domain — copying from staging used to
+    // hand out a link pointing at the live site
+    navigator.clipboard?.writeText(`${window.location.origin}/sign/${token}`);
   }
   if (loading) return <div className="loading">Loading…</div>;
+  // voided ones never arrive from the API at all
+  const confirmed = list.filter(c => c.status === 'signed' && c.lead_status === 'booked');
+  const shown = done ? confirmed : list;
   return (
-    <div className="table-wrap">
-      <table>
-        <thead><tr><th>Client</th><th>Contract</th><th>Status</th><th>Signed</th><th></th></tr></thead>
-        <tbody>
-          {list.length === 0 ? (
-            <tr><td colSpan="5" className="empty">No contracts yet. Create one from a lead, or set up templates in 🛠️ Contract setup.</td></tr>
-          ) : list.map(c => (
-            <tr key={c.id}>
-              <td className="biz">{c.client_name}</td>
-              <td>{c.title}</td>
-              <td>{S[c.status]} {c.status}</td>
-              <td>{c.signed_at ? String(c.signed_at).slice(0, 10) : '—'}</td>
-              <td>{c.status !== 'signed'
-                ? <span className="ct-link" onClick={() => copyLink(c.token)}>🔗 Copy link</span>
-                : <a href={`/certificate/${c.token}`} target="_blank" rel="noreferrer" className="ct-cert">📜 Certificate</a>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div className="ct-filter">
+        <button className={`refresh ${done ? 'is-on' : ''}`} onClick={() => setDone(true)}>
+          ✅ Confirmed bookings ({confirmed.length})
+        </button>
+        <button className={`refresh ${!done ? 'is-on' : ''}`} onClick={() => setDone(false)}>
+          📋 All in progress ({list.length})
+        </button>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Client</th><th>Contract</th><th>Status</th><th>Signed</th><th></th></tr></thead>
+          <tbody>
+            {shown.length === 0 ? (
+              <tr><td colSpan="5" className="empty">
+                {done
+                  ? 'No confirmed bookings yet. A contract lands here once it\u2019s signed and the deposit is in ✅'
+                  : 'No contracts yet. Create one from a lead, or set up templates in 🛠️ Contract setup.'}
+              </td></tr>
+            ) : shown.map(c => (
+              <tr key={c.id}>
+                <td className="biz">{c.client_name}</td>
+                <td>{c.title}</td>
+                <td>{S[c.status]} {c.status}</td>
+                <td>{c.signed_at ? String(c.signed_at).slice(0, 10) : '—'}</td>
+                <td>{c.status !== 'signed'
+                  ? <span className="ct-link" onClick={() => copyLink(c.token)}>🔗 Copy link</span>
+                  : <a href={`/certificate/${c.token}`} target="_blank" rel="noreferrer" className="ct-cert">📜 Certificate</a>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
+
+// 👁️ Stand-in values so a template can be previewed before any client exists.
+// Deliberately obvious rather than realistic, so nothing here is mistaken for a
+// real booking, while still showing the shape and length of a filled contract.
+const CT_SAMPLE = {
+  client_name: 'Priya & Arjun', client_email: 'priya@example.com',
+  event_type: 'Wedding', event_date: '29 October 2028',
+  location: 'Abbotsford, BC', hours: '8', guests: '150',
+  package_name: 'Standard Package', total_cost: '$4,200',
+  deposit: '$1,260', balance: '$2,940',
+  today_date: new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }),
+  company_name: 'Your Studio',
+};
+
+function fillSample(text) {
+  return String(text || '').replace(/\{\{(\w+)\}\}/g, (m, k) =>
+    CT_SAMPLE[k] !== undefined ? CT_SAMPLE[k] : m);
+}
+
+// The three parts joined the same way the server joins them, so a preview can't
+// drift from what actually gets sent.
+function templateAssembled(t) {
+  return [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+}
 
 function ContractSetup() {
   const [tpls, setTpls] = useState([]);
@@ -2845,12 +2893,20 @@ function ContractSetup() {
     setSel(s => ({ ...s, body: (s.body || '') + ' ' + txt }));
   }
 
+  // 👁️ What the client will actually see. Assembled exactly the way the server
+  // does it — header, body, legal terms — with placeholders filled from sample
+  // values and [INITIAL] shown as the tap-to-initial box it becomes.
+  const [showPreview, setShowPreview] = useState(false);
+  const previewText = sel ? fillSample(templateAssembled(sel)) : '';
+  const previewParts = previewText.split('[INITIAL]');
+
   if (sel) return (
     <div className="table-wrap cs-edit">
       <div className="cs-edit-top">
         <button className="refresh" onClick={() => setSel(null)}>← All templates</button>
         <div className="cs-edit-actions">
           {msg && <span className={`cs-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
+          <button className="refresh" onClick={() => setShowPreview(true)}>👁️ Preview</button>
           <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
         </div>
       </div>
@@ -2877,6 +2933,35 @@ function ContractSetup() {
       <textarea className="cs-input cs-ta-md" value={sel.legal_terms || ''} onChange={e => setSel({ ...sel, legal_terms: e.target.value })} />
 
       <button className="refresh cs-save" onClick={save}>💾 Save template</button>
+
+      {showPreview && (
+        <div className="ctp-overlay" onClick={() => setShowPreview(false)}>
+          <div className="ctp-modal" onClick={e => e.stopPropagation()}>
+            <div className="ctp-head">
+              <h3 className="ctp-title">👁️ {sel.name || 'Contract'} — client&apos;s view</h3>
+              <button className="al-x" onClick={() => setShowPreview(false)}>✕</button>
+            </div>
+            <p className="cs-preview-note">
+              Sample details, so you can see the finished shape before any client does.
+              Real bookings fill their own.
+            </p>
+            <div className="ctp-body cs-preview-doc">
+              {previewParts.map((chunk, i) => (
+                <span key={i}>
+                  {chunk}
+                  {i < previewParts.length - 1 && <span className="cs-preview-init">Tap to initial</span>}
+                </span>
+              ))}
+            </div>
+            <div className="ctp-foot">
+              <span className="cs-preview-count">
+                ✍️ {previewParts.length - 1} initial box{previewParts.length - 1 === 1 ? '' : 'es'}
+              </span>
+              <button className="refresh" onClick={() => setShowPreview(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

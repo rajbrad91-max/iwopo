@@ -141,12 +141,19 @@ router.get('/', requireAuth, async (req, res) => {
     const v = vid(req);
     if (!v && req.user.role !== 'super_admin') return res.status(400).json({ error: 'No vendor' });
     const rows = await prisma.contracts.findMany({
-      where: v ? { vendor_id: Number(v) } : {},  // 🔒 tenancy (super_admin may span vendors)
+      // Voided contracts are history, not work in progress. They pile up on any
+      // lead that changed package, and the vendor's list should show what's
+      // live, not every superseded draft. They remain in the database and the
+      // audit trail records why each was voided.
+      where: v
+        ? { vendor_id: Number(v), status: { not: 'voided' } }   // 🔒 tenancy (super_admin may span vendors)
+        : { status: { not: 'voided' } },
       orderBy: { created_at: 'desc' },
-      include: { leads: { select: { name: true, event_type: true } } },
+      include: { leads: { select: { name: true, event_type: true, status: true } } },
     });
     const contracts = rows.map(({ leads, ...c }) => ({
       ...c, client_name: leads?.name ?? null, lead_event: leads?.event_type ?? null,
+      lead_status: leads?.status ?? null,
     }));
     res.json({ contracts });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -159,7 +166,9 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     const contracts = await prisma.contracts.findMany({
-      where: { lead_id: leadId },
+      // same rule as the overview: a superseded contract isn't something the
+      // vendor acts on. The lead keeps only its live one.
+      where: { lead_id: leadId, status: { not: 'voided' } },
       orderBy: { created_at: 'desc' },
     });
     res.json({ contracts });
