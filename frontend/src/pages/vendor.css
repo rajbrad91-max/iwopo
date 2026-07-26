@@ -1275,3 +1275,115 @@
   text-transform: uppercase; color: var(--teal);
 }
 .cs-preview-count { font-size: 12.5px; color: var(--muted); margin-right: auto; }
+
+/* ── 📋 Booking detail: its own page, mostly read-only ─────── */
+.bd-wrap { display: flex; flex-direction: column; gap: 16px; }
+.bd-top { display: flex; align-items: center; gap: 14px; }
+.bd-msg { font-size: 13px; font-weight: 600; }
+.bd-msg.is-ok { color: var(--green); }
+.bd-msg.is-err { color: var(--red); }
+.bd-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.bd-name { margin: 0; font-size: 22px; font-weight: 700; color: var(--text); }
+.bd-sub { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); }
+
+.bd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.bd-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 18px 20px;
+}
+.bd-money { border-left: 3px solid var(--teal); }
+.bd-h3 {
+  margin: 0 0 14px; font-size: 11px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+.bd-h4 {
+  margin: 20px 0 8px; font-size: 11px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+
+/* read-only particulars — label above value, never an input */
+.bd-dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+.bd-dl div { min-width: 0; }
+.bd-dl dt { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.bd-dl dd { margin: 3px 0 0; font-size: 14px; color: var(--text); word-break: break-word; }
+.bd-dl-money dd { font-size: 17px; font-weight: 700; }
+.bd-dl-money .is-paid dd { color: var(--green); }
+.bd-dl-money .is-due dd { color: var(--amber); }
+.bd-notes { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.6; white-space: pre-wrap; }
+.bd-empty { margin: 0; font-size: 13px; color: var(--muted); }
+.bd-fine { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.bd-pay-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.bd-input {
+  flex: 1 1 130px; min-width: 0; padding: 9px 11px; font: inherit; font-size: 13.5px;
+  color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 8px;
+}
+.bd-input:focus { outline: none; border-color: var(--teal); }
+.bd-input-amt { flex: 0 0 110px; }
+.bd-input-time { flex: 0 0 120px; }
+
+.bd-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.bd-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px;
+}
+.bd-list li:last-child { border-bottom: none; }
+.bd-list-right { display: flex; align-items: center; gap: 10px; }
+.bd-when { font-size: 12px; color: var(--muted); }
+.bd-x {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 14px; line-height: 1; padding: 2px 4px;
+}
+.bd-x:hover { color: var(--red); }
+
+/* packages as offered, with the chosen one marked */
+.bd-pkgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.bd-pkg {
+  position: relative; background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
+}
+.bd-pkg.is-chosen { border-color: var(--teal); border-width: 2px; padding: 13px 15px; }
+.bd-pkg-tag {
+  position: absolute; top: -9px; left: 14px;
+  background: var(--teal); color: #06231f;
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  padding: 2px 9px; border-radius: 20px;
+}
+.bd-pkg-name { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text); }
+.bd-pkg-price { margin: 5px 0 0; font-size: 19px; font-weight: 700; color: var(--teal); }
+.bd-inc { margin: 10px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+
+.bd-docs { display: flex; flex-direction: column; gap: 8px; }
+.bd-doc {
+  display: block; padding: 10px 13px; font-size: 13.5px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); text-decoration: none;
+}
+.bd-doc:hover { border-color: var(--teal); color: var(--teal); }
+
+@media (max-width: 900px) {
+  .bd-grid { grid-template-columns: 1fr; }
+  .bd-dl { grid-template-columns: 1fr; }
+}
+
+/* ── contract setup: editor and live preview side by side ──── */
+.cs-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.cs-preview {
+  position: sticky; top: 16px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 18px 20px;
+  max-height: calc(100vh - 40px); overflow-y: auto;
+}
+.cs-preview-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.cs-preview-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+@media (max-width: 1000px) {
+  .cs-split { grid-template-columns: 1fr; }
+  .cs-preview { position: static; max-height: none; }
+}

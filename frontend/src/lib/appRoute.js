@@ -5,9 +5,10 @@
 // browser Back button moves within the app instead of doing nothing.
 //
 // URL shape (all under /panel):
-//   /panel                      -> { tab: 'dashboard', album: null, lead: null }
+//   /panel                      -> { tab: 'dashboard', album: null, lead: null, booking: null }
 //   /panel/leads                -> { tab: 'leads',     lead: null }
 //   /panel/leads/35             -> { tab: 'leads',     lead: '35'  }
+//   /panel/bookings/35          -> { tab: 'bookings',  booking: '35' }
 //   /panel/galleries            -> { tab: 'galleries', album: null }
 //   /panel/galleries/42         -> { tab: 'galleries', album: '42' }
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -18,24 +19,27 @@ function segs() {
   return window.location.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
 }
 
-// URL -> { tab, album, lead }
+// URL -> { tab, album, lead, booking }
 export function readRoute(defaultTab = 'dashboard') {
   const s = segs();
-  if (s[0] !== BASE) return { tab: defaultTab, album: null, lead: null };
+  if (s[0] !== BASE) return { tab: defaultTab, album: null, lead: null, booking: null };
   const tab = s[1] || defaultTab;
   const album = tab === 'galleries' && s[2] ? s[2] : null;
   // a lead id in the URL opens that lead — this is what lets a notification,
   // or a link someone pasted to themselves, land on the right record
   const lead = tab === 'leads' && s[2] ? s[2] : null;
-  return { tab, album, lead };
+  // a booking opens as its own page rather than the lead editor
+  const booking = tab === 'bookings' && s[2] ? s[2] : null;
+  return { tab, album, lead, booking };
 }
 
-// { tab, album, lead } -> "/panel/…" path
-function toPath({ tab, album, lead }) {
+// { tab, album, lead, booking } -> "/panel/…" path
+function toPath({ tab, album, lead, booking }) {
   let p = '/' + BASE;
   if (tab && tab !== 'dashboard') p += '/' + tab;
   if (tab === 'galleries' && album) p += '/' + album;
   if (tab === 'leads' && lead) p += '/' + lead;
+  if (tab === 'bookings' && booking) p += '/' + booking;
   return p;
 }
 
@@ -70,6 +74,7 @@ export function useAppRoute(defaultTab = 'dashboard') {
     const merged = { ...routeRef.current, ...next };
     if (next.tab && !('album' in next)) merged.album = null;
     if (next.tab && !('lead' in next)) merged.lead = null;
+    if (next.tab && !('booking' in next)) merged.booking = null;
     window.history.pushState({ app: true }, '', toPath(merged));
     setRoute(merged);
   }, []);
@@ -78,6 +83,7 @@ export function useAppRoute(defaultTab = 'dashboard') {
     const merged = { ...routeRef.current, ...next };
     if (next.tab && !('album' in next)) merged.album = null;
     if (next.tab && !('lead' in next)) merged.lead = null;
+    if (next.tab && !('booking' in next)) merged.booking = null;
     window.history.replaceState({ app: true }, '', toPath(merged));
     setRoute(merged);
   }, []);

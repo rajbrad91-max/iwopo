@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
+import './certificate.css';
 
+/**
+ * Certificate of electronic signature.
+ *
+ * This is the document produced when a signature is challenged, so it is set
+ * like a legal record rather than part of the app: serif type, ruled rows, no
+ * ornament and no emoji. Every time is printed in UTC and says so — a record
+ * that reads differently depending on who opens it proves nothing.
+ */
 export default function Certificate({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -11,13 +20,10 @@ export default function Certificate({ token }) {
       .catch(() => setErr('Failed to load'));
   }, [token]);
 
-  if (err) return <div style={wrap}><div style={card}>⚠️ {err}</div></div>;
-  if (!data) return <div style={wrap}><div style={card}>Loading…</div></div>;
+  if (err) return <div className="cert-page"><div className="cert-sheet cert-state">{err}</div></div>;
+  if (!data) return <div className="cert-page"><div className="cert-sheet cert-state">Loading…</div></div>;
 
   const c = data.certificate;
-  // ⚖️ This is evidence. A timestamp that renders differently depending on who
-  // opens it is worthless in a dispute, so every time on the certificate is
-  // shown in UTC and says so, rather than in the reader's local zone.
   const fmt = (d) => {
     if (!d) return '—';
     const x = new Date(d);
@@ -28,72 +34,86 @@ export default function Certificate({ token }) {
       hour12: false, timeZone: 'UTC',
     }) + ' UTC';
   };
-  const EV = { created: '📄 Created', viewed: '👀 Viewed by client', signed: '✍️ Signed', finalized: '🔐 Finalized' };
+  const EV = {
+    created: 'Document created',
+    sent: 'Sent to signer',
+    viewed: 'Opened by signer',
+    signed: 'Signed',
+    finalized: 'Finalised',
+    voided: 'Voided',
+    package_changed: 'Package changed',
+  };
+  const rows = [
+    ['Document', c.title],
+    ['Issued by', c.business_name],
+    ['Signatory', `${c.signed_name}${c.client_email ? ` (${c.client_email})` : ''}`],
+    ['Matter', `${c.event_type || '—'}${c.event_date ? ` — ${String(c.event_date).slice(0, 10)}` : ''}`],
+    ['Created', fmt(c.created_at)],
+    ['First opened', fmt(c.viewed_at)],
+    ['Executed', fmt(c.signed_at)],
+    ['Originating IP', c.signed_ip || '—'],
+    ['Initials captured', `${(c.initials || []).filter(Boolean).length}`],
+  ];
 
   return (
-    <div style={wrap}>
-      <div style={{ ...card, maxWidth: 680 }}>
-        <div style={{ textAlign: 'center', borderBottom: '3px double #0f766e', paddingBottom: 16 }}>
-          <div style={{ fontSize: 40 }}>📜</div>
-          <h1 style={{ margin: '6px 0 2px', fontSize: 22, color: '#0f766e' }}>Certificate of Completion</h1>
-          <div style={{ color: '#666', fontSize: 13 }}>Electronic Signature Record</div>
-        </div>
+    <div className="cert-page">
+      <div className="cert-sheet">
+        <header className="cert-head">
+          <p className="cert-eyebrow">Electronic Signature Record</p>
+          <h1 className="cert-title">Certificate of Completion</h1>
+          <p className="cert-ref">Reference {String(token).slice(0, 16).toUpperCase()}</p>
+        </header>
 
-        <table style={{ width: '100%', fontSize: 14, marginTop: 18, borderCollapse: 'collapse' }}>
+        <table className="cert-table">
           <tbody>
-            <Tr l="📄 Document" v={c.title} />
-            <Tr l="🏢 Sent by" v={c.business_name} />
-            <Tr l="👤 Signer" v={`${c.signed_name} (${c.client_email || '—'})`} />
-            <Tr l="🎉 Event" v={`${c.event_type || '—'}${c.event_date ? ' · ' + String(c.event_date).slice(0, 10) : ''}`} />
-            <Tr l="🕐 Created" v={fmt(c.created_at)} />
-            <Tr l="👀 First viewed" v={fmt(c.viewed_at)} />
-            <Tr l="✍️ Signed" v={fmt(c.signed_at)} />
-            <Tr l="🌐 Signer IP" v={c.signed_ip || '—'} />
-            <Tr l="✅ Initials" v={`${(c.initials || []).filter(Boolean).length} completed`} />
+            {rows.map(([l, v]) => (
+              <tr key={l}><th scope="row">{l}</th><td>{v}</td></tr>
+            ))}
           </tbody>
         </table>
 
         {c.signature_data && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>🖊️ Captured signature</div>
-            <img src={c.signature_data} alt="signature"
-              style={{ maxWidth: 260, background: '#0d1417', borderRadius: 8, padding: 8, border: '1px solid #ddd' }} />
-          </div>
+          <section className="cert-sig">
+            <h2 className="cert-h2">Signature as captured</h2>
+            <img className="cert-sig-img" src={c.signature_data} alt="Captured signature" />
+            <p className="cert-sig-name">{c.signed_name}</p>
+          </section>
         )}
 
-        <div style={{ marginTop: 16, background: '#f4f7f6', borderRadius: 8, padding: 12 }}>
-          <div style={{ fontSize: 12, color: '#666' }}>🔐 Document fingerprint (SHA-256)</div>
-          <div style={{ fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all', marginTop: 4 }}>{c.doc_sha256}</div>
-        </div>
+        <section className="cert-hash">
+          <h2 className="cert-h2">Document fingerprint (SHA-256)</h2>
+          <p className="cert-hash-val">{c.doc_sha256}</p>
+          <p className="cert-note">
+            Any alteration to the executed document produces a different fingerprint.
+          </p>
+        </section>
 
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f766e', marginBottom: 6 }}>📋 Audit trail</div>
-          {data.audit.map((a, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '6px 0', borderBottom: '1px solid #eee' }}>
-              <span>{EV[a.event] || a.event}{a.ip ? ` · ${a.ip}` : ''}</span>
-              <span style={{ color: '#666' }}>{fmt(a.created_at)}</span>
-            </div>
-          ))}
-        </div>
+        <section>
+          <h2 className="cert-h2">Audit trail</h2>
+          <table className="cert-audit">
+            <tbody>
+              {data.audit.map((a, i) => (
+                <tr key={i}>
+                  <td>{EV[a.event] || a.event}</td>
+                  <td className="cert-audit-ip">{a.ip || '—'}</td>
+                  <td className="cert-audit-at">{fmt(a.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
 
-        <button onClick={() => window.print()} className="no-print"
-          style={{ marginTop: 20, width: '100%', padding: 12, background: '#0f766e', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
-          🖨️ Print / Save PDF
+        <footer className="cert-foot">
+          <p>
+            This certificate is generated from the signature record held for this document.
+            All times are Coordinated Universal Time.
+          </p>
+        </footer>
+
+        <button type="button" className="cert-print no-print" onClick={() => window.print()}>
+          Print or save as PDF
         </button>
-        <style>{`@media print { .no-print { display: none } }`}</style>
       </div>
     </div>
   );
 }
-
-function Tr({ l, v }) {
-  return (
-    <tr style={{ borderBottom: '1px solid #eee' }}>
-      <td style={{ padding: '8px 4px', color: '#666', width: 150 }}>{l}</td>
-      <td style={{ padding: '8px 4px', fontWeight: 600 }}>{v}</td>
-    </tr>
-  );
-}
-
-const wrap = { minHeight: '100vh', background: '#f4f7f6', display: 'flex', justifyContent: 'center', padding: 24, fontFamily: "'Segoe UI', sans-serif" };
-const card = { background: '#fff', borderRadius: 14, padding: 30, width: '100%', boxShadow: '0 2px 14px rgba(0,0,0,0.07)', color: '#222', height: 'fit-content' };
