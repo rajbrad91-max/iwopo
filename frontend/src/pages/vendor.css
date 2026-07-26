@@ -1277,28 +1277,7 @@
 .cs-preview-count { font-size: 12.5px; color: var(--muted); margin-right: auto; }
 
 /* ── 📋 Booking detail: its own page, mostly read-only ─────── */
-.bd-wrap { display: flex; flex-direction: column; gap: 16px; }
-.bd-top { display: flex; align-items: center; gap: 14px; }
-.bd-msg { font-size: 13px; font-weight: 600; }
-.bd-msg.is-ok { color: var(--green); }
-.bd-msg.is-err { color: var(--red); }
-.bd-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap;
-}
-.bd-name { margin: 0; font-size: 22px; font-weight: 700; color: var(--text); }
-.bd-sub { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); }
 
-.bd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.bd-card {
-  background: var(--panel); border: 1px solid var(--line);
-  border-radius: 12px; padding: 18px 20px;
-}
-.bd-money { border-left: 3px solid var(--teal); }
-.bd-h3 {
-  margin: 0 0 14px; font-size: 11px; font-weight: 700;
-  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
-}
 .bd-h4 {
   margin: 20px 0 8px; font-size: 11px; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; color: var(--muted);

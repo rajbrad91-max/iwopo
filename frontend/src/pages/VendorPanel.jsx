@@ -3810,8 +3810,10 @@ function BookingDetail({ id, onBack }) {
   }
 
   if (err) return (
-    <div>
-      <button className="refresh bd-back" onClick={onBack}>← All bookings</button>
+    <div className="ld-view">
+      <div className="ld-topbar">
+        <button className="refresh" onClick={onBack}>← Back to bookings</button>
+      </div>
       <div className="err-banner">⚠️ {err}</div>
     </div>
   );
@@ -3823,160 +3825,158 @@ function BookingDetail({ id, onBack }) {
   const money0 = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
   return (
-    <div className="bd-wrap">
-      <div className="bd-top">
-        <button className="refresh bd-back" onClick={onBack}>← All bookings</button>
-        {msg && <span className={`bd-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</span>}
+    // Same shell as every other detail screen — Leads, Albums, Templates all use
+    // this. A booking page that invented its own wrapper, back button and card
+    // styling read as a different product bolted on beside the panel.
+    <div className="ld-view">
+      <div className="ld-topbar">
+        <button className="refresh" onClick={onBack}>← Back to bookings</button>
+        <span className="badge active">✅ Booking Confirmed</span>
       </div>
+      <h2 className="ld-h2">{b.name} · {b.event_type}</h2>
+      {msg && <div className={`ld-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
 
-      <div className="bd-head">
-        <div>
-          <h2 className="bd-name">{b.name}</h2>
-          <p className="bd-sub">
-            {b.event_type}{b.event_date ? ` · ${fmtEventDate(b.event_date, { long: true })}` : ''}
-            {b.location ? ` · ${b.location}` : ''}
-          </p>
-        </div>
-        <span className="badge active">Booking Confirmed</span>
-      </div>
-
-      <div className="bd-grid">
-        {/* ── details, read-only: the deal is agreed, so nothing here is a form ── */}
-        <section className="bd-card">
-          <h3 className="bd-h3">Details</h3>
-          <dl className="bd-dl">
-            <div><dt>Client</dt><dd>{b.name || '—'}</dd></div>
-            <div><dt>Email</dt><dd>{b.email || '—'}</dd></div>
-            <div><dt>Phone</dt><dd>{b.phone || '—'}</dd></div>
-            <div><dt>Event</dt><dd>{b.event_type || '—'}</dd></div>
-            <div><dt>Date</dt><dd>{b.event_date ? fmtEventDate(b.event_date, { long: true }) : '—'}</dd></div>
-            <div><dt>Timing</dt><dd>{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</dd></div>
-            <div><dt>Location</dt><dd>{b.location || '—'}</dd></div>
-            <div><dt>Guests</dt><dd>{b.guests || '—'}</dd></div>
-            <div><dt>Hours</dt><dd>{b.hours || '—'}</dd></div>
-          </dl>
-          {b.notes && <><h4 className="bd-h4">Notes</h4><p className="bd-notes">{b.notes}</p></>}
-        </section>
-
-        {/* ── money ── */}
-        <section className="bd-card bd-money">
-          <h3 className="bd-h3">Money</h3>
-          <dl className="bd-dl bd-dl-money">
-            <div><dt>Total</dt><dd>${money0(money.final_total)}</dd></div>
-            <div><dt>Deposit</dt><dd>${money0(money.deposit_amount)}</dd></div>
-            <div className="is-paid"><dt>Paid</dt><dd>${money0(money.paid)}</dd></div>
-            <div className="is-due"><dt>Balance</dt><dd>${money0(money.balance)}</dd></div>
-          </dl>
-
-          <h4 className="bd-h4">Record a payment</h4>
-          <div className="bd-pay-row">
-            <input className="bd-input bd-input-amt" type="number" min="0" step="0.01" placeholder="Amount"
-              value={pay.amount} onChange={e => setPay(p => ({ ...p, amount: e.target.value }))} />
-            <select className="bd-input" value={pay.method} onChange={e => setPay(p => ({ ...p, method: e.target.value }))}>
-              <option value="manual">Manual</option>
-              <option value="etransfer">E-transfer</option>
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="direct">Direct</option>
-            </select>
-            <input className="bd-input" placeholder="Note (optional)"
-              value={pay.note} onChange={e => setPay(p => ({ ...p, note: e.target.value }))} />
-            <button className="refresh" onClick={addPayment} disabled={busy}>Add</button>
+      <div className="lead-grid">
+        <div className="lead-left">
+          {/* ── details, read-only: the deal is agreed, so nothing here is a form ── */}
+          <div className="ld-card">
+            <div className="ld-card-h">📋 Details</div>
+            <dl className="bd-dl">
+              <div><dt>Client</dt><dd>{b.name || '—'}</dd></div>
+              <div><dt>Email</dt><dd>{b.email || '—'}</dd></div>
+              <div><dt>Phone</dt><dd>{b.phone || '—'}</dd></div>
+              <div><dt>Event</dt><dd>{b.event_type || '—'}</dd></div>
+              <div><dt>Date</dt><dd>{b.event_date ? fmtEventDate(b.event_date, { long: true }) : '—'}</dd></div>
+              <div><dt>Timing</dt><dd>{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</dd></div>
+              <div><dt>Location</dt><dd>{b.location || '—'}</dd></div>
+              <div><dt>Guests</dt><dd>{b.guests || '—'}</dd></div>
+              <div><dt>Hours</dt><dd>{b.hours || '—'}</dd></div>
+            </dl>
+            {b.notes && <><h4 className="bd-h4">Notes</h4><p className="bd-notes">{b.notes}</p></>}
           </div>
 
-          {d.payments.length > 0 && (
-            <ul className="bd-list">
-              {d.payments.map(p => (
-                <li key={p.id}>
-                  <span>${money0(p.amount)} · {p.method}{p.note ? ` · ${p.note}` : ''}</span>
-                  <span className="bd-list-right">
-                    <span className="bd-when">{fmtDateTime(p.created_at, { dateOnly: true })}</span>
-                    <button className="bd-x" onClick={() => removePayment(p.id)} disabled={busy}>✕</button>
-                  </span>
-                </li>
+          {/* ── packages: everything that was offered, with the chosen one marked ── */}
+          <div className="ld-card">
+            <div className="ld-card-h">📦 Packages offered</div>
+            {d.packages.length === 0 ? (
+              <p className="bd-empty">No packages were sent for this booking.</p>
+            ) : (
+              <div className="bd-pkgs">
+                {d.packages.map(p => {
+                  const isChosen = p.id === chosenId || p.is_selected;
+                  const inc = Array.isArray(p.inclusions) ? p.inclusions : [];
+                  return (
+                    <div key={p.id} className={`bd-pkg ${isChosen ? 'is-chosen' : ''}`}>
+                      {isChosen && <span className="bd-pkg-tag">Chosen</span>}
+                      <h4 className="bd-pkg-name">{p.name}</h4>
+                      <p className="bd-pkg-price">${money0(p.base_price)}</p>
+                      {inc.length > 0 && <ul className="bd-inc">{inc.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="lead-right">
+          {/* ── money ── */}
+          <div className="ld-card">
+            <div className="ld-card-h">💰 Money</div>
+            <dl className="bd-dl bd-dl-money">
+              <div><dt>Total</dt><dd>${money0(money.final_total)}</dd></div>
+              <div><dt>Deposit</dt><dd>${money0(money.deposit_amount)}</dd></div>
+              <div className="is-paid"><dt>Paid</dt><dd>${money0(money.paid)}</dd></div>
+              <div className="is-due"><dt>Balance</dt><dd>${money0(money.balance)}</dd></div>
+            </dl>
+
+            <h4 className="bd-h4">Record a payment</h4>
+            <div className="bd-pay-row">
+              <input className="bd-input bd-input-amt" type="number" min="0" step="0.01" placeholder="Amount"
+                value={pay.amount} onChange={e => setPay(p => ({ ...p, amount: e.target.value }))} />
+              <select className="bd-input" value={pay.method} onChange={e => setPay(p => ({ ...p, method: e.target.value }))}>
+                <option value="manual">Manual</option>
+                <option value="etransfer">E-transfer</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="direct">Direct</option>
+              </select>
+              <input className="bd-input" placeholder="Note (optional)"
+                value={pay.note} onChange={e => setPay(p => ({ ...p, note: e.target.value }))} />
+              <button className="refresh" onClick={addPayment} disabled={busy}>Add</button>
+            </div>
+
+            {d.payments.length > 0 && (
+              <ul className="bd-list">
+                {d.payments.map(p => (
+                  <li key={p.id}>
+                    <span>${money0(p.amount)} · {p.method}{p.note ? ` · ${p.note}` : ''}</span>
+                    <span className="bd-list-right">
+                      <span className="bd-when">{fmtDateTime(p.created_at, { dateOnly: true })}</span>
+                      <button className="bd-x" onClick={() => removePayment(p.id)} disabled={busy}>✕</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* ── paperwork: downloadable for a year after the event ── */}
+          <div className="ld-card">
+            <div className="ld-card-h">📄 Paperwork</div>
+            <div className="bd-docs">
+              {d.contract ? (
+                <a className="bd-doc" href={`/certificate/${d.contract.token}`} target="_blank" rel="noreferrer">
+                  Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
+                </a>
+              ) : <p className="bd-empty">No signed contract on file.</p>}
+              {d.invoices.map(i => (
+                <a key={i.id} className="bd-doc" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">
+                  Invoice {i.invoice_number} — ${money0(i.total)} · balance ${money0(i.balance)}
+                </a>
               ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      {/* ── packages: everything that was offered, with the chosen one marked ── */}
-      <section className="bd-card">
-        <h3 className="bd-h3">Packages offered</h3>
-        {d.packages.length === 0 ? (
-          <p className="bd-empty">No packages were sent for this booking.</p>
-        ) : (
-          <div className="bd-pkgs">
-            {d.packages.map(p => {
-              const isChosen = p.id === chosenId || p.is_selected;
-              const inc = Array.isArray(p.inclusions) ? p.inclusions : [];
-              return (
-                <div key={p.id} className={`bd-pkg ${isChosen ? 'is-chosen' : ''}`}>
-                  {isChosen && <span className="bd-pkg-tag">Chosen</span>}
-                  <h4 className="bd-pkg-name">{p.name}</h4>
-                  <p className="bd-pkg-price">${money0(p.base_price)}</p>
-                  {inc.length > 0 && <ul className="bd-inc">{inc.map((x, i) => <li key={i}>{x}</li>)}</ul>}
-                </div>
-              );
-            })}
+            </div>
+            <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Kept for one year after the event.</p>
           </div>
-        )}
-      </section>
 
-      {/* ── paperwork: downloadable for a year after the event ── */}
-      <section className="bd-card">
-        <h3 className="bd-h3">Paperwork</h3>
-        <div className="bd-docs">
-          {d.contract ? (
-            <a className="bd-doc" href={`/certificate/${d.contract.token}`} target="_blank" rel="noreferrer">
-              Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
-            </a>
-          ) : <p className="bd-empty">No signed contract on file.</p>}
-          {d.invoices.map(i => (
-            <a key={i.id} className="bd-doc" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">
-              Invoice {i.invoice_number} — ${money0(i.total)} · balance ${money0(i.balance)}
-            </a>
-          ))}
+          {/* ── crew ── */}
+          <div className="ld-card">
+            <div className="ld-card-h">👥 Team on the day</div>
+            {d.crew.length > 0 && (
+              <ul className="bd-list">
+                {d.crew.map(c => (
+                  <li key={c.id}>
+                    <span>
+                      <strong>{c.name}</strong>{c.duty ? ` · ${c.duty}` : ''}
+                      {c.arrive_time ? ` · ${fmtTime(c.arrive_time)}` : ''}{c.leave_time ? ` – ${fmtTime(c.leave_time)}` : ''}
+                    </span>
+                    <span className="bd-list-right">
+                      {c.checked_in_at && <span className="bd-when">checked in</span>}
+                      <button className="bd-x" onClick={() => removeCrew(c.id)} disabled={busy}>✕</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <h4 className="bd-h4">Assign someone</h4>
+            <div className="bd-pay-row">
+              <select className="bd-input" value={assign.crew_member_id}
+                onChange={e => setAssign(a => ({ ...a, crew_member_id: e.target.value }))}>
+                <option value="">Team member…</option>
+                {d.roster.map(r => <option key={r.id} value={r.id}>{r.name}{r.role ? ` (${r.role})` : ''}</option>)}
+              </select>
+              <input className="bd-input" placeholder="Duty (e.g. Lead photographer)"
+                value={assign.duty} onChange={e => setAssign(a => ({ ...a, duty: e.target.value }))} />
+              <input className="bd-input bd-input-time" type="time" value={assign.arrive_time}
+                onChange={e => setAssign(a => ({ ...a, arrive_time: e.target.value }))} />
+              <input className="bd-input bd-input-time" type="time" value={assign.leave_time}
+                onChange={e => setAssign(a => ({ ...a, leave_time: e.target.value }))} />
+              <button className="refresh" onClick={addCrew} disabled={busy}>Assign</button>
+            </div>
+            {d.roster.length === 0 && <p className="bd-fine">No team members yet — add them under Crew.</p>}
+          </div>
         </div>
-        <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Kept for one year after the event.</p>
-      </section>
-
-      {/* ── crew ── */}
-      <section className="bd-card">
-        <h3 className="bd-h3">Team on the day</h3>
-        {d.crew.length > 0 && (
-          <ul className="bd-list">
-            {d.crew.map(c => (
-              <li key={c.id}>
-                <span>
-                  <strong>{c.name}</strong>{c.duty ? ` · ${c.duty}` : ''}
-                  {c.arrive_time ? ` · ${fmtTime(c.arrive_time)}` : ''}{c.leave_time ? ` – ${fmtTime(c.leave_time)}` : ''}
-                </span>
-                <span className="bd-list-right">
-                  {c.checked_in_at && <span className="bd-when">checked in</span>}
-                  <button className="bd-x" onClick={() => removeCrew(c.id)} disabled={busy}>✕</button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <h4 className="bd-h4">Assign someone</h4>
-        <div className="bd-pay-row">
-          <select className="bd-input" value={assign.crew_member_id}
-            onChange={e => setAssign(a => ({ ...a, crew_member_id: e.target.value }))}>
-            <option value="">Team member…</option>
-            {d.roster.map(r => <option key={r.id} value={r.id}>{r.name}{r.role ? ` (${r.role})` : ''}</option>)}
-          </select>
-          <input className="bd-input" placeholder="Duty (e.g. Lead photographer)"
-            value={assign.duty} onChange={e => setAssign(a => ({ ...a, duty: e.target.value }))} />
-          <input className="bd-input bd-input-time" type="time" value={assign.arrive_time}
-            onChange={e => setAssign(a => ({ ...a, arrive_time: e.target.value }))} />
-          <input className="bd-input bd-input-time" type="time" value={assign.leave_time}
-            onChange={e => setAssign(a => ({ ...a, leave_time: e.target.value }))} />
-          <button className="refresh" onClick={addCrew} disabled={busy}>Assign</button>
-        </div>
-        {d.roster.length === 0 && <p className="bd-fine">No team members yet — add them under Crew.</p>}
-      </section>
+      </div>
     </div>
   );
 }
