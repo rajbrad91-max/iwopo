@@ -112,6 +112,11 @@ router.post('/bulk-archive', requireAuth, async (req, res) => {
       where: scope(vid, { id: { in: ids } }),      // 🔒 tenancy on the write itself
       data: { archived_at: new Date() },
     });
+    // The scope means another vendor's ids simply match nothing, so the data is
+    // safe either way — but answering 200 "archived: 0" told the caller nothing
+    // and read as success. Matching nothing when ids were given is a 404, the
+    // same answer the lead-packages routes give.
+    if (!count) return res.status(404).json({ error: 'No matching leads' });
     res.json({ archived: count });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -125,6 +130,7 @@ router.post('/bulk-delete', requireAuth, async (req, res) => {
     const { count } = await prisma.leads.deleteMany({
       where: scope(vid, { id: { in: ids } }),      // 🔒 tenancy on the write itself
     });
+    if (!count) return res.status(404).json({ error: 'No matching leads' });
     res.json({ deleted: count });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
