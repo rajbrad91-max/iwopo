@@ -137,3 +137,9 @@
   .cert-table th { width: 130px; font-size: 10.5px; }
   .cert-audit-ip { display: none; }
 }
+
+/* the vendor's mark on the certificate — one business across every client page */
+.cert-logo {
+  display: block; height: 52px; max-width: 180px;
+  object-fit: contain; margin: 0 auto 16px;
+}

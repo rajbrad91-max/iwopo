@@ -174,7 +174,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'packages' ? (
           <PackagesView />
         ) : tab === 'settings' ? (
-          <SettingsView user={user} />
+          <SettingsView user={user} onProfileChange={setProfile} />
         ) : tab === 'dashboard' ? (
           <DashHome goTab={setTab} />
         ) : (
@@ -3495,7 +3495,7 @@ function PkgCard({ pkg, onSaved, onDelete }) {
   );
 }
 
-function SettingsView({ user }) {
+function SettingsView({ user, onProfileChange }) {
   const [s, setS] = useState(null);
   const [sub, setSub] = useState('prefs'); // prefs | account | email
   const [prof, setProf] = useState(null);
@@ -3520,7 +3520,16 @@ function SettingsView({ user }) {
   async function onLogoPick(e) {
     const f = e.target.files[0]; if (!f) return;
     setProfMsg('⏳ Uploading…');
-    try { const r = await api.uploadLogo(f); setProf(v => ({ ...v, logo_path: r.logo_path })); setProfMsg('✅ Logo updated'); setTimeout(() => setProfMsg(''), 2000); }
+    try {
+      const r = await api.uploadLogo(f);
+      setProf(v => ({ ...v, logo_path: r.logo_path }));
+      // the sidebar renders from the profile the panel loaded at startup, so it
+      // has to be told too — otherwise the new logo only appears after a reload
+      // and it looks like the upload didn't take
+      onProfileChange?.(p => (p ? { ...p, logo_path: r.logo_path } : p));
+      setProfMsg('✅ Logo updated — it now shows on your portal, contract, invoice and certificate too');
+      setTimeout(() => setProfMsg(''), 3500);
+    }
     catch (err) { setProfMsg('⚠️ ' + err.message); }
   }
   function guessTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/Vancouver'; } }
@@ -3552,7 +3561,7 @@ function SettingsView({ user }) {
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Email']].map(([k, label]) => (
+        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email']].map(([k, label]) => (
           <button key={k} className="refresh" onClick={() => setSub(k)}
             style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
         ))}
@@ -3621,7 +3630,12 @@ function SettingsView({ user }) {
 
         <label style={{ fontSize: 13, color: '#9fb3b0' }}>📧 Change email</label>
         <input style={box} value={em.email} onChange={e => setEm({ ...em, email: e.target.value })} placeholder="new@email.com" />
-        <PasswordInput style={box} value={em.password} onChange={e => setEm({ ...em, password: e.target.value })} placeholder="Current password" />
+        {/* Confirming with the current password is what stops a hijacked session
+            silently moving the account to an attacker's address, so the field
+            stays — but it is masked with no reveal. There is nothing useful to
+            check by eye here: you either know it or you don't. */}
+        <input type="password" style={box} value={em.password} autoComplete="current-password"
+          onChange={e => setEm({ ...em, password: e.target.value })} placeholder="Confirm with your current password" />
         <button className="refresh" onClick={saveEmail} style={{ marginTop: 8 }}>Update email</button>
 
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 18 }}>🔑 Change password</label>

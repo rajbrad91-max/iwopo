@@ -274,7 +274,7 @@ router.get('/sign/:token', async (req, res) => {
         id: true, title: true, body: true, status: true, signed_name: true,
         signed_at: true, initials: true, viewed_at: true,
         leads: { select: { name: true } },
-        vendors: { select: { business_name: true } },
+        vendors: { select: { business_name: true, logo_path: true } },
       },
     });
     if (!c) return res.status(404).json({ error: 'Contract not found' });
@@ -283,7 +283,7 @@ router.get('/sign/:token', async (req, res) => {
       await audit(c.id, 'viewed', ipOf(req));
     }
     const { leads, vendors, ...rest } = c;
-    res.json({ contract: { ...rest, client_name: leads?.name ?? null, business_name: vendors?.business_name ?? null } });
+    res.json({ contract: { ...rest, client_name: leads?.name ?? null, business_name: vendors?.business_name ?? null, logo_path: vendors?.logo_path ?? null } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -332,7 +332,7 @@ router.get('/certificate/:token', async (req, res) => {
         signed_at: true, viewed_at: true, created_at: true, doc_sha256: true,
         signature_data: true, initials: true,
         leads: { select: { name: true, email: true, event_type: true, event_date: true } },
-        vendors: { select: { business_name: true } },
+        vendors: { select: { business_name: true, logo_path: true } },
       },
     });
     if (!c) return res.status(404).json({ error: 'Contract not found' });
@@ -349,6 +349,7 @@ router.get('/certificate/:token', async (req, res) => {
         client_name: leads?.name ?? null, client_email: leads?.email ?? null,
         event_type: leads?.event_type ?? null, event_date: leads?.event_date ?? null,
         business_name: vendors?.business_name ?? null,
+        logo_path: vendors?.logo_path ?? null,
       },
       audit: trail,
     });

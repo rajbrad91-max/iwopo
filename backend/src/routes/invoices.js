@@ -102,7 +102,7 @@ router.get('/view/:token', async (req, res) => {
       where: { token: req.params.token },       // the token itself is the access key
       include: {
         leads: { select: { name: true, email: true, event_type: true, event_date: true } },
-        vendors: { select: { business_name: true } },
+        vendors: { select: { business_name: true, logo_path: true } },
       },
     });
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
@@ -115,6 +115,9 @@ router.get('/view/:token', async (req, res) => {
         event_type: leads?.event_type ?? null,
         event_date: leads?.event_date ?? null,
         business_name: vendors?.business_name ?? null,
+        // the vendor's own mark, so the client sees one business across the
+        // portal, the contract and this invoice rather than three anonymous pages
+        logo_path: vendors?.logo_path ?? null,
       },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

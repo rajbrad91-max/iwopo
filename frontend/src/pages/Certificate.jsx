@@ -59,6 +59,9 @@ export default function Certificate({ token }) {
     <div className="cert-page">
       <div className="cert-sheet">
         <header className="cert-head">
+          {c.logo_path && (
+            <img className="cert-logo" src={`/api/me/logo/${c.logo_path}`} alt="" />
+          )}
           <p className="cert-eyebrow">Electronic Signature Record</p>
           <h1 className="cert-title">Certificate of Completion</h1>
           <p className="cert-ref">Reference {String(token).slice(0, 16).toUpperCase()}</p>

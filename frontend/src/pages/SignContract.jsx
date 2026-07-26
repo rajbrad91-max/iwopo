@@ -101,6 +101,9 @@ export default function SignContract({ token }) {
   return (
     <div className="iq-wrap">
       <div className="iq-card" style={{ maxWidth: 680 }}>
+        {c.logo_path && (
+          <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" />
+        )}
         <div className="iq-brand">📄 {c.title}</div>
         <p className="iq-sub">{c.business_name} · for {c.client_name}</p>
 

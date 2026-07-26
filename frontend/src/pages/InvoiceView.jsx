@@ -24,6 +24,12 @@ export default function InvoiceView({ token }) {
             <div style={{ color: '#666', fontSize: 13, marginTop: 4 }}>{inv.invoice_number}</div>
           </div>
           <div style={{ textAlign: 'right', fontSize: 13 }}>
+            {/* the vendor's own mark — the client should see one business across
+                the portal, the contract and this invoice */}
+            {inv.logo_path && (
+              <img src={`/api/me/logo/${inv.logo_path}`} alt=""
+                style={{ height: 44, maxWidth: 140, objectFit: 'contain', display: 'block', marginLeft: 'auto', marginBottom: 6 }} />
+            )}
             <b>{inv.business_name}</b><br />
             {String(inv.created_at).slice(0, 10)}
           </div>
