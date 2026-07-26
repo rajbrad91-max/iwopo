@@ -1811,16 +1811,22 @@ function LeadsView({ routeLead, onOpenLead }) {
   // the lead whose Send Packages modal is open, if any
   const [sendFor, setSendFor] = useState(null);
 
-  // 🗑️ bin click: 1st click → enter select mode; if items checked → delete; if in mode w/ none → exit
+  // 🗑️ Bin: 1st click → select mode; with items checked → act; in mode with none → exit.
+  //
+  // In the active list the bin ARCHIVES. It used to hard-delete, so a mis-tap
+  // destroyed a client's enquiry, their packages and their history with no way
+  // back. Archiving keeps everything and moves it to History, and permanent
+  // deletion now only exists there — a second, deliberate step on a lead the
+  // vendor has already put aside.
   function onBinClick() {
     if (!selectMode) { setSelectMode(true); return; }
-    if (checked.length) { deleteChecked(); return; }
+    if (checked.length) { view === 'history' ? deleteChecked() : archiveChecked(); return; }
     setSelectMode(false);
   }
   async function deleteChecked() {
     if (!checked.length) return;
-    if (!confirm(`Delete ${checked.length} lead(s)? This can't be undone.`)) return;
-    try { await api.bulkDeleteLeads(checked); setMsg('🗑️ Deleted'); setTimeout(() => setMsg(''), 1500); setSelectMode(false); load(); }
+    if (!confirm(`Permanently delete ${checked.length} lead(s)?\n\nThis erases their packages, contracts and payment history. It cannot be undone.`)) return;
+    try { await api.bulkDeleteLeads(checked); setMsg('🗑️ Deleted for good'); setTimeout(() => setMsg(''), 1500); setSelectMode(false); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
 
@@ -1859,8 +1865,8 @@ function LeadsView({ routeLead, onOpenLead }) {
 
   async function archiveChecked() {
     if (!checked.length) return;
-    if (!confirm(`Archive ${checked.length} lead(s)? You can restore them from History.`)) return;
-    try { await api.bulkArchive(checked); setMsg('🗂️ Archived'); setTimeout(() => setMsg(''), 1500); load(); }
+    if (!confirm(`Move ${checked.length} lead(s) to History? You can restore them any time.`)) return;
+    try { await api.bulkArchive(checked); setMsg('🗂️ Moved to History'); setTimeout(() => setMsg(''), 1500); setSelectMode(false); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
 
@@ -1932,18 +1938,29 @@ function LeadsView({ routeLead, onOpenLead }) {
           {view === 'active' && <>
             <button className="lead-ic-btn" onClick={() => setShowAdd(true)} title="Add lead">➕</button>
             <button className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); setSearch(''); }} title="Search">🔍</button>
-            <button className={`lead-ic-btn lead-ic-del ${selectMode ? 'is-on' : ''}`} onClick={onBinClick} title={selectMode ? (checked.length ? `Delete ${checked.length}` : 'Cancel select') : 'Select to delete'}>{selectMode && checked.length ? `🗑️ ${checked.length}` : '🗑️'}</button>
           </>}
+          {/* the bin means "move to History" in the active list and "delete for
+              good" in History, so its wording changes with the view */}
+          <button className={`lead-ic-btn lead-ic-del ${selectMode ? 'is-on' : ''}`} onClick={onBinClick}
+            title={selectMode
+              ? (checked.length
+                ? (view === 'history' ? `Delete ${checked.length} permanently` : `Move ${checked.length} to History`)
+                : 'Cancel select')
+              : (view === 'history' ? 'Select to delete permanently' : 'Select to move to History')}>
+            {selectMode && checked.length ? `🗑️ ${checked.length}` : '🗑️'}
+          </button>
           <button className={`refresh ${view === 'active' ? 'is-on' : ''}`} onClick={() => setView('active')}>📋 Active</button>
           <button className={`refresh ${view === 'history' ? 'is-on' : ''}`} onClick={() => setView('history')}>📜 History</button>
         </div>
       </div>
 
-      {(msg || (view === 'active' && checked.length > 0)) && (
+      {(msg || checked.length > 0) && (
         <div className="leads-actions">
           {msg && <span className={`leads-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</span>}
-          {view === 'active' && checked.length > 0 && (
-            <button className="refresh btn-archive" onClick={archiveChecked}>🗂️ Archive ({checked.length})</button>
+          {checked.length > 0 && (
+            view === 'history'
+              ? <button className="refresh btn-danger" onClick={deleteChecked}>🗑️ Delete permanently ({checked.length})</button>
+              : <button className="refresh btn-archive" onClick={archiveChecked}>🗂️ Move to History ({checked.length})</button>
           )}
         </div>
       )}
@@ -1971,15 +1988,15 @@ function LeadsView({ routeLead, onOpenLead }) {
 
       <div className="table-wrap">
         <table className="leads-table">
-          <thead><tr>{view === 'active' && selectMode && <th className="col-check"></th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th className="col-actions">Actions</th></tr></thead>
+          <thead><tr>{selectMode && <th className="col-check"></th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th className="col-actions">Actions</th></tr></thead>
           <tbody>
             {loading ? (
               <tr><td colSpan="9" className="empty">Loading…</td></tr>
             ) : shown.length === 0 ? (
               <tr><td colSpan="9" className="empty">{view === 'active' ? 'No leads yet. Share your inquiry link! 📨' : 'No archived leads 📜'}</td></tr>
             ) : shown.map(l => (
-              <tr key={l.id} onClick={() => { if (view !== 'active') return; if (selectMode) { setChecked(c => c.includes(l.id) ? c.filter(x => x !== l.id) : [...c, l.id]); } else { openLead(l); } }} className={`${view === 'active' ? 'row-clickable' : ''}${view === 'active' && !l.seen_at ? ' is-unread' : ''}`}>
-                {view === 'active' && selectMode && (
+              <tr key={l.id} onClick={() => { if (selectMode) { setChecked(c => c.includes(l.id) ? c.filter(x => x !== l.id) : [...c, l.id]); return; } if (view === 'active') openLead(l); }} className={`${view === 'active' || selectMode ? 'row-clickable' : ''}${view === 'active' && !l.seen_at ? ' is-unread' : ''}`}>
+                {selectMode && (
                   <td className="cell-check" onClick={e => toggleCheck(l.id, e)}>
                     <input type="checkbox" readOnly checked={checked.includes(l.id)} className="lead-check" />
                   </td>
@@ -2674,7 +2691,9 @@ function AllInvoices() {
     api.allInvoices().then(d => setList(d.invoices || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
   function copyLink(token) {
-    navigator.clipboard?.writeText(`https://iwopo.com/invoice/${token}`);
+    // origin, not a hard-coded domain: copying this from staging used to hand
+    // the vendor a link pointing at the live site
+    navigator.clipboard?.writeText(`${window.location.origin}/invoice/${token}`);
   }
   if (loading) return <div className="loading">Loading…</div>;
   return (
@@ -2924,7 +2943,19 @@ function FieldBuilder({ fields, setFields }) {
   const [cols, setCols] = useState([]);
   useEffect(() => { api.mappableColumns().then(d => setCols(d.columns || [])).catch(() => {}); }, []);
 
-  const add = (t) => setFields([...fields, { id: uid(), type: t, label: '', required: false, maps_to: '', options: t === 'dropdown' ? ['Option 1'] : [] }]);
+  // A new field starts unmapped, except a Time field: a form with start and end
+  // times almost always means the booking's timing, and leaving them unmapped
+  // silently left the Timing column on Bookings empty. First free slot wins, and
+  // the vendor can still change or clear it below.
+  const add = (t) => {
+    let maps_to = '';
+    if (t === 'time') {
+      const taken = new Set(fields.map(f => f.maps_to).filter(Boolean));
+      maps_to = !taken.has('timing_from') ? 'timing_from'
+        : !taken.has('timing_to') ? 'timing_to' : '';
+    }
+    setFields([...fields, { id: uid(), type: t, label: '', required: false, maps_to, options: t === 'dropdown' ? ['Option 1'] : [] }]);
+  };
   const upd = (i, patch) => setFields(fields.map((f, idx) => idx === i ? { ...f, ...patch } : f));
   const del = (i) => setFields(fields.filter((_, idx) => idx !== i));
   const move = (i, dir) => {

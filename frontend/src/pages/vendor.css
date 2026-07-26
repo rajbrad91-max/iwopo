@@ -1302,3 +1302,11 @@
   padding-top: 14px; border-top: 1px solid var(--line);
 }
 .ac-kb-msg { font-size: 13px; color: var(--muted); }
+
+/* 🗑️ Permanent deletion only exists in History, and looks like it means it */
+.btn-danger {
+  background: color-mix(in srgb, var(--red) 16%, transparent);
+  border-color: color-mix(in srgb, var(--red) 55%, transparent);
+  color: var(--red);
+}
+.btn-danger:hover { background: color-mix(in srgb, var(--red) 26%, transparent); }
