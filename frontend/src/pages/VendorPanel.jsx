@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
+import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
@@ -3622,7 +3623,16 @@ function SettingsView({ user, onProfileChange }) {
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Business email</label>
         <input style={box} value={prof?.email || ''} onChange={e => setProf({ ...prof, email: e.target.value })} />
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Country</label>
-        <input style={box} value={prof?.country || ''} onChange={e => setProf({ ...prof, country: e.target.value })} />
+        {/* A select, not a text box: typed countries arrive as "Canada", "canada"
+            and "CA" and each becomes its own bucket, so the platform's own
+            country breakdown is junk before it has ten sellers. Same list the
+            geo pricing uses, so where a seller is and what they pay agree. */}
+        <select style={box} value={prof?.country || ''} onChange={e => setProf({ ...prof, country: e.target.value })}>
+          <option value="">— Select your country —</option>
+          {COUNTRIES.filter(c => c.code !== 'default').map(c => (
+            <option key={c.code} value={c.code}>{c.name}</option>
+          ))}
+        </select>
         <button className="refresh" onClick={saveProfile} style={{ marginTop: 12, background: '#2dd4bf', color: '#06231f' }}>💾 Save profile</button>
 
         <h2 style={{ marginTop: 26 }}>🔐 Account</h2>

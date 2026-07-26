@@ -148,11 +148,14 @@ function DashboardView({ vendors, packages, trials }) {
     { n: '🎬 Editor', v: 14, c: '#60a5fa' }, { n: '🎧 DJ', v: 10, c: '#fbbf24' },
     { n: '🎪 360 Booth', v: 9, c: '#a78bfa' }, { n: 'Other', v: 17, c: '#7c9199' },
   ];
-  const countries = [
-    ['Canada', '🇨🇦', 52], ['United States', '🇺🇸', 38], ['United Kingdom', '🇬🇧', 16],
-    ['Australia', '🇦🇺', 11], ['India', '🇮🇳', 7], ['Other', '🌐', 4],
-  ];
-  const maxC = Math.max(...countries.map(c => c[2]));
+  // 🌍 Where sellers actually are. This used to be a hardcoded list that read as
+  // real — Canada 52, US 38 — on a platform with three sellers. It now comes
+  // from the vendors table, and says so plainly when there's nothing to show.
+  const [geo, setGeo] = useState(null);
+  useEffect(() => { api.adminVendorStats().then(setGeo).catch(() => setGeo({ countries: [], unset: 0, total: 0 })); }, []);
+  const cName = (code) => (COUNTRIES.find(c => c.code === code)?.name) || `🌐 ${code}`;
+  const countries = (geo?.countries || []).map(c => [cName(c.code), c.count]);
+  const maxC = Math.max(1, ...countries.map(c => c[1]));
 
   // Sellable items — packages + standalone services (as sold)
   const palette = ['#2dd4bf','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'];
@@ -167,10 +170,15 @@ function DashboardView({ vendors, packages, trials }) {
   return (
     <>
       <div className="sa-stats">
-        <StatCard label="Total Sellers" value={vendors.length || 128} trend="▲ 12 this month" cls="up" />
-        <StatCard label="MRR" value="$6.4k" trend="▲ 8.2%" cls="up" />
-        <StatCard label="Active Trials" value={trials || 19} trend="7 ending soon" cls="warn" />
-        <StatCard label="Packages" value={packages.length || 3} trend="Live tiers" cls="up" />
+        {/* Real counts, and nothing invented. These carried fallbacks — 128
+            sellers, 19 trials, $6.4k MRR with a "▲ 8.2%" trend — which meant an
+            empty platform reported a healthy one. MRR is left out entirely
+            rather than guessed: there is no billing figure in the database to
+            compute it from yet. */}
+        <StatCard label="Total Sellers" value={vendors.length} trend={`${geo?.unset ?? 0} without a country set`} cls="up" />
+        <StatCard label="Active Trials" value={trials} trend={vendors.length ? `${Math.round(trials / vendors.length * 100)}% of sellers` : 'No sellers yet'} cls="warn" />
+        <StatCard label="Paid Sellers" value={Math.max(0, vendors.length - trials)} trend="Converted from trial" cls="up" />
+        <StatCard label="Packages" value={packages.length} trend="Live tiers" cls="up" />
       </div>
 
       <div className="sa-grid-2">
@@ -193,15 +201,23 @@ function DashboardView({ vendors, packages, trials }) {
         <div className="sa-box">
           <h3>🌍 Sellers by Country</h3><div className="sa-box-sub">Where your sellers are based</div>
           <div className="sa-country-list">
-            {countries.map(c => (
+            {countries.length === 0 ? (
+              <div className="sa-cty-empty">
+                {geo === null ? 'Loading…'
+                  : geo.total === 0 ? 'No sellers yet.'
+                  : `No countries recorded yet — ${geo.unset} of ${geo.total} seller${geo.total === 1 ? '' : 's'} haven't set one in their profile.`}
+              </div>
+            ) : countries.map(c => (
               <div key={c[0]} className="sa-cty-row">
-                <span className="sa-cty-flag">{c[1]}</span>
                 <div className="sa-cty-info">
-                  <div className="sa-cty-top"><span>{c[0]}</span><span className="cnt">{c[2]} sellers</span></div>
-                  <div className="sa-cty-bar"><div className="sa-cty-fill" style={{ width: `${c[2]/maxC*100}%` }} /></div>
+                  <div className="sa-cty-top"><span>{c[0]}</span><span className="cnt">{c[1]} seller{c[1] === 1 ? '' : 's'}</span></div>
+                  <div className="sa-cty-bar"><div className="sa-cty-fill" style={{ width: `${c[1] / maxC * 100}%` }} /></div>
                 </div>
               </div>
             ))}
+            {countries.length > 0 && geo?.unset > 0 && (
+              <div className="sa-cty-empty">{geo.unset} seller{geo.unset === 1 ? '' : 's'} haven&apos;t set a country.</div>
+            )}
           </div>
         </div>
       </div>

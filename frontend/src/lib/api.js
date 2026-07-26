@@ -173,6 +173,7 @@ export const api = {
     request('/auth/change-password', { method: 'POST', body: JSON.stringify({ current, next }) }),
   vendors: () => request('/vendors'),
   adminCounts: () => request('/admin/counts'),
+  adminVendorStats: () => request('/admin/vendor-stats'),
   markCountSeen: (group) => request(`/admin/counts/${group}/seen`, { method: 'PUT' }),
   adminMessages: () => request('/admin/messages'),
   platformSettings: () => request('/settings/platform'),

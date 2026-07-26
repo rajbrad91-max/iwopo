@@ -303,3 +303,12 @@
 .sa-feat-toggle:disabled { opacity: .5; cursor: default; }
 .sa-feat-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .16s; }
 .sa-feat-toggle.is-on .sa-feat-knob { transform: translateX(18px); }
+
+/* An honest empty state on the country chart. The old chart was hardcoded, so
+   it showed a healthy global spread on a platform with three sellers. */
+.sa-cty-empty {
+  padding: 14px 2px;
+  font-size: 13px;
+  color: #7c9199;
+  line-height: 1.5;
+}

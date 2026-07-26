@@ -440,4 +440,37 @@ router.get('/referrals', requireAuth, requireSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// 🌍 Real seller stats for the super-admin dashboard.
+//
+// The dashboard used to draw a country chart from a hardcoded list — Canada 52,
+// US 38 and so on — which read as real and was not. This returns what is
+// actually in the table, including how many sellers have not set a country at
+// all, so an empty platform looks empty instead of looking successful.
+router.get('/admin/vendor-stats', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const rows = await prisma.vendors.groupBy({
+      by: ['country'],
+      _count: { _all: true },
+    });
+    const counted = rows.map(r => ({
+      code: (r.country || '').trim(),
+      count: r._count._all,
+    }));
+    const unset = counted.filter(c => !c.code).reduce((n, c) => n + c.count, 0);
+    const countries = counted
+      .filter(c => c.code)
+      .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+
+    const total = counted.reduce((n, c) => n + c.count, 0);
+    const byStatus = await prisma.vendors.groupBy({ by: ['status'], _count: { _all: true } });
+
+    res.json({
+      total,
+      unset,                                  // sellers with no country recorded
+      countries,                              // [{ code, count }] busiest first
+      statuses: byStatus.map(s => ({ status: s.status || 'unknown', count: s._count._all })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
