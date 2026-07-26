@@ -322,6 +322,136 @@ router.post('/sign/:token', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * 📥 PUBLIC: download the signed contract, or its certificate, as a file.
+ *
+ * A vendor needs to keep, email or file these away from the panel — an insurer,
+ * an accountant or a court is not going to be handed a link. The token is the
+ * access key, exactly as on the view routes, so a client can keep their own copy
+ * without an account.
+ *
+ * These are self-contained HTML documents: every style is inline and the
+ * signature travels as its embedded data URL, so the file still renders years
+ * later on a machine that has never heard of iwopo. Opening one and printing to
+ * PDF produces the archival copy. Generating PDFs server-side would need a PDF
+ * library added, which is a bigger decision than this route.
+ */
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+const DOC_CSS = `
+  body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;background:#fff;
+       max-width:760px;margin:40px auto;padding:0 32px;line-height:1.75;font-size:15px}
+  .hd{text-align:center;border-bottom:2px solid #222;padding-bottom:18px;margin-bottom:28px}
+  .hd img{max-height:56px;max-width:180px;object-fit:contain;margin-bottom:10px}
+  .biz{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#666;margin:0}
+  h1{font-size:24px;margin:8px 0 0}
+  .body{white-space:pre-wrap}
+  .sig{margin-top:36px;border-top:1px solid #ccc;padding-top:22px}
+  .sig img{max-height:90px;display:block;margin-bottom:6px}
+  .meta{font-size:12.5px;color:#555;line-height:1.9}
+  .meta b{color:#1a1a1a}
+  table{width:100%;border-collapse:collapse;margin-top:18px;font-family:system-ui,sans-serif;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #e3e3e3;vertical-align:top}
+  th{width:34%;color:#555;font-weight:600}
+  .fine{margin-top:34px;font-size:11.5px;color:#777;border-top:1px solid #e3e3e3;padding-top:12px;
+        font-family:system-ui,sans-serif;line-height:1.7}
+`;
+
+function sendDoc(res, filename, title, inner) {
+  const html = `<!doctype html><html><head><meta charset="utf-8">
+<title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${inner}</body></html>`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
+  res.send(html);
+}
+
+// PUBLIC: GET /api/contracts/download/:token → the signed agreement as a file
+router.get('/download/:token', async (req, res) => {
+  try {
+    const c = await prisma.contracts.findFirst({
+      where: { token: req.params.token, status: 'signed' },   // token is the access key
+      include: {
+        leads: { select: { name: true } },
+        vendors: { select: { business_name: true, logo_path: true } },
+      },
+    });
+    if (!c) return res.status(404).send('Signed contract not found');
+
+    // the initial boxes are replaced with what the client actually initialled
+    const initials = (c.signed_name || '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase();
+    const body = esc(c.body).split('[INITIAL]')
+      .join(`<span style="border-bottom:1px solid #333;padding:0 12px;font-family:cursive">${esc(initials)}</span>`);
+
+    const logo = c.vendors?.logo_path
+      ? `<img src="${req.protocol}://${req.get('host')}/api/me/logo/${esc(c.vendors.logo_path)}" alt="">` : '';
+
+    sendDoc(res, `contract-${c.leads?.name || c.id}-${String(c.signed_at).slice(0, 10)}.html`, c.title, `
+      <div class="hd">${logo}<p class="biz">${esc(c.vendors?.business_name || '')}</p><h1>${esc(c.title)}</h1></div>
+      <div class="body">${body}</div>
+      <div class="sig">
+        ${c.signature_data ? `<img src="${esc(c.signature_data)}" alt="Signature">` : ''}
+        <p class="meta">
+          <b>Signed by:</b> ${esc(c.signed_name || '—')}<br>
+          <b>Date:</b> ${c.signed_at ? new Date(c.signed_at).toUTCString() : '—'}<br>
+          <b>IP address:</b> ${esc(c.signed_ip || '—')}<br>
+          <b>Document fingerprint (SHA-256):</b> ${esc(c.doc_sha256 || '—')}
+        </p>
+      </div>
+      <p class="fine">Downloaded ${new Date().toUTCString()}. Contracts and invoices are kept for one year from the date they were created.</p>
+    `);
+  } catch (e) { res.status(500).send(e.message); }
+});
+
+// PUBLIC: GET /api/contracts/certificate/:token/download → certificate as a file
+router.get('/certificate/:token/download', async (req, res) => {
+  try {
+    const c = await prisma.contracts.findFirst({
+      where: { token: req.params.token, status: 'signed' },
+      include: {
+        leads: { select: { name: true, email: true, event_type: true, event_date: true } },
+        vendors: { select: { business_name: true, logo_path: true } },
+      },
+    });
+    if (!c) return res.status(404).send('Certificate not found');
+
+    const trail = await prisma.contract_audit.findMany({
+      where: { contract_id: c.id },
+      select: { event: true, ip: true, created_at: true },
+      orderBy: { created_at: 'asc' },
+    });
+    // every time here is UTC and says so: a record that reads differently
+    // depending on who opens it is worth nothing in a dispute
+    const utc = (d) => (d ? new Date(d).toUTCString() : '—');
+    const rows = [
+      ['Document', c.title], ['Client', c.leads?.name], ['Client email', c.leads?.email],
+      ['Event', c.leads?.event_type], ['Signed by', c.signed_name],
+      ['Signed at', utc(c.signed_at)], ['First viewed', utc(c.viewed_at)],
+      ['Created', utc(c.created_at)], ['Signer IP', c.signed_ip],
+      ['Fingerprint (SHA-256)', c.doc_sha256],
+    ].map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v || '—')}</td></tr>`).join('');
+
+    const audit = trail.map(t =>
+      `<tr><th>${esc(t.event)}</th><td>${utc(t.created_at)}${t.ip ? ` · ${esc(t.ip)}` : ''}</td></tr>`).join('');
+
+    const logo = c.vendors?.logo_path
+      ? `<img src="${req.protocol}://${req.get('host')}/api/me/logo/${esc(c.vendors.logo_path)}" alt="">` : '';
+
+    sendDoc(res, `certificate-${c.leads?.name || c.id}.html`, 'Certificate of Completion', `
+      <div class="hd">${logo}<p class="biz">${esc(c.vendors?.business_name || '')}</p>
+        <h1>Certificate of Completion</h1>
+        <p class="meta">Reference ${esc(String(req.params.token).slice(0, 16).toUpperCase())}</p></div>
+      <table>${rows}</table>
+      ${c.signature_data ? `<div class="sig"><img src="${esc(c.signature_data)}" alt="Signature"><p class="meta"><b>${esc(c.signed_name || '')}</b></p></div>` : ''}
+      <h2 style="font-size:16px;margin-top:30px">Audit trail</h2>
+      <table>${audit || '<tr><td>No events recorded</td></tr>'}</table>
+      <p class="fine">All times shown in UTC. Downloaded ${new Date().toUTCString()}.
+      Contracts and invoices are kept for one year from the date they were created.</p>
+    `);
+  } catch (e) { res.status(500).send(e.message); }
+});
+
 // PUBLIC: GET /api/contracts/certificate/:token → signing certificate (signed only)
 router.get('/certificate/:token', async (req, res) => {
   try {

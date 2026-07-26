@@ -2796,7 +2796,7 @@ function AllContracts() {
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th></th></tr></thead>
+        <thead><tr><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th className="ct-dl-col">Download</th></tr></thead>
         <tbody>
           {shown.length === 0 ? (
             <tr><td colSpan="5" className="empty">
@@ -2808,11 +2808,22 @@ function AllContracts() {
               <td>{c.title}</td>
               <td>{c.signed_name || '—'}</td>
               <td>{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
-              <td><a href={`/certificate/${c.token}`} target="_blank" rel="noreferrer" className="ct-cert">Certificate</a></td>
+              {/* Both open as a file save rather than a tab: these are documents a
+                  vendor files away for an insurer or an accountant, and a link is
+                  no use to either. */}
+              <td className="ct-dl">
+                <a href={`/api/contracts/download/${c.token}`} download className="ct-dl-btn">📄 Contract</a>
+                <a href={`/api/contracts/certificate/${c.token}/download`} download className="ct-dl-btn">📜 Certificate</a>
+                <a href={`/certificate/${c.token}`} target="_blank" rel="noreferrer" className="ct-cert">View</a>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <p className="ct-retention">
+        🗄️ Contracts and invoices are kept for <strong>one year from the date they were created</strong>.
+        Download anything you need to keep for longer.
+      </p>
     </div>
   );
 }
