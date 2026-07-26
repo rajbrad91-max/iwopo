@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, eventDateParts, eventDateValue } from '../lib/api';
+import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody } from './InquiryForm';
