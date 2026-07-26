@@ -1310,3 +1310,9 @@
   color: var(--red);
 }
 .btn-danger:hover { background: color-mix(in srgb, var(--red) 26%, transparent); }
+
+/* 💰 Confirm-payment modal — the amount field reads as money, not a bare number */
+.ms-claim-amt-row { display: flex; align-items: center; gap: 8px; }
+.ms-claim-cur { font-size: 19px; font-weight: 700; color: var(--muted); }
+.ms-claim-amt-row .gal-input { font-size: 19px; font-weight: 600; }
+.ms-claim-hint { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }

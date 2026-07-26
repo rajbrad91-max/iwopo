@@ -2518,24 +2518,33 @@ function MoneySection({ lead }) {
     try { const d = await api.leadPayments(lead.id); setData(d); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
   }
 
+  // The client pressed "Pay directly"; this is where the vendor says what
+  // actually landed. It opens a modal rather than a browser prompt(): a native
+  // dialog looks like the browser asking, not the business, and it can't show
+  // what the client owes or be styled to match the rest of the panel.
+  const [claimModal, setClaimModal] = useState(null);   // { mode: 'confirm' | 'dismiss', amount }
+
+  function openClaim(dismiss) {
+    const suggested = data?.summary?.balance ?? data?.summary?.deposit_amount ?? '';
+    setClaimModal({ mode: dismiss ? 'dismiss' : 'confirm', amount: String(suggested ?? '') });
+  }
+
   // Confirm the money actually landed. This is what records the payment —
   // nothing counts as paid on a client's word, which is why the claim and the
   // confirmation are deliberately separate.
-  async function settleClaim(dismiss) {
+  async function settleClaim() {
+    if (!claimModal) return;
+    const dismiss = claimModal.mode === 'dismiss';
     let amount = null;
     if (!dismiss) {
-      const suggested = data?.summary?.balance ?? data?.summary?.deposit_amount ?? '';
-      const entered = prompt('How much did you receive?', suggested);
-      if (entered === null) return;
-      amount = Number(entered);
-      if (!amount || amount <= 0) return;
-    } else if (!confirm('Dismiss this? No payment will be recorded.')) {
-      return;
+      amount = Number(claimModal.amount);
+      if (!amount || amount <= 0) { setMsg('⚠️ Enter an amount'); setTimeout(() => setMsg(''), 2500); return; }
     }
     try {
       const d = await api.confirmPaymentClaim(lead.id, dismiss ? { dismiss: true } : { amount, method: 'direct' });
       setData(d);
       setClaimed(false);
+      setClaimModal(null);
     } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
   }
   async function saveMoney() {
@@ -2580,8 +2589,59 @@ function MoneySection({ lead }) {
           <p className="ms-claim-t">💰 {lead.name || 'The client'} says they&apos;ve paid</p>
           <p className="ms-claim-b">Confirm once the money is in your account — that&apos;s what records it.</p>
           <div className="ms-claim-acts">
-            <button type="button" className="is-primary" onClick={() => settleClaim(false)}>✅ Confirm received</button>
-            <button type="button" onClick={() => settleClaim(true)}>Not yet</button>
+            <button type="button" className="is-primary" onClick={() => openClaim(false)}>✅ Confirm received</button>
+            <button type="button" onClick={() => openClaim(true)}>Not yet</button>
+          </div>
+        </div>
+      )}
+
+      {/* 💰 Confirming what landed. In the page rather than a browser prompt, so
+          it can show what's owed and reads as the business asking, not Chrome. */}
+      {claimModal && (
+        <div className="al-overlay" onClick={() => setClaimModal(null)}>
+          <div className="gal-set-modal ev-modal" onClick={e => e.stopPropagation()}>
+            <div className="al-head">
+              <h3 className="al-title">
+                {claimModal.mode === 'dismiss' ? '↩️ Not received yet' : '💰 Confirm payment received'}
+              </h3>
+              <button className="al-x" onClick={() => setClaimModal(null)}>✕</button>
+            </div>
+
+            {claimModal.mode === 'dismiss' ? (
+              <p className="ev-modal-text">
+                Leave <strong>{lead.name || 'this client'}</strong>&apos;s booking as unpaid? Nothing is recorded,
+                and you can confirm later when the money arrives.
+              </p>
+            ) : (
+              <>
+                <p className="ev-modal-text">
+                  How much did you receive from <strong>{lead.name || 'the client'}</strong>?
+                </p>
+                <label className="lbl" htmlFor="ms-claim-amt">Amount received</label>
+                <div className="ms-claim-amt-row">
+                  <span className="ms-claim-cur">$</span>
+                  <input
+                    id="ms-claim-amt" className="gal-input" autoFocus type="number" min="0" step="0.01"
+                    value={claimModal.amount}
+                    onChange={e => setClaimModal(m => ({ ...m, amount: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && settleClaim()}
+                  />
+                </div>
+                {data?.summary && (
+                  <p className="ms-claim-hint">
+                    Balance outstanding: <strong>${Number(data.summary.balance || 0).toLocaleString()}</strong>
+                    {' · '}Deposit: <strong>${Number(data.summary.deposit_amount || 0).toLocaleString()}</strong>
+                  </p>
+                )}
+              </>
+            )}
+
+            <div className="ev-modal-foot">
+              <button className="refresh ev-modal-cancel" onClick={() => setClaimModal(null)}>Cancel</button>
+              <button className="refresh ev-modal-ok" onClick={settleClaim}>
+                {claimModal.mode === 'dismiss' ? 'Leave unpaid' : 'Record payment'}
+              </button>
+            </div>
           </div>
         </div>
       )}
