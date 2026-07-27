@@ -2822,7 +2822,7 @@ function AllContracts() {
       </p>
       <div className="table-wrap">
         <table>
-        <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th className="ct-dl-col">Documents</th></tr></thead>
+        <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th>Documents</th></tr></thead>
         <tbody>
           {shown.length === 0 ? (
             <tr><td colSpan="6" className="empty">
