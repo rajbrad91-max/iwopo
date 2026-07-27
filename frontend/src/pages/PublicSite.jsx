@@ -50,7 +50,7 @@ export default function PublicSite({ slug }) {
 
   const title = site.site_title || site.business_name || 'Studio';
   const galleryUrl = site.gallery_token ? `/gallery/${site.gallery_token}` : null;
-  const albums = site.albums || [];
+  const photos = site.portfolio || [];
 
   // the theme picks the layout, the vendor picks the colour and the type
   const styleVars = {
@@ -113,21 +113,19 @@ export default function PublicSite({ slug }) {
       <section id="st-portfolio" className="st-section">
         <div className="st-wrap">
           <h2 className="st-h2">Portfolio</h2>
-          {albums.length === 0 ? (
+          {/* the vendor's chosen work. Their client galleries are a different
+              thing and live under Client Section — a portfolio is what they show
+              strangers, an album belongs to one couple */}
+          {photos.length === 0 ? (
             <p className="st-quiet">Work coming soon.</p>
           ) : (
             <div className="st-grid">
-              {albums.map(a => (
-                <a key={a.public_token} className="st-card" href={`/g/${a.public_token}`}>
-                  {/* the gallery serves its own cover, so the site doesn't need
-                      to know how photos are stored. An album with no cover set
-                      404s, so the image hides itself and the tinted block shows
-                      rather than a broken-image icon. */}
-                  <img className="st-card-img" src={`/api/g/vendor-cover/${a.public_token}`} alt="" loading="lazy"
-                    onError={e => { e.currentTarget.style.visibility = 'hidden'; }} />
-                  <span className="st-card-title">{a.title}</span>
-                  {a.category && <span className="st-card-cat">{a.category}</span>}
-                </a>
+              {photos.map(p => (
+                <figure className="st-shot" key={p.id}>
+                  <img className="st-shot-img" src={`/api/sites/photo/${site.vendor_id}/${p.file}`}
+                    alt={p.caption || ''} loading="lazy" />
+                  {p.caption && <figcaption className="st-shot-cap">{p.caption}</figcaption>}
+                </figure>
               ))}
             </div>
           )}

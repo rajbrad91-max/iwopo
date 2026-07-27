@@ -87,7 +87,7 @@ const PUBLIC_FIELDS = {
   site_title: true, tagline: true, about_heading: true, about_body: true,
   contact_email: true, contact_phone: true, instagram: true, facebook: true,
   sections: true, slug: true, published: true,
-  cover_photo: true, cover_focus: true,
+  cover_photo: true, cover_focus: true, portfolio: true,
 };
 
 /* ─────────────────────────── vendor's own site ─────────────────────────── */
@@ -189,12 +189,6 @@ router.get('/:slug', async (req, res) => {
     });
     if (!site) return res.status(404).json({ error: 'Site not found' });
 
-    const albums = await prisma.albums.findMany({
-      where: { vendor_id: site.vendor_id, public_token: { not: null } },
-      select: { title: true, category: true, public_token: true },
-      orderBy: { created_at: 'desc' },
-      take: 12,
-    });
 
     const { vendors, ...rest } = site;
     res.json({
@@ -203,7 +197,6 @@ router.get('/:slug', async (req, res) => {
         business_name: vendors?.business_name ?? null,
         logo_path: vendors?.logo_path ?? null,
         gallery_token: vendors?.gallery_token ?? null,
-        albums,
       },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -239,11 +232,24 @@ function removeSitePhoto(vendorId, file) {
   } catch { /* a leftover file is not worth failing the request over */ }
 }
 
-async function storeImage(vendorId, tmpPath, width) {
-  const fname = `${Date.now()}.webp`;
+/**
+ * Every photo on a vendor's site goes through here, so there is one answer to
+ * "what format and how big" rather than a different one per upload route.
+ *
+ * 2000px on the LONG edge — passing the same number for both width and height
+ * with fit:inside bounds whichever side is larger, so a portrait and a landscape
+ * both come out at 2000 on their long side rather than a portrait being blown up
+ * or a landscape being under-sized. WebP because it is roughly a third the bytes
+ * of JPEG at the same quality, and these are photographs on a public page where
+ * load time is the whole experience.
+ */
+const MAX_EDGE = 2000;
+
+async function storeImage(vendorId, tmpPath) {
+  const fname = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}.webp`;
   await sharp(tmpPath)
     .rotate()                                       // honour the camera's orientation
-    .resize(width, null, { fit: 'inside', withoutEnlargement: true })
+    .resize(MAX_EDGE, MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 82 })
     .toFile(path.join(siteDirFor(vendorId), fname));
   fs.unlinkSync(tmpPath);
@@ -259,7 +265,7 @@ router.post('/my/cover', requireAuth, upload.single('photo'), async (req, res) =
     const cur = await prisma.vendor_sites.findUnique({
       where: { vendor_id: v }, select: { cover_photo: true },     // 🔒 own row
     });
-    const fname = await storeImage(v, req.file.path, 2200);
+    const fname = await storeImage(v, req.file.path);
     const site = await prisma.vendor_sites.update({
       where: { vendor_id: v },
       data: { cover_photo: fname, updated_at: new Date() },
@@ -309,7 +315,7 @@ router.post('/my/photo', requireAuth, upload.single('photo'), async (req, res) =
   if (!v) return res.status(400).json({ error: 'No vendor' });
   if (!req.file) return res.status(400).json({ error: 'No file' });
   try {
-    const image = await storeImage(v, req.file.path, 1600);
+    const image = await storeImage(v, req.file.path);
     res.json({ image });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
@@ -328,6 +334,113 @@ router.get('/photo/:vendorId/:file', (req, res) => {
   if (!fs.existsSync(f)) return res.status(404).end();
   res.setHeader('Cache-Control', 'public, max-age=86400');
   res.sendFile(f);
+});
+
+
+/* ─────────────────────────── portfolio photos ─────────────────────────── */
+
+/**
+ * 🖼️ The photographs a vendor chooses to show off.
+ *
+ * These are not the same thing as their galleries. A gallery belongs to one
+ * client's event and is password-gated for that couple; a portfolio is the work
+ * a vendor picks to put in front of strangers. Keeping them separate means a
+ * vendor can show three frames from a wedding without exposing the album, and
+ * can show work whose gallery has long since been taken down.
+ *
+ * Stored as an ordered jsonb list on the row rather than its own table: it is
+ * read whole on every page render, never queried across vendors, and reordering
+ * is a single write instead of a column of positions to keep consistent.
+ */
+const MAX_PORTFOLIO = 40;
+
+function cleanPortfolio(list) {
+  return (Array.isArray(list) ? list : []).slice(0, MAX_PORTFOLIO).map((p, i) => ({
+    id: String(p.id || `p${i}`).slice(0, 24),
+    file: path.basename(String(p.file || '')).slice(0, 120),
+    caption: p.caption == null ? null : String(p.caption).trim().slice(0, 120) || null,
+  })).filter(p => p.file);
+}
+
+// POST /api/sites/my/portfolio → add one photo to the end of the list
+router.post('/my/portfolio', requireAuth, upload.single('photo'), async (req, res) => {
+  const v = Number(vid(req));
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const cur = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row
+    });
+    const list = cleanPortfolio(cur?.portfolio);
+    if (list.length >= MAX_PORTFOLIO) {
+      fs.unlinkSync(req.file.path);
+      return res.status(409).json({ error: `A portfolio holds up to ${MAX_PORTFOLIO} photos` });
+    }
+    const file = await storeImage(v, req.file.path);
+    const site = await prisma.vendor_sites.update({
+      where: { vendor_id: v },
+      data: {
+        portfolio: [...list, { id: `p${Date.now()}`, file, caption: null }],
+        updated_at: new Date(),
+      },
+    });
+    res.json({ site });
+  } catch (e) {
+    try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/sites/my/portfolio/:id → drop one photo, and its file with it
+router.delete('/my/portfolio/:id', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const cur = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row
+    });
+    const list = cleanPortfolio(cur?.portfolio);
+    const gone = list.find(p => p.id === req.params.id);
+    if (!gone) return res.status(404).json({ error: 'Photo not found' });
+    const site = await prisma.vendor_sites.update({
+      where: { vendor_id: v },
+      data: { portfolio: list.filter(p => p.id !== req.params.id), updated_at: new Date() },
+    });
+    // only once the row no longer points at it — a file deleted before the write
+    // fails leaves a portfolio entry with nothing behind it
+    removeSitePhoto(v, gone.file);
+    res.json({ site });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * PUT /api/sites/my/portfolio → replace the list: reorder, re-caption, or remove.
+ *
+ * Any photo dropped from the list has its file deleted here too. Without that a
+ * vendor could clear their whole portfolio and leave forty files on disk that
+ * nothing references and nothing will ever tidy up.
+ */
+router.put('/my/portfolio', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const cur = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row
+    });
+    const before = cleanPortfolio(cur?.portfolio);
+    const next = cleanPortfolio(req.body.portfolio);
+
+    // a client can only keep files it already owned — it can't name someone
+    // else's, and it can't invent one
+    const owned = new Set(before.map(p => p.file));
+    const kept = next.filter(p => owned.has(p.file));
+
+    const site = await prisma.vendor_sites.update({
+      where: { vendor_id: v },
+      data: { portfolio: kept, updated_at: new Date() },
+    });
+    const keptFiles = new Set(kept.map(p => p.file));
+    for (const p of before) if (!keptFiles.has(p.file)) removeSitePhoto(v, p.file);
+    res.json({ site });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 export default router;

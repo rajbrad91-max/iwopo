@@ -1485,3 +1485,27 @@
 }
 .ws-cover-acts { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
 .ws-file { cursor: pointer; }
+
+/* 📸 Portfolio manager — thumbnails with reorder and permanent delete */
+.ws-pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ws-pf { position: relative; border-radius: 10px; overflow: hidden; background: var(--panel-2); }
+.ws-pf-img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.ws-pf-acts {
+  position: absolute; inset: auto 0 0 0; display: flex; gap: 4px; justify-content: center;
+  padding: 6px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.65));
+}
+.ws-pf-btn {
+  background: rgba(0,0,0,.55); border: 0; color: #fff; cursor: pointer;
+  width: 26px; height: 26px; border-radius: 6px; font-size: 12px; line-height: 1;
+}
+.ws-pf-btn:hover:not(:disabled) { background: rgba(0,0,0,.85); }
+.ws-pf-btn:disabled { opacity: .3; cursor: default; }
+.ws-pf-btn.is-del:hover { background: var(--red); }
+.ws-pf-add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  aspect-ratio: 1; cursor: pointer; text-align: center; padding: 10px;
+  border: 1.5px dashed var(--line); border-radius: 10px; background: var(--panel-2);
+}
+.ws-pf-add:hover { border-color: var(--teal); }
+.ws-pf-add.is-busy { opacity: .6; pointer-events: none; }
+.ws-pf-count { margin-top: 12px; margin-bottom: 0; }

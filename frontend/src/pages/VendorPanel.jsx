@@ -4223,6 +4223,36 @@ function WebsiteView() {
     catch (err) { setMsg('⚠️ ' + err.message); }
   }
 
+  // 🖼️ Portfolio. Added one file at a time so a slow upload can't leave the list
+  // half-written; removing takes the file with it, permanently.
+  async function onPortfolioPick(e) {
+    const files = [...(e.target.files || [])];
+    e.target.value = '';
+    if (!files.length) return;
+    setBusyPhoto(true); setMsg('');
+    try {
+      for (const f of files) { const d = await api.addPortfolioPhoto(f); setSite(d.site); }
+      flash(`✅ Added ${files.length} photo${files.length === 1 ? '' : 's'}`);
+    } catch (err) { setMsg('⚠️ ' + err.message); }
+    finally { setBusyPhoto(false); }
+  }
+
+  async function removePortfolio(id) {
+    if (!confirm('Remove this photo from your portfolio?\n\nThe file is deleted permanently.')) return;
+    try { const d = await api.removePortfolioPhoto(id); setSite(d.site); flash('🗑️ Photo removed'); }
+    catch (err) { setMsg('⚠️ ' + err.message); }
+  }
+
+  async function movePortfolio(i, dir) {
+    const list = [...(site.portfolio || [])];
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    setSite(s => ({ ...s, portfolio: list }));
+    try { const d = await api.savePortfolio(list); setSite(d.site); }
+    catch (err) { setMsg('⚠️ ' + err.message); }
+  }
+
   if (loading) return <div className="loading">Loading…</div>;
   if (!site) return <div className="table-wrap ac-empty">Couldn&apos;t load your site. {msg}</div>;
 
@@ -4330,6 +4360,40 @@ function WebsiteView() {
             <input type="file" accept="image/*" onChange={onCoverPick} hidden />
           </label>
         )}
+      </div>
+
+      {/* ── portfolio ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">📸 Portfolio</h3>
+        <p className="ws-hint">
+          The work you want strangers to see. These are separate from your client
+          galleries on purpose — show a few frames from a wedding without opening
+          the couple&apos;s album. Every photo is converted to WebP at 2000px on its
+          long edge, so a full-size file off the camera is fine to drop in.
+        </p>
+
+        <div className="ws-pf-grid">
+          {(site.portfolio || []).map((p, i) => (
+            <div className="ws-pf" key={p.id}>
+              <img className="ws-pf-img" src={`/api/sites/photo/${site.vendor_id}/${p.file}`} alt="" loading="lazy" />
+              <div className="ws-pf-acts">
+                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, -1)} disabled={i === 0} title="Move earlier">←</button>
+                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, 1)} disabled={i === (site.portfolio.length - 1)} title="Move later">→</button>
+                <button type="button" className="ws-pf-btn is-del" onClick={() => removePortfolio(p.id)} title="Remove permanently">🗑️</button>
+              </div>
+            </div>
+          ))}
+
+          <label className={`ws-pf-add ${busyPhoto ? 'is-busy' : ''}`}>
+            <span className="ws-drop-icon">＋</span>
+            <span className="ws-drop-text">{busyPhoto ? 'Uploading…' : 'Add photos'}</span>
+            <span className="ws-drop-hint">Pick several at once</span>
+            <input type="file" accept="image/*" multiple onChange={onPortfolioPick} hidden />
+          </label>
+        </div>
+        <p className="ws-hint ws-pf-count">
+          {(site.portfolio || []).length} of 40 · removing a photo deletes the file for good
+        </p>
       </div>
 
       {/* ── words ── */}

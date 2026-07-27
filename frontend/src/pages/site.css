@@ -68,12 +68,10 @@
 
 /* ── portfolio ── */
 .st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
-.st-card { text-decoration: none; color: inherit; display: block; }
-.st-card-img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px;
-  background: color-mix(in srgb, var(--st-accent) 12%, var(--st-paper)); }
-.st-card-title { display: block; margin-top: 10px; font-family: var(--st-head); font-size: 17px; }
-.st-card-cat { display: block; font-size: 11.5px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--st-soft); margin-top: 2px; }
+.st-shot { margin: 0; }
+.st-shot-img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px;
+  background: color-mix(in srgb, var(--st-accent) 10%, var(--st-paper)); }
+.st-shot-cap { margin-top: 8px; font-size: 12.5px; color: var(--st-soft); }
 
 /* ── contact + footer ── */
 .st-contact { display: flex; gap: 20px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
@@ -88,7 +86,7 @@
 .st-aperture .st-hero { min-height: 86vh; }
 .st-aperture .st-hero-title { font-size: 62px; letter-spacing: -.01em; }
 .st-aperture .st-grid { gap: 6px; }
-.st-aperture .st-card-img { aspect-ratio: 1; border-radius: 0; }
+.st-aperture .st-shot-img { aspect-ratio: 1; border-radius: 0; }
 
 /* ── 2. Atelier — editorial, wide margins, rules instead of fills ── */
 .st-atelier .st-hero { min-height: 62vh; }
@@ -103,19 +101,19 @@
 .st-vellum { --st-paper: #fdfaf5; --st-line: #ece2d3; --st-soft: #7a6a58; }
 .st-vellum .st-hero-title { font-style: italic; }
 .st-vellum .st-cta { border-radius: 999px; }
-.st-vellum .st-card-img { border-radius: 10px; }
+.st-vellum .st-shot-img { border-radius: 10px; }
 
 /* ── 4. Noir — dark, cinematic ── */
 .st-noir { --st-paper: #101010; --st-ink: #f4f4f4; --st-soft: #9a9a9a; --st-line: #262626; }
 .st-noir .st-alt { background: #171717; }
 .st-noir .st-hero-title { font-size: 58px; letter-spacing: .01em; }
-.st-noir .st-card-img { filter: saturate(.9); }
+.st-noir .st-shot-img { filter: saturate(.9); }
 
 /* ── 5. Bloom — light and airy ── */
 .st-bloom { --st-paper: #fefdff; --st-line: #efe9f5; --st-soft: #7c7288; }
 .st-bloom .st-hero { min-height: 66vh; }
 .st-bloom .st-h2 { font-size: 34px; }
-.st-bloom .st-card-img { border-radius: 16px; }
+.st-bloom .st-shot-img { border-radius: 16px; }
 .st-bloom .st-cta { border-radius: 999px; }
 
 /* ── phones ── */
