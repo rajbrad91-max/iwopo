@@ -3932,14 +3932,21 @@ function BookingDetail({ id, onBack }) {
             )}
           </div>
 
-          {/* ── paperwork: downloadable for a year after the event ── */}
+          {/* ── paperwork: kept for a year from creation, downloadable meanwhile ── */}
           <div className="ld-card">
             <div className="ld-card-h">📄 Paperwork</div>
             <div className="bd-docs">
               {d.contract ? (
-                <a className="bd-doc" href={`/certificate/${d.contract.token}`} target="_blank" rel="noreferrer">
-                  Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
-                </a>
+                <>
+                  {/* these were one link labelled "Signed contract" that actually
+                      opened the certificate — two different documents */}
+                  <a className="bd-doc" href={`/api/contracts/download/${d.contract.token}`} download>
+                    📄 Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
+                  </a>
+                  <a className="bd-doc" href={`/api/contracts/certificate/${d.contract.token}/download`} download>
+                    📜 Signing certificate
+                  </a>
+                </>
               ) : <p className="bd-empty">No signed contract on file.</p>}
               {d.invoices.map(i => (
                 <a key={i.id} className="bd-doc" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">
@@ -3947,7 +3954,7 @@ function BookingDetail({ id, onBack }) {
                 </a>
               ))}
             </div>
-            <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Kept for one year after the event.</p>
+            <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Contracts and invoices are kept for one year from the date they were created.</p>
           </div>
 
           {/* ── crew ── */}
