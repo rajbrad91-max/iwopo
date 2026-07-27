@@ -424,7 +424,7 @@ router.get('/download/:token', async (req, res) => {
           <b>Document fingerprint (SHA-256):</b> ${esc(c.doc_sha256 || '—')}
         </p>
       </div>
-      <p class="fine">Downloaded ${new Date().toUTCString()}. Contracts and invoices are kept for one year from the date they were created.</p>
+      <p class="fine">Downloaded ${new Date().toUTCString()}. Keep this copy for your own records.</p>
     `);
   } catch (e) { res.status(500).send(e.message); }
 });
@@ -472,7 +472,7 @@ router.get('/certificate/:token/download', async (req, res) => {
       <h2 style="font-size:16px;margin-top:30px">Audit trail</h2>
       <table>${audit || '<tr><td>No events recorded</td></tr>'}</table>
       <p class="fine">All times shown in UTC. Downloaded ${new Date().toUTCString()}.
-      Contracts and invoices are kept for one year from the date they were created.</p>
+      Keep this copy for your own records.</p>
     `);
   } catch (e) { res.status(500).send(e.message); }
 });

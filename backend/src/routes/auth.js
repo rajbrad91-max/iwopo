@@ -176,23 +176,8 @@ router.post('/reset', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/auth/change-password  → logged-in user changes own password (current + new)
-router.post('/change-password', requireAuth, async (req, res) => {
-  const { current, next } = req.body;
-  if (!current || !next) return res.status(400).json({ error: 'Current and new password required' });
-  if (next.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
-  try {
-    const u = await prisma.users.findUnique({
-      where: { id: req.user.id },                 // 🔒 own account only
-      select: { password_hash: true },
-    });
-    if (!u) return res.status(404).json({ error: 'User not found' });
-    const ok = await bcrypt.compare(current, u.password_hash);
-    if (!ok) return res.status(401).json({ error: 'Current password is incorrect' });
-    const newHash = await bcrypt.hash(next, 10);
-    await prisma.users.update({ where: { id: req.user.id }, data: { password_hash: newHash } });
-    res.json({ ok: true, message: 'Password changed. 🔒' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+// Password changes live at PUT /api/me/password. This file used to carry a
+// second, identical implementation at POST /auth/change-password — nothing
+// called it, and two ways to change a password means two things to keep right.
 
 export default router;

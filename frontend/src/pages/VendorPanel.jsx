@@ -2814,11 +2814,13 @@ function AllContracts() {
   const shown = list.filter(c => c.status === 'signed' && c.lead_status === 'booked');
   return (
     <>
-      {/* Above the table, not under it: it explains how long these documents
-          last, which is worth knowing before reading the rows rather than after. */}
+      {/* Above the table, not under it: it explains how these documents behave,
+          which is worth knowing before reading the rows rather than after.
+          It used to promise deletion after a year — nothing deletes anything,
+          so it said something the software doesn't do. */}
       <p className="ct-retention">
-        🗄️ Contracts and invoices are kept for <strong>one year from the date they were created</strong>.
-        Download anything you need to keep for longer.
+        🗄️ Signed contracts and invoices stay here and stay downloadable.
+        Keep your own copy of anything you may need later — download it from the row.
       </p>
       <div className="table-wrap">
         <table>
@@ -4022,7 +4024,7 @@ function BookingDetail({ id, onBack }) {
             )}
           </div>
 
-          {/* ── paperwork: kept for a year from creation, downloadable meanwhile ── */}
+          {/* ── paperwork: kept indefinitely, downloadable any time ── */}
           <div className="ld-card">
             <div className="ld-card-h">📄 Paperwork</div>
             <div className="bd-docs">
@@ -4043,7 +4045,7 @@ function BookingDetail({ id, onBack }) {
                 </a>
               ))}
             </div>
-            <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Contracts and invoices are kept for one year from the date they were created.</p>
+            <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Keep your own copy of anything you may need later.</p>
           </div>
 
           {/* ── crew ── */}
