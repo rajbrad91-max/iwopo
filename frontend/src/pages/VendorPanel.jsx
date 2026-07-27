@@ -3082,6 +3082,28 @@ const FIELD_TYPES = [
   { t: 'checkbox', label: '☑️ Checkbox' },
 ];
 
+/**
+ * 🎉 One click that lays out the questions every event booking needs.
+ *
+ * Adding these one at a time meant six clicks and then typing six labels, every
+ * time a vendor built a form. They arrive already labelled and already mapped to
+ * the real lead columns, and every one of them is an ordinary field afterwards —
+ * rename it, reorder it, change its options, delete it.
+ *
+ * There are two Time fields rather than one because an event has a start and an
+ * end: the Bookings list shows a range, and the Hours field can work itself out
+ * from the pair. One Time field would leave both half-filled.
+ */
+const EVENT_PRESET = [
+  { type: 'dropdown', label: 'Type of Event', maps_to: 'event_type',
+    options: ['Wedding', 'Engagement', 'Reception', 'Birthday', 'Corporate', 'Other'] },
+  { type: 'date',     label: 'Date of Event',   maps_to: 'event_date' },
+  { type: 'time',     label: 'Starting Time',   maps_to: 'timing_from' },
+  { type: 'time',     label: 'Ending Time',     maps_to: 'timing_to' },
+  { type: 'hours',    label: 'Hours of Coverage', maps_to: 'hours' },
+  { type: 'location', label: 'Location',        maps_to: 'location' },
+];
+
 function FieldBuilder({ fields, setFields }) {
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8, width: '100%', fontSize: 13 };
   const uid = () => 'f' + Math.random().toString(36).slice(2, 8);
@@ -3105,6 +3127,26 @@ function FieldBuilder({ fields, setFields }) {
     setFields([...fields, { id: uid(), type: t, label: '', required: false, maps_to, options: t === 'dropdown' ? ['Option 1'] : [] }]);
   };
   const upd = (i, patch) => setFields(fields.map((f, idx) => idx === i ? { ...f, ...patch } : f));
+
+  // 🎉 Add the whole event group at once. A column already claimed by an
+  // existing field is left claimed — the new field still appears, just
+  // unmapped, so adding this twice can't quietly steal a mapping.
+  const addEventGroup = () => {
+    const taken = new Set(fields.map(f => f.maps_to).filter(Boolean));
+    const added = EVENT_PRESET.map(p => {
+      const free = p.maps_to && !taken.has(p.maps_to);
+      if (free) taken.add(p.maps_to);
+      return {
+        id: uid(),
+        type: p.type,
+        label: p.label,
+        required: false,
+        maps_to: free ? p.maps_to : '',
+        options: p.options ? [...p.options] : [],
+      };
+    });
+    setFields([...fields, ...added]);
+  };
   const del = (i) => setFields(fields.filter((_, idx) => idx !== i));
   const move = (i, dir) => {
     const j = i + dir; if (j < 0 || j >= fields.length) return;
@@ -3113,10 +3155,16 @@ function FieldBuilder({ fields, setFields }) {
 
   return (
     <div>
-      {/* add field buttons */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+      {/* add field buttons — the Event group sits apart because it adds six at
+          once, and a vendor shouldn't have to guess that from the label */}
+      <div className="fb-add-row">
+        <button className="refresh fb-preset" onClick={addEventGroup}
+          title="Adds Type of Event, Date, Starting Time, Ending Time, Hours and Location — all editable">
+          + 🎉 Event
+        </button>
+        <span className="fb-add-sep" />
         {FIELD_TYPES.map(ft => (
-          <button key={ft.t} className="refresh" onClick={() => add(ft.t)} style={{ padding: '6px 11px', fontSize: 12 }}>+ {ft.label}</button>
+          <button key={ft.t} className="refresh fb-add-btn" onClick={() => add(ft.t)}>+ {ft.label}</button>
         ))}
       </div>
 
