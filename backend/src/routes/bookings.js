@@ -80,7 +80,10 @@ router.get('/:leadId', requireAuth, async (req, res) => {
     }
 
     const [packages, payments, contract, invoices, assigned, roster, money] = await Promise.all([
-      prisma.lead_packages.findMany({ where: { lead_id: id }, orderBy: { id: 'asc' } }),
+      // ordered the same way the lead's own packages page orders them, so the
+      // two screens list the same offer in the same order rather than one by
+      // the vendor's arrangement and the other by whatever id they were given
+      prisma.lead_packages.findMany({ where: { lead_id: id }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] }),
       prisma.payments.findMany({ where: { lead_id: id }, orderBy: { id: 'desc' } }),
       prisma.contracts.findFirst({
         where: { lead_id: id, status: 'signed' },

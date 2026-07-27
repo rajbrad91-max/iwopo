@@ -4048,7 +4048,10 @@ function BookingDetail({ id, onBack }) {
                     <div key={p.id} className={`bd-pkg ${isChosen ? 'is-chosen' : ''}`}>
                       {isChosen && <span className="bd-pkg-tag">Chosen</span>}
                       <h4 className="bd-pkg-name">{p.name}</h4>
-                      <p className="bd-pkg-price">${money0(p.base_price)}</p>
+                      {/* the column is `price` — this read `base_price`, which
+                          doesn't exist on a lead's package, so every one showed
+                          $0 while the leads page showed the real figure */}
+                      <p className="bd-pkg-price">${money0(p.price)}</p>
                       {inc.length > 0 && <ul className="bd-inc">{inc.map((x, i) => <li key={i}>{x}</li>)}</ul>}
                     </div>
                   );
