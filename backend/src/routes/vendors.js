@@ -6,20 +6,30 @@ import { getFeatures } from '../lib/entitlements.js';
 
 const router = express.Router();
 
-// canonical list of toggleable features (matches the vendor sidebar sections)
-const FEATURE_LIST = [
-  { key: 'leads', label: 'Leads' },
-  { key: 'bookings', label: 'Bookings' },
-  { key: 'contracts', label: 'Contracts & Invoices' },
-  { key: 'crew', label: 'My Crew' },
-  { key: 'galleries', label: 'Galleries' },
-  { key: 'packages', label: 'My Packages' },
-  { key: 'inqform', label: 'Inquiry Form' },
-  { key: 'chatbot', label: 'AI Chat' },
-  { key: 'calendar', label: 'Calendar' },
-  { key: 'website', label: 'Website' },
-  { key: 'storage', label: 'Storage' },
-];
+/**
+ * The toggleable features, read from the services table rather than written out
+ * here. This list used to be its own copy and had drifted: it offered
+ * `bookings`, `packages` and `inqform`, none of which gate anything — those tabs
+ * all check `leads` — and it called File Flyer "Storage", which is a third name
+ * for the same product. One table now names every service once.
+ *
+ * Services that aren't built yet come back marked, so the panel can show them
+ * without pretending a toggle would do something.
+ */
+async function featureList() {
+  const rows = await prisma.services.findMany({
+    where: { feature_key: { not: null } },
+    select: { feature_key: true, name: true, icon: true, description: true, is_live: true },
+    orderBy: [{ is_live: 'desc' }, { name: 'asc' }],
+  });
+  return rows.map(r => ({
+    key: r.feature_key,
+    label: r.name,
+    icon: r.icon,
+    description: r.description,
+    is_live: r.is_live,
+  }));
+}
 
 // GET /api/vendors  → super admin: list ALL vendors
 router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
@@ -112,9 +122,13 @@ router.get('/:id/features', requireAuth, requireSuperAdmin, async (req, res) => 
       select: { feature_key: true, enabled: true },
     });
     const overrideMap = Object.fromEntries(ovr.map(o => [o.feature_key, o.enabled]));
-    const features = FEATURE_LIST.map(f => ({
+    const list = await featureList();
+    const features = list.map(f => ({
       key: f.key,
       label: f.label,
+      icon: f.icon,
+      description: f.description,
+      is_live: f.is_live,          // false = nothing built behind it yet
       enabled: active.has(f.key),
       overridden: f.key in overrideMap,
     }));
@@ -129,7 +143,19 @@ router.put('/:id/features/:key', requireAuth, requireSuperAdmin, async (req, res
   const id = Number(req.params.id);
   const { key } = req.params;
   const { enabled, clear } = req.body;
-  if (!FEATURE_LIST.some(f => f.key === key)) return res.status(400).json({ error: 'Unknown feature' });
+  const list = await featureList();
+  const feat = list.find(f => f.key === key);
+  if (!feat) return res.status(400).json({ error: 'Unknown feature' });
+  // Refuse to switch on something that doesn't exist yet. Turning it on would
+  // record an entitlement for a product with no page behind it, and the vendor
+  // would see nothing — which is exactly what happened with Website Builder.
+  if (!feat.is_live && enabled) {
+    return res.status(409).json({
+      error: 'not_built',
+      feature: key,
+      message: `${feat.label} isn't built yet, so switching it on wouldn't give the vendor anything.`,
+    });
+  }
   try {
     if (clear) {
       await prisma.vendor_feature_overrides.deleteMany({ where: { vendor_id: id, feature_key: key } });
