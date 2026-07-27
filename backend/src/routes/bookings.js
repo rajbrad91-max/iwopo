@@ -22,6 +22,31 @@ router.get('/', requireAuth, async (req, res) => {
     });
     const bookings = [];
     for (const l of rows) bookings.push({ ...l, money: await moneySummary(l) });
+
+    // 👥 Crew state for the whole list in one query rather than one per booking.
+    // The list is where a vendor checks whether the day is covered, and "booked"
+    // says nothing about whether anyone is turning up to shoot it.
+    const ids = rows.map(l => l.id);
+    if (ids.length) {
+      const crew = await prisma.lead_crew.findMany({
+        where: { lead_id: { in: ids } },        // 🔒 ids come from the scoped rows above
+        select: { lead_id: true, checked_in_at: true, checked_out_at: true },
+      });
+      const byLead = new Map();
+      for (const c of crew) {
+        const s = byLead.get(c.lead_id) || { total: 0, checked_in: 0, checked_out: 0 };
+        s.total += 1;
+        if (c.checked_in_at) s.checked_in += 1;
+        if (c.checked_out_at) s.checked_out += 1;
+        byLead.set(c.lead_id, s);
+      }
+      for (const b of bookings) {
+        b.crew = byLead.get(b.id) || { total: 0, checked_in: 0, checked_out: 0 };
+      }
+    } else {
+      for (const b of bookings) b.crew = { total: 0, checked_in: 0, checked_out: 0 };
+    }
+
     res.json({ bookings });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

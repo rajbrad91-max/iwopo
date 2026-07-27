@@ -2989,6 +2989,21 @@ function ContractSetup() {
 }
 
 
+/**
+ * 👥 What the crew column says. "Booked" tells a vendor the money is agreed; it
+ * says nothing about whether anyone is turning up to shoot the day, which is the
+ * thing that actually goes wrong. Read in order: nobody assigned, assigned and
+ * waiting, part of the team on site, everyone on site, everyone finished.
+ */
+function crewStatus(c) {
+  const { total = 0, checked_in: inN = 0, checked_out: outN = 0 } = c || {};
+  if (!total) return { label: 'Not assigned', cls: 'trial', icon: '⚠️' };
+  if (outN >= total) return { label: 'Wrapped', cls: 'active', icon: '🏁' };
+  if (inN >= total) return { label: `All ${total} on site`, cls: 'active', icon: '✅' };
+  if (inN > 0) return { label: `${inN}/${total} on site`, cls: 'active', icon: '🟢' };
+  return { label: `${total} assigned`, cls: 'trial', icon: '👥' };
+}
+
 function BookingsView({ routeBooking, onOpenBooking }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3047,11 +3062,13 @@ function BookingsView({ routeBooking, onOpenBooking }) {
       {mode === 'calendar' ? <CalendarView onOpen={(l) => onOpenBooking(l.id)} filter={term} /> : (
         <div className="table-wrap">
           <table>
-            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Status</th></tr></thead>
+            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Crew Status</th><th>Status</th></tr></thead>
             <tbody>
               {shown.length === 0 ? (
-                <tr><td colSpan="6" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
-              ) : shown.map(b => (
+                <tr><td colSpan="7" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
+              ) : shown.map(b => {
+                const cs = crewStatus(b.crew);
+                return (
                 <tr key={b.id} className="row-clickable" onClick={() => onOpenBooking(b.id)}>
                   <td className="col-num" data-label="#">{seqOf(b.id)}</td>
                   <td className="biz">{b.name}</td>
@@ -3060,9 +3077,11 @@ function BookingsView({ routeBooking, onOpenBooking }) {
                   {/* the hours they've booked you for — what a vendor checks
                       when planning a day, rather than the money */}
                   <td>{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
+                  <td data-label="Crew Status"><span className={`badge ${cs.cls}`}>{cs.icon} {cs.label}</span></td>
                   <td><span className="badge active">✅ Booked</span></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
