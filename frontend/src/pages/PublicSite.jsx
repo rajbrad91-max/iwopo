@@ -78,6 +78,12 @@ export default function PublicSite({ slug }) {
       {/* ── Home ── */}
       <section id="st-home" className="st-hero">
         <div className="st-hero-inner">
+          {/* The logo is read live from the vendor's profile, so replacing it in
+              Settings changes it here and in the nav at once — there's no copy
+              of it stored against the site to fall out of date. */}
+          {site.logo_path && (
+            <img className="st-hero-logo" src={`/api/me/logo/${site.logo_path}`} alt={title} />
+          )}
           <h1 className="st-hero-title">{title}</h1>
           {site.tagline && <p className="st-hero-tagline">{site.tagline}</p>}
           <a href="#st-book" className="st-cta" onClick={go('book')}>Book us</a>

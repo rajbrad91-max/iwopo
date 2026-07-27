@@ -49,6 +49,8 @@
 /* ── hero ── */
 .st-hero { min-height: 74vh; display: grid; place-content: center; text-align: center; padding: 60px 28px; }
 .st-hero-inner { max-width: 720px; }
+.st-hero-logo { display: block; max-height: 96px; max-width: 300px;
+  object-fit: contain; margin: 0 auto 22px; }
 .st-hero-title { font-family: var(--st-head); font-size: 54px; font-weight: 400; margin: 0 0 14px; line-height: 1.1; }
 .st-hero-tagline { font-size: 16px; color: var(--st-soft); margin: 0 0 30px; letter-spacing: .01em; }
 .st-about { padding: 70px 0; }
