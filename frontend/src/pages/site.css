@@ -209,3 +209,18 @@
   .st-aperture #st-portfolio .st-h2 { padding: 56px 20px 26px; }
   .st-lb-nav { font-size: 30px; padding: 8px 10px; }
 }
+
+/* ── real pages, not one long scroll ──────────────────────────────────── */
+/* an inner page opens straight into its heading, so it needs breathing room
+   at the top where the home page has a hero doing that job */
+.st-first { padding-top: 86px; }
+.st-links a.is-here { color: var(--st-accent); }
+.st-links a.is-here::after { right: 0; }
+
+/* the home page shows a handful of frames and then offers the rest */
+.st-more { text-align: center; margin-top: 46px; }
+
+@media (max-width: 760px) {
+  .st-first { padding-top: 44px; }
+  .st-more { margin-top: 30px; }
+}

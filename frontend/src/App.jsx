@@ -80,12 +80,12 @@ export default function App() {
   const g = window.location.pathname.match(/^\/g\/([a-z0-9]+)/i);
   if (g) return <PublicGallery token={g[1]} />;
 
-  // 🌐 A vendor's own website: /site/:slug
+  // 🌐 A vendor's own website: /site/:slug and its pages, /site/:slug/portfolio.
   // Slugs are lowercase letters, numbers and hyphens. Without this the path fell
   // through to the bottom of this function and rendered the iwopo selling page,
   // so a vendor's published address advertised us instead of them.
-  const st = window.location.pathname.match(/^\/site\/([a-z0-9-]+)/i);
-  if (st) return <PublicSite slug={st[1]} />;
+  const st = window.location.pathname.match(/^\/site\/([a-z0-9-]+)(?:\/([a-z]+))?/i);
+  if (st) return <PublicSite slug={st[1]} page={st[2] || 'home'} />;
 
 
   if (user) {
