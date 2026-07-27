@@ -3796,7 +3796,7 @@ function SettingsView({ user, onProfileChange }) {
           onChange={e => { setChosenCurrency(e.target.value); savePrefs({ ...s, currency: e.target.value }); }}>
           <option value="">Follow my country{s.currency ? ` (${s.currency})` : ''}</option>
           {currencies.map(c => (
-            <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.name}</option>
+            <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
           ))}
         </select>
         <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
