@@ -2813,8 +2813,15 @@ function AllContracts() {
   // voided ones never leave the API at all.
   const shown = list.filter(c => c.status === 'signed' && c.lead_status === 'booked');
   return (
-    <div className="table-wrap">
-      <table>
+    <>
+      {/* Above the table, not under it: it explains how long these documents
+          last, which is worth knowing before reading the rows rather than after. */}
+      <p className="ct-retention">
+        🗄️ Contracts and invoices are kept for <strong>one year from the date they were created</strong>.
+        Download anything you need to keep for longer.
+      </p>
+      <div className="table-wrap">
+        <table>
         <thead><tr><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th className="ct-dl-col">Download</th></tr></thead>
         <tbody>
           {shown.length === 0 ? (
@@ -2839,11 +2846,8 @@ function AllContracts() {
           ))}
         </tbody>
       </table>
-      <p className="ct-retention">
-        🗄️ Contracts and invoices are kept for <strong>one year from the date they were created</strong>.
-        Download anything you need to keep for longer.
-      </p>
-    </div>
+      </div>
+    </>
   );
 }
 
