@@ -1412,3 +1412,16 @@
 }
 .fb-preset:hover { background: color-mix(in srgb, var(--teal) 26%, transparent); }
 .fb-add-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+
+/* ✏️ Rename the assistant from its own heading, where a vendor looks for it */
+.ac-rename {
+  background: none; border: 0; cursor: pointer; padding: 0 0 0 8px;
+  font-size: 15px; opacity: .5; line-height: 1;
+}
+.ac-rename:hover { opacity: 1; }
+.ac-name-input {
+  font-size: 19px; font-weight: 700; color: var(--text);
+  background: var(--panel-2); border: 1px solid var(--teal);
+  border-radius: 8px; padding: 5px 10px; width: 260px; max-width: 100%;
+}
+.ac-name-input:focus { outline: none; }

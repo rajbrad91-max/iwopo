@@ -353,6 +353,23 @@ function AiChatVendorView({ goServices }) {
     finally { setKbBusy(false); }
   }
 
+  // ✏️ Rename the assistant from where its name is shown. The field also lives
+  // in the Knowledge tab, but a vendor looking at "🤖 Aria" at the top of the
+  // page reaches for that, not for the first row of a fifteen-field form.
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState('');
+
+  async function saveName() {
+    const next = draftName.trim();
+    setRenaming(false);
+    if (!next || next === (kb?.bot_name || '')) return;
+    setKb(s => ({ ...s, bot_name: next }));            // show it straight away
+    try {
+      // only the one field — the server leaves everything else untouched
+      await api.saveMyChatbotKnowledge({ bot_name: next });
+    } catch (e) { setKbMsg('⚠️ ' + e.message); setTimeout(() => setKbMsg(''), 3000); }
+  }
+
   // the assistant's own name, used everywhere it's referred to
   const botName = (kb?.bot_name || '').trim() || 'Tasveer';
   // a conversation is titled by whoever was in it; the name is learned when the
@@ -419,7 +436,23 @@ function AiChatVendorView({ goServices }) {
     <>
       <div className="ac-head">
         <div>
-          <div className="ac-title">🤖 {botName}</div>
+          {renaming ? (
+            <input
+              className="ac-name-input" autoFocus value={draftName} maxLength={40}
+              onChange={e => setDraftName(e.target.value)}
+              onBlur={saveName}
+              onKeyDown={e => {
+                if (e.key === 'Enter') saveName();
+                if (e.key === 'Escape') setRenaming(false);
+              }}
+            />
+          ) : (
+            <div className="ac-title">
+              🤖 {botName}
+              <button type="button" className="ac-rename" title="Rename your assistant"
+                onClick={() => { setDraftName(kb?.bot_name || botName); setRenaming(true); }}>✏️</button>
+            </div>
+          )}
           <div className="ac-sub">
             {tab === 'chats'
               ? `${convos.length} conversation${convos.length === 1 ? '' : 's'} · kept for 30 days`

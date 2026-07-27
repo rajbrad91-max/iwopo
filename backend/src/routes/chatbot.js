@@ -139,13 +139,33 @@ router.put('/knowledge/:vendorId', requireAuth, requireSuperAdmin, async (req, r
 });
 
 // shared upsert used by both super-admin edit and the public fill-in form
+/**
+ * Save a vendor's knowledge.
+ *
+ * Only the fields actually present in the body are written. It used to write
+ * every known field on every call, defaulting anything missing to an empty
+ * string — so a caller sending just one field silently erased all the others.
+ * Renaming the assistant would have wiped the vendor's opening hours, packages
+ * and policies with it, and nothing would have said so.
+ *
+ * A field sent as an empty string is still a real instruction to clear it; only
+ * fields that are absent entirely are left alone.
+ */
 async function saveKnowledge(vendorId, body) {
   const data = {};
-  for (const f of KNOWLEDGE_FIELDS) data[f] = (body[f] ?? '').toString();
+  for (const f of KNOWLEDGE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, f)) data[f] = (body[f] ?? '').toString();
+  }
+  if (!Object.keys(data).length) return;          // nothing recognised — don't touch the row
+
+  // a create still needs every column, since there's no existing row to keep
+  const full = {};
+  for (const f of KNOWLEDGE_FIELDS) full[f] = data[f] ?? '';
+
   await prisma.chatbot_knowledge.upsert({
     where: { vendor_id: Number(vendorId) },
     update: { ...data, updated_at: new Date() },
-    create: { vendor_id: Number(vendorId), ...data },
+    create: { vendor_id: Number(vendorId), ...full },
   });
 }
 
