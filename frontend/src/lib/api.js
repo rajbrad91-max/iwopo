@@ -169,8 +169,6 @@ export const api = {
     request('/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (token, password) =>
     request('/auth/reset', { method: 'POST', body: JSON.stringify({ token, password }) }),
-  changePassword: (current, next) =>
-    request('/auth/change-password', { method: 'POST', body: JSON.stringify({ current, next }) }),
   vendors: () => request('/vendors'),
   adminCounts: () => request('/admin/counts'),
   adminVendorStats: () => request('/admin/vendor-stats'),

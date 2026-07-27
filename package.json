@@ -1,0 +1,28 @@
+{
+  "name": "iwopo",
+  "version": "1.0.0",
+  "description": "``` vowflo/ ├── backend/    → Node + Express + PostgreSQL └── frontend/   → React + Vite ```",
+  "scripts": {
+    "lint": "eslint backend/src frontend/src",
+    "lint:fix": "eslint backend/src frontend/src --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajbrad91-max/iwopo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rajbrad91-max/iwopo/issues"
+  },
+  "homepage": "https://github.com/rajbrad91-max/iwopo#readme",
+  "private": "true",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.8.0"
+  },
+  "type": "module"
+}

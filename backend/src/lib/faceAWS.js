@@ -74,7 +74,7 @@ export async function indexPhotoFaces(albumId, imagePath, externalImageId) {
   const res = await rek.send(new IndexFacesCommand({
     CollectionId: collectionIdFor(albumId),
     Image: { Bytes },
-    ExternalImageId: String(externalImageId).replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 255),
+    ExternalImageId: String(externalImageId).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 255),
     // ALL (rather than DEFAULT) also returns pose, quality and eyes-open, which
     // is what lets the gallery choose a front-facing face for the circle instead
     // of an arbitrary one. Same API call, so no extra cost.

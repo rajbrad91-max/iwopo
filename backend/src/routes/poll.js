@@ -4,12 +4,15 @@ import prisma from '../config/prisma.js';
 const router = express.Router();
 
 // ── EDIT YOUR POLL HERE ──────────────────────────────
+// The name vote is settled — iwopo won — so this is kept only for the vote
+// history already recorded against it. The options were left holding two
+// identical 'iwopo.com' entries after a rename, which meant the second hint
+// silently replaced the first.
 const POLL_TITLE = 'Which brand name do you like best?';
-const OPTIONS = ['Vendlio.ai', 'iwopo.com', 'iwopo.com'];
+const OPTIONS = ['Vendlio.ai', 'iwopo.com'];
 const HINTS = {
   'Vendlio.ai': 'Relatable (vendors)',
   'iwopo.com': 'Unique (no built-in meaning)',
-  'iwopo.com': 'Relatable, but easy to misspell',
 };
 const RESULTS_PASSWORD = 'xyz.123';
 // ─────────────────────────────────────────────────────

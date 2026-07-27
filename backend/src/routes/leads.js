@@ -252,7 +252,7 @@ async function mapCustomToColumns(vendorId, body, { overwrite = false } = {}) {
   const cd = body.custom_data;
   if (!cd || typeof cd !== 'object') return body;
 
-  let fields = [];
+  let fields;
   try {
     const s = await prisma.inquiry_settings.findUnique({
       where: { vendor_id: Number(vendorId) },   // 🔒 tenancy: only this vendor's form definition
