@@ -1,130 +1,211 @@
 /**
- * 🌐 Vendor websites — five themes.
+ * 🌐 Vendor websites — five layouts, not five colour swaps.
  *
- * The shared rules do the work; each theme is a small set of overrides on top.
- * That keeps the five genuinely different to look at without five copies of the
- * same stylesheet, and it means a fix to spacing or the mobile nav lands in all
- * of them at once.
+ * A photographer's site is judged on the photographs, so the layout's job is to
+ * get out of the way and give them room. Every theme follows that: large
+ * imagery, generous space, restrained type. What differs between them is the
+ * shape of the grid, the rhythm of the page and the weight of the type — the
+ * things that actually make two sites look unalike.
  *
- * Colour and type come from the vendor as CSS variables, so a theme is a layout
- * decision and the vendor still owns how it feels.
+ * Colour and both typefaces come from the vendor as CSS variables, so a theme is
+ * a layout decision and the vendor still owns how it feels.
  */
 
-.st { --st-ink: #1a1a1a; --st-paper: #fff; --st-soft: #6b6b6b; --st-line: #e6e6e6;
-      background: var(--st-paper); color: var(--st-ink); font-family: var(--st-body);
-      min-height: 100vh; }
+.st {
+  --st-ink: #16161a; --st-paper: #fff; --st-soft: #6f6f78; --st-line: #e8e8ec;
+  --st-gap: 20px;
+  background: var(--st-paper); color: var(--st-ink);
+  font-family: var(--st-body); font-size: 16px; line-height: 1.6;
+  min-height: 100vh; overflow-x: hidden;
+}
 .st * { box-sizing: border-box; }
+.st img { max-width: 100%; }
 
 .st-loading, .st-missing { min-height: 60vh; display: grid; place-content: center;
-  text-align: center; font-family: system-ui, sans-serif; color: #6b6b6b; padding: 40px; }
-.st-missing h1 { font-size: 22px; margin: 0 0 6px; color: #1a1a1a; }
+  text-align: center; font-family: system-ui, sans-serif; color: #6f6f78; padding: 40px; }
+.st-missing h1 { font-size: 22px; margin: 0 0 6px; color: #16161a; }
 
-/* ── nav ── */
-.st-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center;
-  justify-content: space-between; padding: 16px 28px; background: var(--st-paper);
-  border-bottom: 1px solid var(--st-line); }
+/* ── nav ─────────────────────────────────────────────────────────────── */
+.st-nav { position: sticky; top: 0; z-index: 30; display: flex; align-items: center;
+  justify-content: space-between; padding: 18px 40px;
+  background: color-mix(in srgb, var(--st-paper) 88%, transparent);
+  backdrop-filter: blur(14px); border-bottom: 1px solid var(--st-line); }
 .st-brand { text-decoration: none; color: inherit; display: flex; align-items: center; }
-.st-brand-logo { height: 34px; max-width: 150px; object-fit: contain; display: block; }
-.st-brand-name { font-family: var(--st-head); font-size: 19px; letter-spacing: .02em; }
-.st-links { display: flex; gap: 26px; }
-.st-links a { color: var(--st-ink); text-decoration: none; font-size: 13px;
-  letter-spacing: .12em; text-transform: uppercase; }
-.st-links a:hover { color: var(--st-accent); }
-.st-burger { display: none; background: none; border: 0; font-size: 20px; cursor: pointer; color: inherit; }
+.st-brand-logo { height: 36px; max-width: 170px; object-fit: contain; display: block; }
+.st-brand-name { font-family: var(--st-head); font-size: 20px; letter-spacing: .04em; }
+.st-links { display: flex; gap: 34px; }
+.st-links a { color: var(--st-ink); text-decoration: none; font-size: 11.5px;
+  letter-spacing: .2em; text-transform: uppercase; position: relative; padding: 4px 0; }
+.st-links a::after { content: ''; position: absolute; left: 0; right: 100%; bottom: 0;
+  height: 1px; background: var(--st-accent); transition: right .3s ease; }
+.st-links a:hover::after { right: 0; }
+.st-burger { display: none; background: none; border: 0; font-size: 22px; cursor: pointer; color: inherit; }
 
-/* ── shared blocks ── */
-.st-wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
-.st-narrow { max-width: 640px; text-align: center; }
-.st-section { padding: 84px 0; }
-.st-alt { background: color-mix(in srgb, var(--st-accent) 6%, var(--st-paper)); }
-.st-h2 { font-family: var(--st-head); font-size: 32px; font-weight: 500; margin: 0 0 18px; }
-.st-prose { font-size: 15.5px; line-height: 1.85; color: var(--st-soft); white-space: pre-wrap; margin: 0 0 22px; }
-.st-quiet { color: var(--st-soft); font-size: 14px; }
+/* ── shared blocks ───────────────────────────────────────────────────── */
+.st-wrap { max-width: 1240px; margin: 0 auto; padding: 0 40px; }
+.st-narrow { max-width: 660px; text-align: center; }
+.st-section { padding: 110px 0; }
+.st-alt { background: color-mix(in srgb, var(--st-accent) 5%, var(--st-paper)); }
 
-.st-cta { display: inline-block; padding: 13px 30px; border-radius: 2px;
+.st-eyebrow { font-size: 11px; letter-spacing: .32em; text-transform: uppercase;
+  color: var(--st-accent); margin: 0 0 12px; font-family: var(--st-body); font-weight: 600; }
+.st-h2 { font-family: var(--st-head); font-size: clamp(30px, 4vw, 46px);
+  font-weight: 400; margin: 0 0 20px; line-height: 1.12; letter-spacing: -.01em; }
+.st-prose { font-size: 16.5px; line-height: 1.9; color: var(--st-soft);
+  white-space: pre-wrap; margin: 0 0 26px; }
+.st-quiet { color: var(--st-soft); font-size: 15px; }
+
+.st-cta { display: inline-block; padding: 15px 38px; border-radius: 2px;
   background: var(--st-accent); color: #fff; text-decoration: none;
-  font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; }
-.st-cta:hover { filter: brightness(1.08); }
+  font-size: 11.5px; letter-spacing: .2em; text-transform: uppercase; font-weight: 600;
+  transition: transform .25s ease, box-shadow .25s ease; }
+.st-cta:hover { transform: translateY(-2px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--st-accent) 34%, transparent); }
 
-/* ── hero ── */
-.st-hero { min-height: 74vh; display: grid; place-content: center; text-align: center; padding: 60px 28px; }
-
-/* with a cover photo the hero becomes a layer stack: photo, a scrim to keep the
-   words readable over any picture, then the words */
-.st-hero.has-cover { position: relative; isolation: isolate; }
+/* ── hero ────────────────────────────────────────────────────────────── */
+.st-hero { position: relative; isolation: isolate; min-height: 82vh;
+  display: grid; place-content: center; text-align: center; padding: 90px 40px; }
 .st-hero-cover { position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; z-index: -2; }
 .st-hero.has-cover::after { content: ''; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.55)); }
+  background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.5)); }
 .st-hero.has-cover .st-hero-title,
-.st-hero.has-cover .st-hero-tagline { color: #fff; text-shadow: 0 2px 18px rgba(0,0,0,.4); }
+.st-hero.has-cover .st-eyebrow { color: #fff; }
+.st-hero.has-cover .st-hero-tagline { color: rgba(255,255,255,.9); }
 
-.st-hero-inner { max-width: 720px; }
-.st-hero-logo { display: block; max-height: 96px; max-width: 300px;
-  object-fit: contain; margin: 0 auto 22px; }
-.st-hero-title { font-family: var(--st-head); font-size: 54px; font-weight: 400; margin: 0 0 14px; line-height: 1.1; }
-.st-hero-tagline { font-size: 16px; color: var(--st-soft); margin: 0 0 30px; letter-spacing: .01em; }
-.st-about { padding: 70px 0; }
+.st-hero-inner { max-width: 820px; }
+.st-hero-logo { display: block; max-height: 104px; max-width: 320px;
+  object-fit: contain; margin: 0 auto 26px; }
+.st-hero-title { font-family: var(--st-head); font-size: clamp(38px, 7vw, 76px);
+  font-weight: 400; margin: 0 0 18px; line-height: 1.04; letter-spacing: -.02em; }
+.st-hero-tagline { font-size: clamp(15px, 1.6vw, 18px); color: var(--st-soft);
+  margin: 0 0 34px; letter-spacing: .01em; }
+.st-about { padding: 100px 0; }
 
-/* ── portfolio ── */
-.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
-.st-shot { margin: 0; }
-.st-shot-img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px;
-  background: color-mix(in srgb, var(--st-accent) 10%, var(--st-paper)); }
-.st-shot-cap { margin-top: 8px; font-size: 12.5px; color: var(--st-soft); }
+/* ── portfolio ───────────────────────────────────────────────────────── */
+/* Columns, not a rigid grid: photographs keep their own proportions, so a tall
+   frame stays tall instead of being cropped square to fit a box. */
+.st-grid { column-count: 3; column-gap: var(--st-gap); }
+.st-shot { margin: 0 0 var(--st-gap); break-inside: avoid; position: relative;
+  overflow: hidden; cursor: zoom-in; }
+.st-shot-img { display: block; width: 100%; height: auto;
+  transition: transform .7s cubic-bezier(.2,.7,.3,1); }
+.st-shot:hover .st-shot-img { transform: scale(1.04); }
+.st-shot-cap { position: absolute; inset: auto 0 0 0; padding: 26px 18px 14px;
+  font-size: 12.5px; letter-spacing: .04em; color: #fff;
+  background: linear-gradient(transparent, rgba(0,0,0,.65));
+  opacity: 0; transition: opacity .35s ease; }
+.st-shot:hover .st-shot-cap { opacity: 1; }
 
-/* ── contact + footer ── */
-.st-contact { display: flex; gap: 20px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
-.st-contact a { color: var(--st-accent); text-decoration: none; font-size: 14px; }
-.st-foot { border-top: 1px solid var(--st-line); padding: 26px 0; font-size: 12.5px; color: var(--st-soft); }
+/* full-screen viewer, so a photograph can actually be looked at */
+.st-lb { position: fixed; inset: 0; z-index: 60; background: rgba(8,8,10,.96);
+  display: grid; place-items: center; padding: 32px; cursor: zoom-out; }
+.st-lb-img { max-width: 94vw; max-height: 90vh; object-fit: contain; }
+.st-lb-close { position: absolute; top: 20px; right: 26px; background: none; border: 0;
+  color: #fff; font-size: 30px; cursor: pointer; line-height: 1; opacity: .75; }
+.st-lb-close:hover { opacity: 1; }
+.st-lb-nav { position: absolute; top: 50%; transform: translateY(-50%);
+  background: none; border: 0; color: #fff; font-size: 40px; cursor: pointer;
+  opacity: .55; padding: 12px 18px; }
+.st-lb-nav:hover { opacity: 1; }
+.st-lb-prev { left: 6px; }
+.st-lb-next { right: 6px; }
+
+/* ── contact + footer ────────────────────────────────────────────────── */
+.st-contact { display: flex; gap: 26px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+.st-contact a { color: var(--st-accent); text-decoration: none; font-size: 15px; }
+.st-contact a:hover { text-decoration: underline; }
+.st-foot { border-top: 1px solid var(--st-line); padding: 34px 0; font-size: 12.5px; color: var(--st-soft); }
 .st-foot-inner { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.st-social { display: flex; gap: 16px; }
-.st-social a { color: var(--st-soft); text-decoration: none; }
+.st-social { display: flex; gap: 20px; }
+.st-social a { color: var(--st-soft); text-decoration: none; letter-spacing: .1em;
+  text-transform: uppercase; font-size: 11px; }
 .st-social a:hover { color: var(--st-accent); }
 
-/* ── 1. Aperture — photography first, type stays out of the way ── */
-.st-aperture .st-hero { min-height: 86vh; }
-.st-aperture .st-hero-title { font-size: 62px; letter-spacing: -.01em; }
-.st-aperture .st-grid { gap: 6px; }
-.st-aperture .st-shot-img { aspect-ratio: 1; border-radius: 0; }
+/* ════════════════════════════════════════════════════════════════════════
+   THE FIVE THEMES
+   Each changes the shape of the page, not just its colour: how wide the
+   photographs run, how many columns, how the type sits, how much air.
+   ════════════════════════════════════════════════════════════════════════ */
 
-/* ── 2. Atelier — editorial, wide margins, rules instead of fills ── */
-.st-atelier .st-hero { min-height: 62vh; }
-.st-atelier .st-hero-title { font-size: 46px; }
-.st-atelier .st-h2 { border-bottom: 1px solid var(--st-line); padding-bottom: 12px; }
-.st-atelier .st-cta { background: none; color: var(--st-accent);
-  border: 1px solid var(--st-accent); }
-.st-atelier .st-cta:hover { background: var(--st-accent); color: #fff; }
-.st-atelier .st-section { padding: 96px 0; }
+/* ── 1. APERTURE — the photographs run edge to edge and never stop ────── */
+.st-aperture .st-hero { min-height: 100vh; }
+.st-aperture .st-hero-title { font-size: clamp(42px, 9vw, 104px); font-weight: 300; letter-spacing: -.03em; }
+.st-aperture .st-nav { border-bottom: 0; }
+.st-aperture .st-section { padding: 0 0 4px; }
+.st-aperture #st-portfolio .st-wrap { max-width: none; padding: 0; }
+.st-aperture #st-portfolio .st-h2 { text-align: center; padding: 96px 24px 40px; margin: 0; }
+.st-aperture .st-grid { column-count: 2; column-gap: 4px; }
+.st-aperture .st-shot { margin-bottom: 4px; }
+.st-aperture .st-alt .st-wrap,
+.st-aperture #st-book .st-wrap { max-width: 660px; padding: 96px 40px; }
+.st-aperture .st-alt { background: #f6f6f4; }
 
-/* ── 3. Vellum — warm paper, softer edges ── */
-.st-vellum { --st-paper: #fdfaf5; --st-line: #ece2d3; --st-soft: #7a6a58; }
-.st-vellum .st-hero-title { font-style: italic; }
-.st-vellum .st-cta { border-radius: 999px; }
-.st-vellum .st-shot-img { border-radius: 10px; }
+/* ── 2. ATELIER — a magazine: ruled headings, wide margins, three columns ─ */
+.st-atelier .st-hero { min-height: 68vh; }
+.st-atelier .st-hero-title { font-size: clamp(34px, 5vw, 58px); font-weight: 400; }
+.st-atelier .st-h2 { border-bottom: 1px solid var(--st-ink); padding-bottom: 16px; }
+.st-atelier .st-section { padding: 120px 0; }
+.st-atelier .st-wrap { max-width: 1140px; }
+.st-atelier .st-grid { column-count: 3; column-gap: 26px; }
+.st-atelier .st-shot { margin-bottom: 26px; }
+.st-atelier .st-cta { background: none; color: var(--st-ink);
+  border: 1px solid var(--st-ink); border-radius: 0; }
+.st-atelier .st-cta:hover { background: var(--st-ink); color: var(--st-paper); box-shadow: none; }
+.st-atelier .st-alt { background: #faf9f7; }
 
-/* ── 4. Noir — dark, cinematic ── */
-.st-noir { --st-paper: #101010; --st-ink: #f4f4f4; --st-soft: #9a9a9a; --st-line: #262626; }
-.st-noir .st-alt { background: #171717; }
-.st-noir .st-hero-title { font-size: 58px; letter-spacing: .01em; }
-.st-noir .st-shot-img { filter: saturate(.9); }
+/* ── 3. VELLUM — warm, classic, unhurried; two generous columns ────────── */
+.st-vellum { --st-paper: #fcf9f4; --st-line: #ebe0cf; --st-soft: #7c6b56; --st-ink: #2c2013; }
+.st-vellum .st-hero-title { font-style: italic; font-weight: 400; }
+.st-vellum .st-hero { min-height: 76vh; }
+.st-vellum .st-cta { border-radius: 999px; padding: 15px 42px; }
+.st-vellum .st-grid { column-count: 2; column-gap: 30px; }
+.st-vellum .st-shot { margin-bottom: 30px; border-radius: 4px; }
+.st-vellum .st-h2 { text-align: center; }
+.st-vellum .st-h2::after { content: ''; display: block; width: 54px; height: 1px;
+  background: var(--st-accent); margin: 20px auto 0; }
+.st-vellum .st-alt { background: #f6efe3; }
 
-/* ── 5. Bloom — light and airy ── */
-.st-bloom { --st-paper: #fefdff; --st-line: #efe9f5; --st-soft: #7c7288; }
-.st-bloom .st-hero { min-height: 66vh; }
-.st-bloom .st-h2 { font-size: 34px; }
-.st-bloom .st-shot-img { border-radius: 16px; }
-.st-bloom .st-cta { border-radius: 999px; }
+/* ── 4. NOIR — dark, cinematic, wide paired frames ────────────────────── */
+.st-noir { --st-paper: #0c0c0e; --st-ink: #f2f2f4; --st-soft: #9b9ba4; --st-line: #232328; }
+.st-noir .st-nav { background: color-mix(in srgb, #0c0c0e 82%, transparent); }
+.st-noir .st-hero { min-height: 94vh; }
+.st-noir .st-hero-title { font-size: clamp(38px, 7vw, 82px); font-weight: 300; letter-spacing: .01em; }
+.st-noir .st-alt { background: #131317; }
+.st-noir .st-grid { column-count: 2; column-gap: 14px; }
+.st-noir .st-shot { margin-bottom: 14px; }
+.st-noir .st-shot-img { filter: saturate(.92) contrast(1.04); }
+.st-noir .st-section { padding: 120px 0; }
+.st-noir .st-h2 { letter-spacing: .04em; }
 
-/* ── phones ── */
+/* ── 5. BLOOM — light and soft, a staggered gallery ───────────────────── */
+.st-bloom { --st-paper: #fffdfe; --st-line: #f0eaf6; --st-soft: #7b7186; }
+.st-bloom .st-hero { min-height: 72vh; }
+.st-bloom .st-h2 { text-align: center; }
+.st-bloom .st-cta { border-radius: 999px; padding: 15px 42px; }
+.st-bloom .st-grid { column-count: 3; column-gap: 22px; }
+.st-bloom .st-shot { margin-bottom: 22px; border-radius: 18px; }
+.st-bloom .st-shot:nth-child(3n) { margin-top: 26px; }   /* the stagger */
+.st-bloom .st-alt { background: #faf6fd; }
+
+/* ── narrower screens ─────────────────────────────────────────────────── */
+@media (max-width: 1000px) {
+  .st-grid, .st-atelier .st-grid, .st-bloom .st-grid { column-count: 2; }
+}
 @media (max-width: 760px) {
+  .st-nav { padding: 14px 20px; }
   .st-burger { display: block; }
   .st-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column;
-    gap: 0; background: var(--st-paper); border-bottom: 1px solid var(--st-line);
-    display: none; }
+    gap: 0; background: var(--st-paper); border-bottom: 1px solid var(--st-line); display: none; }
   .st-links.is-open { display: flex; }
-  .st-links a { padding: 15px 28px; border-top: 1px solid var(--st-line); }
-  .st-hero-title, .st-aperture .st-hero-title, .st-noir .st-hero-title { font-size: 34px; }
-  .st-h2 { font-size: 25px; }
-  .st-section { padding: 56px 0; }
+  .st-links a { padding: 16px 20px; border-top: 1px solid var(--st-line); }
+  .st-links a::after { display: none; }
+  .st-wrap { padding: 0 20px; }
+  .st-section, .st-atelier .st-section, .st-noir .st-section { padding: 64px 0; }
+  .st-hero, .st-aperture .st-hero, .st-noir .st-hero { min-height: 74vh; padding: 60px 20px; }
+  .st-grid, .st-aperture .st-grid, .st-atelier .st-grid,
+  .st-vellum .st-grid, .st-noir .st-grid, .st-bloom .st-grid { column-count: 1; }
+  .st-bloom .st-shot:nth-child(3n) { margin-top: 0; }
+  .st-aperture #st-portfolio .st-h2 { padding: 56px 20px 26px; }
+  .st-lb-nav { font-size: 30px; padding: 8px 10px; }
 }

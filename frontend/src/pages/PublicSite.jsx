@@ -3,6 +3,23 @@ import { api } from '../lib/api';
 import './site.css';
 
 /**
+ * The typefaces a vendor can choose. They have to be FETCHED, not just named:
+ * setting font-family to "Playfair Display" without loading it silently falls
+ * back to Georgia, which is exactly why all five themes looked alike and plain.
+ * Loaded once, on this page only, so the panel doesn't pay for them.
+ */
+const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@300;400;500;600&family=Poppins:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap';
+
+function useWebFonts() {
+  useEffect(() => {
+    if (document.getElementById('st-fonts')) return;
+    const l = document.createElement('link');
+    l.id = 'st-fonts'; l.rel = 'stylesheet'; l.href = FONTS_CSS;
+    document.head.appendChild(l);
+  }, []);
+}
+
+/**
  * 🌐 A vendor's public website.
  *
  * Four sections, in the order a couple actually moves through them: see the
@@ -25,12 +42,29 @@ export default function PublicSite({ slug }) {
   const [site, setSite] = useState(null);
   const [state, setState] = useState('loading');   // loading | ok | missing
   const [open, setOpen] = useState(false);         // mobile nav
+  const [lb, setLb] = useState(-1);                // which photo is full-screen
+  useWebFonts();
 
   useEffect(() => {
     api.publicSite(slug)
       .then(d => { setSite(d.site); setState('ok'); })
       .catch(() => setState('missing'));
   }, [slug]);
+
+  // arrows and Escape while a photograph is open — a viewer you can only click
+  // out of feels broken to anyone used to looking at pictures
+  useEffect(() => {
+    if (lb < 0) return;
+    const n = (site?.portfolio || []).length;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLb(-1);
+      if (e.key === 'ArrowRight') setLb(i => (i + 1) % n);
+      if (e.key === 'ArrowLeft') setLb(i => (i - 1 + n) % n);
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';       // don't scroll the page behind
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [lb, site]);
 
   if (state === 'loading') return <div className="st-loading">Loading…</div>;
   if (state === 'missing') {
@@ -112,6 +146,7 @@ export default function PublicSite({ slug }) {
       {/* ── Portfolio ── */}
       <section id="st-portfolio" className="st-section">
         <div className="st-wrap">
+          <p className="st-eyebrow">Selected work</p>
           <h2 className="st-h2">Portfolio</h2>
           {/* the vendor's chosen work. Their client galleries are a different
               thing and live under Client Section — a portfolio is what they show
@@ -120,8 +155,8 @@ export default function PublicSite({ slug }) {
             <p className="st-quiet">Work coming soon.</p>
           ) : (
             <div className="st-grid">
-              {photos.map(p => (
-                <figure className="st-shot" key={p.id}>
+              {photos.map((p, i) => (
+                <figure className="st-shot" key={p.id} onClick={() => setLb(i)}>
                   <img className="st-shot-img" src={`/api/sites/photo/${site.vendor_id}/${p.file}`}
                     alt={p.caption || ''} loading="lazy" />
                   {p.caption && <figcaption className="st-shot-cap">{p.caption}</figcaption>}
@@ -135,6 +170,7 @@ export default function PublicSite({ slug }) {
       {/* ── Client Section ── */}
       <section id="st-clients" className="st-section st-alt">
         <div className="st-wrap st-narrow">
+          <p className="st-eyebrow">Already booked</p>
           <h2 className="st-h2">Client Section</h2>
           <p className="st-prose">
             Already worked with us? Your photographs are waiting. Open your gallery to
@@ -149,6 +185,7 @@ export default function PublicSite({ slug }) {
       {/* ── Book Us ── */}
       <section id="st-book" className="st-section">
         <div className="st-wrap st-narrow">
+          <p className="st-eyebrow">Get in touch</p>
           <h2 className="st-h2">Book Us</h2>
           <p className="st-prose">Tell us about your day and we&apos;ll come back to you.</p>
           <a className="st-cta" href={`/inquiry/${site.vendor_id}`}>Start an enquiry</a>
@@ -168,6 +205,23 @@ export default function PublicSite({ slug }) {
           </span>
         </div>
       </footer>
+
+      {/* 📷 full-screen viewer — a portfolio you can't look at properly isn't one */}
+      {lb >= 0 && photos[lb] && (
+        <div className="st-lb" onClick={() => setLb(-1)}>
+          <button className="st-lb-close" onClick={() => setLb(-1)} aria-label="Close">✕</button>
+          {photos.length > 1 && (
+            <>
+              <button className="st-lb-nav st-lb-prev" aria-label="Previous"
+                onClick={e => { e.stopPropagation(); setLb((lb - 1 + photos.length) % photos.length); }}>‹</button>
+              <button className="st-lb-nav st-lb-next" aria-label="Next"
+                onClick={e => { e.stopPropagation(); setLb((lb + 1) % photos.length); }}>›</button>
+            </>
+          )}
+          <img className="st-lb-img" onClick={e => e.stopPropagation()}
+            src={`/api/sites/photo/${site.vendor_id}/${photos[lb].file}`} alt={photos[lb].caption || ''} />
+        </div>
+      )}
     </div>
   );
 }
