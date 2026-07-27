@@ -1654,6 +1654,24 @@ function CalendarView({ onOpen, filter }) {
   );
 }
 
+/**
+ * 📊 One dashboard tile. Every tile opens the list it counts.
+ *
+ * A real button rather than a clickable div, so it can be reached by keyboard
+ * and announces itself to a screen reader — three of these were dead numbers
+ * and the fourth was a div with a cursor style, which looks clickable to a
+ * mouse and to nothing else.
+ */
+function StatTile({ icon, value, label, onOpen }) {
+  return (
+    <button type="button" className="card is-link" onClick={onOpen} aria-label={`${label}: ${value}. Open`}>
+      <div className="ic">{icon}</div>
+      <div className="value">{value}</div>
+      <div className="label">{label}</div>
+    </button>
+  );
+}
+
 function DashHome({ goTab }) {
   const [leads, setLeads] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -1686,12 +1704,13 @@ function DashHome({ goTab }) {
     <>
       <div className="dash-grid">
         <div className="dash-left">
-          {/* 🟢 4 tiles */}
-          <div className="stats" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
-            <div className="card"><div className="ic">📋</div><div className="value">{leads.length}</div><div className="label">Total Leads</div></div>
-            <div className="card"><div className="ic">✨</div><div className="value">{newLeads}</div><div className="label">New Leads</div></div>
-            <div className="card"><div className="ic">✅</div><div className="value">{booked}</div><div className="label">Booked</div></div>
-            <div className="card" onClick={() => goTab('galleries')} style={{ cursor: 'pointer' }}><div className="ic">🖼️</div><div className="value">{photoSel}</div><div className="label">Photo Selection</div></div>
+          {/* 🟢 4 tiles — each opens the list it counts. A number you can see
+              but not act on just makes you go and find it yourself. */}
+          <div className="stats dash-stats-4">
+            <StatTile icon="📋" value={leads.length} label="Total Leads" onOpen={() => goTab('leads')} />
+            <StatTile icon="✨" value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
+            <StatTile icon="✅" value={booked} label="Booked" onOpen={() => goTab('bookings')} />
+            <StatTile icon="🖼️" value={photoSel} label="Photo Selection" onOpen={() => goTab('galleries')} />
           </div>
 
           {/* 🟡 Recent Leads */}

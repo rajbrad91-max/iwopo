@@ -1399,3 +1399,24 @@
 .ct-retention {
   margin: 14px 2px 2px; font-size: 12.5px; color: var(--muted); line-height: 1.6;
 }
+
+/* 📊 Dashboard tiles: four across, and every one opens the list it counts.
+   The grid width was an inline style, and only one tile was clickable — via an
+   inline cursor, which reads as a link to a mouse and to nothing else. */
+.dash-stats-4 { grid-template-columns: repeat(4, 1fr); }
+
+.dash .card.is-link {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  display: block;
+}
+.dash .card.is-link:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .dash-stats-4 { grid-template-columns: repeat(2, 1fr); }
+}
