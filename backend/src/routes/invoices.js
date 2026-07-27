@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
+import { currencyFor } from '../lib/currencies.js';
 
 const router = express.Router();
 
@@ -106,6 +107,16 @@ router.get('/view/:token', async (req, res) => {
       },
     });
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
+
+    // the vendor's currency, resolved the same way everywhere else does it
+    const vset = await prisma.vendor_settings.findUnique({
+      where: { vendor_id: inv.vendor_id }, select: { currency: true },
+    });
+    const vrow = await prisma.vendors.findUnique({
+      where: { id: inv.vendor_id }, select: { country: true },
+    });
+    const invCurrency = currencyFor(vset?.currency, vrow?.country);
+
     const { leads, vendors, ...rest } = inv;
     res.json({
       invoice: {
@@ -115,6 +126,7 @@ router.get('/view/:token', async (req, res) => {
         event_type: leads?.event_type ?? null,
         event_date: leads?.event_date ?? null,
         business_name: vendors?.business_name ?? null,
+        currency: invCurrency,
         // the vendor's own mark, so the client sees one business across the
         // portal, the contract and this invoice rather than three anonymous pages
         logo_path: vendors?.logo_path ?? null,

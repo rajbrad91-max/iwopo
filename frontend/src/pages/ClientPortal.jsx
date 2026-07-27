@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, fmtEventDate } from '../lib/api';
+import { api, fmtEventDate, fmtMoney } from '../lib/api';
 import './portal.css';
 
 /**
@@ -20,8 +20,15 @@ import './portal.css';
  */
 const STEPS = [[1, 'Choose'], [2, 'Sign'], [3, 'Pay']];
 
-function money0(n) {
-  return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+/**
+ * 💱 A sum in the VENDOR's currency, which arrives with the portal payload.
+ *
+ * This used to print a bare number behind a hard-coded dollar sign, so a client
+ * of a London or Karachi vendor was quoted in the wrong currency on the page
+ * where they agree to pay it.
+ */
+function cashIn(currency) {
+  return (n) => fmtMoney(n, { currency: currency || 'USD' });
 }
 
 /**
@@ -167,6 +174,8 @@ function ContractStep({ contract, clientName, onSigned }) {
 
 export default function ClientPortal({ token }) {
   const [data, setData] = useState(null);
+  // bound once the payload arrives, so every figure on the page uses one currency
+  const cash = cashIn(data?.currency);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -265,7 +274,7 @@ export default function ClientPortal({ token }) {
       {(chosen || eventDate || lead.location) && (
         <div className="po-strip">
           {chosen && <div className="po-strip-i"><span className="po-strip-l">Package</span><span className="po-strip-v">{chosen.name}</span></div>}
-          {chosen && <div className="po-strip-i"><span className="po-strip-l">Total</span><span className="po-strip-v">${money0(money.final_total)}</span></div>}
+          {chosen && <div className="po-strip-i"><span className="po-strip-l">Total</span><span className="po-strip-v">{cash(money.final_total)}</span></div>}
           {eventDate && <div className="po-strip-i"><span className="po-strip-l">Date</span><span className="po-strip-v">{eventDate}</span></div>}
           {lead.location && <div className="po-strip-i"><span className="po-strip-l">Location</span><span className="po-strip-v">{lead.location}</span></div>}
         </div>
@@ -297,7 +306,7 @@ export default function ClientPortal({ token }) {
                       <h3 className="po-pkg-name">{p.name}</h3>
                       <p className="po-pkg-price">
                         <span className="po-pkg-cur">$</span>
-                        <span className="po-pkg-amt">{money0(p.base_price)}</span>
+                        <span className="po-pkg-amt">{cash(p.base_price)}</span>
                       </p>
                     </div>
                     {inc.length > 0 && (
@@ -361,13 +370,13 @@ export default function ClientPortal({ token }) {
                 <p className="po-lead">A deposit confirms your booking. The balance is due closer to the day.</p>
 
                 <dl className="po-bill">
-                  <div><dt>Package total</dt><dd>${money0(money.final_total)}</dd></div>
+                  <div><dt>Package total</dt><dd>{cash(money.final_total)}</dd></div>
                   {money.paid > 0 && (
-                    <div className="is-paid"><dt>Already paid</dt><dd>${money0(money.paid)}</dd></div>
+                    <div className="is-paid"><dt>Already paid</dt><dd>{cash(money.paid)}</dd></div>
                   )}
                   <div className="is-due">
                     <dt>{money.paid > 0 ? 'Balance due' : 'Deposit to confirm'}</dt>
-                    <dd>${money0(money.paid > 0 ? money.balance : money.deposit_amount)}</dd>
+                    <dd>{cash(money.paid > 0 ? money.balance : money.deposit_amount)}</dd>
                   </div>
                 </dl>
 

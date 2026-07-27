@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFeatures } from '../lib/entitlements.js';
+import { CURRENCIES, CURRENCY_CODES, currencyFor } from '../lib/currencies.js';
 
 const router = express.Router();
 const LOGO_DIR = LOGO_DIR_CFG;
@@ -23,6 +24,13 @@ router.get('/features', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/me/currencies → the list the preferences dropdown offers.
+// Served from the backend so the country-to-currency map lives in exactly one
+// place; the panel needs the choices, not a second copy of the rules.
+router.get('/currencies', requireAuth, (req, res) => {
+  res.json({ currencies: CURRENCIES });
+});
+
 // GET /api/me/settings
 router.get('/settings', requireAuth, async (req, res) => {
   const vid = req.user.vendor_id;
@@ -31,7 +39,19 @@ router.get('/settings', requireAuth, async (req, res) => {
     // create the row on first read, same as before
     let settings = await prisma.vendor_settings.findUnique({ where: { vendor_id: vid } }); // 🔒 tenancy
     if (!settings) settings = await prisma.vendor_settings.create({ data: { vendor_id: vid } });
-    res.json({ settings });
+
+    // 💱 A stored currency is the vendor's own choice; a null one means they
+    // haven't chosen, so it follows the country on their profile. Resolving it
+    // here rather than in the panel means every screen and every client-facing
+    // page agrees on one answer instead of each guessing.
+    const vendor = await prisma.vendors.findUnique({
+      where: { id: vid }, select: { country: true },
+    });
+    res.json({
+      settings: { ...settings, currency: currencyFor(settings.currency, vendor?.country) },
+      chosen_currency: settings.currency,     // null = following the country
+      country: vendor?.country || null,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -39,13 +59,18 @@ router.get('/settings', requireAuth, async (req, res) => {
 router.put('/settings', requireAuth, async (req, res) => {
   const vid = req.user.vendor_id;
   if (!vid) return res.status(400).json({ error: 'No vendor' });
-  const { time_format, timezone, theme } = req.body;
+  const { time_format, timezone, theme, currency } = req.body;
   try {
     const data = {
       time_format: time_format || '12h',
       timezone: timezone || 'America/Vancouver',
       theme: theme || 'dark',
     };
+    // only write a currency we actually support; an empty string means "go back
+    // to following my country" rather than "store a blank"
+    if (currency !== undefined) {
+      data.currency = currency && CURRENCY_CODES.has(currency) ? currency : null;
+    }
     await prisma.vendor_settings.upsert({
       where: { vendor_id: vid },                  // 🔒 tenancy
       update: { ...data, updated_at: new Date() },

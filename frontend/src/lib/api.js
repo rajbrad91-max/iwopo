@@ -68,6 +68,31 @@ export function eventDateParts(v) {
 /** The same calendar day as a sortable/comparable local Date, or null. */
 export function eventDateValue(v) { return ymd(v); }
 
+/**
+ * 💱 A sum of the VENDOR's money, in the vendor's own currency.
+ *
+ * A figure with no currency is worthless once the same software is used in
+ * Vancouver and Karachi, and a hard-coded dollar sign quietly tells a client in
+ * London the wrong thing. The currency is resolved once when the panel loads —
+ * their choice, or their country's — and cached with the other preferences.
+ *
+ * This is for money a vendor charges their clients. iwopo's own pricing to the
+ * vendor is a different thing and is not formatted with this.
+ */
+export function fmtMoney(n, { decimals = 0, currency } = {}) {
+  const code = currency || localStorage.getItem('vf_currency') || 'USD';
+  const value = Number(n || 0);
+  try {
+    return value.toLocaleString(undefined, {
+      style: 'currency', currency: code,
+      minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+    });
+  } catch {
+    // an unknown code shouldn't blank a total — show the number and say the code
+    return `${value.toLocaleString(undefined, { maximumFractionDigits: decimals })} ${code}`;
+  }
+}
+
 // 🗂️ Session storage is PER TAB, so a super-admin tab and a vendor tab can be
 // open side by side without overwriting each other. localStorage is shared
 // across every tab of the site, which meant logging into one panel silently
@@ -249,6 +274,7 @@ export const api = {
   mappableColumns: () => request('/leads/mappable-columns'),
   lead: (id) => request(`/leads/${id}`),
   updateLead: (id, data) => request(`/leads/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  myCurrencies: () => request('/me/currencies'),
   mySettings: () => request('/me/settings'),
   saveSettings: (data) => request('/me/settings', { method: 'PUT', body: JSON.stringify(data) }),
   changeEmail: (email, password) => request('/me/email', { method: 'PUT', body: JSON.stringify({ email, password }) }),

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { api, fmtMoney } from '../lib/api';
 
 export default function InvoiceView({ token }) {
   const [inv, setInv] = useState(null);
@@ -13,7 +13,9 @@ export default function InvoiceView({ token }) {
   if (!inv) return <div style={wrap}><div style={card}>Loading…</div></div>;
 
   const items = Array.isArray(inv.items) ? inv.items : [];
-  const money = (v) => `$${Number(v || 0).toFixed(2)}`;
+  // the vendor's currency, sent with the invoice — a client abroad should not
+  // be shown dollars for a bill in pounds
+  const money = (v) => fmtMoney(v, { decimals: 2, currency: inv.currency });
 
   return (
     <div style={wrap}>

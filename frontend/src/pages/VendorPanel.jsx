@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, eventDateParts, eventDateValue } from '../lib/api';
+import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody } from './InquiryForm';
@@ -91,6 +91,9 @@ export default function VendorPanel({ onLogout }) {
       localStorage.setItem('vf_theme', th);
       localStorage.setItem('vf_time_format', st?.settings?.time_format || '12h');
       localStorage.setItem('vf_timezone', st?.settings?.timezone || '');
+      // the server resolves this from their choice or their country, so every
+      // screen shows one answer rather than each guessing
+      localStorage.setItem('vf_currency', st?.settings?.currency || 'USD');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1321,7 +1324,7 @@ function AlbumDetail({ albumId, onBack }) {
             const n = photos.filter(p => String(p.event_id) === String(ev.id)).length;
             return (
               <button key={ev.id} className={`pg-ev ${String(activeEvent) === String(ev.id) ? 'on' : ''}`} onClick={() => setActiveEvent(ev.id)}>
-                <span>{ev.name}</span>
+                <span className="pg-ev-name">{ev.name}</span>
                 <span className="pg-ev-count">{n}</span>
               </button>
             );
@@ -1381,7 +1384,7 @@ function AlbumDetail({ albumId, onBack }) {
             ) : !favData || favData.total === 0 ? (
               <div className="ad-fav-empty">No favorites yet. When clients ⭐ photos in the gallery, their picks show up here — grouped by event, then by the email they used.</div>
             ) : (
-              <div>
+              <div className="ad-fav-lists">
                 <div className="ad-fav-total">{favData.total} favorite{favData.total === 1 ? '' : 's'} across {favData.events.length} event{favData.events.length === 1 ? '' : 's'}</div>
                 {favData.events.map(ev => (
                   <div key={ev.event_id ?? 'none'} className="ad-fav-event">
@@ -1424,7 +1427,7 @@ function AlbumDetail({ albumId, onBack }) {
             ) : !selData || selData.total === 0 ? (
               <div className="ad-fav-empty">Nothing sent yet. When the client logs in with the admin password, picks photos with the ✓ tool, and clicks “Send to studio”, their final selection appears here — grouped by event.</div>
             ) : (
-              <div>
+              <div className="ad-fav-lists">
                 <div className="ad-sel-bar">
                   <div className="ad-fav-total">
                     {selData.total} photo{selData.total === 1 ? '' : 's'} selected across {selData.events.length} event{selData.events.length === 1 ? '' : 's'}
@@ -2434,7 +2437,7 @@ function LeadDetail({ lead, onBack }) {
                 <div className="ld-pkg-head">
                   <span className="ld-pkg-name">{p.name}</span>
                   {p.is_selected && <span className="ld-pkg-picked">✓ client picked this</span>}
-                  <span className="ld-pkg-amt">${Number(p.price).toFixed(0)}</span>
+                  <span className="ld-pkg-amt">{fmtMoney(p.price)}</span>
                 </div>
                 {(p.inclusions || []).length > 0 && (
                   <ul className="ld-pkg-incl">
@@ -2726,8 +2729,8 @@ function MoneySection({ lead }) {
                 </div>
                 {data?.summary && (
                   <p className="ms-claim-hint">
-                    Balance outstanding: <strong>${Number(data.summary.balance || 0).toLocaleString()}</strong>
-                    {' · '}Deposit: <strong>${Number(data.summary.deposit_amount || 0).toLocaleString()}</strong>
+                    Balance outstanding: <strong>{fmtMoney(data.summary.balance)}</strong>
+                    {' · '}Deposit: <strong>{fmtMoney(data.summary.deposit_amount)}</strong>
                   </p>
                 )}
               </>
@@ -2784,20 +2787,20 @@ function MoneySection({ lead }) {
         <div className="ms-tiles">
           <div className="ms-tile ms-tile-total">
             <div className="ms-tile-lbl">Total Amount</div>
-            <div className="ms-tile-val">${sum.final_total}</div>
+            <div className="ms-tile-val">{fmtMoney(sum.final_total)}</div>
             {sum.discount_amount > 0 && <div className="ms-tile-note">was ${sum.base_total}</div>}
           </div>
           <div className="ms-tile ms-tile-recv">
             <div className="ms-tile-lbl">Received</div>
-            <div className="ms-tile-val">${sum.paid}</div>
+            <div className="ms-tile-val">{fmtMoney(sum.paid)}</div>
           </div>
           <div className={`ms-tile ${pending > 0 ? 'ms-tile-pend' : 'ms-tile-clear'}`}>
             <div className="ms-tile-lbl">Pending</div>
-            <div className="ms-tile-val">${pending}</div>
+            <div className="ms-tile-val">{fmtMoney(pending)}</div>
           </div>
         </div>
       )}
-      {sum && <div className="ms-deposit-line">🔐 Deposit due: <b>${sum.deposit_amount}</b> ({sum.deposit_percent}%)</div>}
+      {sum && <div className="ms-deposit-line">🔐 Deposit due: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>}
 
       {/* manual payments */}
       <div className="ms-mp-head">Manual Payments</div>
@@ -2814,7 +2817,7 @@ function MoneySection({ lead }) {
         <div className="ms-pay-list">
           {data.payments.map(p => (
             <div key={p.id} className="ms-pay-item">
-              <span>💵 <b>${Number(p.amount).toFixed(2)}</b> · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
+              <span>💵 <b>{fmtMoney(p.amount, { decimals: 2 })}</b> · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
               <span className="bx-del" onClick={() => delPay(p.id)}>🗑️</span>
             </div>
           ))}
@@ -2859,9 +2862,9 @@ function AllInvoices() {
             <tr key={i.id}>
               <td className="biz">{i.invoice_number}</td>
               <td>{i.client_name}</td>
-              <td>${Number(i.total).toFixed(2)}</td>
-              <td className="ct-paid">${Number(i.paid).toFixed(2)}</td>
-              <td className={Number(i.balance) > 0 ? 'ct-due' : 'ct-paid'}>${Number(i.balance).toFixed(2)}</td>
+              <td>{fmtMoney(i.total, { decimals: 2 })}</td>
+              <td className="ct-paid">{fmtMoney(i.paid, { decimals: 2 })}</td>
+              <td className={Number(i.balance) > 0 ? 'ct-due' : 'ct-paid'}>{fmtMoney(i.balance, { decimals: 2 })}</td>
               {/* Opens the invoice the client sees. Copying the link was one step
                   short of useful — you still had to open it to check it was the
                   right one, and the address bar gives you the link anyway. */}
@@ -3684,11 +3687,17 @@ function SettingsView({ user, onProfileChange }) {
   const [em, setEm] = useState({ email: user?.email || '', password: '' });
   const [pw, setPw] = useState({ current: '', next: '' });
   const [msg, setMsg] = useState('');
+  // 💱 the choices come from the server so the country-to-currency rules live in
+  // one place; `chosen` being null means they're following their country
+  const [currencies, setCurrencies] = useState([]);
+  const [chosenCurrency, setChosenCurrency] = useState(null);
 
   useEffect(() => {
     api.mySettings().then(d => {
       setS(d.settings || { time_format: '12h', theme: 'dark', timezone: guessTz() });
+      setChosenCurrency(d.chosen_currency || '');
     }).catch(() => setS({ time_format: '12h', theme: 'dark', timezone: guessTz() }));
+    api.myCurrencies().then(d => setCurrencies(d.currencies || [])).catch(() => {});
     api.myProfile().then(d => setProf(d.profile || {})).catch(() => setProf({}));
   }, []);
 
@@ -3722,6 +3731,7 @@ function SettingsView({ user, onProfileChange }) {
     localStorage.setItem('vf_theme', next.theme || 'dark');
     localStorage.setItem('vf_time_format', next.time_format || '12h');
     localStorage.setItem('vf_timezone', next.timezone || '');
+    if (next.currency) localStorage.setItem('vf_currency', next.currency);
     try { await api.saveSettings(next); setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500); } catch {}
   }
   async function saveEmail() {
@@ -3776,6 +3786,23 @@ function SettingsView({ user, onProfileChange }) {
         <input style={box} value={s.timezone || ''} onChange={e => setS({ ...s, timezone: e.target.value })}
           onBlur={() => savePrefs(s)} />
         <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>🌍 Auto-detected from your location</div>
+
+        {/* 💱 What this vendor charges in. iwopo is used in more than one
+            country, so a bare number on an invoice tells a client in London the
+            wrong thing. It follows the country on their profile unless they say
+            otherwise — a preference, not a question they have to answer. */}
+        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }} htmlFor="pf-cur">Currency</label>
+        <select id="pf-cur" style={box} value={chosenCurrency || ''}
+          onChange={e => { setChosenCurrency(e.target.value); savePrefs({ ...s, currency: e.target.value }); }}>
+          <option value="">Follow my country{s.currency ? ` (${s.currency})` : ''}</option>
+          {currencies.map(c => (
+            <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.name}</option>
+          ))}
+        </select>
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+          💰 Your packages, invoices and what clients see are all shown in {s.currency || 'USD'}.
+          {' '}Example: {fmtMoney(1250, { currency: s.currency })}
+        </div>
       </div>
       )}
 
@@ -4051,7 +4078,7 @@ function BookingDetail({ id, onBack }) {
                       {/* the column is `price` — this read `base_price`, which
                           doesn't exist on a lead's package, so every one showed
                           $0 while the leads page showed the real figure */}
-                      <p className="bd-pkg-price">${money0(p.price)}</p>
+                      <p className="bd-pkg-price">{fmtMoney(p.price)}</p>
                       {inc.length > 0 && <ul className="bd-inc">{inc.map((x, i) => <li key={i}>{x}</li>)}</ul>}
                     </div>
                   );
@@ -4066,10 +4093,10 @@ function BookingDetail({ id, onBack }) {
           <div className="ld-card">
             <div className="ld-card-h">💰 Money</div>
             <dl className="bd-dl bd-dl-money">
-              <div><dt>Total</dt><dd>${money0(money.final_total)}</dd></div>
-              <div><dt>Deposit</dt><dd>${money0(money.deposit_amount)}</dd></div>
-              <div className="is-paid"><dt>Paid</dt><dd>${money0(money.paid)}</dd></div>
-              <div className="is-due"><dt>Balance</dt><dd>${money0(money.balance)}</dd></div>
+              <div><dt>Total</dt><dd>{fmtMoney(money.final_total)}</dd></div>
+              <div><dt>Deposit</dt><dd>{fmtMoney(money.deposit_amount)}</dd></div>
+              <div className="is-paid"><dt>Paid</dt><dd>{fmtMoney(money.paid)}</dd></div>
+              <div className="is-due"><dt>Balance</dt><dd>{fmtMoney(money.balance)}</dd></div>
             </dl>
 
             <h4 className="bd-h4">Record a payment</h4>
@@ -4092,7 +4119,7 @@ function BookingDetail({ id, onBack }) {
               <ul className="bd-list">
                 {d.payments.map(p => (
                   <li key={p.id}>
-                    <span>${money0(p.amount)} · {p.method}{p.note ? ` · ${p.note}` : ''}</span>
+                    <span>{fmtMoney(p.amount)} · {p.method}{p.note ? ` · ${p.note}` : ''}</span>
                     <span className="bd-list-right">
                       <span className="bd-when">{fmtDateTime(p.created_at, { dateOnly: true })}</span>
                       <button className="bd-x" onClick={() => removePayment(p.id)} disabled={busy}>✕</button>
@@ -4120,7 +4147,7 @@ function BookingDetail({ id, onBack }) {
               ) : <p className="bd-empty">No signed contract on file.</p>}
               {d.invoices.map(i => (
                 <a key={i.id} className="bd-doc" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">
-                  Invoice {i.invoice_number} — ${money0(i.total)} · balance ${money0(i.balance)}
+                  Invoice {i.invoice_number} — {fmtMoney(i.total)} · balance {fmtMoney(i.balance)}
                 </a>
               ))}
             </div>

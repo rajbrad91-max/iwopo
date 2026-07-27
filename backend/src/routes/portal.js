@@ -4,6 +4,7 @@ import prisma from '../config/prisma.js';
 import { moneySummary } from './payments.js';
 import { notify } from './notifications.js';
 import { fillPlaceholders, audit, templateForLead, templateText } from './contracts.js';
+import { currencyFor } from '../lib/currencies.js';
 
 const router = express.Router();
 
@@ -148,6 +149,16 @@ router.get('/:token', async (req, res) => {
       select: { brand_color: true, theme: true, font: true },
     });
 
+    // 💱 resolved the same way the panel resolves it — their choice, else their
+    // country — so the figure a client sees matches the one the vendor sees
+    const vset = await prisma.vendor_settings.findUnique({
+      where: { vendor_id: lead.vendor_id }, select: { currency: true },
+    });
+    const vrow = await prisma.vendors.findUnique({
+      where: { id: lead.vendor_id }, select: { country: true },
+    });
+    const vendorCurrency = currencyFor(vset?.currency, vrow?.country);
+
     res.json({
       lead: {
         name: lead.name, event_type: lead.event_type, event_date: lead.event_date,
@@ -156,6 +167,8 @@ router.get('/:token', async (req, res) => {
         payment_claimed_at: lead.payment_claimed_at,
       },
       business_name: vendor?.business_name,
+      // the vendor's own currency, so a client in London isn't shown dollars
+      currency: vendorCurrency,
       branding: {
         brand_color: brand?.brand_color || '#C9A86A',
         theme: brand?.theme || 'classic',
