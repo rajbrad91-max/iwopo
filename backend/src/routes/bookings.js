@@ -30,21 +30,26 @@ router.get('/', requireAuth, async (req, res) => {
     if (ids.length) {
       const crew = await prisma.lead_crew.findMany({
         where: { lead_id: { in: ids } },        // 🔒 ids come from the scoped rows above
-        select: { lead_id: true, checked_in_at: true, checked_out_at: true },
+        select: {
+          lead_id: true, checked_in_at: true, checked_out_at: true, duty: true,
+          crew_members: { select: { name: true } },
+        },
       });
       const byLead = new Map();
       for (const c of crew) {
-        const s = byLead.get(c.lead_id) || { total: 0, checked_in: 0, checked_out: 0 };
+        const s = byLead.get(c.lead_id) || { total: 0, checked_in: 0, checked_out: 0, names: [] };
         s.total += 1;
         if (c.checked_in_at) s.checked_in += 1;
         if (c.checked_out_at) s.checked_out += 1;
+        // who is actually on the day — the calendar shows names, not a count
+        if (c.crew_members?.name) s.names.push({ name: c.crew_members.name, duty: c.duty || null });
         byLead.set(c.lead_id, s);
       }
       for (const b of bookings) {
-        b.crew = byLead.get(b.id) || { total: 0, checked_in: 0, checked_out: 0 };
+        b.crew = byLead.get(b.id) || { total: 0, checked_in: 0, checked_out: 0, names: [] };
       }
     } else {
-      for (const b of bookings) b.crew = { total: 0, checked_in: 0, checked_out: 0 };
+      for (const b of bookings) b.crew = { total: 0, checked_in: 0, checked_out: 0, names: [] };
     }
 
     res.json({ bookings });

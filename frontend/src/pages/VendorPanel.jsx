@@ -1645,6 +1645,9 @@ function CalendarView({ onOpen, filter }) {
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? 1 : -1);
   };
 
+  const selected = selDay ? (byDay[selDay] || []) : [];
+  const selLabel = selDay ? fmtEventDate(selDay, { long: true }) : '';
+
   return (
     <div className="cal-wrap" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="table-wrap cal-panel">
@@ -1679,14 +1682,41 @@ function CalendarView({ onOpen, filter }) {
         </div>
       </div>
 
-      {selDay && (byDay[selDay] || []).map(b => (
-        <div key={b.id} className="table-wrap cal-evt" onClick={() => onOpen && onOpen(b)}>
-          🎉 <b>{b.name}</b> · {b.event_type} · {b.timing_from ? `${fmtTime(b.timing_from)}–${b.timing_to ? fmtTime(b.timing_to) : '?'}` : 'time TBD'}
-          {b.location ? ` · 📍 ${b.location}` : ''}
-          {b.money ? ` · ⏳ $${b.money.balance} due` : ''}
-          {onOpen && <span className="cal-evt-open">👁️ Open</span>}
-        </div>
-      ))}
+      {/* 📋 The day's events, beside the calendar rather than beneath it. Under
+          the grid each event got one cramped line and pushed the next one off
+          the screen; there is room to the side to lay a day out properly.
+          Money is deliberately absent — this is the page for running the day,
+          and what is owed belongs on the booking, not on the schedule. */}
+      <aside className="table-wrap cal-side">
+        {!selDay ? (
+          <div className="cal-side-empty">
+            <div className="cal-side-icon">🗓️</div>
+            <p>Pick a highlighted day to see what&apos;s on.</p>
+          </div>
+        ) : (
+          <>
+            <div className="cal-side-head">
+              <span className="cal-side-date">{selLabel}</span>
+              <button className="cal-side-x" onClick={() => setSelDay(null)} aria-label="Close">✕</button>
+            </div>
+            {selected.map(b => (
+              <div key={b.id} className="cal-evt" onClick={() => onOpen && onOpen(b)}>
+                <div className="cal-evt-type">{b.event_type || 'Event'}</div>
+                <div className="cal-evt-row">🕐 {b.timing_from
+                  ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}`
+                  : 'Time to be confirmed'}</div>
+                {b.location && <div className="cal-evt-row">📍 {b.location}</div>}
+                <div className="cal-evt-row">
+                  👥 {b.crew?.names?.length
+                    ? b.crew.names.map(c => c.duty ? `${c.name} (${c.duty})` : c.name).join(', ')
+                    : <span className="cal-evt-none">No crew assigned</span>}
+                </div>
+                {onOpen && <span className="cal-evt-open">👁️ Open booking</span>}
+              </div>
+            ))}
+          </>
+        )}
+      </aside>
     </div>
   );
 }
