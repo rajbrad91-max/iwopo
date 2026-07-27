@@ -12,6 +12,7 @@ import './vendor.css';
 const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
   contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
+  website: 'website',
 };
 
 function FeatureLocked({ goServices }) {
@@ -125,6 +126,7 @@ export default function VendorPanel({ onLogout }) {
         {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => go('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></div>}
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">My Crew</span></div>}
         {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
+        {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
         <div className="nav-group">SETUP</div>
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
         {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => go('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></div>}
@@ -141,7 +143,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'galleries' ? 'Galleries' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'My Crew' : tab === 'galleries' ? 'Galleries' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -166,6 +168,8 @@ export default function VendorPanel({ onLogout }) {
           <CrewView />
         ) : tab === 'galleries' ? (
           <GalleriesView routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })} />
+        ) : tab === 'website' ? (
+          <WebsiteView />
         ) : tab === 'aichat' ? (
           <AiChatVendorView goServices={() => setTab('services')} />
         ) : tab === 'calendar' ? (
@@ -4120,5 +4124,179 @@ function BookingDetail({ id, onBack }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 🌐 MY WEBSITE — pick a theme, then make it yours.
+ *
+ * Deliberately not a page builder. A vendor chooses one of five finished themes
+ * and adjusts a small, safe set of things on top of it: accent colour, two
+ * fonts, their own words, their contact details. Everything saves the moment
+ * they leave the field, because a Save button on a page this long is a way to
+ * lose work.
+ */
+const WS_FIELDS = [
+  ['site_title', 'Site title', 'input', 'Shown large at the top of your site.'],
+  ['tagline', 'Tagline', 'input', 'One line under the title.'],
+  ['about_heading', 'About heading', 'input', 'The heading above your story.'],
+  ['about_body', 'About you', 'area', 'A few sentences about you and how you work.'],
+  ['contact_email', 'Contact email', 'input', 'Where enquiries from the site reach you.'],
+  ['contact_phone', 'Contact phone', 'input', ''],
+  ['instagram', 'Instagram link', 'input', ''],
+  ['facebook', 'Facebook link', 'input', ''],
+];
+
+function WebsiteView() {
+  const [site, setSite] = useState(null);
+  const [themes, setThemes] = useState([]);
+  const [fonts, setFonts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState('');
+  const [slugDraft, setSlugDraft] = useState('');
+
+  useEffect(() => {
+    api.mySite()
+      .then(d => {
+        setSite(d.site);
+        setThemes(d.themes || []);
+        setFonts(d.fonts || []);
+        setSlugDraft(d.site?.slug || '');
+      })
+      .catch(e => setMsg('⚠️ ' + e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 1800); };
+
+  // one field at a time — the server only writes what it's sent, so this can
+  // never blank the rest of the site
+  async function save(patch) {
+    setSite(s => ({ ...s, ...patch }));
+    try { const d = await api.saveMySite(patch); setSite(d.site); flash('✅ Saved'); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  async function saveSlug() {
+    const next = slugDraft.trim();
+    if (!next || next === site?.slug) return;
+    try { const d = await api.saveMySiteSlug(next); setSite(d.site); setSlugDraft(d.site.slug); flash('✅ Address saved'); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  async function togglePublish() {
+    try { const d = await api.publishMySite(!site.published); setSite(d.site); flash(d.site.published ? '🌍 Your site is live' : '🙈 Site hidden'); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  if (loading) return <div className="loading">Loading…</div>;
+  if (!site) return <div className="table-wrap ac-empty">Couldn&apos;t load your site. {msg}</div>;
+
+  const liveUrl = site.slug ? `${window.location.origin}/site/${site.slug}` : null;
+
+  return (
+    <>
+      <div className="ac-head">
+        <div>
+          <div className="ac-title">🌐 My Website</div>
+          <div className="ac-sub">
+            {site.published
+              ? <>Live at <a href={liveUrl} target="_blank" rel="noreferrer" className="ws-live-link">{liveUrl}</a></>
+              : 'Not published yet — only you can see it'}
+          </div>
+        </div>
+        <div className="ac-tabs">
+          {msg && <span className="ws-msg">{msg}</span>}
+          <button type="button" className={`refresh ${site.published ? 'is-on' : ''}`} onClick={togglePublish}>
+            {site.published ? '🙈 Unpublish' : '🌍 Publish'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── theme ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">🎨 Theme</h3>
+        <p className="ws-hint">Five finished looks. Pick one, then make it yours below.</p>
+        <div className="ws-themes">
+          {themes.map(t => (
+            <button type="button" key={t.id}
+              className={`ws-theme ${site.theme === t.id ? 'is-on' : ''}`}
+              onClick={() => save({ theme: t.id, accent: t.accent })}>
+              <span className="ws-theme-swatch" style={{ background: t.accent }} />
+              <span className="ws-theme-name">{t.name}</span>
+              <span className="ws-theme-blurb">{t.blurb}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── colour + type ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">🖌️ Colour &amp; type</h3>
+        <div className="ws-row">
+          <div className="ws-field">
+            <label className="ws-label" htmlFor="ws-accent">Accent colour</label>
+            <div className="ws-colour">
+              <input id="ws-accent" type="color" value={site.accent}
+                onChange={e => setSite(s => ({ ...s, accent: e.target.value }))}
+                onBlur={e => save({ accent: e.target.value })} />
+              <code>{site.accent}</code>
+            </div>
+          </div>
+          <div className="ws-field">
+            <label className="ws-label" htmlFor="ws-hfont">Heading font</label>
+            <select id="ws-hfont" className="gal-input" value={site.heading_font}
+              onChange={e => save({ heading_font: e.target.value })}>
+              {fonts.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div className="ws-field">
+            <label className="ws-label" htmlFor="ws-bfont">Body font</label>
+            <select id="ws-bfont" className="gal-input" value={site.body_font}
+              onChange={e => save({ body_font: e.target.value })}>
+              {fonts.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── words ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">✏️ Your words</h3>
+        {WS_FIELDS.map(([key, label, kind, hint]) => (
+          <div className="ws-item" key={key}>
+            <label className="ws-label" htmlFor={`ws-${key}`}>{label}</label>
+            {hint && <p className="ws-hint">{hint}</p>}
+            {kind === 'area' ? (
+              <textarea id={`ws-${key}`} className="ac-kb-area" rows={4} value={site[key] || ''}
+                onChange={e => setSite(s => ({ ...s, [key]: e.target.value }))}
+                onBlur={e => save({ [key]: e.target.value })} />
+            ) : (
+              <input id={`ws-${key}`} className="ac-kb-input" value={site[key] || ''}
+                onChange={e => setSite(s => ({ ...s, [key]: e.target.value }))}
+                onBlur={e => save({ [key]: e.target.value })} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* ── address ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">🔗 Web address</h3>
+        <p className="ws-hint">
+          Where your site lives. Letters, numbers and hyphens — it has to be
+          different from every other vendor&apos;s, so pick something specific.
+        </p>
+        <div className="ws-slug">
+          <span className="ws-slug-prefix">{window.location.origin}/site/</span>
+          <input className="ac-kb-input ws-slug-input" value={slugDraft}
+            placeholder="your-studio-name"
+            onChange={e => setSlugDraft(e.target.value)}
+            onBlur={saveSlug}
+            onKeyDown={e => e.key === 'Enter' && saveSlug()} />
+        </div>
+        {!site.slug && <p className="ws-warn">⚠️ Choose an address before you can publish.</p>}
+      </div>
+    </>
   );
 }

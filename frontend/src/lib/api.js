@@ -195,6 +195,12 @@ export const api = {
   chatbotMarkRead: (id) => request(`/chatbot/messages/${id}/read`, { method: 'PUT' }),
   // vendor-side
   myChatbotStatus: () => request('/chatbot/my/status'),
+
+  // 🌐 Website Builder
+  mySite: () => request('/sites/my'),
+  saveMySite: (body) => request('/sites/my', { method: 'PUT', body: JSON.stringify(body) }),
+  saveMySiteSlug: (slug) => request('/sites/my/slug', { method: 'PUT', body: JSON.stringify({ slug }) }),
+  publishMySite: (published) => request('/sites/my/publish', { method: 'PUT', body: JSON.stringify({ published }) }),
   myChatbotHistory: () => request('/chatbot/my/history'),
   myChatbotKnowledge: () => request('/chatbot/my/knowledge'),
   saveMyChatbotKnowledge: (body) => request('/chatbot/my/knowledge', { method: 'PUT', body: JSON.stringify(body) }),

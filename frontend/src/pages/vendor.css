@@ -1425,3 +1425,41 @@
   border-radius: 8px; padding: 5px 10px; width: 260px; max-width: 100%;
 }
 .ac-name-input:focus { outline: none; }
+
+/* 🌐 My Website — theme picker and the small set of things on top of it */
+.ws-block { padding: 20px 22px; margin-bottom: 14px; }
+.ws-h3 { margin: 0 0 4px; font-size: 15px; }
+.ws-hint { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.ws-msg { font-size: 13px; color: var(--muted); align-self: center; }
+.ws-live-link { color: var(--teal); text-decoration: none; }
+.ws-live-link:hover { text-decoration: underline; }
+
+.ws-themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.ws-theme {
+  text-align: left; cursor: pointer; font: inherit;
+  background: var(--panel-2); border: 1.5px solid var(--line);
+  border-radius: 12px; padding: 14px; display: block;
+}
+.ws-theme:hover { border-color: color-mix(in srgb, var(--teal) 50%, transparent); }
+.ws-theme.is-on { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 10%, transparent); }
+.ws-theme-swatch { display: block; width: 100%; height: 26px; border-radius: 7px; margin-bottom: 10px; }
+.ws-theme-name { display: block; font-weight: 700; font-size: 14px; color: var(--text); }
+.ws-theme-blurb { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+
+.ws-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.ws-field { flex: 1; min-width: 180px; }
+.ws-item { margin-bottom: 16px; }
+.ws-item:last-child { margin-bottom: 0; }
+.ws-label { display: block; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+
+.ws-colour { display: flex; align-items: center; gap: 10px; }
+.ws-colour input[type="color"] {
+  width: 52px; height: 38px; padding: 0; border: 1px solid var(--line);
+  border-radius: 8px; background: none; cursor: pointer;
+}
+.ws-colour code { font-size: 13px; color: var(--muted); }
+
+.ws-slug { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.ws-slug-prefix { font-size: 13px; color: var(--muted); padding-right: 6px; }
+.ws-slug-input { max-width: 260px; }
+.ws-warn { margin: 10px 0 0; font-size: 12.5px; color: var(--amber, #fbbf24); }
