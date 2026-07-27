@@ -2771,11 +2771,6 @@ function AllInvoices() {
   useEffect(() => {
     api.allInvoices().then(d => setList(d.invoices || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
-  function copyLink(token) {
-    // origin, not a hard-coded domain: copying this from staging used to hand
-    // the vendor a link pointing at the live site
-    navigator.clipboard?.writeText(`${window.location.origin}/invoice/${token}`);
-  }
   if (loading) return <div className="loading">Loading…</div>;
   return (
     <div className="table-wrap">
@@ -2791,7 +2786,12 @@ function AllInvoices() {
               <td>${Number(i.total).toFixed(2)}</td>
               <td className="ct-paid">${Number(i.paid).toFixed(2)}</td>
               <td className={Number(i.balance) > 0 ? 'ct-due' : 'ct-paid'}>${Number(i.balance).toFixed(2)}</td>
-              <td><span className="ct-link" onClick={() => copyLink(i.token)}>🔗 Copy link</span></td>
+              {/* Opens the invoice the client sees. Copying the link was one step
+                  short of useful — you still had to open it to check it was the
+                  right one, and the address bar gives you the link anyway. */}
+              <td>
+                <a className="ct-link" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">🧾 View Invoice</a>
+              </td>
             </tr>
           ))}
         </tbody>
