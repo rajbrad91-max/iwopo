@@ -1509,3 +1509,24 @@
 .ws-pf-add:hover { border-color: var(--teal); }
 .ws-pf-add.is-busy { opacity: .6; pointer-events: none; }
 .ws-pf-count { margin-top: 12px; margin-bottom: 0; }
+
+/* portfolio manager: a row per photo, so its words sit beside it */
+.ws-pf-list { display: flex; flex-direction: column; gap: 12px; }
+.ws-pf { display: grid; grid-template-columns: 150px 1fr auto; gap: 14px;
+  align-items: start; padding: 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--panel-2); position: static; }
+.ws-pf .ws-pf-img { width: 150px; height: 110px; object-fit: cover; border-radius: 8px; }
+.ws-pf-text { display: flex; flex-direction: column; gap: 8px; }
+.ws-pf-cap { font-weight: 600; }
+.ws-pf-note { resize: vertical; }
+.ws-pf .ws-pf-acts { position: static; display: flex; flex-direction: column;
+  gap: 5px; padding: 0; background: none; }
+.ws-pf .ws-pf-btn { background: var(--panel); border: 1px solid var(--line); color: var(--text); }
+.ws-pf .ws-pf-btn:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
+.ws-pf-add { flex-direction: row; gap: 10px; aspect-ratio: auto; padding: 18px; }
+
+@media (max-width: 760px) {
+  .ws-pf { grid-template-columns: 96px 1fr; }
+  .ws-pf .ws-pf-img { width: 96px; height: 80px; }
+  .ws-pf .ws-pf-acts { grid-column: 1 / -1; flex-direction: row; }
+}

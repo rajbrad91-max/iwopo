@@ -85,18 +85,6 @@
 /* ── portfolio ───────────────────────────────────────────────────────── */
 /* Columns, not a rigid grid: photographs keep their own proportions, so a tall
    frame stays tall instead of being cropped square to fit a box. */
-.st-grid { column-count: 3; column-gap: var(--st-gap); }
-.st-shot { margin: 0 0 var(--st-gap); break-inside: avoid; position: relative;
-  overflow: hidden; cursor: zoom-in; }
-.st-shot-img { display: block; width: 100%; height: auto;
-  transition: transform .7s cubic-bezier(.2,.7,.3,1); }
-.st-shot:hover .st-shot-img { transform: scale(1.04); }
-.st-shot-cap { position: absolute; inset: auto 0 0 0; padding: 26px 18px 14px;
-  font-size: 12.5px; letter-spacing: .04em; color: #fff;
-  background: linear-gradient(transparent, rgba(0,0,0,.65));
-  opacity: 0; transition: opacity .35s ease; }
-.st-shot:hover .st-shot-cap { opacity: 1; }
-
 /* full-screen viewer, so a photograph can actually be looked at */
 .st-lb { position: fixed; inset: 0; z-index: 60; background: rgba(8,8,10,.96);
   display: grid; place-items: center; padding: 32px; cursor: zoom-out; }
@@ -135,8 +123,6 @@
 .st-aperture .st-section { padding: 0 0 4px; }
 .st-aperture #st-portfolio .st-wrap { max-width: none; padding: 0; }
 .st-aperture #st-portfolio .st-h2 { text-align: center; padding: 96px 24px 40px; margin: 0; }
-.st-aperture .st-grid { column-count: 2; column-gap: 4px; }
-.st-aperture .st-shot { margin-bottom: 4px; }
 .st-aperture .st-alt .st-wrap,
 .st-aperture #st-book .st-wrap { max-width: 660px; padding: 96px 40px; }
 .st-aperture .st-alt { background: #f6f6f4; }
@@ -147,8 +133,6 @@
 .st-atelier .st-h2 { border-bottom: 1px solid var(--st-ink); padding-bottom: 16px; }
 .st-atelier .st-section { padding: 120px 0; }
 .st-atelier .st-wrap { max-width: 1140px; }
-.st-atelier .st-grid { column-count: 3; column-gap: 26px; }
-.st-atelier .st-shot { margin-bottom: 26px; }
 .st-atelier .st-cta { background: none; color: var(--st-ink);
   border: 1px solid var(--st-ink); border-radius: 0; }
 .st-atelier .st-cta:hover { background: var(--st-ink); color: var(--st-paper); box-shadow: none; }
@@ -159,8 +143,6 @@
 .st-vellum .st-hero-title { font-style: italic; font-weight: 400; }
 .st-vellum .st-hero { min-height: 76vh; }
 .st-vellum .st-cta { border-radius: 999px; padding: 15px 42px; }
-.st-vellum .st-grid { column-count: 2; column-gap: 30px; }
-.st-vellum .st-shot { margin-bottom: 30px; border-radius: 4px; }
 .st-vellum .st-h2 { text-align: center; }
 .st-vellum .st-h2::after { content: ''; display: block; width: 54px; height: 1px;
   background: var(--st-accent); margin: 20px auto 0; }
@@ -172,9 +154,6 @@
 .st-noir .st-hero { min-height: 94vh; }
 .st-noir .st-hero-title { font-size: clamp(38px, 7vw, 82px); font-weight: 300; letter-spacing: .01em; }
 .st-noir .st-alt { background: #131317; }
-.st-noir .st-grid { column-count: 2; column-gap: 14px; }
-.st-noir .st-shot { margin-bottom: 14px; }
-.st-noir .st-shot-img { filter: saturate(.92) contrast(1.04); }
 .st-noir .st-section { padding: 120px 0; }
 .st-noir .st-h2 { letter-spacing: .04em; }
 
@@ -183,14 +162,10 @@
 .st-bloom .st-hero { min-height: 72vh; }
 .st-bloom .st-h2 { text-align: center; }
 .st-bloom .st-cta { border-radius: 999px; padding: 15px 42px; }
-.st-bloom .st-grid { column-count: 3; column-gap: 22px; }
-.st-bloom .st-shot { margin-bottom: 22px; border-radius: 18px; }
-.st-bloom .st-shot:nth-child(3n) { margin-top: 26px; }   /* the stagger */
 .st-bloom .st-alt { background: #faf6fd; }
 
 /* ── narrower screens ─────────────────────────────────────────────────── */
 @media (max-width: 1000px) {
-  .st-grid, .st-atelier .st-grid, .st-bloom .st-grid { column-count: 2; }
 }
 @media (max-width: 760px) {
   .st-nav { padding: 14px 20px; }
@@ -203,9 +178,6 @@
   .st-wrap { padding: 0 20px; }
   .st-section, .st-atelier .st-section, .st-noir .st-section { padding: 64px 0; }
   .st-hero, .st-aperture .st-hero, .st-noir .st-hero { min-height: 74vh; padding: 60px 20px; }
-  .st-grid, .st-aperture .st-grid, .st-atelier .st-grid,
-  .st-vellum .st-grid, .st-noir .st-grid, .st-bloom .st-grid { column-count: 1; }
-  .st-bloom .st-shot:nth-child(3n) { margin-top: 0; }
   .st-aperture #st-portfolio .st-h2 { padding: 56px 20px 26px; }
   .st-lb-nav { font-size: 30px; padding: 8px 10px; }
 }
@@ -223,4 +195,58 @@
 @media (max-width: 760px) {
   .st-first { padding-top: 44px; }
   .st-more { margin-top: 30px; }
+}
+
+/* ── a piece of work: picture, then what it was ───────────────────────── */
+/* Alternating sides gives twenty-five frames a rhythm to scroll through, and
+   gives every vendor room to say what they did — which is what makes this work
+   for a makeup artist or a florist as much as a photographer. */
+.st-works { display: flex; flex-direction: column; gap: 90px; }
+.st-work { display: grid; grid-template-columns: 1.35fr 1fr; gap: 52px; align-items: center; }
+.st-work.is-flip .st-work-fig { order: 2; }
+.st-work-fig { margin: 0; overflow: hidden; cursor: zoom-in; }
+.st-work-img { display: block; width: 100%; height: auto;
+  transition: transform .9s cubic-bezier(.2,.7,.3,1); }
+.st-work-fig:hover .st-work-img { transform: scale(1.03); }
+.st-work-title { font-family: var(--st-head); font-size: clamp(21px, 2.4vw, 30px);
+  font-weight: 400; margin: 0 0 12px; line-height: 1.2; }
+.st-work-note { font-size: 15.5px; line-height: 1.9; color: var(--st-soft); margin: 0; }
+/* a photo with nothing written about it simply runs full width */
+.st-work:not(:has(.st-work-text)) { grid-template-columns: 1fr; }
+
+/* ── the home slider ──────────────────────────────────────────────────── */
+.st-slider { position: relative; overflow: hidden; }
+.st-slides { display: flex; transition: transform .85s cubic-bezier(.4,0,.15,1); }
+.st-slide { flex: 0 0 100%; position: relative; }
+.st-slide-img { display: block; width: 100%; aspect-ratio: 16 / 9;
+  object-fit: cover; }
+.st-slide-cap { position: absolute; inset: auto 0 0 0; padding: 60px 40px 34px;
+  background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; }
+.st-slide-title { font-family: var(--st-head); font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 400; margin: 0 0 6px; }
+.st-slide-note { font-size: 14.5px; line-height: 1.7; margin: 0; color: rgba(255,255,255,.86);
+  max-width: 620px; }
+
+.st-sl-nav { position: absolute; top: 50%; transform: translateY(-50%);
+  width: 46px; height: 46px; border: 0; border-radius: 50%; cursor: pointer;
+  background: rgba(255,255,255,.86); color: #16161a; font-size: 26px; line-height: 1;
+  opacity: 0; transition: opacity .3s ease; }
+.st-slider:hover .st-sl-nav { opacity: 1; }
+.st-sl-prev { left: 18px; }
+.st-sl-next { right: 18px; }
+
+.st-dots { position: absolute; left: 0; right: 0; bottom: 16px;
+  display: flex; gap: 8px; justify-content: center; }
+.st-dot { width: 7px; height: 7px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.45); padding: 0; transition: all .3s ease; }
+.st-dot.is-on { background: #fff; width: 22px; border-radius: 4px; }
+
+@media (max-width: 860px) {
+  .st-works { gap: 56px; }
+  .st-work, .st-work.is-flip { grid-template-columns: 1fr; gap: 20px; }
+  .st-work.is-flip .st-work-fig { order: 0; }
+  .st-slide-img { aspect-ratio: 4 / 3; }
+  .st-slide-cap { padding: 44px 20px 26px; }
+  .st-sl-nav { opacity: 1; width: 38px; height: 38px; font-size: 21px; }
+  .st-sl-prev { left: 8px; } .st-sl-next { right: 8px; }
 }

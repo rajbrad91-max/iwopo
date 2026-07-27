@@ -45,6 +45,8 @@ export default function PublicSite({ slug, page = 'home' }) {
   const [state, setState] = useState('loading');   // loading | ok | missing
   const [open, setOpen] = useState(false);         // mobile nav
   const [lb, setLb] = useState(-1);                // which photo is full-screen
+  const [slide, setSlide] = useState(0);           // home slider position
+  const [auto, setAuto] = useState(true);          // until someone takes over
   useWebFonts();
 
   useEffect(() => {
@@ -68,6 +70,16 @@ export default function PublicSite({ slug, page = 'home' }) {
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [lb, site]);
 
+  // The slider advances itself until someone touches it. Six seconds is long
+  // enough to read the caption and short enough not to feel stuck.
+  useEffect(() => {
+    if (!auto || page !== 'home') return;
+    const n = Math.min((site?.portfolio || []).length, HOME_PREVIEW);
+    if (n < 2) return;
+    const t = setInterval(() => setSlide(i => (i + 1) % n), 6000);
+    return () => clearInterval(t);
+  }, [auto, page, site]);
+
   if (state === 'loading') return <div className="st-loading">Loading…</div>;
   if (state === 'missing') {
     return (
@@ -81,8 +93,16 @@ export default function PublicSite({ slug, page = 'home' }) {
   const title = site.site_title || site.business_name || 'Studio';
   const galleryUrl = site.gallery_token ? `/gallery/${site.gallery_token}` : null;
   const photos = site.portfolio || [];
+  const preview = photos.slice(0, HOME_PREVIEW);
   const base = `/site/${slug}`;
   const photoUrl = (f) => `/api/sites/photo/${site.vendor_id}/${f}`;
+
+  // one step of the slider; taking control stops it advancing by itself, which
+  // is what makes a slideshow feel considerate rather than pushy
+  const step = (d) => {
+    setAuto(false);
+    setSlide(i => (i + d + preview.length) % preview.length);
+  };
 
   // the theme picks the layout, the vendor picks the colour and the type
   const styleVars = {
@@ -91,13 +111,26 @@ export default function PublicSite({ slug, page = 'home' }) {
     '--st-body': `'${site.body_font}', system-ui, sans-serif`,
   };
 
-  const shots = (list) => (
-    <div className="st-grid">
-      {list.map((p, i) => (
-        <figure className="st-shot" key={p.id} onClick={() => setLb(photos.indexOf(p))}>
-          <img className="st-shot-img" src={photoUrl(p.file)} alt={p.caption || ''} loading="lazy" />
-          {p.caption && <figcaption className="st-shot-cap">{p.caption}</figcaption>}
-        </figure>
+  /**
+   * A piece of work: the picture, and what it was. Alternating sides gives the
+   * page a rhythm to scroll through and stops twenty-five frames reading as a
+   * contact sheet — and it means a makeup artist or a florist can say what they
+   * actually did, which a bare photo grid never lets them.
+   */
+  const shots = (list, offset = 0) => (
+    <div className="st-works">
+      {list.map((ph, i) => (
+        <article className={`st-work ${(i + offset) % 2 ? 'is-flip' : ''}`} key={ph.id}>
+          <figure className="st-work-fig" onClick={() => setLb(photos.indexOf(ph))}>
+            <img className="st-work-img" src={photoUrl(ph.file)} alt={ph.caption || ''} loading="lazy" />
+          </figure>
+          {(ph.caption || ph.note) && (
+            <div className="st-work-text">
+              {ph.caption && <h3 className="st-work-title">{ph.caption}</h3>}
+              {ph.note && <p className="st-work-note">{ph.note}</p>}
+            </div>
+          )}
+        </article>
       ))}
     </div>
   );
@@ -145,13 +178,49 @@ export default function PublicSite({ slug, page = 'home' }) {
             </section>
           )}
 
-          {/* a taste, not the whole portfolio — the home page has to end */}
+          {/* A slider, not a stack: the home page shows the work moving without
+              growing, so it stays short whether a vendor has five frames or
+              twenty-five. It advances on its own and stops the moment someone
+              takes control, which is the difference between a slideshow that
+              helps and one that fights you. */}
           {photos.length > 0 && (
             <section className="st-section st-alt">
               <div className="st-wrap">
                 <p className="st-eyebrow">A glimpse</p>
                 <h2 className="st-h2">Recent work</h2>
-                {shots(photos.slice(0, HOME_PREVIEW))}
+
+                <div className="st-slider">
+                  <div className="st-slides" style={{ transform: `translateX(-${slide * 100}%)` }}>
+                    {photos.slice(0, HOME_PREVIEW).map(ph => (
+                      <div className="st-slide" key={ph.id}>
+                        <img className="st-slide-img" src={photoUrl(ph.file)} alt={ph.caption || ''} loading="lazy" />
+                        {(ph.caption || ph.note) && (
+                          <div className="st-slide-cap">
+                            {ph.caption && <h3 className="st-slide-title">{ph.caption}</h3>}
+                            {ph.note && <p className="st-slide-note">{ph.note}</p>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {preview.length > 1 && (
+                    <>
+                      <button className="st-sl-nav st-sl-prev" aria-label="Previous"
+                        onClick={() => step(-1)}>‹</button>
+                      <button className="st-sl-nav st-sl-next" aria-label="Next"
+                        onClick={() => step(1)}>›</button>
+                      <div className="st-dots">
+                        {preview.map((ph, i) => (
+                          <button key={ph.id} aria-label={`Photo ${i + 1}`}
+                            className={`st-dot ${i === slide ? 'is-on' : ''}`}
+                            onClick={() => { setAuto(false); setSlide(i); }} />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div className="st-more">
                   <a className="st-cta" href={`${base}/portfolio`}>See the full portfolio</a>
                 </div>

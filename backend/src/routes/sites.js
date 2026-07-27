@@ -352,13 +352,36 @@ router.get('/photo/:vendorId/:file', (req, res) => {
  * read whole on every page render, never queried across vendors, and reordering
  * is a single write instead of a column of positions to keep consistent.
  */
-const MAX_PORTFOLIO = 40;
+/**
+ * Twenty-five is a deliberate ceiling, not a technical one. A portfolio is an
+ * edit — the twenty-five frames a vendor would actually show a client — and a
+ * wall of two hundred says less than a chosen handful. It also keeps the page
+ * fast enough to load on a phone at a venue.
+ */
+const MAX_PORTFOLIO = 25;
 
 function cleanPortfolio(list) {
-  return (Array.isArray(list) ? list : []).slice(0, MAX_PORTFOLIO).map((p, i) => ({
+  return rawPortfolio(list).slice(0, MAX_PORTFOLIO);
+}
+
+/**
+ * The same shape, but WITHOUT the cap.
+ *
+ * The cap belongs on what gets saved, not on what gets read back for comparison:
+ * reading the existing row through the capped version meant anything past the
+ * twenty-fifth was invisible to the tidy-up, so trimming a longer portfolio left
+ * those files on disk with nothing pointing at them.
+ */
+function rawPortfolio(list) {
+  return (Array.isArray(list) ? list : []).map((p, i) => ({
     id: String(p.id || `p${i}`).slice(0, 24),
     file: path.basename(String(p.file || '')).slice(0, 120),
-    caption: p.caption == null ? null : String(p.caption).trim().slice(0, 120) || null,
+    // a short heading for the piece of work — "Bridal makeup, Surrey"
+    caption: p.caption == null ? null : String(p.caption).trim().slice(0, 90) || null,
+    // and a sentence or two about it. This is what makes the page work for a
+    // makeup artist or a florist rather than only a photographer: the picture
+    // shows the result, the words say what was actually done.
+    note: p.note == null ? null : String(p.note).trim().slice(0, 320) || null,
   })).filter(p => p.file);
 }
 
@@ -398,7 +421,7 @@ router.delete('/my/portfolio/:id', requireAuth, async (req, res) => {
     const cur = await prisma.vendor_sites.findUnique({
       where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row
     });
-    const list = cleanPortfolio(cur?.portfolio);
+    const list = rawPortfolio(cur?.portfolio);
     const gone = list.find(p => p.id === req.params.id);
     if (!gone) return res.status(404).json({ error: 'Photo not found' });
     const site = await prisma.vendor_sites.update({
@@ -425,7 +448,7 @@ router.put('/my/portfolio', requireAuth, async (req, res) => {
     const cur = await prisma.vendor_sites.findUnique({
       where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row
     });
-    const before = cleanPortfolio(cur?.portfolio);
+    const before = rawPortfolio(cur?.portfolio);
     const next = cleanPortfolio(req.body.portfolio);
 
     // a client can only keep files it already owned — it can't name someone

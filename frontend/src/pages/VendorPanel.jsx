@@ -4253,6 +4253,21 @@ function WebsiteView() {
     catch (err) { setMsg('⚠️ ' + err.message); }
   }
 
+  // typing is local; the write happens when the field is left, so every
+  // keystroke isn't a request
+  function setPortfolioField(i, key, value) {
+    setSite(s => {
+      const list = [...(s.portfolio || [])];
+      list[i] = { ...list[i], [key]: value };
+      return { ...s, portfolio: list };
+    });
+  }
+
+  async function savePortfolioText() {
+    try { const d = await api.savePortfolio(site.portfolio || []); setSite(d.site); flash('✅ Saved'); }
+    catch (err) { setMsg('⚠️ ' + err.message); }
+  }
+
   if (loading) return <div className="loading">Loading…</div>;
   if (!site) return <div className="table-wrap ac-empty">Couldn&apos;t load your site. {msg}</div>;
 
@@ -4372,13 +4387,29 @@ function WebsiteView() {
           long edge, so a full-size file off the camera is fine to drop in.
         </p>
 
-        <div className="ws-pf-grid">
+        <div className="ws-pf-list">
           {(site.portfolio || []).map((p, i) => (
             <div className="ws-pf" key={p.id}>
               <img className="ws-pf-img" src={`/api/sites/photo/${site.vendor_id}/${p.file}`} alt="" loading="lazy" />
+              {/* The words matter as much as the picture here. A photograph
+                  speaks for itself; a makeup look or a bouquet needs a line
+                  saying what was done, which is what makes this page work for
+                  every kind of vendor rather than only photographers. */}
+              <div className="ws-pf-text">
+                <input className="ac-kb-input ws-pf-cap" maxLength={90}
+                  placeholder="Short heading — e.g. Bridal makeup, Surrey"
+                  value={p.caption || ''}
+                  onChange={e => setPortfolioField(i, 'caption', e.target.value)}
+                  onBlur={savePortfolioText} />
+                <textarea className="ac-kb-area ws-pf-note" rows={2} maxLength={320}
+                  placeholder="A sentence about this work (optional)"
+                  value={p.note || ''}
+                  onChange={e => setPortfolioField(i, 'note', e.target.value)}
+                  onBlur={savePortfolioText} />
+              </div>
               <div className="ws-pf-acts">
-                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, -1)} disabled={i === 0} title="Move earlier">←</button>
-                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, 1)} disabled={i === (site.portfolio.length - 1)} title="Move later">→</button>
+                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, -1)} disabled={i === 0} title="Move up">↑</button>
+                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, 1)} disabled={i === (site.portfolio.length - 1)} title="Move down">↓</button>
                 <button type="button" className="ws-pf-btn is-del" onClick={() => removePortfolio(p.id)} title="Remove permanently">🗑️</button>
               </div>
             </div>
@@ -4392,7 +4423,7 @@ function WebsiteView() {
           </label>
         </div>
         <p className="ws-hint ws-pf-count">
-          {(site.portfolio || []).length} of 40 · removing a photo deletes the file for good
+          {(site.portfolio || []).length} of 25 · removing a photo deletes the file for good
         </p>
       </div>
 
