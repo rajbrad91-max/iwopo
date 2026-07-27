@@ -76,7 +76,16 @@ export default function PublicSite({ slug }) {
       </header>
 
       {/* ── Home ── */}
-      <section id="st-home" className="st-hero">
+      <section id="st-home" className={`st-hero ${site.cover_photo ? 'has-cover' : ''}`}>
+        {/* The cover is a real img rather than a CSS background so the browser
+            can lazy-decode it and pick it up for social previews. object-position
+            comes from the vendor, because a hero is a letterbox on a laptop and a
+            tall strip on a phone — without it the subject's head is what gets cut. */}
+        {site.cover_photo && (
+          <img className="st-hero-cover"
+            src={`/api/sites/photo/${site.vendor_id}/${site.cover_photo}`}
+            alt="" style={{ objectPosition: site.cover_focus || '50% 50%' }} />
+        )}
         <div className="st-hero-inner">
           {/* The logo is read live from the vendor's profile, so replacing it in
               Settings changes it here and in the nav at once — there's no copy

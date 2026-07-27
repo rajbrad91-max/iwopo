@@ -4189,10 +4189,47 @@ function WebsiteView() {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
 
+  // 🖼️ Cover photo. Uploading replaces whatever was there — the server deletes
+  // the old file, so trying five covers doesn't leave four behind on disk.
+  const [busyPhoto, setBusyPhoto] = useState(false);
+
+  async function onCoverPick(e) {
+    const f = e.target.files?.[0];
+    e.target.value = '';                     // so picking the same file twice still fires
+    if (!f) return;
+    setBusyPhoto(true); setMsg('');
+    try { const d = await api.uploadSiteCover(f); setSite(d.site); flash('✅ Cover updated'); }
+    catch (err) { setMsg('⚠️ ' + err.message); }
+    finally { setBusyPhoto(false); }
+  }
+
+  async function removeCover() {
+    setBusyPhoto(true);
+    try { const d = await api.removeSiteCover(); setSite(d.site); flash('🗑️ Cover removed'); }
+    catch (err) { setMsg('⚠️ ' + err.message); }
+    finally { setBusyPhoto(false); }
+  }
+
+  // Click the preview to say which part of the photo must stay visible. The hero
+  // is cropped differently on every screen, so without this the subject's head is
+  // the first thing to go on a phone.
+  async function pickFocus(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - r.left) / r.width) * 100);
+    const y = Math.round(((e.clientY - r.top) / r.height) * 100);
+    const focus = `${Math.min(100, Math.max(0, x))}% ${Math.min(100, Math.max(0, y))}%`;
+    setSite(s => ({ ...s, cover_focus: focus }));
+    try { await api.setSiteCoverFocus(focus); flash('🎯 Focus set'); }
+    catch (err) { setMsg('⚠️ ' + err.message); }
+  }
+
   if (loading) return <div className="loading">Loading…</div>;
   if (!site) return <div className="table-wrap ac-empty">Couldn&apos;t load your site. {msg}</div>;
 
   const liveUrl = site.slug ? `${window.location.origin}/site/${site.slug}` : null;
+  const coverUrl = site.cover_photo ? `/api/sites/photo/${site.vendor_id}/${site.cover_photo}` : null;
+  const [fx, fy] = (site.cover_focus || '50% 50%').split(' ');
+  const focusX = fx; const focusY = fy;
 
   return (
     <>
@@ -4258,6 +4295,41 @@ function WebsiteView() {
             </select>
           </div>
         </div>
+      </div>
+
+      {/* ── cover photo ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">🖼️ Cover photo</h3>
+        <p className="ws-hint">
+          The big photo behind your name. Landscape works best — it&apos;s cropped to a
+          wide band on a laptop and a tall one on a phone, so drag the marker onto
+          whatever must stay in view.
+        </p>
+
+        {site.cover_photo ? (
+          <>
+            <div className="ws-cover" onClick={pickFocus} title="Click to set what stays in view">
+              <img className="ws-cover-img" src={coverUrl} alt=""
+                style={{ objectPosition: site.cover_focus || '50% 50%' }} />
+              <span className="ws-cover-dot" style={{ left: focusX, top: focusY }} />
+            </div>
+            <div className="ws-cover-acts">
+              <label className="refresh ws-file">
+                🔄 Replace
+                <input type="file" accept="image/*" onChange={onCoverPick} hidden />
+              </label>
+              <button className="refresh btn-danger" onClick={removeCover} disabled={busyPhoto}>🗑️ Remove</button>
+              {busyPhoto && <span className="ws-msg">Uploading…</span>}
+            </div>
+          </>
+        ) : (
+          <label className={`ws-drop ${busyPhoto ? 'is-busy' : ''}`}>
+            <span className="ws-drop-icon">🖼️</span>
+            <span className="ws-drop-text">{busyPhoto ? 'Uploading…' : 'Choose a cover photo'}</span>
+            <span className="ws-drop-hint">JPG or PNG, up to 15MB — it&apos;s resized for the web automatically</span>
+            <input type="file" accept="image/*" onChange={onCoverPick} hidden />
+          </label>
+        )}
       </div>
 
       {/* ── words ── */}

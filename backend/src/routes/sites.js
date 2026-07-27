@@ -14,10 +14,18 @@
  * a table would buy joins and migrations and nothing else.
  */
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import multer from 'multer';
+import sharp from 'sharp';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { SITES_DIR } from '../config/paths.js';
 
 const router = express.Router();
+
+// same limit and temp folder as the logo upload — one way to take a file
+const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 15 * 1024 * 1024 } });
 
 function vid(req) {
   if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
@@ -79,6 +87,7 @@ const PUBLIC_FIELDS = {
   site_title: true, tagline: true, about_heading: true, about_body: true,
   contact_email: true, contact_phone: true, instagram: true, facebook: true,
   sections: true, slug: true, published: true,
+  cover_photo: true, cover_focus: true,
 };
 
 /* ─────────────────────────── vendor's own site ─────────────────────────── */
@@ -198,6 +207,127 @@ router.get('/:slug', async (req, res) => {
       },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
+/* ──────────────────────────── site photos ─────────────────────────────── */
+
+/**
+ * 📸 Photos for a vendor's site.
+ *
+ * Two uses, one pipeline: the cover behind the home section, and an image on a
+ * section. Both are resized on upload — a hero straight off a camera is 8MB and
+ * would make the site crawl on a phone — and both are stored per vendor under
+ * the site storage folder.
+ *
+ * Replacing a photo deletes the one it replaces. Without that, a vendor trying
+ * three covers leaves two orphans on disk forever, and nothing would ever clean
+ * them up because nothing else knows they existed.
+ */
+function siteDirFor(vendorId) {
+  const dir = path.join(SITES_DIR, String(vendorId));            // 🔒 one folder per vendor
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function removeSitePhoto(vendorId, file) {
+  if (!file) return;
+  try {
+    // basename only — a stored name must never be able to walk out of the folder
+    const p = path.join(siteDirFor(vendorId), path.basename(file));
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  } catch { /* a leftover file is not worth failing the request over */ }
+}
+
+async function storeImage(vendorId, tmpPath, width) {
+  const fname = `${Date.now()}.webp`;
+  await sharp(tmpPath)
+    .rotate()                                       // honour the camera's orientation
+    .resize(width, null, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 82 })
+    .toFile(path.join(siteDirFor(vendorId), fname));
+  fs.unlinkSync(tmpPath);
+  return fname;
+}
+
+// POST /api/sites/my/cover → the big photo behind the home section
+router.post('/my/cover', requireAuth, upload.single('photo'), async (req, res) => {
+  const v = Number(vid(req));
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const cur = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: v }, select: { cover_photo: true },     // 🔒 own row
+    });
+    const fname = await storeImage(v, req.file.path, 2200);
+    const site = await prisma.vendor_sites.update({
+      where: { vendor_id: v },
+      data: { cover_photo: fname, updated_at: new Date() },
+    });
+    removeSitePhoto(v, cur?.cover_photo);           // only after the new one is safely written
+    res.json({ site });
+  } catch (e) {
+    try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/sites/my/cover → back to the plain themed background
+router.delete('/my/cover', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const cur = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: v }, select: { cover_photo: true },     // 🔒 own row
+    });
+    const site = await prisma.vendor_sites.update({
+      where: { vendor_id: v }, data: { cover_photo: null, updated_at: new Date() },
+    });
+    removeSitePhoto(v, cur?.cover_photo);
+    res.json({ site });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/sites/my/cover-focus → which part of the cover stays visible when
+// it's cropped. A hero is a wide letterbox on a laptop and a tall strip on a
+// phone, so without this the subject's head is the first thing cut off.
+router.put('/my/cover-focus', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  const f = String(req.body.cover_focus || '').trim();
+  if (!/^\d{1,3}% \d{1,3}%$/.test(f)) return res.status(400).json({ error: 'Bad focus point' });
+  try {
+    const site = await prisma.vendor_sites.update({
+      where: { vendor_id: v }, data: { cover_focus: f, updated_at: new Date() },   // 🔒 own row
+    });
+    res.json({ site });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/sites/my/photo → an image for one section; returns the filename for
+// the caller to store against that section
+router.post('/my/photo', requireAuth, upload.single('photo'), async (req, res) => {
+  const v = Number(vid(req));
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const image = await storeImage(v, req.file.path, 1600);
+    res.json({ image });
+  } catch (e) {
+    try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/sites/photo/:vendorId/:file → serve a site photo.
+//
+// Public on purpose: these are the pictures on a public website. Both parts are
+// forced through basename and Number so neither can walk out of the folder.
+router.get('/photo/:vendorId/:file', (req, res) => {
+  const v = Number(req.params.vendorId);
+  if (!Number.isInteger(v) || v <= 0) return res.status(404).end();
+  const f = path.join(SITES_DIR, String(v), path.basename(req.params.file));
+  if (!fs.existsSync(f)) return res.status(404).end();
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(f);
 });
 
 export default router;

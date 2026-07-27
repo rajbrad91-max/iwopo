@@ -140,7 +140,11 @@ export function sessionMismatch() {
 }
 
 async function request(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  // A file upload must NOT carry a JSON content-type — the browser has to set
+  // multipart/form-data itself, boundary and all. Without this every upload had
+  // to bypass this function and re-implement auth and error handling by hand.
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers = { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...options.headers };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -202,6 +206,10 @@ export const api = {
   saveMySiteSlug: (slug) => request('/sites/my/slug', { method: 'PUT', body: JSON.stringify({ slug }) }),
   publishMySite: (published) => request('/sites/my/publish', { method: 'PUT', body: JSON.stringify({ published }) }),
   publicSite: (slug) => request(`/sites/${slug}`),
+  uploadSiteCover: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/cover', { method: 'POST', body: fd }); },
+  removeSiteCover: () => request('/sites/my/cover', { method: 'DELETE' }),
+  setSiteCoverFocus: (cover_focus) => request('/sites/my/cover-focus', { method: 'PUT', body: JSON.stringify({ cover_focus }) }),
+  uploadSitePhoto: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/photo', { method: 'POST', body: fd }); },
   myChatbotHistory: () => request('/chatbot/my/history'),
   myChatbotKnowledge: () => request('/chatbot/my/knowledge'),
   saveMyChatbotKnowledge: (body) => request('/chatbot/my/knowledge', { method: 'PUT', body: JSON.stringify(body) }),
@@ -271,18 +279,9 @@ export const api = {
   saveInquirySettings: (data) => request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) }),
   myProfile: () => request('/me/profile'),
   saveProfile: (data) => request('/me/profile', { method: 'PUT', body: JSON.stringify(data) }),
-  uploadLogo: async (file) => {
-    const fd = new FormData();
-    fd.append('logo', file);
-    const token = localStorage.getItem('iwopo_token');
-    const res = await fetch('/api/me/logo', {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: fd,
-    });
-    if (!res.ok) throw new Error('Logo upload failed');
-    return res.json();
-  },
+  // now that request() handles FormData, this needs no hand-rolled fetch,
+  // no second copy of the auth header and no second error path
+  uploadLogo: (file) => { const fd = new FormData(); fd.append('logo', file); return request('/me/logo', { method: 'POST', body: fd }); },
   emailSettings: () => request('/email/settings'),
   saveEmailSettings: (data) => request('/email/settings', { method: 'PUT', body: JSON.stringify(data) }),
   emailLead: (leadId, subject, body, cc) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body, cc }) }),
