@@ -10,6 +10,7 @@ import Certificate from './pages/Certificate';
 import ClientPortal from './pages/ClientPortal';
 import CrewCheckin from './pages/CrewCheckin';
 import PublicGallery from './pages/PublicGallery';
+import PublicSite from './pages/PublicSite';
 import VendorGallery from './pages/VendorGallery';
 import Vote from './pages/Vote';
 import KnowledgeFill from './pages/KnowledgeFill';
@@ -78,6 +79,13 @@ export default function App() {
   // 🖼️ Public client gallery (single album): /g/:token
   const g = window.location.pathname.match(/^\/g\/([a-z0-9]+)/i);
   if (g) return <PublicGallery token={g[1]} />;
+
+  // 🌐 A vendor's own website: /site/:slug
+  // Slugs are lowercase letters, numbers and hyphens. Without this the path fell
+  // through to the bottom of this function and rendered the iwopo selling page,
+  // so a vendor's published address advertised us instead of them.
+  const st = window.location.pathname.match(/^\/site\/([a-z0-9-]+)/i);
+  if (st) return <PublicSite slug={st[1]} />;
 
 
   if (user) {

@@ -163,19 +163,38 @@ router.put('/my/publish', requireAuth, async (req, res) => {
 
 // GET /api/sites/:slug → a published site. Unpublished returns 404 rather than
 // 403: an unfinished site shouldn't announce that it exists.
+//
+// It carries what the four sections need — the vendor's id so Book Us can open
+// their real inquiry form, their gallery token so Portfolio and the Client
+// Section point at galleries that already exist, and a handful of album covers
+// so Portfolio has something to show without a second request.
 router.get('/:slug', async (req, res) => {
   try {
     const site = await prisma.vendor_sites.findFirst({
       where: { slug: req.params.slug, published: true },
-      select: { ...PUBLIC_FIELDS, vendors: { select: { business_name: true, logo_path: true } } },
+      select: {
+        ...PUBLIC_FIELDS,
+        vendor_id: true,
+        vendors: { select: { business_name: true, logo_path: true, gallery_token: true } },
+      },
     });
     if (!site) return res.status(404).json({ error: 'Site not found' });
+
+    const albums = await prisma.albums.findMany({
+      where: { vendor_id: site.vendor_id, public_token: { not: null } },
+      select: { title: true, category: true, public_token: true },
+      orderBy: { created_at: 'desc' },
+      take: 12,
+    });
+
     const { vendors, ...rest } = site;
     res.json({
       site: {
         ...rest,
         business_name: vendors?.business_name ?? null,
         logo_path: vendors?.logo_path ?? null,
+        gallery_token: vendors?.gallery_token ?? null,
+        albums,
       },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

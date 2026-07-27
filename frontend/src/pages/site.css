@@ -1,0 +1,119 @@
+/**
+ * 🌐 Vendor websites — five themes.
+ *
+ * The shared rules do the work; each theme is a small set of overrides on top.
+ * That keeps the five genuinely different to look at without five copies of the
+ * same stylesheet, and it means a fix to spacing or the mobile nav lands in all
+ * of them at once.
+ *
+ * Colour and type come from the vendor as CSS variables, so a theme is a layout
+ * decision and the vendor still owns how it feels.
+ */
+
+.st { --st-ink: #1a1a1a; --st-paper: #fff; --st-soft: #6b6b6b; --st-line: #e6e6e6;
+      background: var(--st-paper); color: var(--st-ink); font-family: var(--st-body);
+      min-height: 100vh; }
+.st * { box-sizing: border-box; }
+
+.st-loading, .st-missing { min-height: 60vh; display: grid; place-content: center;
+  text-align: center; font-family: system-ui, sans-serif; color: #6b6b6b; padding: 40px; }
+.st-missing h1 { font-size: 22px; margin: 0 0 6px; color: #1a1a1a; }
+
+/* ── nav ── */
+.st-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center;
+  justify-content: space-between; padding: 16px 28px; background: var(--st-paper);
+  border-bottom: 1px solid var(--st-line); }
+.st-brand { text-decoration: none; color: inherit; display: flex; align-items: center; }
+.st-brand-logo { height: 34px; max-width: 150px; object-fit: contain; display: block; }
+.st-brand-name { font-family: var(--st-head); font-size: 19px; letter-spacing: .02em; }
+.st-links { display: flex; gap: 26px; }
+.st-links a { color: var(--st-ink); text-decoration: none; font-size: 13px;
+  letter-spacing: .12em; text-transform: uppercase; }
+.st-links a:hover { color: var(--st-accent); }
+.st-burger { display: none; background: none; border: 0; font-size: 20px; cursor: pointer; color: inherit; }
+
+/* ── shared blocks ── */
+.st-wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+.st-narrow { max-width: 640px; text-align: center; }
+.st-section { padding: 84px 0; }
+.st-alt { background: color-mix(in srgb, var(--st-accent) 6%, var(--st-paper)); }
+.st-h2 { font-family: var(--st-head); font-size: 32px; font-weight: 500; margin: 0 0 18px; }
+.st-prose { font-size: 15.5px; line-height: 1.85; color: var(--st-soft); white-space: pre-wrap; margin: 0 0 22px; }
+.st-quiet { color: var(--st-soft); font-size: 14px; }
+
+.st-cta { display: inline-block; padding: 13px 30px; border-radius: 2px;
+  background: var(--st-accent); color: #fff; text-decoration: none;
+  font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; }
+.st-cta:hover { filter: brightness(1.08); }
+
+/* ── hero ── */
+.st-hero { min-height: 74vh; display: grid; place-content: center; text-align: center; padding: 60px 28px; }
+.st-hero-inner { max-width: 720px; }
+.st-hero-title { font-family: var(--st-head); font-size: 54px; font-weight: 400; margin: 0 0 14px; line-height: 1.1; }
+.st-hero-tagline { font-size: 16px; color: var(--st-soft); margin: 0 0 30px; letter-spacing: .01em; }
+.st-about { padding: 70px 0; }
+
+/* ── portfolio ── */
+.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.st-card { text-decoration: none; color: inherit; display: block; }
+.st-card-img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px;
+  background: color-mix(in srgb, var(--st-accent) 12%, var(--st-paper)); }
+.st-card-title { display: block; margin-top: 10px; font-family: var(--st-head); font-size: 17px; }
+.st-card-cat { display: block; font-size: 11.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--st-soft); margin-top: 2px; }
+
+/* ── contact + footer ── */
+.st-contact { display: flex; gap: 20px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+.st-contact a { color: var(--st-accent); text-decoration: none; font-size: 14px; }
+.st-foot { border-top: 1px solid var(--st-line); padding: 26px 0; font-size: 12.5px; color: var(--st-soft); }
+.st-foot-inner { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.st-social { display: flex; gap: 16px; }
+.st-social a { color: var(--st-soft); text-decoration: none; }
+.st-social a:hover { color: var(--st-accent); }
+
+/* ── 1. Aperture — photography first, type stays out of the way ── */
+.st-aperture .st-hero { min-height: 86vh; }
+.st-aperture .st-hero-title { font-size: 62px; letter-spacing: -.01em; }
+.st-aperture .st-grid { gap: 6px; }
+.st-aperture .st-card-img { aspect-ratio: 1; border-radius: 0; }
+
+/* ── 2. Atelier — editorial, wide margins, rules instead of fills ── */
+.st-atelier .st-hero { min-height: 62vh; }
+.st-atelier .st-hero-title { font-size: 46px; }
+.st-atelier .st-h2 { border-bottom: 1px solid var(--st-line); padding-bottom: 12px; }
+.st-atelier .st-cta { background: none; color: var(--st-accent);
+  border: 1px solid var(--st-accent); }
+.st-atelier .st-cta:hover { background: var(--st-accent); color: #fff; }
+.st-atelier .st-section { padding: 96px 0; }
+
+/* ── 3. Vellum — warm paper, softer edges ── */
+.st-vellum { --st-paper: #fdfaf5; --st-line: #ece2d3; --st-soft: #7a6a58; }
+.st-vellum .st-hero-title { font-style: italic; }
+.st-vellum .st-cta { border-radius: 999px; }
+.st-vellum .st-card-img { border-radius: 10px; }
+
+/* ── 4. Noir — dark, cinematic ── */
+.st-noir { --st-paper: #101010; --st-ink: #f4f4f4; --st-soft: #9a9a9a; --st-line: #262626; }
+.st-noir .st-alt { background: #171717; }
+.st-noir .st-hero-title { font-size: 58px; letter-spacing: .01em; }
+.st-noir .st-card-img { filter: saturate(.9); }
+
+/* ── 5. Bloom — light and airy ── */
+.st-bloom { --st-paper: #fefdff; --st-line: #efe9f5; --st-soft: #7c7288; }
+.st-bloom .st-hero { min-height: 66vh; }
+.st-bloom .st-h2 { font-size: 34px; }
+.st-bloom .st-card-img { border-radius: 16px; }
+.st-bloom .st-cta { border-radius: 999px; }
+
+/* ── phones ── */
+@media (max-width: 760px) {
+  .st-burger { display: block; }
+  .st-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column;
+    gap: 0; background: var(--st-paper); border-bottom: 1px solid var(--st-line);
+    display: none; }
+  .st-links.is-open { display: flex; }
+  .st-links a { padding: 15px 28px; border-top: 1px solid var(--st-line); }
+  .st-hero-title, .st-aperture .st-hero-title, .st-noir .st-hero-title { font-size: 34px; }
+  .st-h2 { font-size: 25px; }
+  .st-section { padding: 56px 0; }
+}
