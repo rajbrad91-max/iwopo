@@ -1701,6 +1701,9 @@ function CalendarView({ onOpen, filter }) {
             </div>
             {selected.map(b => (
               <div key={b.id} className="cal-evt" onClick={() => onOpen && onOpen(b)}>
+                {/* the client's name first — it's how a vendor recognises which
+                    booking this is; the type is what kind of day it will be */}
+                <div className="cal-evt-name">{b.name}</div>
                 <div className="cal-evt-type">{b.event_type || 'Event'}</div>
                 <div className="cal-evt-row">🕐 {b.timing_from
                   ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}`

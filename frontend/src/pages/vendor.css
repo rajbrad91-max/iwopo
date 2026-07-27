@@ -340,7 +340,8 @@
   border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2);
   transition: border-color .15s; }
 .cal-evt:last-child { margin-bottom: 0; }
-.cal-evt-type { font-weight: 700; color: var(--text); margin-bottom: 7px; font-size: 13.5px; }
+.cal-evt-name { font-weight: 700; color: var(--text); font-size: 14px; line-height: 1.3; }
+.cal-evt-type { color: var(--teal); margin: 2px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .cal-evt-row { color: var(--muted); line-height: 1.7; font-size: 12.5px; }
 .cal-evt-none { opacity: .65; font-style: italic; }
 .cal-evt:hover { border-color: #2dd4bf; }
