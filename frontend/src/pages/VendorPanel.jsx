@@ -1321,7 +1321,7 @@ function AlbumDetail({ albumId, onBack }) {
             const n = photos.filter(p => String(p.event_id) === String(ev.id)).length;
             return (
               <button key={ev.id} className={`pg-ev ${String(activeEvent) === String(ev.id) ? 'on' : ''}`} onClick={() => setActiveEvent(ev.id)}>
-                <span className="pg-ev-name">{ev.name}</span>
+                <span>{ev.name}</span>
                 <span className="pg-ev-count">{n}</span>
               </button>
             );
@@ -1381,7 +1381,7 @@ function AlbumDetail({ albumId, onBack }) {
             ) : !favData || favData.total === 0 ? (
               <div className="ad-fav-empty">No favorites yet. When clients ⭐ photos in the gallery, their picks show up here — grouped by event, then by the email they used.</div>
             ) : (
-              <div className="ad-fav-lists">
+              <div>
                 <div className="ad-fav-total">{favData.total} favorite{favData.total === 1 ? '' : 's'} across {favData.events.length} event{favData.events.length === 1 ? '' : 's'}</div>
                 {favData.events.map(ev => (
                   <div key={ev.event_id ?? 'none'} className="ad-fav-event">
@@ -1424,7 +1424,7 @@ function AlbumDetail({ albumId, onBack }) {
             ) : !selData || selData.total === 0 ? (
               <div className="ad-fav-empty">Nothing sent yet. When the client logs in with the admin password, picks photos with the ✓ tool, and clicks “Send to studio”, their final selection appears here — grouped by event.</div>
             ) : (
-              <div className="ad-fav-lists">
+              <div>
                 <div className="ad-sel-bar">
                   <div className="ad-fav-total">
                     {selData.total} photo{selData.total === 1 ? '' : 's'} selected across {selData.events.length} event{selData.events.length === 1 ? '' : 's'}

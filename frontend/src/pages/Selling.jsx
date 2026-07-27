@@ -330,7 +330,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         </Reveal>
         <div className="sl-svc-grid">
           {standalone.map((s, i) => (
-            <Reveal key={s.id} className="sl-svc-wrap" style={{ transitionDelay: `${(i % 4) * 70}ms` }}>
+            <Reveal key={s.id} style={{ transitionDelay: `${(i % 4) * 70}ms` }}>
               <div className="sl-svc" onClick={() => choosePlan(s, 'service')}>
                 <div className="sl-svc-top">
                   <span className="sl-svc-icon">{s.icon}</span>

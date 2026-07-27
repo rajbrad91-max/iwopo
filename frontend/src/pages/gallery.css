@@ -146,12 +146,6 @@
   transition: color .16s;
 }
 .pg-back:hover { color: var(--pg-accent); }
-.pg-back.is-static {
-  cursor: default;
-  font-family: var(--pg-hfont, serif);
-  font-size: 16px;
-  color: var(--pg-head);
-}
 
 /* ── bar 2: the people in this gallery ── */
 .pg-people {

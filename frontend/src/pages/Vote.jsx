@@ -73,7 +73,7 @@ export default function Vote() {
                 {pwErr && <div className="vote-pw-err">⚠️ {pwErr}</div>}
               </form>
             ) : (
-              <div className="vote-stats">
+              <div>
                 <div className="vote-total">Total votes: {stats.total}</div>
                 {[...stats.options].sort((a, b) => stats.counts[b] - stats.counts[a]).map(name => {
                   const c = stats.counts[name] || 0;

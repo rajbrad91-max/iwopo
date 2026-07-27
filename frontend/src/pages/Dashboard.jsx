@@ -235,7 +235,7 @@ function DashboardView({ vendors, packages, trials }) {
             </ResponsiveContainer>
             <div className="sa-adopt">
               {svcData.slice(0, 7).map((s, i) => (
-                <div key={i} className="sa-ad-row">
+                <div key={i}>
                   <div className="sa-ad-top"><span>{s.name}</span><span className="cnt">{s.v}%</span></div>
                   <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ width: `${s.v}%`, background: s.c }} /></div>
                 </div>
