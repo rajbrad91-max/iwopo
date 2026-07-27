@@ -2822,25 +2822,25 @@ function AllContracts() {
       </p>
       <div className="table-wrap">
         <table>
-        <thead><tr><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th className="ct-dl-col">Download</th></tr></thead>
+        <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th className="ct-dl-col">Documents</th></tr></thead>
         <tbody>
           {shown.length === 0 ? (
-            <tr><td colSpan="5" className="empty">
+            <tr><td colSpan="6" className="empty">
               No confirmed bookings yet. A contract appears here once it&apos;s signed and the booking is confirmed ✅
             </td></tr>
-          ) : shown.map(c => (
+          ) : shown.map((c, n) => (
             <tr key={c.id}>
+              <td className="ct-num">{n + 1}</td>
               <td className="biz">{c.client_name}</td>
               <td>{c.title}</td>
               <td>{c.signed_name || '—'}</td>
               <td>{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
-              {/* Both open as a file save rather than a tab: these are documents a
-                  vendor files away for an insurer or an accountant, and a link is
-                  no use to either. */}
+              {/* Both open in a tab rather than landing on disk: saving a file
+                  before you have looked at it is a guess. Each document carries
+                  its own Save as PDF button once it's open. */}
               <td className="ct-dl">
-                <a href={`/api/contracts/download/${c.token}`} download className="ct-dl-btn">📄 Contract</a>
-                <a href={`/api/contracts/certificate/${c.token}/download`} download className="ct-dl-btn">📜 Certificate</a>
-                <a href={`/certificate/${c.token}`} target="_blank" rel="noreferrer" className="ct-cert">View</a>
+                <a href={`/api/contracts/download/${c.token}`} target="_blank" rel="noreferrer" className="ct-dl-btn">📄 Contract</a>
+                <a href={`/api/contracts/certificate/${c.token}/download`} target="_blank" rel="noreferrer" className="ct-dl-btn">📜 Certificate</a>
               </td>
             </tr>
           ))}
@@ -3961,12 +3961,11 @@ function BookingDetail({ id, onBack }) {
             <div className="bd-docs">
               {d.contract ? (
                 <>
-                  {/* these were one link labelled "Signed contract" that actually
-                      opened the certificate — two different documents */}
-                  <a className="bd-doc" href={`/api/contracts/download/${d.contract.token}`} download>
+                  {/* open, don't download — same as the contracts list */}
+                  <a className="bd-doc" href={`/api/contracts/download/${d.contract.token}`} target="_blank" rel="noreferrer">
                     📄 Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
                   </a>
-                  <a className="bd-doc" href={`/api/contracts/certificate/${d.contract.token}/download`} download>
+                  <a className="bd-doc" href={`/api/contracts/certificate/${d.contract.token}/download`} target="_blank" rel="noreferrer">
                     📜 Signing certificate
                   </a>
                 </>

@@ -359,11 +359,36 @@ const DOC_CSS = `
         font-family:system-ui,sans-serif;line-height:1.7}
 `;
 
+/**
+ * Serve one of these documents as a page rather than a forced download.
+ *
+ * Downloading straight from a list is a guess: you get a file on disk before
+ * you have seen whether it is the right one. It opens in a tab instead, and
+ * carries its own Save button — which prints, so the vendor gets a PDF through
+ * the browser's own dialogue and can pick the folder and the name.
+ *
+ * The bar is hidden in print, so it never appears in the saved copy.
+ */
+const DOC_ACTIONS = `
+  <div class="doc-actions">
+    <button type="button" onclick="window.print()">🖨️ Save as PDF / Print</button>
+  </div>
+  <style>
+    .doc-actions{position:sticky;top:0;background:#fff;padding:14px 0 16px;margin:-40px 0 18px;
+      border-bottom:1px solid #e3e3e3;text-align:right;font-family:system-ui,sans-serif}
+    .doc-actions button{padding:9px 18px;border:1px solid #222;border-radius:8px;background:#1a1a1a;
+      color:#fff;font-size:13.5px;font-weight:600;cursor:pointer}
+    .doc-actions button:hover{background:#000}
+    @media print{.doc-actions{display:none}}
+  </style>
+`;
+
 function sendDoc(res, filename, title, inner) {
   const html = `<!doctype html><html><head><meta charset="utf-8">
-<title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${inner}</body></html>`;
+<title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${DOC_ACTIONS}${inner}</body></html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
+  // inline, not attachment: read it first, save it if you want it
+  res.setHeader('Content-Disposition', `inline; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
   res.send(html);
 }
 
