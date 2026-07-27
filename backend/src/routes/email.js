@@ -191,7 +191,7 @@ export async function notifyNewLead(lead) {
     await t.sendMail({
       from: `"iwopo" <${fromEmail}>`, to,
       subject: `🎉 New inquiry from ${lead.name || 'a client'}`,
-      text: `You have a new lead!\n\nName: ${lead.name}\nEmail: ${lead.email}\nEvent: ${lead.event_type || '-'}\nDate: ${lead.event_date || '-'}\n\nLog in to view: https://iwopo.com`,
+      text: `You have a new lead!\n\nName: ${lead.name}\nEmail: ${lead.email}\nEvent: ${lead.event_type || '-'}\nDate: ${lead.event_date || '-'}\n\nLog in to view: ${process.env.APP_URL || 'https://iwopo.com'}`,
     });
   } catch { /* never break lead creation over email */ }
 }

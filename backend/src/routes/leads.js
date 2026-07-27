@@ -449,7 +449,11 @@ router.post('/:id/send-packages', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     if (!lead.email) return res.status(400).json({ error: 'Lead has no email' });
 
-    const link = `https://iwopo.com/portal/${lead.client_token}`;
+    // APP_URL, not a hard-coded domain: sending this from staging emailed the
+    // client a link to the live site, where their token doesn't exist. The same
+    // fault was already fixed on the invoice and contract copy-link buttons.
+    const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const link = `${base}/portal/${lead.client_token}`;
     const subject = 'Your packages are ready 🎉';
     const body = `Hi ${lead.name},\n\nView your custom packages and book here:\n${link}\n\nThank you!`;
     await sendLeadEmail(req, lead, subject, body);
