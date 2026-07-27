@@ -173,7 +173,9 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'aichat' ? (
           <AiChatVendorView goServices={() => setTab('services')} />
         ) : tab === 'calendar' ? (
-          <CalendarView />
+          // this calendar had no way out of it: its cards were built to open a
+          // booking but were rendered without a handler, so clicking did nothing
+          <CalendarView onOpen={(l) => navigate({ tab: 'bookings', booking: String(l.id) })} />
         ) : tab === 'inqform' ? (
           <InqFormSettings user={user} />
         ) : tab === 'packages' ? (
@@ -1700,7 +1702,11 @@ function CalendarView({ onOpen, filter }) {
               <button className="cal-side-x" onClick={() => setSelDay(null)} aria-label="Close">✕</button>
             </div>
             {selected.map(b => (
-              <div key={b.id} className="cal-evt" onClick={() => onOpen && onOpen(b)}>
+              <div key={b.id} className={`cal-evt ${onOpen ? 'is-open' : ''}`}
+                onClick={() => onOpen && onOpen(b)}
+                role={onOpen ? 'button' : undefined}
+                tabIndex={onOpen ? 0 : undefined}
+                onKeyDown={e => { if (onOpen && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(b); } }}>
                 {/* the client's name first — it's how a vendor recognises which
                     booking this is; the type is what kind of day it will be */}
                 <div className="cal-evt-name">{b.name}</div>
