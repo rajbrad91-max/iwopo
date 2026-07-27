@@ -27,6 +27,7 @@ import chatbotRoutes from './routes/chatbot.js';
 import notificationRoutes from './routes/notifications.js';
 import portalRoutes from './routes/portal.js';
 import leadPackageRoutes from './routes/leadPackages.js';
+import siteRoutes from './routes/sites.js';
 import { gate } from './lib/entitlements.js';
 
 dotenv.config();
@@ -62,6 +63,10 @@ app.use('/api/chatbot', chatbotRoutes); // 🤖 Tasveer chatbot: subscribers + k
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/portal', portalRoutes);
 app.use('/api/lead-packages', gate('leads'), leadPackageRoutes);
+// 🌐 Website Builder. Gated on `website`, so the super-admin toggle now decides
+// whether a vendor can build one — the public /:slug read carries no token, and
+// gate() lets unauthenticated requests through to the route's own checks.
+app.use('/api/sites', gate('website'), siteRoutes);
 
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'iwopo API', version: '2.0.0' });
