@@ -91,12 +91,6 @@
 }
 .upsell .up-title { font-weight: 800; font-size: 16px; }
 .upsell .up-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
-.upsell .up-btn {
-  background: linear-gradient(90deg, #2dd4bf, #14b8a6); color: #06231f;
-  border: none; padding: 11px 20px; border-radius: 11px; font-weight: 800;
-  cursor: pointer; font-size: 13px; box-shadow: 0 6px 18px #2dd4bf33; transition: all .18s;
-}
-.upsell .up-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px #2dd4bf44; }
 
 
 /* ── RE-LAYOUT PASS ── */
@@ -376,21 +370,15 @@
 .cs-card-name { font-weight: 700; margin-top: 6px; }
 .cs-card-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .cs-edit { padding: 20px; }
-.cs-edit-top { display: flex; justify-content: space-between; margin-bottom: 12px; }
-.cs-edit-actions { display: flex; gap: 8px; align-items: center; }
 .cs-msg { font-size: 13px; }
 .cs-msg.is-ok { color: #4ade80; }
 .cs-msg.is-err { color: #fb7185; }
 .cs-label { font-size: 12px; color: var(--muted); }
-.cs-label-mt { display: block; margin-top: 10px; }
 .cs-input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 9px; box-sizing: border-box; font-family: inherit; }
-.cs-ta-sm { min-height: 50px; }
-.cs-ta-md { min-height: 80px; }
 .cs-ta-lg { min-height: 220px; }
 .cs-save { margin-top: 14px; width: 100%; }
 .cs-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0; }
 .cs-chip { background: #2dd4bf18; border: 1px solid #2dd4bf44; color: #2dd4bf; padding: 3px 8px; border-radius: 12px; font-size: 11px; cursor: pointer; }
-.cs-chip-init { background: #fbbf2418; border-color: #fbbf2444; color: #fbbf24; font-weight: 700; }
 
 /* 📋 Lead detail — view + edit */
 .ld-wrap { padding: 24px; max-width: 640px; }
@@ -417,7 +405,7 @@
 /* right column = cards */
 .lead-right { display: flex; flex-direction: column; gap: 16px; }
 .lead-right > * { margin: 0 !important; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
-.lead-right .ms-wrap, .lead-right .ib-wrap { margin: 0 !important; }
+.lead-right .ms-wrap { margin: 0 !important; }
 
 /* ld cards */
 .ld-view { padding: 4px; }
@@ -900,7 +888,6 @@
 .gal-card-actions { display: flex; gap: 8px; }
 .gal-mini { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
 .gal-mini:hover { border-color: #2dd4bf88; background: #2dd4bf0d; }
-@media (max-width: 560px){ .gal-grid { grid-template-columns: 1fr; } }
 
 /* 📸 Galleries — extra (settings) */
 .gal-head-btns { display: flex; gap: 8px; }
@@ -1301,8 +1288,6 @@
 .cs-preview-count { font-size: 12.5px; color: var(--muted); margin-right: auto; }
 
 /* ── 📋 Booking detail: its own page, mostly read-only ─────── */
-.bd-msg.is-ok { color: var(--green); }
-.bd-msg.is-err { color: var(--red); }
 .bd-h4 {
   margin: 20px 0 8px; font-size: 11px; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
@@ -1370,7 +1355,6 @@
 .bd-doc:hover { border-color: var(--teal); color: var(--teal); }
 
 @media (max-width: 900px) {
-  .bd-grid { grid-template-columns: 1fr; }
   .bd-dl { grid-template-columns: 1fr; }
 }
 
@@ -1590,6 +1574,9 @@
 .cs-chips { display: flex; gap: 5px; flex-wrap: wrap; }
 
 /* ── grouped, like the panels in the reference ───────────────────────── */
+/* the wrapper each labelled group of clauses sits in — it was used in the
+   markup without a rule, so the groups had no spacing between them */
+.cs-group { display: flex; flex-direction: column; }
 .cs-group-head { display: flex; align-items: baseline; gap: 10px; margin: 4px 2px 9px; flex-wrap: wrap; }
 .cs-group-title { font-size: 13.5px; font-weight: 700; color: var(--text); }
 .cs-group-sub { font-size: 12px; color: var(--muted); }
