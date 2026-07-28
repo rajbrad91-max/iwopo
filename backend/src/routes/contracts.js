@@ -40,9 +40,41 @@ export async function templateForLead(lead, templateId = null) {
     && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || tpls[0];
 }
 
-/** The template's three parts joined into one body, ready for placeholder fill. */
+/** Only what a section may hold, each trimmed to what the page can show. */
+function cleanSections(list) {
+  return (Array.isArray(list) ? list : []).slice(0, 40).map((x, i) => ({
+    id: String(x.id || `s${i + 1}`).slice(0, 24),
+    title: String(x.title || '').trim().slice(0, 120),
+    text: String(x.text || '').slice(0, 8000),
+    initial: !!x.initial,
+  })).filter(x => x.title || x.text);
+}
+
+/**
+ * The template joined into one body, ready for placeholder fill.
+ *
+ * A template is a list of titled sections — each policy in its own block — so a
+ * vendor can see and edit one term at a time instead of scrolling one long
+ * field. A section marked for initials gets an [INITIAL] box after its text,
+ * which is what makes the client acknowledge that clause specifically.
+ *
+ * Templates written before sections existed still carry their whole contract in
+ * `body`, so that is used when there are no sections. Nothing has to be migrated
+ * for an old template to keep working.
+ */
 export function templateText(t) {
-  return [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+  const sections = Array.isArray(t.sections) ? t.sections : [];
+  const middle = sections.length
+    ? sections
+        .filter(x => (x.title || '').trim() || (x.text || '').trim())
+        .map(x => [
+          (x.title || '').trim(),
+          (x.text || '').trim(),
+          x.initial ? '[INITIAL]' : '',
+        ].filter(Boolean).join('\n\n'))
+        .join('\n\n')
+    : (t.body || '');
+  return [t.header, middle, t.legal_terms].filter(Boolean).join('\n\n');
 }
 
 // 🔤 Fill placeholders from lead + package + money
@@ -90,13 +122,14 @@ router.post('/templates', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
     if (!v) return res.status(400).json({ error: 'No vendor' });
-    const { name, event_type, header, body, legal_terms } = req.body;
+    const { name, event_type, header, body, legal_terms, sections } = req.body;
     const template = await prisma.contract_templates.create({
       data: {
         vendor_id: Number(v),                   // 🔒 tenancy
         name: name || 'My Contract',
         event_type: event_type || null,
         header: header || '', body: body || '', legal_terms: legal_terms || '',
+        sections: cleanSections(sections),
       },
     });
     res.status(201).json({ template });
@@ -110,13 +143,14 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    const { name, event_type, header, body, legal_terms } = req.body;
+    const { name, event_type, header, body, legal_terms, sections } = req.body;
     // COALESCE($n, col): only overwrite what was supplied (event_type is always set)
     const data = { event_type: event_type ?? null, updated_at: new Date() };
     if (name !== undefined && name !== null) data.name = name;
     if (header !== undefined && header !== null) data.header = header;
     if (body !== undefined && body !== null) data.body = body;
     if (legal_terms !== undefined && legal_terms !== null) data.legal_terms = legal_terms;
+    if (sections !== undefined) data.sections = cleanSections(sections);
     const template = await prisma.contract_templates.update({ where: { id }, data });
     res.json({ template });
   } catch (e) { res.status(500).json({ error: e.message }); }

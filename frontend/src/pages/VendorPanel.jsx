@@ -2952,118 +2952,289 @@ function fillSample(text) {
     CT_SAMPLE[k] !== undefined ? CT_SAMPLE[k] : m);
 }
 
-// The three parts joined the same way the server joins them, so a preview can't
-// drift from what actually gets sent.
+// The parts joined the same way the server joins them, so a preview can't drift
+// from what actually gets sent. Sections when there are any, the old single body
+// when there aren't — a template written before sections existed still previews.
 function templateAssembled(t) {
-  return [t.header, t.body, t.legal_terms].filter(Boolean).join('\n\n');
+  const secs = Array.isArray(t.sections) ? t.sections : [];
+  const middle = secs.length
+    ? secs
+      .filter(x => (x.title || '').trim() || (x.text || '').trim())
+      .map(x => [(x.title || '').trim(), (x.text || '').trim(), x.initial ? '[INITIAL]' : '']
+        .filter(Boolean).join('\n\n'))
+      .join('\n\n')
+    : (t.body || '');
+  return [t.header, middle, t.legal_terms].filter(Boolean).join('\n\n');
+}
+
+/**
+ * The contract a vendor starts from.
+ *
+ * Eight sections that cover what actually goes wrong between a vendor and a
+ * client — what was booked, what it costs, what happens if it changes, who owns
+ * the result — written to suit a florist or a makeup artist as much as a
+ * photographer. A vendor edits wording; they should not have to invent the shape
+ * of an agreement from an empty box.
+ */
+function DEFAULT_SECTIONS() {
+  return [
+    { id: 's1', title: 'WHAT IS BEING BOOKED', initial: true,
+      text: '{{company_name}} ("the Provider") agrees to provide the {{package_name}} package for {{client_name}} on {{event_date}} at {{location}}.\n\nThe inclusions listed in that package form part of this Agreement. The Provider will arrive at the agreed time and carry out the work with reasonable skill and care.' },
+    { id: 's2', title: 'COST AND PAYMENT', initial: true,
+      text: 'The total cost of the services is {{total_cost}}.\n\nA non-refundable deposit of {{deposit}} confirms the booking. The remaining balance of {{balance}} is due on or before the event day unless agreed otherwise in writing.\n\nThe date is not held until the deposit is received.' },
+    { id: 's3', title: 'CHANGES AND EXTRA TIME', initial: true,
+      text: 'Any change to the date, time, location or scope must be agreed in writing. A change of date depends on the Provider being free, and may be treated as a cancellation if the new date cannot be met.\n\nTime beyond the booked hours is charged at the Provider\u2019s overtime rate and must be agreed on the day.' },
+    { id: 's4', title: 'CANCELLATION', initial: true,
+      text: 'If the Client cancels, the deposit is forfeited and cannot be moved to another booking.\n\nIf the Client cancels within 30 days of the event, or does not cancel and the Provider attends as agreed, the full balance remains payable.' },
+    { id: 's5', title: 'USE OF THE WORK', initial: true,
+      text: 'The Provider may use the work created for this booking to promote their business \u2014 a portfolio, a website, or social media \u2014 unless the Client asks in writing for it not to be used. That permission can be withdrawn at any time in writing.' },
+    { id: 's6', title: 'DELIVERY', initial: true,
+      text: 'The Provider will deliver the completed work within the timeframe stated in the package.\n\nDelivery timeframes are working estimates and may extend during busy periods; the Provider will keep the Client informed.' },
+    { id: 's7', title: 'ON THE DAY', initial: false,
+      text: 'The Client is responsible for access to the venue and for any permission the location requires.\n\nThe Provider is not responsible for hazards at the location, and may end the engagement without refund if any member of their team is subjected to abuse or harassment.' },
+    { id: 's8', title: 'IF SOMETHING GOES WRONG', initial: false,
+      text: 'If the Provider cannot attend because of illness, accident or anything outside their reasonable control, they will make reasonable efforts to arrange a qualified substitute.\n\nIf no substitute can be arranged, the Provider\u2019s liability is limited to refunding the fees paid.' },
+  ];
+}
+
+/**
+ * 🎨 Which placeholders are which, so a draft can be read at a glance.
+ *
+ * Colour is for DRAFTING ONLY — it exists in the editor and the placeholder view
+ * of the preview, never in what a client receives. A vendor writing a clause
+ * needs to see where a name or a figure will land; a client reading the finished
+ * agreement should just see their own details.
+ */
+const PH_KIND = {
+  '{{client_name}}': 'who', '{{company_name}}': 'who',
+  '{{event_date}}': 'when', '{{today_date}}': 'when',
+  '{{location}}': 'where', '{{event_type}}': 'what', '{{package_name}}': 'what',
+  '{{total_cost}}': 'money', '{{deposit}}': 'money', '{{balance}}': 'money',
+};
+
+/** Split a string on {{placeholders}} and wrap each in its own colour. */
+function paintPlaceholders(text) {
+  const parts = String(text || '').split(/(\{\{\w+\}\})/g);
+  return parts.map((p, i) => (
+    /^\{\{\w+\}\}$/.test(p)
+      ? <span key={i} className={`ph ph-${PH_KIND[p] || 'other'}`}>{p}</span>
+      : <span key={i}>{p}</span>
+  ));
 }
 
 function ContractSetup() {
   const [tpls, setTpls] = useState([]);
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState('');
+  const [showRaw, setShowRaw] = useState(false);   // preview: placeholders vs sample values
+  // which section the cursor was last in, so the shared palette knows where to
+  // insert. One palette that follows you beats a copy of it in every card.
+  const [focused, setFocused] = useState(0);
 
   useEffect(() => { load(); }, []);
   async function load() {
-    try { const d = await api.ctTemplates(); setTpls(d.templates || []); } catch {}
+    try { const d = await api.ctTemplates(); setTpls(d.templates || []); } catch { /* list stays */ }
   }
+
+  const sections = sel?.sections?.length ? sel.sections : [];
+
   async function add() {
     try {
-      const d = await api.addCtTemplate({ name: 'New Contract', body: 'This agreement is between {{company_name}} and {{client_name}} for {{event_type}} on {{event_date}}.\n\nTotal: {{total_cost}} · Deposit: {{deposit}}\n\nI agree to the cancellation policy. [INITIAL]\n\nI agree to the payment schedule. [INITIAL]' });
+      const d = await api.addCtTemplate({ name: 'New Contract', sections: DEFAULT_SECTIONS() });
       setSel(d.template); load();
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function save() {
     if (!sel) return;
     setMsg('');
-    try { await api.updateCtTemplate(sel.id, sel); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); load(); }
+    try { await api.updateCtTemplate(sel.id, sel); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1800); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function del(id) {
     if (!confirm('Delete this template?')) return;
-    try { await api.deleteCtTemplate(id); setSel(null); load(); } catch {}
-  }
-  function insertAt(txt) {
-    setSel(s => ({ ...s, body: (s.body || '') + ' ' + txt }));
+    try { await api.deleteCtTemplate(id); setSel(null); load(); } catch { /* stay put */ }
   }
 
-  // 👁️ The client's view, updating as you type. Assembled the same way the
-  // server assembles it, so the preview can't drift from what gets sent.
-  const previewText = sel ? fillSample(templateAssembled(sel)) : '';
+  const setSection = (i, patch) => setSel(t => {
+    const list = [...(t.sections || [])];
+    list[i] = { ...list[i], ...patch };
+    return { ...t, sections: list };
+  });
+  const addSection = () => setSel(t => ({
+    ...t, sections: [...(t.sections || []), { id: 's' + Date.now(), title: '', text: '', initial: false }],
+  }));
+  const removeSection = (i) => {
+    if (!confirm('Remove this section from the contract?')) return;
+    setSel(t => ({ ...t, sections: (t.sections || []).filter((_, x) => x !== i) }));
+  };
+  const moveSection = (i, d) => setSel(t => {
+    const list = [...(t.sections || [])];
+    const j = i + d;
+    if (j < 0 || j >= list.length) return t;
+    [list[i], list[j]] = [list[j], list[i]];
+    return { ...t, sections: list };
+  });
+  const insertPlaceholder = (p) => {
+    const i = Math.min(focused, sections.length - 1);
+    if (i < 0) return;
+    setSection(i, { text: ((sections[i].text || '') + ' ' + p).trim() });
+  };
+
+  const assembled = sel ? templateAssembled(sel) : '';
+  const previewText = showRaw ? assembled : fillSample(assembled);
   const previewParts = previewText.split('[INITIAL]');
 
   if (sel) return (
-    <div className="cs-split">
-      <div className="table-wrap cs-edit">
-        <div className="cs-edit-top">
-          <button className="refresh" onClick={() => setSel(null)}>← All templates</button>
-          <div className="cs-edit-actions">
-            {msg && <span className={`cs-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
-            <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
+    <div className="cs-wide">
+      <div className="cs-bar">
+        <button className="refresh" onClick={() => setSel(null)}>← All templates</button>
+        <div className="cs-bar-right">
+          {msg && <span className={`cs-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
+          <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
+          <button className="refresh cs-save-top" onClick={save}>💾 Save contract</button>
+        </div>
+      </div>
+
+      <div className="cs-split">
+        <div className="cs-edit">
+          {/* ── the template's own settings, one compact row ── */}
+          <div className="table-wrap cs-block">
+            <div className="cs-row3">
+              <div>
+                <label className="cs-label" htmlFor="cs-name">Template name</label>
+                <input id="cs-name" className="cs-input" value={sel.name || ''}
+                  onChange={e => setSel({ ...sel, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="cs-label" htmlFor="cs-ev">Event type</label>
+                <input id="cs-ev" className="cs-input" placeholder="Any event" value={sel.event_type || ''}
+                  onChange={e => setSel({ ...sel, event_type: e.target.value })} />
+              </div>
+              <div>
+                <label className="cs-label" htmlFor="cs-hd">Header</label>
+                <input id="cs-hd" className="cs-input" placeholder="Your business name and contact"
+                  value={(sel.header || '').replace(/\n/g, ' · ')}
+                  onChange={e => setSel({ ...sel, header: e.target.value.split(' · ').join('\n') })} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── 🎨 one palette, not one per card. Clicking drops the placeholder
+                 into whichever section you were last typing in. ── */}
+          <div className="table-wrap cs-palette">
+            <div className="cs-palette-head">
+              <span className="cs-palette-title">🎨 Placeholders</span>
+              <span className="cs-palette-hint">
+                click to insert into {sections[focused]?.title || 'the section you last edited'}
+              </span>
+            </div>
+            <div className="cs-chips">
+              {CT_PLACEHOLDERS.map(p => (
+                <button type="button" key={p} className={`cs-chip ph-${PH_KIND[p] || 'other'}`}
+                  onClick={() => insertPlaceholder(p)}>{p}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── clauses, two across, like a form rather than a scroll ── */}
+          <div className="cs-group">
+            <div className="cs-group-head">
+              <span className="cs-group-title">📝 Contract sections</span>
+              <span className="cs-group-sub">each becomes a heading in the signed agreement</span>
+            </div>
+            <div className="cs-secs">
+              {sections.map((sc, i) => (
+                <div className={`table-wrap cs-sec ${focused === i ? 'is-focus' : ''}`} key={sc.id}>
+                  <div className="cs-sec-top">
+                    <input className="cs-sec-title" placeholder="SECTION TITLE" value={sc.title || ''}
+                      onFocus={() => setFocused(i)}
+                      onChange={e => setSection(i, { title: e.target.value })} />
+                    <div className="cs-sec-acts">
+                      <button type="button" className="cs-sec-btn" onClick={() => moveSection(i, -1)} disabled={i === 0} title="Move up">↑</button>
+                      <button type="button" className="cs-sec-btn" onClick={() => moveSection(i, 1)} disabled={i === sections.length - 1} title="Move down">↓</button>
+                      <button type="button" className="cs-sec-btn is-del" onClick={() => removeSection(i)} title="Remove">🗑️</button>
+                    </div>
+                  </div>
+                  <textarea className="cs-sec-text" rows={6} value={sc.text || ''}
+                    placeholder="What this term says…"
+                    onFocus={() => setFocused(i)}
+                    onChange={e => setSection(i, { text: e.target.value })} />
+                  <label className="cs-sec-init">
+                    <input type="checkbox" checked={!!sc.initial}
+                      onChange={e => setSection(i, { initial: e.target.checked })} />
+                    ✍️ Client initials this section
+                  </label>
+                </div>
+              ))}
+              <button type="button" className="cs-add-sec" onClick={addSection}>＋ Add a section</button>
+            </div>
+          </div>
+
+          <div className="cs-group">
+            <div className="cs-group-head">
+              <span className="cs-group-title">⚖️ Terms &amp; conditions</span>
+              <span className="cs-group-sub">printed once, after every section — no initials</span>
+            </div>
+            <div className="table-wrap cs-block">
+              <textarea className="cs-input cs-ta-lg" value={sel.legal_terms || ''}
+                placeholder="Your full terms…"
+                onChange={e => setSel({ ...sel, legal_terms: e.target.value })} />
+            </div>
           </div>
         </div>
 
-      <label className="cs-label">Template name</label>
-      <input className="cs-input" value={sel.name || ''} onChange={e => setSel({ ...sel, name: e.target.value })} />
-
-      <label className="cs-label cs-label-mt">Event type (optional, e.g. Wedding)</label>
-      <input className="cs-input" value={sel.event_type || ''} onChange={e => setSel({ ...sel, event_type: e.target.value })} />
-
-      <label className="cs-label cs-label-mt">Header (optional)</label>
-      <textarea className="cs-input cs-ta-sm" value={sel.header || ''} onChange={e => setSel({ ...sel, header: e.target.value })} />
-
-      <label className="cs-label cs-label-mt">Contract body ✍️</label>
-      <div className="cs-chips">
-        {CT_PLACEHOLDERS.map(p => (
-          <span key={p} className="cs-chip" onClick={() => insertAt(p)}>{p}</span>
-        ))}
-        <span className="cs-chip cs-chip-init" onClick={() => insertAt('[INITIAL]')}>✍️ [INITIAL] box</span>
-      </div>
-      <textarea className="cs-input cs-ta-lg" value={sel.body || ''} onChange={e => setSel({ ...sel, body: e.target.value })} />
-
-      <label className="cs-label cs-label-mt">Legal terms (optional)</label>
-      <textarea className="cs-input cs-ta-md" value={sel.legal_terms || ''} onChange={e => setSel({ ...sel, legal_terms: e.target.value })} />
-
-      <button className="refresh cs-save" onClick={save}>💾 Save template</button>
-      </div>
-
-      {/* live preview, alongside the editor rather than behind a button */}
-      <aside className="cs-preview">
-        <div className="cs-preview-head">
-          <span className="cs-preview-title">Client&apos;s view</span>
-          <span className="cs-preview-count">
-            {previewParts.length - 1} initial box{previewParts.length - 1 === 1 ? '' : 'es'}
-          </span>
-        </div>
-        <p className="cs-preview-note">Sample details — real bookings fill their own.</p>
-        <div className="cs-preview-doc">
-          {previewParts.map((chunk, i) => (
-            <span key={i}>
-              {chunk}
-              {i < previewParts.length - 1 && <span className="cs-preview-init">Tap to initial</span>}
+        {/* live preview, alongside the editor rather than behind a button */}
+        <aside className="cs-preview">
+          <div className="cs-preview-head">
+            <span className="cs-preview-title">{showRaw ? 'Placeholders' : "Client's view"}</span>
+            <span className="cs-preview-count">
+              {previewParts.length - 1} initial box{previewParts.length - 1 === 1 ? '' : 'es'}
             </span>
-          ))}
-        </div>
-      </aside>
+          </div>
+          <div className="cs-preview-toggle">
+            <button type="button" className={`refresh ${!showRaw ? 'is-on' : ''}`} onClick={() => setShowRaw(false)}>Sample details</button>
+            <button type="button" className={`refresh ${showRaw ? 'is-on' : ''}`} onClick={() => setShowRaw(true)}>🎨 Placeholders</button>
+          </div>
+          <p className="cs-preview-note">
+            {showRaw
+              ? 'Colours show where each detail will land. Clients never see these.'
+              : 'Sample details — real bookings fill their own.'}
+          </p>
+          <div className="cs-preview-doc">
+            {previewParts.map((chunk, i) => (
+              <span key={i}>
+                {showRaw ? paintPlaceholders(chunk) : chunk}
+                {i < previewParts.length - 1 && <span className="cs-preview-init">Tap to initial</span>}
+              </span>
+            ))}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 
   return (
     <div>
       <div className="cs-head">
-        <div className="cs-hint">🛠️ Build your own contracts — placeholders auto-fill, [INITIAL] adds tap-to-initial boxes</div>
+        <div className="cs-hint">🛠️ Build your own contracts — each term gets its own card, placeholders auto-fill</div>
         <button className="refresh cs-new" onClick={add}>+ New template</button>
       </div>
       {msg && <div className="err-banner">{msg}</div>}
       <div className="cs-grid">
         {tpls.length === 0 && <div className="cs-empty">No templates yet — create one 👆</div>}
-        {tpls.map(t => (
-          <div key={t.id} className="table-wrap cs-card" onClick={() => setSel(t)}>
-            <div className="cs-card-ic">📑</div>
-            <div className="cs-card-name">{t.name}</div>
-            <div className="cs-card-meta">{t.event_type || 'Any event'} · {(t.body.match(/\[INITIAL\]/g) || []).length} initials</div>
-          </div>
-        ))}
+        {tpls.map(t => {
+          const n = (t.sections || []).filter(x => x.initial).length
+            || (t.body?.match(/\[INITIAL\]/g) || []).length;
+          return (
+            <div key={t.id} className="table-wrap cs-card" onClick={() => setSel(t)}>
+              <div className="cs-card-ic">📑</div>
+              <div className="cs-card-name">{t.name}</div>
+              <div className="cs-card-meta">
+                {t.event_type || 'Any event'} · {(t.sections || []).length || 1} sections · {n} initials
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
