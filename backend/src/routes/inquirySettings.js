@@ -13,6 +13,13 @@ const DEFAULTS = {
 router.get('/:vendorId', async (req, res) => {
   try {
     const vendorId = Number(req.params.vendorId);
+    // A non-numeric id reached Prisma as NaN and came back a 500, which reads as
+    // "our server broke" for what is simply a bad link. It is a 404 — the same
+    // answer an id that doesn't exist gets, so a mistyped URL can't be told
+    // apart from an unused one.
+    if (!Number.isInteger(vendorId) || vendorId <= 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
     const vendor = await prisma.vendors.findUnique({
       where: { id: vendorId },
       select: { id: true, business_name: true, logo_path: true },
