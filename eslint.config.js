@@ -36,7 +36,10 @@ export default [
       ...js.configs.recommended.rules,
       // an unused name is usually a leftover from a rewrite; warn so it shows
       // up without failing a deploy over it
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // `const { secret, ...rest } = row` is how a field is EXCLUDED from an
+      // object — the named variable is meant to be unused. Flagging it pushed
+      // toward renaming correct code to please the linter.
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
       // catch(e) {} is used deliberately all over this codebase to keep a
       // best-effort path from breaking a request, so an empty block is fine
       'no-empty': ['error', { allowEmptyCatch: true }],
@@ -57,7 +60,7 @@ export default [
       ...js.configs.recommended.rules,
       // ⛔ the one that would have caught the blank bookings page
       'no-undef': 'error',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^[A-Z_]', ignoreRestSiblings: true }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       // a hook called conditionally corrupts React's state between renders and
       // fails in ways that look like random data loss

@@ -149,7 +149,7 @@ async function indexOneAlbum(albumId) {
     await Promise.all(batch.map(async (p) => {
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try { await indexPhoto(p, engine); return; }
-        catch (e) { if (attempt >= MAX_ATTEMPTS) { /* skip, leave for a later pass */ } }
+        catch { if (attempt >= MAX_ATTEMPTS) { /* skip, leave for a later pass */ } }
       }
     }));
     i += batch.length;

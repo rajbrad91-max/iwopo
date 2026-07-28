@@ -857,7 +857,7 @@ function FeatureToggles({ vendorId }) {
       await api.setVendorFeature(vendorId, f.key, { enabled: !f.enabled });
       const d = await api.vendorFeatures(vendorId);
       setFeats(d.features || []);
-    } catch (e) { /* keep prior state */ }
+    } catch { /* keep prior state */ }
     setBusy('');
   }
 

@@ -155,10 +155,6 @@ function geoPrice(row, geo, baseField = 'price', baseAnnualField = 'price_annual
   return { m: Number(row[baseField]), y: row[baseAnnualField] != null ? Number(row[baseAnnualField]) : null };
 }
 
-function priceFor(row, geo, baseField = 'price') {
-  return geoPrice(row, geo, baseField).m;
-}
-
 router.get('/hello', (req, res) => {
   res.json({ message: 'Hello from iwopo API! 👋' });
 });

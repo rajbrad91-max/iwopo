@@ -533,10 +533,6 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const isAdmin = session?.role === 'admin';   // admin-password holder → selection + delete tools
   const nPicked = picked.size;
   // favorites are per-event: count only the stars within the currently selected event
-  const favInEvent = allPhotos.filter(p =>
-    favs.has(p.id) && (activeEvent === 'all' || String(p.event_id) === String(activeEvent))
-  );
-  const nFavs = favInEvent.length;
   // event tabs stay visible during favorites view too, so the client can switch
   // between each event's own favorites (Jaggo vs Wedding are independent lists).
   const showScenes = session.events.length > 0 && matchIds === null && !pickedOnly;

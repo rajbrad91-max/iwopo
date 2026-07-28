@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
-import { signToken, requireAuth } from '../middleware/auth.js';
+import { signToken } from '../middleware/auth.js';
 import { sendPlatformEmail } from './email.js';
 
 const router = express.Router();

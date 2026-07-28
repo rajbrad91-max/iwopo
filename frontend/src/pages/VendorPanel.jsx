@@ -110,8 +110,6 @@ export default function VendorPanel({ onLogout }) {
 
   function handleLogout() { clearSession(); onLogout(); }
 
-  const active = services.filter(s => s.enabled);
-
   return (
     <div className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
       {!collapsed && <div className="sidebar-backdrop" onClick={() => setCollapsed(true)} />}
@@ -712,10 +710,6 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
       guest_password: a.guest_password || '', admin_password: a.admin_password || '',
     });
     setCoverFile(null); setCoverFocus(a.cover_focus || '50% 50%'); setFocusView('desktop'); setShowNew(true); setMsg('');
-  }
-  async function del(id) {
-    if (!confirm('Delete this album and all its photos?')) return;
-    await api.deleteAlbum(id); load();
   }
 
   // 📧 fill instructions template with this album's values
@@ -1558,8 +1552,8 @@ function CrewView() {
   const [crew, setCrew] = useState([]);
   const [f, setF] = useState({ name: '', role: '', phone: '', email: '' });
   const [msg, setMsg] = useState('');
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
 
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
   useEffect(() => { load(); }, []);
   function load() { api.crew().then(d => setCrew(d.crew || [])).catch(() => {}); }
 
@@ -1905,8 +1899,6 @@ function LeadsView({ routeLead, onOpenLead }) {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
-  // 📤 which lead is mid-send, so its button can show progress
-  const [sendingId, setSendingId] = useState(null);
   // the lead whose Send Packages modal is open, if any
   const [sendFor, setSendFor] = useState(null);
 
@@ -2119,11 +2111,10 @@ function LeadsView({ routeLead, onOpenLead }) {
                         {l.package_template_id && l.email && (
                           <button
                             className="lead-send"
-                            disabled={sendingId === l.id}
                             onClick={e => sendPkgs(l, e)}
                             title={`Email the packages to ${l.email}`}
                           >
-                            {sendingId === l.id ? '⏳ Sending…' : '📤 Send Packages'}
+                            📤 Send Packages
                           </button>
                         )}
                       </div>
@@ -2175,7 +2166,6 @@ function PackageEditor({ pkg, onSave, onCancel }) {
 
 function LeadDetail({ lead, onBack }) {
   const [edit, setEdit] = useState(false);
-  const [f, setF] = useState({ ...lead });
   const [cfg, setCfg] = useState(null);
   const [ep, setEp] = useState({ role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '', instagram: lead.instagram || '', heard: lead.heard || '' });
   const [eAnswers, setEAnswers] = useState(lead.custom_data || {});
@@ -2200,7 +2190,6 @@ function LeadDetail({ lead, onBack }) {
     hours: lead.timer_hours ?? 72,
     started_at: lead.timer_started_at || null,
   });
-  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
 
   async function saveTimer(opts = {}) {
     const next = { enabled: timer.enabled, hours: Number(timer.hours) || 72, ...opts };
@@ -2338,7 +2327,7 @@ function LeadDetail({ lead, onBack }) {
     <div className="ld-view">
       <div className="ld-topbar">
         <button className="refresh" onClick={onBack}>← Back to leads</button>
-        <button className="refresh ld-edit-btn" onClick={() => { setF({ ...lead }); setEdit(true); }}>✏️ Edit Details</button>
+        <button className="refresh ld-edit-btn" onClick={() => setEdit(true)}>✏️ Edit Details</button>
       </div>
       <h2 className="ld-h2">{lead.name} · {lead.event_type}</h2>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
@@ -4362,7 +4351,6 @@ function BookingDetail({ id, onBack }) {
   const b = d.booking;
   const money = d.money || {};
   const chosenId = b.package_id;
-  const money0 = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
   return (
     // Same shell as every other detail screen — Leads, Albums, Templates all use

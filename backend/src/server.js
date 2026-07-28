@@ -82,7 +82,7 @@ app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 // The 4th parameter is required even though it's unused: Express decides a
 // function is an error handler by its arity, so removing `next` would silently
 // turn this back into ordinary middleware and the leak would return.
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   if (err?.type === 'entity.parse.failed' || err instanceof SyntaxError) {
     return res.status(400).json({ error: 'Invalid JSON in request body' });
   }
