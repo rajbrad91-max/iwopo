@@ -9,7 +9,6 @@ export const PROFESSIONS = {
   photographer: { label: 'Photographer', icon: '📷' },
   videographer: { label: 'Videographer', icon: '🎥' },
   photo_video: { label: 'Photo & Video', icon: '🎬' },
-  realestate: { label: 'Real Estate Creator', icon: '🏠' },
   dj: { label: 'DJ', icon: '🎧' },
   makeup: { label: 'Make-Up Artist', icon: '💄' },
   cake: { label: 'Cake Maker', icon: '🎂' },

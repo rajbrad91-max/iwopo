@@ -1640,3 +1640,20 @@
   .cs-row3 { grid-template-columns: 1fr; }
 }
 
+
+/* 🧰 Start-from-a-preset row, above the individual field buttons */
+.fb-preset-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px; margin-bottom: 12px;
+  background: color-mix(in srgb, var(--teal) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--teal) 28%, transparent);
+  border-radius: 10px;
+}
+.fb-preset-label { font-size: 13px; font-weight: 700; color: var(--text); }
+.fb-preset-sel {
+  padding: 7px 10px; font: inherit; font-size: 13px; min-width: 240px;
+  color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.fb-preset-sel:focus { outline: none; border-color: var(--teal); }
+.fb-preset-hint { font-size: 12px; color: var(--muted); }

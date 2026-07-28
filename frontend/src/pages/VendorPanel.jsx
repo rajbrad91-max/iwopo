@@ -3375,6 +3375,126 @@ const EVENT_PRESET = [
   { type: 'location', label: 'Location',        maps_to: 'location' },
 ];
 
+
+/**
+ * 🧰 Starter question sets, one per trade.
+ *
+ * Every vendor asks a couple the same handful of things — when, where, how long,
+ * how many — and then a few their own trade cares about. A DJ needs to know
+ * whether there is a sound limit; a caterer needs dietary requirements; a florist
+ * needs the venue's colours. Beginning from an empty form means each vendor
+ * rediscovers that list by forgetting something on a real booking first.
+ *
+ * A preset is a starting point, not a cage: everything it adds is an ordinary
+ * field afterwards — rename it, reorder it, delete it, add your own.
+ *
+ * The five shared fields at the top of each list are the ones the panel maps to
+ * real columns, so a preset also wires the Bookings timing, date and location
+ * without the vendor having to know those mappings exist.
+ */
+const CORE_EVENT = [
+  { type: 'dropdown', label: 'Type of Event', maps_to: 'event_type',
+    options: ['Wedding', 'Engagement', 'Reception', 'Birthday', 'Corporate', 'Other'] },
+  { type: 'date', label: 'Date of Event', maps_to: 'event_date' },
+  { type: 'time', label: 'Starting Time', maps_to: 'timing_from' },
+  { type: 'time', label: 'Ending Time', maps_to: 'timing_to' },
+  { type: 'location', label: 'Venue / Location', maps_to: 'location' },
+];
+
+const FORM_PRESETS = {
+  photographer: { label: '📷 Photographer', fields: [
+    ...CORE_EVENT,
+    { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
+    { type: 'dropdown', label: 'Coverage needed', options: ['Ceremony only', 'Ceremony + Reception', 'Full day', 'Multiple days'] },
+    { type: 'checkbox', label: 'Getting-ready coverage' },
+    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'text', label: 'Any must-have shots?' },
+  ] },
+  videographer: { label: '🎥 Videographer', fields: [
+    ...CORE_EVENT,
+    { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
+    { type: 'dropdown', label: 'Film length', options: ['Highlight (3–5 min)', 'Feature (10–20 min)', 'Full ceremony + highlight'] },
+    { type: 'checkbox', label: 'Drone footage' },
+    { type: 'checkbox', label: 'Live streaming' },
+    { type: 'text', label: 'Music preference' },
+  ] },
+  photo_video: { label: '🎬 Photo & Video', fields: [
+    ...CORE_EVENT,
+    { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
+    { type: 'dropdown', label: 'What do you need?', options: ['Photo only', 'Video only', 'Photo & Video'] },
+    { type: 'checkbox', label: 'Drone footage' },
+    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+  ] },
+  dj: { label: '🎧 DJ', fields: [
+    ...CORE_EVENT,
+    { type: 'hours', label: 'Hours of Play', maps_to: 'hours' },
+    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'dropdown', label: 'Indoor or outdoor?', options: ['Indoor', 'Outdoor', 'Both'] },
+    { type: 'checkbox', label: 'Venue has a sound limit' },
+    { type: 'checkbox', label: 'Microphone needed for speeches' },
+    { type: 'text', label: 'Music style / must-plays' },
+    { type: 'text', label: 'Do-not-play list' },
+  ] },
+  makeup: { label: '💄 Make-Up Artist', fields: [
+    ...CORE_EVENT,
+    { type: 'text', label: 'How many people need makeup?' },
+    { type: 'time', label: 'Time you need to be ready by' },
+    { type: 'dropdown', label: 'Look', options: ['Natural', 'Soft glam', 'Full glam', 'Not sure yet'] },
+    { type: 'checkbox', label: 'Hair styling as well' },
+    { type: 'checkbox', label: 'Trial session wanted' },
+    { type: 'text', label: 'Any allergies or sensitivities?' },
+  ] },
+  cake: { label: '🎂 Cake Maker', fields: [
+    ...CORE_EVENT,
+    { type: 'text', label: 'Number of servings' },
+    { type: 'dropdown', label: 'Tiers', options: ['1', '2', '3', '4+', 'Not sure yet'] },
+    { type: 'text', label: 'Flavours you would like' },
+    { type: 'text', label: 'Dietary requirements (nut-free, gluten-free…)' },
+    { type: 'checkbox', label: 'Delivery and setup needed' },
+  ] },
+  florist: { label: '💐 Florist', fields: [
+    ...CORE_EVENT,
+    { type: 'text', label: 'Colour palette' },
+    { type: 'text', label: 'Bouquets needed (how many?)' },
+    { type: 'text', label: 'Buttonholes needed (how many?)' },
+    { type: 'checkbox', label: 'Ceremony arrangements' },
+    { type: 'checkbox', label: 'Table centrepieces' },
+    { type: 'checkbox', label: 'Setup and takedown' },
+  ] },
+  bartender: { label: '🍸 Bartender', fields: [
+    ...CORE_EVENT,
+    { type: 'hours', label: 'Hours of Service', maps_to: 'hours' },
+    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'dropdown', label: 'Bar type', options: ['Open bar', 'Cash bar', 'Limited (beer & wine)', 'Cocktails only'] },
+    { type: 'checkbox', label: 'You are supplying the alcohol' },
+    { type: 'checkbox', label: 'Glassware needed' },
+  ] },
+  caterer: { label: '🍽️ Caterer', fields: [
+    ...CORE_EVENT,
+    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'dropdown', label: 'Service style', options: ['Plated', 'Buffet', 'Family style', 'Canapés / stations'] },
+    { type: 'text', label: 'Dietary requirements' },
+    { type: 'checkbox', label: 'Kids meals needed' },
+    { type: 'checkbox', label: 'Staff for serving' },
+    { type: 'checkbox', label: 'Venue has a kitchen' },
+  ] },
+  planner: { label: '📋 Wedding Planner', fields: [
+    ...CORE_EVENT,
+    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'dropdown', label: 'What do you need?', options: ['Full planning', 'Partial planning', 'Day-of coordination'] },
+    { type: 'text', label: 'Vendors already booked' },
+    { type: 'text', label: 'Rough budget' },
+  ] },
+  musician: { label: '🎶 Musician / Singer', fields: [
+    ...CORE_EVENT,
+    { type: 'hours', label: 'Hours of Performance', maps_to: 'hours' },
+    { type: 'dropdown', label: 'Where will you play?', options: ['Ceremony', 'Drinks reception', 'Dinner', 'Evening', 'More than one'] },
+    { type: 'checkbox', label: 'Indoor' },
+    { type: 'checkbox', label: 'PA system provided by venue' },
+    { type: 'text', label: 'Song requests' },
+  ] },
+};
+
 function FieldBuilder({ fields, setFields }) {
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8, width: '100%', fontSize: 13 };
   const uid = () => 'f' + Math.random().toString(36).slice(2, 8);
@@ -3418,6 +3538,34 @@ function FieldBuilder({ fields, setFields }) {
     });
     setFields([...fields, ...added]);
   };
+  /**
+   * 🧰 Load a whole trade's starter questions.
+   *
+   * Replacing rather than appending, because a preset is "start me off as a
+   * florist", not "add eleven more fields to what I already have" — but only
+   * after asking, since a vendor who has already built a form would lose it.
+   *
+   * Mappings are claimed only where free, so loading a second preset on top
+   * can't silently steal a column another field already feeds.
+   */
+  const loadPreset = (key) => {
+    const preset = FORM_PRESETS[key];
+    if (!preset) return;
+    if (fields.length && !confirm(
+      `Load the ${preset.label} questions?\n\nThis replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.`
+    )) return;
+    const taken = new Set();
+    setFields(preset.fields.map(p => {
+      const free = p.maps_to && !taken.has(p.maps_to);
+      if (free) taken.add(p.maps_to);
+      return {
+        id: uid(), type: p.type, label: p.label, required: false,
+        maps_to: free ? p.maps_to : '',
+        options: p.options ? [...p.options] : [],
+      };
+    }));
+  };
+
   const del = (i) => setFields(fields.filter((_, idx) => idx !== i));
   const move = (i, dir) => {
     const j = i + dir; if (j < 0 || j >= fields.length) return;
@@ -3426,6 +3574,21 @@ function FieldBuilder({ fields, setFields }) {
 
   return (
     <div>
+      {/* 🧰 Start from a trade rather than an empty form. Every vendor asks the
+          same handful of things and then a few their own trade cares about;
+          rediscovering that list by forgetting something on a real booking is a
+          poor way to learn it. */}
+      <div className="fb-preset-row">
+        <span className="fb-preset-label">🧰 Start from a preset</span>
+        <select className="fb-preset-sel" value="" onChange={e => { loadPreset(e.target.value); e.target.value = ''; }}>
+          <option value="">Choose your trade…</option>
+          {Object.entries(FORM_PRESETS).map(([k, v]) => (
+            <option key={k} value={k}>{v.label} · {v.fields.length} questions</option>
+          ))}
+        </select>
+        <span className="fb-preset-hint">then edit, reorder or remove anything</span>
+      </div>
+
       {/* add field buttons — the Event group sits apart because it adds six at
           once, and a vendor shouldn't have to guess that from the label */}
       <div className="fb-add-row">
