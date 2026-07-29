@@ -383,9 +383,9 @@
   display: flex; align-items: center; justify-content: center; font-size: 22px;
 }
 .po-gate-h { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 400; color: var(--ink); margin: 0 0 8px; }
-.po-gate-sub { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 0 28px; }
+.po-gate-sub { color: var(--soft); font-size: 15px; line-height: 1.6; margin: 0 0 28px; }
 .po-gate-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 28px 30px; text-align: left; }
-.po-gate-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.po-gate-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); margin: 0 0 8px; }
 .po-gate-input { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 15px; font-family: inherit; }
 .po-gate-input:focus { outline: none; border-color: var(--brand, #C9A86A); }
 .po-gate-input.is-err { border-color: #dc3545; }

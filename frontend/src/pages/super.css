@@ -1,8 +1,10 @@
-:root {
-  --bg:#0d1417; --panel:#131e22; --panel-2:#1a282d; --line:#223238;
-  --muted:#7c9199; --text:#e6f0f2; --teal:#2dd4bf; --teal-2:#14b8a6;
-  --teal-soft:#2dd4bf1a; --green:#4ade80; --amber:#fbbf24; --red:#fb7185;
-}
+/* The twelve tokens this file used to re-declare at :root were identical, value
+   for value, to the ones index.css already defines — verified before removing.
+   Declaring them again bought nothing and cost something real: :root is global,
+   so a stylesheet meant only for the admin panel was defining the app's colours
+   for every page, including the client-facing ones. Anything here that needs a
+   token now inherits the one index.css sets, which is the same value it was
+   getting anyway. */
 /* 🌗 Super panel light theme — scoped to .sa-wrap, independent of vendor panels */
 .sa-wrap[data-sa-theme="light"] {
   --bg:#f4f6f8; --panel:#ffffff; --panel-2:#f0f3f5; --line:#dde3e7;
