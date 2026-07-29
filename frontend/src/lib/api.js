@@ -419,7 +419,7 @@ export const api = {
   addEmailTemplate: (data) => request('/email/templates', { method: 'POST', body: JSON.stringify(data) }),
   updateEmailTemplate: (id, data) => request(`/email/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteEmailTemplate: (id) => request(`/email/templates/${id}`, { method: 'DELETE' }),
-  portal: (token) => request(`/portal/${token}`),
+  portal: (token, fresh) => request(`/portal/${token}${fresh ? '?fresh=1' : ''}`),
   portalPick: (token, package_id) => request(`/portal/${token}/pick`, { method: 'POST', body: JSON.stringify({ package_id }) }),
   // client says they've paid directly — a claim the vendor confirms separately
   portalPayDirect: (token) => request(`/portal/${token}/pay-direct`, { method: 'POST' }),

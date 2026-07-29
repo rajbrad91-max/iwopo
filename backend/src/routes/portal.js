@@ -35,22 +35,42 @@ function ipOf(req) {
  * client change their mind, so failures are logged rather than thrown.
  */
 async function reconcileContract(lead, newPackageId, ip) {
+  // A voided contract must never be treated as "the active one" — it isn't
+  // one any more, and a stray match here was capable of quietly un-voiding a
+  // SIGNED contract and overwriting its signature with nulls the moment
+  // someone picked a package again. Excluding voided rows from "latest" is
+  // what makes that impossible rather than merely unlikely.
   const latest = await prisma.contracts.findFirst({
-    where: { lead_id: lead.id },                                // 🔒 tenancy via the lead
+    where: { lead_id: lead.id, status: { not: 'voided' } },      // 🔒 tenancy via the lead
     orderBy: { id: 'desc' },
   });
-  if (!latest) return;
-  if (latest.package_id != null && Number(latest.package_id) === Number(newPackageId)) return;
+  // nothing stamped to compare against — always build, whether that's the
+  // first contract this lead has ever had or the first since a reset voided
+  // the last one
+  if (latest && latest.package_id != null && Number(latest.package_id) === Number(newPackageId)) return;
 
-  // rebuild the wording for the package the client is actually on now
   const fresh = await prisma.leads.findUnique({ where: { id: lead.id } });
   const vendor = await prisma.vendors.findUnique({
     where: { id: lead.vendor_id }, select: { business_name: true },
   });
-  const tpl = await templateForLead(fresh, latest.template_id);
-  const body = tpl
-    ? await buildContractBody(tpl, fresh, vendor?.business_name)
-    : null;
+  const tpl = await templateForLead(fresh, latest?.template_id ?? null);
+  const body = tpl ? await buildContractBody(tpl, fresh, vendor?.business_name) : null;
+  if (!body) return;                       // no template to build from — vendor raises one
+
+  if (!latest) {
+    // nothing active — the client's own pick raises the first one, same
+    // shape as the vendor's own create path
+    const created = await prisma.contracts.create({
+      data: {
+        vendor_id: lead.vendor_id, lead_id: lead.id,
+        token: crypto.randomBytes(24).toString('hex'),
+        title: tpl.name, body, status: 'sent',
+        package_id: newPackageId, template_id: tpl.id,
+      },
+    });
+    await audit(created.id, 'created', ip, { reason: 'client_picked_package' });
+    return;
+  }
 
   if (latest.status === 'signed') {
     await prisma.contracts.update({
@@ -58,11 +78,9 @@ async function reconcileContract(lead, newPackageId, ip) {
       data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
     });
     await audit(latest.id, 'voided', ip, { reason: 'package_changed_after_signing', from: latest.package_id, to: newPackageId });
-    if (!body) return;                     // no template to rebuild from — vendor raises one
     const replacement = await prisma.contracts.create({
       data: {
-        vendor_id: lead.vendor_id,         // 🔒 stamped from the owning lead
-        lead_id: lead.id,
+        vendor_id: lead.vendor_id, lead_id: lead.id,
         token: crypto.randomBytes(24).toString('hex'),
         title: latest.title, body, status: 'sent',
         package_id: newPackageId, template_id: latest.template_id,
@@ -75,9 +93,7 @@ async function reconcileContract(lead, newPackageId, ip) {
   await prisma.contracts.update({
     where: { id: latest.id },
     data: {
-      ...(body ? { body } : {}),
-      package_id: newPackageId,
-      // a part-done signing belongs to the old wording, so it starts over
+      body, package_id: newPackageId,
       initials: [], signature_data: null, signed_name: null,
       status: 'sent', viewed_at: null, updated_at: new Date(),
     },
@@ -90,6 +106,36 @@ router.get('/:token', async (req, res) => {
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
+
+    /**
+     * 🔄 A reopened or shared link before payment starts the flow over.
+     *
+     * Choosing a package, signing and paying is meant to be one sitting, not
+     * three separate visits that might belong to three different people. The
+     * frontend sends ?fresh=1 exactly once per browser session — the first
+     * load after a tab opens, never after an action taken within it — so a
+     * page refresh mid-signature does not lose anything, but a closed and
+     * reopened browser, or a link opened somewhere else, does.
+     *
+     * A booking that has already been paid for is never touched here: this
+     * only resets what is still in progress.
+     */
+    if (req.query.fresh === '1' && !lead.payment_claimed_at) {
+      const active = await prisma.contracts.findFirst({
+        where: { lead_id: lead.id, status: { not: 'voided' } },  // 🔒 tenancy via the lead
+      });
+      if (active) {
+        await prisma.contracts.update({
+          where: { id: active.id },
+          data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
+        });
+        await audit(active.id, 'voided', ipOf(req), { reason: 'portal_reopened_before_payment' });
+      }
+      await prisma.lead_packages.updateMany({
+        where: { lead_id: lead.id },                             // 🔒 tenancy via the lead
+        data: { is_selected: false },
+      });
+    }
     const vendor = await prisma.vendors.findUnique({
       where: { id: lead.vendor_id },
       select: { business_name: true, logo_path: true },

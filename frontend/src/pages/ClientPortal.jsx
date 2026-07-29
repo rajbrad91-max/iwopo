@@ -177,9 +177,24 @@ export default function ClientPortal({ token }) {
   const [back, setBack] = useState(null);
   const [celebrate, setCelebrate] = useState(false);
 
-  useEffect(() => { load(); }, [token]);
-  function load() {
-    api.portal(token).then(setData).catch(e => setErr(e.message));
+  /**
+   * 🔄 Only the very first load of a browser session asks for a reset.
+   *
+   * sessionStorage survives a page refresh (F5 mid-signature is safe) but
+   * clears when the browser is actually closed, and a shared link opened by
+   * someone else has none to begin with — both of the exact cases that
+   * should restart the flow. Every OTHER call to load() in this file — after
+   * picking, after signing, after confirming a payment — passes nothing, so
+   * an action taken mid-flow can never trigger the reset it just caused.
+   */
+  useEffect(() => {
+    const key = 'iwopo_portal_seen_' + token;
+    const fresh = !sessionStorage.getItem(key);
+    sessionStorage.setItem(key, '1');
+    load(fresh);
+  }, [token]);
+  function load(fresh) {
+    api.portal(token, fresh).then(setData).catch(e => setErr(e.message));
   }
 
   // Playfair for the headings and prices — it's what makes the page read as a
