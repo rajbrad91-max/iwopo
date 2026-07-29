@@ -93,6 +93,11 @@ app.use((err, req, res, _next) => {
   return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
-app.listen(PORT, () => {
+// 🔒 127.0.0.1 only. Without a host Node binds every interface, so the API
+// answered directly on its port as well as through nginx — plain HTTP, no TLS,
+// none of nginx's handling in front of it. The firewall was the only thing
+// between that port and the internet, which is one rule away from being wrong.
+// nginx proxies to localhost, so nothing that should reach it is affected.
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
 });
