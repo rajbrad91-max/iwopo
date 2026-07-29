@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { moneySummary } from './payments.js';
 import { notify } from './notifications.js';
-import { fillPlaceholders, audit, templateForLead, templateText } from './contracts.js';
+import { audit, templateForLead, buildContractBody } from './contracts.js';
 import { currencyFor } from '../lib/currencies.js';
 
 const router = express.Router();
@@ -49,7 +49,7 @@ async function reconcileContract(lead, newPackageId, ip) {
   });
   const tpl = await templateForLead(fresh, latest.template_id);
   const body = tpl
-    ? await fillPlaceholders(templateText(tpl), fresh, vendor?.business_name)
+    ? await buildContractBody(tpl, fresh, vendor?.business_name)
     : null;
 
   if (latest.status === 'signed') {

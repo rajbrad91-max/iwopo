@@ -2921,6 +2921,18 @@ function AllContracts() {
   );
 }
 
+/**
+ * 📐 Blocks the system builds from the booking itself — a details table, the
+ * running order of the day, what the package includes. A vendor cannot type
+ * these into a template because they differ per client; they drop the name in
+ * and it is filled at send time. A block with nothing to show removes its own
+ * heading rather than leaving one standing over a gap.
+ */
+const CT_BLOCKS = [
+  '{{booking_details}}', '{{coverage_schedule}}', '{{deliverables}}',
+  '{{services_summary}}', '{{crew}}',
+];
+
 const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
 
 // 👁️ Stand-in values so a template can be previewed before any client exists.
@@ -3141,6 +3153,11 @@ function ContractSetup() {
                 <button type="button" key={p} className={`cs-chip ph-${PH_KIND[p] || 'other'}`}
                   onClick={() => insertPlaceholder(p)}>{p}</button>
               ))}
+              {CT_BLOCKS.map(p => (
+                <button type="button" key={p} className="cs-chip ph-block"
+                  title="A block built from this booking — a table or a list"
+                  onClick={() => insertPlaceholder(p)}>{p}</button>
+              ))}
             </div>
           </div>
 
@@ -3172,6 +3189,13 @@ function ContractSetup() {
                       onChange={e => setSection(i, { initial: e.target.checked })} />
                     ✍️ Client initials this section
                   </label>
+                  {/* 🎯 Printing a drone policy to a client who never booked a
+                      drone is worse than noise — it invites them to expect one. */}
+                  <input className="cs-sec-if" maxLength={120}
+                    placeholder="Only show if the package mentions… (blank = always)"
+                    value={sc.show_if || ''}
+                    onFocus={() => setFocused(i)}
+                    onChange={e => setSection(i, { show_if: e.target.value })} />
                 </div>
               ))}
               <button type="button" className="cs-add-sec" onClick={addSection}>＋ Add a section</button>

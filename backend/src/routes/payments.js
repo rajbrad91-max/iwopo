@@ -1,7 +1,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { fillPlaceholders, templateForLead, templateText } from './contracts.js';
+import { templateForLead, buildContractBody } from './contracts.js';
 
 const router = express.Router();
 
@@ -182,7 +182,7 @@ async function rebuildUnsignedContract(lead) {
     const vendor = await prisma.vendors.findUnique({
       where: { id: lead.vendor_id }, select: { business_name: true },
     });
-    const body = await fillPlaceholders(templateText(t), lead, vendor?.business_name);
+    const body = await buildContractBody(t, lead, vendor?.business_name);
     await prisma.contracts.update({
       where: { id: ct.id },
       data: { body, updated_at: new Date() },

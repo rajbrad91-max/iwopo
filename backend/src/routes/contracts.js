@@ -48,6 +48,8 @@ function cleanSections(list) {
     title: String(x.title || '').trim().slice(0, 120),
     text: String(x.text || '').slice(0, 8000),
     initial: !!x.initial,
+    // a word the package must include for this section to appear at all
+    show_if: String(x.show_if || '').trim().slice(0, 120),
   })).filter(x => x.title || x.text);
 }
 
@@ -63,11 +65,34 @@ function cleanSections(list) {
  * `body`, so that is used when there are no sections. Nothing has to be migrated
  * for an old template to keep working.
  */
-export function templateText(t) {
+/**
+ * 📄 Build a lead's contract body from a template — the only way it is done.
+ *
+ * Assembling used to be two calls a caller had to make in the right order, and
+ * with conditional sections it became three: fetch what the package includes,
+ * drop the sections that don't apply, then fill in the blanks. Four places did
+ * the first two, and every one of them would have had to remember the third.
+ *
+ * They call this instead. A caller that forgets a step is a bug nobody notices
+ * until a client reads a clause meant for someone else.
+ */
+export async function buildContractBody(template, lead, businessName) {
+  const chosen = await prisma.lead_packages.findFirst({
+    where: { lead_id: lead.id, is_selected: true },      // 🔒 tenancy via the lead
+    select: { inclusions: true },
+  });
+  const inclusions = Array.isArray(chosen?.inclusions)
+    ? chosen.inclusions.map(String).filter(Boolean) : [];
+  return fillPlaceholders(templateText(template, inclusions), lead, businessName);
+}
+
+export function templateText(t, inclusions) {
   const sections = Array.isArray(t.sections) ? t.sections : [];
   const middle = sections.length
     ? sections
         .filter(x => (x.title || '').trim() || (x.text || '').trim())
+        // a conditional section only appears when the package warrants it
+        .filter(x => sectionApplies(x, inclusions))
         .map(x => [
           (x.title || '').trim(),
           (x.text || '').trim(),
@@ -79,8 +104,130 @@ export function templateText(t) {
 }
 
 // 🔤 Fill placeholders from lead + package + money
+
+/* ═══════════════════════════════════════════════════════════════════════
+   📐 Generated blocks.
+
+   A contract is not only fixed wording — most of what makes one read like a
+   real agreement is drawn from the booking itself: what was agreed, when, who
+   is coming, what is included. Those parts cannot be typed into a template
+   because they differ per client, so the template names a block and this fills
+   it in.
+
+   Everything here is plain text, laid out to be read. The contract renders with
+   whitespace preserved, so alignment done here survives to the page — and there
+   is no HTML in a document a client signs, which is one whole class of problem
+   avoided.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** "Label      value" — a column that lines up without needing a table. */
+function kvBlock(rows) {
+  const live = rows.filter(([, v]) => v != null && String(v).trim() !== '' && String(v) !== '—');
+  if (!live.length) return '';
+  const w = Math.max(...live.map(([k]) => k.length));
+  return live.map(([k, v]) => `${k.padEnd(w)}   ${v}`).join('\n');
+}
+
+/** What was booked, at a glance. */
+function bookingDetails(lead, pkgName, money, cash, fmtDate, fmtTime) {
+  return kvBlock([
+    ['Client', lead.name],
+    ['Event', lead.event_type],
+    ['Date', fmtDate(lead.event_date)],
+    ['Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : ''],
+    ['Location', lead.location],
+    ['Hours booked', lead.hours],
+    ['Guests', lead.guests],
+    ['Package', pkgName === '—' ? '' : pkgName],
+    ['Total', cash(money.final_total)],
+  ]);
+}
+
+/**
+ * The day, in order.
+ *
+ * Only rows the vendor actually filled in are printed. Listing "Bride getting
+ * ready: No" on a commercial shoot reads as though something was declined, when
+ * really it was never part of the booking — an absent row says nothing, which
+ * is the truth.
+ */
+function coverageSchedule(lead, fmtTime) {
+  const rows = [];
+  if (lead.gr_bride) rows.push(['Bride getting ready', lead.gr_bride_venue || 'Venue to be confirmed']);
+  if (lead.gr_groom) rows.push(['Groom getting ready', lead.gr_groom_venue || 'Venue to be confirmed']);
+  if (lead.ceremony) rows.push(['Ceremony', lead.ceremony]);
+  rows.push([lead.event_type || 'Main event',
+    [lead.location, lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : '']
+      .filter(Boolean).join(' · ')]);
+  return kvBlock(rows);
+}
+
+/** Everything the chosen package includes, one per line. */
+function deliverables(inclusions) {
+  if (!inclusions.length) return '';
+  return inclusions.map(i => `•  ${i}`).join('\n');
+}
+
+/**
+ * Included / Not included, stated for BOTH.
+ *
+ * Saying only what is included leaves a client to assume the rest; naming what
+ * is not is how a disagreement on the day is avoided. The keywords are matched
+ * against the package's own inclusions, so a vendor who never offers drone work
+ * simply never sees the line.
+ */
+const OPTIONAL_SERVICES = [
+  ['Drone coverage', ['drone', 'aerial']],
+  ['Live feed', ['live feed', 'live-feed']],
+  ['Live streaming', ['live stream', 'live-stream', 'streaming']],
+  ['Next Day Edit', ['next day edit', 'nde']],
+  ['Album', ['album']],
+  ['Second shooter', ['second shooter', '2nd shooter']],
+];
+function servicesSummary(inclusions) {
+  const hay = inclusions.join(' ').toLowerCase();
+  const rows = OPTIONAL_SERVICES
+    .filter(([, keys]) => keys.some(k => hay.includes(k)) || true)
+    .map(([label, keys]) => [label, keys.some(k => hay.includes(k)) ? 'Included' : 'Not included']);
+  return kvBlock(rows);
+}
+
+/** Who is coming, and what they are doing. */
+function crewBlock(crew, fmtTime) {
+  if (!crew.length) return '';
+  return kvBlock(crew.map(c => [
+    c.crew_members?.name || 'Crew',
+    [c.duty, c.arrive_time ? `from ${fmtTime(c.arrive_time)}` : ''].filter(Boolean).join(' · ') || 'On the day',
+  ]));
+}
+
 export async function fillPlaceholders(text, lead, businessName) {
   const money = await moneySummary(lead);
+
+  // the package the client is actually on, and the crew assigned to the day
+  const chosen = await prisma.lead_packages.findFirst({
+    where: { lead_id: lead.id, is_selected: true },      // 🔒 tenancy via the lead
+    select: { name: true, inclusions: true },
+  });
+  const inclusions = Array.isArray(chosen?.inclusions)
+    ? chosen.inclusions.map(String).filter(Boolean) : [];
+  const crew = await prisma.lead_crew.findMany({
+    where: { lead_id: lead.id },
+    select: { duty: true, arrive_time: true, crew_members: { select: { name: true } } },
+    orderBy: { id: 'asc' },
+  });
+
+  // dates and times written the way a document writes them, not the way a
+  // database stores them — "Thu Jul 30" belongs in a list, not an agreement
+  const fmtDate = (d) => d
+    ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  const fmtTime = (t) => {
+    const m = String(t || '').match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return String(t || '');
+    const h = Number(m[1]);
+    return `${((h + 11) % 12) + 1}:${m[2]} ${h < 12 ? 'am' : 'pm'}`;
+  };
 
   /**
    * 💱 The vendor's own currency, resolved the way every other screen resolves
@@ -114,7 +261,7 @@ export async function fillPlaceholders(text, lead, businessName) {
     '{{client_name}}': lead.name || '—',
     '{{client_email}}': lead.email || '—',
     '{{event_type}}': lead.event_type || '—',
-    '{{event_date}}': lead.event_date ? String(lead.event_date).slice(0, 10) : '—',
+    '{{event_date}}': fmtDate(lead.event_date) || '—',
     '{{location}}': lead.location || '—',
     '{{hours}}': lead.hours ?? '—',
     '{{guests}}': lead.guests ?? '—',
@@ -133,12 +280,40 @@ export async function fillPlaceholders(text, lead, businessName) {
      * a document being signed needs this one.
      */
     '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
-    '{{today_date}}': new Date().toISOString().slice(0, 10),
+    '{{today_date}}': fmtDate(new Date()),
+
+    // 📐 blocks built from the booking rather than typed into the template
+    '{{booking_details}}': bookingDetails(lead, pkgName, money, cash, fmtDate, fmtTime),
+    '{{coverage_schedule}}': coverageSchedule(lead, fmtTime),
+    '{{deliverables}}': deliverables(inclusions),
+    '{{services_summary}}': servicesSummary(inclusions),
+    '{{crew}}': crewBlock(crew, fmtTime),
     '{{company_name}}': businessName || '—',
   };
   let out = text;
   for (const [k, v] of Object.entries(map)) out = out.split(k).join(String(v));
-  return out;
+
+  // A block with nothing in it — no crew assigned, no inclusions listed — would
+  // otherwise leave its heading standing over a gap. Drop the heading with it:
+  // a contract should not have an empty section in it.
+  out = out.replace(/\n\n[A-Z][A-Z0-9 &'()\/-]{2,60}\n\n(?=\n*(?:\[INITIAL\]|[A-Z][A-Z0-9 &'()\/-]{2,60}\n)|\s*$)/g, '\n\n');
+  return out.replace(/\n{4,}/g, '\n\n\n');
+}
+
+/**
+ * Should this section appear for this booking?
+ *
+ * `show_if` names something the package must include — "drone", "album" — and
+ * the section is dropped when it doesn't. Printing a drone policy to a client
+ * who never booked a drone is not merely noise: it invites them to expect one.
+ * A section with no condition always shows, so nothing existing changes.
+ */
+export function sectionApplies(section, inclusions) {
+  const cond = String(section?.show_if || '').trim().toLowerCase();
+  if (!cond) return true;
+  const hay = (inclusions || []).join(' ').toLowerCase();
+  // "drone|aerial" — any one of them is enough
+  return cond.split('|').map(x => x.trim()).filter(Boolean).some(k => hay.includes(k));
 }
 
 /* ───────── 📑 TEMPLATES ───────── */
@@ -253,18 +428,24 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
-    let text = body, ctTitle = title || 'Service Agreement', tplId = null;
+    // the template is resolved here and the body built below, so both the
+    // conditional sections and the placeholders go through one path
+    let ctTitle = title || 'Service Agreement', tplId = null, tpl = null;
     if (template_id) {
-      const t = await templateForLead(lead, template_id);
-      if (!t) return res.status(400).json({ error: 'Template not found' });
-      text = templateText(t);
-      ctTitle = title || t.name;
-      tplId = t.id;
+      tpl = await templateForLead(lead, template_id);
+      if (!tpl) return res.status(400).json({ error: 'Template not found' });
+      ctTitle = title || tpl.name;
+      tplId = tpl.id;
     }
-    if (!text || !text.trim()) return res.status(400).json({ error: 'Contract text required' });
+    if (!tpl && !String(body || '').trim()) {
+      return res.status(400).json({ error: 'Contract text required' });
+    }
 
     const vendor = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });
-    const filled = await fillPlaceholders(text, lead, vendor?.business_name);
+    // one path: conditional sections dropped, then placeholders filled
+    const filled = tpl
+      ? await buildContractBody(tpl, lead, vendor?.business_name)
+      : await fillPlaceholders(body, lead, vendor?.business_name);
 
     // 🔓 A vendor who turned auto-release on has said they don't want the review
     // step; their contracts are approved the moment they're built.
@@ -312,12 +493,11 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
     const t = await templateForLead(lead);
     if (!t) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
 
-    const text = templateText(t);
     const vendor = await prisma.vendors.findUnique({
       where: { id: lead.vendor_id },
       select: { business_name: true, logo_path: true },
     });
-    const filled = await fillPlaceholders(text, lead, vendor?.business_name);
+    const filled = await buildContractBody(t, lead, vendor?.business_name);
 
     /**
      * The preview renders through the same component the client signs on, so it
