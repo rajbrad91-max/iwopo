@@ -152,12 +152,12 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
             Their IP and the time are recorded with it. 🔐
           </p>
         ) : (<>
-        <label style={{ marginTop: 14 }}>👤 Your full legal name</label>
+        <label className="ct-label-name">👤 Your full legal name</label>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
 
-        <label style={{ marginTop: 12 }}>🖊️ Draw your signature</label>
+        <label className="ct-label-sig">🖊️ Draw your signature</label>
         <canvas ref={canvasRef}
-          className="ct-pad" style={{ width: '100%', height: 160, touchAction: 'none', display: 'block' }} />
+          className="ct-pad" />
         <button onClick={clearPad} className="ct-clear">↺ Clear</button>
 
         {err && <div className="iq-err">⚠️ {err}</div>}
