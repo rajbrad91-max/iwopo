@@ -80,6 +80,12 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
   }
 
   function tapInitial(i) {
+    // 👁️ A preview is the vendor reading their own contract, not signing it.
+    // Left clickable, tapping stamped initials taken from the name field —
+    // which is blank in a preview, so it printed "✓ OK", something no client
+    // would ever see. The boxes stay visible because the client sees them;
+    // they just don't respond.
+    if (preview) return;
     setInitialed(arr => arr.map((v, x) => x === i ? !v : v));
   }
 
@@ -144,11 +150,7 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
               {chunk}
               {i < parts.length - 1 && (
                 <span onClick={() => tapInitial(i)}
-                  style={{ display: 'inline-block', minWidth: 70, textAlign: 'center', margin: '0 4px',
-                    padding: '3px 10px', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                    background: initialed[i] ? '#4ade8022' : '#fbbf2422',
-                    border: `1.5px dashed ${initialed[i] ? '#4ade80' : '#fbbf24'}`,
-                    color: initialed[i] ? '#4ade80' : '#fbbf24' }}>
+                  className={`ct-init ${initialed[i] ? 'is-done' : ''} ${preview ? 'is-preview' : ''}`}>
                   {initialed[i] ? `✓ ${name.split(' ').map(w => w[0]).join('').toUpperCase() || 'OK'}` : 'TAP TO INITIAL'}
                 </span>
               )}

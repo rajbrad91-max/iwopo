@@ -136,3 +136,20 @@
    over-scrolls — so the page ends up framed in a colour it doesn't use. */
 body:has(.iq-wrap) { background: color-mix(in srgb, var(--brand, #C9A86A) 35%, #F5F0EA); }
 body:has(.cp-page) { background: #EFE9E0; }
+
+/* ✍️ The gold box a client taps to initial a clause.
+   Was six inline values carrying the old dark theme; on a preview it also
+   stayed clickable, and tapping stamped initials taken from the (empty) name
+   field — printing "✓ OK", which no client would ever see. */
+.ct-init {
+  display: inline-block; min-width: 74px; text-align: center; margin: 0 4px;
+  padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px;
+  cursor: pointer; letter-spacing: .04em;
+  background: #FBF3E0; border: 1.5px dashed #C9A86A; color: #8A6D1F;
+}
+.ct-init:hover { background: #F6E9CC; }
+.ct-init.is-done { background: #E6F4EC; border-color: #2E7D4F; color: #2E7D4F; }
+
+/* on a preview it is shown, because the client sees it — it just doesn't act */
+.ct-init.is-preview { cursor: default; }
+.ct-init.is-preview:hover { background: #FBF3E0; }
