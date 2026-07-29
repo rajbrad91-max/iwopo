@@ -10,6 +10,13 @@ import './inquiry.css';
  * there — and the vendor ends up approving something that isn't what gets sent.
  * Same component, same stylesheet, same layout; the only differences are that
  * preview loads by lead id instead of a client token, and cannot be signed.
+ *
+ * The body itself is now real HTML built server-side — tables for what was
+ * booked, ruled headings for each clause — not a wall of plain text. It is
+ * injected once via dangerouslySetInnerHTML, so the initial boxes inside it
+ * are wired up afterwards: a click listener finds which one was tapped, and a
+ * second effect keeps each box's own text and colour in sync with state,
+ * since nothing else will touch that HTML once it's on the page.
  */
 export default function SignContract({ token, previewLeadId, onRelease }) {
   const preview = !!previewLeadId;
@@ -20,6 +27,7 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
   const [done, setDone] = useState(false);
   const [initialed, setInitialed] = useState([]);
   const canvasRef = useRef(null);
+  const docRef = useRef(null);
   const [hasInk, setHasInk] = useState(false);
 
   useEffect(() => {
@@ -27,10 +35,40 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
     load.then(d => {
       const ct = d.contract || d;
       setC(ct);
-      const n = (String(ct.body || '').match(/\[INITIAL\]/g) || []).length;
+      const n = (String(ct.body || '').match(/data-init-idx="\d+"/g) || []).length;
       setInitialed(Array(n).fill(false));
     }).catch(e => setErr(e.message));
   }, [token, previewLeadId, preview]);
+
+  // 👆 one listener finds which gold box was tapped
+  useEffect(() => {
+    const el = docRef.current;
+    if (!el || preview) return;
+    const onClick = (e) => {
+      const tap = e.target.closest('.ct-init-tap');
+      if (!tap) return;
+      const idx = Number(tap.dataset.initIdx);
+      setInitialed(arr => arr.map((v, x) => x === idx ? !v : v));
+    };
+    el.addEventListener('click', onClick);
+    return () => el.removeEventListener('click', onClick);
+  }, [preview, c]);
+
+  // 🔁 and this keeps every box's text and colour matching state — the html
+  // was set once, so this is the only thing that updates what a box shows
+  useEffect(() => {
+    const el = docRef.current;
+    if (!el) return;
+    el.querySelectorAll('.ct-init-tap').forEach(tap => {
+      const idx = Number(tap.dataset.initIdx);
+      const doneHere = !!initialed[idx];
+      tap.classList.toggle('is-done', doneHere);
+      tap.classList.toggle('is-preview', preview);
+      tap.textContent = doneHere
+        ? `✓ ${name.split(' ').map(w => w[0]).join('').toUpperCase() || 'OK'}`
+        : 'TAP TO INITIAL';
+    });
+  }, [initialed, name, preview, c]);
 
   // 🖊️ canvas signature pad
   useEffect(() => {
@@ -79,16 +117,6 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
     setHasInk(false);
   }
 
-  function tapInitial(i) {
-    // 👁️ A preview is the vendor reading their own contract, not signing it.
-    // Left clickable, tapping stamped initials taken from the name field —
-    // which is blank in a preview, so it printed "✓ OK", something no client
-    // would ever see. The boxes stay visible because the client sees them;
-    // they just don't respond.
-    if (preview) return;
-    setInitialed(arr => arr.map((v, x) => x === i ? !v : v));
-  }
-
   async function sign() {
     setErr('');
     if (!name.trim()) return setErr('Type your full name');
@@ -116,13 +144,11 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
     </div>
   );
 
-  // split body around [INITIAL] markers → render gold tap boxes inline
-  const parts = c.body.split('[INITIAL]');
-  let initialsLeft = initialed.filter(v => !v).length;
+  const initialsLeft = initialed.filter(v => !v).length;
 
   return (
     <div className="iq-wrap">
-      <div className="iq-card" style={{ maxWidth: 680 }}>
+      <div className="iq-card ct-contract-card">
         {/* 👁️ Only the vendor sees this. Everything below it is byte-for-byte
             what the client gets, which is the whole reason for previewing. */}
         {preview && (
@@ -135,28 +161,10 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
                 </button>}
           </div>
         )}
-        {c.logo_path && (
-          <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" />
-        )}
-        <div className="iq-brand">📄 {c.title}</div>
-        <p className="iq-sub">{c.business_name} · for {c.client_name}</p>
 
-        {/* The page around this was redesigned light — cream card, brown text —
-            but this box kept the near-black it had under the old dark theme, so a
-            client read their contract as a black panel inside a cream card. */}
-        <div className="ct-doc">
-          {parts.map((chunk, i) => (
-            <span key={i}>
-              {chunk}
-              {i < parts.length - 1 && (
-                <span onClick={() => tapInitial(i)}
-                  className={`ct-init ${initialed[i] ? 'is-done' : ''} ${preview ? 'is-preview' : ''}`}>
-                  {initialed[i] ? `✓ ${name.split(' ').map(w => w[0]).join('').toUpperCase() || 'OK'}` : 'TAP TO INITIAL'}
-                </span>
-              )}
-            </span>
-          ))}
-        </div>
+        {/* the real document — headband, title, every clause and its table,
+            built server-side into one HTML string and injected once */}
+        <div className="ct-doc" ref={docRef} dangerouslySetInnerHTML={{ __html: c.body }} />
 
         {initialed.length > 0 && (
           <p className={`ct-left ${initialsLeft ? 'is-todo' : 'is-done'}`}>
