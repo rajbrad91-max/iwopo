@@ -121,7 +121,7 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
   const initialsLeft = initialed.filter(v => !v).length;
 
   return (
-    <div className="iq-wrap">
+    <div className="iq-wrap" style={c.brand_color ? { '--brand': c.brand_color } : undefined}>
       <div className="iq-card ct-contract-card">
         {/* 👁️ Only the vendor sees this. Everything below it is byte-for-byte
             what the client gets, which is the whole reason for previewing. */}

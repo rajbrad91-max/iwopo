@@ -611,17 +611,26 @@ router.get('/sign/:token', async (req, res) => {
       select: {
         id: true, title: true, body: true, status: true, signed_name: true,
         signed_at: true, initials: true, viewed_at: true,
-        leads: { select: { name: true } },
+        leads: { select: { name: true, vendor_id: true } },
         vendors: { select: { business_name: true, logo_path: true } },
       },
     });
     if (!c) return res.status(404).json({ error: 'Contract not found' });
+
+    // the vendor's own colour, so the page a client signs on looks like the
+    // rest of what that vendor sends them rather than iwopo's default gold
+    const brand = c.leads?.vendor_id
+      ? await prisma.inquiry_settings.findUnique({
+          where: { vendor_id: c.leads.vendor_id },   // 🔒 via the contract's own lead
+          select: { brand_color: true },
+        })
+      : null;
     if (!c.viewed_at) {
       await prisma.contracts.update({ where: { id: c.id }, data: { viewed_at: new Date() } });
       await audit(c.id, 'viewed', ipOf(req));
     }
     const { leads, vendors, ...rest } = c;
-    res.json({ contract: { ...rest, client_name: leads?.name ?? null, business_name: vendors?.business_name ?? null, logo_path: vendors?.logo_path ?? null } });
+    res.json({ contract: { ...rest, client_name: leads?.name ?? null, business_name: vendors?.business_name ?? null, logo_path: vendors?.logo_path ?? null, brand_color: brand?.brand_color ?? null } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

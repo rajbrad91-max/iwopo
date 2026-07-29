@@ -51,11 +51,11 @@
 
 .iq-card label { display: block; font-size: 12px; color: #4A3E3D; font-weight: 700; margin: 0 0 5px; }
 .iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 12px 14px; background: #EFEAE2; border: 1px solid #E0D6C8; border-radius: 10px; color: #3D3530; font-size: 14px; font-family: inherit; box-sizing: border-box; }
-.iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: #C9A86A; background: #fff; }
+.iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, #C9A86A); background: #fff; }
 .iq-card input::placeholder { color: #A89985; }
 
 .iq-check-row { display: flex !important; align-items: center; gap: 9px; font-size: 14px !important; color: #3D3530 !important; cursor: pointer; }
-.iq-check-row input { width: 17px !important; height: 17px; accent-color: #C9A86A; cursor: pointer; }
+.iq-check-row input { width: 17px !important; height: 17px; accent-color: var(--brand, #C9A86A); cursor: pointer; }
 
 /* ⏱️ hours field — the "auto" tag sits beside the label, the reset link below */
 .iq-auto-tag {
@@ -102,7 +102,7 @@
   padding: 18px 20px;
 }
 .ct-pad {
-  background: #FFFDFA; border: 1.5px dashed #C9A86A; border-radius: 10px;
+  background: #FFFDFA; border: 1.5px dashed var(--brand, #C9A86A); border-radius: 10px;
   width: 100%; height: 160px; touch-action: none; display: block;
 }
 /* the two labels above the signature area — a plain margin-top each */
@@ -220,14 +220,16 @@ body:has(.cp-page) { background: #EFE9E0; }
   display: inline-block; min-width: 78px; text-align: center;
   padding: 3px 12px; border-radius: 6px; font-weight: 700; font-size: 12px;
   letter-spacing: .04em; cursor: pointer;
-  background: #FBF3E0; border: 1.5px dashed #C9A86A; color: #8A6D1F;
+  background: color-mix(in srgb, var(--brand, #C9A86A) 18%, #fff);
+  border: 1.5px dashed var(--brand, #C9A86A);
+  color: color-mix(in srgb, var(--brand, #C9A86A) 78%, #000);
 }
 .ct-init-tap:hover { background: #F6E9CC; }
 .ct-init-tap.is-done { background: #E6F4EC; border-color: #2E7D4F; color: #2E7D4F; }
 .ct-init-tap.is-preview { cursor: default; }
 .ct-init-tap.is-preview:hover { background: #FBF3E0; }
 /* the earliest box not yet done — a ring, so nothing has to be hunted for */
-.ct-init-tap.is-next { box-shadow: 0 0 0 4px color-mix(in srgb, #C9A86A 24%, transparent); }
+.ct-init-tap.is-next { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #C9A86A) 24%, transparent); }
 
 @media (max-width: 700px) {
   .ct-details th, .ct-kv th, .ct-svc th { width: 42%; }
