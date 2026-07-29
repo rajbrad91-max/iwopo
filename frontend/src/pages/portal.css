@@ -268,13 +268,14 @@
 .po-strip-v { display: block; font-size: 15px; font-weight: 600; color: var(--ink); }
 
 /* ── the contract itself ──────────────────────────────────── */
+/* Same reasoning as the vendor's own contract page: a 60vh scrolling cap on
+   a document a client is about to sign reads as a preview window rather than
+   the actual agreement. It runs the page's own length now. */
 .po-doc {
   background: #fff; border: 1px solid var(--line); border-radius: 14px;
   padding: 34px 36px; margin: 26px 0 8px;
-  text-align: left;   /* the body is HTML now — pre-wrap turned every
-                         newline in the markup into visible blank space */
+  text-align: left;
   font-size: 15px; line-height: 1.75; color: var(--body);
-  max-height: 60vh; overflow-y: auto;
 }
 
 /* The initial boxes themselves are .ct-init-tap now, shared with the
@@ -360,7 +361,7 @@
 .po-cheer-p { font-size: 15px; color: var(--soft); margin: 0; line-height: 1.6; }
 
 @media (max-width: 640px) {
-  .po-doc { padding: 22px 18px; max-height: none; }
+  .po-doc { padding: 22px 18px; }
   .po-strip { gap: 18px; }
   .po-steps { padding-inline: 10px; }
   .po-steps li + li::before { width: 20px; margin: 0 7px; }
