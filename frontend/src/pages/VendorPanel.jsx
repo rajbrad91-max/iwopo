@@ -4497,7 +4497,7 @@ function BookingDetail({ id, onBack }) {
 
           {/* ── paperwork: kept indefinitely, downloadable any time ── */}
           <div className="ld-card">
-            <div className="ld-card-h">📄 Paperwork</div>
+            <div className="ld-card-h">📄 Documentation</div>
             <div className="bd-docs">
               {d.contract ? (
                 <>
