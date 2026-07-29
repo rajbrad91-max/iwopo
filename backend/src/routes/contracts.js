@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
+import { currencyFor } from '../lib/currencies.js';
 
 const router = express.Router();
 
@@ -80,6 +81,30 @@ export function templateText(t) {
 // 🔤 Fill placeholders from lead + package + money
 export async function fillPlaceholders(text, lead, businessName) {
   const money = await moneySummary(lead);
+
+  /**
+   * 💱 The vendor's own currency, resolved the way every other screen resolves
+   * it. These three were hard-coded to a dollar sign when currency support went
+   * in — so a vendor in London had their client agree, in writing, to a figure
+   * in the wrong currency. A contract is the last place that should be guessed.
+   */
+  const vset = await prisma.vendor_settings.findUnique({
+    where: { vendor_id: lead.vendor_id },        // 🔒 the lead's owner, from the row
+    select: { currency: true },
+  });
+  const vrow = await prisma.vendors.findUnique({
+    where: { id: lead.vendor_id }, select: { country: true },
+  });
+  const code = currencyFor(vset?.currency, vrow?.country);
+  const cash = (v) => {
+    const num = Number(v || 0);
+    try {
+      return num.toLocaleString('en', {
+        style: 'currency', currency: code,
+        minimumFractionDigits: 0, maximumFractionDigits: 0,
+      });
+    } catch { return `${num} ${code}`; }
+  };
   let pkgName = '—';
   if (lead.package_snapshot) {
     const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
@@ -94,9 +119,10 @@ export async function fillPlaceholders(text, lead, businessName) {
     '{{hours}}': lead.hours ?? '—',
     '{{guests}}': lead.guests ?? '—',
     '{{package_name}}': pkgName,
-    '{{total_cost}}': `$${money.final_total}`,
-    '{{deposit}}': `$${money.deposit_amount}`,
-    '{{balance}}': `$${money.balance}`,
+    // final_total already has the discount taken off — moneySummary applies it
+    '{{total_cost}}': cash(money.final_total),
+    '{{deposit}}': cash(money.deposit_amount),
+    '{{balance}}': cash(money.balance),
     '{{today_date}}': new Date().toISOString().slice(0, 10),
     '{{company_name}}': businessName || '—',
   };

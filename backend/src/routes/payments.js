@@ -1,6 +1,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { fillPlaceholders, templateForLead, templateText } from './contracts.js';
 
 const router = express.Router();
 
@@ -163,6 +164,38 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * Redraw a lead's unsigned contract from its template, so its figures match the
+ * money as it now stands. Returns what happened, so the caller can say so.
+ */
+async function rebuildUnsignedContract(lead) {
+  const ct = await prisma.contracts.findFirst({
+    where: { lead_id: lead.id, voided_at: null },
+    orderBy: { id: 'desc' },
+    select: { id: true, status: true, template_id: true },
+  });
+  if (!ct) return 'none';
+  if (ct.status === 'signed') return 'signed_left_alone';   // ✍️ never rewrite an executed agreement
+  try {
+    const t = await templateForLead(lead, ct.template_id);
+    if (!t) return 'no_template';
+    const vendor = await prisma.vendors.findUnique({
+      where: { id: lead.vendor_id }, select: { business_name: true },
+    });
+    const body = await fillPlaceholders(templateText(t), lead, vendor?.business_name);
+    await prisma.contracts.update({
+      where: { id: ct.id },
+      data: { body, updated_at: new Date() },
+    });
+    return 'rebuilt';
+  } catch {
+    // a contract that can't be redrawn shouldn't stop the discount being saved —
+    // the vendor can raise a fresh one, and the stale figures are visible in the
+    // preview rather than hidden
+    return 'failed';
+  }
+}
+
 // PUT /api/payments/lead/:leadId/money → deposit % / discount % / price override
 router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
   const { deposit_percent, discount_percent, price_override } = req.body;
@@ -178,7 +211,24 @@ router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
       data.price_override = (price_override === null || price_override === '') ? null : Number(price_override);
     }
     const updated = await prisma.leads.update({ where: { id: lead.id }, data });
-    res.json({ lead: updated, summary: await moneySummary(updated) });
+
+    /**
+     * 💸 Redraw any unsigned contract, because its figures are now wrong.
+     *
+     * A contract's wording is filled in once and STORED — that is what makes it
+     * a fixed document rather than a live view. So applying a discount changed
+     * the payment card and the invoice and left the contract quoting the old
+     * total: the client saw one number on screen and agreed, in writing, to
+     * another. The portal already redraws a contract when the client switches
+     * package; money is the same kind of change and was simply missed.
+     *
+     * A SIGNED contract is never touched. It is an executed agreement, and
+     * altering the figures in one after the fact would be forgery, not a fix —
+     * to change what a signed client owes, raise a new one.
+     */
+    const rebuilt = await rebuildUnsignedContract(updated);
+
+    res.json({ lead: updated, summary: await moneySummary(updated), contract_rebuilt: rebuilt });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

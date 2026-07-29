@@ -41,17 +41,25 @@ function tokenise(text, ctx) {
 }
 
 export default function SendPackagesModal({ lead, link, onClose, onSent }) {
+  const ctx = { name: lead.name || '', link };
+
   const [tpls, setTpls] = useState([]);
   const [tplId, setTplId] = useState('');
-  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
-  const [body, setBody] = useState(DEFAULT_BODY);
+  /**
+   * ✍️ These hold the real message, not the template behind it.
+   *
+   * The editor used to show {{name}} and {{link}} with a line underneath
+   * explaining what they'd turn into — which asked the vendor to imagine the
+   * email rather than read it. They are filled in now, so what is on screen is
+   * what the client receives. Saving as a template puts the tokens back.
+   */
+  const [subject, setSubject] = useState(() => fill(DEFAULT_SUBJECT, { name: lead.name || '', link }));
+  const [body, setBody] = useState(() => fill(DEFAULT_BODY, { name: lead.name || '', link }));
   const [cc, setCc] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const ctx = { name: lead.name || '', link };
 
   useEffect(() => {
     api.emailTemplates().then(d => setTpls(d.templates || [])).catch(() => {});
@@ -59,9 +67,10 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
 
   function applyTpl(id) {
     setTplId(id);
-    if (!id) { setSubject(DEFAULT_SUBJECT); setBody(DEFAULT_BODY); return; }
+    // back to the default, filled in — the editor never shows raw tokens
+    if (!id) { setSubject(fill(DEFAULT_SUBJECT, ctx)); setBody(fill(DEFAULT_BODY, ctx)); return; }
     const t = tpls.find(x => String(x.id) === String(id));
-    if (t) { setSubject(t.subject); setBody(t.body); }
+    if (t) { setSubject(fill(t.subject, ctx)); setBody(fill(t.body, ctx)); }
   }
 
   async function saveAsTemplate() {
@@ -71,7 +80,9 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
     setSaving(true);
     try {
       // store the tokenised version, so the template works for the next client
-      const d = await api.addEmailTemplate({ name, subject, body: tokenise(body, ctx) });
+      // both halves go back to tokens: a subject carrying the last client's
+      // name would greet the next one by the wrong one
+      const d = await api.addEmailTemplate({ name, subject: tokenise(subject, ctx), body: tokenise(body, ctx) });
       setTpls(ts => [...ts, d.template]);
       setTplId(String(d.template.id));
       setMsg('✅ Template saved');
@@ -93,7 +104,9 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
     setBusy(true); setMsg('');
     try {
       // tokens are resolved here, so what the client receives has real values
-      await api.emailLead(lead.id, fill(subject, ctx), fill(body, ctx), cc.trim() || undefined, 'packages');
+      // already the real message — filling again would do nothing but could
+      // mangle a client whose own name contains a token-like string
+      await api.emailLead(lead.id, subject, body, cc.trim() || undefined, 'packages');
       onSent?.();
       onClose();
     } catch (e) {
@@ -137,7 +150,8 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
           <textarea className="fb-select em-ta" rows="11"
             value={body} onChange={e => setBody(e.target.value)} />
           <p className="fb-hint">
-            <code>{'{{name}}'}</code> becomes the client&apos;s name · <code>{'{{link}}'}</code> becomes their packages link
+            This is exactly what {lead.name || 'your client'} will receive. Saving it as a template
+            swaps their name and link back to placeholders, so it fits the next enquiry.
           </p>
 
           <div className="em-link">

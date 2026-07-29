@@ -186,7 +186,17 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'self_mode', message: 'You are in self-receive mode — reply from your own inbox 📥' });
 
     const t = transporterFor(s);
-    if (!t) return res.status(400).json({ error: 'no_transport', message: 'No email server configured yet. Add SMTP creds or platform SMTP pending. ⚙️' });
+    if (!t) {
+    // which side is missing is knowable, so say so rather than making the
+    // vendor guess whether it's their fault or ours
+    const mine = s.mode === 'smtp';
+    return res.status(400).json({
+      error: 'no_transport',
+      message: mine
+        ? '📭 Your SMTP details are incomplete — add your host, username and password under Settings → Email.'
+        : '📭 No mail server is set up yet. Add your own under Settings → Email (host, username, password) — sending from your own address also keeps you out of spam folders.',
+    });
+  }
 
     const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
     const fromName = s.from_name || 'iwopo';
