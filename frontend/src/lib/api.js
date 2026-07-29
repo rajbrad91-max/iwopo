@@ -420,6 +420,7 @@ export const api = {
   updateEmailTemplate: (id, data) => request(`/email/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteEmailTemplate: (id) => request(`/email/templates/${id}`, { method: 'DELETE' }),
   portal: (token, fresh) => request(`/portal/${token}${fresh ? '?fresh=1' : ''}`),
+  portalVerify: (token, email) => request(`/portal/${token}/verify`, { method: 'POST', body: JSON.stringify({ email }) }),
   portalPick: (token, package_id) => request(`/portal/${token}/pick`, { method: 'POST', body: JSON.stringify({ package_id }) }),
   // client says they've paid directly — a claim the vendor confirms separately
   portalPayDirect: (token) => request(`/portal/${token}/pay-direct`, { method: 'POST' }),

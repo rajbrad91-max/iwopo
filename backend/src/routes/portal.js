@@ -13,6 +13,13 @@ async function leadByToken(token) {
   return prisma.leads.findFirst({ where: { client_token: token } });
 }
 
+/** Read one cookie by name without pulling in cookie-parser for it. */
+function cookieOf(req, name) {
+  const raw = req.headers.cookie || '';
+  const m = raw.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
+  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+}
+
 function ipOf(req) {
   const fwd = req.headers['x-forwarded-for'];
   return (fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress || '').replace('::ffff:', '');
@@ -195,6 +202,29 @@ router.get('/:token', async (req, res) => {
       select: { brand_color: true, theme: true, font: true },
     });
 
+    /**
+     * 🔒 Secure Login — an email check before anything on the booking shows.
+     *
+     * A portal link is the only thing standing between whoever has it and
+     * this client's packages, prices and contract. Most vendors never need
+     * more than the link itself; this is for the ones who do. One fact only
+     * the actual client is likely to have on hand, checked once per browser
+     * rather than on every visit — the cookie set on success is what makes
+     * that "once", not "every request".
+     */
+    if (lead.gateway_enabled && cookieOf(req, 'pkg_verified_' + lead.id) !== '1') {
+      return res.json({
+        gated: true,
+        business_name: vendor?.business_name,
+        lead: { name: lead.name },
+        branding: {
+          brand_color: brand?.brand_color || '#C9A86A',
+          theme: brand?.theme || 'classic', font: brand?.font || 'Inter',
+          logo_path: vendor?.logo_path || null,
+        },
+      });
+    }
+
     // 💱 resolved the same way the panel resolves it — their choice, else their
     // country — so the figure a client sees matches the one the vendor sees
     const vset = await prisma.vendor_settings.findUnique({
@@ -211,6 +241,9 @@ router.get('/:token', async (req, res) => {
         location: lead.location,
         hours: lead.hours, package_id: selectedId, status: lead.status,
         payment_claimed_at: lead.payment_claimed_at,
+        // ⏳ the countdown a vendor turns on around a limited-time offer
+        timer_enabled: lead.timer_enabled, timer_hours: lead.timer_hours,
+        timer_started_at: lead.timer_started_at, created_at: lead.created_at,
       },
       business_name: vendor?.business_name,
       // the vendor's own currency, so a client in London isn't shown dollars
@@ -227,6 +260,30 @@ router.get('/:token', async (req, res) => {
 });
 
 /* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package */
+/**
+ * 🔓 PUBLIC: POST /api/portal/:token/verify — the email check itself.
+ *
+ * A plain, case-insensitive match against the email already on file for
+ * this booking. Not a password — the client never set one — just the one
+ * fact tying "whoever has this link" to "the person this booking is for".
+ */
+router.post('/:token/verify', async (req, res) => {
+  try {
+    const lead = await leadByToken(req.params.token);
+    if (!lead) return res.status(404).json({ error: 'Link not found' });
+    const given = String(req.body?.email || '').trim().toLowerCase();
+    const onFile = String(lead.email || '').trim().toLowerCase();
+    if (!given) return res.status(400).json({ error: 'Enter your email address' });
+    if (!onFile || given !== onFile) {
+      return res.status(403).json({ error: "That email doesn't match our records" });
+    }
+    res.cookie('pkg_verified_' + lead.id, '1', {
+      maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax', httpOnly: false,
+    });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/:token/pick', async (req, res) => {
   const { package_id } = req.body;
   try {

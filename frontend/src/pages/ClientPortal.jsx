@@ -41,6 +41,43 @@ function cashIn(currency) {
  * that logic kept here: a second copy is exactly what let this page fall
  * behind when the body format changed and nobody told this component.
  */
+/**
+ * ⏳ A live countdown around a limited-time offer.
+ *
+ * Ticks client-side from timer_started_at + timer_hours, matching what the
+ * vendor set. At zero it stops counting and says so rather than showing
+ * 00:00:00 forever, which would read as broken rather than expired.
+ */
+function Countdown({ startedAt, hours }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const expires = new Date(startedAt).getTime() + (hours || 72) * 3600000;
+  const diff = expires - now;
+  if (diff <= 0) return (
+    <div className="po-timer">
+      <p className="po-timer-expired">⏰ This offer has expired. Please get in touch for a new quote.</p>
+    </div>
+  );
+  const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+  const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+  const sec = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+  return (
+    <div className="po-timer">
+      <p className="po-timer-eyebrow">Offer expires in</p>
+      <div className="po-timer-card">
+        <div className="po-timer-unit"><span className="po-timer-num">{h}</span><span className="po-timer-lbl">Hours</span></div>
+        <span className="po-timer-colon">:</span>
+        <div className="po-timer-unit"><span className="po-timer-num">{m}</span><span className="po-timer-lbl">Minutes</span></div>
+        <span className="po-timer-colon">:</span>
+        <div className="po-timer-unit"><span className="po-timer-num">{sec}</span><span className="po-timer-lbl">Seconds</span></div>
+      </div>
+    </div>
+  );
+}
+
 function ContractStep({ contract, clientName, onSigned }) {
   // pre-filled from the lead on file, editable — a blank field made someone
   // type a name that was already known, and until they did the tap boxes had
@@ -235,8 +272,43 @@ export default function ClientPortal({ token }) {
     setTimeout(() => setCelebrate(false), 2200);
   }
 
+  // 🔒 Secure Login — the email check some vendors turn on. Success loads the
+  // real portal the normal way; the cookie means this only happens once.
+  const [gateEmail, setGateEmail] = useState('');
+  const [gateErr, setGateErr] = useState('');
+  const [gateBusy, setGateBusy] = useState(false);
+  async function verify(e) {
+    e.preventDefault();
+    setGateErr(''); setGateBusy(true);
+    try { await api.portalVerify(token, gateEmail); load(); }
+    catch (err) { setGateErr(err.message); }
+    finally { setGateBusy(false); }
+  }
+
   if (err) return <div className="po-page"><p className="po-state">⚠️ {err}</p></div>;
   if (!data) return <div className="po-page"><p className="po-state">Loading…</p></div>;
+
+  if (data.gated) return (
+    <div className="po-page" style={{ '--brand': data.branding?.brand_color || '#C9A86A' }}>
+      <div className="po-gate">
+        {data.branding?.logo_path && <img className="po-gate-logo" src={`/api/me/logo/${data.branding.logo_path}`} alt="" />}
+        <div className="po-gate-lock">🔒</div>
+        <h1 className="po-gate-h">Enter your registered email</h1>
+        <p className="po-gate-sub">
+          To access the packages prepared for <strong>{data.lead?.name}</strong>, please verify your email address.
+        </p>
+        <form className="po-gate-card" onSubmit={verify}>
+          <label className="po-gate-label" htmlFor="gate-email">Your email address</label>
+          <input id="gate-email" className={`po-gate-input ${gateErr ? 'is-err' : ''}`} type="email"
+            placeholder="you@email.com" value={gateEmail} onChange={e => setGateEmail(e.target.value)} autoFocus />
+          {gateErr && <p className="po-gate-err">⚠️ {gateErr}</p>}
+          <button type="submit" className="po-gate-btn" disabled={gateBusy}>
+            {gateBusy ? 'Checking…' : 'View my packages'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 
   const { lead, business_name, packages, money, contract, branding = {} } = data;
   const chosen = packages.find(p => p.id === lead.package_id);
@@ -300,6 +372,10 @@ export default function ClientPortal({ token }) {
                 ? 'Pick a different one any time before you pay — your contract is rewritten to match.'
                 : 'Tap the one you\u2019d like. Nothing is confirmed until you sign.'}
             </p>
+
+            {lead.timer_enabled && (lead.timer_started_at || lead.created_at) && (
+              <Countdown startedAt={lead.timer_started_at || lead.created_at} hours={lead.timer_hours} />
+            )}
 
             <div className="po-grid">
               {packages.map(p => {
