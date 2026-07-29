@@ -214,6 +214,8 @@ body:has(.cp-page) { background: #EFE9E0; }
 .ct-init-tap.is-done { background: #E6F4EC; border-color: #2E7D4F; color: #2E7D4F; }
 .ct-init-tap.is-preview { cursor: default; }
 .ct-init-tap.is-preview:hover { background: #FBF3E0; }
+/* the earliest box not yet done — a ring, so nothing has to be hunted for */
+.ct-init-tap.is-next { box-shadow: 0 0 0 4px color-mix(in srgb, #C9A86A 24%, transparent); }
 
 @media (max-width: 700px) {
   .ct-details th, .ct-kv th, .ct-svc th { width: 42%; }

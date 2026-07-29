@@ -276,24 +276,9 @@
   max-height: 60vh; overflow-y: auto;
 }
 
-/* An initial marker: a tab to tap, which fills in with the client's initials
-   in a hand. The next one due carries a ring so nothing gets hunted for. */
-.po-tab {
-  display: inline-block; margin: 0 5px; padding: 4px 14px;
-  border: 1.5px dashed var(--brand, #b8922a);
-  background: color-mix(in srgb, var(--brand, #b8922a) 9%, #fff);
-  border-radius: 7px; cursor: pointer;
-  font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  color: var(--brand, #b8922a);
-}
-.po-tab.is-filled {
-  background: none; border: none; border-bottom: 1.5px solid var(--ink);
-  border-radius: 0; padding: 0 16px 2px; cursor: default;
-  font-family: 'Segoe Script', 'Brush Script MT', 'Snell Roundhand', cursive;
-  font-size: 23px; font-weight: 400; letter-spacing: .5px; text-transform: none;
-  color: var(--ink);
-}
-.po-tab.is-next { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #b8922a) 22%, transparent); }
+/* The initial boxes themselves are .ct-init-tap now, shared with the
+   standalone sign page — see inquiry.css. This component no longer renders
+   its own tap markers, so there is only one set of rules to keep in sync. */
 
 /* ── signing ──────────────────────────────────────────────── */
 .po-sign-grid {

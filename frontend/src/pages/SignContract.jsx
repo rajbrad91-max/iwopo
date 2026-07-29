@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
+import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
 import './inquiry.css';
 
 /**
@@ -35,40 +36,13 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
     load.then(d => {
       const ct = d.contract || d;
       setC(ct);
-      const n = (String(ct.body || '').match(/data-init-idx="\d+"/g) || []).length;
-      setInitialed(Array(n).fill(false));
+      setInitialed(Array(countInitBoxes(ct.body)).fill(false));
     }).catch(e => setErr(e.message));
   }, [token, previewLeadId, preview]);
 
-  // 👆 one listener finds which gold box was tapped
-  useEffect(() => {
-    const el = docRef.current;
-    if (!el || preview) return;
-    const onClick = (e) => {
-      const tap = e.target.closest('.ct-init-tap');
-      if (!tap) return;
-      const idx = Number(tap.dataset.initIdx);
-      setInitialed(arr => arr.map((v, x) => x === idx ? !v : v));
-    };
-    el.addEventListener('click', onClick);
-    return () => el.removeEventListener('click', onClick);
-  }, [preview, c]);
-
-  // 🔁 and this keeps every box's text and colour matching state — the html
-  // was set once, so this is the only thing that updates what a box shows
-  useEffect(() => {
-    const el = docRef.current;
-    if (!el) return;
-    el.querySelectorAll('.ct-init-tap').forEach(tap => {
-      const idx = Number(tap.dataset.initIdx);
-      const doneHere = !!initialed[idx];
-      tap.classList.toggle('is-done', doneHere);
-      tap.classList.toggle('is-preview', preview);
-      tap.textContent = doneHere
-        ? `✓ ${name.split(' ').map(w => w[0]).join('').toUpperCase() || 'OK'}`
-        : 'TAP TO INITIAL';
-    });
-  }, [initialed, name, preview, c]);
+  // 👆🔁 wiring up the tap boxes — shared with the portal's own contract step,
+  // so the two can no longer drift the way they already have once
+  useContractInitials(docRef, initialed, setInitialed, name, { preview });
 
   // 🖊️ canvas signature pad
   useEffect(() => {
@@ -108,7 +82,7 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
       canvas.removeEventListener('touchstart', start); canvas.removeEventListener('touchmove', move);
       canvas.removeEventListener('touchend', end);
     };
-  }, [c, done]);
+  }, [c, done, preview]);
 
   function clearPad() {
     const canvas = canvasRef.current;

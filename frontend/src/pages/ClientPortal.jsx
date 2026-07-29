@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, fmtEventDate, fmtMoney } from '../lib/api';
+import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
 import './portal.css';
 
 /**
@@ -34,23 +35,29 @@ function cashIn(currency) {
 /**
  * ✍️ Step two — the contract, read and signed without leaving the page.
  *
- * The body carries [INITIAL] markers where the vendor wants the client to
- * initial. Each becomes a tab that fills in with their initials as it's tapped,
- * and the next one due is ringed so there's never a hunt for what's left.
+ * The body is real HTML now — tables, ruled headings — built server-side and
+ * injected once. Wiring up the gold initial boxes is shared with the
+ * standalone sign page via useContractInitials, rather than a second copy of
+ * that logic kept here: a second copy is exactly what let this page fall
+ * behind when the body format changed and nobody told this component.
  */
 function ContractStep({ contract, clientName, onSigned }) {
-  const [name, setName] = useState('');
+  // pre-filled from the lead on file, editable — a blank field made someone
+  // type a name that was already known, and until they did the tap boxes had
+  // nothing meaningful to show
+  const [name, setName] = useState(clientName || '');
   const [initialed, setInitialed] = useState([]);
   const [hasInk, setHasInk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const canvasRef = useRef(null);
+  const docRef = useRef(null);
 
   const body = contract?.body || '';
-  const parts = body.split('[INITIAL]');
-  const needed = parts.length - 1;
+  const needed = countInitBoxes(body);
 
-  useEffect(() => { setInitialed(Array(Math.max(0, needed)).fill(false)); }, [contract?.id, needed]);
+  useEffect(() => { setInitialed(Array(needed).fill(false)); }, [contract?.id, needed]);
+  useContractInitials(docRef, initialed, setInitialed, name, {});
 
   // 🖊️ signature pad
   useEffect(() => {
@@ -101,9 +108,6 @@ function ContractStep({ contract, clientName, onSigned }) {
   }
 
   const left = initialed.filter(v => !v).length;
-  const nextDue = initialed.findIndex(v => !v);
-  const initials = (name.trim() || clientName || '')
-    .split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase();
   const ready = !!name.trim() && left === 0 && hasInk;
 
   async function sign() {
@@ -125,20 +129,9 @@ function ContractStep({ contract, clientName, onSigned }) {
       <h2 className="po-h">{contract.title || 'Your contract'}</h2>
       <p className="po-lead">Read it through, initial where marked, then sign to confirm your date.</p>
 
-      <div className="po-doc">
-        {parts.map((chunk, i) => (
-          <span key={i}>
-            {chunk}
-            {i < needed && (
-              <button type="button"
-                className={`po-tab ${initialed[i] ? 'is-filled' : ''} ${i === nextDue ? 'is-next' : ''}`}
-                onClick={() => setInitialed(a => a.map((v, x) => x === i ? !v : v))}>
-                {initialed[i] ? (initials || 'OK') : 'Tap to initial'}
-              </button>
-            )}
-          </span>
-        ))}
-      </div>
+      {/* the real document — same markup, same rendering as the standalone
+          sign page, so the two can no longer show something different */}
+      <div className="po-doc" ref={docRef} dangerouslySetInnerHTML={{ __html: body }} />
 
       <div className="po-sign-grid">
         <label className="po-label" htmlFor="po-name">Your full legal name</label>
