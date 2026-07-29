@@ -685,7 +685,35 @@ const DOC_CSS = `
   .hd img{max-height:56px;max-width:180px;object-fit:contain;margin-bottom:10px}
   .biz{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#666;margin:0}
   h1{font-size:24px;margin:8px 0 0}
-  .body{white-space:pre-wrap}
+  /* the contract body is HTML — pre-wrap here turned every newline in the
+     markup into visible blank space in the downloaded document */
+  .body{}
+
+  /* the document's own table layout, matching what was signed on screen. A
+     downloaded contract that looks nothing like the one the client agreed to
+     is a different document as far as anyone reading it is concerned. */
+  .ct-headband{width:100%;border-collapse:collapse;margin:0 0 6px}
+  .ct-hb-logo{width:64px;padding:0 12px 8px 0;vertical-align:top}
+  .ct-logo{max-width:60px;max-height:60px;object-fit:contain;display:block}
+  .ct-hb-info p{margin:0;font-size:12.5px;line-height:1.5;color:#4b5563}
+  .ct-doc-title{font-size:25px;font-weight:700;text-align:center;letter-spacing:.5px;margin:14px 0 4px}
+  .ct-doc-for{font-size:14.7px;text-align:center;color:#4b5563;margin:0 0 20px}
+  .ct-sec{margin:0 0 4px}
+  .ct-sec h2{font-size:17.3px;font-weight:700;border-bottom:1px solid #d1d5db;padding:0 0 3px;margin:18px 0 6px}
+  .ct-sec h3{font-size:14.7px;font-weight:700;color:#374151;margin:12px 0 3px}
+  .ct-sec p{margin:0 0 10px}
+  .ct-details,.ct-kv,.ct-svc{width:100%;border-collapse:collapse;margin:6px 0 4px;font-size:13.3px}
+  .ct-details th,.ct-kv th,.ct-svc th{background:#f3f4f6;font-weight:700;color:#374151;text-align:left;
+    width:32%;padding:5px 9px;border-top:1px solid #d1d5db;border-bottom:1px solid #d1d5db;
+    font-size:13.3px;letter-spacing:normal;text-transform:none}
+  .ct-details td,.ct-kv td,.ct-svc td{padding:5px 9px;border-top:1px solid #d1d5db;border-bottom:1px solid #d1d5db}
+  .ct-inc{font-weight:700;color:#166534}
+  .ct-notinc{font-weight:700;color:#9ca3af}
+  .ct-incl{margin:2px 0 12px;padding:0 0 0 18px}
+  .ct-incl li{margin:0 0 2px}
+  .ct-init{width:auto;border-collapse:collapse;margin:8px 0 4px}
+  .ct-init-label{font-size:12px;font-weight:700;color:#6b7280;padding:0 8px 0 0;white-space:nowrap}
+  .ct-init-line{min-width:90px}
   .sig{margin-top:36px;border-top:1px solid #ccc;padding-top:22px}
   .sig img{max-height:90px;display:block;margin-bottom:6px}
   .meta{font-size:12.5px;color:#555;line-height:1.9}
@@ -742,10 +770,24 @@ router.get('/download/:token', async (req, res) => {
     });
     if (!c) return res.status(404).send('Signed contract not found');
 
-    // the initial boxes are replaced with what the client actually initialled
+    /**
+     * The stored body is already HTML — it must NOT be escaped again here.
+     *
+     * This escaped the whole document and then split on a literal [INITIAL]
+     * marker, both of which were correct when a contract was plain text. Left
+     * as it was against the new format, a downloaded SIGNED CONTRACT would
+     * render its own markup as visible text: a client opening the copy of the
+     * agreement they just signed would see table tags instead of the document.
+     *
+     * The gold tap boxes are swapped for the initials the client actually
+     * entered, so the download is a record of what was signed rather than an
+     * invitation to sign it again.
+     */
     const initials = (c.signed_name || '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase();
-    const body = esc(c.body).split('[INITIAL]')
-      .join(`<span style="border-bottom:1px solid #333;padding:0 12px;font-family:cursive">${esc(initials)}</span>`);
+    const body = String(c.body || '').replace(
+      /<span class="ct-init-tap"[^>]*>.*?<\/span>/g,
+      `<span style="border-bottom:1px solid #333;padding:0 12px;font-family:cursive">${esc(initials)}</span>`
+    );
 
     const logo = c.vendors?.logo_path
       ? `<img src="${req.protocol}://${req.get('host')}/api/me/logo/${esc(c.vendors.logo_path)}" alt="">` : '';

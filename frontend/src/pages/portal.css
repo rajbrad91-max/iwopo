@@ -271,7 +271,8 @@
 .po-doc {
   background: #fff; border: 1px solid var(--line); border-radius: 14px;
   padding: 34px 36px; margin: 26px 0 8px;
-  white-space: pre-wrap; text-align: left;
+  text-align: left;   /* the body is HTML now — pre-wrap turned every
+                         newline in the markup into visible blank space */
   font-size: 15px; line-height: 1.75; color: var(--body);
   max-height: 60vh; overflow-y: auto;
 }

@@ -1274,7 +1274,9 @@
 .cs-preview-note {
   margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5;
 }
-.cs-preview-doc { white-space: pre-wrap; line-height: 1.75; }
+/* the editor preview renders the same built HTML as the client sees, so
+   it must not pre-wrap it either */
+.cs-preview-doc { line-height: 1.75; }
 .cs-preview-init {
   display: inline-block; margin: 0 5px; padding: 3px 12px;
   border: 1.5px dashed var(--teal); border-radius: 7px;
@@ -1720,3 +1722,12 @@
 }
 .cs-chip.ph-block:hover { background: color-mix(in srgb, var(--teal) 30%, transparent); border-color: var(--teal); }
 [data-theme="light"] .cs-chip.ph-block:hover { background: color-mix(in srgb, var(--teal) 24%, #ffffff); }
+
+/* A generated block cannot render in the template editor — it needs a real
+   booking. Saying so is better than rendering nothing, which reads as though
+   the section were empty and invites someone to "fix" it. */
+.cs-preview-blocknote {
+  margin: 0 0 10px; padding: 8px 11px; border-radius: 7px;
+  background: var(--panel-2); border: 1px dashed var(--line);
+  color: var(--muted); font-size: 12.5px; font-style: italic;
+}

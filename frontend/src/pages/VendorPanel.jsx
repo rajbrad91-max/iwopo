@@ -2953,19 +2953,53 @@ function fillSample(text) {
     CT_SAMPLE[k] !== undefined ? CT_SAMPLE[k] : m);
 }
 
-// The parts joined the same way the server joins them, so a preview can't drift
-// from what actually gets sent. Sections when there are any, the old single body
-// when there aren't — a template written before sections existed still previews.
+/**
+ * A rough preview of a template that has not been saved and has no lead yet.
+ *
+ * This deliberately does NOT go through the server's builder: the vendor is
+ * editing wording that hasn't been saved, for no particular booking, so there
+ * is nothing real to build from. It approximates the same HTML shape with
+ * sample values instead.
+ *
+ * It is an approximation, and the label above it says so. The generated
+ * blocks — the booking table, the schedule, the deliverables — cannot appear
+ * here because they come from a lead; they show as a placeholder line rather
+ * than silently rendering as nothing, which would read as though the section
+ * were empty. The real thing is the Preview Contract button on a lead.
+ */
+function esc(x) {
+  return String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function templateAssembled(t) {
   const secs = Array.isArray(t.sections) ? t.sections : [];
-  const middle = secs.length
-    ? secs
-      .filter(x => (x.title || '').trim() || (x.text || '').trim())
-      .map(x => [(x.title || '').trim(), (x.text || '').trim(), x.initial ? '[INITIAL]' : '']
-        .filter(Boolean).join('\n\n'))
-      .join('\n\n')
-    : (t.body || '');
-  return [t.header, middle, t.legal_terms].filter(Boolean).join('\n\n');
+  const head = (t.header || '').trim();
+  const headHtml = head
+    ? `<table class="ct-headband"><tbody><tr><td class="ct-hb-info"><p>${esc(head).split('\n').join('<br>')}</p></td></tr></tbody></table>`
+    : '';
+  const title = `<h1 class="ct-doc-title">${esc(t.name || 'Service Agreement')}</h1>`;
+
+  const middle = secs
+    .filter(x => (x.title || '').trim() || (x.text || '').trim())
+    .map(x => {
+      const raw = (x.text || '').trim();
+      const isBlock = /^\{\{\w+\}\}$/.test(raw);
+      const bodyHtml = isBlock
+        ? `<p class="cs-preview-blocknote">— ${esc(raw)} fills in from the booking —</p>`
+        : esc(raw).split(/\n\s*\n+/).filter(Boolean).map(par => `<p>${par.split('\n').join('<br>')}</p>`).join('');
+      const init = x.initial
+        ? '<table class="ct-init"><tbody><tr><td class="ct-init-label">Client Initials</td>'
+          + '<td class="ct-init-line"><span class="cs-preview-init">Tap to initial</span></td></tr></tbody></table>'
+        : '';
+      const h = (x.title || '').trim();
+      return `<div class="ct-sec">${h ? `<h2>${esc(h)}</h2>` : ''}${bodyHtml}${init}</div>`;
+    }).join('');
+
+  const legal = (t.legal_terms || '').trim();
+  const legalHtml = legal
+    ? `<div class="ct-sec"><h2>Terms &amp; Conditions</h2>${esc(legal).split(/\n\s*\n+/).filter(Boolean).map(par => `<p>${par.split('\n').join('<br>')}</p>`).join('')}</div>`
+    : '';
+
+  return [headHtml, title, middle, legalHtml].filter(Boolean).join('');
 }
 
 /**
@@ -3014,14 +3048,20 @@ const PH_KIND = {
 };
 
 /** Split a string on {{placeholders}} and wrap each in its own colour. */
-function paintPlaceholders(text) {
-  const parts = String(text || '').split(/(\{\{\w+\}\})/g);
-  return parts.map((p, i) => (
-    /^\{\{\w+\}\}$/.test(p)
-      ? <span key={i} className={`ph ph-${PH_KIND[p] || 'other'}`}>{p}</span>
-      : <span key={i}>{p}</span>
-  ));
+/**
+ * Wrap each {{placeholder}} in its colour, as markup.
+ *
+ * The old version returned React elements, which suited splitting a plain
+ * string into an array of nodes. The preview is one HTML string now, so the
+ * colouring has to be part of that string — same colours, same meaning.
+ */
+function paintPlaceholdersHtml(html) {
+  return String(html || '').replace(/\{\{(\w+)\}\}/g, (m) => {
+    const kind = PH_KIND[m] || 'other';
+    return `<span class="ph ph-${kind}">${m}</span>`;
+  });
 }
+
 
 function ContractSetup() {
   const [tpls, setTpls] = useState([]);
@@ -3094,8 +3134,8 @@ function ContractSetup() {
   };
 
   const assembled = sel ? templateAssembled(sel) : '';
-  const previewText = showRaw ? assembled : fillSample(assembled);
-  const previewParts = previewText.split('[INITIAL]');
+  const previewHtml = showRaw ? paintPlaceholdersHtml(assembled) : fillSample(assembled);
+  const initialCount = (sel?.sections || []).filter(x => x.initial).length;
 
   if (sel) return (
     <div className="cs-wide">
@@ -3220,7 +3260,7 @@ function ContractSetup() {
           <div className="cs-preview-head">
             <span className="cs-preview-title">{showRaw ? 'Placeholders' : "Client's view"}</span>
             <span className="cs-preview-count">
-              {previewParts.length - 1} initial box{previewParts.length - 1 === 1 ? '' : 'es'}
+              {initialCount} initial box{initialCount === 1 ? '' : 'es'}
             </span>
           </div>
           <div className="cs-preview-toggle">
@@ -3232,14 +3272,7 @@ function ContractSetup() {
               ? 'Colours show where each detail will land. Clients never see these.'
               : 'Sample details — real bookings fill their own.'}
           </p>
-          <div className="cs-preview-doc">
-            {previewParts.map((chunk, i) => (
-              <span key={i}>
-                {showRaw ? paintPlaceholders(chunk) : chunk}
-                {i < previewParts.length - 1 && <span className="cs-preview-init">Tap to initial</span>}
-              </span>
-            ))}
-          </div>
+          <div className="cs-preview-doc ct-doc" dangerouslySetInnerHTML={{ __html: previewHtml }} />
         </aside>
       </div>
     </div>

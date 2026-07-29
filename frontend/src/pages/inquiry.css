@@ -88,10 +88,14 @@
 /* These were inline near-black values left from before the inquiry pages were
    redesigned light, so a client read their agreement as a black panel sitting
    inside a cream card. */
+/* container only — the type and colour live on the .ct-doc rule further
+   down, beside the rest of the document styling. This used to also set
+   white-space: pre-wrap and a fixed max-height, both written when the body
+   was plain text; against real HTML tables pre-wrap preserves every newline
+   in the markup as literal blank space. */
 .ct-doc {
   background: #FFFDFA; border: 1px solid #E8E0D5; border-radius: 10px;
-  padding: 18px 20px; white-space: pre-wrap; color: #3D3530;
-  font-size: 14px; line-height: 1.8; max-height: 460px; overflow-y: auto;
+  padding: 18px 20px; max-height: 460px; overflow-y: auto;
 }
 .ct-pad {
   background: #FFFDFA; border: 1.5px dashed #C9A86A; border-radius: 10px;
