@@ -11,6 +11,7 @@
  */
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { useDialog } from '../lib/dialog.jsx';
 
 const DEFAULT_SUBJECT = 'Your packages are ready 🎉';
 const DEFAULT_BODY =
@@ -41,6 +42,7 @@ function tokenise(text, ctx) {
 }
 
 export default function SendPackagesModal({ lead, link, onClose, onSent }) {
+  const dialog = useDialog();
   const ctx = { name: lead.name || '', link };
 
   const [tpls, setTpls] = useState([]);
@@ -74,8 +76,10 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
   }
 
   async function saveAsTemplate() {
-    const name = prompt('Save this as a template — what should it be called?',
-      tpls.find(x => String(x.id) === String(tplId))?.name || 'My package email');
+    const name = await dialog.prompt(
+      'Give it a name you\u2019ll recognise next time.',
+      tpls.find(x => String(x.id) === String(tplId))?.name || 'My package email',
+      { title: 'Save as a template', okLabel: 'Save template' });
     if (!name) return;
     setSaving(true);
     try {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import PasswordInput from '../components/PasswordInput';
 import './knowledge.css';
+import { useDialog } from '../lib/dialog.jsx';
 
 const API = '/api/chatbot';
 
@@ -18,6 +19,7 @@ const KFIELDS = [
 ];
 
 export default function KnowledgeFill({ token }) {
+  const dialog = useDialog();
   const [meta, setMeta] = useState(null);
   const [err, setErr] = useState('');
   const [code, setCode] = useState('');
@@ -58,7 +60,7 @@ export default function KnowledgeFill({ token }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Save failed');
       setSaved(true); setTimeout(() => setSaved(false), 3000);
-    } catch (e) { alert('⚠️ ' + e.message); }
+    } catch (e) { dialog.alert(e.message, { error: true }); }
     finally { setSaving(false); }
   }
 

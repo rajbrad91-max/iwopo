@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import FileFlyerView from './FileFlyerView';
+import { useDialog } from '../lib/dialog.jsx';
 import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { COUNTRIES } from '../lib/countries';
@@ -559,6 +560,7 @@ function FocalPicker({ src, focus, onFocus, view, onView }) {
 }
 
 function GalleriesView({ routeAlbum, onOpenAlbum }) {
+  const dialog = useDialog();
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   // album open state is driven by the URL (routeAlbum): open = set it in the URL,
@@ -603,21 +605,21 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
   function setT(k, val) { setTheme(t => ({ ...t, [k]: val })); }
   async function saveTheme() {
     try { await api.saveGalleryTheme(theme); setThemeSaved(true); setTimeout(() => setThemeSaved(false), 1800); }
-    catch (e) { alert('⚠️ ' + e.message); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   function copyGalleryUrl() {
     const url = `${window.location.origin}/gallery/${galleryToken}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopiedGallery(true); setTimeout(() => setCopiedGallery(false), 2000);
-    }).catch(() => { prompt('Copy your full gallery link:', url); });
+    }).catch(() => { dialog.prompt('Select and copy this link:', url, { title: 'Your full gallery link', readOnly: true, okLabel: 'Done' }); });
   }
 
   function copyUrl(a) {
     const url = `${window.location.origin}/g/${a.public_token}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopiedUrl(true); setTimeout(() => setCopiedUrl(false), 2000);
-    }).catch(() => { prompt('Copy this gallery link:', url); });
+    }).catch(() => { dialog.prompt('Select and copy this link:', url, { title: 'Gallery link', readOnly: true, okLabel: 'Done' }); });
   }
   const [sendModal, setSendModal] = useState(null); // { album, email, body, editing }
   const [sendMsg, setSendMsg] = useState('');
@@ -636,11 +638,11 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
   }
   async function deleteChecked() {
     if (!checked.length) return;
-    if (!confirm(`Delete ${checked.length} album(s) and all their photos? This can't be undone.`)) return;
+    if (!await dialog.confirm(`${checked.length} album${checked.length === 1 ? '' : 's'} and every photo inside will be deleted. This cannot be undone.`, { title: 'Delete albums?', okLabel: 'Delete' })) return;
     try {
       for (const id of checked) { await api.deleteAlbum(id); }
       setChecked([]); setSelectMode(false); load();
-    } catch (e) { alert('⚠️ ' + e.message); }
+    } catch (e) { dialog.alert(e.message, { error: true }); }
   }
   function toggleCheck(id, e) {
     e.stopPropagation();
@@ -738,7 +740,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
   }
   async function saveSettingsOnly() {
     try { await api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix, instructions_template: tpl }); setShowSettings(false); }
-    catch (e) { alert('⚠️ ' + e.message); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   if (open) return <AlbumDetail albumId={open} onBack={() => { setOpen(null); load(); }} />;
@@ -1028,6 +1030,7 @@ Admin Password: {admin_password}
 Thank you for choosing us! 💛`;
 
 function AlbumDetail({ albumId, onBack }) {
+  const dialog = useDialog();
   const [album, setAlbum] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [events, setEvents] = useState([]);
@@ -1246,7 +1249,7 @@ function AlbumDetail({ albumId, onBack }) {
     worker.postMessage({ albumId, files, eventId, token, maxCount: 20 });
   }
   async function delPhoto(pid) {
-    if (!confirm('Delete this photo?')) return;
+    if (!await dialog.confirm('This photo will be removed from the album.', { title: 'Delete photo?', okLabel: 'Delete' })) return;
     await api.deletePhoto(albumId, pid); load();
   }
   // event add/edit/delete now go through a styled in-app modal (evModal)
@@ -1272,7 +1275,7 @@ function AlbumDetail({ albumId, onBack }) {
       }
       setEvModal(null);
       load();
-    } catch (e) { alert('⚠️ ' + e.message); }
+    } catch (e) { dialog.alert(e.message, { error: true }); }
     finally { setEvBusy(false); }
   }
 
@@ -1553,6 +1556,7 @@ function AlbumDetail({ albumId, onBack }) {
 }
 
 function CrewView() {
+  const dialog = useDialog();
   const [crew, setCrew] = useState([]);
   const [f, setF] = useState({ name: '', role: '', phone: '', email: '' });
   const [msg, setMsg] = useState('');
@@ -1568,7 +1572,7 @@ function CrewView() {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function del(id) {
-    if (!confirm('Remove this crew member?')) return;
+    if (!await dialog.confirm('They will be removed from your crew list.', { title: 'Remove crew member?', okLabel: 'Remove' })) return;
     try { await api.deleteCrew(id); load(); } catch {}
   }
 
@@ -1893,6 +1897,7 @@ function AddLeadModal({ vendorId, onClose, onSaveDone }) {
 }
 
 function LeadsView({ routeLead, onOpenLead }) {
+  const dialog = useDialog();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('active'); // active | history
@@ -1920,7 +1925,7 @@ function LeadsView({ routeLead, onOpenLead }) {
   }
   async function deleteChecked() {
     if (!checked.length) return;
-    if (!confirm(`Permanently delete ${checked.length} lead(s)?\n\nThis erases their packages, contracts and payment history. It cannot be undone.`)) return;
+    if (!await dialog.confirm(`This erases their packages, contracts and payment history.\n\nIt cannot be undone.`, { title: `Permanently delete ${checked.length} lead${checked.length === 1 ? '' : 's'}?`, okLabel: 'Delete for good' })) return;
     try { await api.bulkDeleteLeads(checked); setMsg('🗑️ Deleted for good'); setTimeout(() => setMsg(''), 1500); setSelectMode(false); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -1960,7 +1965,7 @@ function LeadsView({ routeLead, onOpenLead }) {
 
   async function archiveChecked() {
     if (!checked.length) return;
-    if (!confirm(`Move ${checked.length} lead(s) to History? You can restore them any time.`)) return;
+    if (!await dialog.confirm('You can restore them any time from History.', { title: `Move ${checked.length} lead${checked.length === 1 ? '' : 's'} to History?`, okLabel: 'Move', danger: false })) return;
     try { await api.bulkArchive(checked); setMsg('🗂️ Moved to History'); setTimeout(() => setMsg(''), 1500); setSelectMode(false); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -2169,6 +2174,7 @@ function PackageEditor({ pkg, onSave, onCancel }) {
 }
 
 function LeadDetail({ lead, onBack }) {
+  const dialog = useDialog();
   const [edit, setEdit] = useState(false);
   const [cfg, setCfg] = useState(null);
   const [ep, setEp] = useState({ role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '', instagram: lead.instagram || '', heard: lead.heard || '' });
@@ -2273,7 +2279,7 @@ function LeadDetail({ lead, onBack }) {
   }
 
   async function removePkg(id, name) {
-    if (!confirm(`Remove "${name}" from this client's options?`)) return;
+    if (!await dialog.confirm(`"${name}" will no longer be offered to this client.`, { title: 'Remove this package?', okLabel: 'Remove' })) return;
     try {
       await api.deleteLeadPackage(lead.id, id);
       setLeadPkgs(ps => ps.filter(p => p.id !== id));
@@ -2282,7 +2288,7 @@ function LeadDetail({ lead, onBack }) {
 
   async function toggleLock() {
     const next = !pkgLocked;
-    if (next === false && !confirm('Unlock these packages? The client may already be looking at them.')) return;
+    if (next === false && !await dialog.confirm('The client may already be looking at them.', { title: 'Unlock these packages?', okLabel: 'Unlock', danger: false })) return;
     try {
       await api.setPackagesLock(lead.id, next);
       setPkgLocked(next);
@@ -2536,6 +2542,7 @@ function expiryText(startedAt, hours) {
 }
 
 function MoneySection({ lead }) {
+  const dialog = useDialog();
   const [data, setData] = useState(null);
   // the client pressed "Pay directly" — the vendor confirms once funds arrive
   const [claimed, setClaimed] = useState(!!lead.payment_claimed_at);
@@ -2619,7 +2626,7 @@ function MoneySection({ lead }) {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function delPay(id) {
-    if (!confirm('Remove this payment?')) return;
+    if (!await dialog.confirm('This payment record will be deleted and the balance recalculated.', { title: 'Remove payment?', okLabel: 'Remove' })) return;
     try { await api.deletePayment(id); load(); } catch {}
   }
   async function changeStatus(s) {
@@ -3043,6 +3050,7 @@ function paintPlaceholdersHtml(html) {
 
 
 function ContractSetup() {
+  const dialog = useDialog();
   const [tpls, setTpls] = useState([]);
   const [sel, setSel] = useState(null);
   const [msg, setMsg] = useState('');
@@ -3083,7 +3091,7 @@ function ContractSetup() {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function del(id) {
-    if (!confirm('Delete this template?')) return;
+    if (!await dialog.confirm('This contract template will be deleted.', { title: 'Delete template?', okLabel: 'Delete' })) return;
     try { await api.deleteCtTemplate(id); setSel(null); load(); } catch { /* stay put */ }
   }
 
@@ -3095,8 +3103,8 @@ function ContractSetup() {
   const addSection = () => setSel(t => ({
     ...t, sections: [...(t.sections || []), { id: 's' + Date.now(), title: '', text: '', initial: false }],
   }));
-  const removeSection = (i) => {
-    if (!confirm('Remove this section from the contract?')) return;
+  const removeSection = async (i) => {
+    if (!await dialog.confirm('Remove this section from the contract?', { title: 'Remove section', okLabel: 'Remove' })) return;
     setSel(t => ({ ...t, sections: (t.sections || []).filter((_, x) => x !== i) }));
   };
   const moveSection = (i, d) => setSel(t => {
@@ -3540,6 +3548,7 @@ const FORM_PRESETS = {
 };
 
 function FieldBuilder({ fields, setFields }) {
+  const dialog = useDialog();
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8, width: '100%', fontSize: 13 };
   const uid = () => 'f' + Math.random().toString(36).slice(2, 8);
 
@@ -3592,11 +3601,12 @@ function FieldBuilder({ fields, setFields }) {
    * Mappings are claimed only where free, so loading a second preset on top
    * can't silently steal a column another field already feeds.
    */
-  const loadPreset = (key) => {
+  const loadPreset = async (key) => {
     const preset = FORM_PRESETS[key];
     if (!preset) return;
-    if (fields.length && !confirm(
-      `Load the ${preset.label} questions?\n\nThis replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.`
+    if (fields.length && !await dialog.confirm(
+      `This replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.`,
+      { title: `Load the ${preset.label} questions?`, okLabel: 'Load them', danger: false }
     )) return;
     const taken = new Set();
     setFields(preset.fields.map(p => {
@@ -3882,6 +3892,7 @@ function InqFormSettings({ user }) {
 }
 
 function PackagesView() {
+  const dialog = useDialog();
   const [tpls, setTpls] = useState([]);
   const [selTpl, setSelTpl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -3907,7 +3918,7 @@ function PackagesView() {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function delTpl(id) {
-    if (!confirm('Delete this template and its packages?')) return;
+    if (!await dialog.confirm('The folder and every package inside it will be deleted.', { title: 'Delete this folder?', okLabel: 'Delete' })) return;
     try { await api.deleteTemplate(id); setSelTpl(null); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -3917,7 +3928,7 @@ function PackagesView() {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function delPkg(id) {
-    if (!confirm('Delete this package?')) return;
+    if (!await dialog.confirm('This package will be deleted from the folder.', { title: 'Delete package?', okLabel: 'Delete' })) return;
     try { await api.deleteVendorPackage(id); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -4594,6 +4605,7 @@ const WS_FIELDS = [
 ];
 
 function WebsiteView() {
+  const dialog = useDialog();
   const [site, setSite] = useState(null);
   const [themes, setThemes] = useState([]);
   const [fonts, setFonts] = useState([]);
@@ -4684,7 +4696,7 @@ function WebsiteView() {
   }
 
   async function removePortfolio(id) {
-    if (!confirm('Remove this photo from your portfolio?\n\nThe file is deleted permanently.')) return;
+    if (!await dialog.confirm('The file is deleted permanently.', { title: 'Remove from portfolio?', okLabel: 'Remove' })) return;
     try { const d = await api.removePortfolioPhoto(id); setSite(d.site); flash('🗑️ Photo removed'); }
     catch (err) { setMsg('⚠️ ' + err.message); }
   }

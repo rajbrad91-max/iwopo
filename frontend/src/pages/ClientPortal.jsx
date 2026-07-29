@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, fmtEventDate, fmtMoney } from '../lib/api';
 import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
+import { useDialog } from '../lib/dialog.jsx';
 import './portal.css';
 
 /**
@@ -203,6 +204,7 @@ function ContractStep({ contract, clientName, onSigned }) {
 }
 
 export default function ClientPortal({ token }) {
+  const dialog = useDialog();
   const [data, setData] = useState(null);
   // bound once the payload arrives, so every figure on the page uses one currency
   const cash = cashIn(data?.currency);
@@ -258,7 +260,7 @@ export default function ClientPortal({ token }) {
   }
 
   async function payDirect() {
-    if (!confirm('Confirm you\u2019ve sent the payment? We\u2019ll check and get back to you.')) return;
+    if (!await dialog.confirm('We\u2019ll check and get back to you.', { title: 'Confirm you\u2019ve sent the payment?', okLabel: 'Yes, I\u2019ve paid', danger: false })) return;
     setBusy(true); setMsg('');
     try { await api.portalPayDirect(token); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }

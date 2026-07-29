@@ -1,0 +1,67 @@
+/* ══════════════════════════════════════════════════════════════════════
+   🗨️ In-app dialogs, replacing window.confirm / alert / prompt.
+
+   These appear on BOTH the dark admin panel and the client's own light,
+   brand-coloured pages, so the colours here are self-contained rather than
+   read from --panel/--text. Those are the admin theme's tokens, defined at
+   :root, and a dialog reading them would render dark on a client's cream
+   page — the exact bug that has already shipped twice in this codebase.
+   ══════════════════════════════════════════════════════════════════════ */
+.dlg-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(12, 18, 22, .55); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  animation: dlg-fade .12s ease-out;
+}
+@keyframes dlg-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.dlg-panel {
+  width: 100%; max-width: 430px;
+  background: #ffffff; border-radius: 14px; padding: 24px 26px 20px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  animation: dlg-rise .14s ease-out;
+}
+@keyframes dlg-rise { from { transform: translateY(8px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+.dlg-title {
+  margin: 0 0 8px; font-size: 17px; font-weight: 700; color: #1a2529; line-height: 1.35;
+}
+.dlg-msg {
+  margin: 0; font-size: 14px; line-height: 1.65; color: #4a5560;
+  /* several of the confirms this replaced used blank lines to separate a
+     warning from its detail — keep those breaks rather than flattening them */
+  white-space: pre-wrap;
+}
+
+.dlg-input {
+  width: 100%; margin-top: 14px; padding: 10px 13px; box-sizing: border-box;
+  font: inherit; font-size: 14.5px; color: #1a2529;
+  background: #fff; border: 1.5px solid #dde3e7; border-radius: 9px;
+}
+.dlg-input:focus { outline: none; border-color: #0f766e; }
+.dlg-input[readonly] { background: #f7f9fa; color: #4a5560; }
+
+.dlg-actions {
+  display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px;
+}
+.dlg-btn {
+  padding: 9px 17px; font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer; border-radius: 9px;
+  background: #f2f5f7; border: 1px solid #dde3e7; color: #4a5560;
+}
+.dlg-btn:hover { background: #e8edf0; }
+.dlg-btn.is-primary { background: #0f766e; border-color: #0f766e; color: #fff; }
+.dlg-btn.is-primary:hover { background: #0d5f58; }
+/* a destructive confirm should not look like an ordinary one — the button a
+   vendor is about to press deletes a client's photos */
+.dlg-btn.is-primary.is-danger { background: #dc2626; border-color: #dc2626; }
+.dlg-btn.is-primary.is-danger:hover { background: #b91c1c; }
+
+.dlg-panel.is-error .dlg-title { color: #b91c1c; }
+
+@media (max-width: 480px) {
+  .dlg-panel { padding: 20px 18px 16px; }
+  .dlg-actions { flex-direction: column-reverse; }
+  .dlg-btn { width: 100%; }
+}

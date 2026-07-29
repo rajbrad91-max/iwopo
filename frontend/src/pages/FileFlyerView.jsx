@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, fmtDateTime } from '../lib/api';
 import './fileflyer.css';
+import { useDialog } from '../lib/dialog.jsx';
 
 /** Bytes as something a person reads, not a number to decode. */
 export function fmtBytes(n) {
@@ -19,6 +20,7 @@ export function fmtBytes(n) {
  * someone who has already booked.
  */
 export default function FileFlyerView() {
+  const dialog = useDialog();
   const [shares, setShares] = useState([]);
   const [storage, setStorage] = useState(null);
   const [msg, setMsg] = useState('');
@@ -54,7 +56,7 @@ export default function FileFlyerView() {
   }
 
   async function remove(id, title) {
-    if (!confirm(`Delete "${title}" and every file in it? This cannot be undone.`)) return;
+    if (!await dialog.confirm(`"${title}" and every file in it will be deleted. This cannot be undone.`, { title: 'Delete this link?', okLabel: 'Delete' })) return;
     setBusy(true);
     try { await api.deleteFileShare(id); await load(); flash('🗑️ Deleted'); }
     catch (e) { flash('⚠️ ' + e.message); }
@@ -166,6 +168,7 @@ export default function FileFlyerView() {
  * what arrived versus what they sent, without reading timestamps.
  */
 function ShareDetail({ share, onBack }) {
+  const dialog = useDialog();
   const [items, setItems] = useState([]);
   const [storage, setStorage] = useState(null);
   const [info, setInfo] = useState(share);
@@ -204,7 +207,7 @@ function ShareDetail({ share, onBack }) {
   }
 
   async function removeItem(id, name) {
-    if (!confirm(`Remove "${name}"?`)) return;
+    if (!await dialog.confirm(`"${name}" will be deleted from this link.`, { title: 'Remove file?', okLabel: 'Remove' })) return;
     setBusy(true);
     try { const d = await api.deleteShareItem(id); setStorage(d.storage || storage); await load(); flash('🗑️ Removed'); }
     catch (e) { flash('⚠️ ' + e.message); }

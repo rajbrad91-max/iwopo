@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ComposedChart, Bar, Line
 } from 'recharts';
 import './super.css';
+import { useDialog } from '../lib/dialog.jsx';
 
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
@@ -281,6 +282,7 @@ function StatCard({ label, value, trend, cls }) {
 
 /* ---------- SERVICES & PACKAGES ---------- */
 function ServicesView({ packages, onReload }) {
+  const dialog = useDialog();
   const [editMode, setEditMode] = useState(false);
   const [offers, setOffers] = useState([]);
   const [showOffer, setShowOffer] = useState(false);
@@ -291,13 +293,13 @@ function ServicesView({ packages, onReload }) {
     try { const d = await api.offers(); setOffers(d.offers || []); } catch {}
   }
   async function addOffer() {
-    if (!nf.code || !nf.percent_off) return alert('Code + percent needed');
+    if (!nf.code || !nf.percent_off) return dialog.alert('A coupon needs both a code and a percentage off.', { title: 'Missing details', error: true });
     try {
       await api.createOffer({ ...nf, percent_off: Number(nf.percent_off) });
       setNf({ code: '', label: '', percent_off: '', ends_at: '' });
       setShowOffer(false);
       loadOffers();
-    } catch (e) { alert(e.message); }
+    } catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   return (
@@ -331,7 +333,7 @@ function ServicesView({ packages, onReload }) {
               {o.label && <span className="oc-label">{o.label}</span>}
               {o.ends_at && <span className="oc-end">till {String(o.ends_at).slice(0, 10)}</span>}
               <button onClick={async () => { await api.toggleOffer(o.id); loadOffers(); }} title="toggle">{o.active ? '🟢' : '⚪'}</button>
-              <button onClick={async () => { if (confirm('Delete offer?')) { await api.deleteOffer(o.id); loadOffers(); } }} title="delete">🗑️</button>
+              <button onClick={async () => { if (await dialog.confirm('This offer will be deleted.', { title: 'Delete offer?', okLabel: 'Delete' })) { await api.deleteOffer(o.id); loadOffers(); } }} title="delete">🗑️</button>
             </div>
           ))}
         </div>
@@ -429,6 +431,7 @@ function CountryPriceList({ cp }) {
 }
 
 function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
+  const dialog = useDialog();
   const [cp, setCp] = useState(item.country_prices || {});
   const [country, setCountry] = useState('CA-BC');
   const [m, setM] = useState('');
@@ -438,7 +441,7 @@ function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
   async function save(next) {
     setSaving(true);
     try { await api.updateCountryPrices(type, item.id, next); setCp(next); onSaved && onSaved(); }
-    catch (e) { alert('Save failed: ' + e.message); }
+    catch (e) { dialog.alert(e.message, { title: 'Save failed', error: true }); }
     finally { setSaving(false); }
   }
   function add() {
@@ -477,6 +480,7 @@ function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
 }
 
 function TierEditor({ service, onSaved }) {
+  const dialog = useDialog();
   const [tiers, setTiers] = useState(() => (service.tiers || []).map(t => ({ ...t })));
   const [saving, setSaving] = useState(false);
   const set = (i, k, v) => setTiers(ts => ts.map((t, j) => j === i ? { ...t, [k]: v } : t));
@@ -486,7 +490,7 @@ function TierEditor({ service, onSaved }) {
       const clean = tiers.map(t => ({ label: t.label, price: Number(t.price) || 0, price_annual: t.price_annual === '' || t.price_annual == null ? null : Number(t.price_annual) }));
       await api.updateServiceTiers(service.id, clean);
       onSaved && onSaved();
-    } catch (e) { alert('Save failed: ' + e.message); }
+    } catch (e) { dialog.alert(e.message, { title: 'Save failed', error: true }); }
     finally { setSaving(false); }
   }
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', padding: '5px 7px', width: 62 };
@@ -508,6 +512,7 @@ function TierEditor({ service, onSaved }) {
 }
 
 function ServicePriceEditor({ service, onSaved }) {
+  const dialog = useDialog();
   const [p, setP] = useState(service.price ?? '');
   const [pa, setPa] = useState(service.price_annual ?? '');
   const [saving, setSaving] = useState(false);
@@ -520,7 +525,7 @@ function ServicePriceEditor({ service, onSaved }) {
         price_annual_regular: service.price_annual_regular ?? null,
       });
       onSaved && onSaved();
-    } catch (e) { alert('Save failed: ' + e.message); }
+    } catch (e) { dialog.alert(e.message, { title: 'Save failed', error: true }); }
     finally { setSaving(false); }
   }
   return (
@@ -541,6 +546,7 @@ function ServicePriceEditor({ service, onSaved }) {
 }
 
 function PriceEditor({ item, isPackage, onSaved }) {
+  const dialog = useDialog();
   const [m, setM] = useState(item.price_monthly ?? '');
   const [y, setY] = useState(item.price_annual ?? '');
   const [saving, setSaving] = useState(false);
@@ -551,7 +557,7 @@ function PriceEditor({ item, isPackage, onSaved }) {
       if (isPackage) await api.updatePackagePrice(item.id, body);
       else await api.updateItemPrice(item.id, body);
       onSaved && onSaved();
-    } catch (e) { alert('Save failed: ' + e.message); }
+    } catch (e) { dialog.alert(e.message, { title: 'Save failed', error: true }); }
     finally { setSaving(false); }
   }
   return (
@@ -715,6 +721,7 @@ function ManageServicesView() {
 
 /* ---------- REFERRALS ---------- */
 function CouponBuilder() {
+  const dialog = useDialog();
   const [coupons, setCoupons] = useState([]);
   const [services, setServices] = useState([]);
   const [packages, setPackages] = useState([]);
@@ -787,7 +794,7 @@ function CouponBuilder() {
                   <td><span className={`sa-badge ${c.active ? 'active' : 'trial'}`}>{c.active ? 'active' : 'off'}</span></td>
                   <td style={{ display: 'flex', gap: 10 }}>
                     <span style={{ cursor: 'pointer' }} onClick={async () => { await api.toggleOffer(c.id); load(); }}>{c.active ? '🟢' : '⚪'}</span>
-                    <span style={{ cursor: 'pointer' }} onClick={async () => { if (confirm('Delete coupon?')) { await api.deleteOffer(c.id); load(); } }}>🗑️</span>
+                    <span style={{ cursor: 'pointer' }} onClick={async () => { if (await dialog.confirm('This coupon will be deleted.', { title: 'Delete coupon?', okLabel: 'Delete' })) { await api.deleteOffer(c.id); load(); } }}>🗑️</span>
                   </td>
                 </tr>
               ))}
@@ -1137,6 +1144,7 @@ const KFIELDS = [
 ];
 
 function AiChatView({ vendors }) {
+  const dialog = useDialog();
   const [tab, setTab] = useState('subs');
   const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1149,15 +1157,15 @@ function AiChatView({ vendors }) {
     api.chatbotSubscribers().then(d => setSubs(d.subscribers || [])).catch(() => {}).finally(() => setLoading(false));
   }
   async function toggleActive(s) {
-    try { await api.chatbotSetActive(s.vendor_id, !s.active); load(); } catch (e) { alert('⚠️ ' + e.message); }
+    try { await api.chatbotSetActive(s.vendor_id, !s.active); load(); } catch (e) { dialog.alert(e.message, { error: true }); }
   }
   async function addSub(vendorId) {
     if (!vendorId) return;
-    try { await api.chatbotAddSubscriber(Number(vendorId)); setAdding(false); load(); } catch (e) { alert('⚠️ ' + e.message); }
+    try { await api.chatbotAddSubscriber(Number(vendorId)); setAdding(false); load(); } catch (e) { dialog.alert(e.message, { error: true }); }
   }
   async function removeSub(s) {
-    if (!confirm(`Remove ${s.business_name} from the chatbot?`)) return;
-    try { await api.chatbotRemoveSubscriber(s.vendor_id); load(); } catch (e) { alert('⚠️ ' + e.message); }
+    if (!await dialog.confirm(`${s.business_name} will lose access to the AI chatbot.`, { title: 'Remove from chatbot?', okLabel: 'Remove' })) return;
+    try { await api.chatbotRemoveSubscriber(s.vendor_id); load(); } catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   if (openVendor) return <KnowledgePage vendorId={openVendor} onBack={() => { setOpenVendor(null); load(); }} />;
@@ -1322,6 +1330,7 @@ function ChatbotApiKey() {
 
 // ❓📨 unanswered questions + visitor messages for a vendor
 function ChatbotInbox({ vendorId }) {
+  const dialog = useDialog();
   const [pending, setPending] = useState([]);
   const [messages, setMessages] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -1333,10 +1342,10 @@ function ChatbotInbox({ vendorId }) {
   }
   async function resolve(p, dismiss) {
     try { await api.chatbotResolvePending(p.id, answers[p.id] || '', dismiss); load(); }
-    catch (e) { alert('⚠️ ' + e.message); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
   }
   async function markRead(m) {
-    try { await api.chatbotMarkRead(m.id); load(); } catch (e) { alert('⚠️ ' + e.message); }
+    try { await api.chatbotMarkRead(m.id); load(); } catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   const unread = messages.filter(m => m.status === 'unread');
@@ -1382,6 +1391,7 @@ function ChatbotInbox({ vendorId }) {
 }
 
 function KnowledgePage({ vendorId, onBack }) {
+  const dialog = useDialog();
   const [k, setK] = useState(null);
   const [sub, setSub] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -1410,7 +1420,7 @@ function KnowledgePage({ vendorId, onBack }) {
   function copyLink() {
     const url = `${window.location.origin}/knowledge/${sub.share_token}`;
     navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
-      .catch(() => prompt('Copy this link:', url));
+      .catch(() => dialog.prompt('Select and copy this link:', url, { title: 'Copy link', readOnly: true, okLabel: 'Done' }));
   }
 
   if (!k || !sub) return <div className="sa-loading">Loading…</div>;
@@ -1467,6 +1477,7 @@ function KnowledgePage({ vendorId, onBack }) {
 }
 
 function FaceEngineSettings() {
+  const dialog = useDialog();
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
   const [editing, setEditing] = useState(false);
@@ -1503,7 +1514,7 @@ function FaceEngineSettings() {
     api.platformSettings().then(d => setS(d.settings || {})).catch(() => {});
   }
   async function reindex() {
-    if (!confirm('Re-index ALL photos with the current engine? This clears old face data.')) return;
+    if (!await dialog.confirm('Every photo will be re-processed with the current engine. All existing face data is cleared first, and this cannot be undone.', { title: 'Re-index all photos?', okLabel: 'Re-index everything' })) return;
     setReMsg('🔄 Resetting…');
     try { const r = await api.reindexAll(); setReMsg(`✅ Reset ${r.reset} photos — open each album and click Index Faces`); }
     catch (e) { setReMsg('⚠️ ' + e.message); }
