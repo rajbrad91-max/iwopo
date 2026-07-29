@@ -388,8 +388,10 @@ export default function ClientPortal({ token }) {
                     {isChosen && <span className="po-pkg-badge">Selected</span>}
                     <div className="po-pkg-hd">
                       <h3 className="po-pkg-name">{p.name}</h3>
+                      {/* fmtMoney already carries the vendor's own currency symbol —
+                          CA$, £, ₹ — a hard-coded "$" alongside it was
+                          printing $CA$4,500 for a CAD vendor */}
                       <p className="po-pkg-price">
-                        <span className="po-pkg-cur">$</span>
                         <span className="po-pkg-amt">{cash(p.base_price)}</span>
                       </p>
                     </div>

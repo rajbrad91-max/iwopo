@@ -150,16 +150,17 @@
   padding: 28px 24px 20px;
   border-bottom: 1px solid color-mix(in srgb, var(--brand, #b8922a) 18%, #fff);
 }
+/* sized against Perfect Poses' own tier label: 17px, .2em tracking */
 .po-pkg-name {
-  margin: 0 0 12px; font-size: 13px; font-weight: 700;
-  letter-spacing: .18em; text-transform: uppercase; color: var(--brand, #b8922a);
+  margin: 0 0 12px; font-size: 17px; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--brand, #b8922a);
 }
 .po-pkg-price {
   margin: 0; display: flex; align-items: baseline; gap: 3px;
   font-family: 'Playfair Display', Georgia, serif;
 }
-.po-pkg-cur { font-size: 22px; font-weight: 500; color: var(--brand, #b8922a); }
-.po-pkg-amt { font-size: 48px; font-weight: 700; color: var(--ink); line-height: 1; }
+/* the amount was 48px against the reference's 56px */
+.po-pkg-amt { font-size: 56px; font-weight: 700; color: var(--ink); line-height: 1; }
 .po-pkg-body { padding: 22px 24px 26px; flex: 1; }
 .po-inc-label {
   font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
