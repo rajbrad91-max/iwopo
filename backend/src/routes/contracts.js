@@ -640,9 +640,31 @@ router.post('/sign/:token', async (req, res) => {
   if (!signed_name || signed_name.trim().length < 2) return res.status(400).json({ error: 'Type your full name to sign' });
   if (!signature_data) return res.status(400).json({ error: 'Please draw your signature' });
   try {
-    const c = await prisma.contracts.findFirst({ where: { token: req.params.token } });
+    const c = await prisma.contracts.findFirst({ where: { token: req.params.token } });   // full row: released_at is read below
     if (!c) return res.status(404).json({ error: 'Contract not found' });
     if (c.status === 'signed') return res.status(400).json({ error: 'Already signed ✅' });
+
+    /**
+     * 🔒 An unreleased contract cannot be signed.
+     *
+     * The release step exists because a contract is auto-built from a template
+     * and may say something the vendor has never read on this booking — a wrong
+     * date, a clause from another trade. Until now that was enforced only on the
+     * email that sends the link, which protected the vendor who had not sent it
+     * yet and did nothing about a client who already held a link from an earlier
+     * send, or a bookmark. They could open the portal and sign wording the
+     * vendor never approved, and the signature would be as binding as any other.
+     *
+     * Checked here rather than only in the portal because both the portal and
+     * the standalone sign page post to this endpoint — one check covers every
+     * route in, including any added later.
+     */
+    if (!c.released_at) {
+      return res.status(409).json({
+        error: 'not_released',
+        message: 'This contract is not ready to sign yet. Please check back shortly.',
+      });
+    }
 
     // require all [INITIAL] markers initialed
     const needed = (c.body.match(/\[INITIAL\]/g) || []).length;

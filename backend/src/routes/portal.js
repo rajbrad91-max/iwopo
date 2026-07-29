@@ -186,14 +186,27 @@ router.get('/:token', async (req, res) => {
     // whether there's something to sign and whether they've already signed it.
     // The body comes too: the client signs it inside the portal rather than
     // being sent off to a separate page in someone else's styling.
-    const contract = await prisma.contracts.findFirst({
+    const contractRow = await prisma.contracts.findFirst({
       where: { lead_id: lead.id, status: { not: 'voided' } },    // 🔒 tenancy via the lead
       orderBy: { id: 'desc' },
       select: {
         id: true, title: true, token: true, status: true, body: true,
         initials: true, signed_at: true, signed_name: true, package_id: true,
+        released_at: true,
       },
     });
+    /**
+     * 🔒 An unreleased contract is treated as not there yet.
+     *
+     * The alternative — showing it and refusing the signature at the last step —
+     * is worse than showing nothing: the client reads the terms, decides to
+     * accept them, and is then told no. A contract already signed is still
+     * returned regardless, so a signed client never loses sight of what they
+     * agreed to just because of a later flag change.
+     */
+    const contract = (contractRow && !contractRow.released_at && !contractRow.signed_at)
+      ? null
+      : contractRow;
 
     // 🎨 the vendor's branding, so the portal looks like the inquiry form the
     // client already filled in rather than a different company's page
