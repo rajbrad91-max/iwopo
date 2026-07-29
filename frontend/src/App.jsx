@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import VendorPanel from './pages/VendorPanel';
 import InquiryForm from './pages/InquiryForm';
 import SignContract from './pages/SignContract';
+import ContractPreview from './pages/ContractPreview';
 import InvoiceView from './pages/InvoiceView';
 import Certificate from './pages/Certificate';
 import ClientPortal from './pages/ClientPortal';
@@ -51,6 +52,12 @@ export default function App() {
   // 📚 Chatbot knowledge fill-in: /knowledge/:token
   const kf = window.location.pathname.match(/^\/knowledge\/([a-f0-9]+)/i);
   if (kf) return <KnowledgeFill token={kf[1]} />;
+
+  // 👁️ Vendor previewing a contract before it goes out: /contract-preview/:leadId
+  // A full page rather than a modal — a contract is a document, and judging one
+  // through a scrolling box inside a dialog is not reviewing it.
+  const cp = window.location.pathname.match(/^\/contract-preview\/(\d+)/);
+  if (cp) return <ContractPreview leadId={Number(cp[1])} />;
 
   // 📄 Public contract signing: /sign/:token
   const s = window.location.pathname.match(/^\/sign\/([a-f0-9]+)/);

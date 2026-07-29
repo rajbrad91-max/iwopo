@@ -369,6 +369,7 @@
 .cs-card-ic { font-size: 30px; }
 .cs-card-name { font-weight: 700; margin-top: 6px; }
 .cs-card-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.cs-edit { padding: 20px; }
 .cs-msg { font-size: 13px; }
 .cs-msg.is-ok { color: #4ade80; }
 .cs-msg.is-err { color: #fb7185; }
@@ -1356,6 +1357,7 @@
 }
 
 /* ── contract setup: editor and live preview side by side ──── */
+.cs-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .cs-preview {
   position: sticky; top: 16px;
   background: var(--panel); border: 1px solid var(--line);
@@ -1496,6 +1498,7 @@
 
 /* 📸 Portfolio manager — thumbnails with reorder and permanent delete */
 .ws-pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ws-pf { position: relative; border-radius: 10px; overflow: hidden; background: var(--panel-2); }
 .ws-pf-img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
 .ws-pf-acts {
   position: absolute; inset: auto 0 0 0; display: flex; gap: 4px; justify-content: center;
@@ -1509,8 +1512,8 @@
 .ws-pf-btn:disabled { opacity: .3; cursor: default; }
 .ws-pf-btn.is-del:hover { background: var(--red); }
 .ws-pf-add {
-  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;
-  cursor: pointer; text-align: center; padding: 18px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  aspect-ratio: 1; cursor: pointer; text-align: center; padding: 10px;
   border: 1.5px dashed var(--line); border-radius: 10px; background: var(--panel-2);
 }
 .ws-pf-add:hover { border-color: var(--teal); }
@@ -1530,6 +1533,7 @@
   gap: 5px; padding: 0; background: none; }
 .ws-pf .ws-pf-btn { background: var(--panel); border: 1px solid var(--line); color: var(--text); }
 .ws-pf .ws-pf-btn:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
+.ws-pf-add { flex-direction: row; gap: 10px; aspect-ratio: auto; padding: 18px; }
 
 @media (max-width: 760px) {
   .ws-pf { grid-template-columns: 96px 1fr; }
@@ -1615,7 +1619,7 @@
   font-size: 11px; font-weight: 600; font-family: ui-monospace, monospace;
   border: 1px solid transparent; white-space: nowrap;
 }
-.cs-chip { cursor: pointer; padding: 3px 8px; transition: background .15s ease, border-color .15s ease; }
+.cs-chip { cursor: pointer; padding: 3px 8px; }
 /* Each kind carries its hue as a variable, so the tint, the text and the border
    are all derived from one colour and a theme only has to restate the text.
    The first version used pale dark-theme tints — on the light theme that was
@@ -1646,6 +1650,7 @@
   color: color-mix(in srgb, var(--ph) 52%, #000000);
 }
 
+.cs-chip { transition: background .15s ease, border-color .15s ease; }
 .cs-chip.ph-who:hover, .cs-chip.ph-when:hover, .cs-chip.ph-where:hover,
 .cs-chip.ph-what:hover, .cs-chip.ph-money:hover {
   background: color-mix(in srgb, var(--ph) 38%, transparent);
@@ -1688,3 +1693,13 @@
 }
 .fb-preset-sel:focus { outline: none; border-color: var(--teal); }
 .fb-preset-hint { font-size: 12px; color: var(--muted); }
+
+/* 🔓 Auto Release — sits with Save because it changes what Save leads to */
+.cs-auto {
+  display: flex; align-items: center; gap: 7px; cursor: pointer;
+  padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+  color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.cs-auto:hover { border-color: var(--teal); }
+.cs-auto input { cursor: pointer; }

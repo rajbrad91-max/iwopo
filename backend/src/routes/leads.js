@@ -449,6 +449,38 @@ router.post('/:id/send-packages', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     if (!lead.email) return res.status(400).json({ error: 'Lead has no email' });
 
+    /**
+     * 🔒 A contract must be released before its packages go out.
+     *
+     * The portal a client lands on carries the contract as well as the packages,
+     * so sending the packages IS sending the contract. It is auto-built from a
+     * template, which means it can contain wording the vendor has never read on
+     * this particular booking — a wrong date, a package that doesn't match, a
+     * clause left over from another trade. Reviewing it once before it reaches a
+     * client is the point of the step.
+     *
+     * A vendor who doesn't want that step turns on auto-release and is never
+     * asked again; the gate exists to make the choice deliberate, not to nag.
+     */
+    const settings = await prisma.vendor_settings.findUnique({
+      where: { vendor_id: lead.vendor_id },          // 🔒 the lead's owner, from the row
+      select: { auto_release_contract: true },
+    });
+    if (!settings?.auto_release_contract) {
+      const ct = await prisma.contracts.findFirst({
+        where: { lead_id: id, voided_at: null },
+        orderBy: { id: 'desc' },
+        select: { id: true, released_at: true },
+      });
+      if (ct && !ct.released_at) {
+        return res.status(409).json({
+          error: 'Preview and release the contract before sending the packages.',
+          code: 'contract_not_released',
+          contract_id: ct.id,
+        });
+      }
+    }
+
     // APP_URL, not a hard-coded domain: sending this from staging emailed the
     // client a link to the live site, where their token doesn't exist. The same
     // fault was already fixed on the invoice and contract copy-link buttons.

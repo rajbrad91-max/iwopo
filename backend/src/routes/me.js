@@ -59,7 +59,7 @@ router.get('/settings', requireAuth, async (req, res) => {
 router.put('/settings', requireAuth, async (req, res) => {
   const vid = req.user.vendor_id;
   if (!vid) return res.status(400).json({ error: 'No vendor' });
-  const { time_format, timezone, theme, currency } = req.body;
+  const { time_format, timezone, theme, currency, auto_release_contract } = req.body;
   try {
     const data = {
       time_format: time_format || '12h',
@@ -70,6 +70,10 @@ router.put('/settings', requireAuth, async (req, res) => {
     // to following my country" rather than "store a blank"
     if (currency !== undefined) {
       data.currency = currency && CURRENCY_CODES.has(currency) ? currency : null;
+    }
+    // 🔓 skip the contract review step for every future contract
+    if (auto_release_contract !== undefined) {
+      data.auto_release_contract = !!auto_release_contract;
     }
     await prisma.vendor_settings.upsert({
       where: { vendor_id: vid },                  // 🔒 tenancy

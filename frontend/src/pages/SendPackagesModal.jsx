@@ -93,11 +93,14 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
     setBusy(true); setMsg('');
     try {
       // tokens are resolved here, so what the client receives has real values
-      await api.emailLead(lead.id, fill(subject, ctx), fill(body, ctx), cc.trim() || undefined);
+      await api.emailLead(lead.id, fill(subject, ctx), fill(body, ctx), cc.trim() || undefined, 'packages');
       onSent?.();
       onClose();
     } catch (e) {
-      setMsg('⚠️ ' + (e.message || 'Could not send'));
+      // a held send is not a failure — say what to do about it
+      setMsg(/not_released|release/i.test(e.message || '')
+        ? '🔒 Preview and release the contract first — use 👁️ Preview Contract above'
+        : '⚠️ ' + (e.message || 'Could not send'));
       setBusy(false);
     }
   }
@@ -149,6 +152,11 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
             {saving ? 'Saving…' : '💾 Save as template'}
           </button>
           <button type="button" onClick={copyLink}>{copied ? '✓ Copied' : '🔗 Copy link'}</button>
+          {/* opens the contract full-page in a new tab, so the half-finished
+              send isn't lost by navigating away from it */}
+          <button type="button" onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}>
+            👁️ Preview Contract
+          </button>
           <button type="button" className="is-primary" onClick={send} disabled={busy}>
             {busy ? 'Sending…' : '📤 Send'}
           </button>

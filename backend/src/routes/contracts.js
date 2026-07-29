@@ -230,6 +230,14 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     const vendor = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });
     const filled = await fillPlaceholders(text, lead, vendor?.business_name);
 
+    // 🔓 A vendor who turned auto-release on has said they don't want the review
+    // step; their contracts are approved the moment they're built.
+    const vset = await prisma.vendor_settings.findUnique({
+      where: { vendor_id: lead.vendor_id },          // 🔒 the lead's owner, from the row
+      select: { auto_release_contract: true },
+    });
+    const autoRelease = !!vset?.auto_release_contract;
+
     // Which package this contract was drawn for. The body carries the package
     // name and the prices, so if the client later picks a different one the
     // contract no longer describes what they're agreeing to — the portal uses
@@ -246,6 +254,9 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
         lead_id: lead.id,
         token: crypto.randomBytes(24).toString('hex'),
         title: ctTitle, body: filled, status: 'sent',
+        // 🔒 built but not yet approved for sending. auto-release stamps it now
+        // so a vendor who opted out of the review step is never held up by it.
+        released_at: autoRelease ? new Date() : null,
         package_id: chosen?.id ?? lead.package_id ?? null,
         template_id: tplId,
       },
@@ -266,9 +277,41 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
     if (!t) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
 
     const text = templateText(t);
-    const vendor = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });
+    const vendor = await prisma.vendors.findUnique({
+      where: { id: lead.vendor_id },
+      select: { business_name: true, logo_path: true },
+    });
     const filled = await fillPlaceholders(text, lead, vendor?.business_name);
-    res.json({ title: t.name, body: filled, template_name: t.name });
+
+    /**
+     * The preview renders through the same component the client signs on, so it
+     * has to be handed the same shape. Returning only the title and body left
+     * the heading reading "· for" with the names missing — a preview that is
+     * "exactly what your client sees" has to actually be that, or it teaches the
+     * vendor to trust something that isn't true.
+     *
+     * The live contract's id and release state come too, so the Release button
+     * has something to act on and can say when it was already approved.
+     */
+    const existing = await prisma.contracts.findFirst({
+      where: { lead_id: lead.id, voided_at: null },
+      orderBy: { id: 'desc' },
+      select: { id: true, released_at: true, status: true },
+    });
+
+    res.json({
+      contract: {
+        id: existing?.id || null,
+        title: t.name,
+        body: filled,
+        template_name: t.name,
+        business_name: vendor?.business_name || null,
+        client_name: lead.name || null,
+        logo_path: vendor?.logo_path || null,
+        released_at: existing?.released_at || null,
+        status: existing?.status || 'draft',
+      },
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -542,6 +585,33 @@ router.get('/certificate/:token', async (req, res) => {
       },
       audit: trail,
     });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * PUT /api/contracts/:id/release → the vendor has read it and it may go out.
+ *
+ * Separate from previewing on purpose: opening a document is not the same as
+ * approving it, and a step that completes by accident is not a review. Releasing
+ * is recorded rather than toggled, so "when was this approved" has an answer.
+ */
+router.put('/:id/release', requireAuth, async (req, res) => {
+  const v = req.user.vendor_id;
+  const id = Number(req.params.id);
+  try {
+    const ct = await prisma.contracts.findUnique({
+      where: { id }, select: { vendor_id: true, released_at: true, voided_at: true },
+    });
+    if (!ct) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && ct.vendor_id !== v) {
+      return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
+    }
+    if (ct.voided_at) return res.status(409).json({ error: 'This contract was voided' });
+    // releasing twice is not an error — it just keeps the first approval time
+    const updated = ct.released_at
+      ? await prisma.contracts.findUnique({ where: { id } })
+      : await prisma.contracts.update({ where: { id }, data: { released_at: new Date() } });
+    res.json({ contract: updated });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

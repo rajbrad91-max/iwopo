@@ -133,7 +133,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
 
 // POST /api/email/lead/:leadId → send email to the lead's client
 router.post('/lead/:leadId', requireAuth, async (req, res) => {
-  const { subject, body, cc } = req.body;
+  const { subject, body, cc, kind } = req.body;
   if (!subject || !body) return res.status(400).json({ error: 'Subject + body required' });
   try {
     const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
@@ -141,6 +141,39 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req))
       return res.status(403).json({ error: 'Forbidden' });     // 🔒 tenancy
     if (!lead.email) return res.status(400).json({ error: 'Lead has no email' });
+
+    /**
+     * 🔒 Packages can't go out over an unreleased contract.
+     *
+     * The link in this email opens the portal, and the portal carries the
+     * contract as well as the packages — so sending the packages IS sending the
+     * contract. It was auto-built from a template and may say something the
+     * vendor has never read on this booking.
+     *
+     * Gated on `kind` rather than on every lead email: a vendor answering a
+     * question or chasing a reply should not be stopped by a contract they
+     * haven't got to yet. Only the send that exposes the contract is held.
+     */
+    if (kind === 'packages') {
+      const vset = await prisma.vendor_settings.findUnique({
+        where: { vendor_id: lead.vendor_id },        // 🔒 the lead's owner, from the row
+        select: { auto_release_contract: true },
+      });
+      if (!vset?.auto_release_contract) {
+        const ct = await prisma.contracts.findFirst({
+          where: { lead_id: lead.id, voided_at: null },
+          orderBy: { id: 'desc' },
+          select: { id: true, released_at: true },
+        });
+        if (ct && !ct.released_at) {
+          return res.status(409).json({
+            error: 'contract_not_released',
+            message: 'Preview and release the contract before sending the packages 👁️',
+            contract_id: ct.id,
+          });
+        }
+      }
+    }
 
     // a second address (a partner, a planner) is common on a wedding enquiry
     const ccEmail = String(cc || '').trim();

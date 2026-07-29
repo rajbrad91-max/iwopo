@@ -2,7 +2,17 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import './inquiry.css';
 
-export default function SignContract({ token }) {
+/**
+ * 📄 The contract, exactly as the client sees it.
+ *
+ * The vendor's preview renders through THIS component rather than a second one.
+ * A preview built separately drifts — a spacing change here, a wording change
+ * there — and the vendor ends up approving something that isn't what gets sent.
+ * Same component, same stylesheet, same layout; the only differences are that
+ * preview loads by lead id instead of a client token, and cannot be signed.
+ */
+export default function SignContract({ token, previewLeadId, onRelease }) {
+  const preview = !!previewLeadId;
   const [c, setC] = useState(null);
   const [err, setErr] = useState('');
   const [name, setName] = useState('');
@@ -13,17 +23,19 @@ export default function SignContract({ token }) {
   const [hasInk, setHasInk] = useState(false);
 
   useEffect(() => {
-    api.viewContract(token).then(d => {
-      setC(d.contract);
-      const n = (d.contract.body.match(/\[INITIAL\]/g) || []).length;
+    const load = preview ? api.previewContract(previewLeadId) : api.viewContract(token);
+    load.then(d => {
+      const ct = d.contract || d;
+      setC(ct);
+      const n = (String(ct.body || '').match(/\[INITIAL\]/g) || []).length;
       setInitialed(Array(n).fill(false));
     }).catch(e => setErr(e.message));
-  }, [token]);
+  }, [token, previewLeadId, preview]);
 
   // 🖊️ canvas signature pad
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || done || c?.status === 'signed') return;
+    if (!canvas || done || preview || c?.status === 'signed') return;
     const ctx = canvas.getContext('2d');
     const r = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -84,7 +96,7 @@ export default function SignContract({ token }) {
   if (err && !c) return <div className="iq-wrap"><div className="iq-card">⚠️ {err}</div></div>;
   if (!c) return <div className="iq-wrap"><div className="iq-card">Loading…</div></div>;
 
-  if (done || c.status === 'signed') return (
+  if (!preview && (done || c.status === 'signed')) return (
     <div className="iq-wrap">
       <div className="iq-card iq-done">
         <div className="iq-check">✓</div>
@@ -101,6 +113,18 @@ export default function SignContract({ token }) {
   return (
     <div className="iq-wrap">
       <div className="iq-card" style={{ maxWidth: 680 }}>
+        {/* 👁️ Only the vendor sees this. Everything below it is byte-for-byte
+            what the client gets, which is the whole reason for previewing. */}
+        {preview && (
+          <div className="ct-prev-bar">
+            <span className="ct-prev-tag">👁️ Preview — this is exactly what your client will see</span>
+            {c.released_at
+              ? <span className="ct-prev-ok">✅ Released {String(c.released_at).slice(0, 10)}</span>
+              : <button type="button" className="ct-prev-release" onClick={() => onRelease && onRelease(c.id)}>
+                  🚀 Release contract
+                </button>}
+          </div>
+        )}
         {c.logo_path && (
           <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" />
         )}
@@ -131,6 +155,12 @@ export default function SignContract({ token }) {
           </p>
         )}
 
+        {preview ? (
+          <p className="ct-prev-foot">
+            The client signs below: full name, a drawn signature, and every gold box initialled.
+            Their IP and the time are recorded with it. 🔐
+          </p>
+        ) : (<>
         <label style={{ marginTop: 14 }}>👤 Your full legal name</label>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name" />
 
@@ -146,6 +176,7 @@ export default function SignContract({ token }) {
         <p style={{ fontSize: 11, color: '#7c9199', marginTop: 10, textAlign: 'center' }}>
           Your name, signature, IP & timestamp are recorded. 🔐
         </p>
+        </>)}
       </div>
     </div>
   );
