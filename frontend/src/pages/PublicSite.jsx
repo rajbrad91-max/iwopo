@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import './site.css';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 /**
  * The typefaces a vendor can choose. They have to be FETCHED, not just named:
@@ -48,6 +49,7 @@ export default function PublicSite({ slug, page = 'home' }) {
   const [slide, setSlide] = useState(0);           // home slider position
   const [auto, setAuto] = useState(true);          // until someone takes over
   useWebFonts();
+  useDocumentTitle(site?.site_title || site?.business_name);
 
   useEffect(() => {
     api.publicSite(slug)

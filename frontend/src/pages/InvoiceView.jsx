@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api, fmtMoney } from '../lib/api';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export default function InvoiceView({ token }) {
   const [inv, setInv] = useState(null);
   const [err, setErr] = useState('');
+  useDocumentTitle(inv?.business_name);
 
   useEffect(() => {
     api.viewInvoice(token).then(d => setInv(d.invoice)).catch(e => setErr(e.message));

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import PublicGallery from './PublicGallery';
 import './gallery.css';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 const API = '/api/g';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Playfair+Display:wght@500;700&family=Jost:wght@400;600&family=Montserrat:wght@400;600&family=Poppins:wght@400;600&family=Lora:wght@400;600&family=Raleway:wght@400;600&display=swap';
@@ -16,6 +17,7 @@ export default function VendorGallery({ token }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [openToken, setOpenToken] = useState(null);
+  useDocumentTitle(data?.vendor?.name);
 
   useEffect(() => { ensureFonts(); }, []);
   useEffect(() => {

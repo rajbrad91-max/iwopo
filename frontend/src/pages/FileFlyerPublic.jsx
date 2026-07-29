@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import './fileflyer.css';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 function fmtBytes(n) {
   const b = Number(n || 0);
@@ -25,6 +26,7 @@ export default function FileFlyerPublic({ token }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const fileRef = useRef(null);
+  useDocumentTitle(data?.business_name);
 
   useEffect(() => { load(); }, [token]);
   async function load() {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import ChatWidget from './ChatWidget';
 import './inquiry.css';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 // professions for the background watermark
 export const PROFESSIONS = {
@@ -24,6 +25,7 @@ export default function InquiryForm({ vendorId }) {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  useDocumentTitle(cfg?.brand_name);
 
   const [p, setP] = useState({ role: '', name: '', email: '', phone: '', instagram: '', heard: '' });
   const setPI = (k, v) => setP(s => ({ ...s, [k]: v }));

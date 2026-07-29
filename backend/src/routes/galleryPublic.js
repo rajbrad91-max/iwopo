@@ -145,7 +145,11 @@ router.get('/:token', async (req, res) => {
     if (!a) return res.status(404).json({ error: 'Gallery not found' });
     const n = await prisma.photos.count({ where: { album_id: a.id } });
     const theme = await getTheme(a.vendor_id);
-    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme });
+    // the studio's name, so the browser tab can say whose gallery a client is in
+    const v = await prisma.vendors.findUnique({
+      where: { id: a.vendor_id }, select: { business_name: true },
+    });
+    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

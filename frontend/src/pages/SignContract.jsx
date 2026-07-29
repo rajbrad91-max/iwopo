@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
 import './inquiry.css';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 /**
  * 📄 The contract, exactly as the client sees it.
@@ -30,6 +31,7 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
   const canvasRef = useRef(null);
   const docRef = useRef(null);
   const [hasInk, setHasInk] = useState(false);
+  useDocumentTitle(c?.business_name);
 
   useEffect(() => {
     const load = preview ? api.previewContract(previewLeadId) : api.viewContract(token);

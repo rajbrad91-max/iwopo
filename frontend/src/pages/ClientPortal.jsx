@@ -3,6 +3,7 @@ import { api, fmtEventDate, fmtMoney } from '../lib/api';
 import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
 import { useDialog } from '../lib/dialog.jsx';
 import './portal.css';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 /**
  * 🌐 The client's view of their booking: choose → sign → pay.
@@ -206,6 +207,7 @@ function ContractStep({ contract, clientName, onSigned }) {
 export default function ClientPortal({ token }) {
   const dialog = useDialog();
   const [data, setData] = useState(null);
+  useDocumentTitle(data?.business_name);
   // bound once the payload arrives, so every figure on the page uses one currency
   const cash = cashIn(data?.currency);
   const [err, setErr] = useState('');

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import PasswordInput from '../components/PasswordInput';
 import './gallery.css';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 const API = '/api/g';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Playfair+Display:wght@400;500;700&family=Jost:wght@300;400;500&family=Montserrat:wght@300;400;600&family=Poppins:wght@300;400;600&family=Lora:wght@400;600&family=Raleway:wght@300;400;600&display=swap';
@@ -40,6 +41,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [authing, setAuthing] = useState(false);
   const [authErr, setAuthErr] = useState('');
   const [session, setSession] = useState(null);
+  useDocumentTitle(meta?.album?.title, { suffix: meta?.vendor?.name });
 
   const [lightbox, setLightbox] = useState(null);
   const [zipBusy, setZipBusy] = useState('');
