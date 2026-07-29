@@ -92,7 +92,6 @@
 .upsell .up-title { font-weight: 800; font-size: 16px; }
 .upsell .up-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
 
-
 /* ── RE-LAYOUT PASS ── */
 /* Sidebar group labels */
 .dash .nav-group { font-size: 9.5px; letter-spacing: 2.2px; color: var(--v-group); font-weight: 800; padding: 9px 12px 3px; }
@@ -485,24 +484,8 @@
 .ctb-head { display: flex; justify-content: space-between; align-items: center; }
 .ctb-h3 { margin: 0; }
 .ctb-preview { background: #2dd4bf; color: #06231f; }
-.ctb-hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
-.ctb-msg { font-size: 13px; margin-top: 8px; }
-.ctb-msg.is-ok { color: #4ade80; }
-.ctb-msg.is-err { color: #fb7185; }
-.ctb-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.ctb-item { display: flex; justify-content: space-between; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; }
-.ctb-actions { display: flex; gap: 10px; }
-.ctb-link { cursor: pointer; color: #2dd4bf; }
-.ctb-signed { color: #4ade80; }
-.ctb-del { cursor: pointer; }
 
 /* contract preview modal */
-.ctp-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
-.ctp-modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 640px; max-height: 85vh; display: flex; flex-direction: column; }
-.ctp-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--line); }
-.ctp-title { margin: 0; font-size: 17px; }
-.ctp-body { padding: 22px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: var(--text); }
-.ctp-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--line); }
 
 /* ═══════════ 🍔 MENU BUTTON + COLLAPSE ═══════════ */
 
@@ -1673,7 +1656,6 @@
   .cs-row3 { grid-template-columns: 1fr; }
 }
 
-
 /* 🧰 Start-from-a-preset row, above the individual field buttons */
 .fb-preset-row {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -1731,3 +1713,16 @@
   background: var(--panel-2); border: 1px dashed var(--line);
   color: var(--muted); font-size: 12.5px; font-style: italic;
 }
+
+/* 💰 Deposit: percentage or a fixed amount, one field wide */
+.ms-field-deposit { grid-column: span 1; }
+.ms-deposit-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.ms-deposit-toggle {
+  display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden;
+}
+.ms-deposit-toggle button {
+  background: var(--panel-2); border: none; color: var(--muted);
+  font-size: 11px; font-weight: 600; padding: 4px 9px; cursor: pointer;
+}
+.ms-deposit-toggle button.is-on { background: var(--teal); color: #06231f; }
+.ms-deposit-note { margin: 4px 0 0; font-size: 11px; color: var(--muted); line-height: 1.4; }

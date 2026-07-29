@@ -36,7 +36,15 @@ export async function moneySummary(lead) {
 
   const discount = (Number(lead.discount_percent) || 0) / 100 * total;
   const finalTotal = Math.max(total - discount, 0);
-  const deposit = (Number(lead.deposit_percent) || 0) / 100 * finalTotal;
+  /**
+   * 💰 A fixed amount, when the vendor set one for this booking, wins outright
+   * over the percentage — it exists specifically to override it. Otherwise the
+   * usual percent-of-total calc applies, same as it always has.
+   */
+  const hasOverride = lead.deposit_amount_override != null;
+  const deposit = hasOverride
+    ? Number(lead.deposit_amount_override)
+    : (Number(lead.deposit_percent) || 0) / 100 * finalTotal;
 
   const agg = await prisma.payments.aggregate({
     where: { lead_id: lead.id },
@@ -51,6 +59,7 @@ export async function moneySummary(lead) {
     final_total: +finalTotal.toFixed(2),
     deposit_percent: Number(lead.deposit_percent) || 0,
     deposit_amount: +deposit.toFixed(2),
+    deposit_mode: hasOverride ? 'amount' : 'percent',
     paid: +paid.toFixed(2),
     balance: +(finalTotal - paid).toFixed(2),
     web_payment_enabled: lead.web_payment_enabled !== false,
@@ -70,13 +79,23 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 💰 Money arriving is what confirms a booking, so the lead moves to 'booked'
-// (shown as "Booking Confirmed") the moment the first payment is recorded —
-// whether the vendor entered it by hand or confirmed a client's claim. Guarded
-// so an already-booked lead isn't rewritten on every later instalment.
+/**
+ * 💰 The FULL deposit landing is what confirms a booking — not the first
+ * dollar of it. A $50 instalment against a $2,000 deposit used to flip status
+ * to "Booking Confirmed" immediately, which told a vendor a booking was
+ * secured when 97% of it was still owed. Whether the vendor entered a payment
+ * by hand or confirmed a client's claim runs through here either way.
+ *
+ * The dropdown status override still exists and still works — this only ever
+ * moves a lead FORWARD to booked, never away from wherever a vendor put it.
+ */
 async function markBooked(leadId) {
-  await prisma.leads.updateMany({
-    where: { id: Number(leadId), status: { not: 'booked' } },
+  const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
+  if (!lead || lead.status === 'booked') return;
+  const money = await moneySummary(lead);
+  if (money.deposit_amount > 0 && money.paid < money.deposit_amount) return;
+  await prisma.leads.update({
+    where: { id: lead.id },
     data: { status: 'booked', updated_at: new Date() },
   });
 }
@@ -198,14 +217,37 @@ async function rebuildUnsignedContract(lead) {
 
 // PUT /api/payments/lead/:leadId/money → deposit % / discount % / price override
 router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
-  const { deposit_percent, discount_percent, price_override } = req.body;
+  const { deposit_percent, deposit_amount, discount_percent, price_override } = req.body;
   try {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
     // COALESCE($n, col): only overwrite what was supplied. price_override is
     // deliberately settable to null (clearing a manual price).
     const data = { updated_at: new Date() };
-    if (deposit_percent !== undefined && deposit_percent !== null) data.deposit_percent = Number(deposit_percent);
+    /**
+     * 💰 A percentage and a fixed amount are two different ways to say the
+     * same thing, so setting one clears the other's OVERRIDE — never its own
+     * stored value. Editing the percentage clears deposit_amount_override
+     * (this lead goes back to the percent calc) and also becomes the
+     * vendor's own default for every lead created after this one. Editing
+     * the amount only ever touches deposit_amount_override, on this lead
+     * alone — the percentage stays exactly as it was underneath, so
+     * switching back to it later shows what it last said, and nothing about
+     * any OTHER lead changes because of a figure typed for this one.
+     */
+    if (deposit_percent !== undefined && deposit_percent !== null) {
+      data.deposit_percent = Number(deposit_percent);
+      data.deposit_amount_override = null;
+      await prisma.vendor_settings.upsert({
+        where: { vendor_id: lead.vendor_id },                  // 🔒 the lead's own vendor
+        update: { default_deposit_percent: Number(deposit_percent) },
+        create: { vendor_id: lead.vendor_id, default_deposit_percent: Number(deposit_percent) },
+      });
+    }
+    if (deposit_amount !== undefined) {
+      data.deposit_amount_override = (deposit_amount === null || deposit_amount === '')
+        ? null : Number(deposit_amount);
+    }
     if (discount_percent !== undefined && discount_percent !== null) data.discount_percent = Number(discount_percent);
     if (price_override !== undefined) {
       data.price_override = (price_override === null || price_override === '') ? null : Number(price_override);

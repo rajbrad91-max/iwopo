@@ -365,11 +365,22 @@ router.post('/', async (req, res) => {
   const vendorExists = await prisma.vendors.count({ where: { id: Number(vendor_id) } });
   if (!vendorExists) return res.status(404).json({ error: 'Vendor not found' });
 
+  // 💰 the vendor's own deposit habit, not a fixed number every vendor gets —
+  // editing the percentage on any lead updates this, so the next inquiry
+  // starts wherever the vendor's practice actually landed
+  const vset = await prisma.vendor_settings.findUnique({
+    where: { vendor_id: Number(vendor_id) }, select: { default_deposit_percent: true },
+  });
+
   // 🔗 pull real columns (event_date, location…) out of the custom-field bag
   const mapped = await mapCustomToColumns(vendor_id, b);
 
   // build the row from the whitelisted FIELDS only (never trust arbitrary body keys)
-  const data = { vendor_id: Number(vendor_id), client_token: (await import('crypto')).randomBytes(20).toString('hex') };
+  const data = {
+    vendor_id: Number(vendor_id),
+    client_token: (await import('crypto')).randomBytes(20).toString('hex'),
+    deposit_percent: vset?.default_deposit_percent ?? 30,
+  };
   for (const f of FIELDS) {
     if (mapped[f] === undefined) continue;
     data[f] = coerceLeadField(f, mapped[f]);

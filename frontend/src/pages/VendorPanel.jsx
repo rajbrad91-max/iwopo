@@ -2493,87 +2493,27 @@ function LeadDetail({ lead, onBack }) {
   );
 }
 
+/**
+ * 📄 One button. The old version listed every contract instance with copy
+ * links and a delete control, on top of a preview that showed the raw
+ * document — but that preview was never the real one: /contract-preview,
+ * the page that actually renders the built HTML the way a client sees it,
+ * was never linked from here at all. This opens THAT page, in a new tab so
+ * the vendor doesn't lose their place on the lead.
+ */
 function ContractsBox({ lead }) {
-  const [list, setList] = useState([]);
-  const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [preview, setPreview] = useState(null); // { title, body }
-
-  useEffect(() => { load(); }, []);
-  async function load() {
-    try { const d = await api.leadContracts(lead.id); setList(d.contracts || []); } catch {}
-  }
-  async function doPreview() {
-    setBusy(true); setMsg('');
-    try { const d = await api.previewContract(lead.id); setPreview(d); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
-  async function sendForSign() {
-    setBusy(true); setMsg('');
-    try {
-      const tpls = await api.ctTemplates();
-      const t = (tpls.templates || []).find(x => x.event_type && lead.event_type && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || (tpls.templates || [])[0];
-      if (!t) throw new Error('No contract template. Set one up in Contracts & Invoices.');
-      await api.createContractFromTemplate(lead.id, t.id);
-      setMsg('✅ Contract ready — copy the signing link below'); setPreview(null); load();
-    } catch (e) { setMsg('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
-  async function voidCt(id) {
-    if (!confirm('Delete this contract?')) return;
-    try { await api.voidContract(id); load(); } catch (e) { setMsg('⚠️ ' + e.message); }
-  }
-  function copyLink(token) {
-    // current origin, so a link copied on staging doesn't point at the live site
-    navigator.clipboard?.writeText(`${window.location.origin}/sign/${token}`);
-    setMsg('🔗 Link copied!'); setTimeout(() => setMsg(''), 1500);
-  }
-
-  const S = { draft: '📝', sent: '📨', signed: '✅', void: '🚫' };
   return (
     <div className="ctb-wrap">
       <div className="ctb-head">
         <h3 className="ctb-h3">📄 Contract</h3>
-        <button className="refresh ctb-preview" onClick={doPreview} disabled={busy}>{busy ? '…' : '👁️ Preview Contract'}</button>
+        <button className="refresh ctb-preview"
+          onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}>
+          👁️ Preview Contract
+        </button>
       </div>
-      <p className="ctb-hint">Auto-built from your Contract setup 🛠️</p>
-      {msg && <div className={`ctb-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
-
-      {list.length > 0 && (
-        <div className="ctb-list">
-          {list.map(c => (
-            <div key={c.id} className="ctb-item">
-              <span>{S[c.status]} <b>{c.title}</b> · {c.status}{c.signed_name ? ` by ${c.signed_name}` : ''}</span>
-              <span className="ctb-actions">
-                {c.status !== 'signed' && <span className="ctb-link" onClick={() => copyLink(c.token)}>🔗 Copy link</span>}
-                {c.status === 'signed' && <span className="ctb-signed">{String(c.signed_at).slice(0, 10)}</span>}
-                {c.status !== 'signed' && <span className="ctb-del" onClick={() => voidCt(c.id)}>🗑️</span>}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {preview && (
-        <div className="ctp-overlay" onClick={() => setPreview(null)}>
-          <div className="ctp-modal" onClick={e => e.stopPropagation()}>
-            <div className="ctp-head">
-              <h3 className="ctp-title">📄 {preview.title}</h3>
-              <button className="al-x" onClick={() => setPreview(null)}>✕</button>
-            </div>
-            <div className="ctp-body">{preview.body}</div>
-            <div className="ctp-foot">
-              <button className="refresh" onClick={() => setPreview(null)}>Close</button>
-              <button className="refresh ctb-preview" onClick={sendForSign} disabled={busy}>{busy ? 'Sending…' : '📨 Send for signing'}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
 const STATUSES = ['new', 'quoted', 'booked'];
 const S_ICON = { new: '🆕', quoted: '📤', booked: '✅' };
 const S_LABEL = { new: 'New', quoted: 'Package Sent', booked: 'Booking Confirmed' };
@@ -2597,7 +2537,17 @@ function MoneySection({ lead }) {
   const [claimed, setClaimed] = useState(!!lead.payment_claimed_at);
   const [amt, setAmt] = useState('');
   const [method, setMethod] = useState('manual');
-  const [money, setMoney] = useState({ deposit_percent: lead.deposit_percent ?? 30, discount_percent: lead.discount_percent ?? 0, price_override: lead.price_override ?? '' });
+  const [money, setMoney] = useState({
+    deposit_percent: lead.deposit_percent ?? 30,
+    deposit_amount: lead.deposit_amount_override ?? '',
+    discount_percent: lead.discount_percent ?? 0,
+    price_override: lead.price_override ?? '',
+  });
+  // 💰 Percentage by default; a vendor who typed a fixed amount for THIS
+  // booking sees Amount selected when they come back to it. Purely which
+  // input shows — nothing saves until a value is actually edited and left,
+  // same as every other field here.
+  const [depositMode, setDepositMode] = useState(lead.deposit_amount_override != null ? 'amount' : 'percent');
   const [status, setStatus] = useState(lead.status || 'new');
   const [webPay, setWebPay] = useState(lead.web_payment_enabled !== false);
   const [msg, setMsg] = useState('');
@@ -2638,15 +2588,22 @@ function MoneySection({ lead }) {
   }
   async function saveMoney() {
     try {
-      const d = await api.saveMoney(lead.id, {
-        deposit_percent: Number(money.deposit_percent) || 0,
+      // Only the active mode's own field is sent. Sending deposit_percent
+      // unconditionally would clear a just-typed amount override on the very
+      // next unrelated save, and sending both every time would make the
+      // toggle meaningless.
+      const payload = {
         discount_percent: Number(money.discount_percent) || 0,
         price_override: money.price_override === '' ? null : Number(money.price_override),
-      });
+      };
+      if (depositMode === 'percent') payload.deposit_percent = Number(money.deposit_percent) || 0;
+      else payload.deposit_amount = money.deposit_amount === '' ? null : Number(money.deposit_amount);
+      const d = await api.saveMoney(lead.id, payload);
       setData(s => ({ ...s, summary: d.summary }));
       setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500);
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
+  function switchDepositMode(mode) { setDepositMode(mode); }
   async function toggleWebPay() {
     const next = !webPay; setWebPay(next);
     try { await api.setWebPayment(lead.id, next); }
@@ -2754,10 +2711,28 @@ function MoneySection({ lead }) {
 
       {/* deposit % + discount % + custom billed */}
       <div className="ms-fields">
-        <div className="ms-field">
-          <label className="ms-label">Deposit %</label>
-          <input className="ms-input" type="number"
-            value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
+        <div className="ms-field ms-field-deposit">
+          <div className="ms-deposit-head">
+            <label className="ms-label">Deposit</label>
+            <div className="ms-deposit-toggle">
+              <button type="button" className={depositMode === 'percent' ? 'is-on' : ''}
+                onClick={() => switchDepositMode('percent')}>Percentage</button>
+              <button type="button" className={depositMode === 'amount' ? 'is-on' : ''}
+                onClick={() => switchDepositMode('amount')}>Amount</button>
+            </div>
+          </div>
+          {depositMode === 'percent' ? (
+            <input className="ms-input" type="number" placeholder="30"
+              value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
+          ) : (
+            <input className="ms-input" type="number" placeholder="e.g. 500"
+              value={money.deposit_amount} onChange={e => setMoney({ ...money, deposit_amount: e.target.value })} onBlur={saveMoney} />
+          )}
+          <p className="ms-deposit-note">
+            {depositMode === 'percent'
+              ? 'Also becomes your default for new leads.'
+              : 'This booking only — the percentage above is unaffected.'}
+          </p>
         </div>
         <div className="ms-field">
           <label className="ms-label">Discount %</label>
