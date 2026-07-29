@@ -122,7 +122,17 @@ export async function fillPlaceholders(text, lead, businessName) {
     // final_total already has the discount taken off — moneySummary applies it
     '{{total_cost}}': cash(money.final_total),
     '{{deposit}}': cash(money.deposit_amount),
-    '{{balance}}': cash(money.balance),
+    /**
+     * 💡 On a contract this means what is left AFTER the deposit, not what is
+     * outstanding today.
+     *
+     * Nothing has been paid when a contract is written, so the panel's balance
+     * — total minus payments — printed the FULL total immediately after a
+     * sentence naming the deposit, reading as though the client owed both. The
+     * payment card keeps its own meaning, which is right for a running account;
+     * a document being signed needs this one.
+     */
+    '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
     '{{today_date}}': new Date().toISOString().slice(0, 10),
     '{{company_name}}': businessName || '—',
   };
