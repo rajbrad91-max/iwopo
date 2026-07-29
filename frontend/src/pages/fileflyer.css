@@ -1,0 +1,123 @@
+/* ══════════════════════════════════════════════════════════════════════
+   📤 File Flyer — vendor side (inside the panel, uses the panel's tokens)
+   ══════════════════════════════════════════════════════════════════════ */
+.ff-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ff-h2 { margin: 0 0 4px; font-size: 20px; color: var(--text); }
+.ff-sub { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+.ff-storage { margin: 6px 0 16px; max-width: 520px; }
+.ff-storage-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+.ff-storage-left { color: var(--muted); }
+.ff-bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.ff-bar-fill { height: 100%; background: var(--teal); transition: width .3s ease; }
+.ff-bar-fill.is-full { background: #f59e0b; }
+
+.ff-msg { margin: 10px 0; padding: 9px 13px; border-radius: 8px; font-size: 13px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
+.ff-msg.is-ok { border-color: #4ade8055; color: #4ade80; }
+.ff-msg.is-err { border-color: #f8717155; color: #f87171; }
+
+.ff-form { max-width: 560px; margin: 4px 0 20px; padding: 18px 20px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.ff-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
+.ff-label:first-child { margin-top: 0; }
+.ff-input { width: 100%; padding: 9px 12px; font: inherit; font-size: 14px;
+  color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+.ff-input:focus { outline: none; border-color: var(--teal); }
+.ff-ta { resize: vertical; }
+.ff-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ff-check { display: flex; align-items: center; gap: 8px; margin: 14px 0 0;
+  font-size: 13px; color: var(--text); cursor: pointer; }
+.ff-create { margin-top: 16px; }
+
+.ff-empty { color: var(--muted); font-size: 13.5px; padding: 20px 0; }
+
+.ff-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.ff-card { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.ff-card-main { flex: 1; min-width: 0; cursor: pointer; }
+.ff-card-t { margin: 0 0 3px; font-size: 15px; color: var(--text); }
+.ff-card-meta { margin: 0; font-size: 12.5px; color: var(--muted); }
+.ff-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.ff-mini { padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
+  color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 7px; text-decoration: none; display: inline-block; }
+.ff-mini:hover { border-color: var(--teal); }
+.ff-mini.is-del:hover { border-color: #f87171; color: #f87171; }
+
+.ff-detail-top { display: flex; gap: 8px; margin-bottom: 14px; }
+
+.ff-upload { margin: 14px 0; }
+.ff-upload-btn { display: inline-block; padding: 9px 16px; font-size: 13.5px; font-weight: 600;
+  cursor: pointer; color: #06231f; background: var(--teal); border-radius: 8px; }
+.ff-upload-btn.is-busy { opacity: .6; cursor: default; }
+
+.ff-items { display: flex; flex-direction: column; gap: 8px; }
+.ff-item { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; }
+/* a file the CLIENT sent — the distinction is the point of a two-way link */
+.ff-item.is-client { border-left: 3px solid var(--teal); }
+.ff-item-main { min-width: 0; }
+.ff-item-name { display: block; font-size: 13.5px; color: var(--text); word-break: break-all; }
+.ff-item-meta { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ff-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .ff-form-row { grid-template-columns: 1fr; }
+  .ff-card { flex-direction: column; align-items: stretch; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   🌐 File Flyer — the client's page. Standalone, so it carries its own
+   colours rather than the panel's dark tokens, which do not apply here.
+   ══════════════════════════════════════════════════════════════════════ */
+.ffp-page { min-height: 100vh; background: #f4f6f8; padding: 40px 20px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.ffp-card { max-width: 560px; margin: 0 auto; background: #fff;
+  border: 1px solid #e3e8ec; border-radius: 16px; padding: 32px 34px; }
+.ffp-gate { text-align: center; }
+.ffp-logo { max-width: 110px; max-height: 56px; object-fit: contain; display: block; margin: 0 auto 16px; }
+.ffp-lock { font-size: 34px; margin-bottom: 10px; }
+.ffp-biz { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .16em;
+  text-transform: uppercase; color: #8a949c; text-align: center; }
+.ffp-h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; color: #1a2529; text-align: center; }
+.ffp-sub { margin: 0 0 20px; font-size: 14px; color: #64757d; line-height: 1.6; text-align: center; }
+.ffp-note { margin: 0 0 22px; font-size: 14px; color: #4a5560; line-height: 1.7;
+  background: #f7f9fa; border: 1px solid #e8edf0; border-radius: 10px; padding: 12px 15px; }
+
+.ffp-label { margin: 22px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: #8a949c; }
+.ffp-input { width: 100%; padding: 11px 14px; font: inherit; font-size: 14.5px;
+  color: #1a2529; background: #fff; border: 1.5px solid #dde3e7; border-radius: 9px; box-sizing: border-box; }
+.ffp-input:focus { outline: none; border-color: #0f766e; }
+.ffp-input.is-err { border-color: #dc3545; }
+.ffp-err { color: #dc3545; font-size: 13px; margin: 8px 0 0; }
+.ffp-btn { width: 100%; margin-top: 14px; padding: 12px; border: none; border-radius: 9px;
+  background: #0f766e; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.ffp-btn:hover { opacity: .92; }
+.ffp-btn:disabled { opacity: .6; cursor: default; }
+
+.ffp-items { display: flex; flex-direction: column; gap: 8px; }
+.ffp-item { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 15px; background: #f7f9fa; border: 1px solid #e8edf0; border-radius: 9px;
+  text-decoration: none; color: inherit; }
+.ffp-item:hover { border-color: #0f766e; background: #f0f6f5; }
+.ffp-item.is-mine { background: #fff; cursor: default; }
+.ffp-item.is-mine:hover { border-color: #e8edf0; background: #fff; }
+.ffp-item-name { font-size: 14px; color: #1a2529; word-break: break-all; }
+.ffp-item-meta { font-size: 12.5px; color: #8a949c; white-space: nowrap; flex-shrink: 0; }
+
+.ffp-drop { display: block; margin-top: 10px; padding: 22px; text-align: center;
+  border: 1.5px dashed #c4ced4; border-radius: 11px; background: #fbfcfd;
+  font-size: 14px; color: #64757d; cursor: pointer; }
+.ffp-drop:hover { border-color: #0f766e; color: #0f766e; background: #f0f6f5; }
+.ffp-drop.is-busy { opacity: .6; cursor: default; }
+
+.ffp-msg { margin: 14px 0 0; padding: 11px 14px; border-radius: 9px; font-size: 13.5px; }
+.ffp-msg.is-ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+.ffp-msg.is-err { background: #fff5f5; border: 1px solid #fcc; color: #c53030; }
+.ffp-state { text-align: center; color: #64757d; font-size: 14px; padding: 20px 0; margin: 0; }
+
+@media (max-width: 560px) { .ffp-card { padding: 24px 20px; } }

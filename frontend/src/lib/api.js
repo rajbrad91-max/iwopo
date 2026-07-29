@@ -225,6 +225,33 @@ export const api = {
   // vendor-side
   myChatbotStatus: () => request('/chatbot/my/status'),
 
+  // 💾 super admin: set one vendor's File Flyer storage allowance
+  setVendorStorage: (vendorId, storage_limit_mb) =>
+    request(`/vendors/${vendorId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_limit_mb }) }),
+
+  // 📤 File Flyer — shares a vendor hands to a client, either direction
+  fileShares: () => request('/files'),
+  createFileShare: (body) => request('/files', { method: 'POST', body: JSON.stringify(body) }),
+  updateFileShare: (id, body) => request(`/files/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteFileShare: (id) => request(`/files/${id}`, { method: 'DELETE' }),
+  fileShareItems: (id) => request(`/files/${id}/items`),
+  uploadShareFiles: (id, files) => {
+    const fd = new FormData();
+    for (const f of files) fd.append('files', f);
+    return request(`/files/${id}/upload`, { method: 'POST', body: fd });
+  },
+  deleteShareItem: (itemId) => request(`/files/item/${itemId}`, { method: 'DELETE' }),
+
+  // 📤 File Flyer — the client's side, token only, no auth
+  publicShare: (token) => request(`/f/${token}`),
+  unlockShare: (token, password) => request(`/f/${token}/unlock`, { method: 'POST', body: JSON.stringify({ password }) }),
+  clientUploadFiles: (token, files, uploaderName) => {
+    const fd = new FormData();
+    for (const f of files) fd.append('files', f);
+    if (uploaderName) fd.append('uploader_name', uploaderName);
+    return request(`/f/${token}/upload`, { method: 'POST', body: fd });
+  },
+
   // 🌐 Website Builder
   mySite: () => request('/sites/my'),
   saveMySite: (body) => request('/sites/my', { method: 'PUT', body: JSON.stringify(body) }),

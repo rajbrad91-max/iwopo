@@ -39,6 +39,29 @@ router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * 💾 PUT /api/vendors/:id/storage → set one vendor's storage allowance.
+ *
+ * Super-admin only, and deliberately per-vendor rather than a plan feature:
+ * the allowance is a commercial decision made about a particular vendor, and
+ * tying it to a plan would mean changing everyone on that plan to change one.
+ */
+router.put('/:id/storage', requireAuth, requireSuperAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const mb = Number(req.body?.storage_limit_mb);
+    if (!Number.isFinite(mb) || mb < 0) return res.status(400).json({ error: 'Give a number of MB' });
+    const vendor = await prisma.vendors.findUnique({ where: { id }, select: { id: true } });
+    if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+    await prisma.vendor_settings.upsert({
+      where: { vendor_id: id },
+      update: { storage_limit_mb: Math.round(mb) },
+      create: { vendor_id: id, storage_limit_mb: Math.round(mb) },
+    });
+    res.json({ ok: true, storage_limit_mb: Math.round(mb) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/vendors/:id/detail → super admin: full vendor profile
 router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
   const id = Number(req.params.id);
@@ -66,6 +89,24 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
     });
     const subscriptions = subRows.map(({ plans, ...s }) => ({ ...s, plan_name: plans?.name ?? null }));
 
+    /**
+     * 💾 What this vendor has stored, against their allowance. Summed from the
+     * rows rather than a counter — a counter and the real files drift apart the
+     * moment anything fails halfway, and then the number a vendor is judged by
+     * is quietly wrong.
+     */
+    const usedAgg = await prisma.file_share_items.aggregate({
+      where: { vendor_id: id },
+      _sum: { size_bytes: true },
+    });
+    const vset = await prisma.vendor_settings.findUnique({
+      where: { vendor_id: id }, select: { storage_limit_mb: true },
+    });
+    const storage = {
+      used_bytes: Number(usedAgg._sum.size_bytes || 0),
+      limit_mb: vset?.storage_limit_mb ?? 1024,
+    };
+
     const emails = users.map(u => u.email).filter(Boolean);
     const referral = emails.length
       ? await prisma.referrals.findMany({
@@ -74,7 +115,7 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
         })
       : [];
 
-    res.json({ vendor, users, services, subscriptions, referredBy: referral[0] || null });
+    res.json({ vendor, users, services, subscriptions, storage, referredBy: referral[0] || null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

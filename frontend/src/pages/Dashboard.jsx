@@ -946,6 +946,9 @@ function VendorDrawer({ vendorId, onClose }) {
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Feature access</div>
             <FeatureToggles vendorId={vendorId} />
 
+            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>File Flyer storage</div>
+            <StorageLimit vendorId={vendorId} storage={d.storage} />
+
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Subscription history</div>
             {d.subscriptions.length === 0
               ? <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>No subscription records</div>
@@ -959,6 +962,51 @@ function VendorDrawer({ vendorId, onClose }) {
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * 💾 One vendor's File Flyer allowance.
+ *
+ * Per-vendor on purpose rather than a plan feature — the allowance is a
+ * commercial decision about a particular vendor, and hanging it off a plan
+ * would mean changing everyone on that plan to change one of them.
+ */
+function StorageLimit({ vendorId, storage }) {
+  const [mb, setMb] = useState(storage?.limit_mb ?? 1024);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const usedMb = (Number(storage?.used_bytes || 0) / 1024 / 1024);
+  const pct = mb > 0 ? Math.min(100, Math.round(usedMb / mb * 100)) : 0;
+
+  async function save() {
+    setBusy(true); setMsg('');
+    try {
+      await api.setVendorStorage(vendorId, Number(mb) || 0);
+      setMsg('✅ Saved');
+      setTimeout(() => setMsg(''), 1800);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ padding: '6px 0' }}>
+      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
+        Using <b style={{ color: 'var(--text)' }}>{usedMb.toFixed(1)} MB</b> of {mb} MB ({pct}%)
+      </div>
+      <div style={{ height: 6, borderRadius: 999, background: 'var(--panel-2)', overflow: 'hidden', marginBottom: 10 }}>
+        <div style={{ height: '100%', width: pct + '%', background: pct > 90 ? '#f59e0b' : 'var(--teal)' }} />
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input type="number" min="0" value={mb} onChange={e => setMb(e.target.value)}
+          style={{ width: 120, padding: '7px 10px', fontSize: 13.5, color: 'var(--text)',
+            background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7 }} />
+        <span style={{ fontSize: 13, color: 'var(--muted)' }}>MB</span>
+        <button className="refresh" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Set limit'}</button>
+        {msg && <span style={{ fontSize: 12.5, color: msg[0] === '✅' ? '#4ade80' : '#f87171' }}>{msg}</span>}
+      </div>
+    </div>
   );
 }
 

@@ -27,6 +27,8 @@ import chatbotRoutes from './routes/chatbot.js';
 import notificationRoutes from './routes/notifications.js';
 import portalRoutes from './routes/portal.js';
 import leadPackageRoutes from './routes/leadPackages.js';
+import fileRoutes from './routes/files.js';
+import filePublicRoutes from './routes/filesPublic.js';
 import siteRoutes from './routes/sites.js';
 import { gate } from './lib/entitlements.js';
 
@@ -66,6 +68,8 @@ app.use('/api/lead-packages', gate('leads'), leadPackageRoutes);
 // 🌐 Website Builder. Gated on `website`, so the super-admin toggle now decides
 // whether a vendor can build one — the public /:slug read carries no token, and
 // gate() lets unauthenticated requests through to the route's own checks.
+app.use('/api/files', gate('fileflyer'), fileRoutes);
+app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
 
 app.get('/', (req, res) => {

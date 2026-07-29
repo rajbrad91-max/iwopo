@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import VendorPanel from './pages/VendorPanel';
 import InquiryForm from './pages/InquiryForm';
 import SignContract from './pages/SignContract';
+import FileFlyerPublic from './pages/FileFlyerPublic';
 import ContractPreview from './pages/ContractPreview';
 import InvoiceView from './pages/InvoiceView';
 import Certificate from './pages/Certificate';
@@ -58,6 +59,10 @@ export default function App() {
   // through a scrolling box inside a dialog is not reviewing it.
   const cp = window.location.pathname.match(/^\/contract-preview\/(\d+)/);
   if (cp) return <ContractPreview leadId={Number(cp[1])} />;
+
+  // 📤 Public File Flyer share: /f/:token — the link a vendor hands a client
+  const ff = window.location.pathname.match(/^\/f\/([A-Za-z0-9]+)/);
+  if (ff) return <FileFlyerPublic token={ff[1]} />;
 
   // 📄 Public contract signing: /sign/:token
   const s = window.location.pathname.match(/^\/sign\/([a-f0-9]+)/);
