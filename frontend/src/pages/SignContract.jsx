@@ -40,7 +40,11 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
     const r = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     canvas.width = r.width * dpr; canvas.height = 160 * dpr;
-    ctx.scale(dpr, dpr); ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = '#e6f0f2';
+    // 🖊️ Dark ink. It used to be near-white, drawn on a near-black pad — which
+    // looked right while signing and then produced a PNG of white strokes on
+    // transparency. Anywhere that signature is later shown or printed on white
+    // — the signed copy, a PDF, a court — it was invisible.
+    ctx.scale(dpr, dpr); ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = '#3D3530';
     let drawing = false, last = null;
     const pos = (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -131,7 +135,10 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
         <div className="iq-brand">📄 {c.title}</div>
         <p className="iq-sub">{c.business_name} · for {c.client_name}</p>
 
-        <div style={{ background: '#0d1417', border: '1px solid #223238', borderRadius: 10, padding: 16, whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7, maxHeight: 420, overflowY: 'auto' }}>
+        {/* The page around this was redesigned light — cream card, brown text —
+            but this box kept the near-black it had under the old dark theme, so a
+            client read their contract as a black panel inside a cream card. */}
+        <div className="ct-doc">
           {parts.map((chunk, i) => (
             <span key={i}>
               {chunk}
@@ -150,7 +157,7 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
         </div>
 
         {initialed.length > 0 && (
-          <p style={{ fontSize: 12, color: initialsLeft ? '#fbbf24' : '#4ade80', marginTop: 8 }}>
+          <p className={`ct-left ${initialsLeft ? 'is-todo' : 'is-done'}`}>
             {initialsLeft ? `✍️ ${initialsLeft} initial box${initialsLeft > 1 ? 'es' : ''} left` : '✅ All initialed'}
           </p>
         )}
@@ -166,15 +173,15 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
 
         <label style={{ marginTop: 12 }}>🖊️ Draw your signature</label>
         <canvas ref={canvasRef}
-          style={{ width: '100%', height: 160, border: '1.5px dashed #2dd4bf', borderRadius: 10, background: '#0d1417', touchAction: 'none', display: 'block' }} />
-        <button onClick={clearPad} style={{ background: 'none', border: 'none', color: '#7c9199', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>↺ Clear</button>
+          className="ct-pad" style={{ width: '100%', height: 160, touchAction: 'none', display: 'block' }} />
+        <button onClick={clearPad} className="ct-clear">↺ Clear</button>
 
         {err && <div className="iq-err">⚠️ {err}</div>}
         <button className="iq-btn" onClick={sign} disabled={busy}>
           {busy ? 'Signing…' : '✍️ Sign Contract'}
         </button>
-        <p style={{ fontSize: 11, color: '#7c9199', marginTop: 10, textAlign: 'center' }}>
-          Your name, signature, IP & timestamp are recorded. 🔐
+        <p className="ct-fineprint">
+          Your name, signature, IP &amp; timestamp are recorded. 🔐
         </p>
         </>)}
       </div>

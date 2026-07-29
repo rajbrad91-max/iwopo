@@ -83,3 +83,56 @@
   .iq-grid { grid-template-columns: 1fr; }
   .iq-hd, .iq-body { padding-left: 20px; padding-right: 20px; }
 }
+
+/* ── 📄 The contract, on the same light page as everything around it ──── */
+/* These were inline near-black values left from before the inquiry pages were
+   redesigned light, so a client read their agreement as a black panel sitting
+   inside a cream card. */
+.ct-doc {
+  background: #FFFDFA; border: 1px solid #E8E0D5; border-radius: 10px;
+  padding: 18px 20px; white-space: pre-wrap; color: #3D3530;
+  font-size: 14px; line-height: 1.8; max-height: 460px; overflow-y: auto;
+}
+.ct-pad {
+  background: #FFFDFA; border: 1.5px dashed #C9A86A; border-radius: 10px;
+}
+.ct-clear {
+  background: none; border: 0; color: #8A7A68; font-size: 12px;
+  cursor: pointer; margin-top: 4px; font-family: inherit;
+}
+.ct-clear:hover { color: #3D3530; }
+.ct-fineprint { font-size: 11px; color: #8A7A68; margin-top: 10px; text-align: center; }
+.ct-left { font-size: 12px; margin-top: 8px; font-weight: 600; }
+.ct-left.is-todo { color: #B8860B; }
+.ct-left.is-done { color: #2E7D4F; }
+
+/* the vendor-only strip above a preview */
+.ct-prev-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 0 0 16px; padding: 10px 13px; border-radius: 9px;
+  background: #FBF3E0; border: 1px dashed #D9B15C;
+}
+.ct-prev-tag { font-size: 12.5px; color: #8A6D1F; font-weight: 700; }
+.ct-prev-ok { margin-left: auto; font-size: 12.5px; color: #2E7D4F; font-weight: 700; }
+.ct-prev-release {
+  margin-left: auto; background: #3D3530; border: 0; color: #FAF8F5;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap;
+}
+.ct-prev-release:hover { background: #5A4E48; }
+.ct-prev-foot {
+  margin-top: 16px; padding: 12px 14px; border-radius: 9px;
+  background: #F3EEE6; border: 1px dashed #E0D6C8;
+  font-size: 12.5px; line-height: 1.7; color: #6B5D52;
+}
+
+@media (max-width: 700px) {
+  .ct-prev-bar { flex-direction: column; align-items: flex-start; }
+  .ct-prev-ok, .ct-prev-release { margin-left: 0; }
+}
+
+/* The app shell's body is dark. These pages are a client-facing document on a
+   light page, and the dark body showed through at the edges and when the page
+   over-scrolls — so the page ends up framed in a colour it doesn't use. */
+body:has(.iq-wrap) { background: color-mix(in srgb, var(--brand, #C9A86A) 35%, #F5F0EA); }
+body:has(.cp-page) { background: #EFE9E0; }
