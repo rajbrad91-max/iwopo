@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, fmtEventDate, fmtMoney } from '../lib/api';
+import { api, fmtEventDate, fmtMoney, moneyParts } from '../lib/api';
 import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
 import { useDialog } from '../lib/dialog.jsx';
 import './portal.css';
@@ -204,6 +204,31 @@ function ContractStep({ contract, clientName, onSigned }) {
   );
 }
 
+/**
+ * 🎨 A brand colour a client can actually read.
+ *
+ * --brand is whatever the vendor picked, and it is used for text as well as for
+ * fills. A pale choice — the test vendor's own #ccebff, for instance — leaves a
+ * tier label almost invisible on white. Fills are fine pale; text is not.
+ *
+ * So text uses a darkened version whenever the colour is too light to read,
+ * while fills keep the vendor's actual choice. Relative luminance per WCAG,
+ * because "looks light" is not something to eyeball per vendor.
+ */
+function readableBrand(hex) {
+  const h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return hex || '#C9A86A';
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  if (L <= 0.42) return '#' + h;                 // already dark enough to read
+  // pull it toward black until it clears the bar, keeping the hue
+  const k = Math.min(0.62, (L - 0.42) * 1.25);
+  const dark = [r, g, b].map(c => Math.round(c * (1 - k) * 255)
+    .toString(16).padStart(2, '0')).join('');
+  return '#' + dark;
+}
+
 export default function ClientPortal({ token }) {
   const dialog = useDialog();
   const [data, setData] = useState(null);
@@ -293,7 +318,8 @@ export default function ClientPortal({ token }) {
   if (!data) return <div className="po-page"><p className="po-state">Loading…</p></div>;
 
   if (data.gated) return (
-    <div className="po-page" style={{ '--brand': data.branding?.brand_color || '#C9A86A' }}>
+    <div className="po-page" style={{ '--brand': data.branding?.brand_color || '#C9A86A',
+      '--brandText': readableBrand(data.branding?.brand_color || '#C9A86A') }}>
       <div className="po-gate">
         {data.branding?.logo_path && <img className="po-gate-logo" src={`/api/me/logo/${data.branding.logo_path}`} alt="" />}
         <div className="po-gate-lock">🔒</div>
@@ -328,7 +354,8 @@ export default function ClientPortal({ token }) {
   const eventDate = lead.event_date ? fmtEventDate(lead.event_date, { long: true }) : null;
 
   return (
-    <div className="po-page" style={{ '--brand': branding.brand_color || '#C9A86A' }}>
+    <div className="po-page" style={{ '--brand': branding.brand_color || '#C9A86A',
+      '--brandText': readableBrand(branding.brand_color || '#C9A86A') }}>
 
       <header className="po-hd">
         {branding.logo_path && <img className="po-logo" src={`/api/me/logo/${branding.logo_path}`} alt="" />}
@@ -392,11 +419,24 @@ export default function ClientPortal({ token }) {
                     {isChosen && <span className="po-pkg-badge">Selected</span>}
                     <div className="po-pkg-hd">
                       <h3 className="po-pkg-name">{p.name}</h3>
-                      {/* fmtMoney already carries the vendor's own currency symbol —
-                          CA$, £, ₹ — a hard-coded "$" alongside it was
-                          printing $CA$4,500 for a CAD vendor */}
+                      {/* three parts on one baseline, matching the reference: the
+                          symbol small and in the brand colour, the number large
+                          and dark, the currency code small and grey. Split by
+                          Intl rather than by slicing the formatted string, so a
+                          currency that puts its symbol after the number still
+                          renders in the right order. */}
                       <p className="po-pkg-price">
-                        <span className="po-pkg-amt">{cash(p.base_price)}</span>
+                        {(() => {
+                          const m = moneyParts(p.base_price, { currency: data?.currency });
+                          return (
+                            <>
+                              {m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
+                              <span className="po-pkg-amt">{m.amount}</span>
+                              {!m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
+                              <span className="po-pkg-code">{m.code}</span>
+                            </>
+                          );
+                        })()}
                       </p>
                     </div>
                     {inc.length > 0 && (

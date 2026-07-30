@@ -122,6 +122,7 @@
   display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
   gap: 22px; align-items: start;
 }
+/* larger, softer cards that lift — from the reference layout */
 .po-pkg {
   position: relative; display: flex; flex-direction: column;
   text-align: left; font-family: inherit; cursor: pointer;
@@ -153,13 +154,24 @@
 /* sized against Perfect Poses' own tier label: 17px, .2em tracking */
 .po-pkg-name {
   margin: 0 0 12px; font-size: 17px; font-weight: 700;
-  letter-spacing: .2em; text-transform: uppercase; color: var(--brand, #b8922a);
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--brandText, var(--brand, #b8922a));
 }
 .po-pkg-price {
-  margin: 0; display: flex; align-items: baseline; gap: 3px;
+  margin: 0; display: flex; align-items: baseline; gap: 6px;
   font-family: 'Playfair Display', Georgia, serif;
 }
-/* the amount was 48px against the reference's 56px */
+.po-pkg-cur {
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 23px; font-weight: 500; color: var(--brandText, var(--brand, #b8922a));
+}
+.po-pkg-code {
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 16px; font-weight: 400; color: var(--soft);
+  letter-spacing: .02em;
+}
+/* 56px dark ink, matching the reference's rgb(26,18,8). Not the brand colour:
+   only the symbol beside it is gold there. */
 .po-pkg-amt { font-size: 56px; font-weight: 700; color: var(--ink); line-height: 1; }
 .po-pkg-body { padding: 22px 24px 26px; flex: 1; }
 .po-inc-label {
@@ -255,18 +267,21 @@
 /* ── summary strip ────────────────────────────────────────── */
 /* Label above value, the way PerfectPoses does it: the client can see what
    they're agreeing to without scrolling back to step one. */
+/* one "Main event" panel rather than a full-width band of separate cells */
 .po-strip {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 34px;
-  padding: 16px 24px; background: #fff;
-  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  max-width: 1000px; margin: 26px auto 0;
+  display: flex; flex-wrap: wrap; gap: 8px 22px;
+  padding: 18px 22px; background: #fffefb;
+  border: 1px solid var(--line); border-radius: 20px;
+  box-shadow: 0 4px 14px #2a1c0a0f;
 }
-.po-strip-i { text-align: center; }
+.po-strip-i { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .po-strip-l {
-  display: block; font-size: 10px; font-weight: 700;
-  letter-spacing: .12em; text-transform: uppercase;
-  color: var(--soft); margin-bottom: 4px;
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--soft);
 }
-.po-strip-v { display: block; font-size: 15px; font-weight: 600; color: var(--ink); }
+.po-strip-v { font-size: 14.5px; font-weight: 600; color: var(--ink); }
 
 /* ── the contract itself ──────────────────────────────────── */
 /* Same reasoning as the vendor's own contract page: a 60vh scrolling cap on
@@ -406,10 +421,14 @@
   font-size: 10px; font-weight: 400; letter-spacing: 1.5px; text-transform: uppercase;
   color: #8a7355; margin: 0 0 8px;
 }
+/* tinted from the vendor's own colour rather than a fixed gold, so the panel
+   belongs to whoever's page it is */
 .po-timer-card {
   display: inline-flex; align-items: center; gap: 0;
-  background: #fff; border: 1.5px solid #e8d9b0; border-radius: 16px;
-  padding: 10px 22px; box-shadow: 0 2px 16px rgba(184, 146, 42, .1);
+  background: color-mix(in srgb, var(--brand, #b8922a) 8%, #fff);
+  border: 1.5px solid color-mix(in srgb, var(--brand, #b8922a) 24%, transparent);
+  border-radius: 16px; padding: 10px 22px;
+  box-shadow: 0 2px 16px color-mix(in srgb, var(--brand, #b8922a) 10%, transparent);
 }
 .po-timer-unit { display: flex; flex-direction: column; align-items: center; padding: 0 10px; }
 .po-timer-num {
@@ -426,4 +445,33 @@
 .po-timer-expired {
   font-size: 14px; color: #dc3545; background: #fff5f5; border: 1px solid #fcc;
   border-radius: 10px; padding: 12px 16px; margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Reference-matching refinements to the choose step.
+   Taken from the supplied brief except where it contradicted the reference
+   it was meant to match, or an instruction already given: the contract is
+   NOT re-boxed with a max-height, the price amount is NOT recoloured to the
+   brand, and the font stack keeps Inter and system-ui so Windows does not
+   fall through to Arial.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* the chosen card, ringed in the vendor's own colour */
+.po-pkg.is-chosen {
+  border-color: var(--brand, #b8922a);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #b8922a) 12%, #fff),
+              0 4px 14px #2a1c0a0f;
+}
+
+/* the amount due, tinted and oversized — the one figure a client looks for */
+.po-bill .is-due { background: color-mix(in srgb, var(--brand, #b8922a) 8%, #fff); }
+.po-bill .is-due dt { color: var(--ink); font-weight: 600; }
+.po-bill .is-due dd { font-size: 26px; color: var(--brandText, var(--brand, #b8922a)); }
+
+/* every lift and spring above is decoration; somebody who asked their system
+   for less movement should not have to sit through it */
+@media (prefers-reduced-motion: reduce) {
+  .po-page *, .po-page *::before, .po-page *::after {
+    transition: none !important; animation: none !important;
+  }
 }

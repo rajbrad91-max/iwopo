@@ -93,6 +93,43 @@ export function fmtMoney(n, { decimals = 0, currency } = {}) {
   }
 }
 
+/**
+ * 💱 Split a price into its parts so each can be styled separately.
+ *
+ * The reference renders a price as three things on one baseline: the symbol in
+ * the brand colour, the number large and dark, and the currency code small and
+ * grey. That needs the pieces apart, and slicing the formatted string would
+ * break the moment a currency puts its symbol after the number or uses a
+ * different group separator.
+ *
+ * formatToParts is the supported way to ask Intl what each piece actually is,
+ * so this stays right for a vendor billing in kr, ₹ or €, not only in dollars.
+ */
+export function moneyParts(n, { decimals = 0, currency } = {}) {
+  const code = currency || localStorage.getItem('vf_currency') || 'USD';
+  const value = Number(n || 0);
+  try {
+    const parts = new Intl.NumberFormat(undefined, {
+      style: 'currency', currency: code,
+      minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+    }).formatToParts(value);
+    // 'currency' is the symbol Intl chose — CA$, £, ₹ — whatever is right here
+    const symbol = parts.filter(x => x.type === 'currency').map(x => x.value).join('');
+    const amount = parts.filter(x => x.type !== 'currency' && x.type !== 'literal')
+      .map(x => x.value).join('');
+    // whether the symbol leads tells the caller which order to render in
+    const symbolFirst = parts.findIndex(x => x.type === 'currency')
+      < parts.findIndex(x => x.type === 'integer');
+    return { symbol, amount, code, symbolFirst };
+  } catch {
+    // an unknown code should still show a number rather than nothing
+    return {
+      symbol: '', amount: value.toLocaleString(undefined, { maximumFractionDigits: decimals }),
+      code, symbolFirst: true,
+    };
+  }
+}
+
 // 🗂️ Session storage is PER TAB, so a super-admin tab and a vendor tab can be
 // open side by side without overwriting each other. localStorage is shared
 // across every tab of the site, which meant logging into one panel silently
