@@ -261,7 +261,6 @@ export const api = {
   uploadSiteCover: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/cover', { method: 'POST', body: fd }); },
   removeSiteCover: () => request('/sites/my/cover', { method: 'DELETE' }),
   setSiteCoverFocus: (cover_focus) => request('/sites/my/cover-focus', { method: 'PUT', body: JSON.stringify({ cover_focus }) }),
-  uploadSitePhoto: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/photo', { method: 'POST', body: fd }); },
   addPortfolioPhoto: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/portfolio', { method: 'POST', body: fd }); },
   removePortfolioPhoto: (id) => request(`/sites/my/portfolio/${id}`, { method: 'DELETE' }),
   savePortfolio: (portfolio) => request('/sites/my/portfolio', { method: 'PUT', body: JSON.stringify({ portfolio }) }),

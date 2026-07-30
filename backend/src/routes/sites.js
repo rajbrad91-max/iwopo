@@ -42,7 +42,6 @@ export const THEMES = [
 ];
 const THEME_IDS = new Set(THEMES.map(t => t.id));
 
-const SECTION_TYPES = new Set(['hero', 'about', 'gallery', 'services', 'text', 'contact']);
 const FONTS = new Set(['Playfair Display', 'Inter', 'Poppins', 'Montserrat', 'Lora', 'Cormorant Garamond']);
 
 /** Only fields a vendor may set, each cleaned to what the column can hold. */
@@ -63,16 +62,6 @@ function cleanBody(body) {
     out.about_body = body.about_body == null ? null : String(body.about_body).slice(0, 4000);
   }
 
-  if (Array.isArray(body.sections)) {
-    out.sections = body.sections.slice(0, 20).map((s, i) => ({
-      id: String(s.id || `s${i}`).slice(0, 20),
-      type: SECTION_TYPES.has(s.type) ? s.type : 'text',
-      heading: str(s.heading, 120),
-      body: s.body == null ? null : String(s.body).slice(0, 4000),
-      image: str(s.image, 300),
-      album_token: str(s.album_token, 80),
-    }));
-  }
   return out;
 }
 
@@ -86,7 +75,7 @@ const PUBLIC_FIELDS = {
   theme: true, accent: true, heading_font: true, body_font: true,
   site_title: true, tagline: true, about_heading: true, about_body: true,
   contact_email: true, contact_phone: true, instagram: true, facebook: true,
-  sections: true, slug: true, published: true,
+  slug: true, published: true,
   cover_photo: true, cover_focus: true, portfolio: true,
 };
 
@@ -306,21 +295,6 @@ router.put('/my/cover-focus', requireAuth, async (req, res) => {
     });
     res.json({ site });
   } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /api/sites/my/photo → an image for one section; returns the filename for
-// the caller to store against that section
-router.post('/my/photo', requireAuth, upload.single('photo'), async (req, res) => {
-  const v = Number(vid(req));
-  if (!v) return res.status(400).json({ error: 'No vendor' });
-  if (!req.file) return res.status(400).json({ error: 'No file' });
-  try {
-    const image = await storeImage(v, req.file.path);
-    res.json({ image });
-  } catch (e) {
-    try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
-    res.status(500).json({ error: e.message });
-  }
 });
 
 // GET /api/sites/photo/:vendorId/:file → serve a site photo.
