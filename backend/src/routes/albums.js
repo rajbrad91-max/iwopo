@@ -280,7 +280,9 @@ router.get('/cover/:id', async (req, res) => {
       select: { cover_photo: true },
     });
     if (!a?.cover_photo) return res.status(404).end();
-    res.sendFile(path.join(ROOT, String(req.params.id), a.cover_photo));
+    res.sendFile(path.join(ROOT, String(req.params.id), a.cover_photo), (err) => {
+      if (err && !res.headersSent) res.status(404).end();
+    });
   } catch { res.status(404).end(); }
 });
 
@@ -454,7 +456,7 @@ router.get('/file/:photoId/:type', async (req, res) => {
     const rel = req.params.type === 'orig' ? p.storage_path : req.params.type === 'preview' ? p.preview_path : p.thumb_path;
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
-    res.sendFile(full);
+    res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

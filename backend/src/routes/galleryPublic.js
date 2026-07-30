@@ -134,7 +134,9 @@ router.get('/vendor-cover/:albumToken', async (req, res) => {
   try {
     const a = await findAlbum(req.params.albumToken);
     if (!a || !a.cover_photo) return res.status(404).end();
-    res.sendFile(path.join(ROOT, String(a.id), a.cover_photo));
+    res.sendFile(path.join(ROOT, String(a.id), a.cover_photo), (err) => {
+      if (err && !res.headersSent) res.status(404).end();
+    });
   } catch { res.status(404).end(); }
 });
 
@@ -158,7 +160,9 @@ router.get('/:token/cover', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a || !a.cover_photo) return res.status(404).end();
-    res.sendFile(path.join(ROOT, String(a.id), a.cover_photo));
+    res.sendFile(path.join(ROOT, String(a.id), a.cover_photo), (err) => {
+      if (err && !res.headersSent) res.status(404).end();
+    });
   } catch { res.status(404).end(); }
 });
 
@@ -234,7 +238,7 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
     else rel = p.preview_path; // 'full' → the 2200px display file (preview_path column)
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).end();
-    res.sendFile(full);
+    res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });
   } catch { res.status(404).end(); }
 });
 
@@ -425,7 +429,10 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     const meta = await sharp(full).metadata();
     const box = normaliseBox(boxRaw, meta.width, meta.height);
     // no usable box → serve the whole photo and let the browser round it
-    if (!box) { res.type('webp'); return res.sendFile(full); }
+    if (!box) {
+      res.type('webp');
+      return res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });
+    }
 
     // 🔍 Crop tight enough that the face fills the circle. The padding is a
     // fraction of the face size added on each side.

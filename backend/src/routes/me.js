@@ -161,7 +161,7 @@ router.post('/logo', requireAuth, upload.single('logo'), async (req, res) => {
 router.get('/logo/:file', (req, res) => {
   const f = path.join(LOGO_DIR, path.basename(req.params.file));
   if (!fs.existsSync(f)) return res.status(404).end();
-  res.sendFile(f);
+  res.sendFile(f, (err) => { if (err && !res.headersSent) res.status(404).end(); });
 });
 
 export default router;

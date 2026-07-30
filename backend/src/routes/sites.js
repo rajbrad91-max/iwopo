@@ -352,7 +352,7 @@ router.get('/photo/:vendorId/:file', (req, res) => {
   const f = path.join(SITES_DIR, String(v), path.basename(req.params.file));
   if (!fs.existsSync(f)) return res.status(404).end();
   res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.sendFile(f);
+  res.sendFile(f, (err) => { if (err && !res.headersSent) res.status(404).end(); });
 });
 
 
