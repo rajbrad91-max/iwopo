@@ -229,6 +229,24 @@ function readableBrand(hex) {
   return '#' + dark;
 }
 
+const INC_ICONS = [
+  [/\bdrone|aerial\b/i, '🚁'],
+  [/\b4k|ultra ?hd|1080|full hd|video|film|cinemat/i, '🎬'],
+  [/\bphoto|image|shot|edit/i, '📸'],
+  [/\bteam|photographer|videographer|shooter|crew|staff/i, '👥'],
+  [/\bgaller(y|ies)|online|download/i, '🖼️'],
+  [/\bdeliver|week|turnaround|usb|drive/i, '📦'],
+  [/\balbum|print|frame|book/i, '📔'],
+  [/\bgift|bonus|free|complimentar/i, '🎁'],
+  [/\bhour|coverage|day|time/i, '⏱️'],
+];
+/** The icon a line's own wording earns, or null to keep the neutral mark. */
+function incIcon(text) {
+  const t = String(text || '');
+  for (const [re, icon] of INC_ICONS) if (re.test(t)) return icon;
+  return null;
+}
+
 export default function ClientPortal({ token }) {
   const dialog = useDialog();
   const [data, setData] = useState(null);
@@ -409,14 +427,38 @@ export default function ClientPortal({ token }) {
             )}
 
             <div className="po-grid">
-              {packages.map(p => {
+              {packages.map((p, i) => {
                 const isChosen = lead.package_id === p.id;
                 const inc = Array.isArray(p.inclusions) ? p.inclusions : [];
+                /* Derived from position, which is what the reference does: the
+                   middle option is the one it calls popular and the dearest the
+                   one it calls best value. Worth being plain that array order
+                   cannot actually know either — if these should reflect
+                   something real, they want a vendor-set flag rather than an
+                   index. Only shown with three or more to choose between,
+                   because "most popular of two" says nothing. */
+                const ribbon = packages.length >= 3 && i === 1 ? 'Most popular'
+                             : packages.length >= 3 && i === packages.length - 1 ? 'Best value'
+                             : null;
+                /* A div rather than a button, because the Choose control below
+                   is itself a button and a button cannot nest inside one. That
+                   costs the native keyboard behaviour, so it is put back
+                   explicitly: role, tabindex AND a key handler. The brief said
+                   role and tabindex were enough for "keyboard parity" — they
+                   are not, Enter and Space do not fire onClick on a div. */
+                const choose = () => { if (!busy) pick(p.id); };
                 return (
-                  <button key={p.id} type="button" disabled={busy}
-                    className={`po-pkg ${isChosen ? 'is-chosen' : ''}`}
-                    onClick={() => !busy && pick(p.id)}>
+                  <div key={p.id} role="button" tabIndex={0}
+                    aria-pressed={isChosen}
+                    className={`po-pkg ${isChosen ? 'is-chosen' : ''} ${busy ? 'is-busy' : ''}`}
+                    onClick={choose}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); }
+                    }}>
                     {isChosen && <span className="po-pkg-badge">Selected</span>}
+                    {ribbon && !isChosen && (
+                      <span className={`po-ribbon ${ribbon === 'Best value' ? 'is-value' : ''}`}>{ribbon}</span>
+                    )}
                     <div className="po-pkg-hd">
                       <h3 className="po-pkg-name">{p.name}</h3>
                       {/* three parts on one baseline, matching the reference: the
@@ -442,11 +484,26 @@ export default function ClientPortal({ token }) {
                     {inc.length > 0 && (
                       <div className="po-pkg-body">
                         <p className="po-inc-label">What&apos;s included</p>
-                        <ul className="po-inc">{inc.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                        <ul className="po-inc">
+                          {inc.map((x, k) => {
+                            const icon = incIcon(x);
+                            return (
+                              <li key={k}>
+                                <span className="po-inc-ic" aria-hidden="true">{icon || '✦'}</span>
+                                <span className="po-inc-t">{x}</span>
+                              </li>
+                            );
+                          })}
+                        </ul>
                       </div>
                     )}
-                    <p className="po-pkg-foot">{isChosen ? '✓ Chosen' : 'Choose this →'}</p>
-                  </button>
+                    {/* the card is still clickable anywhere; this is the obvious
+                        place to press, and it names what it will choose */}
+                    <button type="button" className="po-pkg-cta" disabled={busy}
+                      onClick={e => { e.stopPropagation(); choose(); }}>
+                      {isChosen ? `✓ ${p.name} chosen` : `Choose ${p.name}`}
+                    </button>
+                  </div>
                 );
               })}
             </div>

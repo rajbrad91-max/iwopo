@@ -147,15 +147,14 @@
   background: var(--brand, #b8922a); color: #fff;
   font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
-.po-pkg-hd {
-  padding: 28px 24px 20px;
-  border-bottom: 1px solid color-mix(in srgb, var(--brand, #b8922a) 18%, #fff);
-}
+/* the name sits above the price now, so this stops being a row */
+.po-pkg-hd { display: block; }
 /* sized against Perfect Poses' own tier label: 17px, .2em tracking */
 .po-pkg-name {
-  margin: 0 0 12px; font-size: 17px; font-weight: 700;
-  letter-spacing: .2em; text-transform: uppercase;
-  color: var(--brandText, var(--brand, #b8922a));
+  margin: 0 0 6px; font-size: 30px; font-weight: 400;
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: normal; text-transform: none;
+  color: var(--ink);
 }
 .po-pkg-price {
   margin: 0; display: flex; align-items: baseline; gap: 6px;
@@ -186,10 +185,6 @@
 .po-inc li::before {
   content: '✦'; position: absolute; left: 0; top: 0;
   color: var(--brand, #b8922a); font-size: 13px;
-}
-.po-pkg-foot {
-  padding: 0 24px 24px; font-size: 13px; font-weight: 600;
-  color: var(--brand, #b8922a); letter-spacing: .04em;
 }
 
 /* ── contract ─────────────────────────────────────────────── */
@@ -475,3 +470,55 @@
     transition: none !important; animation: none !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   The three additions from the uploaded design: a tier ribbon, an icon
+   against each inclusion, and a Choose button naming its own package.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* the card is a div now so a button can live inside it — this puts back the
+   focus ring a real button gave for free */
+.po-pkg:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, #b8922a) 45%, transparent);
+}
+.po-pkg.is-busy { opacity: .6; cursor: default; }
+
+/* ribbon — same shape as the Selected pill, so a card never looks like it has
+   two different kinds of label */
+.po-ribbon {
+  position: absolute; top: -11px; left: 24px;
+  padding: 5px 13px; border-radius: 20px; white-space: nowrap;
+  font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  background: var(--brand, #b8922a); color: #fff;
+  box-shadow: 0 4px 14px #2a1c0a0f;
+}
+/* the value one is inked rather than branded, so the two read as a pair
+   without competing for the same accent */
+.po-ribbon.is-value { background: var(--ink); }
+
+/* an icon beside each inclusion, aligned so wrapped text lines up under itself
+   rather than under the icon */
+.po-inc li { display: flex; align-items: flex-start; gap: 9px; }
+.po-inc-ic { flex-shrink: 0; font-size: 15px; line-height: 1.5; }
+.po-inc-t { flex: 1; }
+
+/* the obvious place to press. The card still takes a click anywhere, so this
+   is an affordance rather than the only way in. */
+.po-pkg-cta {
+  width: 100%; margin-top: 22px; padding: 14px;
+  border: none; border-radius: 15px;
+  background: var(--ink); color: #fff;
+  font: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 14px #2a1c0a0f;
+  transition: transform .2s cubic-bezier(.32,1.32,.64,1), box-shadow .2s ease;
+}
+.po-pkg-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 40px #2a1c0a14; }
+.po-pkg-cta:active { transform: scale(.97); }
+.po-pkg-cta:disabled { opacity: .6; cursor: default; transform: none; }
+/* once chosen it stops shouting — it is a confirmation, not a call to act */
+.po-pkg.is-chosen .po-pkg-cta {
+  background: color-mix(in srgb, var(--brand, #b8922a) 12%, #fff);
+  color: var(--brandText, var(--brand, #b8922a));
+}
+
