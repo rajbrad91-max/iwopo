@@ -37,7 +37,17 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',Helvetica,sans-serif;
+  /* Native on whichever platform is actually running, not only on Apple's.
+     The stack this replaces named -apple-system, SF Pro Display, SF Pro Text,
+     Helvetica Neue and Helvetica — on Windows every one of those misses, and
+     Helvetica is aliased to Arial, so the panel silently lost Inter and
+     rendered in Arial. Measured, not assumed: the body stack and Arial came
+     out at exactly the same width on Win32.
+     system-ui is what makes this native rather than Apple-flavoured — it
+     resolves to SF on macOS and iOS, and to Segoe UI on Windows. Inter stays
+     as the next preference for anyone who has it, ahead of the generic
+     fallbacks. */
+  font-family:-apple-system,'SF Pro Display','SF Pro Text',system-ui,'Segoe UI',Inter,'Helvetica Neue',Helvetica,sans-serif;
   -webkit-font-smoothing:antialiased; letter-spacing:-.01em;
   background:var(--bg); color:var(--text); font-size:14px;
 }
