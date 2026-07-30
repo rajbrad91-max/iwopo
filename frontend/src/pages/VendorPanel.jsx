@@ -2575,7 +2575,24 @@ function MoneySection({ lead }) {
   const [claimModal, setClaimModal] = useState(null);   // { mode: 'confirm' | 'dismiss', amount }
 
   function openClaim(dismiss) {
-    const suggested = data?.summary?.balance ?? data?.summary?.deposit_amount ?? '';
+    /**
+     * 💰 Suggest the deposit, because that is what a client pays first.
+     *
+     * It used to suggest the outstanding balance, which on an unpaid booking is
+     * the whole total — so confirming a deposit meant deleting the suggested
+     * figure and typing the right one every time.
+     *
+     * Once the deposit is actually in, the next payment IS the rest, so from
+     * that point the balance is the better guess. Suggesting the deposit
+     * unconditionally would offer £300 again on a booking that had already
+     * paid it. Either way it is only a starting value — the vendor types over
+     * it whenever the client sent something else.
+     */
+    const sum = data?.summary;
+    const deposit = Number(sum?.deposit_amount) || 0;
+    const suggested = (Number(sum?.paid) || 0) === 0 && deposit > 0
+      ? deposit
+      : (sum?.balance ?? deposit ?? '');
     setClaimModal({ mode: dismiss ? 'dismiss' : 'confirm', amount: String(suggested ?? '') });
   }
 
