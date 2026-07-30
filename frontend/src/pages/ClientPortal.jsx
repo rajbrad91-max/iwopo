@@ -229,16 +229,24 @@ function readableBrand(hex) {
   return '#' + dark;
 }
 
+/**
+ * Checked in order, first match wins — so the specific thing a line names has
+ * to come before the general subject it sits inside. "Next Day Edit delivered
+ * on USB" is about delivery, not editing; "1 Photographer with 1 Videographer"
+ * is about people, not video. Getting that order wrong is what made these read
+ * as random rather than descriptive.
+ */
 const INC_ICONS = [
-  [/\bdrone|aerial\b/i, '🚁'],
-  [/\b4k|ultra ?hd|1080|full hd|video|film|cinemat/i, '🎬'],
-  [/\bphoto|image|shot|edit/i, '📸'],
-  [/\bteam|photographer|videographer|shooter|crew|staff/i, '👥'],
-  [/\bgaller(y|ies)|online|download/i, '🖼️'],
-  [/\bdeliver|week|turnaround|usb|drive/i, '📦'],
+  [/\busb|drive|stick|memory card/i, '💾'],
   [/\balbum|print|frame|book/i, '📔'],
-  [/\bgift|bonus|free|complimentar/i, '🎁'],
-  [/\bhour|coverage|day|time/i, '⏱️'],
+  [/\bdrone|aerial/i, '🚁'],
+  [/\bgift|bonus|complimentar/i, '🎁'],
+  [/\bphotographer|videographer|shooter|team of|crew|second shooter|staff/i, '👥'],
+  [/\bgaller(y|ies)|download|online view/i, '🖼️'],
+  [/\bdeliver|weeks?\b|turnaround/i, '📦'],
+  [/\b4k|ultra ?hd|1080|full hd|video|film|cinemat/i, '🎬'],
+  [/\bphoto|image|edit|retouch/i, '📸'],
+  [/\bhour|coverage|full day/i, '⏱️'],
 ];
 /** The icon a line's own wording earns, or null to keep the neutral mark. */
 function incIcon(text) {

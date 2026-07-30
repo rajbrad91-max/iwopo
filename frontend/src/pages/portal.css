@@ -118,11 +118,12 @@
 .po-msg.is-err { background: #fbeeee; color: #a83a30; }
 
 /* ── packages ─────────────────────────────────────────────── */
-/* stretch, so every card is the height of the tallest and the Choose buttons
-   line up along the bottom instead of stepping down the row */
+/* each card is its own height. Stretching them to match only reads well when
+   the packages carry similar amounts of detail; with seven inclusions against
+   two it left a white crater above the shorter cards' buttons. */
 .po-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-  gap: 22px; align-items: stretch;
+  gap: 22px; align-items: start;
 }
 /* larger, softer cards that lift — from the reference layout */
 .po-pkg {
@@ -151,7 +152,10 @@
   font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
 /* the name sits above the price now, so this stops being a row */
-.po-pkg-hd { display: block; }
+/* The tier ribbon overlaps this edge deliberately. Measured: it sits at -10px
+   and is 26px tall, so it reaches +16px into the card — the name starts below
+   that. Horizontal padding matches the body's 24px so the two line up. */
+.po-pkg-hd { display: block; padding: 26px 24px 0; }
 /* sized against Perfect Poses' own tier label: 17px, .2em tracking */
 .po-pkg-name {
   margin: 0 0 6px; font-size: 30px; font-weight: 400;
