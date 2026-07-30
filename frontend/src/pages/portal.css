@@ -118,16 +118,19 @@
 .po-msg.is-err { background: #fbeeee; color: #a83a30; }
 
 /* ── packages ─────────────────────────────────────────────── */
+/* stretch, so every card is the height of the tallest and the Choose buttons
+   line up along the bottom instead of stepping down the row */
 .po-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-  gap: 22px; align-items: start;
+  gap: 22px; align-items: stretch;
 }
 /* larger, softer cards that lift — from the reference layout */
 .po-pkg {
   position: relative; display: flex; flex-direction: column;
   text-align: left; font-family: inherit; cursor: pointer;
   background: #fff; border: 1px solid var(--line); border-radius: 16px;
-  padding: 0; overflow: hidden;
+  padding: 0;   /* no overflow:hidden — the tier ribbon deliberately sits
+                        above the card's top edge and was being clipped away */
   box-shadow: 0 4px 22px rgba(184, 146, 42, .06);
   transition: transform .18s, box-shadow .18s, border-color .18s;
 }
@@ -181,10 +184,7 @@
 .po-inc li {
   position: relative; padding: 0 0 11px 24px;
   font-size: 15px; color: var(--body); line-height: 1.45;
-}
-.po-inc li::before {
-  content: '✦'; position: absolute; left: 0; top: 0;
-  color: var(--brand, #b8922a); font-size: 13px;
+  display: flex; align-items: flex-start; gap: 9px;
 }
 
 /* ── contract ─────────────────────────────────────────────── */
@@ -499,7 +499,6 @@
 
 /* an icon beside each inclusion, aligned so wrapped text lines up under itself
    rather than under the icon */
-.po-inc li { display: flex; align-items: flex-start; gap: 9px; }
 .po-inc-ic { flex-shrink: 0; font-size: 15px; line-height: 1.5; }
 .po-inc-t { flex: 1; }
 
