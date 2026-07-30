@@ -218,7 +218,7 @@
 
 /* 📊 Lead stat tiles */
 .lead-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.lead-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.lead-stats { display: flex; flex-wrap: wrap; gap: 10px; }
 .lead-stat {
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
   padding: 13px 14px; background: var(--panel);
