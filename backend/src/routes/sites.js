@@ -128,9 +128,17 @@ router.put('/my', requireAuth, async (req, res) => {
     const data = cleanBody(req.body);
     if (!Object.keys(data).length) return res.status(400).json({ error: 'Nothing to save' });
     data.updated_at = new Date();
-    const site = await prisma.vendor_sites.update({
+    /* An upsert rather than an update. update() on a row that does not exist
+       throws P2025, which this handler's catch turns into a 500 — and a vendor
+       has no site row until the first GET creates one. The panel always loads
+       before it saves, so this is not reachable through the interface, but a
+       500 is the wrong answer to "save my site" under any circumstances, and
+       the fix costs nothing: the create branch writes the same cleaned fields
+       against the vendor from the token. */
+    const site = await prisma.vendor_sites.upsert({
       where: { vendor_id: v },                                                     // 🔒 own row
-      data,
+      update: data,
+      create: { ...data, vendor_id: v },                                           // 🔒 from the token
     });
     res.json({ site });
   } catch (e) { res.status(500).json({ error: e.message }); }
