@@ -4721,6 +4721,76 @@ function WebsiteView() {
     });
   }
 
+  /* ── 🧱 The vendor's own page blocks ────────────────────────────────────
+     Text edits save on blur like every other field here; anything structural —
+     adding, removing, reordering, switching type, attaching a picture — saves
+     at once, because a vendor who reorders and then closes the tab should not
+     lose it. */
+  const [busySec, setBusySec] = useState(-1);       // which section is uploading
+
+  const secs = () => Array.isArray(site?.sections) ? site.sections : [];
+
+  async function saveSections(list) {
+    setSite(s => ({ ...s, sections: list }));       // optimistic: it responds now
+    try { const d = await api.saveMySite({ sections: list }); setSite(d.site); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  function addSection(type) {
+    saveSections([...secs(), { id: 's' + Date.now(), type, heading: '', body: '', image: null }]);
+  }
+
+  async function removeSection(i) {
+    const sec = secs()[i];
+    if (!await dialog.confirm(
+      sec?.heading ? `"${sec.heading}" will be removed from your page.` : 'This block will be removed from your page.',
+      { title: 'Remove this block?', okLabel: 'Remove' })) return;
+    saveSections(secs().filter((_, x) => x !== i));
+  }
+
+  function moveSection(i, dir) {
+    const list = [...secs()];
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    saveSections(list);
+  }
+
+  // switching to text deliberately drops the picture: the server does the same,
+  // so keeping it here would only disagree with what actually got stored
+  function setSectionType(i, type) {
+    const list = secs().map((x, k) => k === i
+      ? { ...x, type, image: type === 'image' ? x.image : null }
+      : x);
+    saveSections(list);
+  }
+
+  function setSectionField(i, key, value) {
+    setSite(s => {
+      const next = (s.sections || []).map((x, k) => k === i ? { ...x, [key]: value } : x);
+      return { ...s, sections: next };
+    });
+  }
+
+  async function saveSectionText() {
+    try { const d = await api.saveMySite({ sections: secs() }); setSite(d.site); flash('✅ Saved'); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  async function onSectionImage(i, e) {
+    const f = e.target.files?.[0];
+    e.target.value = '';                             // so the same file can be picked twice
+    if (!f) return;
+    setBusySec(i);
+    try {
+      const { image } = await api.uploadSitePhoto(f);
+      const list = secs().map((x, k) => k === i ? { ...x, image } : x);
+      await saveSections(list);
+      flash('✅ Picture added');
+    } catch (err) { setMsg('⚠️ ' + err.message); }
+    finally { setBusySec(-1); }
+  }
+
   async function savePortfolioText() {
     try { const d = await api.savePortfolio(site.portfolio || []); setSite(d.site); flash('✅ Saved'); }
     catch (err) { setMsg('⚠️ ' + err.message); }
@@ -4836,6 +4906,74 @@ function WebsiteView() {
       </div>
 
       {/* ── portfolio ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">🧱 Your own blocks</h3>
+        <p className="ws-hint">
+          Anything the rest of the page doesn&apos;t cover — how you work, what a package
+          includes, questions you get asked. These appear after your About text and before
+          your photographs, in the order below.
+        </p>
+
+        <div className="ws-sec-add">
+          <button type="button" className="refresh" onClick={() => addSection('text')}>➕ Text block</button>
+          <button type="button" className="refresh" onClick={() => addSection('image')}>🖼️ Text &amp; picture</button>
+        </div>
+
+        {secs().length === 0 ? (
+          <p className="ws-hint ws-sec-empty">No blocks yet — your page reads fine without them.</p>
+        ) : (
+          <div className="ws-sec-list">
+            {secs().map((sec, i) => (
+              <div className="ws-sec" key={sec.id || i}>
+                <div className="ws-sec-top">
+                  <div className="ws-sec-type">
+                    <button type="button"
+                      className={`ws-sec-tab ${sec.type !== 'image' ? 'is-on' : ''}`}
+                      onClick={() => setSectionType(i, 'text')}>Text</button>
+                    <button type="button"
+                      className={`ws-sec-tab ${sec.type === 'image' ? 'is-on' : ''}`}
+                      onClick={() => setSectionType(i, 'image')}>Text &amp; picture</button>
+                  </div>
+                  <div className="ws-sec-acts">
+                    <button type="button" className="ws-pf-btn" title="Move up"
+                      onClick={() => moveSection(i, -1)} disabled={i === 0}>↑</button>
+                    <button type="button" className="ws-pf-btn" title="Move down"
+                      onClick={() => moveSection(i, 1)} disabled={i === secs().length - 1}>↓</button>
+                    <button type="button" className="ws-pf-btn is-del" title="Remove"
+                      onClick={() => removeSection(i)}>🗑️</button>
+                  </div>
+                </div>
+
+                <input className="ws-input" placeholder="Heading — e.g. How we work"
+                  value={sec.heading || ''}
+                  onChange={e => setSectionField(i, 'heading', e.target.value)}
+                  onBlur={saveSectionText} />
+
+                <textarea className="ws-input ws-sec-body" rows={4}
+                  placeholder="What you want to say here"
+                  value={sec.body || ''}
+                  onChange={e => setSectionField(i, 'body', e.target.value)}
+                  onBlur={saveSectionText} />
+
+                {sec.type === 'image' && (
+                  <div className="ws-sec-img">
+                    {sec.image
+                      ? <img src={`/api/sites/photo/${site.vendor_id}/${sec.image}`} alt="" loading="lazy" />
+                      : <span className="ws-sec-noimg">No picture yet</span>}
+                    <label className="refresh ws-file">
+                      {busySec === i ? 'Uploading…' : (sec.image ? '🔄 Replace' : '🖼️ Add a picture')}
+                      <input type="file" accept="image/*" hidden
+                        disabled={busySec === i}
+                        onChange={e => onSectionImage(i, e)} />
+                    </label>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="table-wrap ws-block">
         <h3 className="ws-h3">📸 Portfolio</h3>
         <p className="ws-hint">

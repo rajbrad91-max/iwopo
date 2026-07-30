@@ -1726,3 +1726,46 @@
 }
 .ms-deposit-toggle button.is-on { background: var(--teal); color: #06231f; }
 .ms-deposit-note { margin: 4px 0 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* ── 🧱 the page-block editor ─────────────────────────────────────────── */
+.ws-sec-add { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.ws-sec-empty { margin: 0; }
+
+.ws-sec-list { display: flex; flex-direction: column; gap: 14px; }
+.ws-sec {
+  padding: 14px 16px; border-radius: 10px;
+  background: var(--panel-2); border: 1px solid var(--line);
+}
+.ws-sec-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+}
+/* which kind of block this is — two states, so a segmented pair reads better
+   than a dropdown a vendor has to open to find out */
+.ws-sec-type { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.ws-sec-tab {
+  background: var(--panel); border: 0; color: var(--muted);
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  padding: 6px 12px; cursor: pointer;
+}
+.ws-sec-tab.is-on { background: var(--teal); color: #06231f; }
+.ws-sec-acts { display: flex; gap: 6px; }
+.ws-pf-btn.is-del:hover { border-color: #f87171; color: #f87171; }
+
+.ws-sec .ws-input { width: 100%; margin-bottom: 8px; }
+.ws-sec-body { resize: vertical; font-family: inherit; }
+
+.ws-sec-img {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.ws-sec-img img {
+  width: 140px; height: 90px; object-fit: cover;
+  border-radius: 8px; border: 1px solid var(--line); display: block;
+}
+.ws-sec-noimg {
+  width: 140px; height: 90px; border-radius: 8px;
+  border: 1px dashed var(--line); color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; text-align: center;
+}

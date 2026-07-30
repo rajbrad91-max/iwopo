@@ -180,6 +180,39 @@ export default function PublicSite({ slug, page = 'home' }) {
             </section>
           )}
 
+          {/* 🧱 The vendor's own blocks, between the about text and the work.
+              Deliberately after About and before the portfolio: this is where a
+              vendor explains something — how they work, what a package covers —
+              and it belongs after who they are but before the pictures do the
+              rest of the talking. An image block alternates side each time so a
+              run of three does not read as a list. */}
+          {(site.sections || []).map((sec, i) => {
+            if (!sec.heading && !sec.body) return null;      // nothing to show
+            if (sec.type === 'image' && sec.image) {
+              return (
+                <section key={sec.id || i} className={`st-section ${i % 2 ? 'st-alt' : ''}`}>
+                  <div className={`st-wrap st-split ${i % 2 ? 'is-flipped' : ''}`}>
+                    <div className="st-split-text">
+                      {sec.heading && <h2 className="st-h2">{sec.heading}</h2>}
+                      {sec.body && <p className="st-prose">{sec.body}</p>}
+                    </div>
+                    <div className="st-split-img">
+                      <img src={photoUrl(sec.image)} alt={sec.heading || ''} loading="lazy" />
+                    </div>
+                  </div>
+                </section>
+              );
+            }
+            return (
+              <section key={sec.id || i} className={`st-section ${i % 2 ? 'st-alt' : ''}`}>
+                <div className="st-wrap st-narrow">
+                  {sec.heading && <h2 className="st-h2">{sec.heading}</h2>}
+                  {sec.body && <p className="st-prose">{sec.body}</p>}
+                </div>
+              </section>
+            );
+          })}
+
           {/* A slider, not a stack: the home page shows the work moving without
               growing, so it stays short whether a vendor has five frames or
               twenty-five. It advances on its own and stops the moment someone

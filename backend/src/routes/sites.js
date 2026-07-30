@@ -44,6 +44,8 @@ const THEME_IDS = new Set(THEMES.map(t => t.id));
 
 const FONTS = new Set(['Playfair Display', 'Inter', 'Poppins', 'Montserrat', 'Lora', 'Cormorant Garamond']);
 
+const SECTION_TYPES = new Set(['text', 'image']);
+
 /** Only fields a vendor may set, each cleaned to what the column can hold. */
 function cleanBody(body) {
   const out = {};
@@ -62,6 +64,20 @@ function cleanBody(body) {
     out.about_body = body.about_body == null ? null : String(body.about_body).slice(0, 4000);
   }
 
+  // 🧱 the vendor's own blocks, in the order they arrive. Capped so nobody can
+  // make their own page unloadable.
+  if (Array.isArray(body.sections)) {
+    out.sections = body.sections.slice(0, 12).map((x, i) => ({
+      id: String(x.id || `s${Date.now()}${i}`).slice(0, 24),
+      type: SECTION_TYPES.has(x.type) ? x.type : 'text',
+      heading: str(x.heading, 120),
+      body: x.body == null ? null : String(x.body).slice(0, 4000),
+      // only kept on an image section, so switching one back to text doesn't
+      // leave an orphan filename attached to it
+      image: x.type === 'image' ? str(x.image, 300) : null,
+    }));
+  }
+
   return out;
 }
 
@@ -75,7 +91,7 @@ const PUBLIC_FIELDS = {
   theme: true, accent: true, heading_font: true, body_font: true,
   site_title: true, tagline: true, about_heading: true, about_body: true,
   contact_email: true, contact_phone: true, instagram: true, facebook: true,
-  slug: true, published: true,
+  sections: true, slug: true, published: true,
   cover_photo: true, cover_focus: true, portfolio: true,
 };
 
@@ -295,6 +311,27 @@ router.put('/my/cover-focus', requireAuth, async (req, res) => {
     });
     res.json({ site });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/sites/my/photo → an image for one section.
+ *
+ * Returns the stored filename for the caller to save against a section. It does
+ * NOT write it to the row itself: a vendor may pick a picture and then change
+ * their mind about the whole section, and an upload that has already edited the
+ * page would leave the row referring to something they never kept.
+ */
+router.post('/my/photo', requireAuth, upload.single('photo'), async (req, res) => {
+  const v = Number(vid(req));
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const image = await storeImage(v, req.file.path);
+    res.json({ image });
+  } catch (e) {
+    try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/sites/photo/:vendorId/:file → serve a site photo.

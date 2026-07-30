@@ -255,6 +255,8 @@ export const api = {
   // 🌐 Website Builder
   mySite: () => request('/sites/my'),
   saveMySite: (body) => request('/sites/my', { method: 'PUT', body: JSON.stringify(body) }),
+  // 🧱 an image for one page block; returns the filename to store on it
+  uploadSitePhoto: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/photo', { method: 'POST', body: fd }); },
   saveMySiteSlug: (slug) => request('/sites/my/slug', { method: 'PUT', body: JSON.stringify({ slug }) }),
   publishMySite: (published) => request('/sites/my/publish', { method: 'PUT', body: JSON.stringify({ published }) }),
   publicSite: (slug) => request(`/sites/${slug}`),
