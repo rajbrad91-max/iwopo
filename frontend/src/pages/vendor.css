@@ -55,11 +55,11 @@
 }
 .dash .topbar h1 { font-size: 23px; font-weight: 700; letter-spacing: -0.3px; }
 .dash .topbar .sub { margin-top: 4px; }
-.dash .refresh { border-radius: 11px; transition: all .18s; }
+.dash .refresh { border-radius: 12px; }
 .dash .refresh:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #2dd4bf22; }
 
 /* Stat cards → glow tiles */
-.dash .stats { gap: 12px; }
+.dash .stats { gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .dash .card {
   border-radius: 20px; padding: 15px 16px;
   background: linear-gradient(160deg, var(--panel-2), var(--fill));
@@ -88,7 +88,8 @@
   background: var(--panel);
   box-shadow: var(--shadowSm);
 }
-.dash th { background: var(--v-th); }
+.dash th { background: var(--fill); }
+.dash tbody tr:hover { background: var(--fill); }
 .dash tbody tr { transition: background .15s; }
 .dash tbody tr:hover { background: var(--v-rowhover); }
 
@@ -147,6 +148,7 @@
    event got one cramped line and pushed the next off the screen; the side has
    room to lay a day out properly. */
 .cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
+@media (max-width:900px) { .cal-wrap { grid-template-columns: 1fr; } }
 .cal-panel { padding: 18px; }
 .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .cal-month { margin: 0; }
@@ -164,15 +166,24 @@
 
 /* ── HEADER ICONS + SIDEBAR COLLAPSE ── */
 .dash .hdr-icon {
-  width: 40px; height: 40px; border-radius: 11px;
-  background: var(--v-icon-bg); border: 1px solid var(--v-card-line); color: var(--text);
-  font-size: 17px; cursor: pointer; transition: all .16s;
+  width: 40px; height: 40px; border-radius: 13px;
+  background: var(--fill); border: 1px solid var(--line); color: var(--text);
+  font-size: 17px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  transition: transform var(--dur) var(--ease), background var(--dur) ease,
+              border-color var(--dur) ease;
 }
+.dash .hdr-icon:active { transform: scale(.9); }
 .dash .hdr-icon:hover { border-color: #2dd4bf66; transform: translateY(-1px); box-shadow: 0 4px 14px #2dd4bf22; }
 
 /* 📊 Dashboard: 2-column layout */
 .dash-grid { display:grid; grid-template-columns:1fr 380px; gap:22px; align-items:start; }
+@media (max-width:1200px) {
+  /* one column, and the rail stops sticking — there is nothing beside it to
+     stay level with once it is stacked */
+  .dash-grid { grid-template-columns:1fr; }
+  .dash-right { position:static; }
+}
 .dash-right { position:sticky; top:20px; }
 
 /* stat tile icon circle */
@@ -191,7 +202,7 @@
 .ev-card:active { transform:translateY(0) scale(.99); }
 .ev-card:hover { border-color:var(--v-accent,#2dd4bf); transform:translateY(-1px); }
 .ev-date { text-align:center; min-width:52px; }
-.ev-day { font-size:26px; font-weight:800; line-height:1; color:var(--v-accent,#2dd4bf); }
+.ev-day { font-size:27px; font-weight:800; line-height:1; letter-spacing:-1px; color:var(--v-accent,#2dd4bf); }
 .ev-mon { font-size:11px; font-weight:700; letter-spacing:1px; color:var(--v-text); }
 .ev-dow { font-size:10px; color:var(--v-muted); margin-top:2px; }
 .ev-body { flex:1; min-width:0; }
@@ -207,7 +218,7 @@
 
 /* 📊 Lead stat tiles */
 .lead-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.lead-stats { display: flex; gap: 10px; }
+.lead-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
 .lead-stat {
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
   padding: 13px 14px; background: var(--panel);
@@ -221,7 +232,7 @@
 .lead-stat:hover { border-color: #2dd4bf88; transform: translateY(-1px); }
 .lead-stat.is-on { border-color: #2dd4bf; background: #2dd4bf14; }
 .lead-stat-ic { font-size: 13px; }
-.lead-stat-val { font-size: 20px; font-weight: 800; line-height: 1.1; }
+.lead-stat-val { font-size: 22px; font-weight: 800; line-height: 1.1; letter-spacing: -.8px; }
 .lead-stat-lbl { font-size: 10px; color: var(--muted); white-space: nowrap; }
 
 /* 📋 Leads list */
@@ -314,7 +325,7 @@
 .lead-ic-btn.is-on { background: #2dd4bf; border-color: #2dd4bf; }
 .lead-ic-btn:disabled { opacity: .4; cursor: default; }
 .lead-ic-del:hover:not(:disabled) { border-color: #fb7185; }
-.lead-search { width: 100%; padding: 11px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 14px; margin-bottom: 12px; box-sizing: border-box; }
+.lead-search { width: 100%; padding: 11px 15px; background: var(--panel); border: 1px solid var(--line); border-radius: 15px; color: var(--text); font-size: 14px; margin-bottom: 12px; box-sizing: border-box; }
 .lead-search:focus { outline: none; border-color: #2dd4bf; }
 
 /* ➕ add-lead modal */
@@ -1803,4 +1814,18 @@
   border: 1px dashed var(--line); color: var(--muted);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; text-align: center;
+}
+
+/* ── scrollbars, panel only ───────────────────────────────────────────── */
+.dash ::-webkit-scrollbar { width:9px; height:9px; }
+.dash ::-webkit-scrollbar-thumb { background:var(--fill2); border-radius:8px; }
+.dash ::-webkit-scrollbar-thumb:hover { background:#2dd4bf3d; }
+
+/* ── motion respect ───────────────────────────────────────────────────────
+   Every lift, spring and slide added above is decoration. Somebody who has
+   asked their system for less movement should not have to sit through it. */
+@media (prefers-reduced-motion:reduce) {
+  .dash *, .dash *::before, .dash *::after {
+    transition:none !important; animation:none !important;
+  }
 }
