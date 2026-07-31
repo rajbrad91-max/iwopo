@@ -1829,3 +1829,17 @@
     transition:none !important; animation:none !important;
   }
 }
+
+/* 🗑️ remove a booking — quiet until hovered, so the destructive control is not
+   the loudest thing in a row a vendor scans dozens of times */
+.col-act { width: 44px; text-align: right; }
+.bk-del {
+  background: none; border: 1px solid transparent; border-radius: 9px;
+  padding: 5px 8px; cursor: pointer; font-size: 14px; line-height: 1;
+  opacity: .35;
+  transition: opacity var(--dur) ease, background var(--dur) ease,
+              border-color var(--dur) ease, transform var(--dur) var(--ease);
+}
+tr:hover .bk-del { opacity: .8; }
+.bk-del:hover { opacity: 1; background: var(--fill); border-color: #f87171; }
+.bk-del:active { transform: scale(.9); }

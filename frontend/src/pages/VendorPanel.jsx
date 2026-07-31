@@ -3326,6 +3326,7 @@ function crewStatus(c) {
 }
 
 function BookingsView({ routeBooking, onOpenBooking }) {
+  const dialog = useDialog();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('list'); // list | calendar
@@ -3334,6 +3335,18 @@ function BookingsView({ routeBooking, onOpenBooking }) {
   useEffect(() => {
     api.bookings().then(d => setBookings(d.bookings || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  async function removeBooking(b, e) {
+    e.stopPropagation();                       // don't open the booking behind it
+    if (!await dialog.confirm(
+      `${b.name}'s booking moves to History. Their contract and payments stay with it, and you can restore it any time from Leads → History.`,
+      { title: 'Remove this booking?', okLabel: 'Move to History', danger: false }
+    )) return;
+    try {
+      await api.bulkArchive([b.id]);
+      setBookings(bs => bs.filter(x => x.id !== b.id));   // the row goes at once
+    } catch (err) { dialog.alert(err.message, { error: true }); }
+  }
   if (loading) return <div className="loading">Loading…</div>;
 
   // a booking opens as its own page, not the lead editor — the sale is done, so
@@ -3383,10 +3396,10 @@ function BookingsView({ routeBooking, onOpenBooking }) {
       {mode === 'calendar' ? <CalendarView onOpen={(l) => onOpenBooking(l.id)} filter={term} /> : (
         <div className="table-wrap">
           <table>
-            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Crew Status</th><th>Status</th></tr></thead>
+            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Crew Status</th><th>Status</th><th className="col-act"></th></tr></thead>
             <tbody>
               {shown.length === 0 ? (
-                <tr><td colSpan="7" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
+                <tr><td colSpan="8" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
               ) : shown.map(b => {
                 const cs = crewStatus(b.crew);
                 return (
@@ -3400,6 +3413,10 @@ function BookingsView({ routeBooking, onOpenBooking }) {
                   <td>{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
                   <td data-label="Crew Status"><span className={`badge ${cs.cls}`}>{cs.icon} {cs.label}</span></td>
                   <td><span className="badge active">✅ Booked</span></td>
+                  <td className="col-act">
+                    <button type="button" className="bk-del" title="Remove this booking"
+                      onClick={e => removeBooking(b, e)}>🗑️</button>
+                  </td>
                 </tr>
                 );
               })}
