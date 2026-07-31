@@ -121,3 +121,127 @@
 .ffp-state { text-align: center; color: #64757d; font-size: 14px; padding: 20px 0; margin: 0; }
 
 @media (max-width: 560px) { .ffp-card { padding: 24px 20px; } }
+
+/* ══════════════════════════════════════════════════════════════════════
+   🗂️ The drive — one share, browsed a folder at a time.
+   ══════════════════════════════════════════════════════════════════════ */
+.ff-drive { position: relative; }
+
+.ff-bar-top {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.ff-back {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-size: 13.5px; color: var(--muted);
+}
+.ff-back:hover { color: var(--text); }
+
+.ff-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.ff-crumb {
+  background: none; border: 0; padding: 4px 7px; border-radius: 8px;
+  font: inherit; font-size: 14px; color: var(--muted); cursor: pointer;
+}
+.ff-crumb:hover { background: var(--fill); color: var(--text); }
+/* the folder you are actually in reads as a position, not a link */
+.ff-crumb.is-here { color: var(--text); font-weight: 600; cursor: default; }
+.ff-crumb-sep { color: var(--muted); opacity: .5; padding: 0 1px; }
+
+.ff-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.ff-tool-gap { flex: 1; }
+.ff-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 12px;
+  background: var(--fill); border: 1px solid var(--line); color: var(--text);
+  font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--dur) var(--ease), background var(--dur) ease,
+              border-color var(--dur) ease;
+}
+.ff-btn:hover { border-color: #2dd4bf66; }
+.ff-btn:active { transform: scale(.95); }
+.ff-btn:disabled { opacity: .55; cursor: default; transform: none; }
+.ff-btn.is-primary { background: var(--teal); border-color: var(--teal); color: #06231f; }
+
+/* thumbnails ⇄ list. Two states, so a segmented pair reads better than a
+   dropdown you have to open to find out which one you are in. */
+.ff-viewtog { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.ff-vt {
+  background: var(--panel); border: 0; cursor: pointer;
+  padding: 7px 12px; font-size: 15px; line-height: 1; color: var(--muted);
+}
+.ff-vt.is-on { background: var(--teal); color: #06231f; }
+
+/* ── grid ─────────────────────────────────────────────────────────────── */
+.ff-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.ff-tile {
+  position: relative; padding: 14px 12px 12px; border-radius: 14px;
+  background: var(--panel); border: 1px solid var(--line);
+  text-align: center; cursor: default;
+  transition: transform var(--dur) var(--ease), border-color var(--dur) ease,
+              box-shadow var(--dur) ease;
+}
+.ff-tile:hover { transform: translateY(-2px); border-color: #2dd4bf3d; box-shadow: var(--shadowSm); }
+.ff-tile.is-folder { cursor: pointer; }
+.ff-tile-ic {
+  height: 88px; display: flex; align-items: center; justify-content: center;
+  font-size: 38px; margin-bottom: 8px; overflow: hidden; border-radius: 9px;
+}
+/* a real preview fills the square; an icon sits in the middle of it */
+.ff-tile-ic img { width: 100%; height: 100%; object-fit: cover; border-radius: 9px; display: block; }
+.ff-tile-name {
+  margin: 0 0 2px; font-size: 13px; color: var(--text);
+  /* long filenames are the norm here — clamp rather than let a tile grow */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; word-break: break-word;
+}
+.ff-tile-meta { margin: 0; font-size: 11.5px; color: var(--muted); }
+/* actions stay out of the way until the tile is hovered */
+.ff-tile-acts {
+  position: absolute; top: 8px; right: 8px; display: flex; gap: 4px;
+  opacity: 0; transition: opacity var(--dur) ease;
+}
+.ff-tile:hover .ff-tile-acts { opacity: 1; }
+
+/* ── list ─────────────────────────────────────────────────────────────── */
+.ff-table { width: 100%; }
+.ff-row.is-folder { cursor: pointer; }
+.ff-row-ic { margin-right: 9px; }
+.ff-col-act { width: 92px; text-align: right; white-space: nowrap; }
+
+/* ── empty + drop ─────────────────────────────────────────────────────── */
+.ff-drop-hint {
+  padding: 46px 20px; text-align: center;
+  border: 1.5px dashed var(--line); border-radius: 16px;
+}
+.ff-empty-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.ff-dropzone {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px dashed var(--teal); border-radius: 16px;
+  background: color-mix(in srgb, var(--teal) 10%, transparent);
+  font-size: 15px; font-weight: 600; color: var(--text);
+  pointer-events: none;                 /* the drop must reach the pane beneath */
+}
+
+/* ── send-by-email ────────────────────────────────────────────────────── */
+.ff-modal-back {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(12, 18, 22, .55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.ff-modal {
+  width: 100%; max-width: 460px; padding: 24px 26px 20px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+}
+.ff-modal-t { margin: 0 0 4px; font-size: 17px; font-weight: 700; color: var(--text); }
+.ff-modal-sub { margin: 0 0 16px; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+.ff-modal-acts { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.ff-hint { margin: 4px 0 12px; font-size: 12.5px; line-height: 1.55; color: var(--muted); }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, fmtDateTime } from '../lib/api';
 import './fileflyer.css';
+import ShareDrive from './ShareDrive.jsx';
 import { useDialog } from '../lib/dialog.jsx';
 
 /** Bytes as something a person reads, not a number to decode. */
@@ -25,7 +26,8 @@ export default function FileFlyerView() {
   const [storage, setStorage] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(null);       // the share being looked at
+  const [open, setOpen] = useState(null);
+  const [emailFor, setEmailFor] = useState(null);   // which share the send dialog is for       // the share being looked at
   const [showNew, setShowNew] = useState(false);
   const [form, setForm] = useState({ title: '', note: '', password: '', allow_upload: true, expires_at: '' });
 
@@ -69,7 +71,11 @@ export default function FileFlyerView() {
     flash('🔗 Link copied');
   }
 
-  if (open) return <ShareDetail share={open} onBack={() => { setOpen(null); load(); }} />;
+  if (open) return (
+    <ShareDrive share={open}
+      onBack={() => { setOpen(null); load(); }}
+      onStorage={setStorage} />
+  );
 
   const pct = storage ? Math.min(100, Math.round(storage.used_bytes / storage.limit_bytes * 100)) : 0;
 
@@ -149,6 +155,7 @@ export default function FileFlyerView() {
               </div>
               <div className="ff-card-actions">
                 <button className="ff-mini" onClick={() => copyLink(s.token)}>🔗 Copy link</button>
+                <button className="ff-mini" onClick={() => setEmailFor(s)}>✉️ Send by email</button>
                 <button className="ff-mini" onClick={() => setOpen(s)}>📂 Open</button>
                 <button className="ff-mini is-del" onClick={() => remove(s.id, s.title)} disabled={busy}>🗑️</button>
               </div>
@@ -156,6 +163,76 @@ export default function FileFlyerView() {
           ))}
         </div>
       )}
+
+      {emailFor && (
+        <EmailShareModal share={emailFor} onClose={() => setEmailFor(null)} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * ✉️ Send a share link to a client.
+ *
+ * Addresses are validated on the server too — this only catches the obvious
+ * cases early so a typo does not cost a round trip.
+ */
+function EmailShareModal({ share, onClose }) {
+  const dialog = useDialog();
+  const [to, setTo] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+
+  async function send() {
+    const list = to.split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
+    if (!list.length) { dialog.alert('Add at least one email address.', { error: true }); return; }
+    setSending(true);
+    try {
+      const d = await api.emailShare(share.id, { to: list, message: message.trim() || undefined });
+      onClose();
+      dialog.alert(
+        `Sent to ${d.sent_to} ${d.sent_to === 1 ? 'person' : 'people'}` +
+        (d.via === 'platform' ? ', using iwopo\u2019s mail server.' : ', from your own email.'),
+        { title: 'On its way' });
+    } catch (e) {
+      // the server explains WHY when there is no mail server configured — pass
+      // that through rather than a generic failure the vendor cannot act on
+      dialog.alert(e.message, { title: 'Could not send', error: true });
+    } finally { setSending(false); }
+  }
+
+  return (
+    <div className="ff-modal-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="ff-modal">
+        <h3 className="ff-modal-t">✉️ Send &ldquo;{share.title}&rdquo;</h3>
+        <p className="ff-modal-sub">
+          They&rsquo;ll get a link to open and download everything in this folder.
+        </p>
+
+        <label className="ff-label">Send to</label>
+        <input className="ff-input" autoFocus placeholder="client@example.com, someone@else.com"
+          value={to} onChange={e => setTo(e.target.value)} />
+        <p className="ff-hint">Separate several addresses with a comma.</p>
+
+        <label className="ff-label">Add a message (optional)</label>
+        <textarea className="ff-input ff-ta" rows={3}
+          placeholder="Here are the photos from Saturday!"
+          value={message} onChange={e => setMessage(e.target.value)} />
+
+        {share.password && (
+          <p className="ff-hint">
+            🔒 This link asks for a password. The email says so, but it will not
+            include the password — send that separately.
+          </p>
+        )}
+
+        <div className="ff-modal-acts">
+          <button className="ff-btn" onClick={onClose} disabled={sending}>Cancel</button>
+          <button className="ff-btn is-primary" onClick={send} disabled={sending}>
+            {sending ? 'Sending…' : 'Send link'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

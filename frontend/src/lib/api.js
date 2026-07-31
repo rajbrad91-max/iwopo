@@ -139,6 +139,26 @@ export function moneyParts(n, { decimals = 0, currency } = {}) {
 // localStorage is still read as a fallback (so an existing login isn't lost the
 // first time this ships) and still written, so opening a NEW tab keeps you
 // signed in rather than forcing a fresh login every time.
+/**
+ * 📥 Fetch binary from an authenticated route.
+ *
+ * The request() helper parses JSON, which is wrong for an image or a zip.
+ * This returns the raw Response so the caller can take a blob — needed
+ * because an <img src> and an <a download> cannot carry an Authorization
+ * header, so those have to fetch the bytes themselves and hand over an
+ * object URL.
+ *
+ * Deliberately not solved with a token in the query string: that writes the
+ * JWT into server logs and referrer headers on every thumbnail request.
+ */
+export function authFetch(pathname, opts = {}) {
+  const t = getToken();
+  return fetch(BASE + pathname, {
+    ...opts,
+    headers: { ...(opts.headers || {}), ...(t ? { Authorization: 'Bearer ' + t } : {}) },
+  });
+}
+
 function getToken() {
   return sessionStorage.getItem('iwopo_token') || localStorage.getItem('iwopo_token');
 }
@@ -268,13 +288,27 @@ export const api = {
 
   // 📤 File Flyer — shares a vendor hands to a client, either direction
   fileShares: () => request('/files'),
+
+  // 📁 one level of a share: the folders and files directly inside `folder`
+  browseShare: (id, folderId) =>
+    request(`/files/${id}/browse${folderId ? '?folder=' + folderId : ''}`),
+  createFolder: (id, body) =>
+    request(`/files/${id}/folders`, { method: 'POST', body: JSON.stringify(body) }),
+  renameFolder: (folderId, name) =>
+    request(`/files/folder/${folderId}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  deleteFolder: (folderId) =>
+    request(`/files/folder/${folderId}`, { method: 'DELETE' }),
+  emailShare: (id, body) =>
+    request(`/files/${id}/email`, { method: 'POST', body: JSON.stringify(body) }),
   createFileShare: (body) => request('/files', { method: 'POST', body: JSON.stringify(body) }),
   updateFileShare: (id, body) => request(`/files/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteFileShare: (id) => request(`/files/${id}`, { method: 'DELETE' }),
   fileShareItems: (id) => request(`/files/${id}/items`),
-  uploadShareFiles: (id, files) => {
+  uploadShareFiles: (id, files, folderId) => {
     const fd = new FormData();
     for (const f of files) fd.append('files', f);
+    // the folder currently open, so a drop lands where the vendor is looking
+    if (folderId) fd.append('folder_id', String(folderId));
     return request(`/files/${id}/upload`, { method: 'POST', body: fd });
   },
   deleteShareItem: (itemId) => request(`/files/item/${itemId}`, { method: 'DELETE' }),
