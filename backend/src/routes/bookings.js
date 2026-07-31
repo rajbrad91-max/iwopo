@@ -17,7 +17,9 @@ router.get('/', requireAuth, async (req, res) => {
     // 🔒 tenancy: a vendor is always filtered to their own leads; only a super_admin
     // with no vendor_id selected sees across tenants (same rule as before).
     const rows = await prisma.leads.findMany({
-      where: v ? { vendor_id: Number(v), status: 'booked' } : { status: 'booked' },
+      where: v
+        ? { vendor_id: Number(v), status: 'booked', archived_at: null }   // 🔒 tenancy + not archived
+        : { status: 'booked', archived_at: null },
       orderBy: { event_date: { sort: 'asc', nulls: 'last' } },
     });
     const bookings = [];
