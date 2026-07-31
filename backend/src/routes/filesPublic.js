@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import prisma from '../config/prisma.js';
+import archiver from 'archiver';
 import { storageFor, shareDir } from './files.js';
 
 const router = express.Router();
@@ -75,6 +76,114 @@ router.get('/:token', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * GET /api/f/:token/browse?folder=<id> → one level of the share, for the client.
+ *
+ * Mirrors the vendor's browse but scopes every lookup to the share the token
+ * resolves to. A folder id is supplied by whoever holds the link, so it is
+ * checked against this share rather than trusted — otherwise a valid token
+ * plus a guessed id would read another vendor's folder.
+ */
+router.get('/:token/browse', async (req, res) => {
+  try {
+    const found = await shareByToken(req.params.token);
+    if (!found) return res.status(404).json({ error: 'This link is not valid' });
+    const { share, expired } = found;
+    if (expired) return res.status(410).json({ error: 'expired', message: 'This link has expired.' });
+    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+      return res.status(403).json({ error: 'Locked' });
+    }
+
+    const folderId = req.query.folder ? Number(req.query.folder) : null;
+    // 🔒 the folder must belong to THIS share — not merely exist
+    let trail = [];
+    if (folderId) {
+      let cur = await prisma.file_folders.findUnique({ where: { id: folderId } });
+      if (!cur || cur.share_id !== share.id) return res.status(404).json({ error: 'Folder not found' });
+      let guard = 0;
+      while (cur && guard++ < 50) {
+        trail.unshift({ id: cur.id, name: cur.name });
+        if (!cur.parent_id) break;
+        cur = await prisma.file_folders.findUnique({ where: { id: cur.parent_id } });
+      }
+    }
+
+    const [folders, items] = await Promise.all([
+      prisma.file_folders.findMany({
+        where: { share_id: share.id, parent_id: folderId },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, created_at: true },
+      }),
+      prisma.file_share_items.findMany({
+        where: { share_id: share.id, folder_id: folderId },
+        orderBy: { filename: 'asc' },
+        select: { id: true, filename: true, size_bytes: true, mime: true,
+          uploaded_by: true, uploader_name: true, created_at: true },
+      }),
+    ]);
+
+    const counts = folders.length ? await prisma.file_share_items.groupBy({
+      by: ['folder_id'],
+      where: { folder_id: { in: folders.map(f => f.id) } },
+      _count: { _all: true },
+    }) : [];
+    const byFolder = Object.fromEntries(counts.map(c => [c.folder_id, c._count._all]));
+
+    res.json({
+      trail,
+      folders: folders.map(f => ({ ...f, file_count: byFolder[f.id] || 0 })),
+      items: items.map(i => ({ ...i, size_bytes: Number(i.size_bytes) })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** Everything under a folder, rebuilt inside the archive. */
+async function zipInto(archive, shareId, vendorId, folderId, prefix) {
+  const [folders, items] = await Promise.all([
+    prisma.file_folders.findMany({ where: { share_id: shareId, parent_id: folderId } }),
+    prisma.file_share_items.findMany({ where: { share_id: shareId, folder_id: folderId } }),
+  ]);
+  for (const it of items) {
+    const full = path.join(shareDir(vendorId, shareId), it.stored_name);
+    if (fs.existsSync(full)) archive.file(full, { name: prefix + it.filename });
+  }
+  for (const f of folders) {
+    archive.append(null, { name: prefix + f.name + '/' });
+    await zipInto(archive, shareId, vendorId, f.id, prefix + f.name + '/');
+  }
+}
+
+function safeZipName(name) {
+  return String(name || 'files').replace(/[^\w\d\-. ]+/g, '_').trim().slice(0, 80) || 'files';
+}
+
+// GET /api/f/:token/zip[?folder=<id>] → the share, or one folder in it
+router.get('/:token/zip', async (req, res) => {
+  try {
+    const found = await shareByToken(req.params.token);
+    if (!found) return res.status(404).json({ error: 'This link is not valid' });
+    const { share, expired } = found;
+    if (expired) return res.status(410).json({ error: 'expired' });
+    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+      return res.status(403).json({ error: 'Locked' });
+    }
+
+    let rootId = null, label = share.title;
+    if (req.query.folder) {
+      const f = await prisma.file_folders.findUnique({ where: { id: Number(req.query.folder) } });
+      if (!f || f.share_id !== share.id) return res.status(404).json({ error: 'Folder not found' });
+      rootId = f.id; label = f.name;
+    }
+
+    res.attachment(safeZipName(label) + '.zip');
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.on('error', () => { if (!res.headersSent) res.status(500).end(); });
+    archive.pipe(res);
+    await zipInto(archive, share.id, share.vendor_id, rootId, '');
+    archive.finalize();
+  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/f/:token/unlock → check the share password
 router.post('/:token/unlock', async (req, res) => {
   try {
@@ -144,6 +253,13 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
         message: 'There is not enough space left on this link. Please let them know.' });
     }
 
+    // whichever folder they were browsing; checked against this share
+    let folderId = req.body?.folder_id ? Number(req.body.folder_id) : null;
+    if (folderId) {
+      const f = await prisma.file_folders.findUnique({ where: { id: folderId } });
+      if (!f || f.share_id !== share.id) { cleanup(); return res.status(404).json({ error: 'Folder not found' }); }
+    }
+
     const dir = shareDir(share.vendor_id, share.id);
     fs.mkdirSync(dir, { recursive: true });
     const who = String(req.body?.uploader_name || '').trim().slice(0, 120) || null;
@@ -162,6 +278,7 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
           mime: f.mimetype ? String(f.mimetype).slice(0, 150) : null,
           uploaded_by: 'client',
           uploader_name: who,
+          folder_id: folderId,
         },
       });
       n++;
