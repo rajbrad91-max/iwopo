@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import archiver from 'archiver';
+import sharp from 'sharp';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { FILES_DIR } from '../config/paths.js';
@@ -140,6 +141,74 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 
+/* ───────── 🖼️ THUMBNAILS ───────── */
+
+/**
+ * Whether a file is worth trying to preview.
+ *
+ * The mime column is whatever the uploading client declared, and that is not
+ * reliable — plenty of real uploads arrive as application/octet-stream even
+ * when they are ordinary photographs, depending on the browser, the drag
+ * source, or the API client. Rejecting on mime alone means those files never
+ * get a thumbnail despite being perfectly readable images.
+ *
+ * So the mime is one signal and the extension is another, and sharp is the
+ * final arbiter: if it can decode the file, it was an image regardless of what
+ * either of them claimed. Anything sharp refuses falls through to an icon.
+ */
+const THUMB_MIME = /^image\/(jpeg|png|webp|gif|avif|tiff|bmp)$/i;
+const THUMB_EXT = /\.(jpe?g|png|webp|gif|avif|tiff?|bmp)$/i;
+function maybeImage(item) {
+  if (THUMB_MIME.test(item.mime || '')) return true;
+  if (THUMB_EXT.test(item.filename || '')) return true;
+  // a generic type with no useful extension is still worth one attempt —
+  // sharp fails fast and cheaply on anything that is not an image
+  return /^application\/octet-stream$/i.test(item.mime || '');
+}
+
+/**
+ * Build a thumbnail once and keep it beside the original.
+ *
+ * Generated on demand rather than at upload: a share can take hundreds of files
+ * in one go, and doing the work then would hold the upload open for all of them
+ * when most may never be looked at in grid view. The cached file means the cost
+ * is paid once per image regardless.
+ *
+ * Returns null when the file is not an image or cannot be read — the caller
+ * turns that into a 404 and the interface falls back to an icon.
+ */
+export async function thumbPathFor(vendorId, shareId, item) {
+  if (!maybeImage(item)) return null;
+  const dir = shareDir(vendorId, shareId);
+  const src = path.join(dir, item.stored_name);
+  if (!fs.existsSync(src)) return null;
+  const out = path.join(dir, item.stored_name + '.thumb.webp');
+  if (fs.existsSync(out)) return out;
+  try {
+    await sharp(src)
+      .rotate()                                  // honour EXIF, or phone photos land sideways
+      .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 76 })
+      .toFile(out);
+    return out;
+  } catch { return null; }                       // corrupt or unsupported — icon instead
+}
+
+// GET /api/files/item/:itemId/thumb
+router.get('/item/:itemId/thumb', requireAuth, async (req, res) => {
+  try {
+    const it = await prisma.file_share_items.findUnique({ where: { id: Number(req.params.itemId) } });
+    if (!it) return res.status(404).end();
+    if (it.vendor_id !== vid(req)) return res.status(403).end();          // 🔒 tenancy
+    const t = await thumbPathFor(it.vendor_id, it.share_id, it);
+    if (!t) return res.status(404).end();
+    res.type('webp');
+    // private: these are a vendor's files, not public assets
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.sendFile(t, (err) => { if (err && !res.headersSent) res.status(404).end(); });
+  } catch { res.status(500).end(); }
+});
+
 /* ───────── 📧 SHARE BY EMAIL ───────── */
 
 function esc(x) {
@@ -260,6 +329,7 @@ async function zipInto(archive, shareId, vendorId, folderId, prefix) {
   for (const it of items) {
     const full = path.join(shareDir(vendorId, shareId), it.stored_name);
     // a row whose file is missing shouldn't abort the whole download
+    // the .thumb.webp beside it is ours, not theirs — never goes in the zip
     if (fs.existsSync(full)) archive.file(full, { name: prefix + it.filename });
   }
   for (const f of folders) {

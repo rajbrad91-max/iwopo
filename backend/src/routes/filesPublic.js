@@ -5,6 +5,7 @@ import path from 'path';
 import multer from 'multer';
 import prisma from '../config/prisma.js';
 import archiver from 'archiver';
+import { thumbPathFor } from './files.js';
 import { storageFor, shareDir } from './files.js';
 
 const router = express.Router();
@@ -182,6 +183,27 @@ router.get('/:token/zip', async (req, res) => {
     await zipInto(archive, share.id, share.vendor_id, rootId, '');
     archive.finalize();
   } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/f/:token/thumb/:itemId → preview for a client browsing in grid view
+router.get('/:token/thumb/:itemId', async (req, res) => {
+  try {
+    const found = await shareByToken(req.params.token);
+    if (!found) return res.status(404).end();
+    const { share, expired } = found;
+    if (expired) return res.status(410).end();
+    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') return res.status(403).end();
+
+    const it = await prisma.file_share_items.findUnique({ where: { id: Number(req.params.itemId) } });
+    // 🔒 the item must belong to THIS share — an id alone proves nothing
+    if (!it || it.share_id !== share.id) return res.status(404).end();
+
+    const t = await thumbPathFor(share.vendor_id, share.id, it);
+    if (!t) return res.status(404).end();
+    res.type('webp');
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.sendFile(t, (err) => { if (err && !res.headersSent) res.status(404).end(); });
+  } catch { res.status(500).end(); }
 });
 
 // POST /api/f/:token/unlock → check the share password
