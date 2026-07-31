@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
+import { applyBrandTone } from '../lib/brandTone.js';
 import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { COUNTRIES } from '../lib/countries';
@@ -112,8 +113,35 @@ export default function VendorPanel({ onLogout }) {
 
   function handleLogout() { clearSession(); onLogout(); }
 
+  // the vendor's brand hue, tinting the panel's own tokens
+  const dashRef = useRef(null);
+  const [brandHex, setBrandHex] = useState(null);
+  const [themeMode, setThemeMode] = useState(
+    () => (document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'));
+
+  useEffect(() => {
+    const vid = user?.vendor_id || user?.vendor?.id;
+    if (!vid) return;
+    api.inquirySettings(vid)
+      .then(d => setBrandHex(d.settings?.brand_color || d.brand_color || null))
+      .catch(() => { /* no brand set, or not permitted — stock theme stands */ });
+  }, [user]);
+
+  // the light/dark switch is made by writing an attribute on <html>, so that is
+  // what has to be watched; a state flag here would miss a change made anywhere
+  // else in the panel
+  useEffect(() => {
+    const read = () => setThemeMode(
+      document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => mo.disconnect();
+  }, []);
+
+  useEffect(() => { applyBrandTone(dashRef.current, brandHex, themeMode); }, [brandHex, themeMode]);
+
   return (
-    <div className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <div ref={dashRef} className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
       {!collapsed && <div className="sidebar-backdrop" onClick={() => setCollapsed(true)} />}
       <aside className="sidebar">
         <div className="brand">
@@ -3867,8 +3895,11 @@ function InqFormSettings({ user }) {
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginTop: 12 }}>
           <div>
             <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block' }}>Brand color</label>
-            <input type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })}
-              style={{ width: 60, height: 36, border: 'none', background: 'transparent', cursor: 'pointer' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })}
+                style={{ width: 60, height: 36, border: 'none', background: 'transparent', cursor: 'pointer' }} />
+              <HexField value={s.brand_color} onChange={hex => setS({ ...s, brand_color: hex })} />
+            </div>
           </div>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Background watermark</label>
@@ -4286,6 +4317,46 @@ function SettingsView({ user, onProfileChange }) {
 
       {sub === 'email' && <EmailSetup />}
     </div>
+  );
+}
+
+/**
+ * A hex code beside the colour swatch.
+ *
+ * Holds its own draft while typing, because a half-typed code is not a colour:
+ * committing every keystroke would push "#1", "#12", "#123" upward and repaint
+ * the form through three wrong shades on the way to the right one. The draft is
+ * released on blur, so an abandoned or malformed entry reverts rather than
+ * sitting there looking accepted.
+ */
+function HexField({ value, onChange }) {
+  const [draft, setDraft] = useState(null);
+  const shown = draft ?? (value || '');
+
+  function type(raw) {
+    let v = raw.trim();
+    if (v && !v.startsWith('#')) v = '#' + v;         // pasting 'aabbcc' should work
+    v = v.replace(/[^#0-9a-fA-F]/g, '').slice(0, 7);
+    setDraft(v);
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v.toLowerCase());
+  }
+
+  return (
+    <input
+      value={shown}
+      onChange={e => type(e.target.value)}
+      onBlur={() => setDraft(null)}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+      placeholder="#000000"
+      spellCheck={false}
+      aria-label="Brand colour hex code"
+      style={{
+        width: 100, height: 36, boxSizing: 'border-box',
+        padding: '0 10px', borderRadius: 9,
+        border: '1px solid var(--line)', background: 'var(--panel)',
+        color: 'var(--text)', fontSize: 13,
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      }} />
   );
 }
 

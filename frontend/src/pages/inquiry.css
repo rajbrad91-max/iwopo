@@ -3,34 +3,52 @@
 /* 🎨 THEMES — change card look */
 .iq-theme-classic { border-radius: 20px; }
 .iq-theme-modern { border-radius: 8px; }
-.iq-theme-modern .iq-hd { background: #4A3E3D; }
+
 .iq-theme-modern .iq-brand, .iq-theme-modern .iq-sub { color: #F5F0EA; }
 .iq-theme-elegant { border-radius: 26px; }
 .iq-theme-elegant .iq-section-title { font-style: italic; letter-spacing: 1px; }
-.iq-theme-bold .iq-hd { background: var(--brand, #C9A86A); }
+
 .iq-theme-bold .iq-brand, .iq-theme-bold .iq-sub { color: #fff; }
 .iq-theme-bold .iq-section-title { text-transform: uppercase; font-size: 17px; }
 .iq-theme-minimal { border-radius: 4px; box-shadow: none; border: 1px solid #E8E0D5; }
-.iq-theme-minimal .iq-hd { background: #FAF8F5; }
+
 
 /* page bg = brand color (soft) */
 .iq-wrap {
+  /* resolved by themeStyleObject at runtime; these cover first paint and the
+     case where that never runs, so the admin theme can never show through */
+  --brand: #C9A86A;
+  --brand-strong: #a8874a;
+  --brand-ink: #4A3E3D;
+  --on-brand: #ffffff;
+  --page-bg: #F5F0EA;
+  --surface: #FAF8F5;
+  --line: #E8E0D5;
+  --field-bg: #EFEAE2;
+  --field-line: #E0D6C8;
+  --label: #4A3E3D;
+  --text: #3D3530;
+  --muted: #8A7B6E;
+  --shadow: 0 16px 50px rgba(74, 62, 61, .12);
+
   min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
-  padding: 40px 20px; color: #3D3530;
-  background-color: color-mix(in srgb, var(--brand, #C9A86A) 35%, #F5F0EA);
+  padding: 40px 20px; color: var(--text);
+  background: var(--page-bg);
 }
 .iq-card {
   position: relative; overflow: hidden; width: 100%; max-width: 720px;
-  background: #FAF8F5; border: 1px solid #E8E0D5; border-radius: 20px;
-  color: #3D3530; box-shadow: 0 16px 50px rgba(74,62,61,.12);
+  background: var(--surface);
+  border: 1px solid var(--line); border-radius: 20px;
+  color: var(--text); box-shadow: var(--shadow);
 }
 
 /* header: logo left, text centered */
-.iq-hd { position: relative; z-index: 2; padding: 24px 32px 22px; background: linear-gradient(135deg, color-mix(in srgb, var(--brand, #C9A86A) 20%, #F0E9DE), #FAF8F5 75%); border-bottom: 1px solid #ECE4D8; display: flex; align-items: center; gap: 18px; }
+.iq-hd { position: relative; z-index: 2; padding: 24px 32px 22px; background: var(--brand); border-bottom: 1px solid var(--brand); display: flex; align-items: center; gap: 18px;   color: var(--on-brand);
+}
 .iq-logo { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
 .iq-hd-text { flex: 1; text-align: center; }
-.iq-brand { font-size: 24px; font-weight: 800; color: #4A3E3D; display:flex; align-items:center; gap:8px; }
-.iq-sub { color: #8A7B6E; font-size: 14px; margin: 5px 0 0; }
+.iq-brand { font-size: 24px; font-weight: 800; color: inherit; display:flex; align-items:center; gap:8px; }
+.iq-sub { color: var(--muted); font-size: 14px; margin: 5px 0 0; }
 .iq-sub-link { display: inline-block; text-decoration: underline; cursor: pointer; }
 .iq-sub-link:hover { color: var(--brand, #C9A86A); }
 
@@ -49,10 +67,11 @@
 .iq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .iq-grid .iq-full { grid-column: 1 / -1; }
 
-.iq-card label { display: block; font-size: 12px; color: #4A3E3D; font-weight: 700; margin: 0 0 5px; }
-.iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 12px 14px; background: #EFEAE2; border: 1px solid #E0D6C8; border-radius: 10px; color: #3D3530; font-size: 14px; font-family: inherit; box-sizing: border-box; }
+.iq-card label { display: block; font-size: 12px; color: var(--label); font-weight: 700; margin: 0 0 5px; }
+.iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 12px 14px; background: var(--field-bg);
+  border: 1px solid var(--field-line); border-radius: 10px; color: var(--text); font-size: 14px; font-family: inherit; box-sizing: border-box; }
 .iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, #C9A86A); background: #fff; }
-.iq-card input::placeholder { color: #A89985; }
+.iq-card input::placeholder { color: var(--muted); }
 
 .iq-check-row { display: flex !important; align-items: center; gap: 9px; font-size: 14px !important; color: #3D3530 !important; cursor: pointer; }
 .iq-check-row input { width: 17px !important; height: 17px; accent-color: var(--brand, #C9A86A); cursor: pointer; }
@@ -72,8 +91,8 @@
 .iq-auto-reset:hover { color: #4A3E3D; }
 
 .iq-err { background: #fbeaea; color: #b4433a; padding: 11px; border-radius: 9px; margin-top: 14px; font-size: 13px; }
-.iq-btn { width: 100%; margin-top: 20px; padding: 14px; background: #4A3E3D; color: #F5F0EA; border: none; border-radius: 11px; font-weight: 800; font-size: 15px; cursor: pointer; }
-.iq-btn:hover { background: #3D3530; }
+.iq-btn { width: 100%; margin-top: 20px; padding: 14px; background: var(--brand); color: var(--on-brand); border: none; border-radius: 11px; font-weight: 800; font-size: 15px; cursor: pointer; }
+.iq-btn:hover { background: var(--brand-strong); }
 .iq-btn:disabled { opacity: 0.6; }
 
 .iq-done { text-align: center; padding: 40px 32px; }
@@ -146,7 +165,6 @@
 /* The app shell's body is dark. These pages are a client-facing document on a
    light page, and the dark body showed through at the edges and when the page
    over-scrolls — so the page ends up framed in a colour it doesn't use. */
-body:has(.iq-wrap) { background: color-mix(in srgb, var(--brand, #C9A86A) 35%, #F5F0EA); }
 body:has(.cp-page) { background: #EFE9E0; }
 
 /* ✍️ The gold box a client taps to initial a clause.

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { themeStyleObject } from '../lib/brandTheme.js';
 import { api } from '../lib/api';
 import ChatWidget from './ChatWidget';
 import './inquiry.css';
@@ -81,7 +82,7 @@ export default function InquiryForm({ vendorId }) {
   const prof = PROFESSIONS[c.background] || PROFESSIONS.none;
 
   return (
-    <div className="iq-wrap" style={{ fontFamily: `'${font}', sans-serif`, '--brand': brand }}>
+    <div className="iq-wrap" style={themeStyleObject(brand, cfg.theme, font)}>
       {/* page-wide profession watermark */}
       {prof.icon && <div className="iq-watermark" aria-hidden>{Array.from({ length: 120 }).map((_, i) => <span key={i}>{prof.icon}</span>)}</div>}
       <div className={`iq-card iq-theme-${c.theme || 'classic'}`}>
