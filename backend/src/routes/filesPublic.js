@@ -6,7 +6,31 @@ import multer from 'multer';
 import prisma from '../config/prisma.js';
 import archiver from 'archiver';
 import { thumbPathFor } from './files.js';
-import { storageFor, shareDir } from './files.js';
+import { storageFor, vendorDir } from './files.js';
+
+/**
+ * Is `folderId` the shared folder, or somewhere beneath it?
+ *
+ * Walks upward and stops at the share's root. A client holding a link to one
+ * folder must not be able to name a sibling's id and read it, and the id is
+ * supplied by whoever holds the link so it cannot be trusted.
+ *
+ * A null root means the whole drive is shared, in which case any folder of that
+ * vendor is fair game.
+ */
+async function withinShare(folderId, rootFolderId, vendorId) {
+  if (!folderId) return true;                       // the root of what was shared
+  let cur = await prisma.file_folders.findUnique({ where: { id: Number(folderId) } });
+  if (!cur || cur.vendor_id !== vendorId) return false;
+  if (!rootFolderId) return true;                   // whole drive shared
+  let guard = 0;
+  while (cur && guard++ < 50) {
+    if (cur.id === rootFolderId) return true;
+    if (!cur.parent_id) return false;               // reached the top without meeting it
+    cur = await prisma.file_folders.findUnique({ where: { id: cur.parent_id } });
+  }
+  return false;
+}
 
 const router = express.Router();
 const upload = multer({ dest: '/tmp/iwopo_files', limits: { fileSize: 2 * 1024 * 1024 * 1024 } });
@@ -65,7 +89,7 @@ router.get('/:token', async (req, res) => {
     }
 
     const items = await prisma.file_share_items.findMany({
-      where: { share_id: share.id },
+      where: { vendor_id: share.vendor_id, folder_id: share.folder_id },
       orderBy: { id: 'desc' },
       select: { id: true, filename: true, size_bytes: true, mime: true, uploaded_by: true,
         uploader_name: true, created_at: true },
@@ -100,7 +124,7 @@ router.get('/:token/browse', async (req, res) => {
     let trail = [];
     if (folderId) {
       let cur = await prisma.file_folders.findUnique({ where: { id: folderId } });
-      if (!cur || cur.share_id !== share.id) return res.status(404).json({ error: 'Folder not found' });
+      if (!cur || cur.vendor_id !== share.vendor_id) return res.status(404).json({ error: 'Folder not found' });
       let guard = 0;
       while (cur && guard++ < 50) {
         trail.unshift({ id: cur.id, name: cur.name });
@@ -111,12 +135,12 @@ router.get('/:token/browse', async (req, res) => {
 
     const [folders, items] = await Promise.all([
       prisma.file_folders.findMany({
-        where: { share_id: share.id, parent_id: folderId },
+        where: { vendor_id: share.vendor_id, parent_id: folderId },
         orderBy: { name: 'asc' },
         select: { id: true, name: true, created_at: true },
       }),
       prisma.file_share_items.findMany({
-        where: { share_id: share.id, folder_id: folderId },
+        where: { vendor_id: share.vendor_id, folder_id: folderId },
         orderBy: { filename: 'asc' },
         select: { id: true, filename: true, size_bytes: true, mime: true,
           uploaded_by: true, uploader_name: true, created_at: true },
@@ -139,13 +163,15 @@ router.get('/:token/browse', async (req, res) => {
 });
 
 /** Everything under a folder, rebuilt inside the archive. */
-async function zipInto(archive, shareId, vendorId, folderId, prefix) {
+async function zipInto(archive, vendorId, folderId, prefix) {
   const [folders, items] = await Promise.all([
-    prisma.file_folders.findMany({ where: { share_id: shareId, parent_id: folderId } }),
-    prisma.file_share_items.findMany({ where: { share_id: shareId, folder_id: folderId } }),
+    prisma.file_folders.findMany({ where: { vendor_id: vendorId, parent_id: folderId } }),
+    prisma.file_share_items.findMany({ where: { vendor_id: vendorId, folder_id: folderId } }),
   ]);
   for (const it of items) {
-    const full = path.join(shareDir(vendorId, shareId), it.stored_name);
+    const full = path.join(vendorDir(vendorId, shareId), it.stored_name);
+    // a generated .thumb.webp / .lg.webp sits beside the original; only the
+    // original is the vendor's file and only that belongs in the archive
     if (fs.existsSync(full)) archive.file(full, { name: prefix + it.filename });
   }
   for (const f of folders) {
@@ -172,7 +198,7 @@ router.get('/:token/zip', async (req, res) => {
     let rootId = null, label = share.title;
     if (req.query.folder) {
       const f = await prisma.file_folders.findUnique({ where: { id: Number(req.query.folder) } });
-      if (!f || f.share_id !== share.id) return res.status(404).json({ error: 'Folder not found' });
+      if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) return res.status(404).json({ error: 'Folder not found' });
       rootId = f.id; label = f.name;
     }
 
@@ -180,7 +206,7 @@ router.get('/:token/zip', async (req, res) => {
     const archive = archiver('zip', { zlib: { level: 6 } });
     archive.on('error', () => { if (!res.headersSent) res.status(500).end(); });
     archive.pipe(res);
-    await zipInto(archive, share.id, share.vendor_id, rootId, '');
+    await zipInto(archive, share.vendor_id, rootId, '');
     archive.finalize();
   } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
 });
@@ -196,9 +222,10 @@ router.get('/:token/thumb/:itemId', async (req, res) => {
 
     const it = await prisma.file_share_items.findUnique({ where: { id: Number(req.params.itemId) } });
     // 🔒 the item must belong to THIS share — an id alone proves nothing
-    if (!it || it.share_id !== share.id) return res.status(404).end();
+    if (!it || it.vendor_id !== share.vendor_id
+      || !(await withinShare(it.folder_id, share.folder_id, share.vendor_id))) return res.status(404).end();
 
-    const t = await thumbPathFor(share.vendor_id, share.id, it);
+    const t = await thumbPathFor(share.vendor_id, it, req.query.size === 'lg' ? 'lg' : 'thumb');
     if (!t) return res.status(404).end();
     res.type('webp');
     res.set('Cache-Control', 'private, max-age=86400');
@@ -235,10 +262,10 @@ router.get('/:token/download/:itemId', async (req, res) => {
     // the item must belong to THIS share — an id from another share is not
     // reachable just because this token happens to be valid
     const item = await prisma.file_share_items.findFirst({
-      where: { id: Number(req.params.itemId), share_id: share.id },
+      where: { id: Number(req.params.itemId), vendor_id: share.vendor_id },
     });
     if (!item) return res.status(404).json({ error: 'Not found' });
-    const full = path.join(shareDir(share.vendor_id, share.id), item.stored_name);
+    const full = path.join(vendorDir(share.vendor_id, share.id), item.stored_name);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
     res.download(full, item.filename);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -279,10 +306,10 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
     let folderId = req.body?.folder_id ? Number(req.body.folder_id) : null;
     if (folderId) {
       const f = await prisma.file_folders.findUnique({ where: { id: folderId } });
-      if (!f || f.share_id !== share.id) { cleanup(); return res.status(404).json({ error: 'Folder not found' }); }
+      if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) { cleanup(); return res.status(404).json({ error: 'Folder not found' }); }
     }
 
-    const dir = shareDir(share.vendor_id, share.id);
+    const dir = vendorDir(share.vendor_id, share.id);
     fs.mkdirSync(dir, { recursive: true });
     const who = String(req.body?.uploader_name || '').trim().slice(0, 120) || null;
     let n = 0;
@@ -292,7 +319,6 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
       fs.renameSync(f.path, path.join(dir, stored));
       await prisma.file_share_items.create({
         data: {
-          share_id: share.id,
           vendor_id: share.vendor_id,                     // 🔒 stamped from the share
           filename: String(f.originalname || 'file').slice(0, 300),
           stored_name: stored,

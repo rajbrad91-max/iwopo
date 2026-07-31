@@ -1,24 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════
    📤 File Flyer — vendor side (inside the panel, uses the panel's tokens)
    ══════════════════════════════════════════════════════════════════════ */
-.ff-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.ff-h2 { margin: 0 0 4px; font-size: 20px; color: var(--text); }
-.ff-sub { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-.ff-storage { margin: 6px 0 16px; max-width: 520px; }
-.ff-storage-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
-.ff-storage-left { color: var(--muted); }
-.ff-bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
-.ff-bar-fill { height: 100%; background: var(--teal); transition: width .3s ease; }
-.ff-bar-fill.is-full { background: #f59e0b; }
-
-.ff-msg { margin: 10px 0; padding: 9px 13px; border-radius: 8px; font-size: 13px;
-  background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
-.ff-msg.is-ok { border-color: #4ade8055; color: #4ade80; }
-.ff-msg.is-err { border-color: #f8717155; color: #f87171; }
-
-.ff-form { max-width: 560px; margin: 4px 0 20px; padding: 18px 20px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
 .ff-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
 .ff-label:first-child { margin-top: 0; }
@@ -26,48 +9,9 @@
   color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
 .ff-input:focus { outline: none; border-color: var(--teal); }
 .ff-ta { resize: vertical; }
-.ff-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.ff-check { display: flex; align-items: center; gap: 8px; margin: 14px 0 0;
-  font-size: 13px; color: var(--text); cursor: pointer; }
-.ff-create { margin-top: 16px; }
 
-.ff-empty { color: var(--muted); font-size: 13.5px; padding: 20px 0; }
-
-.ff-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-.ff-card { display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
-.ff-card-main { flex: 1; min-width: 0; cursor: pointer; }
-.ff-card-t { margin: 0 0 3px; font-size: 15px; color: var(--text); }
-.ff-card-meta { margin: 0; font-size: 12.5px; color: var(--muted); }
-.ff-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
-
-.ff-mini { padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
-  color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
-  border-radius: 7px; text-decoration: none; display: inline-block; }
-.ff-mini:hover { border-color: var(--teal); }
-.ff-mini.is-del:hover { border-color: #f87171; color: #f87171; }
-
-.ff-detail-top { display: flex; gap: 8px; margin-bottom: 14px; }
-
-.ff-upload { margin: 14px 0; }
-.ff-upload-btn { display: inline-block; padding: 9px 16px; font-size: 13.5px; font-weight: 600;
-  cursor: pointer; color: #06231f; background: var(--teal); border-radius: 8px; }
-.ff-upload-btn.is-busy { opacity: .6; cursor: default; }
-
-.ff-items { display: flex; flex-direction: column; gap: 8px; }
-.ff-item { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 11px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; }
 /* a file the CLIENT sent — the distinction is the point of a two-way link */
-.ff-item.is-client { border-left: 3px solid var(--teal); }
-.ff-item-main { min-width: 0; }
-.ff-item-name { display: block; font-size: 13.5px; color: var(--text); word-break: break-all; }
-.ff-item-meta { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
-.ff-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
-@media (max-width: 640px) {
-  .ff-form-row { grid-template-columns: 1fr; }
-  .ff-card { flex-direction: column; align-items: stretch; }
-}
 
 /* ══════════════════════════════════════════════════════════════════════
    🌐 File Flyer — the client's page. Standalone, so it carries its own
@@ -123,125 +67,202 @@
 @media (max-width: 560px) { .ffp-card { padding: 24px 20px; } }
 
 /* ══════════════════════════════════════════════════════════════════════
-   🗂️ The drive — one share, browsed a folder at a time.
+   🗂️ The drive.
+
+   One bar carries where you are, what you can do, and how full you are. The
+   page had three headings saying "File Flyer" one under the other, and the
+   storage figure was pressed against the title tightly enough to read as
+   "1024 MB used1023.8 MB free".
    ══════════════════════════════════════════════════════════════════════ */
-.ff-drive { position: relative; }
+.ff-page { padding-top: 2px; }
+.ff-lede {
+  margin: 0 0 18px; font-size: 13.5px; line-height: 1.6; color: var(--muted);
+  max-width: 62ch;
+}
 
-.ff-bar-top {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.ff-back {
-  background: none; border: 0; padding: 0; cursor: pointer;
-  font: inherit; font-size: 13.5px; color: var(--muted);
-}
-.ff-back:hover { color: var(--text); }
+.fd { position: relative; }
 
-.ff-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
-.ff-crumb {
-  background: none; border: 0; padding: 4px 7px; border-radius: 8px;
-  font: inherit; font-size: 14px; color: var(--muted); cursor: pointer;
+.fd-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 10px;
 }
-.ff-crumb:hover { background: var(--fill); color: var(--text); }
-/* the folder you are actually in reads as a position, not a link */
-.ff-crumb.is-here { color: var(--text); font-weight: 600; cursor: default; }
-.ff-crumb-sep { color: var(--muted); opacity: .5; padding: 0 1px; }
 
-.ff-toolbar {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  margin-bottom: 16px;
+/* ── where you are ─────────────────────────────────────────────────────── */
+.fd-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; min-width: 0; }
+.fd-crumb-wrap { display: inline-flex; align-items: center; }
+.fd-crumb {
+  background: none; border: 0; cursor: pointer; font: inherit;
+  font-size: 15px; color: var(--muted); padding: 3px 6px; border-radius: 7px;
 }
-.ff-tool-gap { flex: 1; }
-.ff-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 14px; border-radius: 12px;
-  background: var(--fill); border: 1px solid var(--line); color: var(--text);
-  font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
-  text-decoration: none;
-  transition: transform var(--dur) var(--ease), background var(--dur) ease,
-              border-color var(--dur) ease;
-}
-.ff-btn:hover { border-color: #2dd4bf66; }
-.ff-btn:active { transform: scale(.95); }
-.ff-btn:disabled { opacity: .55; cursor: default; transform: none; }
-.ff-btn.is-primary { background: var(--teal); border-color: var(--teal); color: #06231f; }
+.fd-crumb:hover { background: var(--fill); color: var(--text); }
+.fd-crumb.is-here { color: var(--text); font-weight: 600; cursor: default; }
+.fd-crumb.is-here:hover { background: none; }
+.fd-sep { color: var(--muted); opacity: .4; font-size: 13px; }
 
-/* thumbnails ⇄ list. Two states, so a segmented pair reads better than a
-   dropdown you have to open to find out which one you are in. */
-.ff-viewtog { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.ff-vt {
-  background: var(--panel); border: 0; cursor: pointer;
-  padding: 7px 12px; font-size: 15px; line-height: 1; color: var(--muted);
+/* the share state of the folder you are standing in, inline with its name */
+.fd-tag {
+  margin-left: 8px; padding: 3px 10px; border-radius: 20px; cursor: pointer;
+  background: var(--fill); border: 1px solid var(--line); color: var(--muted);
+  font: inherit; font-size: 11.5px; font-weight: 600;
 }
-.ff-vt.is-on { background: var(--teal); color: #06231f; }
+.fd-tag:hover { color: var(--text); border-color: var(--teal); }
+.fd-tag.is-on { background: var(--teal-soft); border-color: transparent; color: var(--teal); }
 
-/* ── grid ─────────────────────────────────────────────────────────────── */
-.ff-grid {
-  display: grid; gap: 14px;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+/* ── what you can do ───────────────────────────────────────────────────── */
+.fd-actions { display: flex; align-items: center; gap: 6px; }
+.fd-b {
+  padding: 7px 13px; border-radius: 10px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 500;
+  transition: border-color .18s ease, background .18s ease, transform .18s var(--ease);
 }
-.ff-tile {
-  position: relative; padding: 14px 12px 12px; border-radius: 14px;
+.fd-b:hover { border-color: var(--teal); }
+.fd-b:active { transform: scale(.96); }
+.fd-b:disabled { opacity: .5; cursor: default; transform: none; }
+.fd-b.is-primary { background: var(--teal); border-color: var(--teal); color: #06231f; font-weight: 600; }
+
+.fd-view { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-left: 4px; }
+.fd-v { background: var(--panel); border: 0; cursor: pointer; padding: 6px 11px; font-size: 14px; color: var(--muted); }
+.fd-v.is-on { background: var(--fill2); color: var(--text); }
+
+/* ── how full you are: a thin line, not a panel ────────────────────────── */
+.fd-quota { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; }
+.fd-quota-bar { flex: 1; max-width: 220px; height: 3px; border-radius: 3px; background: var(--fill2); overflow: hidden; }
+.fd-quota-bar span { display: block; height: 100%; background: var(--teal); border-radius: 3px; }
+.fd-quota-bar span.is-full { background: #f87171; }
+.fd-quota-t { font-size: 11.5px; color: var(--muted); }
+
+/* ── grid ──────────────────────────────────────────────────────────────── */
+.fd-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
+.fd-tile {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  padding: 14px 10px 11px; border-radius: 12px; text-align: center;
   background: var(--panel); border: 1px solid var(--line);
-  text-align: center; cursor: default;
-  transition: transform var(--dur) var(--ease), border-color var(--dur) ease,
-              box-shadow var(--dur) ease;
+  font: inherit; color: var(--text); cursor: default;
+  transition: border-color .18s ease, background .18s ease;
 }
-.ff-tile:hover { transform: translateY(-2px); border-color: #2dd4bf3d; box-shadow: var(--shadowSm); }
-.ff-tile.is-folder { cursor: pointer; }
-.ff-tile-ic {
-  height: 88px; display: flex; align-items: center; justify-content: center;
-  font-size: 38px; margin-bottom: 8px; overflow: hidden; border-radius: 9px;
-}
-/* a real preview fills the square; an icon sits in the middle of it */
-.ff-tile-ic img { width: 100%; height: 100%; object-fit: cover; border-radius: 9px; display: block; }
-.ff-tile-name {
-  margin: 0 0 2px; font-size: 13px; color: var(--text);
-  /* long filenames are the norm here — clamp rather than let a tile grow */
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; word-break: break-word;
-}
-.ff-tile-meta { margin: 0; font-size: 11.5px; color: var(--muted); }
-/* actions stay out of the way until the tile is hovered */
-.ff-tile-acts {
-  position: absolute; top: 8px; right: 8px; display: flex; gap: 4px;
-  opacity: 0; transition: opacity var(--dur) ease;
-}
-.ff-tile:hover .ff-tile-acts { opacity: 1; }
-
-/* ── list ─────────────────────────────────────────────────────────────── */
-.ff-table { width: 100%; }
-.ff-row.is-folder { cursor: pointer; }
-.ff-row-ic { margin-right: 9px; }
-.ff-col-act { width: 92px; text-align: right; white-space: nowrap; }
-
-/* ── empty + drop ─────────────────────────────────────────────────────── */
-.ff-drop-hint {
-  padding: 46px 20px; text-align: center;
-  border: 1.5px dashed var(--line); border-radius: 16px;
-}
-.ff-empty-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
-.ff-dropzone {
-  position: absolute; inset: 0; z-index: 5;
+.fd-tile.is-folder, .fd-tile.is-photo { cursor: pointer; }
+.fd-row.is-photo { cursor: pointer; }
+.fd-tile:hover { border-color: var(--teal); background: var(--fill); }
+/* square, so a portrait and a landscape shot sit on the same grid line
+   instead of stepping past each other */
+.fd-ic {
+  aspect-ratio: 1 / 1; width: 100%;
   display: flex; align-items: center; justify-content: center;
-  border: 2px dashed var(--teal); border-radius: 16px;
+  font-size: 34px; margin-bottom: 8px; overflow: hidden; border-radius: 8px;
+  background: var(--fill);
+}
+.fd-ic img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; display: block; }
+.fd-wait { width: 100%; height: 100%; border-radius: 7px; background: var(--fill2); }
+.fd-name {
+  font-size: 12.5px; line-height: 1.35; color: var(--text); word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.fd-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* shared shows on the folder itself — there is no second list underneath */
+.fd-badge { position: absolute; top: 7px; left: 8px; font-size: 11px; opacity: .8; }
+.fd-badge-in { margin-left: 7px; font-size: 11px; opacity: .7; }
+
+.fd-acts {
+  position: absolute; top: 5px; right: 6px; display: flex; gap: 1px;
+  opacity: 0; transition: opacity .18s ease;
+}
+.fd-tile:hover .fd-acts, .fd-tile:focus-within .fd-acts { opacity: 1; }
+.fd-a {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 7px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line);
+  font-size: 11px; line-height: 1; color: var(--text);
+}
+.fd-a:hover { border-color: var(--teal); }
+.fd-a.is-del:hover { border-color: #f87171; }
+
+/* ── list ──────────────────────────────────────────────────────────────── */
+.fd-table { width: 100%; border-collapse: collapse; }
+.fd-table th {
+  text-align: left; padding: 8px 12px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.fd-row td { padding: 9px 12px; font-size: 13.5px; border-bottom: 1px solid var(--line2); }
+.fd-row:hover { background: var(--fill); }
+.fd-row.is-folder { cursor: pointer; }
+.fd-row-ic { margin-right: 9px; }
+.fd-row-acts { width: 110px; text-align: right; white-space: nowrap; }
+.fd-row-acts .fd-a { margin-left: 3px; }
+
+/* ── empty, quiet, drop ────────────────────────────────────────────────── */
+.fd-quiet { color: var(--muted); font-size: 13px; }
+.fd-msg { margin: 0 0 10px; font-size: 13px; color: var(--teal); }
+.fd-empty { padding: 52px 20px; text-align: center; border: 1.5px dashed var(--line); border-radius: 14px; }
+.fd-empty-t { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--text); }
+.fd-drop {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px dashed var(--teal); border-radius: 14px;
   background: color-mix(in srgb, var(--teal) 10%, transparent);
-  font-size: 15px; font-weight: 600; color: var(--text);
-  pointer-events: none;                 /* the drop must reach the pane beneath */
+  font-size: 14px; font-weight: 600; color: var(--text);
 }
 
-/* ── send-by-email ────────────────────────────────────────────────────── */
-.ff-modal-back {
-  position: fixed; inset: 0; z-index: 9998;
-  background: rgba(12, 18, 22, .55);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
+@media (max-width: 640px) {
+  .fd-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .fd-actions { justify-content: space-between; }
 }
-.ff-modal {
-  width: 100%; max-width: 460px; padding: 24px 26px 20px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+
+/* ══════════════════════════════════════════════════════════════════════
+   🔍 Full-screen viewer.
+   ══════════════════════════════════════════════════════════════════════ */
+.fv {
+  position: fixed; inset: 0; z-index: 9990;
+  background: rgba(8, 12, 15, .93);
+  display: flex; align-items: center; justify-content: center;
+  padding: 56px 72px;
+  animation: fv-in .14s ease-out;
 }
-.ff-modal-t { margin: 0 0 4px; font-size: 17px; font-weight: 700; color: var(--text); }
-.ff-modal-sub { margin: 0 0 16px; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
-.ff-modal-acts { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
-.ff-hint { margin: 4px 0 12px; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+@keyframes fv-in { from { opacity: 0 } to { opacity: 1 } }
+
+.fv-stage {
+  margin: 0; max-width: 100%; max-height: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+/* the image is capped by the viewport, never scaled past its own size */
+.fv-stage img {
+  max-width: 100%; max-height: calc(100vh - 130px);
+  object-fit: contain; border-radius: 4px; display: block;
+}
+.fv-wait {
+  width: 160px; height: 160px; border-radius: 10px;
+  background: rgba(255, 255, 255, .07);
+}
+.fv-cap { font-size: 12.5px; color: rgba(255, 255, 255, .62); text-align: center; word-break: break-word; }
+
+.fv-x, .fv-nav {
+  position: absolute; cursor: pointer; color: #fff;
+  background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 50%; line-height: 1;
+  transition: background .18s ease, transform .18s ease;
+}
+.fv-x { top: 16px; right: 18px; width: 38px; height: 38px; font-size: 15px; }
+.fv-nav { top: 50%; transform: translateY(-50%); width: 46px; height: 46px; font-size: 26px; }
+.fv-nav.is-prev { left: 16px; }
+.fv-nav.is-next { right: 16px; }
+.fv-x:hover, .fv-nav:hover { background: rgba(255, 255, 255, .2); }
+.fv-nav:active { transform: translateY(-50%) scale(.92); }
+
+.fv-count {
+  position: absolute; top: 20px; left: 22px;
+  font-size: 12.5px; color: rgba(255, 255, 255, .6);
+}
+
+@media (max-width: 640px) {
+  .fv { padding: 52px 12px; }
+  .fv-nav { width: 40px; height: 40px; font-size: 22px; }
+  .fv-nav.is-prev { left: 6px; }
+  .fv-nav.is-next { right: 6px; }
+}
+
+/* every motion above is decoration */
+@media (prefers-reduced-motion: reduce) {
+  .fv, .fv-x, .fv-nav { animation: none !important; transition: none !important; }
+}

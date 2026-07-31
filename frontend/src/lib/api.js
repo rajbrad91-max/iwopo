@@ -289,27 +289,32 @@ export const api = {
   // 📤 File Flyer — shares a vendor hands to a client, either direction
   fileShares: () => request('/files'),
 
-  // 📁 one level of a share: the folders and files directly inside `folder`
-  browseShare: (id, folderId) =>
-    request(`/files/${id}/browse${folderId ? '?folder=' + folderId : ''}`),
-  createFolder: (id, body) =>
-    request(`/files/${id}/folders`, { method: 'POST', body: JSON.stringify(body) }),
+  // 📁 one level of the vendor's own drive — no share involved
+  drive: (folderId) =>
+    request(`/files/drive${folderId ? '?folder=' + folderId : ''}`),
+  createFolder: (body) =>
+    request('/files/folders', { method: 'POST', body: JSON.stringify(body) }),
+  // 🔗 sharing is something you do TO a folder; pressing it twice returns the
+  // same link rather than minting a second one
+  shareFolder: (folderId, body = {}) =>
+    request(`/files/folder/${folderId}/share`, { method: 'POST', body: JSON.stringify(body) }),
+  unshareFolder: (folderId) =>
+    request(`/files/folder/${folderId}/share`, { method: 'DELETE' }),
   renameFolder: (folderId, name) =>
     request(`/files/folder/${folderId}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   deleteFolder: (folderId) =>
     request(`/files/folder/${folderId}`, { method: 'DELETE' }),
   emailShare: (id, body) =>
     request(`/files/${id}/email`, { method: 'POST', body: JSON.stringify(body) }),
-  createFileShare: (body) => request('/files', { method: 'POST', body: JSON.stringify(body) }),
   updateFileShare: (id, body) => request(`/files/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteFileShare: (id) => request(`/files/${id}`, { method: 'DELETE' }),
   fileShareItems: (id) => request(`/files/${id}/items`),
-  uploadShareFiles: (id, files, folderId) => {
+  uploadShareFiles: (files, folderId) => {
     const fd = new FormData();
     for (const f of files) fd.append('files', f);
     // the folder currently open, so a drop lands where the vendor is looking
     if (folderId) fd.append('folder_id', String(folderId));
-    return request(`/files/${id}/upload`, { method: 'POST', body: fd });
+    return request('/files/upload', { method: 'POST', body: fd });
   },
   deleteShareItem: (itemId) => request(`/files/item/${itemId}`, { method: 'DELETE' }),
 
