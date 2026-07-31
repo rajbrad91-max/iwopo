@@ -7,6 +7,7 @@ import archiver from 'archiver';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { FILES_DIR } from '../config/paths.js';
+import { sendAsVendor } from './email.js';
 
 const router = express.Router();
 
@@ -138,6 +139,108 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+
+/* ───────── 📧 SHARE BY EMAIL ───────── */
+
+function esc(x) {
+  return String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * The email a client receives when a vendor shares files with them.
+ *
+ * Table-based with inline styles, because that is what mail clients render
+ * predictably — Outlook in particular ignores most of a stylesheet. Every
+ * colour is literal for the same reason: a CSS variable resolves to nothing
+ * in an inbox.
+ *
+ * The vendor's name leads, because that is who the client is expecting to hear
+ * from. iwopo signs off underneath rather than heading the message — the client
+ * has a relationship with the vendor, not with the software.
+ */
+function shareEmailHtml({ vendorName, title, note, url, hasPassword, message }) {
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f6f8;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:32px 12px;">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e3e8ec;border-radius:14px;">
+  <tr><td style="padding:32px 34px 8px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+    <p style="margin:0 0 6px;font-size:20px;font-weight:600;color:#1a2529;">
+      ${esc(vendorName)} has shared files with you
+    </p>
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#64757d;">
+      ${esc(title)}${note ? ' — ' + esc(note) : ''}
+    </p>
+    ${message ? `<p style="margin:0 0 20px;padding:12px 15px;background:#f7f9fa;border:1px solid #e8edf0;border-radius:9px;font-size:14.5px;line-height:1.65;color:#4a5560;">${esc(message)}</p>` : ''}
+  </td></tr>
+  <tr><td style="padding:0 34px 26px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:10px;background:#0f766e;">
+      <a href="${esc(url)}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+        Open and download
+      </a>
+    </td></tr></table>
+    <p style="margin:16px 0 0;font-size:12.5px;line-height:1.6;color:#8a949c;word-break:break-all;">
+      Or paste this into your browser:<br>${esc(url)}
+    </p>
+    ${hasPassword ? '<p style="margin:14px 0 0;font-size:13px;color:#64757d;">This link asks for a password. Whoever sent it to you will have it.</p>' : ''}
+  </td></tr>
+  <tr><td style="padding:16px 34px 26px;border-top:1px solid #eef2f4;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+    <p style="margin:0;font-size:12px;color:#9aa4ab;">
+      Sent with <strong style="color:#0f766e;">iwopo</strong> · File Flyer
+    </p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+/**
+ * POST /api/files/:id/email → send the share link to one or more addresses.
+ *
+ * The link is built from the request's own origin rather than a configured
+ * domain, so a share sent from staging points at staging. A hard-coded live URL
+ * here has already caused a staging feature to hand out live links once.
+ */
+router.post('/:id/email', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const own = await prisma.file_shares.findUnique({ where: { id } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (own.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+
+    const raw = Array.isArray(req.body?.to) ? req.body.to : String(req.body?.to || '').split(/[,;\s]+/);
+    const to = raw.map(x => String(x).trim()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if (!to.length) return res.status(400).json({ error: 'Give at least one valid email address' });
+    if (to.length > 20) return res.status(400).json({ error: 'Twenty addresses at a time is the limit' });
+
+    const vendor = await prisma.vendors.findUnique({
+      where: { id: own.vendor_id }, select: { business_name: true },
+    });
+    const vendorName = vendor?.business_name || 'Your photographer';
+    const origin = req.headers.origin || `https://${req.headers.host}`;
+    const url = `${origin}/f/${own.token}`;
+    const message = String(req.body?.message || '').trim().slice(0, 1000) || null;
+
+    const html = shareEmailHtml({
+      vendorName, title: own.title, note: own.note, url,
+      hasPassword: !!own.password, message,
+    });
+    const text = `${vendorName} has shared files with you.\n\n${own.title}${own.note ? ' — ' + own.note : ''}`
+      + `${message ? '\n\n' + message : ''}\n\nOpen and download: ${url}`
+      + `${own.password ? '\n\nThis link asks for a password. Whoever sent it to you will have it.' : ''}`
+      + `\n\nSent with iwopo · File Flyer`;
+
+    const sent = await sendAsVendor(own.vendor_id, {
+      to: to.join(', '),
+      subject: `${vendorName} has shared files with you`,
+      html, text,
+    });
+    // the share itself is fine either way — say which happened rather than
+    // reporting a failure the vendor cannot act on
+    if (!sent.ok) return res.status(502).json({ error: sent.error, message: sent.message });
+    res.json({ ok: true, sent_to: to.length, via: sent.via });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 /* ───────── 🗜️ ZIP ───────── */
 

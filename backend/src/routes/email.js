@@ -258,4 +258,44 @@ export async function sendPlatformEmail(to, subject, text, html) {
   await t.sendMail({ from: `"iwopo" <${PLATFORM.from}>`, to, subject, text, html });
 }
 
+/**
+ * 📤 Send on a vendor's behalf, using their SMTP when they have set it up and
+ * iwopo's own when they have not.
+ *
+ * transporterFor already encodes that preference; this exposes it so anything
+ * else that needs to send goes through the same resolution rather than growing
+ * a second, slightly different email system beside it.
+ *
+ * Returns { ok } or { ok: false, error } — never throws. A file share that
+ * succeeded should not report failure because the notification about it
+ * bounced, and the caller can say which of the two happened.
+ */
+export async function sendAsVendor(vendorId, { to, subject, html, text, replyTo }) {
+  try {
+    const s = await getSettings(vendorId);
+    const tx = transporterFor(s);
+    if (!tx) {
+      return {
+        ok: false,
+        error: 'no_transport',
+        message: s.smtp_host
+          ? 'Your email settings are incomplete — check the host, username and password under Settings → Email.'
+          : 'No mail server is configured yet. Add your SMTP details under Settings → Email.',
+      };
+    }
+    // the vendor's own from-address when they have one, otherwise the platform's
+    const fromEmail = (s.mode === 'smtp' && s.from_email) || PLATFORM.from || PLATFORM.user;
+    const fromName = s.from_name || 'iwopo';
+    await tx.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to, subject, text, html,
+      // a client replying should reach the vendor, not a platform mailbox
+      replyTo: replyTo || s.from_email || undefined,
+    });
+    return { ok: true, via: s.mode === 'smtp' && s.smtp_host ? 'vendor' : 'platform' };
+  } catch (e) {
+    return { ok: false, error: 'send_failed', message: e.message };
+  }
+}
+
 export default router;
