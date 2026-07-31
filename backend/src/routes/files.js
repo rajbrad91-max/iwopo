@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
+import archiver from 'archiver';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { FILES_DIR } from '../config/paths.js';
@@ -138,6 +139,241 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 
+/* ───────── 🗜️ ZIP ───────── */
+
+/**
+ * Stream a share or a folder as a zip, rebuilding the folder structure inside
+ * the archive so what lands in Downloads looks like what was on screen.
+ *
+ * Streamed rather than written to a temp file and sent: a share can be several
+ * gigabytes, and building it on disk first would need that space free and make
+ * the client wait for the whole thing before the download even starts.
+ */
+async function zipInto(archive, shareId, vendorId, folderId, prefix) {
+  const [folders, items] = await Promise.all([
+    prisma.file_folders.findMany({ where: { share_id: shareId, parent_id: folderId } }),
+    prisma.file_share_items.findMany({ where: { share_id: shareId, folder_id: folderId } }),
+  ]);
+  for (const it of items) {
+    const full = path.join(shareDir(vendorId, shareId), it.stored_name);
+    // a row whose file is missing shouldn't abort the whole download
+    if (fs.existsSync(full)) archive.file(full, { name: prefix + it.filename });
+  }
+  for (const f of folders) {
+    // an empty folder still appears, which is what makes the zip match the screen
+    archive.append(null, { name: prefix + f.name + '/' });
+    await zipInto(archive, shareId, vendorId, f.id, prefix + f.name + '/');
+  }
+}
+
+/** Zip filenames come from user input, so strip what a filesystem would reject. */
+function safeZipName(name) {
+  return String(name || 'files').replace(/[^\w\d\-. ]+/g, '_').trim().slice(0, 80) || 'files';
+}
+
+// GET /api/files/:id/zip → the whole share
+router.get('/:id/zip', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const own = await prisma.file_shares.findUnique({ where: { id } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (own.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+
+    res.attachment(safeZipName(own.title) + '.zip');
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.on('error', () => { if (!res.headersSent) res.status(500).end(); });
+    archive.pipe(res);
+    await zipInto(archive, id, own.vendor_id, null, '');
+    archive.finalize();
+  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/files/folder/:folderId/zip → one folder and everything under it
+router.get('/folder/:folderId/zip', requireAuth, async (req, res) => {
+  try {
+    const fid = Number(req.params.folderId);
+    const f = await prisma.file_folders.findUnique({ where: { id: fid } });
+    if (!f) return res.status(404).json({ error: 'Not found' });
+    if (f.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });     // 🔒 tenancy
+
+    res.attachment(safeZipName(f.name) + '.zip');
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.on('error', () => { if (!res.headersSent) res.status(500).end(); });
+    archive.pipe(res);
+    await zipInto(archive, f.share_id, f.vendor_id, fid, '');
+    archive.finalize();
+  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+});
+
+/* ───────── 📁 FOLDERS ───────── */
+
+/**
+ * Walk up from a folder to prove it belongs to this vendor's share, and build
+ * the breadcrumb on the way. Checking the folder's own vendor_id alone is not
+ * enough — a folder could carry the right vendor while sitting under a parent
+ * in another share, and the browse endpoint would then hand over its contents.
+ */
+async function folderTrail(folderId, vendorId) {
+  const trail = [];
+  let cur = folderId ? await prisma.file_folders.findUnique({ where: { id: Number(folderId) } }) : null;
+  if (folderId && !cur) return null;
+  let guard = 0;
+  while (cur) {
+    if (cur.vendor_id !== vendorId) return null;                 // 🔒 tenancy at every level
+    trail.unshift({ id: cur.id, name: cur.name });
+    if (!cur.parent_id) break;
+    if (++guard > 50) break;      // a cycle should be impossible; don't hang if one exists
+    cur = await prisma.file_folders.findUnique({ where: { id: cur.parent_id } });
+  }
+  return trail;
+}
+
+/**
+ * GET /api/files/:id/browse?folder=<id> → one level of a share.
+ *
+ * Returns the folders and files directly inside the given folder, plus the
+ * breadcrumb to it. Deliberately one level rather than the whole tree: a share
+ * with thousands of files should not serialise all of them to draw a window
+ * showing twenty.
+ */
+router.get('/:id/browse', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const own = await prisma.file_shares.findUnique({ where: { id } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (own.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+
+    const folderId = req.query.folder ? Number(req.query.folder) : null;
+    const trail = await folderTrail(folderId, own.vendor_id);
+    if (folderId && trail === null) return res.status(404).json({ error: 'Folder not found' });
+
+    const [folders, items] = await Promise.all([
+      prisma.file_folders.findMany({
+        where: { share_id: id, parent_id: folderId },            // 🔒 scoped by the share
+        orderBy: { name: 'asc' },
+      }),
+      prisma.file_share_items.findMany({
+        where: { share_id: id, folder_id: folderId },
+        orderBy: { filename: 'asc' },
+      }),
+    ]);
+
+    // what each folder holds, so the list can say "3 items" without a second call
+    const counts = folders.length ? await prisma.file_share_items.groupBy({
+      by: ['folder_id'],
+      where: { folder_id: { in: folders.map(f => f.id) } },
+      _count: { _all: true }, _sum: { size_bytes: true },
+    }) : [];
+    const byFolder = Object.fromEntries(counts.map(c => [c.folder_id, c]));
+
+    res.json({
+      share: { ...own, password: undefined, has_password: !!own.password },
+      trail,
+      folders: folders.map(f => ({
+        ...f,
+        file_count: byFolder[f.id]?._count?._all || 0,
+        size_bytes: Number(byFolder[f.id]?._sum?.size_bytes || 0),
+      })),
+      items: items.map(i => ({ ...i, size_bytes: Number(i.size_bytes) })),
+      storage: await storageFor(own.vendor_id),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/files/:id/folders → create one
+router.post('/:id/folders', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const own = await prisma.file_shares.findUnique({ where: { id } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (own.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+
+    const name = String(req.body?.name || '').trim().slice(0, 200);
+    if (!name) return res.status(400).json({ error: 'Give the folder a name' });
+    // a name with a separator in it would read as a path and confuse the zip
+    if (/[\\/]/.test(name)) return res.status(400).json({ error: 'A folder name cannot contain / or \\' });
+
+    const parentId = req.body?.parent_id ? Number(req.body.parent_id) : null;
+    if (parentId && !(await folderTrail(parentId, own.vendor_id))) {
+      return res.status(404).json({ error: 'Parent folder not found' });
+    }
+    const folder = await prisma.file_folders.create({
+      data: { share_id: id, vendor_id: own.vendor_id, parent_id: parentId, name },  // 🔒 from the share
+    });
+    res.status(201).json({ folder });
+  } catch (e) {
+    // the unique index is what enforces "no two things with one name here"
+    if (e.code === 'P2002') return res.status(409).json({ error: 'Something here already has that name' });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/files/folder/:folderId → rename
+router.put('/folder/:folderId', requireAuth, async (req, res) => {
+  try {
+    const fid = Number(req.params.folderId);
+    const f = await prisma.file_folders.findUnique({ where: { id: fid } });
+    if (!f) return res.status(404).json({ error: 'Not found' });
+    if (f.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });     // 🔒 tenancy
+
+    const name = String(req.body?.name || '').trim().slice(0, 200);
+    if (!name) return res.status(400).json({ error: 'Give the folder a name' });
+    if (/[\\/]/.test(name)) return res.status(400).json({ error: 'A folder name cannot contain / or \\' });
+
+    const folder = await prisma.file_folders.update({
+      where: { id: fid }, data: { name, updated_at: new Date() },
+    });
+    res.json({ folder });
+  } catch (e) {
+    if (e.code === 'P2002') return res.status(409).json({ error: 'Something here already has that name' });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * DELETE /api/files/folder/:folderId → the folder and everything under it.
+ *
+ * The rows cascade in the database, but the files on disk do not, so they are
+ * collected first and removed after. A folder deleted from the database with
+ * its bytes still on disk would count against the vendor's storage forever
+ * with nothing in the interface to point at.
+ */
+router.delete('/folder/:folderId', requireAuth, async (req, res) => {
+  try {
+    const fid = Number(req.params.folderId);
+    const f = await prisma.file_folders.findUnique({ where: { id: fid } });
+    if (!f) return res.status(404).json({ error: 'Not found' });
+    if (f.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });     // 🔒 tenancy
+
+    const ids = await descendantFolderIds(fid);
+    const doomed = await prisma.file_share_items.findMany({
+      where: { folder_id: { in: ids } },
+      select: { stored_name: true, share_id: true },
+    });
+    await prisma.file_folders.delete({ where: { id: fid } });     // children cascade
+    for (const d of doomed) {
+      try { fs.unlinkSync(path.join(shareDir(f.vendor_id, d.share_id), d.stored_name)); }
+      catch { /* already gone from disk */ }
+    }
+    res.json({ ok: true, removed_files: doomed.length, storage: await storageFor(f.vendor_id) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** A folder and every folder beneath it, so a delete can find all the files. */
+async function descendantFolderIds(rootId) {
+  const out = [Number(rootId)];
+  let frontier = [Number(rootId)];
+  let guard = 0;
+  while (frontier.length && guard++ < 50) {
+    const kids = await prisma.file_folders.findMany({
+      where: { parent_id: { in: frontier } }, select: { id: true },
+    });
+    frontier = kids.map(k => k.id).filter(id => !out.includes(id));
+    out.push(...frontier);
+  }
+  return out;
+}
+
 /* ───────── 📎 FILES ───────── */
 
 // GET /api/files/:id/items → what's in one share
@@ -177,6 +413,12 @@ router.post('/:id/upload', requireAuth, upload.array('files', 30), async (req, r
     if (own.vendor_id !== vid(req)) { cleanup(); return res.status(403).json({ error: 'Forbidden' }); }  // 🔒 tenancy
     if (!req.files?.length) return res.status(400).json({ error: 'No files' });
 
+    // which folder these are going into; null means the share's root
+    const folderId = req.body?.folder_id ? Number(req.body.folder_id) : null;
+    if (folderId && !(await folderTrail(folderId, own.vendor_id))) {
+      cleanup(); return res.status(404).json({ error: 'Folder not found' });
+    }
+
     const incoming = req.files.reduce((n, f) => n + f.size, 0);
     const st = await storageFor(own.vendor_id);
     if (incoming > st.remaining_bytes) {
@@ -206,6 +448,7 @@ router.post('/:id/upload', requireAuth, upload.array('files', 30), async (req, r
           size_bytes: f.size,
           mime: f.mimetype ? String(f.mimetype).slice(0, 150) : null,
           uploaded_by: 'vendor',
+          folder_id: folderId,
         },
       }));
     }
