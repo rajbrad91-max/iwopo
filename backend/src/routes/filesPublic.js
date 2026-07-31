@@ -119,28 +119,38 @@ router.get('/:token/browse', async (req, res) => {
       return res.status(403).json({ error: 'Locked' });
     }
 
-    const folderId = req.query.folder ? Number(req.query.folder) : null;
-    // 🔒 the folder must belong to THIS share — not merely exist
+    const raw = req.query.folder;
+    const folderId = raw ? Number(raw) : null;
+    if (raw && !Number.isInteger(folderId)) return res.status(404).json({ error: 'Folder not found' });
+
+    // 🔒 inside what was shared, not merely owned by the same vendor —
+    // otherwise one link reads every folder that vendor has
+    if (folderId && !(await withinShare(folderId, share.folder_id, share.vendor_id))) {
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+
+    // the breadcrumb stops at the shared folder; walking to the drive root
+    // would name the folders above it, which the client was never given
     let trail = [];
     if (folderId) {
       let cur = await prisma.file_folders.findUnique({ where: { id: folderId } });
-      if (!cur || cur.vendor_id !== share.vendor_id) return res.status(404).json({ error: 'Folder not found' });
       let guard = 0;
       while (cur && guard++ < 50) {
         trail.unshift({ id: cur.id, name: cur.name });
-        if (!cur.parent_id) break;
+        if (!cur.parent_id || cur.id === share.folder_id) break;
         cur = await prisma.file_folders.findUnique({ where: { id: cur.parent_id } });
       }
     }
 
     const [folders, items] = await Promise.all([
       prisma.file_folders.findMany({
-        where: { vendor_id: share.vendor_id, parent_id: folderId },
+        // null folderId means the root OF THE SHARE, which is the shared folder
+        where: { vendor_id: share.vendor_id, parent_id: folderId ?? share.folder_id },
         orderBy: { name: 'asc' },
         select: { id: true, name: true, created_at: true },
       }),
       prisma.file_share_items.findMany({
-        where: { vendor_id: share.vendor_id, folder_id: folderId },
+        where: { vendor_id: share.vendor_id, folder_id: folderId ?? share.folder_id },
         orderBy: { filename: 'asc' },
         select: { id: true, filename: true, size_bytes: true, mime: true,
           uploaded_by: true, uploader_name: true, created_at: true },
@@ -169,7 +179,7 @@ async function zipInto(archive, vendorId, folderId, prefix) {
     prisma.file_share_items.findMany({ where: { vendor_id: vendorId, folder_id: folderId } }),
   ]);
   for (const it of items) {
-    const full = path.join(vendorDir(vendorId, shareId), it.stored_name);
+    const full = path.join(vendorDir(vendorId), it.stored_name);
     // a generated .thumb.webp / .lg.webp sits beside the original; only the
     // original is the vendor's file and only that belongs in the archive
     if (fs.existsSync(full)) archive.file(full, { name: prefix + it.filename });
@@ -261,11 +271,19 @@ router.get('/:token/download/:itemId', async (req, res) => {
     }
     // the item must belong to THIS share — an id from another share is not
     // reachable just because this token happens to be valid
+    const itemId = Number(req.params.itemId);
+    // anything that is not a plain integer is refused before it reaches Prisma,
+    // which throws on NaN rather than returning nothing
+    if (!Number.isInteger(itemId)) return res.status(404).json({ error: 'Not found' });
     const item = await prisma.file_share_items.findFirst({
-      where: { id: Number(req.params.itemId), vendor_id: share.vendor_id },
+      where: { id: itemId, vendor_id: share.vendor_id },
     });
     if (!item) return res.status(404).json({ error: 'Not found' });
-    const full = path.join(vendorDir(share.vendor_id, share.id), item.stored_name);
+    // 🔒 and it must sit inside what this link actually shared
+    if (!(await withinShare(item.folder_id, share.folder_id, share.vendor_id))) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const full = path.join(vendorDir(share.vendor_id), item.stored_name);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
     res.download(full, item.filename);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -309,7 +327,7 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
       if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) { cleanup(); return res.status(404).json({ error: 'Folder not found' }); }
     }
 
-    const dir = vendorDir(share.vendor_id, share.id);
+    const dir = vendorDir(share.vendor_id);
     fs.mkdirSync(dir, { recursive: true });
     const who = String(req.body?.uploader_name || '').trim().slice(0, 120) || null;
     let n = 0;
