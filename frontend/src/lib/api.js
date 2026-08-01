@@ -221,6 +221,38 @@ export function sessionMismatch() {
   return !!(stored && actual && stored !== actual);
 }
 
+/**
+ * A GET with a very short memory, for endpoints several components read at once.
+ *
+ * Two problems, one answer. Identical requests already in flight share a single
+ * promise rather than racing each other, and a result stays usable for a few
+ * seconds so components mounting in sequence do not each pay a round trip. On a
+ * distant connection that is the difference between one 500ms wait and four.
+ *
+ * Kept to a few seconds on purpose: long enough to cover a page load, short
+ * enough that nothing anyone would notice goes stale. Writes clear it.
+ */
+const _getCache = new Map();     // path -> { at, data }
+const _inFlight = new Map();     // path -> promise
+const GET_TTL_MS = 6000;
+
+function cachedGet(path) {
+  const hit = _getCache.get(path);
+  if (hit && Date.now() - hit.at < GET_TTL_MS) return Promise.resolve(hit.data);
+  if (_inFlight.has(path)) return _inFlight.get(path);
+
+  const promise = request(path)
+    .then(data => { _getCache.set(path, { at: Date.now(), data }); return data; })
+    .finally(() => _inFlight.delete(path));
+  _inFlight.set(path, promise);
+  return promise;
+}
+
+/** Drop cached entries whose path starts with the prefix. */
+export function clearGetCache(prefix = '') {
+  for (const k of [..._getCache.keys()]) if (k.startsWith(prefix)) _getCache.delete(k);
+}
+
 async function request(path, options = {}) {
   // A file upload must NOT carry a JSON content-type — the browser has to set
   // multipart/form-data itself, boundary and all. Without this every upload had
@@ -408,8 +440,11 @@ export const api = {
   bookings: () => request('/bookings'),
   booking: (leadId) => request(`/bookings/${leadId}`),
   setLeadStatus: (leadId, status) => request(`/bookings/${leadId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
-  inquirySettings: (vendorId) => request(`/inquiry-settings/${vendorId}`),
-  saveInquirySettings: (data) => request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  inquirySettings: (vendorId) => cachedGet(`/inquiry-settings/${vendorId}`),
+  saveInquirySettings: (data) => {
+    clearGetCache('/inquiry-settings');
+    return request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) });
+  },
   myProfile: () => request('/me/profile'),
   saveProfile: (data) => request('/me/profile', { method: 'PUT', body: JSON.stringify(data) }),
   // now that request() handles FormData, this needs no hand-rolled fetch,
