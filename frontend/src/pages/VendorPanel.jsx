@@ -31,7 +31,12 @@ function FeatureLocked({ goServices }) {
 
 export default function VendorPanel({ onLogout }) {
   const [services, setServices] = useState([]);
-  const [features, setFeatures] = useState(null);   // 🗝️ entitlements (null = loading)
+  // seeded from the last session so the sidebar and tab render immediately;
+  // the network copy replaces it a moment later and the server decides regardless
+  const [features, setFeatures] = useState(() => {
+    try { const c = localStorage.getItem('vf_features'); return c ? JSON.parse(c) : null; }
+    catch { return null; }
+  });   // 🗝️ entitlements (null = loading)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { route, navigate } = useAppRoute('dashboard');
@@ -86,7 +91,10 @@ export default function VendorPanel({ onLogout }) {
     try {
       const [d, f, st] = await Promise.all([api.myServices(), api.myFeatures(), api.mySettings().catch(() => ({ settings: null }))]);
       setServices(d.services);
-      setFeatures(f.features || []);
+      const list = f.features || [];
+      setFeatures(list);
+      // seed the next load, so the tab renders without waiting for the network
+      try { localStorage.setItem('vf_features', JSON.stringify(list)); } catch { /* private mode */ }
       // 🌗 apply this vendor's saved theme
       const th = st?.settings?.theme || 'dark';
       if (th === 'light') document.documentElement.setAttribute('data-theme', 'light');
@@ -188,7 +196,7 @@ export default function VendorPanel({ onLogout }) {
         {error && <div className="err-banner">⚠️ {error}</div>}
         {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) ? (
           <FeatureLocked goServices={() => setTab('services')} />
-        ) : loading ? <div className="loading">Loading…</div> : tab === 'refer' ? (
+        ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'refer' ? (
           <ReferForm user={user} />
         ) : tab === 'leads' ? (
           <LeadsView routeLead={route.lead} onOpenLead={(id) => navigate({ tab: 'leads', lead: id ? String(id) : null })} />
