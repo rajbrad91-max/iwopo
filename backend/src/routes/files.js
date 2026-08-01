@@ -343,14 +343,11 @@ async function zipInto(archive, vendorId, folderId, prefix) {
   for (const f of folders) {
     // an empty folder still appears, which is what makes the zip match the screen
     archive.append(null, { name: prefix + f.name + '/' });
-    await zipInto(archive, shareId, vendorId, f.id, prefix + f.name + '/');
+    await zipInto(archive, vendorId, f.id, prefix + f.name + '/');
   }
 }
 
 /** Zip filenames come from user input, so strip what a filesystem would reject. */
-/** Our generated previews, never the vendor's own files. */
-const GENERATED = /\.(thumb|lg)\.webp$/i;
-
 function safeZipName(name) {
   return String(name || 'files').replace(/[^\w\d\-. ]+/g, '_').trim().slice(0, 80) || 'files';
 }

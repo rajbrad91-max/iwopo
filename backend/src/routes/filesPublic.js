@@ -186,7 +186,7 @@ async function zipInto(archive, vendorId, folderId, prefix) {
   }
   for (const f of folders) {
     archive.append(null, { name: prefix + f.name + '/' });
-    await zipInto(archive, shareId, vendorId, f.id, prefix + f.name + '/');
+    await zipInto(archive, vendorId, f.id, prefix + f.name + '/');
   }
 }
 

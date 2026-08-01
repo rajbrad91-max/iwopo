@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import './site.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -21,41 +21,73 @@ function useWebFonts() {
 }
 
 /**
+ * Anything carrying .st-rise starts slightly low and transparent and settles as
+ * it enters the screen. Done with an observer rather than a scroll listener so
+ * the page isn't doing arithmetic on every frame, and skipped entirely for
+ * anyone who has asked their system for less motion.
+ */
+function useReveal(key) {
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll('.st-rise:not(.is-in)'));
+    if (!els.length) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      els.forEach(el => el.classList.add('is-in'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        e.target.classList.add('is-in');
+        io.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
+    els.forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, [key]);
+}
+
+/**
  * 🌐 A vendor's public website.
  *
- * Four PAGES, not four anchors on one scroll. A photographer's portfolio is
- * thirty or forty photographs; putting it under the home page means every
- * visitor scrolls past the whole thing to reach anything else, and the home
- * page never ends. Each section is its own address, so Portfolio can be as long
- * as the work deserves without burying Book Us underneath it.
+ * Four VIEWS, each at its own address. Clicking Portfolio opens the portfolio —
+ * it does not scroll you half way down a page you were already reading. Each
+ * view starts at the top and settles in, so moving around feels like turning to
+ * a new page rather than sliding along one very long one.
  *
- * Home shows a handful of frames as a taste, and sends people to the full
- * portfolio — which is how a visitor decides whether to look further.
+ * Home stays short on purpose: a picture, a sentence, three frames, and a way
+ * through to the rest. The portfolio can then be as long as the work deserves
+ * without burying anything underneath it.
  */
 const NAV = [
   ['home', 'Home', ''],
   ['portfolio', 'Portfolio', '/portfolio'],
-  ['clients', 'Client Section', '/clients'],
+  ['clients', 'Clients', '/clients'],
   ['book', 'Book Us', '/book'],
 ];
 
-const HOME_PREVIEW = 6;
+const HOME_PREVIEW = 3;
 
 export default function PublicSite({ slug, page = 'home' }) {
   const [site, setSite] = useState(null);
   const [state, setState] = useState('loading');   // loading | ok | missing
   const [open, setOpen] = useState(false);         // mobile nav
   const [lb, setLb] = useState(-1);                // which photo is full-screen
-  const [slide, setSlide] = useState(0);           // home slider position
-  const [auto, setAuto] = useState(true);          // until someone takes over
+  const reelRef = useRef(null);                    // the sliding second collage
   useWebFonts();
   useDocumentTitle(site?.site_title || site?.business_name);
+  useReveal(page + (site ? 'y' : 'n'));
 
   useEffect(() => {
     api.publicSite(slug)
       .then(d => { setSite(d.site); setState('ok'); })
       .catch(() => setState('missing'));
   }, [slug]);
+
+  // a new view opens at its beginning, and closes the mobile menu behind it
+  useEffect(() => {
+    setOpen(false);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [page]);
 
   // arrows and Escape while a photograph is open — a viewer you can only click
   // out of feels broken to anyone used to looking at pictures
@@ -72,16 +104,6 @@ export default function PublicSite({ slug, page = 'home' }) {
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [lb, site]);
 
-  // The slider advances itself until someone touches it. Six seconds is long
-  // enough to read the caption and short enough not to feel stuck.
-  useEffect(() => {
-    if (!auto || page !== 'home') return;
-    const n = Math.min((site?.portfolio || []).length, HOME_PREVIEW);
-    if (n < 2) return;
-    const t = setInterval(() => setSlide(i => (i + 1) % n), 6000);
-    return () => clearInterval(t);
-  }, [auto, page, site]);
-
   if (state === 'loading') return <div className="st-loading">Loading…</div>;
   if (state === 'missing') {
     return (
@@ -96,18 +118,13 @@ export default function PublicSite({ slug, page = 'home' }) {
   // default to empty: a site saved before these columns existed has neither
   const clients = Array.isArray(site.clients) ? site.clients : [];
   const testimonials = Array.isArray(site.testimonials) ? site.testimonials : [];
-  const galleryUrl = site.gallery_token ? `/gallery/${site.gallery_token}` : null;
   const photos = site.portfolio || [];
   const preview = photos.slice(0, HOME_PREVIEW);
+  // five frames read as a composed block; anything past that slides sideways
+  const spread = photos.slice(0, 5);
+  const rest = photos.slice(5);
   const base = `/site/${slug}`;
   const photoUrl = (f) => `/api/sites/photo/${site.vendor_id}/${f}`;
-
-  // one step of the slider; taking control stops it advancing by itself, which
-  // is what makes a slideshow feel considerate rather than pushy
-  const step = (d) => {
-    setAuto(false);
-    setSlide(i => (i + d + preview.length) % preview.length);
-  };
 
   // the theme picks the layout, the vendor picks the colour and the type
   const styleVars = {
@@ -117,27 +134,76 @@ export default function PublicSite({ slug, page = 'home' }) {
   };
 
   /**
-   * A piece of work: the picture, and what it was. Alternating sides gives the
-   * page a rhythm to scroll through and stops twenty-five frames reading as a
-   * contact sheet — and it means a makeup artist or a florist can say what they
-   * actually did, which a bare photo grid never lets them.
+   * Move the reel by roughly one visible frame. Measured off the first child
+   * rather than a hard-coded width, because every theme sizes its frames
+   * differently and a fixed number would overshoot in one and stall in another.
    */
-  const shots = (list, offset = 0) => (
-    <div className="st-works">
-      {list.map((ph, i) => (
-        <article className={`st-work ${(i + offset) % 2 ? 'is-flip' : ''}`} key={ph.id}>
-          <figure className="st-work-fig" onClick={() => setLb(photos.indexOf(ph))}>
-            <img className="st-work-img" src={photoUrl(ph.file)} alt={ph.caption || ''} loading="lazy" />
-          </figure>
-          {(ph.caption || ph.note) && (
-            <div className="st-work-text">
-              {ph.caption && <h3 className="st-work-title">{ph.caption}</h3>}
-              {ph.note && <p className="st-work-note">{ph.note}</p>}
-            </div>
-          )}
-        </article>
-      ))}
+  const slideReel = (dir) => {
+    const track = reelRef.current;
+    if (!track) return;
+    const first = track.firstElementChild;
+    const step = first ? first.getBoundingClientRect().width + 24 : track.clientWidth * 0.8;
+    track.scrollBy({ left: dir * step, behavior: 'smooth' });
+  };
+
+  /**
+   * One photograph, wherever it appears. The frame is a button so the
+   * full-screen viewer opens from the keyboard too, and the words a vendor
+   * wrote about the picture travel with it.
+   */
+  const shot = (ph, cls) => (
+    <figure className={`${cls} st-rise`} key={ph.id}>
+      <button type="button" className="st-gal-frame"
+        aria-label={ph.caption ? `View ${ph.caption}` : 'View photograph'}
+        onClick={() => setLb(photos.indexOf(ph))}>
+        <img className="st-gal-img" src={photoUrl(ph.file)} alt={ph.caption || ''} loading="lazy" />
+      </button>
+      {(ph.caption || ph.note) && (
+        <figcaption className="st-gal-cap">
+          {ph.caption && <span className="st-gal-title">{ph.caption}</span>}
+          {ph.note && <span className="st-gal-note">{ph.note}</span>}
+        </figcaption>
+      )}
+    </figure>
+  );
+
+  /**
+   * 🧩 Collage one — the read. Five frames at five different sizes, and where a
+   * vendor has written about a picture the words sit BESIDE it inside the
+   * collage rather than underneath, so the block reads as a spread. The slot
+   * classes st-c1…st-c5 are what each theme re-shapes.
+   */
+  const collage = (list) => (
+    <div className="st-col1">
+      {list.map((ph, i) => shot(ph, `st-c1-i st-c${i + 1}`))}
     </div>
+  );
+
+  /**
+   * 🎞 Collage two — the browse. The rest of the work slides sideways instead of
+   * stacking down the page, which is what keeps a portfolio of forty frames the
+   * same height as one of ten. Native scroll-snap, so a phone swipes it without
+   * any of this code running.
+   */
+  const reel = (list) => (
+    <div className="st-reel">
+      <div className="st-reel-track" ref={reelRef}>
+        {list.map(ph => shot(ph, 'st-reel-i'))}
+      </div>
+      {list.length > 1 && (
+        <>
+          <button type="button" className="st-reel-nav st-reel-prev"
+            aria-label="Previous" onClick={() => slideReel(-1)}>‹</button>
+          <button type="button" className="st-reel-nav st-reel-next"
+            aria-label="Next" onClick={() => slideReel(1)}>›</button>
+        </>
+      )}
+    </div>
+  );
+
+  /** three frames on the home page — a taste, not the portfolio */
+  const trio = (list) => (
+    <div className="st-trio">{list.map(ph => shot(ph, 'st-trio-i'))}</div>
   );
 
   return (
@@ -148,7 +214,10 @@ export default function PublicSite({ slug, page = 'home' }) {
             ? <img src={`/api/me/logo/${site.logo_path}`} alt="" className="st-brand-logo" />
             : <span className="st-brand-name">{title}</span>}
         </a>
-        <button type="button" className="st-burger" onClick={() => setOpen(o => !o)} aria-label="Menu">☰</button>
+        <button type="button" className="st-burger" onClick={() => setOpen(o => !o)}
+          aria-expanded={open} aria-label="Menu">
+          <span className={`st-burger-i ${open ? 'is-x' : ''}`} />
+        </button>
         <nav className={`st-links ${open ? 'is-open' : ''}`}>
           {NAV.map(([id, label, path]) => (
             <a key={id} href={base + path} className={page === id ? 'is-here' : ''}>{label}</a>
@@ -156,209 +225,187 @@ export default function PublicSite({ slug, page = 'home' }) {
         </nav>
       </header>
 
-      {/* ── HOME: the hero, a word about them, and a taste of the work ── */}
-      {page === 'home' && (
-        <>
-          <section className={`st-hero ${site.cover_photo ? 'has-cover' : ''}`}>
-            {site.cover_photo && (
-              <img className="st-hero-cover" src={photoUrl(site.cover_photo)}
-                alt="" style={{ objectPosition: site.cover_focus || '50% 50%' }} />
-            )}
-            <div className="st-hero-inner">
-              {site.logo_path && (
-                <img className="st-hero-logo" src={`/api/me/logo/${site.logo_path}`} alt={title} />
+      {/* keyed on the view so React rebuilds it — which is what lets the whole
+          page fade up again, the way opening a new page should feel */}
+      <main className="st-main" key={page}>
+
+        {/* ── HOME: a picture, a sentence, three frames, a way through ── */}
+        {page === 'home' && (
+          <>
+            <section className={`st-hero ${site.cover_photo ? 'has-cover' : ''}`}>
+              {site.cover_photo && (
+                <img className="st-hero-cover" src={photoUrl(site.cover_photo)}
+                  alt="" style={{ objectPosition: site.cover_focus || '50% 50%' }} />
               )}
-              <h1 className="st-hero-title">{title}</h1>
-              {site.tagline && <p className="st-hero-tagline">{site.tagline}</p>}
-              <a href={`${base}/book`} className="st-cta">Book us</a>
-            </div>
-          </section>
-
-          {(site.about_heading || site.about_body) && (
-            <section className="st-about">
-              <div className="st-wrap st-narrow">
-                {site.about_heading && <h2 className="st-h2">{site.about_heading}</h2>}
-                {site.about_body && <p className="st-prose">{site.about_body}</p>}
+              <div className="st-hero-inner">
+                {site.logo_path && (
+                  <img className="st-hero-logo" src={`/api/me/logo/${site.logo_path}`} alt={title} />
+                )}
+                <h1 className="st-hero-title">{title}</h1>
+                {site.tagline && <p className="st-hero-tagline">{site.tagline}</p>}
+                <div className="st-hero-cta">
+                  <a href={`${base}/portfolio`} className="st-cta">View portfolio</a>
+                  <a href={`${base}/book`} className="st-cta is-ghost">Book us</a>
+                </div>
               </div>
             </section>
-          )}
 
-          {(clients.length > 0 || testimonials.length > 0) && (
-            <section className="st-section st-clients">
-              <div className="st-wrap">
-                <h2 className="st-h2 st-clients-h">
-                  {site.clients_heading || 'Trusted by wonderful people'}
-                </h2>
+            {(site.about_heading || site.about_body) && (
+              <section className="st-section st-about">
+                <div className="st-wrap st-narrow st-rise">
+                  {site.about_heading && <h2 className="st-h2">{site.about_heading}</h2>}
+                  {site.about_body && <p className="st-prose">{site.about_body}</p>}
+                </div>
+              </section>
+            )}
 
-                {clients.length > 0 && (
-                  <div className="st-logos">
-                    {clients.map(c => (
-                      <div key={c.id} className="st-logo" title={c.name}>
-                        {c.logo
-                          ? <img src={photoUrl(c.logo)} alt={c.name || ''} loading="lazy" />
-                          : <span className="st-logo-name">{c.name}</span>}
+            {/* 🧱 The vendor's own blocks — after who they are, before the work
+                does the rest of the talking. An image block alternates side each
+                time so a run of three doesn't read as a list. */}
+            {(site.sections || []).map((sec, i) => {
+              if (!sec.heading && !sec.body) return null;      // nothing to show
+              if (sec.type === 'image' && sec.image) {
+                return (
+                  <section key={sec.id || i} className={`st-section ${i % 2 ? 'st-alt' : ''}`}>
+                    <div className={`st-wrap st-split st-rise ${i % 2 ? 'is-flipped' : ''}`}>
+                      <div className="st-split-text">
+                        {sec.heading && <h2 className="st-h2">{sec.heading}</h2>}
+                        {sec.body && <p className="st-prose">{sec.body}</p>}
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                {testimonials.length > 0 && (
-                  <div className="st-quotes">
-                    {testimonials.map(t => (
-                      <figure key={t.id} className="st-quote">
-                        <blockquote>{t.quote}</blockquote>
-                        {(t.author || t.role) && (
-                          <figcaption>
-                            {t.author}
-                            {t.role && <span className="st-quote-role">{t.role}</span>}
-                          </figcaption>
-                        )}
-                      </figure>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* 🧱 The vendor's own blocks, between the about text and the work.
-              Deliberately after About and before the portfolio: this is where a
-              vendor explains something — how they work, what a package covers —
-              and it belongs after who they are but before the pictures do the
-              rest of the talking. An image block alternates side each time so a
-              run of three does not read as a list. */}
-          {(site.sections || []).map((sec, i) => {
-            if (!sec.heading && !sec.body) return null;      // nothing to show
-            if (sec.type === 'image' && sec.image) {
+                      <div className="st-split-img">
+                        <img src={photoUrl(sec.image)} alt={sec.heading || ''} loading="lazy" />
+                      </div>
+                    </div>
+                  </section>
+                );
+              }
               return (
                 <section key={sec.id || i} className={`st-section ${i % 2 ? 'st-alt' : ''}`}>
-                  <div className={`st-wrap st-split ${i % 2 ? 'is-flipped' : ''}`}>
-                    <div className="st-split-text">
-                      {sec.heading && <h2 className="st-h2">{sec.heading}</h2>}
-                      {sec.body && <p className="st-prose">{sec.body}</p>}
-                    </div>
-                    <div className="st-split-img">
-                      <img src={photoUrl(sec.image)} alt={sec.heading || ''} loading="lazy" />
-                    </div>
+                  <div className="st-wrap st-narrow st-rise">
+                    {sec.heading && <h2 className="st-h2">{sec.heading}</h2>}
+                    {sec.body && <p className="st-prose">{sec.body}</p>}
                   </div>
                 </section>
               );
-            }
-            return (
-              <section key={sec.id || i} className={`st-section ${i % 2 ? 'st-alt' : ''}`}>
-                <div className="st-wrap st-narrow">
-                  {sec.heading && <h2 className="st-h2">{sec.heading}</h2>}
-                  {sec.body && <p className="st-prose">{sec.body}</p>}
+            })}
+
+            {/* three frames, then out to the rest — the home page stays the
+                same length whether a vendor has five photographs or fifty */}
+            {preview.length > 0 && (
+              <section className="st-section st-alt">
+                <div className="st-wrap">
+                  <div className="st-head st-rise">
+                    <p className="st-eyebrow">A glimpse</p>
+                    <h2 className="st-h2">Recent work</h2>
+                  </div>
+                  {trio(preview)}
+                  <div className="st-more st-rise">
+                    <a className="st-cta" href={`${base}/portfolio`}>See the full portfolio</a>
+                  </div>
                 </div>
               </section>
-            );
-          })}
+            )}
+          </>
+        )}
 
-          {/* A slider, not a stack: the home page shows the work moving without
-              growing, so it stays short whether a vendor has five frames or
-              twenty-five. It advances on its own and stops the moment someone
-              takes control, which is the difference between a slideshow that
-              helps and one that fights you. */}
-          {photos.length > 0 && (
-            <section className="st-section st-alt">
-              <div className="st-wrap">
-                <p className="st-eyebrow">A glimpse</p>
-                <h2 className="st-h2">Recent work</h2>
-
-                <div className="st-slider">
-                  <div className="st-slides" style={{ transform: `translateX(-${slide * 100}%)` }}>
-                    {photos.slice(0, HOME_PREVIEW).map(ph => (
-                      <div className="st-slide" key={ph.id}>
-                        <img className="st-slide-img" src={photoUrl(ph.file)} alt={ph.caption || ''} loading="lazy" />
-                        {(ph.caption || ph.note) && (
-                          <div className="st-slide-cap">
-                            {ph.caption && <h3 className="st-slide-title">{ph.caption}</h3>}
-                            {ph.note && <p className="st-slide-note">{ph.note}</p>}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {preview.length > 1 && (
-                    <>
-                      <button className="st-sl-nav st-sl-prev" aria-label="Previous"
-                        onClick={() => step(-1)}>‹</button>
-                      <button className="st-sl-nav st-sl-next" aria-label="Next"
-                        onClick={() => step(1)}>›</button>
-                      <div className="st-dots">
-                        {preview.map((ph, i) => (
-                          <button key={ph.id} aria-label={`Photo ${i + 1}`}
-                            className={`st-dot ${i === slide ? 'is-on' : ''}`}
-                            onClick={() => { setAuto(false); setSlide(i); }} />
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="st-more">
-                  <a className="st-cta" href={`${base}/portfolio`}>See the full portfolio</a>
-                </div>
+        {/* ── PORTFOLIO: a composed spread, then the rest on a rail ── */}
+        {page === 'portfolio' && (
+          <section className="st-section st-first">
+            <div className="st-wrap">
+              <div className="st-head st-rise">
+                <p className="st-eyebrow">Selected work</p>
+                <h2 className="st-h2">Portfolio</h2>
               </div>
-            </section>
-          )}
-        </>
-      )}
-
-      {/* ── PORTFOLIO: its own page, as long as the work deserves ── */}
-      {page === 'portfolio' && (
-        <section className="st-section st-first">
-          <div className="st-wrap">
-            <p className="st-eyebrow">Selected work</p>
-            <h2 className="st-h2">Portfolio</h2>
-            {photos.length === 0
-              ? <p className="st-quiet">Work coming soon.</p>
-              : shots(photos)}
-          </div>
-        </section>
-      )}
-
-      {/* ── CLIENT SECTION ── */}
-      {page === 'clients' && (
-        <section className="st-section st-first">
-          <div className="st-wrap st-narrow">
-            <p className="st-eyebrow">Already booked</p>
-            <h2 className="st-h2">Client Section</h2>
-            <p className="st-prose">
-              Already worked with us? Your photographs are waiting. Open your gallery to
-              view, favourite and download them.
-            </p>
-            {galleryUrl
-              ? <a className="st-cta" href={galleryUrl}>Open your gallery</a>
-              : <p className="st-quiet">Your photographer will send you a private link.</p>}
-          </div>
-        </section>
-      )}
-
-      {/* ── BOOK US ── */}
-      {page === 'book' && (
-        <section className="st-section st-first">
-          <div className="st-wrap st-narrow">
-            <p className="st-eyebrow">Get in touch</p>
-            <h2 className="st-h2">Book Us</h2>
-            <p className="st-prose">Tell us about your day and we&apos;ll come back to you.</p>
-            <a className="st-cta" href={`/inquiry/${site.vendor_id}`}>Start an enquiry</a>
-            <div className="st-contact">
-              {site.contact_email && <a href={`mailto:${site.contact_email}`}>{site.contact_email}</a>}
-              {site.contact_phone && <a href={`tel:${site.contact_phone}`}>{site.contact_phone}</a>}
+              {photos.length === 0 && <p className="st-quiet">Work coming soon.</p>}
+              {spread.length > 0 && collage(spread)}
+              {rest.length > 0 && (
+                <div className="st-reel-block">
+                  <div className="st-reel-head st-rise">
+                    <h3 className="st-h3">More from the archive</h3>
+                    <p className="st-quiet">Slide across</p>
+                  </div>
+                  {reel(rest)}
+                </div>
+              )}
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
+
+        {/* ── CLIENTS: who they have worked with, and what those people said ── */}
+        {page === 'clients' && (
+          <section className="st-section st-first">
+            <div className="st-wrap">
+              <div className="st-head st-rise">
+                <p className="st-eyebrow">Kind words</p>
+                <h2 className="st-h2">
+                  {site.clients_heading || 'Trusted by wonderful people and brands'}
+                </h2>
+              </div>
+
+              {clients.length > 0 && (
+                <div className="st-logos st-rise">
+                  {clients.map(c => (
+                    <div key={c.id} className="st-logo" title={c.name}>
+                      {c.logo
+                        ? <img src={photoUrl(c.logo)} alt={c.name || ''} loading="lazy" />
+                        : <span className="st-logo-name">{c.name}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {testimonials.length > 0 && (
+                <div className="st-quotes">
+                  {testimonials.map(t => (
+                    <figure key={t.id} className="st-quote st-rise">
+                      <blockquote>{t.quote}</blockquote>
+                      {(t.author || t.role) && (
+                        <figcaption>
+                          {t.author}
+                          {t.role && <span className="st-quote-role">{t.role}</span>}
+                        </figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
+              )}
+
+              {clients.length === 0 && testimonials.length === 0 && (
+                <p className="st-quiet">Client stories coming soon.</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── BOOK US ── */}
+        {page === 'book' && (
+          <section className="st-section st-first">
+            <div className="st-wrap st-narrow st-rise">
+              <p className="st-eyebrow">Get in touch</p>
+              <h2 className="st-h2">Let&apos;s create something memorable.</h2>
+              <p className="st-prose">
+                Tell us about your day and we&apos;ll come back to you within one to
+                two business days.
+              </p>
+              <a className="st-cta" href={`/inquiry/${site.vendor_id}`}>Start an enquiry</a>
+              <div className="st-contact">
+                {site.contact_email && <a href={`mailto:${site.contact_email}`}>{site.contact_email}</a>}
+                {site.contact_phone && <a href={`tel:${site.contact_phone}`}>{site.contact_phone}</a>}
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
 
       <footer className="st-foot">
         <div className="st-wrap st-foot-inner">
-          <span>© {new Date().getFullYear()} {title}</span>
-          <span className="st-social">
+          <span className="st-foot-name">{title}</span>
+          <span className="st-foot-links">
+            {site.contact_email && <a href={`mailto:${site.contact_email}`}>{site.contact_email}</a>}
             {site.instagram && <a href={site.instagram} target="_blank" rel="noreferrer">Instagram</a>}
             {site.facebook && <a href={site.facebook} target="_blank" rel="noreferrer">Facebook</a>}
           </span>
+          <span className="st-foot-copy">© {new Date().getFullYear()}</span>
         </div>
       </footer>
 
@@ -374,8 +421,10 @@ export default function PublicSite({ slug, page = 'home' }) {
                 onClick={e => { e.stopPropagation(); setLb((lb + 1) % photos.length); }}>›</button>
             </>
           )}
-          <img className="st-lb-img" onClick={e => e.stopPropagation()}
-            src={photoUrl(photos[lb].file)} alt={photos[lb].caption || ''} />
+          <figure className="st-lb-fig" onClick={e => e.stopPropagation()}>
+            <img className="st-lb-img" src={photoUrl(photos[lb].file)} alt={photos[lb].caption || ''} />
+            {photos[lb].caption && <figcaption className="st-lb-cap">{photos[lb].caption}</figcaption>}
+          </figure>
         </div>
       )}
     </div>
