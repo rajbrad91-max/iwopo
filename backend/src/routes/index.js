@@ -27,7 +27,11 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
     if (s.anthropic_api_key) s.anthropic_api_key = s.anthropic_api_key.slice(0, 7) + '••••••••' + s.anthropic_api_key.slice(-4);
     // the R2 secret is masked like the others — enough to recognise which key is
     // in place, never enough to use
-    if (s.r2_secret_access_key) s.r2_secret_access_key = s.r2_secret_access_key.slice(0, 4) + '••••••••' + s.r2_secret_access_key.slice(-4);
+    // every R2 secret is masked the same way — enough to tell which key is in
+    // place, never enough to use
+    for (const k of ['r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key']) {
+      if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
+    }
     res.json({ settings: s });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -115,6 +119,8 @@ router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (r
       aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '',
       aws_region: s.aws_region || '', anthropic_api_key: s.anthropic_api_key || '',
       r2_secret_access_key: s.r2_secret_access_key || '',
+      r2_private_secret_access_key: s.r2_private_secret_access_key || '',
+      r2_public_secret_access_key: s.r2_public_secret_access_key || '',
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -122,8 +128,14 @@ router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (r
 router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const allowed = ['face_engine', 'aws_mode', 'aws_access_key', 'aws_secret_key', 'aws_region', 'anthropic_api_key', 'anthropic_model',
-      'r2_account_id', 'r2_access_key_id', 'r2_secret_access_key',
-      'r2_bucket_private', 'r2_bucket_public', 'r2_public_url'];
+      'r2_account_id',
+      // shared pair, used by either bucket that has none of its own
+      'r2_access_key_id', 'r2_secret_access_key',
+      // 🔒 private — galleries and File Flyer
+      'r2_bucket_private', 'r2_private_access_key_id', 'r2_private_secret_access_key',
+      // 🌐 public — website images and logos
+      'r2_bucket_public', 'r2_public_access_key_id', 'r2_public_secret_access_key',
+      'r2_public_url'];
 
     /* 🔒 One bucket for both classes would silently un-gate every client gallery
        and every File Flyer link at once: the album password and the share token

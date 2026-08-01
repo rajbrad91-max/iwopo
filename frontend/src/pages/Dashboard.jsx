@@ -1602,27 +1602,62 @@ function FaceEngineSettings() {
                   value={s.r2_account_id || ''}
                   onChange={e => setS({ ...s, r2_account_id: e.target.value })} /></div>
 
-              <div><label className="lbl">Access Key ID</label>
+              <div><label className="lbl">Shared Access Key ID</label>
                 <input style={editing ? box : roBox} readOnly={!editing}
+                  placeholder="used by either bucket with no key of its own"
                   value={s.r2_access_key_id || ''}
                   onChange={e => setS({ ...s, r2_access_key_id: e.target.value })} /></div>
 
-              <div><label className="lbl">Secret Access Key</label>
+              <div><label className="lbl">Shared Secret Access Key</label>
                 <input style={editing ? box : roBox} readOnly={!editing}
                   value={s.r2_secret_access_key || ''}
                   onChange={e => setS({ ...s, r2_secret_access_key: e.target.value })} /></div>
 
-              <div><label className="lbl">Private bucket — galleries &amp; File Flyer</label>
-                <input style={editing ? box : roBox} readOnly={!editing}
-                  placeholder="iwopo-private"
+              {/* ── 🔒 private ─────────────────────────────────────────── */}
+              <div className="sa-sec-hd" style={{ marginTop: 22 }}>🔒 Private bucket — client galleries &amp; File Flyer</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+                Reached only by album password or share token. Public access must stay OFF on this bucket.
+              </div>
+
+              <div><label className="lbl">Bucket name</label>
+                <input style={editing ? box : roBox} readOnly={!editing} placeholder="iwopo-private"
                   value={s.r2_bucket_private || ''}
                   onChange={e => setS({ ...s, r2_bucket_private: e.target.value })} /></div>
 
-              <div><label className="lbl">Public bucket — website images &amp; logos</label>
+              <div><label className="lbl">Access Key ID <span style={{ color: 'var(--muted)' }}>— optional</span></label>
                 <input style={editing ? box : roBox} readOnly={!editing}
-                  placeholder="iwopo-public"
+                  placeholder="leave blank to use the shared key"
+                  value={s.r2_private_access_key_id || ''}
+                  onChange={e => setS({ ...s, r2_private_access_key_id: e.target.value })} /></div>
+
+              <div><label className="lbl">Secret Access Key <span style={{ color: 'var(--muted)' }}>— optional</span></label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  placeholder="leave blank to use the shared key"
+                  value={s.r2_private_secret_access_key || ''}
+                  onChange={e => setS({ ...s, r2_private_secret_access_key: e.target.value })} /></div>
+
+              {/* ── 🌐 public ──────────────────────────────────────────── */}
+              <div className="sa-sec-hd" style={{ marginTop: 22 }}>🌐 Public bucket — website images &amp; logos</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+                Deliberately world-readable. Nothing private should ever be written here.
+              </div>
+
+              <div><label className="lbl">Bucket name</label>
+                <input style={editing ? box : roBox} readOnly={!editing} placeholder="iwopo-public"
                   value={s.r2_bucket_public || ''}
                   onChange={e => setS({ ...s, r2_bucket_public: e.target.value })} /></div>
+
+              <div><label className="lbl">Access Key ID <span style={{ color: 'var(--muted)' }}>— optional</span></label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  placeholder="leave blank to use the shared key"
+                  value={s.r2_public_access_key_id || ''}
+                  onChange={e => setS({ ...s, r2_public_access_key_id: e.target.value })} /></div>
+
+              <div><label className="lbl">Secret Access Key <span style={{ color: 'var(--muted)' }}>— optional</span></label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  placeholder="leave blank to use the shared key"
+                  value={s.r2_public_secret_access_key || ''}
+                  onChange={e => setS({ ...s, r2_public_secret_access_key: e.target.value })} /></div>
 
               <div><label className="lbl">Public URL</label>
                 <input style={editing ? box : roBox} readOnly={!editing}
@@ -1630,7 +1665,6 @@ function FaceEngineSettings() {
                   value={s.r2_public_url || ''}
                   onChange={e => setS({ ...s, r2_public_url: e.target.value })} /></div>
 
-              {/* the one mistake that would matter, said before it can be made */}
               <div className="cb-warn" style={{ marginTop: 10 }}>
                 🔒 The two buckets must be different. Galleries and File Flyer files are reached
                 by password or share token — putting them in the public bucket lets anyone with
