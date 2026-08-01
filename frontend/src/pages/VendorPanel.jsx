@@ -175,7 +175,7 @@ export default function VendorPanel({ onLogout }) {
         <div className="nav-group">ACCOUNT</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => go('refer')}><span className="nav-ic">👥</span><span className="nav-txt">Refer a Friend</span></div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => go('settings')}><span className="nav-ic">⚙️</span><span className="nav-txt">Settings</span></div>
-        <div className="logout" onClick={handleLogout}><span className="nav-ic">🚪</span><span className="nav-txt">Log out</span></div>
+        <div className="logout" onClick={handleLogout}><span className="nav-ic">👋</span><span className="nav-txt">Log out</span></div>
       </aside>
 
       <main className="main">
