@@ -64,6 +64,29 @@ function cleanBody(body) {
     out.about_body = body.about_body == null ? null : String(body.about_body).slice(0, 4000);
   }
 
+  if (body.clients_heading !== undefined) out.clients_heading = str(body.clients_heading, 160);
+
+  // 🤝 names or logos of people they have worked with
+  if (Array.isArray(body.clients)) {
+    out.clients = body.clients.slice(0, 24).map((c, i) => ({
+      id: String(c.id || `c${Date.now()}${i}`).slice(0, 24),
+      name: str(c.name, 120),
+      // an uploaded logo, stored the same way a section image is
+      logo: str(c.logo, 300),
+    })).filter(c => c.name || c.logo);        // an empty row is not a client
+  }
+
+  // 💬 what a few of them said. Short on purpose — the brief asks for one or
+  // two sentences, and a wall of text stops reading as a testimonial.
+  if (Array.isArray(body.testimonials)) {
+    out.testimonials = body.testimonials.slice(0, 6).map((t, i) => ({
+      id: String(t.id || `t${Date.now()}${i}`).slice(0, 24),
+      quote: t.quote == null ? null : String(t.quote).slice(0, 400),
+      author: str(t.author, 120),
+      role: str(t.role, 120),
+    })).filter(t => t.quote);                 // a quote with no words is nothing
+  }
+
   // 🧱 the vendor's own blocks, in the order they arrive. Capped so nobody can
   // make their own page unloadable.
   if (Array.isArray(body.sections)) {
@@ -91,7 +114,8 @@ const PUBLIC_FIELDS = {
   theme: true, accent: true, heading_font: true, body_font: true,
   site_title: true, tagline: true, about_heading: true, about_body: true,
   contact_email: true, contact_phone: true, instagram: true, facebook: true,
-  sections: true, slug: true, published: true,
+  sections: true, clients: true, testimonials: true, clients_heading: true,
+  slug: true, published: true,
   cover_photo: true, cover_focus: true, portfolio: true,
 };
 

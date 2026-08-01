@@ -93,6 +93,9 @@ export default function PublicSite({ slug, page = 'home' }) {
   }
 
   const title = site.site_title || site.business_name || 'Studio';
+  // default to empty: a site saved before these columns existed has neither
+  const clients = Array.isArray(site.clients) ? site.clients : [];
+  const testimonials = Array.isArray(site.testimonials) ? site.testimonials : [];
   const galleryUrl = site.gallery_token ? `/gallery/${site.gallery_token}` : null;
   const photos = site.portfolio || [];
   const preview = photos.slice(0, HOME_PREVIEW);
@@ -176,6 +179,44 @@ export default function PublicSite({ slug, page = 'home' }) {
               <div className="st-wrap st-narrow">
                 {site.about_heading && <h2 className="st-h2">{site.about_heading}</h2>}
                 {site.about_body && <p className="st-prose">{site.about_body}</p>}
+              </div>
+            </section>
+          )}
+
+          {(clients.length > 0 || testimonials.length > 0) && (
+            <section className="st-section st-clients">
+              <div className="st-wrap">
+                <h2 className="st-h2 st-clients-h">
+                  {site.clients_heading || 'Trusted by wonderful people'}
+                </h2>
+
+                {clients.length > 0 && (
+                  <div className="st-logos">
+                    {clients.map(c => (
+                      <div key={c.id} className="st-logo" title={c.name}>
+                        {c.logo
+                          ? <img src={photoUrl(c.logo)} alt={c.name || ''} loading="lazy" />
+                          : <span className="st-logo-name">{c.name}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {testimonials.length > 0 && (
+                  <div className="st-quotes">
+                    {testimonials.map(t => (
+                      <figure key={t.id} className="st-quote">
+                        <blockquote>{t.quote}</blockquote>
+                        {(t.author || t.role) && (
+                          <figcaption>
+                            {t.author}
+                            {t.role && <span className="st-quote-role">{t.role}</span>}
+                          </figcaption>
+                        )}
+                      </figure>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
           )}

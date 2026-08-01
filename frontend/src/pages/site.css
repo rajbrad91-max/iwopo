@@ -281,3 +281,56 @@
   .st-split.is-flipped .st-split-text { order: 1; }
   .st-split.is-flipped .st-split-img { order: 2; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   🤝 Social proof — who they have worked with, and what those people said.
+   ══════════════════════════════════════════════════════════════════════ */
+.st-clients { padding-top: 8px; }
+.st-clients-h { text-align: center; margin-bottom: 34px; }
+
+/* ── logos ──────────────────────────────────────────────────────────── */
+.st-logos {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  align-items: center; gap: 34px 54px;
+  margin-bottom: 56px;
+}
+.st-logo { display: flex; align-items: center; justify-content: center; }
+/* greyscale and dimmed so a row of mismatched logos reads as one band rather
+   than as competing brands; colour returns on hover */
+.st-logo img {
+  max-height: 46px; max-width: 150px; object-fit: contain; display: block;
+  filter: grayscale(1); opacity: .55;
+  transition: filter .25s ease, opacity .25s ease;
+}
+.st-logo:hover img { filter: none; opacity: 1; }
+.st-logo-name {
+  font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--st-soft); white-space: nowrap;
+}
+
+/* ── testimonials ───────────────────────────────────────────────────── */
+.st-quotes {
+  display: grid; gap: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  max-width: 1000px; margin: 0 auto;
+}
+.st-quote { margin: 0; text-align: center; }
+.st-quote blockquote {
+  margin: 0 0 14px; font-family: var(--st-head, inherit);
+  font-size: 19px; line-height: 1.65; color: var(--st-ink);
+}
+/* the quote marks are decoration, so they are drawn rather than typed —
+   a screen reader should hear the words, not two stray glyphs */
+.st-quote blockquote::before { content: '\201C'; }
+.st-quote blockquote::after { content: '\201D'; }
+.st-quote figcaption {
+  font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--st-soft);
+}
+.st-quote-role { display: block; margin-top: 3px; opacity: .75; letter-spacing: .06em; }
+
+@media (max-width: 640px) {
+  .st-logos { gap: 26px 32px; margin-bottom: 40px; }
+  .st-quotes { gap: 30px; }
+  .st-quote blockquote { font-size: 17px; }
+}

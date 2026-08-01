@@ -4904,6 +4904,67 @@ function WebsiteView() {
     finally { setBusySec(-1); }
   }
 
+  function setClientField(i, key, value) {
+    setSite(s => ({
+      ...s,
+      clients: (s.clients || []).map((c, k) => k === i ? { ...c, [key]: value } : c),
+    }));
+  }
+
+  function setQuoteField(i, key, value) {
+    setSite(s => ({
+      ...s,
+      testimonials: (s.testimonials || []).map((t, k) => k === i ? { ...t, [key]: value } : t),
+    }));
+  }
+
+  /** Persist both lists and the heading together — they are one card. */
+  async function saveClients(next) {
+    const body = next || {
+      clients: site.clients || [],
+      testimonials: site.testimonials || [],
+      clients_heading: site.clients_heading || '',
+    };
+    try { const d = await api.saveMySite(body); setSite(d.site); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  function addClient() {
+    const list = [...(site.clients || []), { id: 'c' + Date.now(), name: '', logo: null }];
+    setSite(s => ({ ...s, clients: list }));
+    saveClients({ clients: list });
+  }
+
+  function removeClient(i) {
+    const list = (site.clients || []).filter((_, k) => k !== i);
+    setSite(s => ({ ...s, clients: list }));
+    saveClients({ clients: list });
+  }
+
+  function addQuote() {
+    const list = [...(site.testimonials || []), { id: 't' + Date.now(), quote: '', author: '', role: '' }];
+    setSite(s => ({ ...s, testimonials: list }));
+    saveClients({ testimonials: list });
+  }
+
+  function removeQuote(i) {
+    const list = (site.testimonials || []).filter((_, k) => k !== i);
+    setSite(s => ({ ...s, testimonials: list }));
+    saveClients({ testimonials: list });
+  }
+
+  async function onClientLogo(i, e) {
+    const f = e.target.files?.[0];
+    e.target.value = '';                       // so the same file can be picked twice
+    if (!f) return;
+    try {
+      const { image } = await api.uploadSitePhoto(f);
+      const list = (site.clients || []).map((c, k) => k === i ? { ...c, logo: image } : c);
+      setSite(s => ({ ...s, clients: list }));
+      saveClients({ clients: list });
+    } catch (err) { setMsg('⚠️ ' + err.message); }
+  }
+
   async function savePortfolioText() {
     try { const d = await api.savePortfolio(site.portfolio || []); setSite(d.site); flash('✅ Saved'); }
     catch (err) { setMsg('⚠️ ' + err.message); }
@@ -5016,6 +5077,62 @@ function WebsiteView() {
             <input type="file" accept="image/*" onChange={onCoverPick} hidden />
           </label>
         )}
+      </div>
+
+      {/* ── social proof ── */}
+      <div className="table-wrap ws-block">
+        <h3 className="ws-h3">🤝 Clients &amp; testimonials</h3>
+        <p className="ws-hint">
+          Who you&apos;ve worked with, and what a couple of them said. This shows on your
+          home page, where someone deciding whether to book will see it.
+        </p>
+
+        <label className="lbl">Heading</label>
+        <input className="ws-input" placeholder="Trusted by wonderful people"
+          value={site.clients_heading || ''}
+          onChange={e => setSite(s => ({ ...s, clients_heading: e.target.value }))}
+          onBlur={saveClients} />
+
+        <div className="ws-sub-h">Client names or logos</div>
+        {(site.clients || []).map((c, i) => (
+          <div className="ws-cli" key={c.id || i}>
+            <input className="ws-input" placeholder="Client or brand name"
+              value={c.name || ''}
+              onChange={e => setClientField(i, 'name', e.target.value)}
+              onBlur={saveClients} />
+            <label className="refresh ws-file">
+              {c.logo ? '🔄 Logo' : '🖼️ Logo'}
+              <input type="file" accept="image/*" hidden onChange={e => onClientLogo(i, e)} />
+            </label>
+            <button type="button" className="ws-pf-btn is-del" title="Remove"
+              onClick={() => removeClient(i)}>🗑️</button>
+          </div>
+        ))}
+        <button type="button" className="refresh" onClick={addClient}>➕ Add a client</button>
+
+        <div className="ws-sub-h">Testimonials</div>
+        {(site.testimonials || []).map((t, i) => (
+          <div className="ws-quote-row" key={t.id || i}>
+            <textarea className="ws-input" rows={2}
+              placeholder="One or two sentences — short reads better than long."
+              value={t.quote || ''}
+              onChange={e => setQuoteField(i, 'quote', e.target.value)}
+              onBlur={saveClients} />
+            <div className="ws-quote-by">
+              <input className="ws-input" placeholder="Who said it"
+                value={t.author || ''}
+                onChange={e => setQuoteField(i, 'author', e.target.value)}
+                onBlur={saveClients} />
+              <input className="ws-input" placeholder="Their role, or the event"
+                value={t.role || ''}
+                onChange={e => setQuoteField(i, 'role', e.target.value)}
+                onBlur={saveClients} />
+              <button type="button" className="ws-pf-btn is-del" title="Remove"
+                onClick={() => removeQuote(i)}>🗑️</button>
+            </div>
+          </div>
+        ))}
+        <button type="button" className="refresh" onClick={addQuote}>➕ Add a testimonial</button>
       </div>
 
       {/* ── portfolio ── */}

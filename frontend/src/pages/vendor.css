@@ -1843,3 +1843,22 @@
 tr:hover .bk-del { opacity: .8; }
 .bk-del:hover { opacity: 1; background: var(--fill); border-color: #f87171; }
 .bk-del:active { transform: scale(.9); }
+
+/* ── 🤝 clients + testimonials editor ─────────────────────────────────── */
+.ws-sub-h {
+  margin: 20px 0 8px; font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+/* name, logo button and delete on one line — a client is a small thing and a
+   stacked card per row would bury the list */
+.ws-cli { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ws-cli .ws-input { flex: 1; margin: 0; }
+
+.ws-quote-row {
+  padding: 12px 14px; margin-bottom: 10px; border-radius: 10px;
+  background: var(--panel-2); border: 1px solid var(--line);
+}
+.ws-quote-row .ws-input { width: 100%; margin: 0 0 8px; }
+.ws-quote-row textarea { resize: vertical; font-family: inherit; }
+.ws-quote-by { display: flex; align-items: center; gap: 8px; }
+.ws-quote-by .ws-input { flex: 1; margin: 0; }
