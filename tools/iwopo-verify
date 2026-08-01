@@ -1,0 +1,154 @@
+#!/bin/bash
+# Everything that should be true before anything is pushed.
+#
+# This exists because the checks that actually catch failures were the ones
+# getting skipped: a stylesheet was truncated from 1722 lines to 22 and pushed
+# because nobody read the diff, and a shared format changed while a second
+# consumer of it kept parsing the old one and broke in front of a client.
+# Both were seconds of checking, done never. Now they are one command.
+S=/var/www/iwopo-staging
+L=/var/www/iwopo
+cd $S
+
+echo "=== 1. build + lint ==="
+cd $S/frontend && npm run build 2>&1 | grep -E "✓ built|error|Error" | head -5
+cd $S
+echo "  lint: $(npx eslint backend/src frontend/src 2>&1 | tail -1)"
+
+echo
+echo "=== 2. diff sanity — a file that lost most of itself is a red flag ==="
+git diff --stat | tail -20
+git diff --numstat | awk '$2 > 200 && $1 < ($2/10) {print "  ⚠️  " $3 " lost " $2 " lines and gained only " $1}'
+echo "  (any ⚠️ above means read that diff before pushing)"
+
+echo
+echo "=== 3. dead / missing CSS classes ==="
+node - <<'NODE'
+const fs=require('fs');
+const S='/var/www/iwopo-staging/frontend/src';
+function walk(d,o=[],ext=/\.jsx?$/){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=d+'/'+e.name;
+  if(e.isDirectory())walk(p,o,ext); else if(ext.test(e.name))o.push(p);} return o;}
+let code=walk(S).map(f=>fs.readFileSync(f,'utf8')).join('\n');
+// contract HTML is generated server-side, so a class can be very much alive
+// while appearing nowhere in the frontend — scan the backend routes too
+const B='/var/www/iwopo-staging/backend/src';
+code += walk(B,[],/\.js$/).map(f=>fs.readFileSync(f,'utf8')).join('\n');
+const dyn=[...new Set([...code.matchAll(/([a-z][a-z0-9-]*-)\$\{/g)].map(m=>m[1]))];
+let dead=0;
+for(const p of walk(S,[],/\.css$/)){
+  const css=fs.readFileSync(p,'utf8');
+  const d=[...new Set([...css.matchAll(/\.([a-z][a-z0-9-]*)/g)].map(m=>m[1]))]
+    .filter(c=>!code.includes(c)&&!dyn.some(x=>c.startsWith(x)));
+  if(d.length){ console.log('  dead in '+p.replace(S+'/','')+': '+d.join(', ')); dead+=d.length; }
+}
+console.log('  dead classes: '+dead);
+NODE
+
+echo
+echo "=== 4. duplicate CSS selectors (a later rule silently wins) ==="
+node - <<'NODE'
+const fs=require('fs');
+const S='/var/www/iwopo-staging/frontend/src';
+function walk(d,o=[]){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=d+'/'+e.name;
+  if(e.isDirectory())walk(p,o); else if(e.name.endsWith('.css'))o.push(p);} return o;}
+let n=0;
+for(const p of walk(S)){
+  const css=fs.readFileSync(p,'utf8'); const seen=new Map();
+  for(const m of css.matchAll(/^(\.[a-z][a-z0-9-]*)\s*\{/gm)) seen.set(m[1],(seen.get(m[1])||0)+1);
+  for(const [sel,c] of seen) if(c>1){ console.log('  '+p.replace(S+'/','')+': '+sel+' x'+c); n++; }
+}
+console.log('  duplicates: '+n);
+NODE
+
+echo
+echo "=== 4b. CSS TOKEN LEAKS — admin tokens reaching a client-facing page ==="
+node - <<'INNER'
+const fs=require('fs');
+const S='/var/www/iwopo-staging/frontend/src/pages';
+// These are declared at :root in styles/index.css for the ADMIN panels. A
+// client-facing stylesheet using one gets the admin's dark value, because a
+// var() fallback only applies when the variable is UNDEFINED — and :root means
+// it never is. This has shipped a near-black timer and a dark-grey login gate
+// onto a client's own page; it is not a hypothetical.
+const ADMIN = ['bg','panel','panel-2','line','muted','text','teal','teal-2','teal-soft','green','amber','red'];
+// stylesheets a CLIENT loads. vendor/super/index/fileflyer's .ff- half are the
+// admin side and are supposed to use these.
+const CLIENT = ['portal.css','inquiry.css','site.css','certificate.css','vote.css','chatwidget.css'];
+let leaks=0;
+for(const f of CLIENT){
+  let css; try { css=fs.readFileSync(S+'/'+f,'utf8'); } catch { continue; }
+  // a token is only a leak if the file USES it without DEFINING it
+  const defined=new Set([...css.matchAll(/--([a-z0-9-]+)\s*:/g)].map(m=>m[1]));
+  for(const t of ADMIN){
+    if(defined.has(t)) continue;                       // redefined locally = fine
+    const re=new RegExp('var\\(--'+t+'[,)]','g');
+    const hits=(css.match(re)||[]).length;
+    if(hits) { console.log('  ⚠️  '+f+' uses var(--'+t+') x'+hits+' without defining it'); leaks+=hits; }
+  }
+}
+console.log('  token leaks: '+leaks);
+INNER
+
+echo
+echo "=== 4c. BARE BRAND COLOURS — a gold that ignores the vendor's own colour ==="
+node - <<'INNER'
+const fs=require('fs');
+const S='/var/www/iwopo-staging/frontend/src/pages';
+// iwopo is multi-tenant: a vendor sets their own brand_color, injected as
+// --brand. A literal brand gold in a client-facing stylesheet therefore stays
+// gold for a vendor whose brand is blue — a visibly wrong brand on the pages
+// their own clients see. Wrapped as var(--brand, #gold) it follows theirs and
+// still falls back to the same gold when none is set.
+const GOLDS = ['C9A86A','b8922a'];
+const CLIENT = ['portal.css','inquiry.css','contractpreview.css','fileflyer.css','site.css','certificate.css'];
+let bare=0;
+for(const f of CLIENT){
+  let css; try { css=fs.readFileSync(S+'/'+f,'utf8'); } catch { continue; }
+  css.split('\n').forEach((line,i)=>{
+    for(const g of GOLDS){
+      const re=new RegExp('#'+g,'gi');
+      if(!re.test(line)) continue;
+      // a gold reached THROUGH --brand is correct; only a naked one is a fault
+      const wrapped=new RegExp('var\\(--brand,\\s*#'+g,'i').test(line);
+      // defining a --brand* token IS where the fallback gold belongs
+      const defining=/^\s*--brand[\w-]*\s*:/.test(line);
+      if(!wrapped && !defining){ console.log('  ⚠️  '+f+':'+(i+1)+' bare #'+g); bare++; }
+    }
+  });
+}
+console.log('  bare brand colours: '+bare);
+INNER
+
+echo
+echo "=== 4d. NATIVE BROWSER DIALOGS — window.confirm/alert/prompt ==="
+node - <<'INNER'
+const fs=require('fs');
+const S='/var/www/iwopo-staging/frontend/src';
+function walk(d,o=[]){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=d+'/'+e.name;
+  if(e.isDirectory())walk(p,o); else if(/\.jsx?$/.test(e.name))o.push(p);} return o;}
+// The browser's own dialogs carry its chrome and the URL, cannot be styled, and
+// look identical on a vendor's dark panel and a client's branded page — which
+// is the one place a system dialog reads as the site being broken. Replaced
+// across the app by lib/dialog.jsx; this stops one creeping back.
+let found=0;
+for(const f of walk(S)){
+  if(f.endsWith('lib/dialog.jsx')) continue;             // the replacement itself
+  fs.readFileSync(f,'utf8').split('\n').forEach((line,i)=>{
+    const code=line.split('//')[0];                      // ignore comments
+    if(/(^|[^.\w])(confirm|alert|prompt)\s*\(/.test(code) && !/dialog\./.test(code)){
+      console.log('  ⚠️  '+f.replace(S+'/','')+':'+(i+1)+'  '+code.trim().slice(0,60));
+      found++;
+    }
+  });
+}
+console.log('  native dialogs: '+found);
+INNER
+
+echo
+echo "=== 5. server boots clean ==="
+pm2 restart iwopo-staging-api >/dev/null 2>&1; sleep 4
+pm2 logs iwopo-staging-api --err --lines 25 --nostream 2>/dev/null \
+  | grep -viE 'tensorflow|oneDNN|env vars|APP_URL|PLATFORM_SMTP|TAILING|error.log last' \
+  | grep -vE '^\s*$' | tail -4
+echo "  (nothing above = clean)"
+echo "  api: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3002/api/hello)"

@@ -1,0 +1,30 @@
+#!/bin/bash
+# Who else touches this?
+#
+# The portal's contract step broke in front of a client because the contract
+# body changed from plain text to HTML and only ONE of the two renderers was
+# updated. Nobody knew there were two. This is the ten-second check that was
+# never run — given a field, a class, or a function, it lists every file that
+# reads it, so "I changed a shared thing" can't quietly mean "I changed one of
+# the places that uses it".
+#
+#   iwopo-consumers contract.body
+#   iwopo-consumers ct-init-tap
+#   iwopo-consumers buildContractBody
+S=/var/www/iwopo-staging
+[ -z "$1" ] && { echo "usage: iwopo-consumers <symbol>"; exit 1; }
+
+echo "=== who reads '$1' ==="
+grep -rn --include=*.js --include=*.jsx --include=*.css "$1" \
+  $S/backend/src $S/frontend/src 2>/dev/null \
+  | sed "s|$S/||" | sed 's/^/  /'
+
+echo
+echo "=== files, grouped ==="
+grep -rl --include=*.js --include=*.jsx --include=*.css "$1" \
+  $S/backend/src $S/frontend/src 2>/dev/null \
+  | sed "s|$S/||" | sort | sed 's/^/  /'
+
+echo
+COUNT=$(grep -rl --include=*.js --include=*.jsx --include=*.css "$1" $S/backend/src $S/frontend/src 2>/dev/null | wc -l)
+echo "  $COUNT file(s). If you're changing its format, every one of them needs checking."

@@ -1,0 +1,80 @@
+#!/bin/bash
+# Verify, commit, and put it live — one command.
+#
+# This was forty lines rewritten by hand for every single change, which is
+# both slow and how steps get quietly dropped: a stylesheet went out truncated
+# because the diff was never read, and a deploy once ran with the verify step
+# missing entirely. The order here is fixed and cannot be skipped — nothing is
+# committed until the build, the lint and the diff-sanity check have passed.
+#
+#   iwopo-deploy /tmp/msg.txt          commit message from a file
+#   iwopo-deploy --check               verify only, change nothing
+set -e
+S=/var/www/iwopo-staging
+L=/var/www/iwopo
+
+echo "═══ VERIFY ═══"
+cd $S/frontend
+BUILD=$(npm run build 2>&1)
+echo "$BUILD" | grep -qE "error|Error:" && { echo "$BUILD" | tail -20; echo "❌ BUILD FAILED — nothing committed"; exit 1; }
+echo "  build: $(echo "$BUILD" | grep -oE '✓ built in [0-9.]+s')"
+cd $S
+LINT=$(npx eslint backend/src frontend/src 2>&1 | tail -1)
+echo "$LINT" | grep -qE "[1-9][0-9]* error" && { echo "  $LINT"; echo "❌ LINT ERRORS — nothing committed"; exit 1; }
+echo "  lint: ${LINT:-clean}"
+
+# a file that loses far more than it gains is how a stylesheet gets truncated
+TRUNC=$(git diff --numstat | awk '$2 > 200 && $1 < ($2/10) {print $3 " lost " $2 " gained " $1}')
+if [ -n "$TRUNC" ]; then
+  if [ "$1" = "--force-truncation" ] && [ -n "$2" ]; then
+    echo "  ⚠️  $TRUNC"
+    echo "  ↳ override: $2"
+    FORCED="$2"
+    shift 2
+  else
+    echo "  ⚠️  $TRUNC"
+    echo "❌ A file lost most of itself. Read that diff. Nothing committed."
+    echo "   If the drop is deliberate and you have read the diff:"
+    echo "   iwopo-deploy --force-truncation \"why\" <message-file>"
+    exit 1
+  fi
+fi
+echo "  diff sanity: ok"
+
+if [ "$1" = "--check" ]; then echo "═══ CHECK ONLY — nothing changed ═══"; exit 0; fi
+[ -z "$1" ] || [ ! -f "$1" ] && { echo "usage: iwopo-deploy <message-file> | --check"; exit 1; }
+
+echo
+echo "═══ COMMIT + PUSH ═══"
+cd $S
+git add -A
+if [ -n "$FORCED" ]; then
+  printf '%s\n\n[diff-sanity override] %s\n' "$(cat "$1")" "$FORCED" > /tmp/_msg
+  git commit -F /tmp/_msg && rm -f /tmp/_msg
+else
+  git commit -F "$1"
+fi | head -2
+echo "  staging: $(git rev-parse --short HEAD)"
+git push -q origin staging
+git checkout -q main && git merge -q staging && git push -q origin main && git checkout -q staging
+echo "  main: pushed"
+
+echo
+echo "═══ LIVE ═══"
+cd $L
+git pull -q origin main
+cd $L/frontend && npm run build 2>&1 | grep -oE '✓ built in [0-9.]+s' | sed 's/^/  build: /'
+systemctl reload nginx
+pm2 restart iwopo-api >/dev/null 2>&1
+sleep 4
+
+echo
+echo "═══ PARITY ═══"
+for d in $L $S; do cd $d; echo "  $(basename $d) @ $(git rev-parse --short HEAD) uncommitted=$(git status --porcelain|wc -l)"; done
+diff -rq $L/frontend/src $S/frontend/src >/dev/null && echo "  frontend/src identical" || echo "  ⚠️  frontend/src DIFFERS"
+diff -rq $L/backend/src $S/backend/src >/dev/null && echo "  backend/src identical" || echo "  ⚠️  backend/src DIFFERS"
+a=$(grep -o 'assets/[^"]*\.js' $L/frontend/dist/index.html|head -1); b=$(grep -o 'assets/[^"]*\.js' $S/frontend/dist/index.html|head -1)
+[ "$a" = "$b" ] && echo "  bundle identical" || echo "  ⚠️  bundle DIFFERS"
+echo "  iwopo.com $(curl -s -o /dev/null -w '%{http_code}' https://iwopo.com/)  alphabetaone.com $(curl -s -o /dev/null -w '%{http_code}' https://alphabetaone.com/)"
+ERR=$(pm2 logs iwopo-api --err --lines 20 --nostream 2>/dev/null | grep -viE 'tensorflow|oneDNN|env vars|APP_URL|PLATFORM_SMTP|TAILING|error.log last' | grep -vE '^\s*$' | tail -3)
+[ -n "$ERR" ] && echo "  ⚠️  $ERR" || echo "  error log clean"
