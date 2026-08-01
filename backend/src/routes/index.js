@@ -25,6 +25,9 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
     // mask secret
     if (s.aws_secret_key) s.aws_secret_key = s.aws_secret_key.slice(0, 4) + '••••••••' + s.aws_secret_key.slice(-4);
     if (s.anthropic_api_key) s.anthropic_api_key = s.anthropic_api_key.slice(0, 7) + '••••••••' + s.anthropic_api_key.slice(-4);
+    // the R2 secret is masked like the others — enough to recognise which key is
+    // in place, never enough to use
+    if (s.r2_secret_access_key) s.r2_secret_access_key = s.r2_secret_access_key.slice(0, 4) + '••••••••' + s.r2_secret_access_key.slice(-4);
     res.json({ settings: s });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -108,13 +111,33 @@ router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req,
 router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const s = await getAllSettings();
-    res.json({ aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '', aws_region: s.aws_region || '', anthropic_api_key: s.anthropic_api_key || '' });
+    res.json({
+      aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '',
+      aws_region: s.aws_region || '', anthropic_api_key: s.anthropic_api_key || '',
+      r2_secret_access_key: s.r2_secret_access_key || '',
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const allowed = ['face_engine', 'aws_mode', 'aws_access_key', 'aws_secret_key', 'aws_region', 'anthropic_api_key', 'anthropic_model'];
+    const allowed = ['face_engine', 'aws_mode', 'aws_access_key', 'aws_secret_key', 'aws_region', 'anthropic_api_key', 'anthropic_model',
+      'r2_account_id', 'r2_access_key_id', 'r2_secret_access_key',
+      'r2_bucket_private', 'r2_bucket_public', 'r2_public_url'];
+
+    /* 🔒 One bucket for both classes would silently un-gate every client gallery
+       and every File Flyer link at once: the album password and the share token
+       stay in the database and stop meaning anything, because the object URL
+       reaches the file without passing either. Refused, not warned about. */
+    const priv = String(req.body.r2_bucket_private || '').trim().toLowerCase();
+    const pub = String(req.body.r2_bucket_public || '').trim().toLowerCase();
+    if (priv && pub && priv === pub) {
+      return res.status(400).json({
+        error: 'same_bucket',
+        message: 'The private and public buckets must be different. Sharing one would make every gallery password and share link meaningless.',
+      });
+    }
+
     for (const k of allowed) {
       if (req.body[k] !== undefined && req.body[k] !== '' && !String(req.body[k]).includes('••••')) {
         await setSetting(k, req.body[k]);

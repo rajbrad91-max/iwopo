@@ -1594,6 +1594,48 @@ function FaceEngineSettings() {
               </div>
             )}
             {awsMode === 'aws_safety_net' && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>💡 AWS only kicks in when the local backlog gets deep, then hands back automatically.</div>}
+
+              <div className="sa-sec-hd" style={{ marginTop: 26 }}>🪣 Cloudflare R2 storage</div>
+
+              <div><label className="lbl">Account ID</label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  value={s.r2_account_id || ''}
+                  onChange={e => setS({ ...s, r2_account_id: e.target.value })} /></div>
+
+              <div><label className="lbl">Access Key ID</label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  value={s.r2_access_key_id || ''}
+                  onChange={e => setS({ ...s, r2_access_key_id: e.target.value })} /></div>
+
+              <div><label className="lbl">Secret Access Key</label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  value={s.r2_secret_access_key || ''}
+                  onChange={e => setS({ ...s, r2_secret_access_key: e.target.value })} /></div>
+
+              <div><label className="lbl">Private bucket — galleries &amp; File Flyer</label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  placeholder="iwopo-private"
+                  value={s.r2_bucket_private || ''}
+                  onChange={e => setS({ ...s, r2_bucket_private: e.target.value })} /></div>
+
+              <div><label className="lbl">Public bucket — website images &amp; logos</label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  placeholder="iwopo-public"
+                  value={s.r2_bucket_public || ''}
+                  onChange={e => setS({ ...s, r2_bucket_public: e.target.value })} /></div>
+
+              <div><label className="lbl">Public URL</label>
+                <input style={editing ? box : roBox} readOnly={!editing}
+                  placeholder="https://cdn.yourdomain.com"
+                  value={s.r2_public_url || ''}
+                  onChange={e => setS({ ...s, r2_public_url: e.target.value })} /></div>
+
+              {/* the one mistake that would matter, said before it can be made */}
+              <div className="cb-warn" style={{ marginTop: 10 }}>
+                🔒 The two buckets must be different. Galleries and File Flyer files are reached
+                by password or share token — putting them in the public bucket lets anyone with
+                the file&rsquo;s URL walk past both. Saving the same name for both is refused.
+              </div>
           </div>
         )}
         {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#4ade80' }}>{msg}</div>}
