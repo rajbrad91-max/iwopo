@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -76,6 +77,7 @@ model chatbot_knowledge {
   avoid_topics  String?
   tone_notes    String?
   delivery_time String?   @db.VarChar(240)
+  bot_name      String?   @db.VarChar(60)
   vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -113,16 +115,18 @@ model chatbot_subscribers {
 }
 
 model chatbot_transcripts {
-  id         Int       @id @default(autoincrement())
-  vendor_id  Int
-  session    String    @db.VarChar(64)
-  role       String    @db.VarChar(12)
-  content    String
-  created_at DateTime? @default(now()) @db.Timestamp(6)
-  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id           Int       @id @default(autoincrement())
+  vendor_id    Int
+  session      String    @db.VarChar(64)
+  role         String    @db.VarChar(12)
+  content      String
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  visitor_name String?   @db.VarChar(120)
+  vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([created_at], map: "idx_cbt_created")
   @@index([vendor_id, session, id], map: "idx_cbt_vendor_session")
+  @@index([vendor_id, session], map: "idx_ct_vendor_session")
 }
 
 model chatbot_usage {
@@ -160,6 +164,7 @@ model contract_templates {
   legal_terms String?   @default("")
   created_at  DateTime? @default(now()) @db.Timestamp(6)
   updated_at  DateTime? @default(now()) @db.Timestamp(6)
+  sections    Json      @default("[]")
   vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_cttpl_vendor")
@@ -182,6 +187,10 @@ model contracts {
   initials       Json?            @default("[]")
   viewed_at      DateTime?        @db.Timestamp(6)
   doc_sha256     String?          @db.VarChar(64)
+  package_id     Int?
+  template_id    Int?
+  voided_at      DateTime?        @db.Timestamp(6)
+  released_at    DateTime?        @db.Timestamp(6)
   contract_audit contract_audit[]
   leads          leads            @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors        vendors          @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -336,55 +345,65 @@ model lead_crew {
 }
 
 model leads {
-  id                  Int              @id @default(autoincrement())
-  vendor_id           Int?
-  name                String?          @db.VarChar(200)
-  email               String?          @db.VarChar(200)
-  phone               String?          @db.VarChar(50)
-  event_type          String?          @db.VarChar(100)
-  event_date          DateTime?        @db.Date
-  timing_from         String?          @db.VarChar(20)
-  timing_to           String?          @db.VarChar(20)
-  location            String?          @db.VarChar(300)
-  hours               Int?
-  guests              Int?
-  gr_bride            Boolean?         @default(false)
-  gr_bride_venue      String?          @db.VarChar(300)
-  gr_groom            Boolean?         @default(false)
-  gr_groom_venue      String?          @db.VarChar(300)
-  notes               String?
-  internal_notes      String?
-  status              String?          @default("new") @db.VarChar(50)
-  created_at          DateTime?        @default(now()) @db.Timestamp(6)
-  updated_at          DateTime?        @default(now()) @db.Timestamp(6)
-  package_id          Int?
-  package_snapshot    Json?
-  deposit_percent     Int?             @default(30)
-  discount_percent    Decimal?         @default(0) @db.Decimal(5, 2)
-  price_override      Decimal?         @db.Decimal(10, 2)
-  archived_at         DateTime?        @db.Timestamp(6)
-  billed              Boolean?         @default(false)
-  delivered           Boolean?         @default(false)
-  booking_notes       String?
-  ceremony            String?
-  client_token        String?          @unique @db.VarChar(64)
-  custom_data         Json?            @default("{}")
-  role                String?          @db.VarChar(50)
-  instagram           String?          @db.VarChar(120)
-  heard               String?          @db.VarChar(120)
-  gateway_enabled     Boolean?         @default(false)
-  web_payment_enabled Boolean?         @default(true)
-  timer_enabled       Boolean?         @default(false)
-  timer_hours         Int?             @default(72)
-  timer_started_at    DateTime?        @db.Timestamptz(6)
-  contracts           contracts[]
-  invoices            invoices[]
-  lead_crew           lead_crew[]
-  vendor_packages     vendor_packages? @relation(fields: [package_id], references: [id], onUpdate: NoAction)
-  vendors             vendors?         @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  payments            payments[]
+  id                      Int                @id @default(autoincrement())
+  vendor_id               Int?
+  name                    String?            @db.VarChar(200)
+  email                   String?            @db.VarChar(200)
+  phone                   String?            @db.VarChar(50)
+  event_type              String?            @db.VarChar(100)
+  event_date              DateTime?          @db.Date
+  timing_from             String?            @db.VarChar(20)
+  timing_to               String?            @db.VarChar(20)
+  location                String?            @db.VarChar(300)
+  hours                   Int?
+  guests                  Int?
+  gr_bride                Boolean?           @default(false)
+  gr_bride_venue          String?            @db.VarChar(300)
+  gr_groom                Boolean?           @default(false)
+  gr_groom_venue          String?            @db.VarChar(300)
+  notes                   String?
+  internal_notes          String?
+  status                  String?            @default("new") @db.VarChar(50)
+  created_at              DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?          @default(now()) @db.Timestamp(6)
+  package_id              Int?
+  package_snapshot        Json?
+  deposit_percent         Int?               @default(30)
+  discount_percent        Decimal?           @default(0) @db.Decimal(5, 2)
+  price_override          Decimal?           @db.Decimal(10, 2)
+  archived_at             DateTime?          @db.Timestamp(6)
+  billed                  Boolean?           @default(false)
+  delivered               Boolean?           @default(false)
+  booking_notes           String?
+  ceremony                String?
+  client_token            String?            @unique @db.VarChar(64)
+  custom_data             Json?              @default("{}")
+  role                    String?            @db.VarChar(50)
+  instagram               String?            @db.VarChar(120)
+  heard                   String?            @db.VarChar(120)
+  gateway_enabled         Boolean?           @default(false)
+  web_payment_enabled     Boolean?           @default(true)
+  timer_enabled           Boolean?           @default(false)
+  timer_hours             Int?               @default(72)
+  timer_started_at        DateTime?          @db.Timestamptz(6)
+  seen_at                 DateTime?          @db.Timestamp(6)
+  form_snapshot           Json?
+  package_template_id     Int?
+  packages_sent_at        DateTime?          @db.Timestamp(6)
+  payment_claimed_at      DateTime?          @db.Timestamp(6)
+  deposit_amount_override Decimal?           @db.Decimal(10, 2)
+  contracts               contracts[]
+  invoices                invoices[]
+  lead_crew               lead_crew[]
+  lead_packages           lead_packages[]
+  vendor_packages         vendor_packages?   @relation(fields: [package_id], references: [id], onUpdate: NoAction)
+  package_templates       package_templates? @relation(fields: [package_template_id], references: [id], onUpdate: NoAction)
+  vendors                 vendors?           @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payments                payments[]
 
   @@index([vendor_id], map: "idx_leads_vendor")
+  @@index([vendor_id, seen_at], map: "idx_leads_vendor_seen")
+  @@index([package_template_id], map: "idx_leads_pkg_tpl")
 }
 
 model notifications {
@@ -395,6 +414,8 @@ model notifications {
   body       String?   @db.VarChar(400)
   seen_at    DateTime? @db.Timestamp(6)
   created_at DateTime? @default(now()) @db.Timestamp(6)
+  link_type  String?   @db.VarChar(20)
+  link_id    Int?
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, seen_at], map: "idx_notif_vendor")
@@ -437,6 +458,7 @@ model package_templates {
   name            String            @default("My Event") @db.VarChar(120)
   sort_order      Int?              @default(1)
   created_at      DateTime?         @default(now()) @db.Timestamp(6)
+  leads           leads[]
   vendors         vendors           @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendor_packages vendor_packages[]
 
@@ -602,6 +624,8 @@ model services {
   price_annual_regular Decimal?          @db.Decimal(8, 2)
   tiers                Json?
   country_prices       Json?             @default("{}")
+  is_live              Boolean           @default(true)
+  description          String?           @db.VarChar(200)
   services             services?         @relation("servicesToservices", fields: [requires_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   other_services       services[]        @relation("servicesToservices")
   vendor_services      vendor_services[]
@@ -687,12 +711,16 @@ model vendor_services {
 }
 
 model vendor_settings {
-  vendor_id   Int       @id
-  time_format String?   @default("12h") @db.VarChar(5)
-  timezone    String?   @default("America/Vancouver") @db.VarChar(80)
-  theme       String?   @default("dark") @db.VarChar(10)
-  updated_at  DateTime? @default(now()) @db.Timestamp(6)
-  vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendor_id               Int       @id
+  time_format             String?   @default("12h") @db.VarChar(5)
+  timezone                String?   @default("America/Vancouver") @db.VarChar(80)
+  theme                   String?   @default("dark") @db.VarChar(10)
+  updated_at              DateTime? @default(now()) @db.Timestamp(6)
+  currency                String?   @db.VarChar(3)
+  auto_release_contract   Boolean   @default(false)
+  default_deposit_percent Decimal   @default(30) @db.Decimal(5, 2)
+  storage_limit_mb        Int       @default(1024)
+  vendors                 vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model vendor_subscriptions {
@@ -722,6 +750,7 @@ model vendors {
   phone                    String?                    @default("") @db.VarChar(60)
   email                    String?                    @default("") @db.VarChar(160)
   gallery_token            String?                    @unique @db.VarChar(40)
+  slug                     String                     @unique @db.VarChar(80)
   chatbot_knowledge        chatbot_knowledge?
   chatbot_messages         chatbot_messages[]
   chatbot_pending          chatbot_pending[]
@@ -733,6 +762,9 @@ model vendors {
   crew_members             crew_members[]
   email_settings           email_settings?
   email_templates          email_templates[]
+  file_folders             file_folders[]
+  file_share_items         file_share_items[]
+  file_shares              file_shares[]
   inquiry_settings         inquiry_settings?
   invoices                 invoices[]
   leads                    leads[]
@@ -746,6 +778,7 @@ model vendors {
   vendor_packages          vendor_packages[]
   vendor_services          vendor_services[]
   vendor_settings          vendor_settings?
+  vendor_sites             vendor_sites?
   vendor_subscriptions     vendor_subscriptions[]
 }
 
@@ -773,4 +806,112 @@ model album_faces {
   @@index([matched_face_id], map: "idx_album_faces_matched")
   @@index([photo_id], map: "idx_album_faces_photo")
   @@index([vendor_id], map: "idx_album_faces_vendor")
+}
+
+model lead_packages {
+  id                Int      @id @default(autoincrement())
+  lead_id           Int
+  vendor_id         Int
+  source_package_id Int?
+  name              String   @db.VarChar(120)
+  price             Decimal  @default(0) @db.Decimal(10, 2)
+  inclusions        Json     @default("[]")
+  admin_notes       String?
+  sort_order        Int      @default(0)
+  is_selected       Boolean  @default(false)
+  created_at        DateTime @default(now()) @db.Timestamp(6)
+  updated_at        DateTime @default(now()) @db.Timestamp(6)
+  leads             leads    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([lead_id, sort_order], map: "idx_lead_pkg_lead")
+  @@index([vendor_id], map: "idx_lead_pkg_vendor")
+}
+
+model vendor_sites {
+  id              Int       @id @default(autoincrement())
+  vendor_id       Int       @unique
+  theme           String    @default("aperture") @db.VarChar(30)
+  accent          String    @default("#b8922a") @db.VarChar(9)
+  heading_font    String    @default("Playfair Display") @db.VarChar(60)
+  body_font       String    @default("Inter") @db.VarChar(60)
+  site_title      String?   @db.VarChar(120)
+  tagline         String?   @db.VarChar(200)
+  about_heading   String?   @db.VarChar(120)
+  about_body      String?
+  contact_email   String?   @db.VarChar(160)
+  contact_phone   String?   @db.VarChar(40)
+  instagram       String?   @db.VarChar(200)
+  facebook        String?   @db.VarChar(200)
+  sections        Json      @default("[]")
+  slug            String?   @unique @db.VarChar(60)
+  published       Boolean   @default(false)
+  published_at    DateTime? @db.Timestamp(6)
+  created_at      DateTime  @default(now()) @db.Timestamp(6)
+  updated_at      DateTime  @default(now()) @db.Timestamp(6)
+  cover_photo     String?   @db.VarChar(300)
+  cover_focus     String    @default("50% 50%") @db.VarChar(20)
+  portfolio       Json      @default("[]")
+  clients         Json      @default("[]")
+  testimonials    Json      @default("[]")
+  clients_heading String?   @db.VarChar(160)
+  vendors         vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([slug], map: "idx_vendor_sites_slug", where: raw("(slug IS NOT NULL)"))
+}
+
+model file_share_items {
+  id            Int           @id @default(autoincrement())
+  vendor_id     Int
+  filename      String        @db.VarChar(300)
+  stored_name   String        @db.VarChar(300)
+  size_bytes    BigInt        @default(0)
+  mime          String?       @db.VarChar(150)
+  uploaded_by   String        @default("vendor") @db.VarChar(10)
+  uploader_name String?       @db.VarChar(120)
+  created_at    DateTime      @default(now()) @db.Timestamp(6)
+  folder_id     Int?
+  file_folders  file_folders? @relation(fields: [folder_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors       vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id], map: "idx_file_items_vendor")
+  @@index([folder_id], map: "idx_file_items_folder")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model file_shares {
+  id           Int           @id @default(autoincrement())
+  vendor_id    Int
+  title        String        @db.VarChar(200)
+  token        String        @unique @db.VarChar(64)
+  note         String?
+  password     String?       @db.VarChar(120)
+  allow_upload Boolean       @default(true)
+  expires_at   DateTime?     @db.Timestamp(6)
+  created_at   DateTime      @default(now()) @db.Timestamp(6)
+  updated_at   DateTime      @default(now()) @db.Timestamp(6)
+  folder_id    Int?
+  file_folders file_folders? @relation(fields: [folder_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors      vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([token], map: "idx_file_shares_token")
+  @@index([vendor_id], map: "idx_file_shares_vendor")
+  @@index([folder_id], map: "idx_file_shares_folder")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model file_folders {
+  id                 Int                @id @default(autoincrement())
+  vendor_id          Int
+  parent_id          Int?
+  name               String             @db.VarChar(200)
+  created_at         DateTime           @default(now()) @db.Timestamp(6)
+  updated_at         DateTime           @default(now()) @db.Timestamp(6)
+  file_folders       file_folders?      @relation("file_foldersTofile_folders", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_file_folders file_folders[]     @relation("file_foldersTofile_folders")
+  vendors            vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  file_share_items   file_share_items[]
+  file_shares        file_shares[]
+
+  @@index([parent_id], map: "idx_file_folders_parent")
+  @@index([vendor_id], map: "idx_file_folders_vendor")
 }
