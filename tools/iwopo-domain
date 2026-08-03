@@ -18,11 +18,16 @@ EMAIL="${CERTBOT_EMAIL:-raj@iwopo.com}"
 die() { echo "❌ $*" >&2; exit 1; }
 say() { echo "  $*"; }
 
-# Roll nginx back to the state it was in before we touched it. A reload that
-# fails takes every site down, so the test has to pass before the reload runs.
+# dig prints the CNAME chain before the address, so a plain `head -1` can hand
+# back "vihahgraphy.ca." instead of an IP. Take the first thing that is actually
+# an IPv4 address.
+first_ip() { dig +short A "$1" | grep -E '^[0-9]+(\.[0-9]+){3}$' | head -1; }
+
+# Roll back rather than reload a broken config: a bad reload takes every site
+# down, so the test has to pass first.
 reload_nginx() {
   if ! nginx -t >/dev/null 2>&1; then
-    echo "❌ nginx config is invalid — rolling back, nothing reloaded" >&2
+    echo "❌ nginx config is invalid — nothing reloaded" >&2
     nginx -t
     return 1
   fi
@@ -32,47 +37,69 @@ reload_nginx() {
 psql_live() { sudo -u postgres psql -qtAd iwopo -c "$1"; }
 
 cmd_list() {
-  printf "  %-34s %-10s %s\n" DOMAIN STATUS VENDOR
+  printf "  %-30s %-10s %s\n" DOMAIN STATUS VENDOR
   psql_live "select coalesce(s.custom_domain,'')||'|'||s.domain_status||'|'||coalesce(v.business_name,'?')
              from vendor_sites s join vendors v on v.id=s.vendor_id
              where s.custom_domain is not null order by 1;" \
-  | while IFS='|' read -r d st vn; do printf "  %-34s %-10s %s\n" "$d" "$st" "$vn"; done
+  | while IFS='|' read -r d st vn; do printf "  %-30s %-10s %s\n" "$d" "$st" "$vn"; done
 }
 
 cmd_add() {
-  local d="${1:-}"; [ -n "$d" ] || die "usage: iwopo-domain add <domain>"
+  local d="${1:-}"
+  [ -n "$d" ] || die "usage: iwopo-domain add <domain>"
   d="$(echo "$d" | tr 'A-Z' 'a-z' | sed -E 's#^https?://##; s#/.*$##; s/^www\.//')"
 
-  # The DB is the source of truth for who owns a domain. Certifying one that no
-  # vendor has claimed would let anyone point a name here and get a cert.
+  # The database is the record of who owns a domain. Certifying one nobody has
+  # claimed would let anyone point a name here and get a certificate off us.
   local owner
   owner="$(psql_live "select vendor_id from vendor_sites where custom_domain='${d}';" || true)"
-  [ -n "$owner" ] || die "no vendor has claimed ${d} — they must add it in their panel first"
+  [ -n "$owner" ] || die "no vendor has claimed ${d} — they add it in their panel first"
   say "claimed by vendor ${owner}"
 
-  # DNS has to prove it points here BEFORE a certificate is ever requested.
+  # DNS must prove it points here BEFORE a certificate is ever requested.
   say "checking DNS…"
-  local ours theirs
-  ours="$(dig +short A iwopo.com | head -1)"
-  theirs="$(dig +short A "${d}" | head -1)"
+  local ours theirs wwwip
+  ours="$(first_ip iwopo.com)"
+  theirs="$(first_ip "$d")"
+  [ -n "$ours" ] || die "could not resolve our own address"
   [ -n "$theirs" ] || die "${d} has no A record yet — DNS may still be spreading"
   [ "$ours" = "$theirs" ] || die "${d} points at ${theirs}, not at us (${ours})"
   say "DNS ok: ${d} -> ${theirs}"
 
-  # Port 80 only for now. Certbot adds the 443 block and the redirect itself.
+  # www is asked for but not insisted on. Certbot fails the WHOLE request if any
+  # name in it doesn't resolve here, so a vendor who added only the root record
+  # would end up with no certificate at all — worse than one without www.
+  local certnames servernames
+  wwwip="$(first_ip "www.${d}")"
+  if [ "${wwwip:-}" = "$ours" ]; then
+    certnames=(-d "${d}" -d "www.${d}")
+    servernames="${d} www.${d}"
+    say "www points here too — it will be covered"
+  else
+    certnames=(-d "${d}")
+    servernames="${d}"
+    say "www is not pointed here — covering ${d} only"
+  fi
+
+  # An existing vhost is left alone. Certbot writes the 443 block into this
+  # same file, so rewriting it from the template would delete a working
+  # certificate's configuration and take the site down.
+  if [ -e "${AVAIL}/vd-${d}" ]; then
+    say "vhost already exists — leaving it as it is"
+    HAVE_VHOST=1
+  else
   say "writing vhost…"
   cat > "${AVAIL}/vd-${d}" <<'VHOST'
 server {
     listen 80;
-    listen [::]:80;
-    server_name __DOMAIN__ www.__DOMAIN__;
+    server_name __SERVERNAMES__;
 
     root /var/www/iwopo/frontend/dist;
     index index.html;
     client_max_body_size 2048M;
 
-    # hashed assets never change, so they may be held for a year; index.html
-    # must not be, or a browser keeps asking for a bundle that has been replaced
+    # hashed assets never change, so they can be held for a year; index.html
+    # must not be, or a browser keeps asking for a bundle that no longer exists
     location /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -83,8 +110,8 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # $host is the vendor's domain, and that is what the API reads to work out
-    # whose site this is — so it has to be passed through untouched
+    # $host is the vendor's own domain, and that is what the API reads to work
+    # out whose site this is — so it has to arrive untouched
     location /api/ {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
@@ -97,17 +124,22 @@ server {
     }
 }
 VHOST
-  sed -i "s/__DOMAIN__/${d}/g" "${AVAIL}/vd-${d}"
+  sed -i "s/__SERVERNAMES__/${servernames}/g" "${AVAIL}/vd-${d}"
+  fi
   ln -sf "${AVAIL}/vd-${d}" "${ENABLED}/vd-${d}"
 
-  if ! reload_nginx; then rm -f "${ENABLED}/vd-${d}"; die "vhost rejected — removed"; fi
-  say "vhost live on port 80"
+  if ! reload_nginx; then
+    # only pull the symlink if we were the ones who just added it
+    [ "${HAVE_VHOST:-0}" = "1" ] || rm -f "${ENABLED}/vd-${d}"
+    die "vhost rejected — nothing changed"
+  fi
+  say "vhost in place"
 
   say "requesting certificate…"
-  if ! certbot --nginx -d "${d}" -d "www.${d}" \
+  if ! certbot --nginx "${certnames[@]}" --expand \
         --non-interactive --agree-tos -m "${EMAIL}" --redirect >/dev/null 2>&1; then
     echo "⚠️  certbot failed for ${d}. The site answers on http:// but not https://." >&2
-    echo "    Run this to see why:  certbot --nginx -d ${d} -d www.${d}" >&2
+    echo "    To see why:  certbot --nginx ${certnames[*]}" >&2
     exit 1
   fi
   reload_nginx
@@ -118,12 +150,13 @@ VHOST
 }
 
 cmd_remove() {
-  local d="${1:-}"; [ -n "$d" ] || die "usage: iwopo-domain remove <domain>"
+  local d="${1:-}"
+  [ -n "$d" ] || die "usage: iwopo-domain remove <domain>"
   rm -f "${ENABLED}/vd-${d}"
   reload_nginx || die "nginx would not reload"
   psql_live "update vendor_sites set domain_status='verified' where custom_domain='${d}';" >/dev/null
-  # the certificate is left in place: removing it makes putting the domain back
-  # a fresh request against the rate limit for no gain
+  # the certificate is left in place: removing it would make putting the domain
+  # back a fresh request against the rate limit, for no gain
   echo "✅ ${d} taken off (certificate left in place)"
 }
 
