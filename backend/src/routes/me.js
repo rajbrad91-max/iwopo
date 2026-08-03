@@ -124,7 +124,7 @@ router.get('/profile', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.vendors.findUnique({
       where: { id: vid },                         // 🔒 tenancy — own vendor row
-      select: { id: true, business_name: true, phone: true, email: true, country: true, logo_path: true },
+      select: { id: true, business_name: true, phone: true, email: true, country: true, logo_path: true, slug: true },
     });
     res.json({ profile: profile || null });
   } catch (e) { res.status(500).json({ error: e.message }); }

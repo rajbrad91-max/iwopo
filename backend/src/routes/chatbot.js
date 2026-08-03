@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
-import { generateReply, isActiveSubscriber } from '../lib/tasveer.js';
+import { generateReply, isActiveSubscriber } from '../lib/wopoAssistant.js';
 
 const router = express.Router();
 
@@ -289,10 +289,15 @@ router.put('/messages/:id/read', requireAuth, requireSuperAdmin, async (req, res
 
 // ── 🌐 PUBLIC CHAT (the widget talks to this) ──
 
-router.post('/chat/:vendorId', async (req, res) => {
+router.post('/chat/:handle', async (req, res) => {
   try {
-    const vendorId = parseInt(req.params.vendorId, 10);
-    if (!vendorId) return res.status(400).json({ error: 'Bad vendor' });
+    // 🔗 the widget sits on the public inquiry form, which knows the vendor by
+    // slug — accepting a row id here would put back the very thing we removed
+    const handle = String(req.params.handle || '').toLowerCase();
+    if (!/^[a-z0-9-]{1,80}$/.test(handle)) return res.status(400).json({ error: 'Bad vendor' });
+    const found = await prisma.vendors.findUnique({ where: { slug: handle }, select: { id: true } });
+    if (!found) return res.status(404).json({ error: 'Vendor not found' });
+    const vendorId = found.id;
 
     if (!(await isActiveSubscriber(vendorId))) {
       return res.status(403).json({ error: 'Chat is not available.' });

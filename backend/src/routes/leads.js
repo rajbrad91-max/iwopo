@@ -339,7 +339,16 @@ async function snapshotFormFields(vendorId, customData) {
 router.post('/', async (req, res) => {
   const b = req.body;
 
-  let vendor_id = b.vendor_id || null;
+  // 🔗 The public form names its vendor by slug now. The row id is never sent
+  // by an untrusted caller, so it can't be guessed or counted upwards.
+  let vendor_id = null;
+  if (b.vendor_slug) {
+    const v = await prisma.vendors.findUnique({
+      where: { slug: String(b.vendor_slug).toLowerCase() }, select: { id: true },
+    });
+    if (!v) return res.status(404).json({ error: 'Vendor not found' });
+    vendor_id = v.id;
+  }
   const auth = req.headers.authorization || '';
   if (auth.startsWith('Bearer ')) {
     try {
@@ -349,7 +358,7 @@ router.post('/', async (req, res) => {
     } catch { /* bad token → fall back to body (public form) */ }
   }
 
-  if (!vendor_id) return res.status(400).json({ error: 'vendor_id required' });
+  if (!vendor_id) return res.status(400).json({ error: 'Which vendor is this for?' });
 
   // This route is PUBLIC, so the body is untrusted. Without these checks an empty
   // POST created a blank lead row, a bad email was stored as-is, and an unknown

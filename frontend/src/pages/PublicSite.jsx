@@ -387,7 +387,7 @@ export default function PublicSite({ slug, page = 'home' }) {
                 Tell us about your day and we&apos;ll come back to you within one to
                 two business days.
               </p>
-              <a className="st-cta" href={`/inquiry/${site.vendor_id}`}>Start an enquiry</a>
+              <a className="st-cta" href={`/inquiry/${site.vendor_slug}`}>Start an enquiry</a>
               <div className="st-contact">
                 {site.contact_email && <a href={`mailto:${site.contact_email}`}>{site.contact_email}</a>}
                 {site.contact_phone && <a href={`tel:${site.contact_phone}`}>{site.contact_phone}</a>}

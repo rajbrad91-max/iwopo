@@ -221,7 +221,7 @@ router.get('/:slug', async (req, res) => {
       select: {
         ...PUBLIC_FIELDS,
         vendor_id: true,
-        vendors: { select: { business_name: true, logo_path: true, gallery_token: true } },
+        vendors: { select: { business_name: true, logo_path: true, gallery_token: true, slug: true } },
       },
     });
     if (!site) return res.status(404).json({ error: 'Site not found' });
@@ -234,6 +234,7 @@ router.get('/:slug', async (req, res) => {
         business_name: vendors?.business_name ?? null,
         logo_path: vendors?.logo_path ?? null,
         gallery_token: vendors?.gallery_token ?? null,
+        vendor_slug: vendors?.slug ?? null,          // 🔗 for the Book Us link
       },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }

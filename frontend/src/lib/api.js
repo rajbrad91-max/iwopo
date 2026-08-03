@@ -298,7 +298,7 @@ export const api = {
   reindexAll: () => request('/settings/reindex-all', { method: 'POST' }),
   faceQueueStatus: () => request('/face-queue/status'),
 
-  // 🤖 Chatbot (Tasveer)
+  // 🤖 Chatbot (Wopo Assistant)
   chatbotSubscribers: () => request('/chatbot/subscribers'),
   chatbotAddSubscriber: (vendor_id) => request('/chatbot/subscribers', { method: 'POST', body: JSON.stringify({ vendor_id }) }),
   chatbotSetActive: (vendorId, active) => request(`/chatbot/subscribers/${vendorId}/active`, { method: 'PUT', body: JSON.stringify({ active }) }),
@@ -440,7 +440,8 @@ export const api = {
   bookings: () => request('/bookings'),
   booking: (leadId) => request(`/bookings/${leadId}`),
   setLeadStatus: (leadId, status) => request(`/bookings/${leadId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
-  inquirySettings: (vendorId) => cachedGet(`/inquiry-settings/${vendorId}`),
+  inquirySettings: (handle) => cachedGet(`/inquiry-settings/${handle}`),
+  myInquirySettings: (vendorId) => request('/inquiry-settings/my' + (vendorId ? `?vendor_id=${vendorId}` : '')),
   saveInquirySettings: (data) => {
     clearGetCache('/inquiry-settings');
     return request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) });

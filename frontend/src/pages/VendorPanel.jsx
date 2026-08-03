@@ -130,7 +130,7 @@ export default function VendorPanel({ onLogout }) {
   useEffect(() => {
     const vid = user?.vendor_id || user?.vendor?.id;
     if (!vid) return;
-    api.inquirySettings(vid)
+    api.myInquirySettings(vid)
       .then(d => setBrandHex(d.settings?.brand_color || d.brand_color || null))
       .catch(() => { /* no brand set, or not permitted — stock theme stands */ });
   }, [user]);
@@ -219,7 +219,7 @@ export default function VendorPanel({ onLogout }) {
           // booking but were rendered without a handler, so clicking did nothing
           <CalendarView onOpen={(l) => navigate({ tab: 'bookings', booking: String(l.id) })} />
         ) : tab === 'inqform' ? (
-          <InqFormSettings user={user} />
+          <InqFormSettings />
         ) : tab === 'packages' ? (
           <PackagesView />
         ) : tab === 'settings' ? (
@@ -349,7 +349,7 @@ function NotifBell({ onOpen }) {
 // Order and wording are what the vendor reads, so they live here rather than
 // being derived from the API's field list.
 const KB_FIELDS = [
-  ['bot_name', "Assistant's name", 'input', 'What your assistant calls itself. Defaults to Tasveer.'],
+  ['bot_name', "Assistant's name", 'input', 'What your assistant calls itself. Defaults to Wopo Assistant.'],
   ['tagline', 'About us', 'area', 'A sentence or two about the business.'],
   ['about_team', 'About the team', 'area', 'Who you are, how long you have been going.'],
   ['contact', 'Contact info', 'area', 'Phone, email, how people reach you.'],
@@ -419,7 +419,7 @@ function AiChatVendorView({ goServices }) {
   }
 
   // the assistant's own name, used everywhere it's referred to
-  const botName = (kb?.bot_name || '').trim() || 'Tasveer';
+  const botName = (kb?.bot_name || '').trim() || 'Wopo Assistant';
   // a conversation is titled by whoever was in it; the name is learned when the
   // visitor books or leaves a message, so older chats stay anonymous
   const titleOf = (c) => c.visitor_name || 'Visitor';
@@ -431,9 +431,9 @@ function AiChatVendorView({ goServices }) {
     return (
       <div className="table-wrap ac-upsell">
         <div className="ac-upsell-icon">🤖</div>
-        <h2 className="ac-upsell-title">Meet Tasveer, your AI assistant</h2>
+        <h2 className="ac-upsell-title">Meet Wopo Assistant, your AI assistant</h2>
         <p className="ac-upsell-text">
-          Tasveer chats with visitors on your inquiry page 24/7 — answering their questions,
+          Wopo Assistant chats with visitors on your inquiry page 24/7 — answering their questions,
           collecting their details, and saving them straight into your Leads. You'll see every
           conversation right here.
         </p>
@@ -454,7 +454,7 @@ function AiChatVendorView({ goServices }) {
       <div className="table-wrap ac-upsell">
         <div className="ac-upsell-icon">⏸️</div>
         <h2 className="ac-upsell-title">Your AI Chat is paused</h2>
-        <p className="ac-upsell-text">Tasveer isn't answering visitors right now. Get in touch and we'll switch it back on.</p>
+        <p className="ac-upsell-text">Wopo Assistant isn't answering visitors right now. Get in touch and we'll switch it back on.</p>
       </div>
     );
   }
@@ -521,7 +521,7 @@ function AiChatVendorView({ goServices }) {
               <p className="ac-kb-hint">{hint}</p>
               {kind === 'input' ? (
                 <input id={`kb-${key}`} className="ac-kb-input" value={kb?.[key] || ''}
-                  placeholder="Tasveer"
+                  placeholder="Wopo Assistant"
                   onChange={e => setKb(s => ({ ...s, [key]: e.target.value }))} />
               ) : (
                 <textarea id={`kb-${key}`} className="ac-kb-area" rows={3} value={kb?.[key] || ''}
@@ -1897,7 +1897,7 @@ function AddLeadModal({ vendorId, onClose, onSaveDone }) {
   const setAns = (id, v) => setAnswers(s => ({ ...s, [id]: v }));
 
   useEffect(() => {
-    api.inquirySettings(vendorId).then(d => setCfg(d.settings)).catch(() => setCfg({}));
+    api.myInquirySettings(vendorId).then(d => setCfg(d.settings)).catch(() => setCfg({}));
   }, [vendorId]);
 
   async function save() {
@@ -2247,7 +2247,7 @@ function LeadDetail({ lead, onBack }) {
   }
 
   useEffect(() => {
-    api.inquirySettings(lead.vendor_id).then(d => setCfg(d.settings)).catch(() => setCfg({}));
+    api.myInquirySettings(lead.vendor_id).then(d => setCfg(d.settings)).catch(() => setCfg({}));
   }, [lead.vendor_id]);
 
   async function toggleGateway() {
@@ -3852,14 +3852,20 @@ function FieldBuilder({ fields, setFields }) {
   );
 }
 
-function InqFormSettings({ user }) {
+function InqFormSettings() {
+  // 🔗 The vendor's public handle. It comes from the server rather than the
+  // stored session because a vendor who logged in before handles existed has a
+  // session that predates the field, and their link would render "undefined".
+  const [handle, setHandle] = useState('');
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   useEffect(() => {
-    api.inquirySettings(user?.vendor_id).then(d => setS(d.settings)).catch(() => {});
+    api.myInquirySettings()
+      .then(d => { setS(d.settings); setHandle(d.slug || ''); })
+      .catch(() => setS({}));       // show the form, not an endless spinner
   }, []);
 
   async function save() {
@@ -3871,7 +3877,7 @@ function InqFormSettings({ user }) {
       // half-succeeded, or a second tab editing the same form, would otherwise
       // leave the panel showing something the public form never received —
       // "✅ Saved" while the two quietly disagree.
-      const fresh = await api.inquirySettings(user?.vendor_id);
+      const fresh = await api.myInquirySettings();
       setS(fresh.settings);
       setMsg('✅ Saved');
       setTimeout(() => setMsg(''), 2500);
@@ -3886,12 +3892,12 @@ function InqFormSettings({ user }) {
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub inq-link-row">
-          Your link: <b className="inq-link">iwopo.com/inquiry/{user?.vendor_id}</b> 🔗
+          Your link: <b className="inq-link">iwopo.com/inquiry/{handle || '…'}</b> 🔗
           {' · '}
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they
               last looked at may still be open in another tab. */}
-          <a href={`/inquiry/${user?.vendor_id}?v=${Date.now()}`} target="_blank" rel="noreferrer"
+          <a href={`/inquiry/${handle}?v=${Date.now()}`} target="_blank" rel="noreferrer"
             className="inq-preview">
             👁️ Preview
           </a>

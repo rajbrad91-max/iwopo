@@ -1294,7 +1294,7 @@ function ChatbotApiKey() {
   return (
     <>
       <div className="sa-section-title">🔑 Anthropic API Key</div>
-      <div className="cb-sub">Powers Tasveer for every subscriber. Kept masked.</div>
+      <div className="cb-sub">Powers Wopo Assistant for every subscriber. Kept masked.</div>
       <div className="sa-box cb-api">
         <div className="cb-api-row">
           <div className="cb-api-field">
@@ -1322,7 +1322,7 @@ function ChatbotApiKey() {
           )}
           {msg && <span className="cb-msg">{msg}</span>}
         </div>
-        {!s.anthropic_api_key && <div className="cb-warn">⚠️ No API key set — Tasveer will reply with a fallback message until you add one.</div>}
+        {!s.anthropic_api_key && <div className="cb-warn">⚠️ No API key set — Wopo Assistant will reply with a fallback message until you add one.</div>}
       </div>
     </>
   );
@@ -1355,8 +1355,8 @@ function ChatbotInbox({ vendorId }) {
     <>
       {pending.length > 0 && (
         <div className="sa-box cb-inbox">
-          <div className="cb-inbox-title">❓ Questions Tasveer couldn't answer ({pending.length})</div>
-          <div className="cb-inbox-hint">Answer these, then add them to the FAQs below so Tasveer knows next time.</div>
+          <div className="cb-inbox-title">❓ Questions Wopo Assistant couldn't answer ({pending.length})</div>
+          <div className="cb-inbox-hint">Answer these, then add them to the FAQs below so Wopo Assistant knows next time.</div>
           {pending.map(p => (
             <div key={p.id} className="cb-pending">
               <div className="cb-pending-q">“{p.question}”</div>

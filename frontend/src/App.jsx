@@ -37,9 +37,12 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // 🌐 Public inquiry route: /inquiry/:vendorId  (no login needed)
-  const m = window.location.pathname.match(/^\/inquiry\/(\d+)/);
-  if (m) return <InquiryForm vendorId={m[1]} />;
+  // 🌐 Public inquiry route: /inquiry/:handle  (no login needed).
+  // The handle is the vendor's slug. Old /inquiry/1 links still match this
+  // pattern but no slug is ever digits-only, so they resolve to "link expired"
+  // rather than silently opening somebody else's form.
+  const m = window.location.pathname.match(/^\/inquiry\/([a-zA-Z0-9-]+)/);
+  if (m) return <InquiryForm handle={m[1].toLowerCase()} />;
 
   // 🔑 Password reset: /reset-password?token=…
   if (window.location.pathname.match(/^\/reset-password\/?$/)) {

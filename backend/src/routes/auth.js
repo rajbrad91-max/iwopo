@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
+import { uniqueVendorSlug } from '../lib/vendorSlug.js';
 import { signToken } from '../middleware/auth.js';
 import { sendPlatformEmail } from './email.js';
 
@@ -74,6 +75,7 @@ router.post('/signup', async (req, res) => {
       const vendor = await tx.vendors.create({
         data: {
           business_name: businessName,
+          slug: await uniqueVendorSlug(tx, businessName),
           plan: isPaid ? plan : 'starter',
           status: isPaid ? 'active' : 'trial',
           signup_ip: ip,

@@ -1,4 +1,4 @@
-// 🤖 Tasveer — multi-tenant chatbot brain.
+// 🤖 Wopo Assistant — multi-tenant chatbot brain.
 // Same architecture as PerfectPoses: one long system prompt built from the
 // vendor's knowledge base, three tools (save_lead / log_unanswered / leave_message),
 // Claude API call, token+cost tracking per vendor.
@@ -30,9 +30,9 @@ export async function isActiveSubscriber(vendorId) {
 /** Build the system prompt from this vendor's knowledge (safety rules stay locked in code). */
 export function buildSystemPrompt(k, businessName) {
   const biz = (k.business_name || businessName || 'our studio').trim();
-  // The vendor names their own assistant. "Tasveer" stays the default so every
+  // The vendor names their own assistant. "Wopo Assistant" stays the default so every
   // existing subscriber reads exactly as before until they choose otherwise.
-  const bot = (k.bot_name || '').trim() || 'Tasveer';
+  const bot = (k.bot_name || '').trim() || 'Wopo Assistant';
   const sec = (title, val) => (val && String(val).trim() ? `${title}:\n${String(val).trim()}\n\n` : '');
 
   let kb = '';
@@ -110,7 +110,7 @@ WHEN THINGS GO WRONG (important — always alert the team):
 - Either way, keep your reply warm and reassuring: tell them you've flagged it and the team will follow up. Then offer to take their name and phone so the team can reach them.`;
 }
 
-/** Tool definitions Tasveer can call. */
+/** Tool definitions Wopo Assistant can call. */
 export function chatTools() {
   return [
     {
@@ -249,7 +249,7 @@ export async function leaveMessage(vendorId, input, session) {
     { type: 'aichat' });
 }
 
-/** 😠⚠️ Visitor upset, or Tasveer couldn't help — alert the vendor. */
+/** 😠⚠️ Visitor upset, or Wopo Assistant couldn't help — alert the vendor. */
 export async function flagIssue(vendorId, input) {
   const summary = (input.summary || '').trim();
   if (!summary) return;
@@ -320,7 +320,7 @@ purgeOldTranscripts();
 setInterval(purgeOldTranscripts, 24 * 3600 * 1000);
 
 /**
- * The brain. Takes a visitor message + history, returns Tasveer's reply.
+ * The brain. Takes a visitor message + history, returns Wopo Assistant's reply.
  * Handles all three tools and records cost.
  */
 export async function generateReply(vendorId, businessName, text, history = [], session = null) {
@@ -358,7 +358,7 @@ export async function generateReply(vendorId, businessName, text, history = [], 
 
     if (!res.ok) {
       const body = await res.text();
-      console.error('Tasveer API error', res.status, body.slice(0, 300));
+      console.error('Wopo Assistant API error', res.status, body.slice(0, 300));
       return { reply: "Sorry, I'm having a little trouble right now. Could you leave your name and phone, and the team will reach out?", lead_saved: false };
     }
 
@@ -400,7 +400,7 @@ export async function generateReply(vendorId, businessName, text, history = [], 
     await saveTranscript(vendorId, session, text, reply);
     return { reply, lead_saved: leadSaved };
   } catch (e) {
-    console.error('Tasveer exception:', e.message);
+    console.error('Wopo Assistant exception:', e.message);
     return { reply: "Sorry, something went wrong on my end. Please leave your name and phone and the team will get back to you!", lead_saved: false };
   }
 }

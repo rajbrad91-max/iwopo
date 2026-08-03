@@ -61,7 +61,7 @@ app.use('/api/crew', gate('crew'), crewRoutes);
 app.use('/api/albums', gate('galleries'), albumRoutes);
 app.use('/api/g', galleryPublicRoutes); // 🌐 public client gallery (no auth/gate)
 app.use('/api/poll', pollRoutes); // 🗳️ public voting page (one vote per IP)
-app.use('/api/chatbot', chatbotRoutes); // 🤖 Tasveer chatbot: subscribers + knowledge base
+app.use('/api/chatbot', chatbotRoutes); // 🤖 Wopo Assistant chatbot: subscribers + knowledge base
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/portal', portalRoutes);
 app.use('/api/lead-packages', gate('leads'), leadPackageRoutes);

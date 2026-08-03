@@ -21,8 +21,11 @@ export const PROFESSIONS = {
   musician: { label: 'Musician / Singer', icon: '🎶' },
 };
 
-export default function InquiryForm({ vendorId }) {
+export default function InquiryForm({ handle }) {
   const [cfg, setCfg] = useState(null);
+  // 🔗 a handle that resolves to nothing gets its own card. Falling back to an
+  // empty form let a dead link render a blank inquiry that submitted nowhere.
+  const [gone, setGone] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -37,8 +40,10 @@ export default function InquiryForm({ vendorId }) {
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    api.inquirySettings(vendorId).then(d => setCfg(d.settings)).catch(() => setCfg({}));
-  }, [vendorId]);
+    api.inquirySettings(handle)
+      .then(d => setCfg(d.settings))
+      .catch(() => { setGone(true); setCfg({}); });
+  }, [handle]);
 
   async function submit() {
     setErr('');
@@ -54,7 +59,7 @@ export default function InquiryForm({ vendorId }) {
     setBusy(true);
     try {
       await api.createLead({
-        vendor_id: Number(vendorId),
+        vendor_slug: handle,
         name: p.name, email: p.email, phone: p.phone,
         role: p.role, instagram: p.instagram, heard: p.heard,
         notes, custom_data: answers,
@@ -63,6 +68,16 @@ export default function InquiryForm({ vendorId }) {
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
   }
+
+  if (gone) return (
+    <div className="iq-wrap">
+      <div className="iq-card iq-done">
+        <div className="iq-check">🔗</div>
+        <h2>This link isn&apos;t in use</h2>
+        <p>It may have changed. Ask the studio for their current inquiry link.</p>
+      </div>
+    </div>
+  );
 
   if (done) return (
     <div className="iq-wrap">
@@ -106,7 +121,7 @@ export default function InquiryForm({ vendorId }) {
           </button>
         </div>
       </div>
-      <ChatWidget vendorId={vendorId} businessName={c.brand_name} />
+      <ChatWidget handle={handle} businessName={c.brand_name} botName={c.bot_name} />
     </div>
   );
 }
