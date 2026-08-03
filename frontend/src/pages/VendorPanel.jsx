@@ -4723,6 +4723,123 @@ const WS_FIELDS = [
   ['facebook', 'Facebook link', 'input', ''],
 ];
 
+/**
+ * 🌐 A vendor's own domain.
+ *
+ * iwopo does not sell domains. The vendor already owns one; this is where they
+ * tell us about it and we tell them the two records to add at their registrar.
+ *
+ * Nothing here switches anything on. The check reads DNS and reports what it
+ * actually found — a vendor who mistyped a record needs to see the address
+ * their domain currently points at, not just the word "failed".
+ */
+function DomainBlock() {
+  const [d, setD] = useState(null);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const [found, setFound] = useState(null);
+  const [copied, setCopied] = useState('');
+
+  useEffect(() => {
+    api.myDomain()
+      .then(x => { setD(x); setDraft(x.domain || ''); })
+      .catch(() => setD({ domain: '', status: 'none', instructions: [] }));
+  }, []);
+
+  if (!d) return null;
+
+  const LABEL = {
+    none: ['Not set', 'ws-dom-none'],
+    pending: ['Waiting for DNS', 'ws-dom-pending'],
+    verified: ['DNS confirmed', 'ws-dom-verified'],
+    live: ['Live', 'ws-dom-live'],
+  };
+  const [label, cls] = LABEL[d.status] || LABEL.none;
+
+  async function save() {
+    const next = draft.trim();
+    if (next === (d.domain || '')) return;
+    setBusy(true); setNote(''); setFound(null);
+    try {
+      const x = await api.saveMyDomain(next);
+      setD(v => ({ ...v, ...x }));
+      setNote(next ? '✅ Saved. Now add the two records below at your registrar.' : '✅ Domain removed.');
+    } catch (e) { setNote('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function check() {
+    setBusy(true); setNote(''); setFound(null);
+    try {
+      const r = await api.checkMyDomain();
+      setFound(r);
+      setD(v => ({ ...v, status: r.status }));
+      if (r.ok) setNote("✅ Your domain points at us. We'll switch it on and fit the certificate.");
+      else if (r.reason === 'no_record') setNote('⏳ No record found yet. A new DNS change can take a few hours to spread.');
+      else if (r.reason === 'points_elsewhere') setNote('⚠️ Your domain answers, but it points somewhere else.');
+      else setNote("⚠️ Couldn't read our own address just now. Try again shortly.");
+    } catch (e) { setNote('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+
+  // clipboard can be refused (an insecure origin, or the browser says no), and
+  // a silent no-op looks like a broken button
+  async function copy(v) {
+    try { await navigator.clipboard.writeText(v); setCopied(v); setTimeout(() => setCopied(''), 1400); }
+    catch { setNote('⚠️ Copying was blocked — select the value and copy it by hand.'); }
+  }
+
+  return (
+    <div className="table-wrap ws-block">
+      <h3 className="ws-h3">🌐 Your own domain <span className={`ws-dom-chip ${cls}`}>{label}</span></h3>
+      <p className="ws-hint">
+        Already own a domain? Point it here and your site answers on it instead.
+        We host and design it; the name stays yours. We don&apos;t sell domains —
+        keep yours wherever you registered it.
+      </p>
+
+      <div className="ws-dom-row">
+        <input className="ac-kb-input ws-dom-input" value={draft}
+          placeholder="yourstudio.com" disabled={busy}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={e => e.key === 'Enter' && save()} />
+        {d.domain && (
+          <button className="btn btn-sm" disabled={busy} onClick={check}>
+            {busy ? 'Checking…' : 'Check DNS'}
+          </button>
+        )}
+      </div>
+
+      {d.domain && (
+        <>
+          <p className="ws-hint ws-dom-sub">Add these two records where you registered the domain:</p>
+          <div className="ws-dns">
+            {(d.instructions || []).map(r => (
+              <div className="ws-dns-r" key={r.name}>
+                <span className="ws-dns-t">{r.type}</span>
+                <span className="ws-dns-n">{r.name}</span>
+                <span className="ws-dns-v">{r.value || '—'}</span>
+                <button type="button" className="ws-dns-c" onClick={() => copy(r.value)}
+                  aria-label={`Copy the ${r.name} record`}>
+                  {copied === r.value ? '✅' : '📋'}
+                </button>
+                <span className="ws-dns-note">{r.note}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {found && !found.ok && found.root?.length > 0 && (
+        <p className="ws-dom-found">Right now it points at {found.root.join(', ')}.</p>
+      )}
+      {note && <p className="ws-dom-note">{note}</p>}
+    </div>
+  );
+}
+
 function WebsiteView() {
   const dialog = useDialog();
   const [site, setSite] = useState(null);
@@ -5296,6 +5413,8 @@ function WebsiteView() {
         </div>
         {!site.slug && <p className="ws-warn">⚠️ Choose an address before you can publish.</p>}
       </div>
+
+      <DomainBlock />
     </>
   );
 }

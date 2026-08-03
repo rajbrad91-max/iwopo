@@ -1,5 +1,6 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
+import { normalizeDomain } from '../lib/customDomain.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -8,6 +9,42 @@ const DEFAULTS = {
   theme: 'classic', font: 'Inter', details_heading: 'Event Details',
   custom_fields: [], background: 'none',
 };
+
+// PUBLIC: GET /api/inquiry-settings/by-host → the form for a vendor's own
+// domain. The Host header identifies them, so their enquiry page can live on
+// their domain instead of sending a couple off to an iwopo address.
+// Declared before :handle, which would otherwise swallow "by-host".
+router.get('/by-host', async (req, res) => {
+  try {
+    const host = normalizeDomain(req.headers['x-forwarded-host'] || req.headers.host);
+    if (!host) return res.status(404).json({ error: 'Vendor not found' });
+
+    const site = await prisma.vendor_sites.findFirst({
+      where: { custom_domain: host, domain_status: 'live' },
+      select: { vendor_id: true },
+    });
+    if (!site) return res.status(404).json({ error: 'Vendor not found' });
+
+    const vendor = await prisma.vendors.findUnique({
+      where: { id: site.vendor_id },
+      select: { business_name: true, logo_path: true, slug: true },
+    });
+    const s = await prisma.inquiry_settings.findUnique({ where: { vendor_id: site.vendor_id } }) || DEFAULTS;
+    const kb = await prisma.chatbot_knowledge.findUnique({
+      where: { vendor_id: site.vendor_id }, select: { bot_name: true },
+    });
+
+    res.json({
+      settings: {
+        ...DEFAULTS, ...s,
+        brand_name: s.brand_name || vendor?.business_name,
+        logo_path: vendor?.logo_path || '',
+        bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant',
+      },
+      slug: vendor?.slug || '',
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // VENDOR: GET /api/inquiry-settings/my → my own settings, from the token.
 // Declared BEFORE the :handle route: 'my' is a valid-looking slug, so a param

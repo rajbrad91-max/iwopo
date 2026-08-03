@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# ⚙️ Pick up domains a vendor has verified and switch them on.
+#
+# A vendor presses "Check DNS", it passes, and their domain sits at 'verified'.
+# This is what turns that into a live site with a certificate — so nobody has to
+# be at a terminal for a vendor's domain to start working.
+#
+# One attempt per domain. A failure is recorded as 'failed' rather than left to
+# retry every ten minutes, because a domain that cannot be certified usually
+# cannot be certified on the next try either, and Let's Encrypt counts attempts.
+set -uo pipefail
+
+LOG=/var/log/iwopo-domain.log
+psql_live() { sudo -u postgres psql -qtAd iwopo -c "$1"; }
+
+for d in $(psql_live "select custom_domain from vendor_sites where domain_status='verified' and custom_domain is not null;"); do
+  [ -e "/etc/nginx/sites-enabled/vd-${d}" ] && continue      # already on
+  echo "$(date -Is) attempting ${d}" >> "$LOG"
+  if iwopo-domain add "$d" >> "$LOG" 2>&1; then
+    echo "$(date -Is) ✅ ${d} live" >> "$LOG"
+  else
+    echo "$(date -Is) ❌ ${d} failed — left for a human" >> "$LOG"
+    psql_live "update vendor_sites set domain_status='failed' where custom_domain='${d}';" >/dev/null
+  fi
+done

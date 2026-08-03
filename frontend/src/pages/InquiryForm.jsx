@@ -21,7 +21,11 @@ export const PROFESSIONS = {
   musician: { label: 'Musician / Singer', icon: '🎶' },
 };
 
-export default function InquiryForm({ handle }) {
+export default function InquiryForm({ handle, byHost = false }) {
+  /* On a vendor's own domain there is no handle in the URL — the Host header
+   * names them. The server hands back their slug, which is what the lead is
+   * filed against and what the chat widget talks to. */
+  const [who, setWho] = useState(handle || '');
   const [cfg, setCfg] = useState(null);
   // 🔗 a handle that resolves to nothing gets its own card. Falling back to an
   // empty form let a dead link render a blank inquiry that submitted nowhere.
@@ -40,10 +44,10 @@ export default function InquiryForm({ handle }) {
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    api.inquirySettings(handle)
-      .then(d => setCfg(d.settings))
-      .catch(() => { setGone(true); setCfg({}); });
-  }, [handle]);
+    const load = byHost ? api.inquirySettingsByHost() : api.inquirySettings(handle);
+    load.then(d => { setCfg(d.settings); if (d.slug) setWho(d.slug); })
+        .catch(() => { setGone(true); setCfg({}); });
+  }, [handle, byHost]);
 
   async function submit() {
     setErr('');
@@ -59,7 +63,7 @@ export default function InquiryForm({ handle }) {
     setBusy(true);
     try {
       await api.createLead({
-        vendor_slug: handle,
+        vendor_slug: who,
         name: p.name, email: p.email, phone: p.phone,
         role: p.role, instagram: p.instagram, heard: p.heard,
         notes, custom_data: answers,
@@ -121,7 +125,7 @@ export default function InquiryForm({ handle }) {
           </button>
         </div>
       </div>
-      <ChatWidget handle={handle} businessName={c.brand_name} botName={c.bot_name} />
+      <ChatWidget handle={who} businessName={c.brand_name} botName={c.bot_name} />
     </div>
   );
 }

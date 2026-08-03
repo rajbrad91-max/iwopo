@@ -37,6 +37,22 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  /* 🌐 A vendor's own domain.
+   *
+   * Everything else this app does — the panel, the login, another vendor's
+   * gallery link — belongs to iwopo, not to their brand. On their domain those
+   * routes do not exist at all: only their site, and their own enquiry page.
+   * The vendor is identified by the Host header on the server, so nothing in
+   * the URL has to carry a slug or an id. */
+  const PLATFORM_HOSTS = ['iwopo.com', 'alphabetaone.com', 'localhost', '127.0.0.1'];
+  const hostNow = window.location.hostname.replace(/^www\./, '').toLowerCase();
+  if (!PLATFORM_HOSTS.includes(hostNow)) {
+    const p = (window.location.pathname.replace(/\/+$/, '') || '/');
+    if (p === '/inquiry') return <InquiryForm byHost />;
+    const SITE_PAGES = { '/': 'home', '/portfolio': 'portfolio', '/clients': 'clients', '/book': 'book' };
+    return <PublicSite byHost page={SITE_PAGES[p] || 'notfound'} />;
+  }
+
   // 🌐 Public inquiry route: /inquiry/:handle  (no login needed).
   // The handle is the vendor's slug. Old /inquiry/1 links still match this
   // pattern but no slug is ever digits-only, so they resolve to "link expired"

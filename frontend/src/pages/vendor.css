@@ -1862,3 +1862,37 @@ tr:hover .bk-del { opacity: .8; }
 .ws-quote-row textarea { resize: vertical; font-family: inherit; }
 .ws-quote-by { display: flex; align-items: center; gap: 8px; }
 .ws-quote-by .ws-input { flex: 1; margin: 0; }
+
+/* ── 🌐 custom domain ─────────────────────────────────────────────────── */
+.ws-dom-chip { margin-left: 8px; font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted); vertical-align: middle; }
+.ws-dom-pending { border-color: #c9a227; color: #c9a227; }
+.ws-dom-verified { border-color: #2e9e6b; color: #2e9e6b; }
+.ws-dom-live { border-color: #2e9e6b; background: #2e9e6b; color: #fff; }
+
+.ws-dom-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ws-dom-input { flex: 1 1 240px; min-width: 0; }
+.ws-dom-sub { margin: 16px 0 8px; }
+
+/* the record table. Fixed columns rather than a real <table> so the value can
+   be selected cleanly on a phone without the row reflowing under the thumb. */
+.ws-dns { display: grid; gap: 6px; }
+.ws-dns-r { display: grid; grid-template-columns: 44px 62px 1fr 32px; gap: 8px;
+  align-items: center; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; }
+.ws-dns-t { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
+.ws-dns-n { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.ws-dns-v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+  user-select: all; overflow-wrap: anywhere; }
+.ws-dns-c { background: none; border: 0; cursor: pointer; font-size: 14px; padding: 2px; line-height: 1; }
+.ws-dns-note { grid-column: 2 / -1; font-size: 11.5px; color: var(--muted); }
+
+.ws-dom-found, .ws-dom-note { margin: 10px 0 0; font-size: 12.5px; line-height: 1.55; }
+.ws-dom-found { color: var(--muted); }
+
+@media (max-width: 560px) {
+  .ws-dns-r { grid-template-columns: 40px 1fr 30px; }
+  .ws-dns-n { grid-column: 2; }
+  .ws-dns-v { grid-column: 2 / -1; grid-row: 2; }
+  .ws-dns-note { grid-column: 1 / -1; grid-row: 3; }
+}

@@ -67,7 +67,7 @@ const NAV = [
 
 const HOME_PREVIEW = 3;
 
-export default function PublicSite({ slug, page = 'home' }) {
+export default function PublicSite({ slug, page = 'home', byHost = false }) {
   const [site, setSite] = useState(null);
   const [state, setState] = useState('loading');   // loading | ok | missing
   const [open, setOpen] = useState(false);         // mobile nav
@@ -78,10 +78,11 @@ export default function PublicSite({ slug, page = 'home' }) {
   useReveal(page + (site ? 'y' : 'n'));
 
   useEffect(() => {
-    api.publicSite(slug)
-      .then(d => { setSite(d.site); setState('ok'); })
-      .catch(() => setState('missing'));
-  }, [slug]);
+    if (page === 'notfound') { setState('missing'); return; }
+    const load = byHost ? api.siteByHost() : api.publicSite(slug);
+    load.then(d => { setSite(d.site); setState('ok'); })
+        .catch(() => setState('missing'));
+  }, [slug, byHost, page]);
 
   // a new view opens at its beginning, and closes the mobile menu behind it
   useEffect(() => {
@@ -123,7 +124,9 @@ export default function PublicSite({ slug, page = 'home' }) {
   // five frames read as a composed block; anything past that slides sideways
   const spread = photos.slice(0, 5);
   const rest = photos.slice(5);
-  const base = `/site/${slug}`;
+  /* On a vendor's domain the site IS the site — /portfolio, not
+   * /site/their-name/portfolio. One helper so every link agrees. */
+  const link = (path) => (byHost ? (path || '/') : `/site/${slug}${path}`);
   const photoUrl = (f) => `/api/sites/photo/${site.vendor_id}/${f}`;
 
   // the theme picks the layout, the vendor picks the colour and the type
@@ -209,7 +212,7 @@ export default function PublicSite({ slug, page = 'home' }) {
   return (
     <div className={`st st-${site.theme} st-page-${page}`} style={styleVars}>
       <header className="st-nav">
-        <a href={base} className="st-brand">
+        <a href={link('')} className="st-brand">
           {site.logo_path
             ? <img src={`/api/me/logo/${site.logo_path}`} alt="" className="st-brand-logo" />
             : <span className="st-brand-name">{title}</span>}
@@ -220,7 +223,7 @@ export default function PublicSite({ slug, page = 'home' }) {
         </button>
         <nav className={`st-links ${open ? 'is-open' : ''}`}>
           {NAV.map(([id, label, path]) => (
-            <a key={id} href={base + path} className={page === id ? 'is-here' : ''}>{label}</a>
+            <a key={id} href={link(path)} className={page === id ? 'is-here' : ''}>{label}</a>
           ))}
         </nav>
       </header>
@@ -244,8 +247,8 @@ export default function PublicSite({ slug, page = 'home' }) {
                 <h1 className="st-hero-title">{title}</h1>
                 {site.tagline && <p className="st-hero-tagline">{site.tagline}</p>}
                 <div className="st-hero-cta">
-                  <a href={`${base}/portfolio`} className="st-cta">View portfolio</a>
-                  <a href={`${base}/book`} className="st-cta is-ghost">Book us</a>
+                  <a href={link('/portfolio')} className="st-cta">View portfolio</a>
+                  <a href={link('/book')} className="st-cta is-ghost">Book us</a>
                 </div>
               </div>
             </section>
@@ -300,7 +303,7 @@ export default function PublicSite({ slug, page = 'home' }) {
                   </div>
                   {trio(preview)}
                   <div className="st-more st-rise">
-                    <a className="st-cta" href={`${base}/portfolio`}>See the full portfolio</a>
+                    <a className="st-cta" href={link('/portfolio')}>See the full portfolio</a>
                   </div>
                 </div>
               </section>
@@ -387,7 +390,7 @@ export default function PublicSite({ slug, page = 'home' }) {
                 Tell us about your day and we&apos;ll come back to you within one to
                 two business days.
               </p>
-              <a className="st-cta" href={`/inquiry/${site.vendor_slug}`}>Start an enquiry</a>
+              <a className="st-cta" href={byHost ? '/inquiry' : `/inquiry/${site.vendor_slug}`}>Start an enquiry</a>
               <div className="st-contact">
                 {site.contact_email && <a href={`mailto:${site.contact_email}`}>{site.contact_email}</a>}
                 {site.contact_phone && <a href={`tel:${site.contact_phone}`}>{site.contact_phone}</a>}

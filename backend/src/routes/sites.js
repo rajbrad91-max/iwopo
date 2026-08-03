@@ -19,6 +19,7 @@ import path from 'path';
 import multer from 'multer';
 import sharp from 'sharp';
 import prisma from '../config/prisma.js';
+import { normalizeDomain, checkDomain, dnsInstructions } from '../lib/customDomain.js';
 import { requireAuth } from '../middleware/auth.js';
 import { SITES_DIR } from '../config/paths.js';
 
@@ -26,6 +27,23 @@ const router = express.Router();
 
 // same limit and temp folder as the logo upload — one way to take a file
 const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 15 * 1024 * 1024 } });
+
+
+/**
+ * The public shape of a site. Both public routes — the /site/<slug> path and a
+ * vendor's own domain — return exactly this, so a site cannot look one way on
+ * one and another way on the other.
+ */
+function shapePublicSite(site) {
+  const { vendors, ...rest } = site;
+  return {
+    ...rest,
+    business_name: vendors?.business_name ?? null,
+    logo_path: vendors?.logo_path ?? null,
+    gallery_token: vendors?.gallery_token ?? null,
+    vendor_slug: vendors?.slug ?? null,            // 🔗 for the Book Us link
+  };
+}
 
 function vid(req) {
   if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
@@ -214,6 +232,114 @@ router.put('/my/publish', requireAuth, async (req, res) => {
 // their real inquiry form, their gallery token so Portfolio and the Client
 // Section point at galleries that already exist, and a handful of album covers
 // so Portfolio has something to show without a second request.
+/* ══════════════════════════════════════════════════════════════════════════
+   🌐 Custom domains
+
+   A vendor points their own domain here and their site answers on it. We host
+   and design; they own the name. Nothing is switched on until DNS proves the
+   domain really points at this server — otherwise anyone could claim a domain
+   they don't own and have us chase certificates for it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// PUBLIC: the site for whichever domain this request arrived on.
+// The Host header is the credential here, and it is set by nginx from the real
+// request line — a body or query value would be trivially forgeable.
+router.get('/by-host', async (req, res) => {
+  try {
+    const host = normalizeDomain(req.headers['x-forwarded-host'] || req.headers.host);
+    if (!host) return res.status(404).json({ error: 'Unknown site' });
+
+    const site = await prisma.vendor_sites.findFirst({
+      where: { custom_domain: host, domain_status: 'live', published: true },
+      include: { vendors: { select: { business_name: true, logo_path: true, gallery_token: true, slug: true } } },
+    });
+    // An unverified or unpublished domain is a 404, not a redirect to somebody
+    // else's site — a wrong answer here shows one vendor's work on another's
+    // domain, which is worse than showing nothing.
+    if (!site) return res.status(404).json({ error: 'Unknown site' });
+    res.json({ site: shapePublicSite(site) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// VENDOR: what domain do I have, and where is it up to?
+router.get('/domain', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    if (!v) return res.status(400).json({ error: 'No vendor' });
+    const site = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: Number(v) },              // 🔒 own row only
+      select: { custom_domain: true, domain_status: true, domain_verified_at: true },
+    });
+    res.json({
+      domain: site?.custom_domain || '',
+      status: site?.domain_status || 'none',
+      verified_at: site?.domain_verified_at || null,
+      instructions: await dnsInstructions(site?.custom_domain || ''),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// VENDOR: claim a domain, or clear it. Claiming never makes it live — it only
+// records the intent and hands back the records to add.
+router.put('/domain', requireAuth, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    if (!v) return res.status(400).json({ error: 'No vendor' });
+
+    const raw = req.body.domain;
+    if (!raw) {
+      // updateMany rather than update: with no row there is simply nothing to
+      // clear, and that should not be an error
+      await prisma.vendor_sites.updateMany({
+        where: { vendor_id: v },                                                   // 🔒 own row
+        data: { custom_domain: null, domain_status: 'none', domain_verified_at: null },
+      });
+      return res.json({ domain: '', status: 'none' });
+    }
+
+    const domain = normalizeDomain(raw);
+    if (!domain) return res.status(400).json({ error: "That doesn't look like a domain name." });
+
+    const taken = await prisma.vendor_sites.findFirst({
+      where: { custom_domain: domain, NOT: { vendor_id: v } }, select: { id: true },
+    });
+    if (taken) return res.status(409).json({ error: 'That domain is already in use here.' });
+
+    const fields = { custom_domain: domain, domain_status: 'pending', domain_verified_at: null };
+    await prisma.vendor_sites.upsert({
+      where: { vendor_id: v },                                                     // 🔒 own row
+      update: fields,
+      create: { ...fields, vendor_id: v },                                         // 🔒 from the token
+    });
+    res.json({ domain, status: 'pending', instructions: await dnsInstructions(domain) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// VENDOR: check whether the records have landed yet. Read-only against DNS;
+// this is what has to pass before a certificate is ever requested.
+router.post('/domain/check', requireAuth, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    if (!v) return res.status(400).json({ error: 'No vendor' });
+    const site = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: v }, select: { custom_domain: true },
+    });
+    if (!site?.custom_domain) return res.status(400).json({ error: 'No domain set' });
+
+    const result = await checkDomain(site.custom_domain);
+    // 'verified' is as far as this endpoint goes. Going 'live' means a
+    // certificate and an nginx vhost, which is a separate, deliberate step.
+    await prisma.vendor_sites.update({
+      where: { vendor_id: v },
+      data: {
+        domain_status: result.ok ? 'verified' : 'pending',
+        domain_verified_at: result.ok ? new Date() : null,
+      },
+    });
+    res.json({ ...result, domain: site.custom_domain, status: result.ok ? 'verified' : 'pending' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/:slug', async (req, res) => {
   try {
     const site = await prisma.vendor_sites.findFirst({
@@ -227,16 +353,7 @@ router.get('/:slug', async (req, res) => {
     if (!site) return res.status(404).json({ error: 'Site not found' });
 
 
-    const { vendors, ...rest } = site;
-    res.json({
-      site: {
-        ...rest,
-        business_name: vendors?.business_name ?? null,
-        logo_path: vendors?.logo_path ?? null,
-        gallery_token: vendors?.gallery_token ?? null,
-        vendor_slug: vendors?.slug ?? null,          // 🔗 for the Book Us link
-      },
-    });
+    res.json({ site: shapePublicSite(site) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

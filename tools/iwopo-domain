@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# 🌐 Switch a vendor's own domain on.
+#
+#   iwopo-domain add <domain>      verify DNS, write a vhost, fit a certificate
+#   iwopo-domain remove <domain>   take it back off
+#   iwopo-domain list              every custom domain and where it is up to
+#
+# One vhost per domain, on purpose. A domain that fails is a domain that fails —
+# iwopo.com and every other vendor carry on, because nothing they use was
+# touched. Nothing is reloaded until `nginx -t` has passed.
+set -euo pipefail
+
+LIVE=/var/www/iwopo
+AVAIL=/etc/nginx/sites-available
+ENABLED=/etc/nginx/sites-enabled
+EMAIL="${CERTBOT_EMAIL:-raj@iwopo.com}"
+
+die() { echo "❌ $*" >&2; exit 1; }
+say() { echo "  $*"; }
+
+# Roll nginx back to the state it was in before we touched it. A reload that
+# fails takes every site down, so the test has to pass before the reload runs.
+reload_nginx() {
+  if ! nginx -t >/dev/null 2>&1; then
+    echo "❌ nginx config is invalid — rolling back, nothing reloaded" >&2
+    nginx -t
+    return 1
+  fi
+  systemctl reload nginx
+}
+
+psql_live() { sudo -u postgres psql -qtAd iwopo -c "$1"; }
+
+cmd_list() {
+  printf "  %-34s %-10s %s\n" DOMAIN STATUS VENDOR
+  psql_live "select coalesce(s.custom_domain,'')||'|'||s.domain_status||'|'||coalesce(v.business_name,'?')
+             from vendor_sites s join vendors v on v.id=s.vendor_id
+             where s.custom_domain is not null order by 1;" \
+  | while IFS='|' read -r d st vn; do printf "  %-34s %-10s %s\n" "$d" "$st" "$vn"; done
+}
+
+cmd_add() {
+  local d="${1:-}"; [ -n "$d" ] || die "usage: iwopo-domain add <domain>"
+  d="$(echo "$d" | tr 'A-Z' 'a-z' | sed -E 's#^https?://##; s#/.*$##; s/^www\.//')"
+
+  # The DB is the source of truth for who owns a domain. Certifying one that no
+  # vendor has claimed would let anyone point a name here and get a cert.
+  local owner
+  owner="$(psql_live "select vendor_id from vendor_sites where custom_domain='${d}';" || true)"
+  [ -n "$owner" ] || die "no vendor has claimed ${d} — they must add it in their panel first"
+  say "claimed by vendor ${owner}"
+
+  # DNS has to prove it points here BEFORE a certificate is ever requested.
+  say "checking DNS…"
+  local ours theirs
+  ours="$(dig +short A iwopo.com | head -1)"
+  theirs="$(dig +short A "${d}" | head -1)"
+  [ -n "$theirs" ] || die "${d} has no A record yet — DNS may still be spreading"
+  [ "$ours" = "$theirs" ] || die "${d} points at ${theirs}, not at us (${ours})"
+  say "DNS ok: ${d} -> ${theirs}"
+
+  # Port 80 only for now. Certbot adds the 443 block and the redirect itself.
+  say "writing vhost…"
+  cat > "${AVAIL}/vd-${d}" <<'VHOST'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__ www.__DOMAIN__;
+
+    root /var/www/iwopo/frontend/dist;
+    index index.html;
+    client_max_body_size 2048M;
+
+    # hashed assets never change, so they may be held for a year; index.html
+    # must not be, or a browser keeps asking for a bundle that has been replaced
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location / {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # $host is the vendor's domain, and that is what the API reads to work out
+    # whose site this is — so it has to be passed through untouched
+    location /api/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+        client_body_timeout 600s;
+    }
+}
+VHOST
+  sed -i "s/__DOMAIN__/${d}/g" "${AVAIL}/vd-${d}"
+  ln -sf "${AVAIL}/vd-${d}" "${ENABLED}/vd-${d}"
+
+  if ! reload_nginx; then rm -f "${ENABLED}/vd-${d}"; die "vhost rejected — removed"; fi
+  say "vhost live on port 80"
+
+  say "requesting certificate…"
+  if ! certbot --nginx -d "${d}" -d "www.${d}" \
+        --non-interactive --agree-tos -m "${EMAIL}" --redirect >/dev/null 2>&1; then
+    echo "⚠️  certbot failed for ${d}. The site answers on http:// but not https://." >&2
+    echo "    Run this to see why:  certbot --nginx -d ${d} -d www.${d}" >&2
+    exit 1
+  fi
+  reload_nginx
+  say "certificate installed, renewals handled by the existing timer"
+
+  psql_live "update vendor_sites set domain_status='live', domain_verified_at=now() where custom_domain='${d}';" >/dev/null
+  echo "✅ ${d} is live"
+}
+
+cmd_remove() {
+  local d="${1:-}"; [ -n "$d" ] || die "usage: iwopo-domain remove <domain>"
+  rm -f "${ENABLED}/vd-${d}"
+  reload_nginx || die "nginx would not reload"
+  psql_live "update vendor_sites set domain_status='verified' where custom_domain='${d}';" >/dev/null
+  # the certificate is left in place: removing it makes putting the domain back
+  # a fresh request against the rate limit for no gain
+  echo "✅ ${d} taken off (certificate left in place)"
+}
+
+case "${1:-}" in
+  add)    shift; cmd_add "$@" ;;
+  remove) shift; cmd_remove "$@" ;;
+  list)   cmd_list ;;
+  *) echo "usage: iwopo-domain {add|remove|list} [domain]"; exit 1 ;;
+esac
