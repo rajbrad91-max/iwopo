@@ -18,3 +18,32 @@ thing some tools read:
 - Re-run lint after deleting any UI; it orphans handlers.
 - Verify the whole round trip, and look at anything visual rather than
   measuring that it exists.
+
+---
+
+For an assistant working from an editor, with no access to the server:
+
+- **You cannot verify anything.** You cannot run `iwopo-verify`, reach either
+  database, or test a change. Never call something verified, working or safe —
+  say what you changed and what still needs checking on the server.
+- **The person directing you is not a developer.** He will not catch a bad
+  change by reading the diff. Explain in plain language what a change does and
+  what it might break, and say when you are unsure rather than sounding
+  confident.
+- **Comments that look odd are usually load-bearing.** They explain a failure
+  that already happened here. Do not tidy them away or simplify the code they
+  are defending.
+- **Do not reformat.** No whole-file passes, no reordering imports for
+  neatness. `iwopo-deploy` runs a diff-sanity check that treats a large
+  unexplained change as a red flag, and a huge diff hides the real one.
+- **`VendorPanel.jsx` is very large on purpose for now.** Do not offer to split
+  it up as a side quest.
+- **Do not add dependencies casually.** One was recently removed for carrying
+  two advisories while importing nothing. If a package is needed, say why and
+  what it costs.
+- **Flag anything touching `prisma/schema.prisma`.** Schema changes need manual
+  steps on the server — `npx prisma generate` and a restart on both live and
+  staging — that you cannot perform.
+- **You cannot deploy.** Your changes sit in the clone until they are pushed,
+  and still need `iwopo-deploy` run on the server afterwards. Say so rather
+  than implying a change is live.

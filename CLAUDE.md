@@ -102,6 +102,30 @@ will otherwise "simplify" it back into a bug.
 
 ---
 
+## 4b. If you are working from an editor, without the server
+
+Cursor, a local clone, or anything else that can read the code but not reach
+the machine. All of the above still applies, and so does this:
+
+- **You cannot verify anything.** No `iwopo-verify`, no database, no test.
+  Report what changed and what still needs checking; do not call a change
+  verified, working or safe.
+- **You cannot deploy.** Changes sit in the clone until pushed, and still need
+  `iwopo-deploy` run on the server. Do not imply a change is live.
+- **The person directing you is not a developer** and will not catch a bad
+  change by reading the diff. Plain language, and say when you are unsure.
+- **Do not reformat**, do not offer to split `VendorPanel.jsx`, and do not add
+  dependencies without saying why and what they cost.
+- **Flag anything touching `prisma/schema.prisma`** — it needs manual steps on
+  the server that you cannot perform.
+
+**Only one party holds the working copy at a time.** Claude works directly on
+the staging checkout at `/var/www/iwopo-staging`. If someone is also editing a
+local clone, whoever pushes second wins and the other change disappears with no
+warning. Agree who has it before starting.
+
+---
+
 ## 5. Traps that have already cost time
 
 **Route order.** `router.get('/:slug')` is a catch-all that swallows any later
