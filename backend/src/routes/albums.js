@@ -433,6 +433,41 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
 });
 
 /**
+ * 🎬 The folder films live in.
+ *
+ * Films go to their own event rather than into whichever one the vendor happens
+ * to be looking at. A wedding film dropped among four hundred photographs of
+ * the Mehndi is lost, and the grid has to reason about two kinds of thing in
+ * one place. One folder, created the first time a film is uploaded, and never
+ * created for an album that has none.
+ *
+ * Sorted last on purpose: the photographs are what a couple opens the gallery
+ * for, and the films should not push them down the page.
+ */
+const VIDEO_FOLDER = 'Videos';
+
+async function videoEventId(albumId, vendorId) {
+  const existing = await prisma.album_events.findFirst({
+    where: { album_id: albumId, vendor_id: vendorId, name: VIDEO_FOLDER },  // 🔒 tenancy
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const top = await prisma.album_events.aggregate({
+    where: { album_id: albumId },
+    _max: { sort_order: true },
+  });
+  const made = await prisma.album_events.create({
+    data: {
+      album_id: albumId, vendor_id: vendorId,                               // 🔒 tenancy
+      name: VIDEO_FOLDER, sort_order: (top._max.sort_order || 0) + 1,
+    },
+    select: { id: true },
+  });
+  return made.id;
+}
+
+/**
  * 🎬 Upload one film.
  *
  * Deliberately one per request, not fifty. A wedding film is gigabytes where a
@@ -506,7 +541,8 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
         // a film is never sent to the face engine, so it is marked done rather
         // than left to sit in the backlog forever
         face_indexed: true,
-        event_id: req.body.event_id ? parseInt(req.body.event_id, 10) : null,
+        // always the Videos folder, whatever tab the vendor happens to be on
+        event_id: await videoEventId(id, v),
       },
     });
     res.status(201).json({ photo });

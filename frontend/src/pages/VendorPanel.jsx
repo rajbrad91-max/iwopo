@@ -1275,8 +1275,9 @@ function AlbumDetail({ albumId, onBack }) {
       setVidBusy(files.length > 1 ? `${i + 1}/${files.length}…` : 'Uploading…');
       try {
         const { poster, duration } = await posterFor(files[i]);
-        await api.uploadAlbumVideo(albumId, files[i], poster, duration,
-          activeEvent !== 'all' ? activeEvent : null);
+        // no event is named: films always land in the Videos folder, which the
+        // server creates the first time one is uploaded
+        await api.uploadAlbumVideo(albumId, files[i], poster, duration, null);
         ok++;
       } catch (err) {
         setVidBusy('');
@@ -1287,7 +1288,14 @@ function AlbumDetail({ albumId, onBack }) {
       }
     }
     setVidBusy('');
-    if (ok) load();
+    if (ok) {
+      // the films are in the Videos folder, so that is where to look
+      api.album(albumId).then(d => {
+        setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);
+        const vids = (d.events || []).find(e => e.name === 'Videos');
+        if (vids) setActiveEvent(vids.id);
+      }).catch(() => {});
+    }
   }
 
   function onFiles(e) {
@@ -1425,9 +1433,11 @@ function AlbumDetail({ albumId, onBack }) {
             {uploadLabel}
             <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || (isPerClient && activeEvent === 'all')} />
           </label>
-          <label className={`refresh ad-upload ad-upload-vid ${isPerClient && activeEvent === 'all' ? 'ad-upload-off' : ''}`}>
+          {/* Films go to their own Videos folder wherever you are, so unlike
+              photographs this is never disabled by which tab is open. */}
+          <label className="refresh ad-upload ad-upload-vid">
             {vidLabel}
-            <input type="file" accept="video/*" multiple hidden onChange={onVideos} disabled={uploading || vidBusy || (isPerClient && activeEvent === 'all')} />
+            <input type="file" accept="video/*" multiple hidden onChange={onVideos} disabled={uploading || !!vidBusy} />
           </label>
         </div>
       </div>
