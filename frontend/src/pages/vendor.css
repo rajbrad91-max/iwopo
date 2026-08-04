@@ -119,8 +119,12 @@
   font-family: inherit; font-size: 13.5px;
   transition: border-color .15s, box-shadow .15s;
 }
-.dash input:focus, .dash select:focus, .dash textarea:focus {
-  outline: none; border-color: var(--teal) !important; box-shadow: 0 0 0 3px var(--teal-soft);
+/* Written to match the field rule above exactly, plus :focus. That rule carries
+   two :not() tests, which count toward specificity — so the plainer focus rule
+   lost and the border colour had to be forced. */
+.dash input:not([type=checkbox]):not([type=color]):focus,
+.dash select:focus, .dash textarea:focus {
+  outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft);
 }
 .dash button { font-family: inherit; }
 
@@ -213,7 +217,7 @@
 /* 📋 Lead detail 2-column layout */
 .lead-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 .lead-left, .lead-right { min-width: 0; }
-.lead-right > * { margin-bottom: 16px; }
+/* the gap on .lead-right does this now; the margin below only fought it */
 @media (max-width: 900px){ .lead-grid { grid-template-columns: 1fr; } }
 
 /* 📊 Lead stat tiles */
@@ -446,8 +450,8 @@
 
 /* right column = cards */
 .lead-right { display: flex; flex-direction: column; gap: 16px; }
-.lead-right > * { margin: 0 !important; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
-.lead-right .ms-wrap { margin: 0 !important; }
+.lead-right > * { margin: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.lead-right .ms-wrap { margin: 0; }
 
 /* ld cards */
 .ld-view { padding: 4px; }
@@ -1225,7 +1229,7 @@
 .ac-upsell-text { color: var(--muted); font-size: 14.5px; line-height: 1.6; margin: 0 0 20px; }
 .ac-upsell-list { list-style: none; padding: 0; margin: 0 0 26px; text-align: left; display: inline-block; }
 .ac-upsell-list li { font-size: 14px; padding: 7px 0; }
-.ac-upsell-btn { padding: 12px 26px !important; font-size: 14.5px !important; }
+.refresh.ac-upsell-btn { padding: 12px 26px; font-size: 14.5px; }
 @media (max-width: 600px) { .ac-msg { max-width: 95%; } }
 
 /* 🔍 Bookings search */

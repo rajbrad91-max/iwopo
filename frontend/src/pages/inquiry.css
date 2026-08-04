@@ -73,8 +73,11 @@
 .iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, #C9A86A); background: #fff; }
 .iq-card input::placeholder { color: var(--muted); }
 
-.iq-check-row { display: flex !important; align-items: center; gap: 9px; font-size: 14px !important; color: #3D3530 !important; cursor: pointer; }
-.iq-check-row input { width: 17px !important; height: 17px; accent-color: var(--brand, #C9A86A); cursor: pointer; }
+/* Matched at the same depth as the rules above rather than shouted over them:
+   `.iq-card label` and `.iq-card input` are two classes deep, so a bare
+   .iq-check-row lost every time and !important was standing in for specificity. */
+.iq-card .iq-check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; color: #3D3530; cursor: pointer; }
+.iq-card .iq-check-row input { width: 17px; height: 17px; accent-color: var(--brand, #C9A86A); cursor: pointer; }
 
 /* ⏱️ hours field — the "auto" tag sits beside the label, the reset link below */
 .iq-auto-tag {
