@@ -768,3 +768,37 @@
     animation: none; transition: none;
   }
 }
+
+/* ── 🎬 film tiles and playback ────────────────────────────────────────── */
+/* A tile whose poster failed to load is hidden rather than showing a broken
+   image, so the badge sits on a plain dark card instead of a torn one. */
+.pg-tile { background: #17171a; }
+
+.pg-vid-badge { position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; gap: 10px; pointer-events: none; }
+.pg-vid-play { width: 46px; height: 46px; border-radius: 50%;
+  background: rgba(12,12,14,.55); color: #fff; font-size: 16px;
+  display: grid; place-items: center; padding-left: 3px;   /* optical centring of ▶ */
+  backdrop-filter: blur(2px); transition: background .2s ease, transform .2s ease; }
+.pg-tile:hover .pg-vid-play { background: rgba(12,12,14,.78); transform: scale(1.06); }
+.pg-vid-time { position: absolute; right: 8px; bottom: 8px; font-size: 11px;
+  font-variant-numeric: tabular-nums; color: #fff; background: rgba(12,12,14,.62);
+  border-radius: 4px; padding: 2px 6px; }
+
+.pg-lb-video { max-width: 92vw; max-height: 86vh; display: block; background: #000;
+  border-radius: 2px; outline: none; }
+
+/* the download card a film falls back to when the viewer cannot decode it */
+.pg-vid-fallback { max-width: 460px; text-align: center; color: #f1f1f3;
+  background: #17171a; border: 1px solid #2a2a30; border-radius: 14px; padding: 40px 32px; }
+.pg-vid-fallback-icon { font-size: 34px; margin-bottom: 12px; }
+.pg-vid-fallback h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+.pg-vid-fallback p { margin: 0 0 22px; font-size: 13.5px; line-height: 1.6; color: #9a9aa3; }
+.pg-vid-dl { display: inline-block; padding: 11px 24px; border-radius: 8px;
+  background: #f1f1f3; color: #17171a; text-decoration: none; font-size: 13.5px; font-weight: 600; }
+.pg-vid-dl:hover { background: #fff; }
+
+@media (max-width: 760px) {
+  .pg-vid-play { width: 38px; height: 38px; font-size: 13px; }
+  .pg-vid-fallback { padding: 30px 22px; }
+}

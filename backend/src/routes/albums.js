@@ -19,6 +19,21 @@ const router = express.Router();
 const ROOT = GALLERIES_ROOT;
 const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 200 * 1024 * 1024 } });
 
+/**
+ * Films get their own limit. 200MB is generous for a photograph and refuses
+ * almost every wedding film. This is still a single request, so a dropped
+ * connection loses the upload — resumable multipart is the follow-up, and it is
+ * where vendors will feel the pain first.
+ */
+const uploadVideo = multer({
+  dest: '/tmp/vf_uploads',
+  limits: { fileSize: 4 * 1024 * 1024 * 1024, files: 2 },
+  fileFilter: (req, f, cb) => {
+    const ok = f.fieldname === 'poster' ? /^image\//.test(f.mimetype) : /^video\//.test(f.mimetype);
+    cb(ok ? null : Object.assign(new Error('Wrong file type'), { status: 400 }), ok);
+  },
+});
+
 // which vendor am I?
 function vid(req) { return req.user.vendor_id; }
 
@@ -415,6 +430,87 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
     // 🤳 queue face indexing (throttled single worker — never blocks the API)
     enqueueAlbum(id);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * 🎬 Upload one film.
+ *
+ * Deliberately one per request, not fifty. A wedding film is gigabytes where a
+ * photograph is megabytes, and batching them means one dropped connection loses
+ * the lot. One at a time also lets the panel show real progress per film.
+ *
+ * Nothing is transcoded. The vendor uploads a finished MP4 and it is stored as
+ * it is — no ffmpeg on this box, and none needed while the file is already
+ * something a browser can play. Whether it actually plays is a property of the
+ * VIEWER, not the file: Safari decodes HEVC and Chrome on Windows does not. The
+ * player deals with that by offering a download when decoding fails.
+ *
+ * The poster frame is drawn by the browser before upload — it can already
+ * decode the file it is about to send — which is why this needs no ffmpeg
+ * either. A file the uploader's own browser cannot decode arrives without a
+ * poster, and the grid falls back to a plain film tile.
+ */
+router.post('/:id/videos', requireAuth, uploadVideo.fields([
+  { name: 'video', maxCount: 1 },
+  { name: 'poster', maxCount: 1 },
+]), async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  const file = req.files?.video?.[0];
+  const poster = req.files?.poster?.[0];
+
+  const cleanup = () => {
+    for (const f of [file, poster]) {
+      if (f?.path) { try { fs.unlinkSync(f.path); } catch { /* already gone */ } }
+    }
+  };
+
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    if (!own) { cleanup(); return res.status(404).json({ error: 'Album not found' }); }
+    if (!file) { cleanup(); return res.status(400).json({ error: 'No file' }); }
+
+    const dir = path.join(ROOT, String(v), String(id));
+    fs.mkdirSync(dir, { recursive: true });
+
+    const base = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const ext = (path.extname(file.originalname) || '.mp4').toLowerCase().slice(0, 8);
+    const vidName = `${base}_video${ext}`;
+    // renamed rather than copied where possible: a 20GB copy doubles the disk
+    // used and the time taken, for no gain
+    try { fs.renameSync(file.path, path.join(dir, vidName)); }
+    catch { fs.copyFileSync(file.path, path.join(dir, vidName)); fs.unlinkSync(file.path); }
+
+    // the poster stands in for both tiers, so the grid and the viewer need no
+    // special case for a film
+    let thumbName = null, fullName = null;
+    if (poster) {
+      thumbName = `${base}_thumb.webp`;
+      fullName = `${base}_full.webp`;
+      await sharp(poster.path).resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
+      await sharp(poster.path).resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
+      fs.unlinkSync(poster.path);
+    }
+
+    const rel = (n) => (n ? `${v}/${id}/${n}` : null);
+    const dur = Number(req.body.duration_s);
+    const photo = await prisma.photos.create({
+      data: {
+        album_id: id, vendor_id: v,               // 🔒 tenancy stamped on the row
+        kind: 'video',
+        filename: file.originalname,
+        storage_path: rel(vidName),
+        thumb_path: rel(thumbName),
+        preview_path: rel(fullName),
+        duration_s: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : null,
+        // a film is never sent to the face engine, so it is marked done rather
+        // than left to sit in the backlog forever
+        face_indexed: true,
+        event_id: req.body.event_id ? parseInt(req.body.event_id, 10) : null,
+      },
+    });
+    res.status(201).json({ photo });
+  } catch (e) { cleanup(); res.status(500).json({ error: e.message }); }
 });
 
 // 🔒 delete a photo (tenant-checked)

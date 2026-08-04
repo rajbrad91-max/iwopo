@@ -197,7 +197,8 @@ router.get('/:token/session', async (req, res) => {
     const faceReady = photos.some(p => (p.face_count || 0) > 0);
     res.json({
       role: rec.role, vt: req.query.vt, title: a.title, mode: 'per_client', theme, events, faceReady,
-      photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0 })),
+      photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0,
+        kind: p.kind || 'photo', duration_s: p.duration_s || null })),
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -231,7 +232,8 @@ router.post('/:token/auth',
     const vt = makeViewToken(a.id, role);
     res.json({
       role, vt, title: a.title, mode: 'per_client', theme, events, faceReady,
-      photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0 })),
+      photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0,
+        kind: p.kind || 'photo', duration_s: p.duration_s || null })),
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

@@ -5,3 +5,7 @@ dist/
 vowflo_src.zip
 models/
 storage/
+
+# scratch from editor-side assistants — never part of a commit
+_patch/
+*-new.jsx

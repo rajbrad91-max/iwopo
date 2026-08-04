@@ -210,6 +210,17 @@ export default function PublicGallery({ token, embedded, onBack }) {
     setPicked(new Set()); setPickedOnly(false);
   }
 
+  // which film failed to decode, so the viewer shows a download instead
+  const [vidFailed, setVidFailed] = useState(null);
+
+  /** 90 → "1:30". Films are minutes, so hours only appear when they exist. */
+  function fmtDur(sec) {
+    const s = Math.round(sec);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
+             : `${m}:${String(r).padStart(2, '0')}`;
+  }
+
   const photoUrl = (id, type) => `${API}/${token}/photo/${id}/${type}?vt=${session.vt}`;
   const faceUrl = (clusterId) => `${API}/${token}/face/${clusterId}?vt=${session.vt}`;
 
@@ -765,7 +776,17 @@ export default function PublicGallery({ token, embedded, onBack }) {
               loading="lazy"
               alt=""
               onLoad={e => noteShape(p.id, e.currentTarget)}
+              /* a film uploaded in a format the sender's own browser could not
+                 decode arrives with no poster; the tile falls back to a plain
+                 dark card rather than a broken-image icon */
+              onError={e => { e.currentTarget.style.visibility = 'hidden'; }}
             />
+            {p.kind === 'video' && (
+              <span className="pg-vid-badge">
+                <span className="pg-vid-play">▶</span>
+                {p.duration_s ? <span className="pg-vid-time">{fmtDur(p.duration_s)}</span> : null}
+              </span>
+            )}
             <button
               className="pg-check"
               onClick={e => { e.stopPropagation(); togglePick(p.id); }}
@@ -829,14 +850,42 @@ export default function PublicGallery({ token, embedded, onBack }) {
           </div>
           <button className="pg-lb-nav prev" onClick={e => { e.stopPropagation(); setSlideshow(false); step(-1); }} aria-label="Previous" title="Previous photo">‹</button>
           <div className="pg-lb-stage" onClick={e => e.stopPropagation()}>
-            <img
-              key={current.id}
-              className="pg-lb-img"
-              src={photoUrl(current.id, 'full')}
-              alt=""
-              decoding="async"
-              fetchpriority="high"
-            />
+            {current.kind === 'video' ? (
+              /* Whether a film plays is a property of the VIEWER, not the file.
+                 Safari decodes HEVC and Chrome on Windows does not, so the same
+                 upload plays for the couple and fails for a guest. Rather than
+                 look broken, a failure becomes the download it always was. */
+              vidFailed === current.id ? (
+                <div className="pg-vid-fallback">
+                  <div className="pg-vid-fallback-icon">🎬</div>
+                  <h3>This film can&apos;t play in your browser</h3>
+                  <p>It&apos;s in a format your browser doesn&apos;t support. Download it to watch.</p>
+                  <a className="pg-vid-dl" href={`${API}/${token}/download/${current.id}?vt=${session.vt}`}>
+                    Download {current.name || 'film'}
+                  </a>
+                </div>
+              ) : (
+                <video
+                  key={current.id}
+                  className="pg-lb-video"
+                  src={photoUrl(current.id, 'orig')}
+                  poster={photoUrl(current.id, 'full')}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  onError={() => setVidFailed(current.id)}
+                />
+              )
+            ) : (
+              <img
+                key={current.id}
+                className="pg-lb-img"
+                src={photoUrl(current.id, 'full')}
+                alt=""
+                decoding="async"
+                fetchpriority="high"
+              />
+            )}
           </div>
           <button className="pg-lb-nav next" onClick={e => { e.stopPropagation(); setSlideshow(false); step(1); }} aria-label="Next" title="Next photo">›</button>
         </div>

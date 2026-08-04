@@ -38,7 +38,7 @@ let running = false;
 // how many photos are still un-indexed system-wide (backlog depth)
 export async function backlogDepth() {
   try {
-    return await prisma.photos.count({ where: { face_indexed: false } });
+    return await prisma.photos.count({ where: { face_indexed: false, kind: 'photo' } });
   } catch { return 0; }
 }
 
@@ -136,7 +136,10 @@ async function indexOneAlbum(albumId) {
   let photos;
   try {
     photos = await prisma.photos.findMany({
-      where: { album_id: Number(albumId), face_indexed: false },
+      // 🎬 photos only. A video row has a poster in preview_path, and handing
+      // that to the face engine would index the same frame as if it were the
+      // whole film — a face found once at second zero, and never again.
+      where: { album_id: Number(albumId), face_indexed: false, kind: 'photo' },
       select: { id: true, preview_path: true },
       orderBy: { id: 'asc' },
     });

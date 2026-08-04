@@ -535,6 +535,10 @@ model photos {
   face_count   Int?          @default(0)
   event_id     Int?
   face_engine  String?       @db.VarChar(20)
+  // 'photo' or 'video'. A video row reuses thumb_path and preview_path for its
+  // poster frame, so nothing downstream needs a new concept for thumbnails.
+  kind         String        @default("photo") @db.VarChar(10)
+  duration_s   Int?
   album_faces  album_faces[]
   favorites    favorites[]
   photo_faces  photo_faces[]
