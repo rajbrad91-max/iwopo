@@ -1218,6 +1218,78 @@ function AlbumDetail({ albumId, onBack }) {
 
   const isPerClient = true; // per-client is the only gallery mode
 
+  const [vidBusy, setVidBusy] = useState('');
+  const vidLabel = vidBusy || '🎬 Add Videos';
+
+  /**
+   * 🖼️ A poster frame, drawn by the browser.
+   *
+   * The browser is about to upload this file, so it can already decode it — it
+   * can seek a little way in and paint a frame onto a canvas. That is the whole
+   * thumbnail pipeline, and it needs no ffmpeg on the server.
+   *
+   * A second in, not frame zero: films very often open on black, and a black
+   * thumbnail looks like a broken one. If the browser cannot decode the file at
+   * all — an HEVC export opened in Chrome — this resolves empty and the grid
+   * falls back to a plain film tile.
+   */
+  function posterFor(file) {
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(file);
+      const v = document.createElement('video');
+      let done = false;
+      const finish = (poster, duration) => {
+        if (done) return;
+        done = true;
+        URL.revokeObjectURL(url);
+        resolve({ poster, duration });
+      };
+      // a file the browser stalls on must not hang the upload forever
+      const bail = setTimeout(() => finish(null, null), 12000);
+      v.preload = 'metadata';
+      v.muted = true;
+      v.playsInline = true;
+      v.onloadedmetadata = () => { v.currentTime = Math.min(1, (v.duration || 2) / 2); };
+      v.onseeked = () => {
+        clearTimeout(bail);
+        try {
+          const c = document.createElement('canvas');
+          c.width = v.videoWidth; c.height = v.videoHeight;
+          c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+          c.toBlob(b => finish(b, v.duration), 'image/jpeg', 0.82);
+        } catch { finish(null, v.duration); }
+      };
+      v.onerror = () => { clearTimeout(bail); finish(null, null); };
+      v.src = url;
+    });
+  }
+
+  /* One film per request, sequentially. They are gigabytes; sending five at
+     once saturates the connection and makes every one of them slower. */
+  async function onVideos(e) {
+    const files = [...e.target.files];
+    e.target.value = '';
+    if (!files.length) return;
+    let ok = 0;
+    for (let i = 0; i < files.length; i++) {
+      setVidBusy(files.length > 1 ? `${i + 1}/${files.length}…` : 'Uploading…');
+      try {
+        const { poster, duration } = await posterFor(files[i]);
+        await api.uploadAlbumVideo(albumId, files[i], poster, duration,
+          activeEvent !== 'all' ? activeEvent : null);
+        ok++;
+      } catch (err) {
+        setVidBusy('');
+        // the same channel the photo upload already reports through, so a
+        // vendor is not hunting two places for the same kind of news
+        setProg('⚠️ ' + files[i].name + ' — ' + err.message);
+        break;
+      }
+    }
+    setVidBusy('');
+    if (ok) load();
+  }
+
   function onFiles(e) {
     const files = [...e.target.files];
     e.target.value = '';
@@ -1344,14 +1416,18 @@ function AlbumDetail({ albumId, onBack }) {
           <button className="refresh ad-ev-btn" onClick={openSelection} title="See the photo selection the client sent you">📩 Selection</button>
           {isPerClient && (
             <div className="ad-ev-actions">
-              <button className="refresh ad-ev-btn" onClick={openAddEvent} title="Add a new event">➕ Add</button>
-              <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all'} title="Rename the selected event">✏️ Edit</button>
+              <button className="refresh ad-ev-btn" onClick={openAddEvent} title="Add a new event">➕ Add Event</button>
+              <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all'} title="Rename the selected event">✏️ Rename</button>
               <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all'} title="Delete the selected event">🗑️ Delete</button>
             </div>
           )}
           <label className={`refresh ad-upload ${isPerClient && activeEvent === 'all' ? 'ad-upload-off' : ''}`}>
             {uploadLabel}
             <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || (isPerClient && activeEvent === 'all')} />
+          </label>
+          <label className={`refresh ad-upload ad-upload-vid ${isPerClient && activeEvent === 'all' ? 'ad-upload-off' : ''}`}>
+            {vidLabel}
+            <input type="file" accept="video/*" multiple hidden onChange={onVideos} disabled={uploading || vidBusy || (isPerClient && activeEvent === 'all')} />
           </label>
         </div>
       </div>
@@ -1594,56 +1670,294 @@ function AlbumDetail({ albumId, onBack }) {
 
 function CrewView() {
   const dialog = useDialog();
+  const [tab, setTab] = useState('upcoming'); // upcoming | past | team
   const [crew, setCrew] = useState([]);
   const [f, setF] = useState({ name: '', role: '', phone: '', email: '' });
   const [msg, setMsg] = useState('');
+  const [memberId, setMemberId] = useState('');
+  const [period, setPeriod] = useState('week'); // week | biweek | month
+  const [rows, setRows] = useState([]);
+  const [totals, setTotals] = useState([]);
+  const [periodMeta, setPeriodMeta] = useState({ from: '', to: '' });
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
+  const [note, setNote] = useState('');
+  const [adding, setAdding] = useState(false);
 
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
-  useEffect(() => { load(); }, []);
-  function load() { api.crew().then(d => setCrew(d.crew || [])).catch(() => {}); }
+  useEffect(() => { api.crew().then(d => setCrew(d.crew || [])).catch(() => {}); }, []);
+
+  useEffect(() => {
+    if (tab === 'team') return;
+    setLoading(true);
+    const q = { view: tab, period };
+    if (memberId) q.member_id = memberId;
+    api.crewSchedule(q)
+      .then(d => {
+        setRows(d.assignments || []);
+        setTotals(d.totals || []);
+        setPeriodMeta({ from: d.period_from || '', to: d.period_to || '' });
+      })
+      .catch(() => { setRows([]); setTotals([]); })
+      .finally(() => setLoading(false));
+  }, [tab, memberId, period]);
+
+  function flash(m) { setNote(m); setTimeout(() => setNote(''), 2500); }
 
   async function add() {
     if (!f.name) return setMsg('⚠️ Name required');
     setMsg('');
-    try { await api.addCrew(f); setF({ name: '', role: '', phone: '', email: '' }); setMsg('✅ Added'); setTimeout(() => setMsg(''), 1500); load(); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
+    try {
+      await api.addCrew(f);
+      setF({ name: '', role: '', phone: '', email: '' });
+      setAdding(false);
+      setMsg('✅ Added'); setTimeout(() => setMsg(''), 1500);
+      const d = await api.crew(); setCrew(d.crew || []);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
   }
+
+  function cancelAdd() {
+    setAdding(false);
+    setF({ name: '', role: '', phone: '', email: '' });
+    setMsg('');
+  }
+
   async function del(id) {
     if (!await dialog.confirm('They will be removed from your crew list.', { title: 'Remove crew member?', okLabel: 'Remove' })) return;
-    try { await api.deleteCrew(id); load(); } catch {}
+    try { await api.deleteCrew(id); setCrew(c => c.filter(x => x.id !== id)); } catch {}
   }
 
+  function checkinUrl(token) {
+    if (!token) return '';
+    return `${window.location.origin}/checkin/${token}`;
+  }
+
+  async function copyLink(a) {
+    setBusyId(a.id);
+    try {
+      // mint token + return link only — do not email
+      const d = await api.crewRemind(a.id, { send_email: false });
+      const token = (d.link && d.link.split('/').pop()) || a.checkin_token;
+      const link = checkinUrl(token);
+      if (!link) throw new Error('No check-in link');
+      await navigator.clipboard.writeText(link);
+      flash('🔗 Check-in link copied');
+      if (token && !a.checkin_token) {
+        setRows(rs => rs.map(r => r.id === a.id ? { ...r, checkin_token: token } : r));
+      }
+    } catch (e) { flash('⚠️ ' + (e.message || 'Could not copy')); }
+    finally { setBusyId(null); }
+  }
+
+  async function emailRemind(a) {
+    setBusyId(a.id);
+    try {
+      const d = await api.crewRemind(a.id, { send_email: true });
+      if (d.emailed) flash(`📧 Reminder sent to ${d.email}`);
+      else flash('⚠️ ' + (d.error || 'Email not sent — link is still available to copy'));
+    } catch (e) { flash('⚠️ ' + e.message); }
+    finally { setBusyId(null); }
+  }
+
+  function attendLabel(a) {
+    if (a.checked_out_at) return { t: 'Done', cls: 'is-done' };
+    if (a.checked_in_at) return { t: 'Checked in', cls: 'is-in' };
+    return { t: 'Awaiting', cls: 'is-wait' };
+  }
+
+  function fmtHours(h) {
+    if (h == null || Number.isNaN(Number(h))) return '—';
+    const n = Number(h);
+    return `${n % 1 === 0 ? n : n.toFixed(2)}h`;
+  }
+
+  // One section per crew member — jobs stack under them (no repeated name/role)
+  const grouped = (() => {
+    const map = new Map();
+    for (const a of rows) {
+      const key = a.member_id ?? `x-${a.id}`;
+      let g = map.get(key);
+      if (!g) {
+        g = {
+          member_id: a.member_id,
+          member_name: a.member_name || 'Crew',
+          member_role: a.member_role || '',
+          member_email: a.member_email || '',
+          member_phone: a.member_phone || '',
+          jobs: [],
+        };
+        map.set(key, g);
+      }
+      g.jobs.push(a);
+    }
+    return [...map.values()].sort((a, b) =>
+      String(a.member_name).localeCompare(String(b.member_name)));
+  })();
+
+  const periodLbl = { week: 'Weekly', biweek: 'Bi-weekly', month: 'Monthly' };
+
   return (
-    <div style={{ maxWidth: 720 }}>
-      <div className="table-wrap" style={{ padding: 18, marginBottom: 16 }}>
-        <h2 style={{ marginTop: 0 }}>➕ Add crew member {msg && <span style={{ fontSize: 13, color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</span>}</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <input style={box} placeholder="Name *" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} />
-          <input style={box} placeholder="Role (e.g. 2nd shooter)" value={f.role} onChange={e => setF({ ...f, role: e.target.value })} />
-          <input style={box} placeholder="Phone" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
-          <input style={box} placeholder="Email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} />
-        </div>
-        <button className="refresh" onClick={add} style={{ marginTop: 10, background: '#2dd4bf', color: '#06231f' }}>+ Add to roster</button>
+    <div className="cr-wrap">
+      <div className="cr-tabs">
+        <button type="button" className={`cr-tab ${tab === 'upcoming' ? 'is-on' : ''}`} onClick={() => setTab('upcoming')} title="Jobs coming up">📅 Upcoming</button>
+        <button type="button" className={`cr-tab ${tab === 'past' ? 'is-on' : ''}`} onClick={() => setTab('past')} title="Finished jobs and hours">🏁 Past</button>
+        <button type="button" className={`cr-tab ${tab === 'team' ? 'is-on' : ''}`} onClick={() => setTab('team')} title="Add and manage your team">👷 Team</button>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th><th></th></tr></thead>
-          <tbody>
-            {crew.length === 0 ? (
-              <tr><td colSpan="5" className="empty">No crew yet. Add your team above 👆 Then assign them on any booking.</td></tr>
-            ) : crew.map(c => (
-              <tr key={c.id}>
-                <td className="biz">{c.name}</td>
-                <td>{c.role || '—'}</td>
-                <td>{c.phone || '—'}</td>
-                <td>{c.email || '—'}</td>
-                <td><span style={{ cursor: 'pointer' }} onClick={() => del(c.id)}>🗑️</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {note && <div className={`cr-note ${note[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{note}</div>}
+
+      {tab !== 'team' && (
+        <div className="cr-filters">
+          <label className="cr-filter">
+            <span>Crew member</span>
+            <select value={memberId} onChange={e => setMemberId(e.target.value)} title="Filter by team member">
+              <option value="">Everyone</option>
+              {crew.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          {tab === 'past' && (
+            <div className="cr-period" title="Hours summary window">
+              {['week', 'biweek', 'month'].map(p => (
+                <button key={p} type="button" className={`cr-pill ${period === p ? 'is-on' : ''}`} onClick={() => setPeriod(p)}>
+                  {periodLbl[p]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'past' && (
+        <div className="cr-totals">
+          {totals.length === 0 ? (
+            <p className="cr-empty-inline">No logged hours in this {periodLbl[period].toLowerCase()} window{periodMeta.from ? ` (${periodMeta.from} → ${periodMeta.to})` : ''}.</p>
+          ) : totals.map(t => (
+            <div key={t.member_id} className="cr-total">
+              <div className="cr-total-name">{t.member_name}</div>
+              <div className="cr-total-hours">{fmtHours(t.hours)}</div>
+              <div className="cr-total-jobs">{t.jobs} job{t.jobs === 1 ? '' : 's'} · {periodLbl[period]}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'team' ? (
+        <>
+          {!adding ? (
+            <div className="cr-team-bar">
+              <button type="button" className="refresh cr-add-btn" onClick={() => { setAdding(true); setMsg(''); }} title="Open the form to add someone">
+                ➕ Add Team Member
+              </button>
+              {msg && <span className={`cr-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
+            </div>
+          ) : (
+            <div className="cr-card">
+              <div className="cr-card-h">➕ Add crew member {msg && <span className={`cr-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}</div>
+              <div className="cr-add-grid">
+                <input className="cr-input" placeholder="Name *" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} autoFocus />
+                <input className="cr-input" placeholder="Role (e.g. 2nd shooter)" value={f.role} onChange={e => setF({ ...f, role: e.target.value })} />
+                <input className="cr-input" placeholder="Phone" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
+                <input className="cr-input" placeholder="Email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} />
+              </div>
+              <div className="cr-add-acts">
+                <button type="button" className="refresh cr-add-btn" onClick={add} title="Save this person to your team">+ Add to team</button>
+                <button type="button" className="refresh cr-cancel-btn" onClick={cancelAdd} title="Close without saving">Cancel</button>
+              </div>
+            </div>
+          )}
+          <div className="cr-card cr-card-table">
+            <table className="cr-table">
+              <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Email</th><th></th></tr></thead>
+              <tbody>
+                {crew.length === 0 ? (
+                  <tr><td colSpan="5" className="empty">No crew yet. Add your team above, then assign them on a booking.</td></tr>
+                ) : crew.map(c => (
+                  <tr key={c.id}>
+                    <td className="biz">{c.name}</td>
+                    <td>{c.role || '—'}</td>
+                    <td>{c.phone || '—'}</td>
+                    <td>{c.email || '—'}</td>
+                    <td>
+                      <button type="button" className="cr-icon-btn" onClick={() => del(c.id)} title="Remove from your team">🗑️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : loading ? (
+        <div className="loading">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="cr-card">
+          <p className="cr-empty">
+            {tab === 'upcoming'
+              ? 'No upcoming crew jobs. Assign someone on a booking under Team on the day.'
+              : 'No past crew jobs yet.'}
+          </p>
+        </div>
+      ) : (
+        <div className="cr-list">
+          {grouped.map(g => (
+            <section key={g.member_id ?? g.member_name} className="cr-person">
+              <header className="cr-person-h">
+                <div>
+                  <div className="cr-person-name">{g.member_name}</div>
+                  <div className="cr-person-sub">
+                    {[g.member_role, g.member_phone, g.member_email].filter(Boolean).join(' · ') || `${g.jobs.length} job${g.jobs.length === 1 ? '' : 's'}`}
+                  </div>
+                </div>
+                <span className="cr-person-count">{g.jobs.length} job{g.jobs.length === 1 ? '' : 's'}</span>
+              </header>
+              <div className="cr-person-jobs">
+                {g.jobs.map(a => {
+                  const att = attendLabel(a);
+                  const date = a.event_date ? String(a.event_date).slice(0, 10) : 'Date TBC';
+                  const slot = [a.arrive_time, a.leave_time].filter(Boolean).join(' – ')
+                    || [a.timing_from, a.timing_to].filter(Boolean).join(' – ')
+                    || 'Time TBC';
+                  return (
+                    <div key={a.id} className="cr-job">
+                      <div className="cr-job-top">
+                        <div>
+                          <div className="cr-job-client">
+                            {a.client_name || '—'}{a.event_type ? ` · ${a.event_type}` : ''}
+                            {a.duty ? <span className="cr-job-duty"> · {a.duty}</span> : null}
+                          </div>
+                        </div>
+                        <span className={`cr-badge ${att.cls}`}>{att.t}</span>
+                      </div>
+                      <div className="cr-job-meta">
+                        <span title="Event date">📅 {date}</span>
+                        <span title="On-site hours">⏰ {slot}</span>
+                        <span title="Location">📍 {a.location || '—'}</span>
+                        {tab === 'past' && <span title="Hours for this job">⏱️ {fmtHours(a.hours)}</span>}
+                      </div>
+                      {tab === 'upcoming' && (
+                        <div className="cr-job-acts">
+                          <button
+                            type="button"
+                            className="refresh cr-act"
+                            disabled={busyId === a.id}
+                            onClick={() => emailRemind(a)}
+                            title={g.member_email ? `Email check-in link to ${g.member_email}` : 'Add an email on the Team tab first'}
+                          >📧 Email reminder</button>
+                          <button
+                            type="button"
+                            className="refresh cr-act"
+                            disabled={busyId === a.id}
+                            onClick={() => copyLink(a)}
+                            title="Copy the attendance check-in URL"
+                          >🔗 Copy reminder URL</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2373,10 +2687,9 @@ function LeadDetail({ lead, onBack }) {
   return (
     <div className="ld-view">
       <div className="ld-topbar">
-        <button className="refresh" onClick={onBack}>← Back to leads</button>
-        <button className="refresh ld-edit-btn" onClick={() => setEdit(true)}>✏️ Edit Details</button>
+        <button className="refresh" onClick={onBack} title="Return to your leads list">← Back to leads</button>
+        <button className="refresh ld-edit-btn" onClick={() => setEdit(true)} title="Edit contact details, event answers, and notes">✏️ Edit Details</button>
       </div>
-      <h2 className="ld-h2">{lead.name} · {lead.event_type}</h2>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
 
       <div className="lead-grid">
@@ -2385,6 +2698,7 @@ function LeadDetail({ lead, onBack }) {
       {/* 👤 Contact Details */}
       <div className="ld-card">
         <div className="ld-card-h">👤 Contact Details</div>
+        <div className="ld-client-name"><span className="ld-client-lbl">Name:</span> {lead.name || '—'}</div>
         {row('🙋 Role', lead.role)}
         {row('📧 Email', lead.email)}
         {row('📞 Phone', lead.phone)}
@@ -2495,23 +2809,14 @@ function LeadDetail({ lead, onBack }) {
           <p className="ld-pkg-empty">That folder has no packages yet.</p>
         )}
         <div className="ld-btn-row">
-          <button className="refresh bx-primary ld-btn-sm" onClick={openSendPackages} disabled={pkgBusy}>📤 Send Packages</button>
-          <button className={`refresh ld-gate ld-btn-sm ${gateway ? 'is-on' : ''}`} onClick={toggleGateway}>🔒 Secure Login {gateway ? 'ON' : 'OFF'}</button>
-          <div className={`ld-timer-btn ${timer.enabled ? 'is-on' : ''}`}>
-            <button className="ld-timer-toggle" onClick={() => saveTimer({ enabled: !timer.enabled })}>⏳ Timer {timer.enabled ? 'ON' : 'OFF'}</button>
-            <input className="ld-timer-hrs" type="number" min="1" max="720" value={timer.hours}
-              onChange={e => setTimer(t => ({ ...t, hours: e.target.value }))}
-              onBlur={() => timer.enabled && saveTimer()} title="Offer valid (hours)" />
-            <span className="ld-timer-unit">h</span>
-          </div>
+          <button
+            className="refresh ld-btn-sm"
+            type="button"
+            title="Preview the contract before you send packages"
+            onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}
+          >👁️ Preview Contract</button>
+          <button className="refresh bx-primary ld-btn-sm" onClick={openSendPackages} disabled={pkgBusy} title="Email these packages to the client">📤 Send Packages</button>
         </div>
-        {timer.enabled && (
-          <div className="ld-timer-status">
-            {timer.started_at
-              ? <>▶ Expires in <b>{expiryText(timer.started_at, timer.hours)}</b></>
-              : <>⚡ Starts when you send packages · <b>{timer.hours}h</b> window</>}
-          </div>
-        )}
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
       </div>
 
@@ -2531,8 +2836,42 @@ function LeadDetail({ lead, onBack }) {
       {/* 💰 Payment */}
       <MoneySection lead={lead} />
 
-      {/* 📄 Contract (view only) */}
-      <ContractsBox lead={lead} />
+      {/* 📄 Contract + portal/timer controls — kept together on the action side */}
+      <div className="ld-side-box">
+        <ContractsBox
+          lead={lead}
+          actions={(
+            <>
+              <button
+                className={`refresh ld-gate ld-btn-sm ${gateway ? 'is-on' : ''}`}
+                onClick={toggleGateway}
+                title={gateway
+                  ? 'Secure login is ON — client must confirm their email before opening the portal'
+                  : 'Secure login is OFF — turn on to require email confirmation before the client portal opens'}
+              >🔒 Secure {gateway ? 'ON' : 'OFF'}</button>
+              <div className={`ld-timer-btn ${timer.enabled ? 'is-on' : ''}`} title="How long the package offer stays valid after you send it">
+                <button
+                  className="ld-timer-toggle"
+                  onClick={() => saveTimer({ enabled: !timer.enabled })}
+                  title={timer.enabled
+                    ? 'Offer timer is ON — click to turn off the countdown'
+                    : 'Offer timer is OFF — click to start a countdown when packages are sent'}
+                >⏳ Timer {timer.enabled ? 'ON' : 'OFF'}</button>
+                <input className="ld-timer-hrs" type="number" min="1" max="720" value={timer.hours}
+                  onChange={e => setTimer(t => ({ ...t, hours: e.target.value }))}
+                  onBlur={() => timer.enabled && saveTimer()}
+                  title="Hours the offer stays valid after packages are sent" />
+                <span className="ld-timer-unit">h</span>
+              </div>
+            </>
+          )}
+        />
+        {timer.enabled && timer.started_at && (
+          <div className="ld-timer-status">
+            ▶ Expires in <b>{expiryText(timer.started_at, timer.hours)}</b>
+          </div>
+        )}
+      </div>
 
       </div>
       </div>
@@ -2548,15 +2887,20 @@ function LeadDetail({ lead, onBack }) {
  * was never linked from here at all. This opens THAT page, in a new tab so
  * the vendor doesn't lose their place on the lead.
  */
-function ContractsBox({ lead }) {
+function ContractsBox({ lead, actions = null }) {
   return (
     <div className="ctb-wrap">
       <div className="ctb-head">
-        <h3 className="ctb-h3">📄 Contract</h3>
-        <button className="refresh ctb-preview"
-          onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}>
-          👁️ Preview Contract
-        </button>
+        <div className="ctb-title-row">
+          <h3 className="ctb-h3">📄 Contract</h3>
+          <button
+            className="refresh ctb-preview"
+            title="Open the contract the client will see, in a new tab"
+            onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}>
+            👁️ Preview
+          </button>
+        </div>
+        {actions && <div className="ctb-actions">{actions}</div>}
       </div>
     </div>
   );
@@ -2693,6 +3037,7 @@ function MoneySection({ lead }) {
   const pending = sum ? sum.balance : null;
   return (
     <div className="ms-wrap">
+      <div className="ld-card-h">💰 Payments</div>
       {/* 💰 the client says they've paid — confirm it once the money is in.
           Sits at the top because it's the one thing here that needs an action. */}
       {claimed && (
@@ -2761,7 +3106,7 @@ function MoneySection({ lead }) {
       <div className="ms-top-row">
         <div className="ms-status-row">
           <label className="ms-status-lbl">Status</label>
-          <select className="ms-status-sel" value={status} onChange={e => changeStatus(e.target.value)}>
+          <select className="ms-status-sel" value={status} onChange={e => changeStatus(e.target.value)} title="Lead status: New, Package Sent, or Booking Confirmed">
             {STATUSES.map(s => <option key={s} value={s}>{S_ICON[s]} {S_LABEL[s]}</option>)}
           </select>
         </div>
@@ -2777,27 +3122,22 @@ function MoneySection({ lead }) {
       {/* deposit % + discount % + custom billed */}
       <div className="ms-fields">
         <div className="ms-field ms-field-deposit">
-          <div className="ms-deposit-head">
-            <label className="ms-label">Deposit</label>
-            <div className="ms-deposit-toggle">
+          <label className="ms-label">Deposit</label>
+          <div className="ms-deposit-row">
+            <div className="ms-deposit-toggle" title="Deposit as percentage or fixed amount">
               <button type="button" className={depositMode === 'percent' ? 'is-on' : ''}
-                onClick={() => switchDepositMode('percent')}>Percentage</button>
+                onClick={() => switchDepositMode('percent')} title="Deposit as a percentage of the total">%</button>
               <button type="button" className={depositMode === 'amount' ? 'is-on' : ''}
-                onClick={() => switchDepositMode('amount')}>Amount</button>
+                onClick={() => switchDepositMode('amount')} title="Deposit as a fixed dollar amount">$</button>
             </div>
+            {depositMode === 'percent' ? (
+              <input className="ms-input" type="number" placeholder="30"
+                value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
+            ) : (
+              <input className="ms-input" type="number" placeholder="e.g. 500"
+                value={money.deposit_amount} onChange={e => setMoney({ ...money, deposit_amount: e.target.value })} onBlur={saveMoney} />
+            )}
           </div>
-          {depositMode === 'percent' ? (
-            <input className="ms-input" type="number" placeholder="30"
-              value={money.deposit_percent} onChange={e => setMoney({ ...money, deposit_percent: e.target.value })} onBlur={saveMoney} />
-          ) : (
-            <input className="ms-input" type="number" placeholder="e.g. 500"
-              value={money.deposit_amount} onChange={e => setMoney({ ...money, deposit_amount: e.target.value })} onBlur={saveMoney} />
-          )}
-          <p className="ms-deposit-note">
-            {depositMode === 'percent'
-              ? 'Also becomes your default for new leads.'
-              : 'This booking only — the percentage above is unaffected.'}
-          </p>
         </div>
         <div className="ms-field">
           <label className="ms-label">Discount %</label>
@@ -2809,6 +3149,11 @@ function MoneySection({ lead }) {
           <input className="ms-input" type="number" placeholder="auto"
             value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
         </div>
+        <p className="ms-deposit-note ms-deposit-note-full">
+          {depositMode === 'percent'
+            ? 'Deposit % also becomes your default for new leads.'
+            : 'Fixed deposit applies to this booking only — the percentage default is unaffected.'}
+        </p>
       </div>
 
       {/* 3 tiles: Total / Received / Pending */}
@@ -2839,7 +3184,7 @@ function MoneySection({ lead }) {
           <option value="manual">Manual</option><option value="etransfer">E-transfer</option>
           <option value="cash">Cash</option><option value="card">Card</option>
         </select>
-        <button className="refresh bx-primary ms-pay-btn" onClick={pay}>+ Add payment</button>
+        <button className="refresh bx-primary ms-pay-add" onClick={pay} title="Record a manual payment you already received">+ Add</button>
       </div>
 
       {data?.payments?.length > 0 ? (
@@ -2847,7 +3192,7 @@ function MoneySection({ lead }) {
           {data.payments.map(p => (
             <div key={p.id} className="ms-pay-item">
               <span>💵 <b>{fmtMoney(p.amount, { decimals: 2 })}</b> · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
-              <span className="bx-del" onClick={() => delPay(p.id)}>🗑️</span>
+              <span className="bx-del" onClick={() => delPay(p.id)} title="Remove this payment record" role="button">🗑️</span>
             </div>
           ))}
         </div>
@@ -4481,32 +4826,40 @@ function BookingDetail({ id, onBack }) {
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const [pay, setPay] = useState({ amount: '', method: 'manual', note: '' });
   const [assign, setAssign] = useState({ crew_member_id: '', duty: '', arrive_time: '', leave_time: '' });
+  const [gateway, setGateway] = useState(false);
+  const [timer, setTimer] = useState({ enabled: false, hours: 72, started_at: null });
 
   useEffect(() => { load(); }, [id]);
   async function load() {
-    try { setD(await api.booking(id)); } catch (e) { setErr(e.message); }
+    try {
+      const data = await api.booking(id);
+      setD(data);
+      const lead = data.booking || {};
+      setGateway(!!lead.gateway_enabled);
+      setTimer({
+        enabled: !!lead.timer_enabled,
+        hours: lead.timer_hours ?? 72,
+        started_at: lead.timer_started_at || null,
+      });
+    } catch (e) { setErr(e.message); }
+  }
+  async function toggleGateway() {
+    const next = !gateway;
+    setGateway(next);
+    try { await api.setGateway(id, next); flash(next ? '🔒 Secure login ON' : '🔓 Secure login OFF'); }
+    catch (e) { setGateway(!next); flash('⚠️ ' + e.message); }
+  }
+  async function saveTimer(opts = {}) {
+    const next = { enabled: timer.enabled, hours: Number(timer.hours) || 72, ...opts };
+    try {
+      const d = await api.saveTimer(id, next);
+      setTimer({ enabled: d.timer_enabled, hours: d.timer_hours, started_at: d.timer_started_at });
+      flash('✅ Timer saved');
+    } catch (e) { flash('⚠️ ' + e.message); }
   }
   function flash(m) { setMsg(m); setTimeout(() => setMsg(''), 2000); }
 
-  async function addPayment() {
-    const amt = Number(pay.amount);
-    if (!amt || amt <= 0) return flash('⚠️ Enter an amount');
-    setBusy(true);
-    try {
-      await api.addPayment(id, amt, pay.method, pay.note || null);
-      setPay({ amount: '', method: 'manual', note: '' });
-      await load(); flash('✅ Payment recorded');
-    } catch (e) { flash('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
-  async function removePayment(pid) {
-    setBusy(true);
-    try { await api.deletePayment(pid); await load(); flash('🗑️ Removed'); }
-    catch (e) { flash('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
   async function addCrew() {
     if (!assign.crew_member_id) return flash('⚠️ Pick a team member');
     setBusy(true);
@@ -4527,7 +4880,7 @@ function BookingDetail({ id, onBack }) {
   if (err) return (
     <div className="ld-view">
       <div className="ld-topbar">
-        <button className="refresh" onClick={onBack}>← Back to bookings</button>
+        <button className="refresh" onClick={onBack} title="Return to your bookings list">← Back to bookings</button>
       </div>
       <div className="err-banner">⚠️ {err}</div>
     </div>
@@ -4535,7 +4888,6 @@ function BookingDetail({ id, onBack }) {
   if (!d) return <div className="loading">Loading…</div>;
 
   const b = d.booking;
-  const money = d.money || {};
   const chosenId = b.package_id;
 
   return (
@@ -4544,10 +4896,9 @@ function BookingDetail({ id, onBack }) {
     // styling read as a different product bolted on beside the panel.
     <div className="ld-view">
       <div className="ld-topbar">
-        <button className="refresh" onClick={onBack}>← Back to bookings</button>
+        <button className="refresh" onClick={onBack} title="Return to your bookings list">← Back to bookings</button>
         <span className="badge active">✅ Booking Confirmed</span>
       </div>
-      <h2 className="ld-h2">{b.name} · {b.event_type}</h2>
       {msg && <div className={`ld-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
 
       <div className="lead-grid">
@@ -4555,8 +4906,8 @@ function BookingDetail({ id, onBack }) {
           {/* ── details, read-only: the deal is agreed, so nothing here is a form ── */}
           <div className="ld-card">
             <div className="ld-card-h">📋 Details</div>
+            <div className="ld-client-name"><span className="ld-client-lbl">Name:</span> {b.name || '—'}</div>
             <dl className="bd-dl">
-              <div><dt>Client</dt><dd>{b.name || '—'}</dd></div>
               <div><dt>Email</dt><dd>{b.email || '—'}</dd></div>
               <div><dt>Phone</dt><dd>{b.phone || '—'}</dd></div>
               <div><dt>Event</dt><dd>{b.event_type || '—'}</dd></div>
@@ -4597,49 +4948,54 @@ function BookingDetail({ id, onBack }) {
         </div>
 
         <div className="lead-right">
-          {/* ── money ── */}
-          <div className="ld-card">
-            <div className="ld-card-h">💰 Money</div>
-            <dl className="bd-dl bd-dl-money">
-              <div><dt>Total</dt><dd>{fmtMoney(money.final_total)}</dd></div>
-              <div><dt>Deposit</dt><dd>{fmtMoney(money.deposit_amount)}</dd></div>
-              <div className="is-paid"><dt>Paid</dt><dd>{fmtMoney(money.paid)}</dd></div>
-              <div className="is-due"><dt>Balance</dt><dd>{fmtMoney(money.balance)}</dd></div>
-            </dl>
+          {/* Same money controls as the lead page — a booking is the same record */}
+          <MoneySection lead={b} />
 
-            <h4 className="bd-h4">Record a payment</h4>
-            <div className="bd-pay-row">
-              <input className="bd-input bd-input-amt" type="number" min="0" step="0.01" placeholder="Amount"
-                value={pay.amount} onChange={e => setPay(p => ({ ...p, amount: e.target.value }))} />
-              <select className="bd-input" value={pay.method} onChange={e => setPay(p => ({ ...p, method: e.target.value }))}>
-                <option value="manual">Manual</option>
-                <option value="etransfer">E-transfer</option>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="direct">Direct</option>
-              </select>
-              <input className="bd-input" placeholder="Note (optional)"
-                value={pay.note} onChange={e => setPay(p => ({ ...p, note: e.target.value }))} />
-              <button className="refresh" onClick={addPayment} disabled={busy}>Add</button>
+          {/* ── paperwork: kept indefinitely, downloadable any time.
+              No ld-card wrapper — .lead-right already paints each child as a card. ── */}
+          <div className="bd-side">
+            <div className="ctb-head bd-contract-head">
+              <div className="ctb-title-row">
+                <h3 className="ctb-h3">📄 Contract</h3>
+                <button
+                  className="refresh ctb-preview"
+                  title="Open the contract the client will see, in a new tab"
+                  onClick={() => window.open(`/contract-preview/${b.id}`, '_blank')}>
+                  👁️ Preview
+                </button>
+              </div>
+              <div className="ctb-actions">
+                <button
+                  className={`refresh ld-gate ld-btn-sm ${gateway ? 'is-on' : ''}`}
+                  onClick={toggleGateway}
+                  title={gateway
+                    ? 'Secure login is ON — client must confirm their email before opening the portal'
+                    : 'Secure login is OFF — turn on to require email confirmation before the client portal opens'}
+                >🔒 Secure {gateway ? 'ON' : 'OFF'}</button>
+                <div className={`ld-timer-btn ${timer.enabled ? 'is-on' : ''}`} title="How long the package offer stays valid after you send it">
+                  <button
+                    className="ld-timer-toggle"
+                    onClick={() => saveTimer({ enabled: !timer.enabled })}
+                    title={timer.enabled
+                      ? 'Offer timer is ON — click to turn off the countdown'
+                      : 'Offer timer is OFF — click to start a countdown when packages are sent'}
+                  >⏳ Timer {timer.enabled ? 'ON' : 'OFF'}</button>
+                  <input className="ld-timer-hrs" type="number" min="1" max="720" value={timer.hours}
+                    onChange={e => setTimer(x => ({ ...x, hours: e.target.value }))}
+                    onBlur={() => timer.enabled && saveTimer()}
+                    title="Hours the offer stays valid after packages are sent" />
+                  <span className="ld-timer-unit">h</span>
+                </div>
+              </div>
             </div>
-
-            {d.payments.length > 0 && (
-              <ul className="bd-list">
-                {d.payments.map(p => (
-                  <li key={p.id}>
-                    <span>{fmtMoney(p.amount)} · {p.method}{p.note ? ` · ${p.note}` : ''}</span>
-                    <span className="bd-list-right">
-                      <span className="bd-when">{fmtDateTime(p.created_at, { dateOnly: true })}</span>
-                      <button className="bd-x" onClick={() => removePayment(p.id)} disabled={busy}>✕</button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            {timer.enabled && timer.started_at && (
+              <div className="ld-timer-status">
+                ▶ Expires in <b>{expiryText(timer.started_at, timer.hours)}</b>
+              </div>
             )}
           </div>
 
-          {/* ── paperwork: kept indefinitely, downloadable any time ── */}
-          <div className="ld-card">
+          <div className="bd-side">
             <div className="ld-card-h">📄 Documentation</div>
             <div className="bd-docs">
               {d.contract ? (
@@ -4663,7 +5019,7 @@ function BookingDetail({ id, onBack }) {
           </div>
 
           {/* ── crew ── */}
-          <div className="ld-card">
+          <div className="bd-side">
             <div className="ld-card-h">👥 Team on the day</div>
             {d.crew.length > 0 && (
               <ul className="bd-list">
@@ -4675,7 +5031,7 @@ function BookingDetail({ id, onBack }) {
                     </span>
                     <span className="bd-list-right">
                       {c.checked_in_at && <span className="bd-when">checked in</span>}
-                      <button className="bd-x" onClick={() => removeCrew(c.id)} disabled={busy}>✕</button>
+                      <button className="bd-x" onClick={() => removeCrew(c.id)} disabled={busy} title="Unassign this team member from the day">✕</button>
                     </span>
                   </li>
                 ))}
@@ -4694,7 +5050,7 @@ function BookingDetail({ id, onBack }) {
                 onChange={e => setAssign(a => ({ ...a, arrive_time: e.target.value }))} />
               <input className="bd-input bd-input-time" type="time" value={assign.leave_time}
                 onChange={e => setAssign(a => ({ ...a, leave_time: e.target.value }))} />
-              <button className="refresh" onClick={addCrew} disabled={busy}>Assign</button>
+              <button className="refresh" onClick={addCrew} disabled={busy} title="Assign this team member to the booking">Assign</button>
             </div>
             {d.roster.length === 0 && <p className="bd-fine">No team members yet — add them under Crew.</p>}
           </div>

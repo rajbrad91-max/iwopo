@@ -258,9 +258,15 @@ async function request(path, options = {}) {
   // multipart/form-data itself, boundary and all. Without this every upload had
   // to bypass this function and re-implement auth and error handling by hand.
   const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
-  const headers = { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...options.headers };
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const { public: isPublic, ...fetchOpts } = options;
+  const headers = { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...fetchOpts.headers };
+  // Public URL-token routes (crew check-in, etc.) must not send a panel JWT —
+  // a logged-in vendor without the crew entitlement would get 402 on the link.
+  if (!isPublic) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  options = fetchOpts;
 
   const res = await fetch(BASE + path, { ...options, headers });
   const data = await res.json().catch(() => ({}));
@@ -379,6 +385,17 @@ export const api = {
   addPortfolioPhoto: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/portfolio', { method: 'POST', body: fd }); },
   removePortfolioPhoto: (id) => request(`/sites/my/portfolio/${id}`, { method: 'DELETE' }),
   replacePortfolioPhoto: (id, file) => { const fd = new FormData(); fd.append('photo', file); return request(`/sites/my/portfolio/${id}/replace`, { method: 'POST', body: fd }); },
+  /* One film per request. They are gigabytes, and batching them means one
+     dropped connection loses every one. The poster and duration are worked out
+     in the browser before this is called — no ffmpeg anywhere. */
+  uploadAlbumVideo: (albumId, file, poster, durationS, eventId) => {
+    const fd = new FormData();
+    fd.append('video', file);
+    if (poster) fd.append('poster', poster, 'poster.jpg');
+    if (durationS) fd.append('duration_s', String(Math.round(durationS)));
+    if (eventId) fd.append('event_id', String(eventId));
+    return request(`/albums/${albumId}/videos`, { method: 'POST', body: fd });
+  },
   savePortfolio: (portfolio) => request('/sites/my/portfolio', { method: 'PUT', body: JSON.stringify({ portfolio }) }),
   myChatbotHistory: () => request('/chatbot/my/history'),
   myChatbotKnowledge: () => request('/chatbot/my/knowledge'),
@@ -557,8 +574,15 @@ export const api = {
   leadCrew: (leadId) => request(`/crew/lead/${leadId}`),
   assignCrew: (leadId, data) => request(`/crew/lead/${leadId}`, { method: 'POST', body: JSON.stringify(data) }),
   unassignCrew: (id) => request(`/crew/assignment/${id}`, { method: 'DELETE' }),
-  checkinInfo: (token) => request(`/crew/checkin/${token}`),
-  checkinAction: (token, action) => request(`/crew/checkin/${token}`, { method: 'POST', body: JSON.stringify({ action }) }),
+  checkinInfo: (token) => request(`/crew/checkin/${token}`, { public: true }),
+  checkinAction: (token, data) => request(`/crew/checkin/${token}`, { method: 'POST', public: true, body: JSON.stringify(typeof data === 'string' ? { action: data } : data) }),
+  crewSchedule: (params = {}) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => { if (v != null && v !== '') q.set(k, v); });
+    const s = q.toString();
+    return request('/crew/schedule' + (s ? `?${s}` : ''));
+  },
+  crewRemind: (id, data = {}) => request(`/crew/assignment/${id}/remind`, { method: 'POST', body: JSON.stringify(data) }),
   notifications: () => request('/notifications'),
   notificationsSeen: () => request('/notifications/seen', { method: 'POST' }),
   emailTemplates: () => request('/email/templates'),
