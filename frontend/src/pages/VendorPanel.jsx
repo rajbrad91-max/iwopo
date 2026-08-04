@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
+import PublicSite from './PublicSite';
 import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { COUNTRIES } from '../lib/countries';
@@ -3010,11 +3011,11 @@ function esc(x) {
   return String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function templateAssembled(t) {
-  const secs = Array.isArray(t.sections) ? t.sections : [];
   const head = (t.header || '').trim();
   const headHtml = head
     ? `<table class="ct-headband"><tbody><tr><td class="ct-hb-info"><p>${esc(head).split('\n').join('<br>')}</p></td></tr></tbody></table>`
     : '';
+  const secs = Array.isArray(t.sections) ? t.sections : [];
   const title = `<h1 class="ct-doc-title">${esc(t.name || 'Service Agreement')}</h1>`;
 
   const middle = secs
@@ -4841,18 +4842,21 @@ function DomainBlock() {
 }
 
 function WebsiteView() {
-  const dialog = useDialog();
   const [site, setSite] = useState(null);
   const [themes, setThemes] = useState([]);
   const [fonts, setFonts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const [slugDraft, setSlugDraft] = useState('');
+  const [vmeta, setVmeta] = useState(null);          // name, logo, handle — for the preview
+  const [prevPage, setPrevPage] = useState('home');
+  const [prevWide, setPrevWide] = useState(true);    // desktop or phone
 
   useEffect(() => {
     api.mySite()
       .then(d => {
         setSite(d.site);
+        setVmeta(d.vendor || null);
         setThemes(d.themes || []);
         setFonts(d.fonts || []);
         setSlugDraft(d.site?.slug || '');
@@ -4860,6 +4864,15 @@ function WebsiteView() {
       .catch(e => setMsg('⚠️ ' + e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  /* Gallery exists only on the photographer styles and Clients only on the
+     rest, so switching style can leave you looking at a page the site no longer
+     has — a blank stage that reads as "the preview broke". Fall back to Home. */
+  useEffect(() => {
+    if (!site) return;
+    const photo = ['aperture', 'atelier'].includes(site.theme);
+    if ((prevPage === 'gallery' && !photo) || (prevPage === 'clients' && photo)) setPrevPage('home');
+  }, [site, prevPage]);
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 1800); };
 
@@ -4869,6 +4882,137 @@ function WebsiteView() {
     setSite(s => ({ ...s, ...patch }));
     try { const d = await api.saveMySite(patch); setSite(d.site); flash('✅ Saved'); }
     catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+
+  /**
+   * ✏️ An edit made in the preview.
+   *
+   * A section's text lives inside a JSON array rather than its own column, so
+   * the path carries the section's id and the whole array is written back with
+   * that one field changed. Everything else is a plain column.
+   */
+  function commitEdit(path, value) {
+    if (path.startsWith('portfolio.')) {
+      /* Portfolio has its own endpoint. PUT /sites/my cleans its body against a
+         list that does not include portfolio, so a caption sent that way was
+         accepted, dropped, and reported as saved — the change survived on
+         screen until the next load and then vanished. */
+      const [, id, field] = path.split('.');
+      const next = (site.portfolio || []).map(ph =>
+        String(ph.id) === String(id) ? { ...ph, [field]: value } : ph);
+      setSite(x => ({ ...x, portfolio: next }));
+      api.savePortfolio(next)
+        .then(d => { setSite(d.site); flash('✅ Saved'); })
+        .catch(e => setMsg('⚠️ ' + e.message));
+      return;
+    }
+    /* clients, testimonials and blocks are all jsonb arrays on the site row,
+       so one branch handles the three of them: find the entry by id, change the
+       one field, write the whole array back. */
+    for (const list of ['clients', 'testimonials']) {
+      if (path.startsWith(list + '.')) {
+        const [, id, field] = path.split('.');
+        const next = (site[list] || []).map(x =>
+          String(x.id) === String(id) ? { ...x, [field]: value } : x);
+        save({ [list]: next });
+        return;
+      }
+    }
+    if (path.startsWith('sections.')) {
+      const [, id, field] = path.split('.');
+      const next = (site.sections || []).map(sec =>
+        String(sec.id) === String(id) ? { ...sec, [field]: value } : sec);
+      save({ sections: next });
+      return;
+    }
+    if ((site[path] || '') === value) return;    // nothing changed, don't write
+    save({ [path]: value });
+  }
+
+  /**
+   * 🌍 Publish.
+   *
+   * Anything half-typed is committed first: clicking the button blurs the text
+   * you were in, which fires its save, and that save has to land before the
+   * publish or the version that goes live is the one from before your last
+   * sentence. A short wait is enough — the writes are one round trip each.
+   */
+  /**
+   * 📸 Photographs are managed on the photographs.
+   *
+   * They used to be two long lists in the sidebar — thumbnails with arrows and
+   * bins, next to a preview showing the same pictures. You changed one and
+   * looked at the other. Now the controls sit on the frame itself, so the thing
+   * you click is the thing that changes.
+   */
+  const photoTools = {
+    onCover: async (file) => {
+      try { const d = await api.uploadSiteCover(file); setSite(d.site); flash('✅ Cover updated'); }
+      catch (e) { setMsg('⚠️ ' + e.message); }
+    },
+    onAdd: async (files) => {
+      try {
+        let last;
+        for (const f of files) last = await api.addPortfolioPhoto(f);
+        if (last) setSite(last.site);
+        flash('✅ Added');
+      } catch (e) { setMsg('⚠️ ' + e.message); }
+    },
+    onFocus: async (focus) => {
+      try { const d = await api.setSiteCoverFocus(focus); setSite(d.site); flash('✅ Focus set'); }
+      catch (e) { setMsg('⚠️ ' + e.message); }
+    },
+    onReplace: async (id, file) => {
+      try { const d = await api.replacePortfolioPhoto(id, file); setSite(d.site); flash('✅ Replaced'); }
+      catch (e) { setMsg('⚠️ ' + e.message); }
+    },
+    onRemove: async (id) => {
+      try { const d = await api.removePortfolioPhoto(id); setSite(d.site); flash('✅ Removed'); }
+      catch (e) { setMsg('⚠️ ' + e.message); }
+    },
+  };
+
+  /**
+   * 🧱 Adding and removing the things a page is made of, from the page itself.
+   *
+   * These used to be three lists in the sidebar. A vendor added a testimonial
+   * in one place and read it in another, which is how you end up with a quote
+   * that reads oddly in the layout it actually lands in.
+   */
+  const pageTools = {
+    onAdd: (list, kind) => {
+      const id = list.slice(0, 1) + Date.now();
+      const blank = {
+        clients: { id, name: '', logo: null },
+        testimonials: { id, quote: '', author: '', role: '' },
+        sections: { id, type: kind || 'text', heading: '', body: '', image: null },
+      }[list];
+      save({ [list]: [...(site[list] || []), blank] });
+    },
+    onRemove: (list, id) => {
+      save({ [list]: (site[list] || []).filter(x => String(x.id) !== String(id)) });
+    },
+    onSectionImage: async (id, file) => {
+      try {
+        const { image } = await api.uploadSitePhoto(file);
+        save({ sections: (site.sections || []).map(x => (String(x.id) === String(id) ? { ...x, image } : x)) });
+      } catch (e) { setMsg('⚠️ ' + e.message); }
+    },
+    onClientLogo: async (id, file) => {
+      try {
+        const { image } = await api.uploadSitePhoto(file);
+        save({ clients: (site.clients || []).map(c => (String(c.id) === String(id) ? { ...c, logo: image } : c)) });
+      } catch (e) { setMsg('⚠️ ' + e.message); }
+    },
+  };
+
+  async function publishNow() {
+    try {
+      await new Promise(r => setTimeout(r, 180));
+      const d = await api.publishMySite(true);
+      setSite(d.site);
+      flash('🌍 Saved and live');
+    } catch (e) { setMsg('⚠️ ' + e.message); }
   }
 
   async function saveSlug() {
@@ -4885,224 +5029,103 @@ function WebsiteView() {
 
   // 🖼️ Cover photo. Uploading replaces whatever was there — the server deletes
   // the old file, so trying five covers doesn't leave four behind on disk.
-  const [busyPhoto, setBusyPhoto] = useState(false);
-
-  async function onCoverPick(e) {
-    const f = e.target.files?.[0];
-    e.target.value = '';                     // so picking the same file twice still fires
-    if (!f) return;
-    setBusyPhoto(true); setMsg('');
-    try { const d = await api.uploadSiteCover(f); setSite(d.site); flash('✅ Cover updated'); }
-    catch (err) { setMsg('⚠️ ' + err.message); }
-    finally { setBusyPhoto(false); }
-  }
-
-  async function removeCover() {
-    setBusyPhoto(true);
-    try { const d = await api.removeSiteCover(); setSite(d.site); flash('🗑️ Cover removed'); }
-    catch (err) { setMsg('⚠️ ' + err.message); }
-    finally { setBusyPhoto(false); }
-  }
 
   // Click the preview to say which part of the photo must stay visible. The hero
   // is cropped differently on every screen, so without this the subject's head is
   // the first thing to go on a phone.
-  async function pickFocus(e) {
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = Math.round(((e.clientX - r.left) / r.width) * 100);
-    const y = Math.round(((e.clientY - r.top) / r.height) * 100);
-    const focus = `${Math.min(100, Math.max(0, x))}% ${Math.min(100, Math.max(0, y))}%`;
-    setSite(s => ({ ...s, cover_focus: focus }));
-    try { await api.setSiteCoverFocus(focus); flash('🎯 Focus set'); }
-    catch (err) { setMsg('⚠️ ' + err.message); }
-  }
-
   // 🖼️ Portfolio. Added one file at a time so a slow upload can't leave the list
   // half-written; removing takes the file with it, permanently.
-  async function onPortfolioPick(e) {
-    const files = [...(e.target.files || [])];
-    e.target.value = '';
-    if (!files.length) return;
-    setBusyPhoto(true); setMsg('');
-    try {
-      for (const f of files) { const d = await api.addPortfolioPhoto(f); setSite(d.site); }
-      flash(`✅ Added ${files.length} photo${files.length === 1 ? '' : 's'}`);
-    } catch (err) { setMsg('⚠️ ' + err.message); }
-    finally { setBusyPhoto(false); }
-  }
-
-  async function removePortfolio(id) {
-    if (!await dialog.confirm('The file is deleted permanently.', { title: 'Remove from portfolio?', okLabel: 'Remove' })) return;
-    try { const d = await api.removePortfolioPhoto(id); setSite(d.site); flash('🗑️ Photo removed'); }
-    catch (err) { setMsg('⚠️ ' + err.message); }
-  }
-
-  async function movePortfolio(i, dir) {
-    const list = [...(site.portfolio || [])];
-    const j = i + dir;
-    if (j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]];
-    setSite(s => ({ ...s, portfolio: list }));
-    try { const d = await api.savePortfolio(list); setSite(d.site); }
-    catch (err) { setMsg('⚠️ ' + err.message); }
-  }
-
   // typing is local; the write happens when the field is left, so every
   // keystroke isn't a request
-  function setPortfolioField(i, key, value) {
-    setSite(s => {
-      const list = [...(s.portfolio || [])];
-      list[i] = { ...list[i], [key]: value };
-      return { ...s, portfolio: list };
-    });
-  }
-
   /* ── 🧱 The vendor's own page blocks ────────────────────────────────────
      Text edits save on blur like every other field here; anything structural —
      adding, removing, reordering, switching type, attaching a picture — saves
      at once, because a vendor who reorders and then closes the tab should not
-     lose it. */
-  const [busySec, setBusySec] = useState(-1);       // which section is uploading
+     lose it. */       // which section is uploading
 
-  const secs = () => Array.isArray(site?.sections) ? site.sections : [];
-
-  async function saveSections(list) {
-    setSite(s => ({ ...s, sections: list }));       // optimistic: it responds now
-    try { const d = await api.saveMySite({ sections: list }); setSite(d.site); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-  }
-
-  function addSection(type) {
-    saveSections([...secs(), { id: 's' + Date.now(), type, heading: '', body: '', image: null }]);
-  }
-
-  async function removeSection(i) {
-    const sec = secs()[i];
-    if (!await dialog.confirm(
-      sec?.heading ? `"${sec.heading}" will be removed from your page.` : 'This block will be removed from your page.',
-      { title: 'Remove this block?', okLabel: 'Remove' })) return;
-    saveSections(secs().filter((_, x) => x !== i));
-  }
-
-  function moveSection(i, dir) {
-    const list = [...secs()];
-    const j = i + dir;
-    if (j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]];
-    saveSections(list);
-  }
 
   // switching to text deliberately drops the picture: the server does the same,
   // so keeping it here would only disagree with what actually got stored
-  function setSectionType(i, type) {
-    const list = secs().map((x, k) => k === i
-      ? { ...x, type, image: type === 'image' ? x.image : null }
-      : x);
-    saveSections(list);
-  }
-
-  function setSectionField(i, key, value) {
-    setSite(s => {
-      const next = (s.sections || []).map((x, k) => k === i ? { ...x, [key]: value } : x);
-      return { ...s, sections: next };
-    });
-  }
-
-  async function saveSectionText() {
-    try { const d = await api.saveMySite({ sections: secs() }); setSite(d.site); flash('✅ Saved'); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-  }
-
-  async function onSectionImage(i, e) {
-    const f = e.target.files?.[0];
-    e.target.value = '';                             // so the same file can be picked twice
-    if (!f) return;
-    setBusySec(i);
-    try {
-      const { image } = await api.uploadSitePhoto(f);
-      const list = secs().map((x, k) => k === i ? { ...x, image } : x);
-      await saveSections(list);
-      flash('✅ Picture added');
-    } catch (err) { setMsg('⚠️ ' + err.message); }
-    finally { setBusySec(-1); }
-  }
-
-  function setClientField(i, key, value) {
-    setSite(s => ({
-      ...s,
-      clients: (s.clients || []).map((c, k) => k === i ? { ...c, [key]: value } : c),
-    }));
-  }
-
-  function setQuoteField(i, key, value) {
-    setSite(s => ({
-      ...s,
-      testimonials: (s.testimonials || []).map((t, k) => k === i ? { ...t, [key]: value } : t),
-    }));
-  }
-
   /** Persist both lists and the heading together — they are one card. */
-  async function saveClients(next) {
-    const body = next || {
-      clients: site.clients || [],
-      testimonials: site.testimonials || [],
-      clients_heading: site.clients_heading || '',
-    };
-    try { const d = await api.saveMySite(body); setSite(d.site); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-  }
-
-  function addClient() {
-    const list = [...(site.clients || []), { id: 'c' + Date.now(), name: '', logo: null }];
-    setSite(s => ({ ...s, clients: list }));
-    saveClients({ clients: list });
-  }
-
-  function removeClient(i) {
-    const list = (site.clients || []).filter((_, k) => k !== i);
-    setSite(s => ({ ...s, clients: list }));
-    saveClients({ clients: list });
-  }
-
-  function addQuote() {
-    const list = [...(site.testimonials || []), { id: 't' + Date.now(), quote: '', author: '', role: '' }];
-    setSite(s => ({ ...s, testimonials: list }));
-    saveClients({ testimonials: list });
-  }
-
-  function removeQuote(i) {
-    const list = (site.testimonials || []).filter((_, k) => k !== i);
-    setSite(s => ({ ...s, testimonials: list }));
-    saveClients({ testimonials: list });
-  }
-
-  async function onClientLogo(i, e) {
-    const f = e.target.files?.[0];
-    e.target.value = '';                       // so the same file can be picked twice
-    if (!f) return;
-    try {
-      const { image } = await api.uploadSitePhoto(f);
-      const list = (site.clients || []).map((c, k) => k === i ? { ...c, logo: image } : c);
-      setSite(s => ({ ...s, clients: list }));
-      saveClients({ clients: list });
-    } catch (err) { setMsg('⚠️ ' + err.message); }
-  }
-
-  async function savePortfolioText() {
-    try { const d = await api.savePortfolio(site.portfolio || []); setSite(d.site); flash('✅ Saved'); }
-    catch (err) { setMsg('⚠️ ' + err.message); }
-  }
-
   if (loading) return <div className="loading">Loading…</div>;
   if (!site) return <div className="table-wrap ac-empty">Couldn&apos;t load your site. {msg}</div>;
 
   const liveUrl = site.slug ? `${window.location.origin}/site/${site.slug}` : null;
-  const coverUrl = site.cover_photo ? `/api/sites/photo/${site.vendor_id}/${site.cover_photo}` : null;
-  const [fx, fy] = (site.cover_focus || '50% 50%').split(' ');
-  const focusX = fx; const focusY = fy;
 
   return (
-    <>
+    <div className="wb">
+
+      {/* ── the bar: which style, which page, how wide, and a way out ── */}
+      <div className="wb-bar">
+        <div className="wb-styles">
+          {themes.map((t, i) => (
+            <button key={t.id} type="button" title={`${t.name} — ${t.blurb}`}
+              className={`wb-style ${site.theme === t.id ? 'is-on' : ''}`}
+              onClick={() => save({ theme: t.id, accent: t.accent })}>
+              <span className="wb-style-n">Style {i + 1}</span>
+              <span className="wb-style-name">{t.name}</span>
+            </button>
+          ))}
+        </div>
+        <div className="wb-bar-right">
+          {/* the third tab is Gallery on the two photographer styles and
+              Clients on the rest — the same rule the public nav uses, so the
+              builder never offers a page the site would not have */}
+          {[['home', 'Home'], ['portfolio', 'Portfolio'],
+            (['aperture', 'atelier'].includes(site.theme) ? ['gallery', 'Gallery'] : ['clients', 'Clients']),
+            ['book', 'Book Us']].map(([id, label]) => (
+            <button key={id} type="button"
+              className={`wb-page ${prevPage === id ? 'is-on' : ''}`}
+              onClick={() => setPrevPage(id)}>{label}</button>
+          ))}
+          <button type="button" className="wb-icon" onClick={() => setPrevWide(w => !w)}
+            title={prevWide ? 'See it as a phone' : 'See it as a desktop'}>{prevWide ? '🖥️' : '📱'}</button>
+          {/* One button, one meaning. It used to swap to "Live" once published,
+              which made it read as a status light — so pressing it a second time
+              quietly took the site DOWN. Publish always publishes. Taking a site
+              off is a deliberate act and lives in Settings. */}
+          <button type="button" className={`wb-publish ${site.published ? 'is-live' : ''}`}
+            onMouseDown={() => { if (document.activeElement?.isContentEditable) document.activeElement.blur(); }}
+            onClick={publishNow}>🌍 Publish</button>
+        </div>
+      </div>
+
+      <div className="wb-work">
+      <div className="wb-main">
+      {/* ── the site itself, scaled down to fit, and editable in place ── */}
+      <div className={`wb-stage ${prevWide ? '' : 'is-phone'}`}>
+        <div className="wb-frame">
+          <PublicSite
+            page={prevPage}
+            slug={site.slug || 'preview'}
+            editable
+            onEditText={commitEdit}
+            photoTools={photoTools}
+            pageTools={pageTools}
+            inPanel
+            previewSite={{
+              ...site,
+              business_name: vmeta?.business_name ?? null,
+              logo_path: vmeta?.logo_path ?? null,
+              vendor_slug: vmeta?.slug ?? null,
+            }} />
+        </div>
+      </div>
+
+      <p className="wb-hint">
+        {site.published
+          ? <>Live at <b>{window.location.origin}/site/{site.slug}</b> — click any text above to change it ✏️</>
+          : <>Draft — nobody can see this yet. Click any text above to change it ✏️</>}
+      </p>
+
+      </div>
+
+      {/* ── everything that isn't words: photos, colour, type, address, domain.
+          Always there, never in the way — a drawer meant every colour change
+          cost two clicks and hid the very thing you were changing. ── */}
+      <aside className="wb-side">
+        <div className="wb-side-head"><h3 className="ws-h3">⚙️ Settings</h3></div>
+        <div className="wb-side-body">
       <div className="ac-head">
         <div>
           <div className="ac-title">🌐 My Website</div>
@@ -5114,26 +5137,12 @@ function WebsiteView() {
         </div>
         <div className="ac-tabs">
           {msg && <span className="ws-msg">{msg}</span>}
-          <button type="button" className={`refresh ${site.published ? 'is-on' : ''}`} onClick={togglePublish}>
-            {site.published ? '🙈 Unpublish' : '🌍 Publish'}
-          </button>
-        </div>
-      </div>
-
-      {/* ── theme ── */}
-      <div className="table-wrap ws-block">
-        <h3 className="ws-h3">🎨 Theme</h3>
-        <p className="ws-hint">Five finished looks. Pick one, then make it yours below.</p>
-        <div className="ws-themes">
-          {themes.map(t => (
-            <button type="button" key={t.id}
-              className={`ws-theme ${site.theme === t.id ? 'is-on' : ''}`}
-              onClick={() => save({ theme: t.id, accent: t.accent })}>
-              <span className="ws-theme-swatch" style={{ background: t.accent }} />
-              <span className="ws-theme-name">{t.name}</span>
-              <span className="ws-theme-blurb">{t.blurb}</span>
-            </button>
-          ))}
+          {/* Publish lives in the bar above, once. Two buttons for one act
+              means a vendor has to work out whether they differ. What is left
+              here is the opposite act, which genuinely is separate. */}
+          {site.published && (
+            <button type="button" className="refresh" onClick={togglePublish}>🙈 Unpublish</button>
+          )}
         </div>
       </div>
 
@@ -5168,235 +5177,10 @@ function WebsiteView() {
       </div>
 
       {/* ── cover photo ── */}
-      <div className="table-wrap ws-block">
-        <h3 className="ws-h3">🖼️ Cover photo</h3>
-        <p className="ws-hint">
-          The big photo behind your name. Landscape works best — it&apos;s cropped to a
-          wide band on a laptop and a tall one on a phone, so drag the marker onto
-          whatever must stay in view.
-        </p>
-
-        {site.cover_photo ? (
-          <>
-            <div className="ws-cover" onClick={pickFocus} title="Click to set what stays in view">
-              <img className="ws-cover-img" src={coverUrl} alt=""
-                style={{ objectPosition: site.cover_focus || '50% 50%' }} />
-              <span className="ws-cover-dot" style={{ left: focusX, top: focusY }} />
-            </div>
-            <div className="ws-cover-acts">
-              <label className="refresh ws-file">
-                🔄 Replace
-                <input type="file" accept="image/*" onChange={onCoverPick} hidden />
-              </label>
-              <button className="refresh btn-danger" onClick={removeCover} disabled={busyPhoto}>🗑️ Remove</button>
-              {busyPhoto && <span className="ws-msg">Uploading…</span>}
-            </div>
-          </>
-        ) : (
-          <label className={`ws-drop ${busyPhoto ? 'is-busy' : ''}`}>
-            <span className="ws-drop-icon">🖼️</span>
-            <span className="ws-drop-text">{busyPhoto ? 'Uploading…' : 'Choose a cover photo'}</span>
-            <span className="ws-drop-hint">JPG or PNG, up to 15MB — it&apos;s resized for the web automatically</span>
-            <input type="file" accept="image/*" onChange={onCoverPick} hidden />
-          </label>
-        )}
-      </div>
-
-      {/* ── social proof ── */}
-      <div className="table-wrap ws-block">
-        <h3 className="ws-h3">🤝 Clients &amp; testimonials</h3>
-        <p className="ws-hint">
-          Who you&apos;ve worked with, and what a couple of them said. This shows on your
-          home page, where someone deciding whether to book will see it.
-        </p>
-
-        <label className="lbl">Heading</label>
-        <input className="ws-input" placeholder="Trusted by wonderful people"
-          value={site.clients_heading || ''}
-          onChange={e => setSite(s => ({ ...s, clients_heading: e.target.value }))}
-          onBlur={saveClients} />
-
-        <div className="ws-sub-h">Client names or logos</div>
-        {(site.clients || []).map((c, i) => (
-          <div className="ws-cli" key={c.id || i}>
-            <input className="ws-input" placeholder="Client or brand name"
-              value={c.name || ''}
-              onChange={e => setClientField(i, 'name', e.target.value)}
-              onBlur={saveClients} />
-            <label className="refresh ws-file">
-              {c.logo ? '🔄 Logo' : '🖼️ Logo'}
-              <input type="file" accept="image/*" hidden onChange={e => onClientLogo(i, e)} />
-            </label>
-            <button type="button" className="ws-pf-btn is-del" title="Remove"
-              onClick={() => removeClient(i)}>🗑️</button>
-          </div>
-        ))}
-        <button type="button" className="refresh" onClick={addClient}>➕ Add a client</button>
-
-        <div className="ws-sub-h">Testimonials</div>
-        {(site.testimonials || []).map((t, i) => (
-          <div className="ws-quote-row" key={t.id || i}>
-            <textarea className="ws-input" rows={2}
-              placeholder="One or two sentences — short reads better than long."
-              value={t.quote || ''}
-              onChange={e => setQuoteField(i, 'quote', e.target.value)}
-              onBlur={saveClients} />
-            <div className="ws-quote-by">
-              <input className="ws-input" placeholder="Who said it"
-                value={t.author || ''}
-                onChange={e => setQuoteField(i, 'author', e.target.value)}
-                onBlur={saveClients} />
-              <input className="ws-input" placeholder="Their role, or the event"
-                value={t.role || ''}
-                onChange={e => setQuoteField(i, 'role', e.target.value)}
-                onBlur={saveClients} />
-              <button type="button" className="ws-pf-btn is-del" title="Remove"
-                onClick={() => removeQuote(i)}>🗑️</button>
-            </div>
-          </div>
-        ))}
-        <button type="button" className="refresh" onClick={addQuote}>➕ Add a testimonial</button>
-      </div>
-
-      {/* ── portfolio ── */}
-      <div className="table-wrap ws-block">
-        <h3 className="ws-h3">🧱 Your own blocks</h3>
-        <p className="ws-hint">
-          Anything the rest of the page doesn&apos;t cover — how you work, what a package
-          includes, questions you get asked. These appear after your About text and before
-          your photographs, in the order below.
-        </p>
-
-        <div className="ws-sec-add">
-          <button type="button" className="refresh" onClick={() => addSection('text')}>➕ Text block</button>
-          <button type="button" className="refresh" onClick={() => addSection('image')}>🖼️ Text &amp; picture</button>
-        </div>
-
-        {secs().length === 0 ? (
-          <p className="ws-hint ws-sec-empty">No blocks yet — your page reads fine without them.</p>
-        ) : (
-          <div className="ws-sec-list">
-            {secs().map((sec, i) => (
-              <div className="ws-sec" key={sec.id || i}>
-                <div className="ws-sec-top">
-                  <div className="ws-sec-type">
-                    <button type="button"
-                      className={`ws-sec-tab ${sec.type !== 'image' ? 'is-on' : ''}`}
-                      onClick={() => setSectionType(i, 'text')}>Text</button>
-                    <button type="button"
-                      className={`ws-sec-tab ${sec.type === 'image' ? 'is-on' : ''}`}
-                      onClick={() => setSectionType(i, 'image')}>Text &amp; picture</button>
-                  </div>
-                  <div className="ws-sec-acts">
-                    <button type="button" className="ws-pf-btn" title="Move up"
-                      onClick={() => moveSection(i, -1)} disabled={i === 0}>↑</button>
-                    <button type="button" className="ws-pf-btn" title="Move down"
-                      onClick={() => moveSection(i, 1)} disabled={i === secs().length - 1}>↓</button>
-                    <button type="button" className="ws-pf-btn is-del" title="Remove"
-                      onClick={() => removeSection(i)}>🗑️</button>
-                  </div>
-                </div>
-
-                <input className="ws-input" placeholder="Heading — e.g. How we work"
-                  value={sec.heading || ''}
-                  onChange={e => setSectionField(i, 'heading', e.target.value)}
-                  onBlur={saveSectionText} />
-
-                <textarea className="ws-input ws-sec-body" rows={4}
-                  placeholder="What you want to say here"
-                  value={sec.body || ''}
-                  onChange={e => setSectionField(i, 'body', e.target.value)}
-                  onBlur={saveSectionText} />
-
-                {sec.type === 'image' && (
-                  <div className="ws-sec-img">
-                    {sec.image
-                      ? <img src={`/api/sites/photo/${site.vendor_id}/${sec.image}`} alt="" loading="lazy" />
-                      : <span className="ws-sec-noimg">No picture yet</span>}
-                    <label className="refresh ws-file">
-                      {busySec === i ? 'Uploading…' : (sec.image ? '🔄 Replace' : '🖼️ Add a picture')}
-                      <input type="file" accept="image/*" hidden
-                        disabled={busySec === i}
-                        onChange={e => onSectionImage(i, e)} />
-                    </label>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="table-wrap ws-block">
-        <h3 className="ws-h3">📸 Portfolio</h3>
-        <p className="ws-hint">
-          The work you want strangers to see. These are separate from your client
-          galleries on purpose — show a few frames from a wedding without opening
-          the couple&apos;s album. Every photo is converted to WebP at 2000px on its
-          long edge, so a full-size file off the camera is fine to drop in.
-        </p>
-
-        <div className="ws-pf-list">
-          {(site.portfolio || []).map((p, i) => (
-            <div className="ws-pf" key={p.id}>
-              <img className="ws-pf-img" src={`/api/sites/photo/${site.vendor_id}/${p.file}`} alt="" loading="lazy" />
-              {/* The words matter as much as the picture here. A photograph
-                  speaks for itself; a makeup look or a bouquet needs a line
-                  saying what was done, which is what makes this page work for
-                  every kind of vendor rather than only photographers. */}
-              <div className="ws-pf-text">
-                <input className="ac-kb-input ws-pf-cap" maxLength={90}
-                  placeholder="Short heading — e.g. Bridal makeup, Surrey"
-                  value={p.caption || ''}
-                  onChange={e => setPortfolioField(i, 'caption', e.target.value)}
-                  onBlur={savePortfolioText} />
-                <textarea className="ac-kb-area ws-pf-note" rows={2} maxLength={320}
-                  placeholder="A sentence about this work (optional)"
-                  value={p.note || ''}
-                  onChange={e => setPortfolioField(i, 'note', e.target.value)}
-                  onBlur={savePortfolioText} />
-              </div>
-              <div className="ws-pf-acts">
-                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, -1)} disabled={i === 0} title="Move up">↑</button>
-                <button type="button" className="ws-pf-btn" onClick={() => movePortfolio(i, 1)} disabled={i === (site.portfolio.length - 1)} title="Move down">↓</button>
-                <button type="button" className="ws-pf-btn is-del" onClick={() => removePortfolio(p.id)} title="Remove permanently">🗑️</button>
-              </div>
-            </div>
-          ))}
-
-          <label className={`ws-pf-add ${busyPhoto ? 'is-busy' : ''}`}>
-            <span className="ws-drop-icon">＋</span>
-            <span className="ws-drop-text">{busyPhoto ? 'Uploading…' : 'Add photos'}</span>
-            <span className="ws-drop-hint">Pick several at once</span>
-            <input type="file" accept="image/*" multiple onChange={onPortfolioPick} hidden />
-          </label>
-        </div>
-        <p className="ws-hint ws-pf-count">
-          {(site.portfolio || []).length} of 25 · removing a photo deletes the file for good
-        </p>
-      </div>
-
-      {/* ── words ── */}
-      <div className="table-wrap ws-block">
-        <h3 className="ws-h3">✏️ Your words</h3>
-        {WS_FIELDS.map(([key, label, kind, hint]) => (
-          <div className="ws-item" key={key}>
-            <label className="ws-label" htmlFor={`ws-${key}`}>{label}</label>
-            {hint && <p className="ws-hint">{hint}</p>}
-            {kind === 'area' ? (
-              <textarea id={`ws-${key}`} className="ac-kb-area" rows={4} value={site[key] || ''}
-                onChange={e => setSite(s => ({ ...s, [key]: e.target.value }))}
-                onBlur={e => save({ [key]: e.target.value })} />
-            ) : (
-              <input id={`ws-${key}`} className="ac-kb-input" value={site[key] || ''}
-                onChange={e => setSite(s => ({ ...s, [key]: e.target.value }))}
-                onBlur={e => save({ [key]: e.target.value })} />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* ── address ── */}
+{/* ── social proof ── */}
+{/* ── portfolio ── */}
+{/* ── words ── */}
+{/* ── address ── */}
       <div className="table-wrap ws-block">
         <h3 className="ws-h3">🔗 Web address</h3>
         <p className="ws-hint">
@@ -5415,6 +5199,9 @@ function WebsiteView() {
       </div>
 
       <DomainBlock />
-    </>
+        </div>
+      </aside>
+      </div>
+    </div>
   );
 }

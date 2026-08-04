@@ -1473,22 +1473,8 @@
 .ws-live-link { color: var(--teal); text-decoration: none; }
 .ws-live-link:hover { text-decoration: underline; }
 
-.ws-themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
-.ws-theme {
-  text-align: left; cursor: pointer; font: inherit;
-  background: var(--panel-2); border: 1.5px solid var(--line);
-  border-radius: 12px; padding: 14px; display: block;
-}
-.ws-theme:hover { border-color: color-mix(in srgb, var(--teal) 50%, transparent); }
-.ws-theme.is-on { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 10%, transparent); }
-.ws-theme-swatch { display: block; width: 100%; height: 26px; border-radius: 7px; margin-bottom: 10px; }
-.ws-theme-name { display: block; font-weight: 700; font-size: 14px; color: var(--text); }
-.ws-theme-blurb { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
-
 .ws-row { display: flex; gap: 16px; flex-wrap: wrap; }
 .ws-field { flex: 1; min-width: 180px; }
-.ws-item { margin-bottom: 16px; }
-.ws-item:last-child { margin-bottom: 0; }
 .ws-label { display: block; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
 
 .ws-colour { display: flex; align-items: center; gap: 10px; }
@@ -1503,69 +1489,8 @@
 .ws-slug-input { max-width: 260px; }
 .ws-warn { margin: 10px 0 0; font-size: 12.5px; color: var(--amber, #fbbf24); }
 
-/* 🖼️ Cover photo — upload, preview, and the point that must stay in view */
-.ws-drop {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 34px 20px; cursor: pointer; text-align: center;
-  border: 1.5px dashed var(--line); border-radius: 12px; background: var(--panel-2);
-}
-.ws-drop:hover { border-color: var(--teal); }
-.ws-drop.is-busy { opacity: .6; pointer-events: none; }
-.ws-drop-icon { font-size: 30px; }
-.ws-drop-text { font-weight: 700; font-size: 14px; color: var(--text); }
-.ws-drop-hint { font-size: 12px; color: var(--muted); }
-
-.ws-cover { position: relative; cursor: crosshair; border-radius: 12px; overflow: hidden; }
-.ws-cover-img { display: block; width: 100%; height: 240px; object-fit: cover; }
-.ws-cover-dot {
-  position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px;
-  border: 2px solid #fff; border-radius: 50%; background: rgba(0,0,0,.35);
-  box-shadow: 0 0 0 2px rgba(0,0,0,.35); pointer-events: none;
-}
-.ws-cover-acts { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
-.ws-file { cursor: pointer; }
-
-/* 📸 Portfolio manager — thumbnails with reorder and permanent delete */
-.ws-pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.ws-pf-img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
-.ws-pf-acts {
-  position: absolute; inset: auto 0 0 0; display: flex; gap: 4px; justify-content: center;
-  padding: 6px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.65));
-}
-.ws-pf-btn {
-  background: rgba(0,0,0,.55); border: 0; color: #fff; cursor: pointer;
-  width: 26px; height: 26px; border-radius: 6px; font-size: 12px; line-height: 1;
-}
-.ws-pf-btn:hover:not(:disabled) { background: rgba(0,0,0,.85); }
-.ws-pf-btn:disabled { opacity: .3; cursor: default; }
-.ws-pf-btn.is-del:hover { background: var(--red); }
-.ws-pf-add {
-  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;
-  cursor: pointer; text-align: center; padding: 18px;
-  border: 1.5px dashed var(--line); border-radius: 10px; background: var(--panel-2);
-}
-.ws-pf-add:hover { border-color: var(--teal); }
-.ws-pf-add.is-busy { opacity: .6; pointer-events: none; }
-.ws-pf-count { margin-top: 12px; margin-bottom: 0; }
-
-/* portfolio manager: a row per photo, so its words sit beside it */
-.ws-pf-list { display: flex; flex-direction: column; gap: 12px; }
-.ws-pf { display: grid; grid-template-columns: 150px 1fr auto; gap: 14px;
-  align-items: start; padding: 12px; border: 1px solid var(--line);
-  border-radius: 12px; background: var(--panel-2); position: static; }
-.ws-pf .ws-pf-img { width: 150px; height: 110px; object-fit: cover; border-radius: 8px; }
-.ws-pf-text { display: flex; flex-direction: column; gap: 8px; }
-.ws-pf-cap { font-weight: 600; }
-.ws-pf-note { resize: vertical; }
-.ws-pf .ws-pf-acts { position: static; display: flex; flex-direction: column;
-  gap: 5px; padding: 0; background: none; }
-.ws-pf .ws-pf-btn { background: var(--panel); border: 1px solid var(--line); color: var(--text); }
-.ws-pf .ws-pf-btn:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
-
 @media (max-width: 760px) {
-  .ws-pf { grid-template-columns: 96px 1fr; }
-  .ws-pf .ws-pf-img { width: 96px; height: 80px; }
-  .ws-pf .ws-pf-acts { grid-column: 1 / -1; flex-direction: row; }
+
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -1773,49 +1698,6 @@
 .ms-deposit-toggle button.is-on { background: var(--teal); color: #06231f; }
 .ms-deposit-note { margin: 4px 0 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
 
-/* ── 🧱 the page-block editor ─────────────────────────────────────────── */
-.ws-sec-add { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
-.ws-sec-empty { margin: 0; }
-
-.ws-sec-list { display: flex; flex-direction: column; gap: 14px; }
-.ws-sec {
-  padding: 14px 16px; border-radius: 10px;
-  background: var(--panel-2); border: 1px solid var(--line);
-}
-.ws-sec-top {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
-}
-/* which kind of block this is — two states, so a segmented pair reads better
-   than a dropdown a vendor has to open to find out */
-.ws-sec-type { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.ws-sec-tab {
-  background: var(--panel); border: 0; color: var(--muted);
-  font: inherit; font-size: 12.5px; font-weight: 600;
-  padding: 6px 12px; cursor: pointer;
-}
-.ws-sec-tab.is-on { background: var(--teal); color: #06231f; }
-.ws-sec-acts { display: flex; gap: 6px; }
-.ws-pf-btn.is-del:hover { border-color: #f87171; color: #f87171; }
-
-.ws-sec .ws-input { width: 100%; margin-bottom: 8px; }
-.ws-sec-body { resize: vertical; font-family: inherit; }
-
-.ws-sec-img {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin-top: 4px;
-}
-.ws-sec-img img {
-  width: 140px; height: 90px; object-fit: cover;
-  border-radius: 8px; border: 1px solid var(--line); display: block;
-}
-.ws-sec-noimg {
-  width: 140px; height: 90px; border-radius: 8px;
-  border: 1px dashed var(--line); color: var(--muted);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; text-align: center;
-}
-
 /* ── scrollbars, panel only ───────────────────────────────────────────── */
 .dash ::-webkit-scrollbar { width:9px; height:9px; }
 .dash ::-webkit-scrollbar-thumb { background:var(--fill2); border-radius:8px; }
@@ -1843,25 +1725,6 @@
 tr:hover .bk-del { opacity: .8; }
 .bk-del:hover { opacity: 1; background: var(--fill); border-color: #f87171; }
 .bk-del:active { transform: scale(.9); }
-
-/* ── 🤝 clients + testimonials editor ─────────────────────────────────── */
-.ws-sub-h {
-  margin: 20px 0 8px; font-size: 11px; font-weight: 700;
-  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-}
-/* name, logo button and delete on one line — a client is a small thing and a
-   stacked card per row would bury the list */
-.ws-cli { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.ws-cli .ws-input { flex: 1; margin: 0; }
-
-.ws-quote-row {
-  padding: 12px 14px; margin-bottom: 10px; border-radius: 10px;
-  background: var(--panel-2); border: 1px solid var(--line);
-}
-.ws-quote-row .ws-input { width: 100%; margin: 0 0 8px; }
-.ws-quote-row textarea { resize: vertical; font-family: inherit; }
-.ws-quote-by { display: flex; align-items: center; gap: 8px; }
-.ws-quote-by .ws-input { flex: 1; margin: 0; }
 
 /* ── 🌐 custom domain ─────────────────────────────────────────────────── */
 .ws-dom-chip { margin-left: 8px; font-size: 10.5px; letter-spacing: .1em;
@@ -1896,3 +1759,108 @@ tr:hover .bk-del { opacity: .8; }
   .ws-dns-v { grid-column: 2 / -1; grid-row: 2; }
   .ws-dns-note { grid-column: 1 / -1; grid-row: 3; }
 }
+
+/* ══ 🎨 website builder ═══════════════════════════════════════════════
+   The site on the left, everything that isn't words on the right, both on
+   screen at once. Small enough to see a whole page, large enough to read.
+   ═══════════════════════════════════════════════════════════════════════ */
+.wb { position: relative; }
+
+.wb-bar { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.wb-styles { display: flex; gap: 5px; flex-wrap: wrap; }
+.wb-style { display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  padding: 5px 10px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--panel-2); cursor: pointer; text-align: left;
+  transition: border-color .18s ease, background .18s ease; }
+.wb-style:hover { border-color: var(--muted); }
+.wb-style.is-on { border-color: var(--teal); background: var(--panel); }
+.wb-style-n { font-size: 11.5px; font-weight: 600; color: var(--text); }
+/* the number is easy to say, the name is what tells you what you will get */
+.wb-style-name { font-size: 10px; color: var(--muted); letter-spacing: .03em; }
+
+.wb-bar-right { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.wb-page { background: none; border: 1px solid transparent; border-radius: 999px;
+  padding: 5px 11px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
+.wb-page:hover { color: var(--text); }
+.wb-page.is-on { border-color: var(--line); color: var(--text); background: var(--panel-2); }
+.wb-icon { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 4px 9px; font-size: 13px; cursor: pointer; line-height: 1.4; }
+.wb-icon:hover { border-color: var(--muted); }
+.wb-publish { border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px;
+  padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; color: var(--text); }
+.wb-publish:hover { border-color: var(--muted); }
+.wb-publish.is-live { border-color: #2e9e6b; color: #2e9e6b; }
+
+/* ── the two columns ── */
+.wb-work { display: grid; grid-template-columns: minmax(0, 1fr) 316px; gap: 14px; align-items: start; }
+.wb-main { min-width: 0; }
+
+/* 🔍 zoom rather than transform: the site lays out at its real width and is then
+   drawn smaller, so the desktop breakpoints still fire and clicks land where
+   they look — a transform would scale the pixels but leave the hit areas
+   somewhere else, which makes click-to-edit maddening. */
+.wb-stage { border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  background: #fff; height: 64vh; min-height: 420px; overflow-y: auto; }
+.wb-frame { zoom: 0.62; }
+.wb-stage.is-phone { display: flex; justify-content: center; background: var(--panel-2); padding: 14px 0; }
+.wb-stage.is-phone .wb-frame { zoom: 0.78; width: 412px; border: 1px solid var(--line);
+  border-radius: 22px; overflow: hidden; background: #fff; }
+.wb-hint { margin: 8px 2px 0; font-size: 11.5px; color: var(--muted); }
+
+/* ── settings, always there, kept small ── */
+.wb-side { position: sticky; top: 12px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); overflow: hidden; }
+.wb-side-head { padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.wb-side-head .ws-h3 { margin: 0; font-size: 13px; }
+.wb-side-body { max-height: calc(64vh - 34px); overflow-y: auto; padding: 10px; }
+/* the blocks were written for a full-width page; at 316px they need less of
+   everything or the column becomes a scroll marathon */
+.wb-side-body .ws-block { margin-bottom: 8px; padding: 10px 11px; border-radius: 10px; }
+.wb-side-body .ws-h3 { font-size: 12.5px; margin-bottom: 2px; }
+.wb-side-body .ws-hint { font-size: 11px; margin-bottom: 8px; line-height: 1.45; }
+.wb-side-body .ws-row { flex-direction: column; gap: 8px; }
+.wb-side-body .ws-label { font-size: 11px; }
+.wb-side-body input, .wb-side-body select, .wb-side-body textarea { font-size: 12px; }
+.wb-side-body .ws-slug-prefix, .wb-side-body .ws-dns-note { font-size: 10.5px; }
+.wb-side-body .ws-dns-r { grid-template-columns: 36px 1fr 26px; gap: 6px; padding: 7px 9px; }
+.wb-side-body .ws-dns-n { grid-column: 2; }
+.wb-side-body .ws-dns-v { grid-column: 2 / -1; grid-row: 2; font-size: 11.5px; }
+.wb-side-body .ws-dns-note { grid-column: 1 / -1; grid-row: 3; }
+
+/* ── ✏️ editable text, only inside the builder ── */
+/* Marked all the time, not only on hover: a vendor who doesn't already know
+   the words can be clicked never hovers them to find out, so the whole feature
+   was invisible until somebody happened to pass over it. */
+.st-ed { outline: none; cursor: text; border-radius: 3px;
+  border-bottom: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+  box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .15s ease, background .15s ease; }
+.st-ed:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
+  border-bottom-color: transparent; }
+.st-ed:focus { box-shadow: inset 0 0 0 2px var(--st-accent);
+  border-bottom-color: transparent;
+  background: color-mix(in srgb, var(--st-accent) 7%, transparent); }
+/* an empty field is invisible and so unclickable; the hint is drawn, never saved */
+.st-ed:empty::before { content: attr(data-ph); opacity: .45; }
+.st-main.is-still { animation: none; }
+
+/* below this the two columns stop being two columns worth having */
+@media (max-width: 1080px) {
+  .wb-work { grid-template-columns: 1fr; }
+  .wb-side { position: static; }
+  .wb-side-body { max-height: none; }
+  .wb-stage { height: 56vh; }
+  .wb-frame { zoom: 0.5; }
+}
+@media (max-width: 760px) {
+  .wb-style-name { display: none; }
+  .wb-frame { zoom: 0.42; }
+  .wb-stage.is-phone .wb-frame { zoom: 0.9; width: 100%; border: 0; border-radius: 0; }
+}
+
+/* 📱 The phone view could not be scrolled. The stage is a flex row, so the
+   frame stretched to the stage's height and clipped everything past it —
+   there was more page, but no way to reach it. Aligning to the top lets the
+   frame take its natural height and the stage scroll as it should. */
+.wb-stage.is-phone { align-items: flex-start; }
+.wb-stage.is-phone .wb-frame { overflow: visible; height: auto; }

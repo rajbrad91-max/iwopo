@@ -49,7 +49,8 @@ export default function App() {
   if (!PLATFORM_HOSTS.includes(hostNow)) {
     const p = (window.location.pathname.replace(/\/+$/, '') || '/');
     if (p === '/inquiry') return <InquiryForm byHost />;
-    const SITE_PAGES = { '/': 'home', '/portfolio': 'portfolio', '/clients': 'clients', '/book': 'book' };
+    const SITE_PAGES = { '/': 'home', '/portfolio': 'portfolio', '/clients': 'clients',
+                         '/gallery': 'gallery', '/book': 'book' };
     return <PublicSite byHost page={SITE_PAGES[p] || 'notfound'} />;
   }
 

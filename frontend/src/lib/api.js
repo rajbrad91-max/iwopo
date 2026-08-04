@@ -378,6 +378,7 @@ export const api = {
   setSiteCoverFocus: (cover_focus) => request('/sites/my/cover-focus', { method: 'PUT', body: JSON.stringify({ cover_focus }) }),
   addPortfolioPhoto: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/portfolio', { method: 'POST', body: fd }); },
   removePortfolioPhoto: (id) => request(`/sites/my/portfolio/${id}`, { method: 'DELETE' }),
+  replacePortfolioPhoto: (id, file) => { const fd = new FormData(); fd.append('photo', file); return request(`/sites/my/portfolio/${id}/replace`, { method: 'POST', body: fd }); },
   savePortfolio: (portfolio) => request('/sites/my/portfolio', { method: 'PUT', body: JSON.stringify({ portfolio }) }),
   myChatbotHistory: () => request('/chatbot/my/history'),
   myChatbotKnowledge: () => request('/chatbot/my/knowledge'),

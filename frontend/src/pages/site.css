@@ -132,11 +132,10 @@
    🖼  A photograph — the same frame everywhere it appears.
    ══════════════════════════════════════════════════════════════════════ */
 .st-gal-frame { display: block; width: 100%; padding: 0; border: 0; margin: 0;
-  background: none; cursor: zoom-in; overflow: hidden; line-height: 0; }
+  background: none; overflow: hidden; line-height: 0; }
 .st-gal-img { display: block; width: 100%; height: 100%; object-fit: cover;
   transition: transform 1s cubic-bezier(.2,.7,.3,1), opacity .4s ease; }
 .st-gal-frame:hover .st-gal-img { transform: scale(1.04); opacity: .93; }
-.st-gal-frame:focus-visible { outline: 2px solid var(--st-accent); outline-offset: 3px; }
 
 .st-gal-cap { display: block; padding-top: 12px; }
 .st-gal-title { display: block; font-family: var(--st-head); font-size: 15.5px;
@@ -151,25 +150,35 @@
 .st-trio-i:nth-child(2) { margin-top: 38px; }
 
 /* ══════════════════════════════════════════════════════════════════════
-   🧩 COLLAGE ONE — five frames cut to five sizes, with the vendor's words
-   set beside the wider ones instead of underneath them. Twelve columns, so a
-   theme can re-cut the whole block by changing five spans.
+   🧩 COLLAGE ONE — five frames on a row grid.
+
+   The previous version sized each frame by aspect ratio and set the words
+   BESIDE the wide ones. Both were mistakes. Aspect ratios meant two frames
+   sharing a row ended at different heights, and a caption beside a picture
+   left the rest of that cell empty — so a short caption punched a hole in the
+   layout and a missing one punched a bigger hole.
+
+   Now the grid owns the heights: rows are a fixed size, each frame spans a
+   whole number of them, and the picture fills whatever is left after its
+   caption. Every cell is full, every row lines up, and a frame with no caption
+   simply gives that space back to the photograph.
    ══════════════════════════════════════════════════════════════════════ */
 .st-col1 { display: grid; grid-template-columns: repeat(12, 1fr);
-  gap: 26px 24px; align-items: start; }
-.st-c1-i { margin: 0; }
-.st-c1 { grid-column: span 5; } .st-c1 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-c2 { grid-column: span 4; } .st-c2 .st-gal-img { aspect-ratio: 1 / 1; }
-.st-c3 { grid-column: span 3; } .st-c3 .st-gal-img { aspect-ratio: 3 / 4; }
-.st-c4 { grid-column: span 7; } .st-c4 .st-gal-img { aspect-ratio: 3 / 2; }
-.st-c5 { grid-column: span 5; } .st-c5 .st-gal-img { aspect-ratio: 4 / 5; }
+  grid-auto-rows: 96px; gap: 18px; }
 
-/* where a wide frame carries words, they sit next to it — that side-by-side is
-   what turns a grid of pictures into something you read. :has means a frame
-   with nothing written about it simply stays full width. */
-.st-c1:has(.st-gal-cap), .st-c4:has(.st-gal-cap) {
-  display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; align-items: center; }
-.st-c1:has(.st-gal-cap) .st-gal-cap, .st-c4:has(.st-gal-cap) .st-gal-cap { padding-top: 0; }
+.st-c1-i { margin: 0; display: flex; flex-direction: column; min-height: 0; }
+/* the frame takes the room the caption doesn't — which is what keeps the
+   bottoms of a row level whether or not anything is written under them */
+.st-c1-i .st-gal-frame { flex: 1 1 auto; min-height: 0; }
+.st-c1-i .st-gal-img { height: 100%; aspect-ratio: auto; }
+.st-c1-i .st-gal-cap { flex: 0 0 auto; }
+
+/* the default cut: a big pair, then a band of three */
+.st-c1 { grid-column: span 7; grid-row: span 4; }
+.st-c2 { grid-column: span 5; grid-row: span 4; }
+.st-c3 { grid-column: span 4; grid-row: span 3; }
+.st-c4 { grid-column: span 4; grid-row: span 3; }
+.st-c5 { grid-column: span 4; grid-row: span 3; }
 
 /* ══════════════════════════════════════════════════════════════════════
    🎞 COLLAGE TWO — the rail. Native scroll-snap does the sliding, so a phone
@@ -252,25 +261,6 @@
 .st-foot-links a:hover { color: var(--st-accent); }
 .st-foot-copy { letter-spacing: .06em; }
 
-/* ── full-screen viewer ──────────────────────────────────────────────── */
-.st-lb { position: fixed; inset: 0; z-index: 60; background: rgba(10,10,11,.97);
-  display: grid; place-items: center; padding: 32px; cursor: zoom-out;
-  animation: st-fade .25s ease both; }
-@keyframes st-fade { from { opacity: 0; } to { opacity: 1; } }
-.st-lb-fig { margin: 0; cursor: default; text-align: center; }
-.st-lb-img { max-width: 92vw; max-height: 84vh; object-fit: contain; display: block; }
-.st-lb-cap { color: rgba(255,255,255,.8); font-size: 12px; letter-spacing: .14em;
-  text-transform: uppercase; margin-top: 16px; }
-.st-lb-close { position: absolute; top: 20px; right: 26px; background: none; border: 0;
-  color: #fff; font-size: 28px; cursor: pointer; line-height: 1; opacity: .7; }
-.st-lb-close:hover { opacity: 1; }
-.st-lb-nav { position: absolute; top: 50%; transform: translateY(-50%);
-  background: none; border: 0; color: #fff; font-size: 40px; cursor: pointer;
-  opacity: .5; padding: 12px 18px; transition: opacity .25s ease; }
-.st-lb-nav:hover { opacity: 1; }
-.st-lb-prev { left: 6px; }
-.st-lb-next { right: 6px; }
-
 /* ════════════════════════════════════════════════════════════════════════
    THE FIVE THEMES — each one a different cut of the same two collages.
    ════════════════════════════════════════════════════════════════════════ */
@@ -283,15 +273,7 @@
 .st-aperture.st-page-home .st-nav { position: fixed; left: 0; right: 0;
   background: none; backdrop-filter: none; border-bottom: 0; color: #fff; }
 .st-aperture.st-page-home .st-links a, .st-aperture.st-page-home .st-brand-name { color: #fff; }
-.st-aperture .st-col1 { gap: 8px; }
-.st-aperture .st-c1 { grid-column: span 7; } .st-aperture .st-c1 .st-gal-img { aspect-ratio: 3 / 2; }
-.st-aperture .st-c2 { grid-column: span 5; } .st-aperture .st-c2 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-aperture .st-c3 { grid-column: span 4; } .st-aperture .st-c3 .st-gal-img { aspect-ratio: 1 / 1; }
-.st-aperture .st-c4 { grid-column: span 4; } .st-aperture .st-c4 .st-gal-img { aspect-ratio: 1 / 1; }
-.st-aperture .st-c5 { grid-column: span 4; } .st-aperture .st-c5 .st-gal-img { aspect-ratio: 1 / 1; }
 /* only the opening frame is wide enough to carry its words alongside */
-.st-aperture .st-c4:has(.st-gal-cap) { display: block; }
-.st-aperture .st-c4:has(.st-gal-cap) .st-gal-cap { padding-top: 10px; }
 .st-aperture .st-gal-cap { padding-top: 10px; }
 .st-aperture .st-reel-track { gap: 8px; }
 .st-aperture .st-reel-i { flex: 0 0 330px; }
@@ -310,10 +292,6 @@
 .st-atelier .st-head, .st-atelier .st-reel-head { border-bottom: 1px solid var(--st-ink); padding-bottom: 16px; }
 .st-atelier .st-cta { background: none; color: var(--st-ink); border-color: var(--st-ink); border-radius: 0; }
 .st-atelier .st-cta:hover { background: var(--st-ink); color: var(--st-paper); opacity: 1; }
-.st-atelier .st-col1 { gap: 30px 36px; }
-.st-atelier .st-c2 { margin-top: 54px; }
-.st-atelier .st-c5 { margin-top: 34px; }
-.st-atelier .st-c3 .st-gal-img { aspect-ratio: 4 / 5; }
 .st-atelier .st-reel-track { gap: 30px; }
 .st-atelier .st-reel-i { flex: 0 0 235px; }
 .st-atelier .st-reel-i .st-gal-img { aspect-ratio: 4 / 5; }
@@ -330,14 +308,7 @@
 .st-vellum .st-head .st-h2::after, .st-vellum .st-narrow .st-h2::after {
   content: ''; display: block; width: 48px; height: 1px;
   background: var(--st-accent); margin: 20px auto 0; }
-.st-vellum .st-col1 { gap: 46px 34px; }
-.st-vellum .st-c1 { grid-column: span 4; } .st-vellum .st-c1 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-vellum .st-c2 { grid-column: span 4; margin-top: 40px; } .st-vellum .st-c2 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-vellum .st-c3 { grid-column: span 4; } .st-vellum .st-c3 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-vellum .st-c4 { grid-column: span 6; } .st-vellum .st-c4 .st-gal-img { aspect-ratio: 5 / 4; }
-.st-vellum .st-c5 { grid-column: span 6; } .st-vellum .st-c5 .st-gal-img { aspect-ratio: 5 / 4; }
 /* the words stay under the picture here, centred — this theme is symmetrical */
-.st-vellum .st-c1:has(.st-gal-cap), .st-vellum .st-c4:has(.st-gal-cap) { display: block; }
 .st-vellum .st-gal-cap { text-align: center; padding-top: 15px; }
 .st-vellum .st-reel-head { justify-content: center; flex-direction: column; align-items: center; gap: 6px; }
 .st-vellum .st-reel-track { gap: 34px; }
@@ -358,14 +329,6 @@
 .st-noir .st-h2, .st-noir .st-h3 { letter-spacing: .06em; text-transform: uppercase; }
 .st-noir .st-h2 { font-size: clamp(22px, 2.8vw, 32px); }
 .st-noir .st-cta { border-radius: 0; }
-.st-noir .st-col1 { gap: 14px; }
-.st-noir .st-c1 { grid-column: span 8; } .st-noir .st-c1 .st-gal-img { aspect-ratio: 16 / 9; }
-.st-noir .st-c2 { grid-column: span 4; } .st-noir .st-c2 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-noir .st-c3 { grid-column: span 4; } .st-noir .st-c3 .st-gal-img { aspect-ratio: 1 / 1; }
-.st-noir .st-c4 { grid-column: span 4; } .st-noir .st-c4 .st-gal-img { aspect-ratio: 1 / 1; }
-.st-noir .st-c5 { grid-column: span 4; } .st-noir .st-c5 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-noir .st-c4:has(.st-gal-cap) { display: block; }
-.st-noir .st-c4:has(.st-gal-cap) .st-gal-cap { padding-top: 12px; }
 .st-noir .st-gal-title { text-transform: uppercase; letter-spacing: .14em;
   font-size: 11.5px; font-family: var(--st-body); }
 .st-noir .st-reel-track { gap: 12px; }
@@ -384,14 +347,6 @@
 .st-bloom .st-cta { border-radius: 999px; padding: 14px 38px; }
 .st-bloom .st-head { text-align: center; }
 .st-bloom .st-gal-frame { border-radius: 14px; }
-.st-bloom .st-col1 { gap: 30px 26px; }
-.st-bloom .st-c1 { grid-column: span 4; } .st-bloom .st-c1 .st-gal-img { aspect-ratio: 3 / 4; }
-.st-bloom .st-c2 { grid-column: span 4; margin-top: 34px; } .st-bloom .st-c2 .st-gal-img { aspect-ratio: 1 / 1; }
-.st-bloom .st-c3 { grid-column: span 4; margin-top: 14px; } .st-bloom .st-c3 .st-gal-img { aspect-ratio: 4 / 5; }
-.st-bloom .st-c4 { grid-column: span 7; } .st-bloom .st-c4 .st-gal-img { aspect-ratio: 4 / 3; }
-.st-bloom .st-c5 { grid-column: span 5; } .st-bloom .st-c5 .st-gal-img { aspect-ratio: 1 / 1; }
-.st-bloom .st-c1:has(.st-gal-cap) { display: block; }
-.st-bloom .st-c1:has(.st-gal-cap) .st-gal-cap { padding-top: 12px; }
 .st-bloom .st-reel-track { gap: 26px; }
 .st-bloom .st-reel-i { flex: 0 0 215px; }
 .st-bloom .st-reel-i .st-gal-img { aspect-ratio: 3 / 4; }
@@ -416,14 +371,6 @@
   .st-col1 { grid-template-columns: repeat(6, 1fr); gap: 22px 18px; }
   .st-c1, .st-c4 { grid-column: span 6; }
   .st-c2, .st-c3, .st-c5 { grid-column: span 3; }
-  .st-aperture .st-c1, .st-aperture .st-c4, .st-noir .st-c1, .st-noir .st-c4,
-  .st-vellum .st-c4, .st-vellum .st-c5, .st-bloom .st-c4, .st-bloom .st-c5 { grid-column: span 6; }
-  .st-aperture .st-c2, .st-aperture .st-c3, .st-aperture .st-c5,
-  .st-noir .st-c2, .st-noir .st-c3, .st-noir .st-c5,
-  .st-vellum .st-c1, .st-vellum .st-c2, .st-vellum .st-c3,
-  .st-bloom .st-c1, .st-bloom .st-c2, .st-bloom .st-c3 { grid-column: span 3; }
-  .st-atelier .st-c2, .st-atelier .st-c5, .st-vellum .st-c2,
-  .st-bloom .st-c2, .st-bloom .st-c3 { margin-top: 0; }
 }
 
 @media (max-width: 760px) {
@@ -449,13 +396,11 @@
   /* two frames across, then the words underneath — a five-slot spread squeezed
      onto a phone stops being a spread and starts being a row of stamps */
   .st-col1, .st-aperture .st-col1, .st-atelier .st-col1, .st-vellum .st-col1,
-  .st-noir .st-col1, .st-bloom .st-col1 { grid-template-columns: repeat(2, 1fr); gap: 14px; }
   /* two classes deep, and later in the file, so these win on specificity and
      order instead of needing an override flag */
   .st-col1 .st-c1-i { grid-column: span 1; margin-top: 0; }
   .st-col1 .st-c1, .st-col1 .st-c4 { grid-column: span 2; }
   .st-col1 .st-c1-i .st-gal-img { aspect-ratio: 1 / 1; }
-  .st-col1 .st-c1 .st-gal-img, .st-col1 .st-c4 .st-gal-img { aspect-ratio: 4 / 3; }
   .st-col1 .st-c1:has(.st-gal-cap), .st-col1 .st-c4:has(.st-gal-cap) { display: block; }
   .st-col1 .st-c1:has(.st-gal-cap) .st-gal-cap,
   .st-col1 .st-c4:has(.st-gal-cap) .st-gal-cap { padding-top: 10px; }
@@ -477,3 +422,204 @@
   .st-lb-nav { font-size: 30px; padding: 8px 10px; }
   .st-foot-inner { justify-content: center; text-align: center; }
 }
+
+/* ══ inside the builder ════════════════════════════════════════════════
+   Aperture and Noir pin their nav to the viewport on the home page, which is
+   right on a real site and wrong inside a panel — the bar left the preview
+   entirely and sat on top of the vendor's own header. Contained here.
+   Placed last so it wins on order against the theme rules above.
+   ══════════════════════════════════════════════════════════════════════ */
+.st.is-inpanel { position: relative; }
+/* Absolute, not sticky. Sticky gave the bar its own row, and Aperture's links
+   are white because they are meant to sit ON the photograph — in a white strip
+   they simply disappeared. Absolute keeps them over the picture, where the
+   theme intends them, while staying inside the preview. */
+.st-aperture.is-inpanel.st-page-home .st-nav,
+.st-noir.is-inpanel.st-page-home .st-nav {
+  position: absolute; top: 0; left: 0; right: 0; }
+/* vh inside a panel measures the browser window, not the stage, so a 100vh hero
+   would be taller than the box it is being shown in */
+.st.is-inpanel .st-hero { min-height: 440px; }
+.st.is-inpanel .st-section { padding: 62px 0; }
+
+/* ══ five different first impressions ══════════════════════════════════
+   A vendor judges a style by its home page, and all five opened the same way:
+   name centred over a photo. The portfolio differed; the thing people actually
+   look at first did not. Each one now has its own shape.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 1 · APERTURE — the photograph, whole. Name centred, nothing competing. */
+.st-aperture .st-hero-inner { max-width: 900px; }
+
+/* 2 · CONTACT SHEET — the name set low and left against a wide margin, the way
+   a magazine opens on a picture with the title in the corner. */
+.st-atelier .st-hero.has-cover::after {
+  background: linear-gradient(105deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.12) 62%); }
+
+/* 3 · VELLUM — the photograph is a band, not a wall. It ends, and the name sits
+   underneath on paper, which is what a printed invitation does. */
+.st-vellum .st-hero { display: block; min-height: 0; padding: 0; text-align: center; }
+.st-vellum .st-hero-cover { position: relative; height: 46vh; min-height: 260px; z-index: 0; }
+.st-vellum .st-hero.has-cover::after { content: none; }
+.st-vellum .st-hero-inner { max-width: 640px; margin: 0 auto; padding: 44px 24px 60px; }
+/* the name is on cream now, so it must not stay white */
+.st-vellum .st-hero.has-cover .st-hero-title { color: var(--st-ink); }
+.st-vellum .st-hero.has-cover .st-hero-tagline { color: var(--st-soft); }
+.st-vellum .st-hero.has-cover .st-hero-cta { color: var(--st-ink); }
+.st-vellum .st-hero-logo { margin-top: -68px; position: relative; background: var(--st-paper);
+  padding: 12px 18px; border-radius: 4px; }
+
+/* 4 · NOIR — a title card. Bottom left, tracked out, the frame left mostly dark. */
+.st-noir .st-hero { place-content: end start; text-align: left; padding: 0 clamp(24px, 6vw, 88px) clamp(48px, 8vh, 96px); }
+.st-noir .st-hero-inner { max-width: 720px; }
+.st-noir .st-hero-logo { margin: 0 0 22px; }
+.st-noir .st-hero-cta { justify-content: flex-start; }
+.st-noir .st-hero.has-cover::after {
+  background: linear-gradient(0deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.15) 58%); }
+
+/* 5 · BLOOM — the photograph as a card with air around it, the words below it
+   rather than on top. Softer, and it never fights the picture for legibility. */
+.st-bloom .st-hero { display: block; min-height: 0; padding: 22px 22px 0; text-align: center; }
+.st-bloom .st-hero-cover { position: relative; height: 44vh; min-height: 240px;
+  border-radius: 20px; z-index: 0; }
+.st-bloom .st-hero.has-cover::after { content: none; }
+.st-bloom .st-hero-inner { max-width: 620px; margin: 0 auto; padding: 40px 20px 56px; }
+.st-bloom .st-hero.has-cover .st-hero-title { color: var(--st-ink); }
+.st-bloom .st-hero.has-cover .st-hero-tagline { color: var(--st-soft); }
+.st-bloom .st-hero.has-cover .st-hero-cta { color: var(--st-ink); }
+
+@media (max-width: 760px) {
+  .st-vellum .st-hero-cover, .st-bloom .st-hero-cover { height: 34vh; min-height: 200px; }
+  .st-vellum .st-hero-inner, .st-bloom .st-hero-inner { padding: 30px 18px 44px; }
+  .st-noir .st-hero { padding: 0 20px 44px; }
+}
+
+
+/* ══ how each style cuts the collage ═══════════════════════════════════
+   Same five frames, five different arrangements. Rows always add up, so none
+   of these can leave a gap.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 1 · APERTURE — almost no seam, one frame dominant */
+.st-aperture .st-col1 { gap: 6px; grid-auto-rows: 104px; }
+.st-aperture .st-c1 { grid-column: span 8; grid-row: span 5; }
+.st-aperture .st-c2 { grid-column: span 4; grid-row: span 5; }
+.st-aperture .st-c3 { grid-column: span 4; grid-row: span 3; }
+.st-aperture .st-c4 { grid-column: span 4; grid-row: span 3; }
+.st-aperture .st-c5 { grid-column: span 4; grid-row: span 3; }
+
+/* 2 · CONTACT SHEET — even columns, generous margins, like frames on a sheet */
+.st-atelier .st-col1 { gap: 30px 26px; grid-auto-rows: 88px; }
+.st-atelier .st-c1 { grid-column: span 6; grid-row: span 5; }
+.st-atelier .st-c2 { grid-column: span 6; grid-row: span 4; }
+.st-atelier .st-c3 { grid-column: span 4; grid-row: span 4; }
+.st-atelier .st-c4 { grid-column: span 4; grid-row: span 4; }
+.st-atelier .st-c5 { grid-column: span 4; grid-row: span 4; }
+
+/* 3 · VELLUM — three across, then a calm pair. Captions centred. */
+.st-vellum .st-col1 { gap: 34px 24px; grid-auto-rows: 92px; }
+.st-vellum .st-c1 { grid-column: span 4; grid-row: span 5; }
+.st-vellum .st-c2 { grid-column: span 4; grid-row: span 5; }
+.st-vellum .st-c3 { grid-column: span 4; grid-row: span 5; }
+.st-vellum .st-c4 { grid-column: span 6; grid-row: span 4; }
+.st-vellum .st-c5 { grid-column: span 6; grid-row: span 4; }
+.st-vellum .st-gal-cap { text-align: center; }
+
+/* 4 · NOIR — a wide opening band, then equal pairs. Cinematic, no clutter. */
+.st-noir .st-col1 { gap: 12px; grid-auto-rows: 90px; }
+.st-noir .st-c1 { grid-column: span 12; grid-row: span 4; }
+.st-noir .st-c2 { grid-column: span 6; grid-row: span 4; }
+.st-noir .st-c3 { grid-column: span 6; grid-row: span 4; }
+.st-noir .st-c4 { grid-column: span 6; grid-row: span 4; }
+.st-noir .st-c5 { grid-column: span 6; grid-row: span 4; }
+
+/* 5 · BLOOM — three light columns, then a wide pair, soft corners */
+.st-bloom .st-col1 { gap: 22px; grid-auto-rows: 92px; }
+.st-bloom .st-c1 { grid-column: span 4; grid-row: span 5; }
+.st-bloom .st-c2 { grid-column: span 4; grid-row: span 5; }
+.st-bloom .st-c3 { grid-column: span 4; grid-row: span 5; }
+.st-bloom .st-c4 { grid-column: span 7; grid-row: span 4; }
+.st-bloom .st-c5 { grid-column: span 5; grid-row: span 4; }
+
+/* ── the rail, tidied ── */
+.st-reel-i .st-gal-img { aspect-ratio: auto; height: 300px; }
+.st-aperture .st-reel-i .st-gal-img { height: 210px; }
+.st-noir .st-reel-i .st-gal-img { height: 200px; }
+.st-vellum .st-reel-i .st-gal-img { height: 250px; }
+.st-bloom .st-reel-i .st-gal-img { height: 280px; }
+
+/* ── narrow screens: two across, then one, and the rows shrink with them ── */
+@media (max-width: 900px) {
+  .st-col1, .st-aperture .st-col1, .st-atelier .st-col1,
+  .st-vellum .st-col1, .st-noir .st-col1, .st-bloom .st-col1 {
+    grid-template-columns: repeat(6, 1fr); grid-auto-rows: 74px; }
+  .st-col1 .st-c1 { grid-column: span 6; grid-row: span 4; }
+  .st-col1 .st-c2, .st-col1 .st-c3 { grid-column: span 3; grid-row: span 3; }
+  .st-col1 .st-c4, .st-col1 .st-c5 { grid-column: span 3; grid-row: span 3; }
+}
+@media (max-width: 560px) {
+  .st-col1 { grid-auto-rows: 64px; gap: 12px; }
+  .st-col1 .st-c1-i { grid-column: span 6; grid-row: span 4; }
+}
+
+/* ══ 📸 photo controls, in the builder only ═══════════════════════════════
+   The controls sit on the photograph rather than in a list beside it, so the
+   thing you click is the thing that changes. None of this renders on a real
+   visitor's page — it is drawn only when the site is being edited.
+   ═════════════════════════════════════════════════════════════════════════ */
+.st-c1-i.is-editable, .st-trio-i.is-editable, .st-reel-i.is-editable { position: relative; }
+/* one control per frame, and it says what it does. A bare ✕ asks a vendor to
+   guess, and guessing wrong deletes their photograph. */
+.st-ph-swap { position: absolute; top: 8px; right: 8px; z-index: 4; cursor: pointer;
+  border-radius: 999px; background: rgba(12,12,14,.66); color: #fff;
+  padding: 5px 12px; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+  opacity: 0; transition: opacity .18s ease, background .18s ease; }
+.is-editable:hover .st-ph-swap { opacity: 1; }
+.st-ph-swap:hover { background: var(--st-accent); }
+
+/* Both used to be pinned to the same corner with a hand-measured offset, so
+   they overlapped the moment either label changed length. They share a row now
+   and the row does the spacing. */
+.st-ph-tools { position: absolute; top: 14px; left: 14px; z-index: 4;
+  display: flex; gap: 8px; align-items: center; }
+.st-ph-cover, .st-ph-aim { cursor: pointer; border: 0; color: #fff;
+  background: rgba(12,12,14,.6); border-radius: 999px; padding: 7px 15px;
+  font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.st-ph-cover:hover { background: rgba(12,12,14,.85); }
+
+/* deliberately a wide, obvious target — adding work is the thing a vendor does
+   most, and it should not be a small icon they have to find */
+.st-ph-add { display: block; margin-top: 20px; padding: 22px; cursor: pointer;
+  text-align: center; border: 1px dashed color-mix(in srgb, currentColor 32%, transparent);
+  border-radius: 10px; font-size: 13px; letter-spacing: .06em; color: var(--st-soft);
+  transition: border-color .2s ease, color .2s ease; }
+.st-ph-add:hover { border-color: var(--st-accent); color: var(--st-accent); }
+
+/* aiming the cover: the cursor says what the click will do */
+.st-ph-aim:hover, .st-ph-aim.is-on { background: var(--st-accent); }
+.st-hero-cover.is-aiming { cursor: crosshair; z-index: 3; }
+
+/* ── ✍️ adding and removing the parts of a page, on the page ────────────── */
+.st-ph-del { border: 0; }
+.st-ph-del:hover { background: #c0392b; }
+
+.st-quote.is-editable, .st-logo.is-editable { position: relative; }
+.st-quote.is-editable .st-ph-swap { top: -4px; right: -4px; }
+.st-logo.is-editable { padding: 6px 8px; border: 1px dashed color-mix(in srgb, currentColor 22%, transparent); border-radius: 8px; }
+.st-logo-tools { display: flex; gap: 5px; margin-left: 8px; }
+.st-logo-tools .st-ph-swap { position: static; opacity: 1; }
+
+/* a block's remove sits at its own top right, not the photograph's */
+.st-section.is-editable { position: relative; }
+.st-sec-del { position: absolute; top: 12px; right: 16px; }
+.st-section.is-editable:hover .st-sec-del { opacity: 1; }
+
+.st-sec-add { display: flex; gap: 12px; }
+.st-sec-add-b { flex: 1; border: 1px dashed color-mix(in srgb, currentColor 32%, transparent);
+  background: none; cursor: pointer; font-family: inherit; }
+/* on a block that already has a picture the control is a small overlay, not a
+   dashed tile standing in for one that isn't there */
+.st-sec-swap { position: absolute; top: 10px; right: 10px; margin: 0; padding: 5px 12px;
+  border-style: solid; border-color: transparent; background: rgba(12,12,14,.66);
+  color: #fff; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+.st-split-img { position: relative; }

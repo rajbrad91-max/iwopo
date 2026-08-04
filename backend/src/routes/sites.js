@@ -52,11 +52,15 @@ function vid(req) {
 
 /** The five themes. Fixed on purpose — five good ones beat fifty half-finished. */
 export const THEMES = [
-  { id: 'aperture', name: 'Aperture', blurb: 'Full-bleed photography, quiet type', accent: '#b8922a' },
-  { id: 'atelier',  name: 'Atelier',  blurb: 'Editorial, generous white space',    accent: '#1f6f5c' },
-  { id: 'vellum',   name: 'Vellum',   blurb: 'Warm, classic, wedding-leaning',     accent: '#a8574d' },
-  { id: 'noir',     name: 'Noir',     blurb: 'Dark, cinematic, video-first',       accent: '#c9a227' },
-  { id: 'bloom',    name: 'Bloom',    blurb: 'Light, airy, soft colour',           accent: '#8a6fae' },
+  /* The first two are built for photographers and carry a Gallery page, where a
+     couple opens the album they were sent. The other three are for anyone, and
+     show client logos and testimonials in that slot instead. The ids never
+     change — only what they are called — so no vendor's saved theme moves. */
+  { id: 'aperture', name: 'Aperture',      blurb: 'For photographers — full-bleed, quiet type',   accent: '#b8922a', kind: 'photo' },
+  { id: 'atelier',  name: 'Contact Sheet', blurb: 'For photographers — an editorial grid',        accent: '#1f6f5c', kind: 'photo' },
+  { id: 'vellum',   name: 'Vellum',        blurb: 'Warm, classic, wedding-leaning',              accent: '#a8574d', kind: 'general' },
+  { id: 'noir',     name: 'Noir',          blurb: 'Dark, cinematic, video-first',                accent: '#c9a227', kind: 'general' },
+  { id: 'bloom',    name: 'Bloom',         blurb: 'Light, airy, soft colour',                    accent: '#8a6fae', kind: 'general' },
 ];
 const THEME_IDS = new Set(THEMES.map(t => t.id));
 
@@ -83,6 +87,8 @@ function cleanBody(body) {
   }
 
   if (body.clients_heading !== undefined) out.clients_heading = str(body.clients_heading, 160);
+  if (body.gallery_heading !== undefined) out.gallery_heading = str(body.gallery_heading, 160);
+  if (body.gallery_body !== undefined) out.gallery_body = str(body.gallery_body, 600);
 
   // 🤝 names or logos of people they have worked with
   if (Array.isArray(body.clients)) {
@@ -133,6 +139,7 @@ const PUBLIC_FIELDS = {
   site_title: true, tagline: true, about_heading: true, about_body: true,
   contact_email: true, contact_phone: true, instagram: true, facebook: true,
   sections: true, clients: true, testimonials: true, clients_heading: true,
+  gallery_heading: true, gallery_body: true,
   slug: true, published: true,
   cover_photo: true, cover_focus: true, portfolio: true,
 };
@@ -157,7 +164,13 @@ router.get('/my', requireAuth, async (req, res) => {
         },
       });
     }
-    res.json({ site, themes: THEMES, fonts: [...FONTS] });
+    // the panel previews the real public component, and that component reads
+    // the vendor's name, logo and handle — none of which live on the site row
+    const meta = await prisma.vendors.findUnique({
+      where: { id: v },                                                            // 🔒 own row
+      select: { business_name: true, logo_path: true, slug: true },
+    });
+    res.json({ site, vendor: meta, themes: THEMES, fonts: [...FONTS] });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -568,6 +581,44 @@ router.post('/my/portfolio', requireAuth, upload.single('photo'), async (req, re
         updated_at: new Date(),
       },
     });
+    res.json({ site });
+  } catch (e) {
+    try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * POST /api/sites/my/portfolio/:id/replace → put a different photograph in this
+ * frame. The entry keeps its id, its position and its caption; only the file
+ * changes. Adding a new one and deleting the old would send it to the end of
+ * the collage and lose the words written about it.
+ */
+router.post('/my/portfolio/:id/replace', requireAuth, upload.single('photo'), async (req, res) => {
+  const v = Number(vid(req));
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const cur = await prisma.vendor_sites.findUnique({
+      where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row
+    });
+    const list = rawPortfolio(cur?.portfolio);
+    const target = list.find(p => p.id === req.params.id);
+    if (!target) { try { fs.unlinkSync(req.file.path); } catch { /* gone */ } 
+      return res.status(404).json({ error: 'Photo not found' }); }
+
+    const file = await storeImage(v, req.file.path);
+    const old = target.file;
+    const site = await prisma.vendor_sites.update({
+      where: { vendor_id: v },
+      data: {
+        portfolio: list.map(p => (p.id === req.params.id ? { ...p, file } : p)),
+        updated_at: new Date(),
+      },
+    });
+    // only after the row is written — a file removed before the update would
+    // leave the page pointing at nothing if the write then failed
+    removeSitePhoto(v, old);
     res.json({ site });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
