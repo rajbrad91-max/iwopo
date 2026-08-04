@@ -265,38 +265,81 @@
    THE FIVE THEMES — each one a different cut of the same two collages.
    ════════════════════════════════════════════════════════════════════════ */
 
-/* ── 1. APERTURE — the photographs almost touch. Tight seams, a floating nav
-   over the cover, and only the opening frame carries words beside it. */
-.st-aperture .st-hero { min-height: 86vh; }
-.st-aperture .st-hero-title { font-size: clamp(36px, 7vw, 76px); font-weight: 300; letter-spacing: -.035em; }
-.st-aperture .st-hero-tagline { letter-spacing: .16em; text-transform: uppercase; font-size: 11.5px; }
+/* ── 1. APERTURE — a photographer's opening frame. The cover fills the screen;
+   the name sits low and quiet so the picture does the talking. Floating nav
+   over the cover. Home "recent work" runs edge to edge with almost no seam. */
+.st-aperture .st-hero { min-height: 100vh; place-content: end center;
+  padding: 0 44px clamp(56px, 9vh, 96px); text-align: center; }
+.st-aperture .st-hero.has-cover::after {
+  background: linear-gradient(180deg, rgba(0,0,0,.06) 0%, rgba(0,0,0,.18) 42%, rgba(0,0,0,.62) 100%); }
+.st-aperture .st-hero-title { font-size: clamp(40px, 8vw, 92px); font-weight: 300;
+  letter-spacing: -.04em; margin-bottom: 12px; }
+.st-aperture .st-hero-tagline { letter-spacing: .2em; text-transform: uppercase;
+  font-size: 11px; max-width: 420px; margin-bottom: 28px; }
+.st-aperture .st-hero-logo { margin-bottom: 18px; max-height: 64px; }
+.st-aperture .st-hero .st-cta { background: transparent; border-color: #fff; color: #fff; border-radius: 0;
+  padding: 13px 28px; }
+.st-aperture .st-hero .st-cta:hover { background: #fff; color: #111; opacity: 1; }
+.st-aperture .st-hero .st-cta.is-ghost { border-color: rgba(255,255,255,.55); }
+.st-aperture .st-hero .st-cta.is-ghost:hover { background: rgba(255,255,255,.14); color: #fff; border-color: #fff; }
 .st-aperture.st-page-home .st-nav { position: fixed; left: 0; right: 0;
   background: none; backdrop-filter: none; border-bottom: 0; color: #fff; }
 .st-aperture.st-page-home .st-links a, .st-aperture.st-page-home .st-brand-name { color: #fff; }
-/* only the opening frame is wide enough to carry its words alongside */
+.st-aperture .st-about { padding-top: 72px; padding-bottom: 56px; }
 .st-aperture .st-gal-cap { padding-top: 10px; }
-.st-aperture .st-reel-track { gap: 8px; }
-.st-aperture .st-reel-i { flex: 0 0 330px; }
-.st-aperture .st-reel-i .st-gal-img { aspect-ratio: 16 / 9; }
+.st-aperture .st-reel-track { gap: 6px; }
+.st-aperture .st-reel-i { flex: 0 0 360px; }
 .st-aperture .st-reel-nav { border-radius: 0; }
 .st-aperture .st-alt { background: #f5f3ef; }
+/* recent work: the photographs touch, edge to edge — a strip, not three cards */
+.st-aperture .st-section.st-alt .st-wrap { max-width: none; padding-left: 0; padding-right: 0; }
+.st-aperture .st-section.st-alt .st-head,
+.st-aperture .st-section.st-alt .st-more { padding-left: 44px; padding-right: 44px; }
+.st-aperture .st-trio { gap: 3px; }
+.st-aperture .st-trio-i:nth-child(2) { margin-top: 0; }
+.st-aperture .st-trio-i .st-gal-img { aspect-ratio: 4 / 5; }
+.st-aperture .st-gal-frame:hover .st-gal-img { transform: scale(1.02); }
 
-/* ── 2. ATELIER — a magazine spread. Wide margins, a ruled heading, frames
-   hung at different heights and words set beside the two largest. */
-.st-atelier .st-hero { min-height: 66vh; margin: 18px; text-align: left;
-  place-content: end start; padding: 40px; }
-.st-atelier .st-hero-inner { max-width: 580px; }
-.st-atelier .st-hero-title { font-size: clamp(32px, 4.6vw, 54px); letter-spacing: -.01em; }
-.st-atelier .st-hero-tagline { margin-left: 0; margin-right: 0; }
+/* ── 2. CONTACT SHEET (atelier) — a magazine open on the desk. Words live on
+   paper to the left; the cover stands as its own tall frame on the right.
+   Portfolio reads as even cells on a sheet. Ruled headings, ink-outline buttons. */
+.st-atelier .st-hero { display: grid; grid-template-columns: minmax(280px, 0.92fr) 1.35fr;
+  min-height: 0; margin: 0; padding: 0; text-align: left; place-content: stretch;
+  align-items: stretch; gap: 0; }
+.st-atelier .st-hero.has-cover { min-height: 86vh; }
+.st-atelier .st-hero:not(.has-cover) { grid-template-columns: 1fr; min-height: 70vh;
+  place-content: center start; padding: 64px clamp(28px, 5vw, 72px); }
+.st-atelier .st-hero-cover { position: relative; inset: auto; width: 100%; height: 100%;
+  min-height: 86vh; grid-column: 2; grid-row: 1; z-index: 0; }
+.st-atelier .st-hero.has-cover::after { content: none; }
+.st-atelier .st-hero-inner { grid-column: 1; grid-row: 1; max-width: none;
+  place-self: center stretch; padding: clamp(36px, 5vw, 72px) clamp(28px, 4vw, 64px);
+  background: var(--st-paper); }
+.st-atelier .st-hero:not(.has-cover) .st-hero-inner { background: transparent; padding: 0; max-width: 560px; }
+.st-atelier .st-hero-logo { margin: 0 0 28px; }
+.st-atelier .st-hero-title { font-size: clamp(34px, 4.8vw, 58px); letter-spacing: -.02em;
+  line-height: 1.05; margin-bottom: 18px; }
+.st-atelier .st-hero-tagline { margin: 0 0 34px; max-width: 34ch; letter-spacing: .02em; }
+/* text sits on paper, so it must not stay white from the shared .has-cover rule */
+.st-atelier .st-hero.has-cover .st-hero-title,
+.st-atelier .st-hero.has-cover .st-hero-cta { color: var(--st-ink); }
+.st-atelier .st-hero.has-cover .st-hero-tagline { color: var(--st-soft); }
 .st-atelier .st-hero-cta, .st-atelier .st-hero.has-cover .st-hero-cta { justify-content: flex-start; }
+/* cover tools belong on the photograph column, not over the words */
+.st-atelier .st-ph-tools { grid-column: 2; grid-row: 1; z-index: 4;
+  align-self: start; justify-self: start; position: relative; top: 14px; left: 14px; }
 .st-atelier .st-head, .st-atelier .st-reel-head { border-bottom: 1px solid var(--st-ink); padding-bottom: 16px; }
 .st-atelier .st-cta { background: none; color: var(--st-ink); border-color: var(--st-ink); border-radius: 0; }
 .st-atelier .st-cta:hover { background: var(--st-ink); color: var(--st-paper); opacity: 1; }
-.st-atelier .st-reel-track { gap: 30px; }
-.st-atelier .st-reel-i { flex: 0 0 235px; }
-.st-atelier .st-reel-i .st-gal-img { aspect-ratio: 4 / 5; }
+.st-atelier .st-about .st-narrow { max-width: 640px; text-align: left; margin-left: 0; }
+.st-atelier .st-trio { gap: 12px; }
+.st-atelier .st-trio-i:nth-child(2) { margin-top: 0; }
+.st-atelier .st-trio-i .st-gal-img { aspect-ratio: 1 / 1; }
+.st-atelier .st-reel-track { gap: 12px; }
+.st-atelier .st-reel-i { flex: 0 0 220px; }
 .st-atelier .st-reel-nav { border-radius: 0; border-color: var(--st-ink); }
 .st-atelier .st-alt { background: #f8f7f4; }
+.st-atelier .st-gal-frame:hover .st-gal-img { transform: scale(1.03); }
 
 /* ── 3. VELLUM — warm and unhurried. Everything centred, words always under
    the picture rather than beside it, and a rule under each heading. */
@@ -389,8 +432,18 @@
   .st-head { margin-bottom: 26px; }
   .st-hero, .st-aperture .st-hero, .st-noir .st-hero,
   .st-vellum .st-hero, .st-bloom .st-hero { min-height: 70vh; padding: 56px 20px; }
-  .st-atelier .st-hero { margin: 10px; padding: 24px; min-height: 64vh; }
+  /* Contact Sheet stacks: photograph on top, words on paper underneath */
+  .st-atelier .st-hero, .st-atelier .st-hero.has-cover {
+    grid-template-columns: 1fr; min-height: 0; }
+  .st-atelier .st-hero-cover { grid-column: 1; grid-row: 1; min-height: 52vh; height: 52vh; }
+  .st-atelier .st-hero-inner { grid-column: 1; grid-row: 2; padding: 32px 20px 48px; }
+  .st-atelier .st-ph-tools { grid-column: 1; grid-row: 1; position: absolute; top: 14px; left: 14px; }
+  .st-atelier .st-hero:not(.has-cover) { padding: 48px 20px; min-height: 56vh; }
+  .st-aperture .st-hero { place-content: end center; padding: 0 20px 48px; min-height: 92vh; }
+  .st-aperture .st-section.st-alt .st-head,
+  .st-aperture .st-section.st-alt .st-more { padding-left: 20px; padding-right: 20px; }
   .st-hero-cta { justify-content: center; }
+  .st-atelier .st-hero-cta { justify-content: flex-start; }
   .st-more { margin-top: 32px; }
 
   /* two frames across, then the words underneath — a five-slot spread squeezed
@@ -441,6 +494,10 @@
    would be taller than the box it is being shown in */
 .st.is-inpanel .st-hero { min-height: 440px; }
 .st.is-inpanel .st-section { padding: 62px 0; }
+/* Contact Sheet's cover column used 86vh; inside the panel that overflows the stage */
+.st-atelier.is-inpanel .st-hero.has-cover { min-height: 440px; }
+.st-atelier.is-inpanel .st-hero-cover { min-height: 440px; height: 440px; }
+.st-aperture.is-inpanel .st-hero { min-height: 440px; padding-bottom: 40px; }
 
 /* ══ five different first impressions ══════════════════════════════════
    A vendor judges a style by its home page, and all five opened the same way:
@@ -448,13 +505,11 @@
    look at first did not. Each one now has its own shape.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* 1 · APERTURE — the photograph, whole. Name centred, nothing competing. */
-.st-aperture .st-hero-inner { max-width: 900px; }
+/* 1 · APERTURE — full-bleed photograph, name low and quiet. (layout above) */
+.st-aperture .st-hero-inner { max-width: 920px; }
 
-/* 2 · CONTACT SHEET — the name set low and left against a wide margin, the way
-   a magazine opens on a picture with the title in the corner. */
-.st-atelier .st-hero.has-cover::after {
-  background: linear-gradient(105deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.12) 62%); }
+/* 2 · CONTACT SHEET — split open: words on paper, cover as its own frame.
+   (layout above — left column / right photograph) */
 
 /* 3 · VELLUM — the photograph is a band, not a wall. It ends, and the name sits
    underneath on paper, which is what a printed invitation does. */
@@ -500,21 +555,21 @@
    of these can leave a gap.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* 1 · APERTURE — almost no seam, one frame dominant */
-.st-aperture .st-col1 { gap: 6px; grid-auto-rows: 104px; }
-.st-aperture .st-c1 { grid-column: span 8; grid-row: span 5; }
-.st-aperture .st-c2 { grid-column: span 4; grid-row: span 5; }
-.st-aperture .st-c3 { grid-column: span 4; grid-row: span 3; }
-.st-aperture .st-c4 { grid-column: span 4; grid-row: span 3; }
-.st-aperture .st-c5 { grid-column: span 4; grid-row: span 3; }
+/* 1 · APERTURE — one opening frame across the full width, then four equal beneath */
+.st-aperture .st-col1 { gap: 4px; grid-auto-rows: 112px; }
+.st-aperture .st-c1 { grid-column: span 12; grid-row: span 5; }
+.st-aperture .st-c2 { grid-column: span 6; grid-row: span 4; }
+.st-aperture .st-c3 { grid-column: span 6; grid-row: span 4; }
+.st-aperture .st-c4 { grid-column: span 6; grid-row: span 4; }
+.st-aperture .st-c5 { grid-column: span 6; grid-row: span 4; }
 
-/* 2 · CONTACT SHEET — even columns, generous margins, like frames on a sheet */
-.st-atelier .st-col1 { gap: 30px 26px; grid-auto-rows: 88px; }
-.st-atelier .st-c1 { grid-column: span 6; grid-row: span 5; }
-.st-atelier .st-c2 { grid-column: span 6; grid-row: span 4; }
+/* 2 · CONTACT SHEET — even cells on a sheet: three across, then a calm pair */
+.st-atelier .st-col1 { gap: 14px; grid-auto-rows: 100px; }
+.st-atelier .st-c1 { grid-column: span 4; grid-row: span 4; }
+.st-atelier .st-c2 { grid-column: span 4; grid-row: span 4; }
 .st-atelier .st-c3 { grid-column: span 4; grid-row: span 4; }
-.st-atelier .st-c4 { grid-column: span 4; grid-row: span 4; }
-.st-atelier .st-c5 { grid-column: span 4; grid-row: span 4; }
+.st-atelier .st-c4 { grid-column: span 6; grid-row: span 4; }
+.st-atelier .st-c5 { grid-column: span 6; grid-row: span 4; }
 
 /* 3 · VELLUM — three across, then a calm pair. Captions centred. */
 .st-vellum .st-col1 { gap: 34px 24px; grid-auto-rows: 92px; }
@@ -543,7 +598,8 @@
 
 /* ── the rail, tidied ── */
 .st-reel-i .st-gal-img { aspect-ratio: auto; height: 300px; }
-.st-aperture .st-reel-i .st-gal-img { height: 210px; }
+.st-aperture .st-reel-i .st-gal-img { height: 220px; }
+.st-atelier .st-reel-i .st-gal-img { height: 240px; }
 .st-noir .st-reel-i .st-gal-img { height: 200px; }
 .st-vellum .st-reel-i .st-gal-img { height: 250px; }
 .st-bloom .st-reel-i .st-gal-img { height: 280px; }
