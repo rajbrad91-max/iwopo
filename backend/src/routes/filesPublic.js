@@ -1,4 +1,5 @@
 import express from 'express';
+import { limit } from '../middleware/rateLimit.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -244,7 +245,7 @@ router.get('/:token/thumb/:itemId', async (req, res) => {
 });
 
 // POST /api/f/:token/unlock → check the share password
-router.post('/:token/unlock', async (req, res) => {
+router.post('/:token/unlock', limit({ name: 'share-unlock', max: 12, windowMs: 15 * 60_000, key: r => r.params.token }), async (req, res) => {
   try {
     const found = await shareByToken(req.params.token);
     if (!found) return res.status(404).json({ error: 'This link is not valid' });

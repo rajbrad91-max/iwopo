@@ -1,4 +1,5 @@
 import express from 'express';
+import { limit } from '../middleware/rateLimit.js';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
@@ -184,7 +185,7 @@ router.get('/fill/:token', async (req, res) => {
 });
 
 // unlock with the access code → returns the current knowledge to edit
-router.post('/fill/:token/unlock', async (req, res) => {
+router.post('/fill/:token/unlock', limit({ name: 'fill-unlock', max: 12, windowMs: 15 * 60_000, key: r => r.params.token }), async (req, res) => {
   try {
     const s = await prisma.chatbot_subscribers.findFirst({
       where: { share_token: req.params.token },

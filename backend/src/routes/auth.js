@@ -1,4 +1,5 @@
 import express from 'express';
+import { limit, forgive } from '../middleware/rateLimit.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
@@ -22,7 +23,12 @@ async function trialCount(ip) {
 }
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login',
+  // per address, so one machine cannot grind through a password list
+  limit({ name: 'login-ip', max: 20, windowMs: 15 * 60_000 }),
+  // and per account, so a spread of addresses cannot gang up on one inbox
+  limit({ name: 'login-user', max: 8, windowMs: 15 * 60_000, key: r => String(r.body?.email || '').toLowerCase() }),
+  async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
 
@@ -31,6 +37,11 @@ router.post('/login', async (req, res) => {
 
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+
+  // getting in clears the count — a person who mistyped twice then succeeded
+  // should not be closer to a lockout than one who typed it right first time
+  forgive('login-user', req, String(email).toLowerCase());
+  forgive('login-ip', req);
 
   res.json({
     token: signToken(user),
@@ -45,7 +56,7 @@ router.get('/trial-eligible', async (req, res) => {
 });
 
 // POST /api/auth/signup  (public - from Selling Platform)
-router.post('/signup', async (req, res) => {
+router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   const { businessName, name, email, password, plan } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
 
@@ -66,7 +77,7 @@ router.post('/signup', async (req, res) => {
   const exists = await prisma.users.findFirst({ where: { email }, select: { id: true } });
   if (exists) return res.status(409).json({ error: 'Email already registered' });
 
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await bcrypt.hash(password, 12);
   try {
     // All-or-nothing: a half-finished signup used to be possible (vendor created,
     // then the user insert fails → orphaned tenant). A transaction prevents that.
@@ -118,7 +129,7 @@ router.post('/signup', async (req, res) => {
 });
 
 // POST /api/auth/forgot  → email a reset link (always responds ok, to avoid leaking which emails exist)
-router.post('/forgot', async (req, res) => {
+router.post('/forgot', limit({ name: 'forgot', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   try {
@@ -157,7 +168,7 @@ router.post('/forgot', async (req, res) => {
 });
 
 // POST /api/auth/reset  → set a new password using a valid token
-router.post('/reset', async (req, res) => {
+router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) return res.status(400).json({ error: 'Token and new password required' });
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
@@ -168,7 +179,7 @@ router.post('/reset', async (req, res) => {
       select: { id: true, user_id: true },
     });
     if (!row) return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
-    const newHash = await bcrypt.hash(password, 10);
+    const newHash = await bcrypt.hash(password, 12);
     // both writes together — the token must not be burned unless the password changed
     await prisma.$transaction([
       prisma.users.update({ where: { id: row.user_id }, data: { password_hash: newHash } }),

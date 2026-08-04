@@ -2,6 +2,7 @@
 // file's own statements, so this must load ahead of any route (which pulls in
 // the Prisma client) for the env check to happen before anything connects.
 import { checkEnv } from './config/checkEnv.js';
+import prisma from './config/prisma.js';
 checkEnv();
 
 import express from 'express';
@@ -42,7 +43,47 @@ app.set('trust proxy', true); // 🌍 real client IP behind nginx (for geo prici
 app.set('etag', false);
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+/**
+ * 🌐 Who may call this API from a browser.
+ *
+ * It used to answer every origin. Authentication is a bearer token rather than
+ * a cookie, so that was not drive-by session theft — but a page on any domain
+ * could still drive this API with a token it had got hold of, and there was no
+ * reason to allow it.
+ *
+ * A vendor's own domain has to be allowed, and that list changes without a
+ * restart, so it is read from the database and held briefly. Requests with no
+ * Origin at all — the mobile app, curl, server to server — are unaffected;
+ * CORS is a browser rule and those are not browsers.
+ */
+const PLATFORM_ORIGINS = new Set([
+  'https://iwopo.com', 'https://www.iwopo.com',
+  'https://alphabetaone.com', 'https://www.alphabetaone.com',
+]);
+let vendorOrigins = new Set();
+let vendorOriginsAt = 0;
+async function refreshVendorOrigins() {
+  if (Date.now() - vendorOriginsAt < 60_000) return;
+  vendorOriginsAt = Date.now();
+  try {
+    const rows = await prisma.vendor_sites.findMany({
+      where: { domain_status: 'live', NOT: { custom_domain: null } },
+      select: { custom_domain: true },
+    });
+    const next = new Set();
+    for (const r of rows) { next.add('https://' + r.custom_domain); next.add('https://www.' + r.custom_domain); }
+    vendorOrigins = next;
+  } catch { /* keep the previous list rather than locking everyone out */ }
+}
+
+app.use(cors({
+  origin: async (origin, cb) => {
+    if (!origin) return cb(null, true);                 // not a browser
+    if (PLATFORM_ORIGINS.has(origin)) return cb(null, true);
+    await refreshVendorOrigins();
+    return cb(null, vendorOrigins.has(origin));
+  },
+}));
 app.use(express.json());
 
 app.use('/api', apiRoutes);

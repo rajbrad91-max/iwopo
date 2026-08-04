@@ -56,7 +56,10 @@ router.post('/', requireAuth, async (req, res) => {
     client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai } = req.body;
   if (!title) return res.status(400).json({ error: 'Title required' });
   try {
-    const token = crypto.randomBytes(6).toString('hex'); // 12-char public share token
+    // 16 bytes, matching the rest of the app. Six was 48 bits — short enough
+    // that guessing gallery links was worth someone's time, and a gallery is
+    // the most private thing here. Existing links keep working.
+    const token = crypto.randomBytes(16).toString('hex');
     const album = await prisma.albums.create({
       data: {
         vendor_id: v, title,

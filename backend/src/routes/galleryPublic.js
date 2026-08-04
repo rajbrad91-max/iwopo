@@ -1,4 +1,5 @@
 import { GALLERIES_ROOT } from '../config/paths.js';
+import { limit } from '../middleware/rateLimit.js';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -15,7 +16,17 @@ import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
-const upload = multer({ dest: '/tmp/iwopo-selfie' });
+/* A guest uploads a selfie here with no account and no token beyond the album
+   link, so this is the one upload an anonymous caller can reach. It had no size
+   cap and no type check at all — enough to fill the disk from outside. */
+const upload = multer({
+  dest: '/tmp/iwopo-selfie',
+  limits: { fileSize: 12 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (/^image\//.test(file.mimetype)) return cb(null, true);
+    cb(Object.assign(new Error('Images only'), { status: 400 }));
+  },
+});
 
 /** Was this album indexed with AWS? Its people live in album_faces, not face_clusters. */
 async function isAwsAlbum(albumId) {
@@ -192,7 +203,11 @@ router.get('/:token/session', async (req, res) => {
 });
 
 // 🔑 authenticate with guest/admin password → returns photo list + view token
-router.post('/:token/auth', async (req, res) => {
+router.post('/:token/auth',
+  // the album password door. Twelve tries per quarter hour per album per
+  // address — a couple who mistypes is unaffected; a script is not.
+  limit({ name: 'album-auth', max: 12, windowMs: 15 * 60_000, key: r => r.params.token }),
+  async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Gallery not found' });
@@ -293,7 +308,7 @@ router.get('/:token/download-all', async (req, res) => {
 });
 
 // 🤳 selfie search → returns matching photo IDs (public, needs view token)
-router.post('/:token/selfie', upload.single('selfie'), async (req, res) => {
+router.post('/:token/selfie', limit({ name: 'selfie', max: 20, windowMs: 15 * 60_000, key: r => r.params.token }), upload.single('selfie'), async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
