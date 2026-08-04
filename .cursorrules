@@ -1,0 +1,20 @@
+Read CLAUDE.md in the repository root before changing anything. It contains the
+house conventions and the list of failures this project has already had.
+
+The points most often got wrong, repeated here because a rules file is the only
+thing some tools read:
+
+- Never edit /var/www/iwopo (live). Work on staging; ship with `iwopo-deploy`.
+- vendor_id comes from the JWT, never from a request body. This is a
+  multi-tenant app and a leak between vendors is the worst thing that can
+  happen to it.
+- After any schema change, or any npm install/ci in a backend folder, run
+  `npx prisma generate` and restart. A clean install deletes the generated
+  Prisma client and the API crash-loops.
+- To check live is healthy, hit an API endpoint. Every page returns 200 while
+  the API is dead, because nginx serves the SPA.
+- `router.get('/:slug')` swallows later single-segment GETs. Check route order.
+- No !important outside prefers-reduced-motion. No dead or duplicate CSS.
+- Re-run lint after deleting any UI; it orphans handlers.
+- Verify the whole round trip, and look at anything visual rather than
+  measuring that it exists.
