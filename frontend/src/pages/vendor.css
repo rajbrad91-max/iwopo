@@ -889,7 +889,10 @@
 .gal-pick .lbl { color: #2dd4bf; font-weight: 700; }
 .gal-input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); padding: 11px 12px; box-sizing: border-box; font-size: 14px; transition: border-color .15s, box-shadow .15s; }
 .gal-input:focus { outline: none; border-color: #2dd4bf; box-shadow: 0 0 0 3px #2dd4bf22; }
-.gal-cover-btn { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--panel-2); border: 1.5px dashed var(--line); border-radius: 10px; color: var(--muted); padding: 11px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+.gal-cover-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--panel-2); border: 1.5px dashed var(--line); border-radius: 10px; color: var(--muted); padding: 11px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s;
+  margin-top: auto;
+}
 .gal-cover-btn:hover { border-color: #2dd4bf; color: #2dd4bf; background: #2dd4bf0d; }
 .gal-prefix { width: 132px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 6px 9px; font-size: 12px; }
 .gal-prefix:focus { outline: none; border-color: #2dd4bf; }
@@ -900,7 +903,10 @@
 .gal-err { color: #fb7185; font-size: 13px; font-weight: 600; }
 .gal-empty { padding: 60px 40px; text-align: center; color: var(--muted); border-radius: 16px; border-style: dashed; }
 .gal-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap: 18px; }
-.gal-card { padding: 0; cursor: pointer; overflow: hidden; border-radius: 16px; transition: transform .18s, box-shadow .18s, border-color .18s; }
+.gal-card {
+  padding: 0; cursor: pointer; overflow: hidden; border-radius: 16px; transition: transform .18s, box-shadow .18s, border-color .18s;
+  position: relative;
+}
 .gal-card:hover { transform: translateY(-3px); border-color: #2dd4bf66; box-shadow: 0 12px 30px rgba(0,0,0,.25); }
 .gal-card-cover { aspect-ratio: 3/2; background: linear-gradient(135deg, var(--panel-2), var(--panel)); overflow: hidden; position: relative; }
 .gal-card-cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
@@ -934,7 +940,6 @@
 .gal-send-foot { display: flex; gap: 14px; align-items: center; margin-top: 16px; }
 
 /* 📸 Gallery select-mode */
-.gal-card { position: relative; }
 .gal-card-sel { border-color: #2dd4bf; box-shadow: 0 0 0 2px #2dd4bf55; }
 .gal-card-check { position: absolute; top: 10px; left: 10px; z-index: 3; background: #000000aa; border-radius: 8px; padding: 5px 7px; display: flex; }
 .gal-card-check input { width: 18px; height: 18px; accent-color: #2dd4bf; cursor: pointer; }
@@ -1173,7 +1178,6 @@
   padding: 1px 5px; font-size: 11px; color: var(--text);
 }
 .gal-prefix-full { width: 100%; margin-top: 6px; }
-.gal-cover-btn { margin-top: auto; }
 .gal-cover-empty {
   border: 1.5px dashed var(--line); border-radius: 10px;
   padding: 34px 18px; text-align: center; color: var(--muted); font-size: 12.5px;

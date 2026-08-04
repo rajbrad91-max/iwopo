@@ -119,6 +119,7 @@
 .ct-doc {
   background: #FFFDFA; border: 1px solid #E8E0D5; border-radius: 10px;
   padding: 18px 20px;
+  font-size: 14.7px; line-height: 1.55; color: #1f2937;
 }
 .ct-pad {
   background: #FFFDFA; border: 1.5px dashed var(--brand, #C9A86A); border-radius: 10px;
@@ -182,8 +183,6 @@ body:has(.cp-page) { background: #EFE9E0; }
    sizes, the exact greys, the border weight under each heading. This is what
    "the same as the reference" means in numbers rather than by eye.
    ══════════════════════════════════════════════════════════════════════ */
-.ct-doc { font-size: 14.7px; line-height: 1.55; color: #1f2937; }
-
 /* logo + business info, side by side across the top */
 .ct-headband { width: 100%; border-collapse: collapse; margin: 0 0 6px; }
 .ct-hb-logo { width: 64px; padding: 0 12px 8px 0; vertical-align: top; }

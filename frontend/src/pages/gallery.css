@@ -170,11 +170,11 @@
   overscroll-behavior-x: contain;  /* swiping the strip won't navigate back */
   scroll-padding-left: 2px;
   padding-bottom: 2px;
+  scrollbar-width: none;
+  flex: 1 1 auto;
 }
 /* keep the scrollbar out of the way — the strip is obviously swipeable */
 .pg-faces::-webkit-scrollbar { height: 0; }
-.pg-faces { scrollbar-width: none; }
-
 /* 👥 "More" → wrap every face into rows right here, under the strip. The block
    itself scrolls once it gets tall, so an album with hundreds of people stays
    usable without pushing the photos off screen. */
@@ -222,7 +222,6 @@
 .pg-face.is-on .pg-face-n { color: var(--pg-accent); font-weight: 600; }
 
 /* faces take the available width; action circles pin to the right edge, always */
-.pg-faces { flex: 1 1 auto; }
 .pg-people-acts { display: flex; gap: 14px 10px; align-items: flex-start; flex: 0 0 auto; margin-left: auto; padding-left: 10px; }
 /* the action circles sit at the top when the face list is expanded, so they
    don't drift down the page as rows appear */

@@ -14,7 +14,10 @@
 .sa-wrap { display:flex; min-height:100vh; background:var(--bg); color:var(--text); font-size:13px; }
 .sa-wrap * { box-sizing:border-box; }
 
-.sa-sidebar { width:225px; background:var(--panel); border-right:1px solid var(--line); padding:20px 14px; display:flex; flex-direction:column; gap:3px; flex-shrink:0; position:sticky; top:0; height:100vh; }
+.sa-sidebar {
+  width:225px; background:var(--panel); border-right:1px solid var(--line); padding:20px 14px; display:flex; flex-direction:column; gap:3px; flex-shrink:0; position:sticky; top:0; height:100vh;
+  transition:width .22s ease, padding .22s ease;
+}
 .sa-brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:16px; letter-spacing:0.5px; padding:2px 8px 18px; }
 .sa-brand .sa-brand-img { width:30px; height:30px; object-fit:contain; }
 .sa-brand small { color:var(--teal); font-weight:700; font-size:10px; letter-spacing:2px; }
@@ -81,7 +84,10 @@
 .sa-badge.active { background:#4ade8022; color:var(--green); }
 .sa-badge.trial { background:var(--teal-soft); color:var(--teal); }
 .sa-badge.past { background:#fb718522; color:var(--red); }
-.sa-view-btn { background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:5px 13px; border-radius:7px; cursor:pointer; font-weight:600; font-size:11px; }
+.sa-view-btn {
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:5px 13px; border-radius:7px; cursor:pointer; font-weight:600; font-size:11px;
+  margin-bottom: 14px;
+}
 .sa-view-btn:hover { border-color:var(--teal); color:var(--teal); }
 
 .sa-settings-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line); }
@@ -174,7 +180,6 @@
 .sa-collapse-switch.on { background:var(--teal); }
 .sa-collapse-switch.on::after { transform:translateX(16px); }
 
-.sa-sidebar { transition:width .22s ease, padding .22s ease; }
 /* Auto-hide ON = collapsed to icons, expands on hover */
 .sa-collapsed .sa-sidebar { width:66px; padding:20px 8px; overflow:hidden; }
 .sa-collapsed .sa-brand div, .sa-collapsed .sa-nav-label, .sa-collapsed .sa-collapse-lbl { display:none; }
@@ -315,4 +320,3 @@
 .sa-svc-detail-name { margin: 10px 0 6px; }
 .sa-svc-detail-desc { color: var(--muted); font-size: 14px; }
 .sa-svc-detail .sa-trial-pill { margin-top: 14px; }
-.sa-view-btn { margin-bottom: 14px; }

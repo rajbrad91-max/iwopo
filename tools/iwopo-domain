@@ -93,6 +93,7 @@ cmd_add() {
 server {
     listen 80;
     server_name __SERVERNAMES__;
+    include snippets/iwopo-security.conf;
 
     root /var/www/iwopo/frontend/dist;
     index index.html;
@@ -103,10 +104,14 @@ server {
     location /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        # an add_header anywhere in a block discards everything inherited from
+        # above, so the security headers have to be repeated where one is set
+        include snippets/iwopo-security.conf;
     }
 
     location / {
         add_header Cache-Control "no-cache, must-revalidate" always;
+        include snippets/iwopo-security.conf;
         try_files $uri $uri/ /index.html;
     }
 
