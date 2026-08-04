@@ -590,7 +590,6 @@
 .ms-pay-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-bottom: 10px; align-items: center; }
 .ms-amt, .ms-method { width: 100%; }
 .ms-pay-add { padding: 0 14px; height: 34px; white-space: nowrap; }
-.ms-pay-btn { grid-column: 1 / -1; }
 .ms-pay-list { display: flex; flex-direction: column; gap: 6px; }
 .ms-pay-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; }
 
@@ -1414,9 +1413,6 @@
 .bd-dl div { min-width: 0; }
 .bd-dl dt { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .bd-dl dd { margin: 2px 0 0; font-size: 13.5px; color: var(--text); word-break: break-word; line-height: 1.35; }
-.bd-dl-money dd { font-size: 16px; font-weight: 700; }
-.bd-dl-money .is-paid dd { color: var(--green); }
-.bd-dl-money .is-due dd { color: var(--amber); }
 .bd-notes { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; white-space: pre-wrap; }
 .bd-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
 .bd-fine { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
@@ -1434,7 +1430,6 @@
   border: 1px solid var(--line); border-radius: 8px;
 }
 .bd-input:focus { outline: none; border-color: var(--teal); }
-.bd-input-amt { flex: 0 0 100px; }
 .bd-input-time { flex: 0 0 110px; }
 
 .bd-list { list-style: none; margin: 8px 0 0; padding: 0; }
@@ -2091,7 +2086,6 @@ tr:hover .bk-del { opacity: .8; }
 @media (max-width: 560px) {
   .cr-add-grid { grid-template-columns: 1fr; }
 }
-
 
 /* the second upload button, so films are visibly a separate act from photos */
 .ad-upload-vid { margin-left: 6px; }

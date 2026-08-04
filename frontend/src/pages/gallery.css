@@ -770,9 +770,11 @@
 }
 
 /* ── 🎬 film tiles and playback ────────────────────────────────────────── */
-/* A tile whose poster failed to load is hidden rather than showing a broken
-   image, so the badge sits on a plain dark card instead of a torn one. */
-.pg-tile { background: #17171a; }
+/* A film whose poster failed to load hides the broken image, so the badge sits
+   on a plain dark card instead of a torn one. Scoped to tiles that actually
+   carry a film: as a bare .pg-tile it repainted every photograph in the gallery
+   as well, which was never the intent. */
+.pg-tile:has(.pg-vid-badge) { background: #17171a; }
 
 .pg-vid-badge { position: absolute; inset: 0; display: flex; align-items: center;
   justify-content: center; gap: 10px; pointer-events: none; }

@@ -243,7 +243,11 @@
 .sl-fv-bill-amt, .sl-fv-bill-rows,
 .sl-fv-play, .sl-fv-tab,
 .sl-fv-eye, .sl-fv-ant,
-.sl-fv-cloud-bump { position: absolute; display: block; }
+.sl-fv-cloud-bump {
+  position: absolute; display: block;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(180deg, #fff, #FFE8D6);
+}
 .sl-fv-floor {
   left: 10px; right: 10px; bottom: 4px; height: 10px; border-radius: 50%;
   background: radial-gradient(ellipse, rgba(198,77,0,.2), transparent 70%);
@@ -407,10 +411,7 @@
   background: linear-gradient(180deg, #fff, #FFE8D6);
   box-shadow: 0 8px 0 rgba(196,77,0,.12), 0 10px 14px -8px rgba(26,18,11,.28);
 }
-.sl-fv-cloud-bump {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: linear-gradient(180deg, #fff, #FFE8D6);
-}
+
 .sl-fv-cloud-bump.l { left: 18px; top: 18px; }
 .sl-fv-cloud-bump.r {
   left: 38px; top: 14px; width: 34px; height: 34px;
@@ -506,7 +507,6 @@
 @media (max-width: 900px) {
   .sl-feat-grid { grid-template-columns: 1fr; }
 }
-
 
 /* industries — tight chip grid */
 .sl-ind-band {
