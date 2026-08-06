@@ -320,3 +320,14 @@
 .sa-svc-detail-name { margin: 10px 0 6px; }
 .sa-svc-detail-desc { color: var(--muted); font-size: 14px; }
 .sa-svc-detail .sa-trial-pill { margin-top: 14px; }
+
+/* the super admin's own account, behind the Edit button */
+.sa-acct { margin-top: 10px; padding: 4px 0; }
+.sa-acct-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 92px;
+  gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.sa-acct-row:last-of-type { border-bottom: 0; }
+.sa-acct-lbl { font-size: 12px; color: var(--muted); }
+.sa-acct-msg { padding: 10px 16px; font-size: 12px; color: var(--text); }
+@media (max-width: 620px) {
+  .sa-acct-row { grid-template-columns: 1fr; gap: 6px; }
+}

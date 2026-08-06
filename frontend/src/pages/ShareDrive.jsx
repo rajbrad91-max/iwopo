@@ -219,7 +219,7 @@ export default function ShareDrive({ onStorage }) {
   async function removeItem(it, e) {
     e.stopPropagation();
     if (!await dialog.confirm(`"${it.filename}" will be deleted.`, { title: 'Delete file?', okLabel: 'Delete' })) return;
-    try { await api.removeShareItem(it.id); load(folderId); flash('🗑️ Deleted'); }
+    try { await api.deleteShareItem(it.id); load(folderId); flash('🗑️ Deleted'); }
     catch (err) { dialog.alert(err.message, { error: true }); }
   }
 

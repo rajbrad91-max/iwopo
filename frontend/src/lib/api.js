@@ -346,7 +346,6 @@ export const api = {
     request(`/files/${id}/email`, { method: 'POST', body: JSON.stringify(body) }),
   updateFileShare: (id, body) => request(`/files/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteFileShare: (id) => request(`/files/${id}`, { method: 'DELETE' }),
-  fileShareItems: (id) => request(`/files/${id}/items`),
   uploadShareFiles: (files, folderId) => {
     const fd = new FormData();
     for (const f of files) fd.append('files', f);
@@ -436,6 +435,7 @@ export const api = {
   myCurrencies: () => request('/me/currencies'),
   mySettings: () => request('/me/settings'),
   saveSettings: (data) => request('/me/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  updateMyName: (name) => request('/me/account', { method: 'PUT', body: JSON.stringify({ name }) }),
   changeEmail: (email, password) => request('/me/email', { method: 'PUT', body: JSON.stringify({ email, password }) }),
   changePassword: (current, next) => request('/me/password', { method: 'PUT', body: JSON.stringify({ current, next }) }),
   vendorPackages: () => request('/vendor-packages'),

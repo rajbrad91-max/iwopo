@@ -1720,7 +1720,52 @@ function SettingRow({ name, desc, input, small, toggle, on }) {
 }
 
 /* ---------- ADMINS ---------- */
+/**
+ * 🔐 The super admin's own account.
+ *
+ * The Edit button here did nothing, and it was the only place this was ever
+ * meant to live — the super panel had no way to change its own name, email or
+ * password, so the only route to a new password was editing the database by
+ * hand. That is a bad position to be in on the day you need to rotate one.
+ *
+ * Email and password each demand the current password. Anyone sitting at an
+ * unlocked laptop should not be able to take the account over in two clicks.
+ */
 function AdminsView({ user }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [curPw, setCurPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+
+  const say = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3500); };
+
+  async function saveName() {
+    if (!name.trim() || name === user?.name) return;
+    setBusy('name');
+    try { await api.updateMyName(name.trim()); say('✅ Name saved — it updates everywhere next time you sign in'); }
+    catch (e) { say('⚠️ ' + e.message); }
+    finally { setBusy(''); }
+  }
+
+  async function saveEmail() {
+    if (!email.trim() || !curPw) return say('⚠️ Enter your current password to change the email');
+    setBusy('email');
+    try { await api.changeEmail(email.trim(), curPw); setCurPw(''); say('✅ Email changed — sign in with it next time'); }
+    catch (e) { say('⚠️ ' + e.message); }
+    finally { setBusy(''); }
+  }
+
+  async function savePassword() {
+    if (!curPw || !newPw) return say('⚠️ Both passwords are needed');
+    setBusy('pw');
+    try { await api.changePassword(curPw, newPw); setCurPw(''); setNewPw(''); say('✅ Password changed'); }
+    catch (e) { say('⚠️ ' + e.message); }
+    finally { setBusy(''); }
+  }
+
   return (
     <>
       <div className="sa-section-title">Admin Users</div>
@@ -1728,10 +1773,55 @@ function AdminsView({ user }) {
         <table>
           <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
           <tbody>
-            <tr><td className="biz">{user?.name} (you)</td><td>{user?.email || 'raj@iwopo.com'}</td><td><span className="sa-badge active">super_admin</span></td><td><button className="sa-view-btn">Edit</button></td></tr>
+            <tr>
+              <td className="biz">{user?.name} (you)</td>
+              <td>{user?.email || 'raj@iwopo.com'}</td>
+              <td><span className="sa-badge active">super_admin</span></td>
+              <td><button className={`sa-view-btn ${open ? 'active-btn' : ''}`} onClick={() => setOpen(!open)}>
+                {open ? 'Close' : 'Edit'}
+              </button></td>
+            </tr>
           </tbody>
         </table>
       </div>
+
+      {open && (
+        <div className="sa-box sa-acct">
+          <div className="sa-acct-row">
+            <label className="sa-acct-lbl">Display name</label>
+            <input className="sa-set-input" value={name} onChange={e => setName(e.target.value)} />
+            <button className="sa-view-btn" disabled={busy === 'name'} onClick={saveName}>
+              {busy === 'name' ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+
+          <div className="sa-acct-row">
+            <label className="sa-acct-lbl">Sign-in email</label>
+            <input className="sa-set-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <button className="sa-view-btn" disabled={busy === 'email'} onClick={saveEmail}>
+              {busy === 'email' ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+
+          <div className="sa-acct-row">
+            <label className="sa-acct-lbl">Current password</label>
+            <input className="sa-set-input" type="password" value={curPw} autoComplete="current-password"
+              placeholder="Needed for email or password" onChange={e => setCurPw(e.target.value)} />
+            <span />
+          </div>
+
+          <div className="sa-acct-row">
+            <label className="sa-acct-lbl">New password</label>
+            <input className="sa-set-input" type="password" value={newPw} autoComplete="new-password"
+              placeholder="At least 6 characters" onChange={e => setNewPw(e.target.value)} />
+            <button className="sa-view-btn" disabled={busy === 'pw'} onClick={savePassword}>
+              {busy === 'pw' ? 'Saving…' : 'Change'}
+            </button>
+          </div>
+
+          {msg && <div className="sa-acct-msg">{msg}</div>}
+        </div>
+      )}
     </>
   );
 }

@@ -102,6 +102,24 @@ router.put('/email', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * PUT /api/me/account → the signed-in person's own display name.
+ *
+ * /me/profile cannot do this. It writes to the vendors table and returns 400
+ * without a vendor_id, so a super admin — who has no vendor — had no way to
+ * change their own name at all. This writes to users, which is where a name
+ * actually lives, and it only ever touches the row the token belongs to.
+ */
+router.put('/account', requireAuth, async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Name required' });
+  if (name.length > 80) return res.status(400).json({ error: 'Name too long (max 80)' });
+  try {
+    await prisma.users.update({ where: { id: req.user.id }, data: { name } });  // 🔒 own account only
+    res.json({ ok: true, name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUT /api/me/password
 router.put('/password', requireAuth, async (req, res) => {
   const { current, next } = req.body;
