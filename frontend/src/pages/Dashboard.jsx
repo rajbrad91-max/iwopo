@@ -1696,10 +1696,6 @@ function SettingsView({ saTheme, setSaTheme, user }) {
           ))}
         </div>
       </div>
-      <SettingRow name="Platform Name" desc="Shown across all panels" input="iwopo" />
-      <SettingRow name="Default Trial Length" desc="Days before billing starts" input="30" small />
-      <SettingRow name="Maintenance Mode" desc="Take platform offline" toggle />
-      <SettingRow name="Auto-suspend Past Due" desc="After 7 days unpaid" toggle on />
     </div>
     <div className="sa-section-title" style={{ marginTop: 22 }}>🔐 Admins</div>
     <AdminsView user={user} />
@@ -1708,16 +1704,6 @@ function SettingsView({ saTheme, setSaTheme, user }) {
   );
 }
 
-function SettingRow({ name, desc, input, small, toggle, on }) {
-  const [isOn, setOn] = useState(on);
-  return (
-    <div className="sa-settings-row">
-      <div><div className="sr-name">{name}</div><div className="sr-desc">{desc}</div></div>
-      {input && <input className="sa-set-input" style={{ width: small ? 80 : 180 }} defaultValue={input} />}
-      {toggle && <div className={`sa-switch ${isOn ? 'on' : ''}`} onClick={() => setOn(!isOn)} />}
-    </div>
-  );
-}
 
 /* ---------- ADMINS ---------- */
 /**
