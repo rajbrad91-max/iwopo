@@ -1,4 +1,5 @@
 import { GALLERIES_ROOT } from '../config/paths.js';
+import * as objects from '../lib/objectStore.js';
 import { limit } from '../middleware/rateLimit.js';
 import express from 'express';
 import fs from 'fs';
@@ -94,6 +95,28 @@ async function getTheme(vendorId) {
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
+
+/**
+ * ☁️ A gallery file, from R2 if it is there and from the disk if it is not.
+ *
+ * The stored path is already vendor/album/name, so the key mirrors it. The
+ * vendor id is taken from the photo ROW — which the caller has already been
+ * checked against — not from the request.
+ *
+ * Returns a readable stream or null. Never a buffer: these are whole-resolution
+ * originals, and a zip of four hundred of them would otherwise be read into
+ * memory one at a time.
+ */
+async function galleryStream(vendorId, rel) {
+  if (!rel || !await objects.enabled(objects.PRIVATE)) return null;
+  const parts = String(rel).split('/').filter(Boolean);
+  if (parts.length < 3) return null;                      // not vendor/album/name
+  try {
+    const o = await objects.getStream(objects.PRIVATE,
+      objects.keyFor(vendorId, 'galleries', parts[1], parts[2]));
+    return o;
+  } catch { return null; }                                // not migrated yet
+}
 
 // short-lived signed view tokens (in-memory; fine for single-node)
 const viewTokens = new Map(); // vt -> { albumId, role, exp }
@@ -253,6 +276,13 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
     if (req.params.type === 'orig') rel = p.storage_path;
     else if (req.params.type === 'thumb') rel = p.thumb_path;
     else rel = p.preview_path; // 'full' → the 2200px display file (preview_path column)
+    const o = await galleryStream(p.vendor_id, rel);
+    if (o) {
+      if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      if (o.size) res.setHeader('Content-Length', o.size);
+      return o.stream.pipe(res);                          // streamed, never buffered
+    }
+
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).end();
     res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });
@@ -302,8 +332,15 @@ router.get('/:token/download-all', async (req, res) => {
     archive.on('error', () => { try { res.status(500).end(); } catch {} });
     archive.pipe(res);
     for (const p of photos) {
+      const name = p.filename || `photo-${p.id}.jpg`;
+      /* R2 first, disk second — and a STREAM either way. archiver pulls each
+         entry as it writes, so a share of four hundred originals never needs
+         that much scratch space and the first byte reaches the client while
+         the rest is still being read. */
+      const o = await galleryStream(p.vendor_id, p.storage_path);
+      if (o) { archive.append(o.stream, { name }); continue; }
       const full = path.join(ROOT, p.storage_path);
-      if (fs.existsSync(full)) archive.file(full, { name: p.filename || `photo-${p.id}.jpg` });
+      if (fs.existsSync(full)) archive.file(full, { name });
     }
     archive.finalize();
   } catch (e) { res.status(500).json({ error: e.message }); }

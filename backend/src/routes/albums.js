@@ -1,4 +1,5 @@
 import { GALLERIES_ROOT } from '../config/paths.js';
+import * as objects from '../lib/objectStore.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -17,6 +18,18 @@ import { getSetting } from '../lib/settings.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
+
+/**
+ * 🔒 The R2 key for one gallery file.
+ *
+ * Mirrors the folder shape on disk, vendor first. The vendor id comes from the
+ * caller's token and the album id from a row already checked against it — never
+ * from anything the request supplied, because the prefix is the only thing
+ * separating one vendor's photographs from another's.
+ */
+function galleryKey(vendorId, albumId, name) {
+  return objects.keyFor(vendorId, 'galleries', String(albumId), name);
+}
 const upload = multer({ dest: '/tmp/vf_uploads', limits: { fileSize: 200 * 1024 * 1024 } });
 
 /**
@@ -410,6 +423,23 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
       await sharp(f.path).rotate().resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
       // thumb 800px webp (grid)
       await sharp(f.path).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
+
+      /* ☁️ And to R2, into the PRIVATE bucket. A gallery is opened with an
+         album password or a view token, so its objects must never sit beside
+         the public website images — a single bucket would let anyone holding a
+         file's URL walk past that gate.
+
+         Written after the disk, and failure is logged rather than fatal: the
+         photographs are already saved locally and every reader falls back
+         there, so an unreachable R2 costs a slower read, not a lost wedding. */
+      if (await objects.enabled(objects.PRIVATE)) {
+        for (const n of [origName, fullName, thumbName]) {
+          try {
+            await objects.putObject(objects.PRIVATE, galleryKey(v, id, n),
+              fs.createReadStream(path.join(dir, n)));
+          } catch (e) { console.error('[gallery] R2 upload failed for', n, e.message); }
+        }
+      }
       fs.unlinkSync(f.path);
 
       const rel = (n) => `${v}/${id}/${n}`;
