@@ -22,6 +22,7 @@ import prisma from '../config/prisma.js';
 import { normalizeDomain, checkDomain, dnsInstructions } from '../lib/customDomain.js';
 import { requireAuth } from '../middleware/auth.js';
 import { SITES_DIR } from '../config/paths.js';
+import * as objects from '../lib/objectStore.js';
 
 const router = express.Router();
 
@@ -415,12 +416,30 @@ const MAX_EDGE = 2000;
 
 async function storeImage(vendorId, tmpPath) {
   const fname = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}.webp`;
+  const local = path.join(siteDirFor(vendorId), fname);
   await sharp(tmpPath)
     .rotate()                                       // honour the camera's orientation
     .resize(MAX_EDGE, MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 82 })
-    .toFile(path.join(siteDirFor(vendorId), fname));
+    .toFile(local);
   fs.unlinkSync(tmpPath);
+
+  /* ☁️ Also to R2 when it is configured. The local copy is kept on purpose:
+     the reader below prefers the object and falls back to disk, so a failure
+     to reach R2 costs a slower read rather than a missing photograph. That is
+     what lets this be switched on one prefix at a time.
+
+     🔒 The key carries the vendor id from the caller's token, never from
+     anything the request supplied. */
+  if (await objects.enabled(objects.PUBLIC)) {
+    try {
+      await objects.putObject(objects.PUBLIC, objects.keyFor(vendorId, 'sites', fname),
+        fs.createReadStream(local), 'image/webp');
+    } catch (e) {
+      // not fatal — the file is on disk and will be served from there
+      console.error('[sites] R2 upload failed for', fname, e.message);
+    }
+  }
   return fname;
 }
 
@@ -501,10 +520,30 @@ router.post('/my/photo', requireAuth, upload.single('photo'), async (req, res) =
 //
 // Public on purpose: these are the pictures on a public website. Both parts are
 // forced through basename and Number so neither can walk out of the folder.
-router.get('/photo/:vendorId/:file', (req, res) => {
+/**
+ * These are a vendor's own website images, and are public by design — the id is
+ * in the URL because the page they appear on is open to the world. basename()
+ * keeps a crafted filename from climbing out of that vendor's folder.
+ *
+ * R2 is tried first and the disk second, so files that have not been migrated
+ * yet keep working and a migrated one costs nothing extra.
+ */
+router.get('/photo/:vendorId/:file', async (req, res) => {
   const v = Number(req.params.vendorId);
   if (!Number.isInteger(v) || v <= 0) return res.status(404).end();
-  const f = path.join(SITES_DIR, String(v), path.basename(req.params.file));
+  const name = path.basename(req.params.file);
+
+  if (await objects.enabled(objects.PUBLIC)) {
+    try {
+      const o = await objects.getStream(objects.PUBLIC, objects.keyFor(v, 'sites', name));
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      if (o.size) res.setHeader('Content-Length', o.size);
+      return o.stream.pipe(res);                    // streamed, never buffered
+    } catch { /* not in R2 yet — fall through to the disk */ }
+  }
+
+  const f = path.join(SITES_DIR, String(v), name);
   if (!fs.existsSync(f)) return res.status(404).end();
   res.setHeader('Cache-Control', 'public, max-age=86400');
   res.sendFile(f, (err) => { if (err && !res.headersSent) res.status(404).end(); });

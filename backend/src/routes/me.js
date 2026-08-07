@@ -1,4 +1,5 @@
 import { LOGO_DIR as LOGO_DIR_CFG } from '../config/paths.js';
+import * as objects from '../lib/objectStore.js';
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
@@ -168,16 +169,49 @@ router.post('/logo', requireAuth, upload.single('logo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
   try {
     const fname = `${vid}_${Date.now()}.webp`;
-    await sharp(req.file.path).resize(400, 400, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 88 }).toFile(path.join(LOGO_DIR, fname));
+    const local = path.join(LOGO_DIR, fname);
+    await sharp(req.file.path).resize(400, 400, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 88 }).toFile(local);
     fs.unlinkSync(req.file.path);
+
+    /* ☁️ And to R2 when configured. The local copy stays: the reader prefers
+       the object and falls back to disk, so an unreachable R2 costs a slower
+       read rather than a vendor's logo vanishing from their own website.
+       🔒 The key carries the vendor id from the token. */
+    if (await objects.enabled(objects.PUBLIC)) {
+      try {
+        await objects.putObject(objects.PUBLIC, objects.keyFor(vid, 'logos', fname),
+          fs.createReadStream(local), 'image/webp');
+      } catch (e) { console.error('[logo] R2 upload failed for', fname, e.message); }
+    }
     await prisma.vendors.update({ where: { id: vid }, data: { logo_path: fname } }); // 🔒 tenancy
     res.json({ ok: true, logo_path: fname });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/me/logo/:file → serve a logo (public)
-router.get('/logo/:file', (req, res) => {
-  const f = path.join(LOGO_DIR, path.basename(req.params.file));
+/**
+ * GET /api/me/logo/:file → a vendor's logo. Public: it appears on their own
+ * website and on the inquiry form, both open to the world.
+ *
+ * Logos live in one flat folder with the vendor id at the front of the name,
+ * so the R2 key is derived from that name rather than from a path segment. The
+ * shape is checked first — anything that is not <digits>_<digits>.webp is
+ * refused outright, so a crafted name cannot be turned into a key at all.
+ */
+router.get('/logo/:file', async (req, res) => {
+  const name = path.basename(req.params.file);
+  const m = name.match(/^(\d+)_\d+\.webp$/);
+
+  if (m && await objects.enabled(objects.PUBLIC)) {
+    try {
+      const o = await objects.getStream(objects.PUBLIC, objects.keyFor(Number(m[1]), 'logos', name));
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      if (o.size) res.setHeader('Content-Length', o.size);
+      return o.stream.pipe(res);                    // streamed, never buffered
+    } catch { /* not migrated yet — fall through to the disk */ }
+  }
+
+  const f = path.join(LOGO_DIR, name);
   if (!fs.existsSync(f)) return res.status(404).end();
   res.sendFile(f, (err) => { if (err && !res.headersSent) res.status(404).end(); });
 });
