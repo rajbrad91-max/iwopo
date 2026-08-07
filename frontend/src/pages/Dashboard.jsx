@@ -1485,6 +1485,9 @@ function FaceEngineSettings() {
   const [reMsg, setReMsg] = useState('');
   const [qstat, setQstat] = useState(null);
   const [credOpen, setCredOpen] = useState(false);
+  /* R2 is a long block of eight fields that is set once and then never looked
+     at again. Folded away by default, like the AWS credentials above it. */
+  const [r2Open, setR2Open] = useState(false);
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
   const roBox = { ...box, opacity: 0.7, cursor: 'not-allowed' };
 
@@ -1595,7 +1598,28 @@ function FaceEngineSettings() {
             )}
             {awsMode === 'aws_safety_net' && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>💡 AWS only kicks in when the local backlog gets deep, then hands back automatically.</div>}
 
-              <div className="sa-sec-hd" style={{ marginTop: 26 }}>🪣 Cloudflare R2 storage</div>
+              <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
+                onClick={() => setR2Open(o => !o)} aria-expanded={r2Open}>
+                <span>🪣 Cloudflare R2 storage</span>
+                <span className="fr-cred-chev">{r2Open ? '▲' : '▼'}</span>
+              </button>
+
+              {r2Open && (
+              <div className="fr-cred-body">
+                {/* Its own Edit control. These fields share the read-only lock
+                    with the AWS block above, but that block's Edit button only
+                    renders when AWS mode is on — so with AWS off there was no
+                    way to type in any of this at all. */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                  {!editing ? (
+                    <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                      <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                    </div>
+                  )}
+                </div>
 
               <div><label className="lbl">Account ID</label>
                 <input style={editing ? box : roBox} readOnly={!editing}
@@ -1670,6 +1694,8 @@ function FaceEngineSettings() {
                 by password or share token — putting them in the public bucket lets anyone with
                 the file&rsquo;s URL walk past both. Saving the same name for both is refused.
               </div>
+              </div>
+              )}
           </div>
         )}
         {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#4ade80' }}>{msg}</div>}
@@ -1681,23 +1707,17 @@ function FaceEngineSettings() {
 function SettingsView({ saTheme, setSaTheme, user }) {
   return (
     <>
-    <div className="sa-box" style={{ padding: 0 }}>
-      <div className="sa-settings-row">
-        <div><div className="sr-name">🌗 Panel Theme</div><div className="sr-desc">Super panel only — doesn't affect vendors</div></div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {['dark', 'light'].map(t => (
-            <button key={t} onClick={() => setSaTheme(t)}
-              style={{ padding: '7px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                border: '1px solid var(--line)',
-                background: saTheme === t ? '#2dd4bf' : 'var(--panel-2)',
-                color: saTheme === t ? '#06231f' : 'var(--text)' }}>
-              {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="sa-compact-row">
+      <span className="sa-compact-lbl">🌗 Panel theme</span>
+      <span className="sa-compact-seg">
+        {['dark', 'light'].map(t => (
+          <button key={t} type="button" onClick={() => setSaTheme(t)}
+            className={`sa-seg-btn ${saTheme === t ? 'is-on' : ''}`}>
+            {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
+          </button>
+        ))}
+      </span>
     </div>
-    <div className="sa-section-title" style={{ marginTop: 22 }}>🔐 Admins</div>
     <AdminsView user={user} />
     <FaceEngineSettings />
     </>
@@ -1754,21 +1774,17 @@ function AdminsView({ user }) {
 
   return (
     <>
-      <div className="sa-section-title">Admin Users</div>
-      <div className="sa-table-wrap">
-        <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
-          <tbody>
-            <tr>
-              <td className="biz">{user?.name} (you)</td>
-              <td>{user?.email || 'raj@iwopo.com'}</td>
-              <td><span className="sa-badge active">super_admin</span></td>
-              <td><button className={`sa-view-btn ${open ? 'active-btn' : ''}`} onClick={() => setOpen(!open)}>
-                {open ? 'Close' : 'Edit'}
-              </button></td>
-            </tr>
-          </tbody>
-        </table>
+      {/* One line rather than a four-column table with a header row above a
+          single entry. If a second admin is ever added, this becomes a list of
+          the same rows — the table can come back when it earns its header. */}
+      <div className="sa-compact-row">
+        <span className="sa-compact-lbl">🔐 {user?.name} <span className="sa-compact-dim">· {user?.email || 'raj@iwopo.com'}</span></span>
+        <span className="sa-compact-seg">
+          <span className="sa-badge active">super_admin</span>
+          <button type="button" className={`sa-view-btn ${open ? 'active-btn' : ''}`} onClick={() => setOpen(!open)}>
+            {open ? 'Close' : 'Edit'}
+          </button>
+        </span>
       </div>
 
       {open && (
