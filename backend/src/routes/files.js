@@ -9,6 +9,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { FILES_DIR } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
+import { storageFor } from '../lib/storageQuota.js';
 import { sendAsVendor } from './email.js';
 
 const router = express.Router();
@@ -28,24 +29,11 @@ const vid = (req) => Number(req.user.vendor_id);
  * errored, a half-finished upload — and then the number a vendor is judged by
  * is quietly wrong. Summing is slower and always right.
  */
-async function storageFor(vendorId) {
-  const agg = await prisma.file_share_items.aggregate({
-    where: { vendor_id: vendorId },                       // 🔒 tenancy
-    _sum: { size_bytes: true },
-  });
-  const settings = await prisma.vendor_settings.findUnique({
-    where: { vendor_id: vendorId },
-    select: { storage_limit_mb: true },
-  });
-  const usedBytes = Number(agg._sum.size_bytes || 0);
-  const limitMb = settings?.storage_limit_mb ?? 1024;
-  return {
-    used_bytes: usedBytes,
-    limit_bytes: limitMb * 1024 * 1024,
-    limit_mb: limitMb,
-    remaining_bytes: Math.max(limitMb * 1024 * 1024 - usedBytes, 0),
-  };
-}
+/* Moved to lib/storageQuota.js and widened. This counted File Flyer alone,
+   because File Flyer was the only thing recording a size — so a vendor with
+   forty gigabytes of client galleries was told they had used nothing. Now the
+   pool is one number across both. Re-exported here so the callers that already
+   import it from this file keep working. */
 
 /** Where one share's files live. Vendor id is in the path so a stray id can't
  *  reach another vendor's folder even if a share id were guessed. */

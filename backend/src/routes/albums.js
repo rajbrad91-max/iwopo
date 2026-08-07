@@ -1,5 +1,6 @@
 import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
+import { wouldExceed } from '../lib/storageQuota.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -407,6 +408,18 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Album not found' });
 
+    /* 📏 Asked before a single byte is written. A photograph accepted and then
+       found not to fit would leave the vendor over their limit with no way back,
+       and leave files on disk that nothing points at. The incoming size is the
+       originals; the derived tiers add roughly six per cent on top, which is
+       absorbed rather than charged. */
+    const incoming = (req.files || []).reduce((n, f) => n + (f.size || 0), 0);
+    const over = await wouldExceed(v, incoming);
+    if (over) {
+      for (const f of req.files || []) { try { fs.unlinkSync(f.path); } catch { /* gone */ } }
+      return res.status(413).json(over);
+    }
+
     const dir = path.join(ROOT, String(v), String(id));
     fs.mkdirSync(dir, { recursive: true });
 
@@ -423,6 +436,11 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
       await sharp(f.path).rotate().resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
       // thumb 800px webp (grid)
       await sharp(f.path).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
+
+      // what this photograph actually costs: the original and both tiers
+      const costBytes = [origName, fullName, thumbName].reduce((n, x) => {
+        try { return n + fs.statSync(path.join(dir, x)).size; } catch { return n; }
+      }, 0);
 
       /* ☁️ And to R2, into the PRIVATE bucket. A gallery is opened with an
          album password or a view token, so its objects must never sit beside
@@ -451,10 +469,13 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
           storage_path: rel(origName),
           thumb_path: rel(thumbName),
           preview_path: rel(fullName),
+          size_bytes: BigInt(costBytes),
           event_id: eventId,
         },
       });
-      saved.push(photo);
+      // size_bytes is a BigInt, which JSON cannot represent; send it as a
+      // number, which is exact for anything under nine petabytes
+      saved.push({ ...photo, size_bytes: photo.size_bytes == null ? null : Number(photo.size_bytes) });
     }
     res.status(201).json({ uploaded: saved.length, photos: saved });
     // 🤳 queue face indexing (throttled single worker — never blocks the API)
@@ -535,6 +556,12 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
     if (!own) { cleanup(); return res.status(404).json({ error: 'Album not found' }); }
     if (!file) { cleanup(); return res.status(400).json({ error: 'No file' }); }
 
+    /* 📏 A film is the largest single thing a vendor can upload — gigabytes
+       where a photograph is megabytes — so it is the last place that should be
+       allowed past the pool. Checked before the file is moved into place. */
+    const over = await wouldExceed(v, (file.size || 0) + (poster?.size || 0));
+    if (over) { cleanup(); return res.status(413).json(over); }
+
     const dir = path.join(ROOT, String(v), String(id));
     fs.mkdirSync(dir, { recursive: true });
 
@@ -567,6 +594,10 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
         storage_path: rel(vidName),
         thumb_path: rel(thumbName),
         preview_path: rel(fullName),
+        // a film costs its own size plus the two poster tiers
+        size_bytes: BigInt([vidName, thumbName, fullName].reduce((n, x) => {
+          try { return x ? n + fs.statSync(path.join(dir, x)).size : n; } catch { return n; }
+        }, 0)),
         duration_s: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : null,
         // a film is never sent to the face engine, so it is marked done rather
         // than left to sit in the backlog forever
@@ -575,7 +606,7 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
         event_id: await videoEventId(id, v),
       },
     });
-    res.status(201).json({ photo });
+    res.status(201).json({ photo: { ...photo, size_bytes: photo.size_bytes == null ? null : Number(photo.size_bytes) } });
   } catch (e) { cleanup(); res.status(500).json({ error: e.message }); }
 });
 

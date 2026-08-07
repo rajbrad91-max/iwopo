@@ -539,6 +539,9 @@ model photos {
   // poster frame, so nothing downstream needs a new concept for thumbnails.
   kind         String        @default("photo") @db.VarChar(10)
   duration_s   Int?
+  // every byte this photo costs — the original plus both derived tiers, so the
+  // storage a vendor is charged for is the storage actually used
+  size_bytes   BigInt?
   album_faces  album_faces[]
   favorites    favorites[]
   photo_faces  photo_faces[]
