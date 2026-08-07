@@ -7,7 +7,7 @@ import multer from 'multer';
 import prisma from '../config/prisma.js';
 import archiver from 'archiver';
 import { thumbPathFor } from './files.js';
-import { storageFor, vendorDir } from './files.js';
+import { storageFor, vendorDir, fileStream } from './files.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -183,7 +183,13 @@ async function zipInto(archive, vendorId, folderId, prefix) {
     const full = path.join(vendorDir(vendorId), it.stored_name);
     // a generated .thumb.webp / .lg.webp sits beside the original; only the
     // original is the vendor's file and only that belongs in the archive
-    if (fs.existsSync(full)) archive.file(full, { name: prefix + it.filename });
+    //
+    // R2 first, disk second, and a STREAM either way — archiver pulls each
+    // entry as it writes, so a multi-gigabyte share never needs that much
+    // scratch space and the first byte reaches the client straight away.
+    const o = await fileStream(vendorId, it.stored_name);
+    if (o) { archive.append(o.stream, { name: prefix + it.filename }); }
+    else if (fs.existsSync(full)) archive.file(full, { name: prefix + it.filename });
   }
   for (const f of folders) {
     archive.append(null, { name: prefix + f.name + '/' });
@@ -283,6 +289,13 @@ router.get('/:token/download/:itemId', async (req, res) => {
     // 🔒 and it must sit inside what this link actually shared
     if (!(await withinShare(item.folder_id, share.folder_id, share.vendor_id))) {
       return res.status(404).json({ error: 'Not found' });
+    }
+    const o = await fileStream(share.vendor_id, item.stored_name);
+    if (o) {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(item.filename)}"`);
+      if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      if (o.size) res.setHeader('Content-Length', o.size);
+      return o.stream.pipe(res);                  // streamed, never buffered
     }
     const full = path.join(vendorDir(share.vendor_id), item.stored_name);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
