@@ -1629,7 +1629,16 @@ function FaceEngineSettings() {
               </div>
             )}
             {awsMode === 'aws_safety_net' && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>💡 AWS only kicks in when the local backlog gets deep, then hands back automatically.</div>}
+          </div>
+        )}
 
+        {/* R2 is object storage and has nothing to do with the face engine. It
+            was nested inside the AWS branch above, so on any account whose face
+            mode is "Local only" — which is the default, and what live runs —
+            the entire storage section simply did not exist. Two panels running
+            identical code looked different, and the settings were unreachable
+            on the one that mattered. */}
+        <div className="fr-cred">
               <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
                 onClick={() => setR2Open(o => !o)} aria-expanded={r2Open}>
                 <span>🪣 Cloudflare R2 storage</span>
@@ -1728,8 +1737,7 @@ function FaceEngineSettings() {
               </div>
               </div>
               )}
-          </div>
-        )}
+        </div>
         {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#4ade80' }}>{msg}</div>}
       </div>
     </>
