@@ -480,9 +480,14 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
   useEffect(() => {
     if (!slideshow || lightbox === null) return;
+    /* A film is not a slide. Three and a half seconds into a five minute
+       wedding film the slideshow would move on, which is worse than not
+       advancing at all — so it pauses while a film is open and resumes when
+       the viewer moves past it. */
+    if (photos[lightbox]?.kind === 'video') return undefined;
     const t = setInterval(() => step(1), 3500);
     return () => clearInterval(t);
-  }, [slideshow, lightbox, step]);
+  }, [slideshow, lightbox, step, photos]);
 
   // ⏭️ preload the full-size of next 3 + prev 1 so swiping feels instant
   useEffect(() => {
@@ -787,12 +792,18 @@ export default function PublicGallery({ token, embedded, onBack }) {
                 {p.duration_s ? <span className="pg-vid-time">{fmtDur(p.duration_s)}</span> : null}
               </span>
             )}
-            <button
-              className="pg-check"
-              onClick={e => { e.stopPropagation(); togglePick(p.id); }}
-              aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
-              title={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
-            >✓</button>
+            {/* Selection is for choosing which photographs go in an album, and
+                a film is not one of them. The tick appeared on films and a
+                couple could pick one, which then arrived in the vendor's
+                selection list as though it were a print. */}
+            {p.kind !== 'video' && (
+              <button
+                className="pg-check"
+                onClick={e => { e.stopPropagation(); togglePick(p.id); }}
+                aria-label={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
+                title={picked.has(p.id) ? 'Deselect photo' : 'Select photo'}
+              >✓</button>
+            )}
           </figure>
         ))}
       </div>
