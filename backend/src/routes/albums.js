@@ -610,6 +610,143 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
   } catch (e) { cleanup(); res.status(500).json({ error: e.message }); }
 });
 
+/* ══════════════════════════════════════════════════════════════════════
+   ⬆️ Direct-to-R2 upload for large films.
+
+   Three endpoints, and the browser does the carrying. A hundred-gigabyte film
+   cannot come through this server at all — R2 refuses a single PUT over 5GB,
+   and staging it in /tmp then moving it would need twice the file's size in
+   free disk. So the browser is handed a signed URL per part and talks to
+   Cloudflare directly.
+
+   🔒 Every one of these checks the album belongs to the caller before it does
+   anything, and the object key is built from the token's vendor id. A signed
+   part URL is scoped to one key, so it cannot be repointed by editing it.
+   ══════════════════════════════════════════════════════════════════════ */
+
+// begin — reserve a key and hand back an upload id
+router.post('/:id/videos/begin', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+    if (!await objects.enabled(objects.PRIVATE)) {
+      return res.status(400).json({ error: 'Direct upload needs R2 storage to be configured' });
+    }
+
+    const size = Number(req.body?.size_bytes);
+    if (!Number.isFinite(size) || size <= 0) return res.status(400).json({ error: 'size_bytes required' });
+
+    /* 📏 Asked before a single byte moves. The browser reports the size, so it
+       is checked again on completion against what actually landed — a client
+       under-reporting here would otherwise walk past the plan. */
+    const over = await wouldExceed(v, size);
+    if (over) return res.status(413).json(over);
+
+    const base = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const ext = path.extname(String(req.body?.filename || '')).toLowerCase().slice(0, 8) || '.mp4';
+    const name = `${base}_video${ext}`;
+    const key = galleryKey(v, id, name);
+    const uploadId = await objects.beginMultipart(objects.PRIVATE, key, req.body?.content_type || 'video/mp4');
+
+    /* S3 refuses a multipart upload where any part except the last is under
+       5 MiB, and it refuses it at the END — every part uploads happily and then
+       completion fails, which is a miserable way to lose an hour of a vendor's
+       time. 64MB is well clear of that and keeps the part count sane: a 100GB
+       film is 1600 parts rather than 20000. */
+    res.json({
+      upload_id: uploadId, key, name,
+      part_size: 64 * 1024 * 1024,
+      min_part_size: 5 * 1024 * 1024,               // anything smaller will be rejected on completion
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// sign — one part at a time, so a resumed upload only re-signs what it needs
+router.post('/:id/videos/sign', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+
+    const { key, upload_id: uploadId } = req.body || {};
+    const part = Number(req.body?.part_number);
+    if (!key || !uploadId || !Number.isInteger(part) || part < 1) {
+      return res.status(400).json({ error: 'key, upload_id and part_number required' });
+    }
+    /* 🔒 The key comes back from the client, so it is checked against the
+       prefix this vendor and album own. Without this, a caller could sign a
+       part for another vendor's key and write into their gallery. */
+    if (key !== galleryKey(v, id, path.basename(key))) {
+      return res.status(403).json({ error: 'Not your key' });
+    }
+
+    res.json({ url: await objects.signPart(objects.PRIVATE, key, uploadId, part) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// complete — stitch the parts, then record the film
+router.post('/:id/videos/complete', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+
+    const { key, upload_id: uploadId } = req.body || {};
+    if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
+    if (key !== galleryKey(v, id, path.basename(key))) {                                             // 🔒
+      return res.status(403).json({ error: 'Not your key' });
+    }
+
+    await objects.completeMultipart(objects.PRIVATE, key, uploadId);
+
+    /* The real size, measured on the object rather than taken from the client.
+       If it turns out not to fit after all, the film is removed again rather
+       than left occupying space nobody agreed to. */
+    const head = await objects.headObject(objects.PRIVATE, key);
+    const actual = Number(head?.size || 0);
+    const over = await wouldExceed(v, actual);
+    if (over) {
+      await objects.deleteObject(objects.PRIVATE, key);
+      return res.status(413).json(over);
+    }
+
+    const name = path.basename(key);
+    const dur = Number(req.body?.duration_s);
+    const photo = await prisma.photos.create({
+      data: {
+        album_id: id, vendor_id: v,                    // 🔒 tenancy stamped on the row
+        kind: 'video',
+        filename: String(req.body?.filename || name).slice(0, 200),
+        storage_path: `${v}/${id}/${name}`,
+        size_bytes: BigInt(actual),
+        duration_s: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : null,
+        face_indexed: true,                            // a film never goes to the face engine
+        event_id: await videoEventId(id, v),
+      },
+    });
+    res.status(201).json({ photo: { ...photo, size_bytes: Number(photo.size_bytes) } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// abandon — a vendor who cancels should not leave parts costing storage
+router.post('/:id/videos/abort', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+    const { key, upload_id: uploadId } = req.body || {};
+    if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
+    if (key !== galleryKey(v, id, path.basename(key))) return res.status(403).json({ error: 'Not your key' });  // 🔒
+    await objects.abortMultipart(objects.PRIVATE, key, uploadId);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 🔒 delete a photo (tenant-checked)
 router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
   const v = vid(req);

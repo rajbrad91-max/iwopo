@@ -20,7 +20,10 @@
  * instead of as one switch that has to be right first time.
  */
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand,
-         HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+         HeadObjectCommand, ListObjectsV2Command, CreateMultipartUploadCommand,
+         UploadPartCommand, CompleteMultipartUploadCommand,
+         AbortMultipartUploadCommand, ListPartsCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getSetting } from './settings.js';
 import path from 'node:path';
 
@@ -201,6 +204,92 @@ export async function listAll(cls, prefix) {
     token = out.IsTruncated ? out.NextContinuationToken : undefined;
   } while (token);
   return keys;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ⬆️ Uploads that go straight from the browser to R2.
+
+   A wedding film can be a hundred gigabytes. Sending that through this server
+   fails three ways at once: R2 refuses a single PUT over 5GB, the file would
+   have to land in /tmp and then move to storage — two hundred gigabytes of
+   disk for one upload, on a box with a hundred and eighty free — and a single
+   request lasting hours will drop long before it finishes.
+
+   So the file never touches this server. The browser is handed a signed URL
+   per part, sends each one to Cloudflare directly, and tells us when it is
+   done. We only ever see the metadata.
+
+   That also makes it resumable for nothing: a part that fails is fifty
+   megabytes to retry rather than the whole film, and R2 remembers which parts
+   have already landed.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Signed URLs expire. Long enough for a slow part, short enough to matter. */
+const PART_URL_TTL = 3600;
+
+export async function beginMultipart(cls, key, contentType) {
+  const { client, bucket } = await clientFor(cls);
+  const out = await client.send(new CreateMultipartUploadCommand({
+    Bucket: bucket, Key: key,
+    ...(contentType ? { ContentType: contentType } : {}),
+  }));
+  return out.UploadId;
+}
+
+/**
+ * A signed URL the browser may PUT one part to.
+ *
+ * The URL carries the bucket, the key and the part number, all signed — so a
+ * caller cannot repoint it at another key by editing it, which is what keeps
+ * this from becoming a way to write anywhere in the bucket.
+ */
+export async function signPart(cls, key, uploadId, partNumber) {
+  const { client, bucket } = await clientFor(cls);
+  return getSignedUrl(client, new UploadPartCommand({
+    Bucket: bucket, Key: key, UploadId: uploadId, PartNumber: partNumber,
+  }), { expiresIn: PART_URL_TTL });
+}
+
+/** Which parts R2 already holds — this is what makes a resume possible. */
+export async function listParts(cls, key, uploadId) {
+  const { client, bucket } = await clientFor(cls);
+  const parts = [];
+  let marker;
+  do {
+    const out = await client.send(new ListPartsCommand({
+      Bucket: bucket, Key: key, UploadId: uploadId, PartNumberMarker: marker,
+    }));
+    for (const p of out.Parts || []) parts.push({ PartNumber: p.PartNumber, ETag: p.ETag, Size: p.Size });
+    marker = out.IsTruncated ? out.NextPartNumberMarker : undefined;
+  } while (marker);
+  return parts;
+}
+
+/**
+ * Stitch the parts into one object.
+ *
+ * The part list is read back from R2 rather than trusted from the browser: a
+ * client that reported the wrong etags would produce a corrupt film, and a
+ * client that reported fewer parts than it sent would produce a truncated one.
+ */
+export async function completeMultipart(cls, key, uploadId) {
+  const { client, bucket } = await clientFor(cls);
+  const parts = (await listParts(cls, key, uploadId))
+    .sort((a, b) => a.PartNumber - b.PartNumber)
+    .map(p => ({ PartNumber: p.PartNumber, ETag: p.ETag }));
+  if (!parts.length) throw new Error('No parts were uploaded');
+  await client.send(new CompleteMultipartUploadCommand({
+    Bucket: bucket, Key: key, UploadId: uploadId,
+    MultipartUpload: { Parts: parts },
+  }));
+  return { key, parts: parts.length };
+}
+
+/** Throw away a half-finished upload so its parts stop costing storage. */
+export async function abortMultipart(cls, key, uploadId) {
+  const { client, bucket } = await clientFor(cls);
+  try { await client.send(new AbortMultipartUploadCommand({ Bucket: bucket, Key: key, UploadId: uploadId })); return true; }
+  catch { return false; }
 }
 
 /**
