@@ -2089,3 +2089,17 @@ tr:hover .bk-del { opacity: .8; }
 
 /* the second upload button, so films are visibly a separate act from photos */
 .ad-upload-vid { margin-left: 6px; }
+
+/* 🎬 a film in the panel grid — a play badge over its poster, or over a plain
+   card when the browser could not draw one */
+.ad-photo.is-video { background: #17171a; }
+.ad-vid-badge { position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; }
+.ad-vid-play { width: 40px; height: 40px; border-radius: 50%; background: rgba(12,12,14,.58);
+  color: #fff; font-size: 14px; display: grid; place-items: center; padding-left: 3px;
+  transition: background .2s ease, transform .2s ease; }
+.ad-photo:hover .ad-vid-play { background: rgba(12,12,14,.82); transform: scale(1.06); }
+.ad-vid-time { position: absolute; right: 6px; bottom: 6px; font-size: 10.5px;
+  font-variant-numeric: tabular-nums; color: #fff; background: rgba(12,12,14,.62);
+  border-radius: 4px; padding: 1px 5px; }
+.ad-lb-video { max-width: 92vw; max-height: 86vh; display: block; background: #000; outline: none; }

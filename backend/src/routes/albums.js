@@ -68,11 +68,30 @@ router.get('/', requireAuth, async (req, res) => {
       _count: { _all: true },
     });
     const pickedBy = new Map(picked.map(r => [r.album_id, r._count._all]));
-    const rows = albums.map(({ _count, ...a }) => ({
-      ...a,
-      photo_count: _count.photos,
-      selected_count: pickedBy.get(a.id) || 0,
-    }));
+
+    /* Counted apart, because a film is not a photograph. The single total read
+       "1 photos" for an album holding one film and no photographs at all. */
+    const byKind = await prisma.photos.groupBy({
+      by: ['album_id', 'kind'],
+      where: { vendor_id: v },                       // 🔒 tenancy
+      _count: { _all: true },
+    });
+    const kindOf = new Map();
+    for (const r of byKind) {
+      const cur = kindOf.get(r.album_id) || { photo: 0, video: 0 };
+      cur[r.kind === 'video' ? 'video' : 'photo'] += r._count._all;
+      kindOf.set(r.album_id, cur);
+    }
+
+    const rows = albums.map(({ _count, ...a }) => {
+      const k = kindOf.get(a.id) || { photo: 0, video: 0 };
+      return {
+        ...a,
+        photo_count: k.photo,
+        video_count: k.video,
+        selected_count: pickedBy.get(a.id) || 0,
+      };
+    });
     res.json({ albums: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -465,12 +484,15 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
          photographs are already saved locally and every reader falls back
          there, so an unreachable R2 costs a slower read, not a lost wedding. */
       if (await objects.enabled(objects.PRIVATE)) {
-        for (const n of [origName, fullName, thumbName]) {
+        // all three tiers at once rather than in turn — they are independent,
+        // and waiting for each in sequence tripled the time a batch of
+        // photographs spent in the request
+        await Promise.all([origName, fullName, thumbName].map(async (n) => {
           try {
             await objects.putObject(objects.PRIVATE, galleryKey(v, id, n),
               fs.createReadStream(path.join(dir, n)));
           } catch (e) { console.error('[gallery] R2 upload failed for', n, e.message); }
-        }
+        }));
       }
       fs.unlinkSync(f.path);
 
@@ -862,6 +884,31 @@ router.get('/file/:photoId/:type', async (req, res) => {
     });
     if (!p) return res.status(404).json({ error: 'Not found' });
     const rel = req.params.type === 'orig' ? p.storage_path : req.params.type === 'preview' ? p.preview_path : p.thumb_path;
+
+    /* A film has no poster when the browser could not draw one, so thumb_path
+       is null and this used to throw on path.join — a 500 rather than a plain
+       404, which the panel showed as a broken tile. */
+    if (!rel) return res.status(404).json({ error: 'No file of that kind' });
+
+    /* And R2. This route was written before object storage and never moved
+       across, so anything uploaded straight to the bucket — which is every
+       large film — had no local copy for it to find. The panel could not show
+       a thumbnail, a preview or the film itself. */
+    if (await objects.enabled(objects.PRIVATE)) {
+      const parts = String(rel).split('/').filter(Boolean);
+      if (parts.length >= 3) {
+        try {
+          const o = await objects.getStream(objects.PRIVATE,
+            objects.keyFor(v, 'galleries', parts[1], parts[2]), req.headers.range);
+          if (o.contentType) res.setHeader('Content-Type', o.contentType);
+          res.setHeader('Accept-Ranges', 'bytes');
+          if (o.contentRange) { res.status(206); res.setHeader('Content-Range', o.contentRange); }
+          if (o.size) res.setHeader('Content-Length', o.size);
+          return o.stream.pipe(res);
+        } catch { /* not in R2 — fall through to the disk */ }
+      }
+    }
+
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
     res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });

@@ -77,7 +77,10 @@ async function photosInEvent(albumId, eventId) {
 }
 async function allPhotoRowsInAlbum(albumId) {
   return prisma.$queryRawUnsafe(
-    `SELECT * FROM photos WHERE album_id = $1 ${NAT_SORT}`,
+    /* Photographs only. A couple pressing Download All wants their pictures,
+       not a hundred gigabytes of film wrapped in a zip they cannot resume —
+       films are downloaded one at a time, from their own page. */
+    `SELECT * FROM photos WHERE album_id = $1 AND kind <> 'video' ${NAT_SORT}`,
     albumId
   );
 }

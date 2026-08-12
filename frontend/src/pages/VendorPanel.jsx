@@ -1250,6 +1250,14 @@ function AlbumDetail({ albumId, onBack }) {
    * all — an HEVC export opened in Chrome — this resolves empty and the grid
    * falls back to a plain film tile.
    */
+  /** 95 → "1:35". Films are minutes, so hours appear only when they exist. */
+  function fmtDur(sec) {
+    const t = Math.round(sec);
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), r = t % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
+             : `${m}:${String(r).padStart(2, '0')}`;
+  }
+
   function posterFor(file) {
     return new Promise(resolve => {
       const url = URL.createObjectURL(file);
@@ -1297,6 +1305,15 @@ function AlbumDetail({ albumId, onBack }) {
    * an hour.
    */
   async function uploadOneFilm(file, onProgress) {
+    /* The poster is drawn FIRST, while the vendor is still looking at the page.
+       It used to be drawn after the last part had gone up, by which time the
+       tab was often in the background — and a background tab throttles video
+       decoding hard enough that the twelve second guard fired and the film
+       arrived with no poster and no duration at all. Which is exactly what
+       happened to the first real upload. */
+    onProgress?.(0, 1, 'Reading the film…');
+    const { poster, duration } = await posterFor(file);
+
     let begun;
     try {
       begun = await api.videoBegin(albumId, {
@@ -1311,8 +1328,7 @@ function AlbumDetail({ albumId, onBack }) {
          gigabytes, which is the honest limit of what a single request can
          carry, but it means video is never simply broken. */
       if (/R2 storage/i.test(err.message || '')) {
-        const { poster, duration } = await posterFor(file);
-        onProgress?.(1, 1);
+        onProgress?.(1, 1, 'Uploading…');
         return api.uploadAlbumVideo(albumId, file, poster, duration, null);
       }
       throw err;
@@ -1322,32 +1338,50 @@ function AlbumDetail({ albumId, onBack }) {
     const total = Math.max(1, Math.ceil(file.size / partSize));
 
     try {
-      for (let n = 1; n <= total; n++) {
+      /* Four parts in flight at once. One at a time meant every part waited a
+         full round trip to Cloudflare before the next began, so most of the
+         upload was spent idle rather than sending — a film felt far slower than
+         the connection could manage. Four is deliberate: enough to keep the
+         link busy, few enough that a modest connection is not swamped and a
+         retry still has room to breathe. */
+      const CONCURRENCY = 4;
+      let done = 0, next = 1, failed = null;
+
+      const sendPart = async (n) => {
         const blob = file.slice((n - 1) * partSize, n * partSize);
         const { url } = await api.videoSign(albumId, { key, upload_id: uploadId, part_number: n });
-
         /* Three attempts per part. A part is the unit of failure here, so a
            blip costs one retry of sixty-four megabytes rather than the film. */
-        let sent = false, lastErr;
-        for (let attempt = 0; attempt < 3 && !sent; attempt++) {
+        let lastErr;
+        for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const r = await fetch(url, { method: 'PUT', body: blob });
             if (!r.ok) throw new Error('Part ' + n + ' rejected (' + r.status + ')');
-            sent = true;
+            return;
           } catch (err) {
             lastErr = err;
             /* A background tab clamps setTimeout to about once a minute, so a
                one-second backoff can become a sixty-second stall. Kept short
-               deliberately — the delay is only there to let a blip pass, and a
-               longer one costs a vendor real time for no benefit. */
+               deliberately — the delay is only there to let a blip pass. */
             await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
           }
         }
-        if (!sent) throw lastErr || new Error('Part ' + n + ' failed');
-        onProgress?.(n, total);
-      }
+        throw lastErr || new Error('Part ' + n + ' failed');
+      };
 
-      const { poster, duration } = await posterFor(file);
+      const worker = async () => {
+        while (!failed) {
+          const n = next++;
+          if (n > total) return;
+          try { await sendPart(n); } catch (e) { failed = e; return; }
+          onProgress?.(++done, total);
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, total) }, worker));
+      if (failed) throw failed;
+      onProgress?.(total, total, 'Assembling…');
+
+      onProgress?.(1, 1, 'Finishing…');
       return await api.videoComplete(albumId, {
         key, upload_id: uploadId, filename: file.name, duration_s: duration,
       }, poster);
@@ -1365,13 +1399,16 @@ function AlbumDetail({ albumId, onBack }) {
     let ok = 0;
     for (let i = 0; i < files.length; i++) {
       const label = files.length > 1 ? `${i + 1}/${files.length} ` : '';
-      setVidBusy(label + 'Uploading…');
+      setVidBusy(label + 'Starting…');
       try {
-        await uploadOneFilm(files[i], (n, total) => {
-          // a vendor watching a twenty-minute upload deserves to know it moved
-          setVidBusy(label + Math.round((n / total) * 100) + '%');
+        await uploadOneFilm(files[i], (n, total, note) => {
+          /* A film takes minutes, so silence reads as a hang. Show the stage
+             while there is no percentage to show, and the percentage once
+             there is. */
+          setVidBusy(note ? label + note : label + Math.round((n / total) * 100) + '%');
         });
         ok++;
+        setProg(`✅ ${files[i].name} uploaded`);
       } catch (err) {
         setVidBusy('');
         // the same channel the photo upload already reports through, so a
@@ -1382,6 +1419,8 @@ function AlbumDetail({ albumId, onBack }) {
     }
     setVidBusy('');
     if (ok) {
+      setProg(`✅ ${ok} video${ok > 1 ? 's' : ''} uploaded`);
+      setTimeout(() => setProg(''), 4000);
       // the films are in the Videos folder, so that is where to look
       api.album(albumId).then(d => {
         setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);
@@ -1510,7 +1549,13 @@ function AlbumDetail({ albumId, onBack }) {
         <div>
           <button className="refresh ad-back" onClick={onBack}>← Back</button>
           <h2 className="ad-title">🖼️ {album.title}</h2>
-          <div className="ad-count">{photos.length} photos{isPerClient ? ` · ${events.length} events` : ''}</div>
+          {/* Films counted apart. "1 photos" for an album holding one film and
+              no photographs at all was simply wrong. */}
+          <div className="ad-count">
+            {photos.filter(p => p.kind !== 'video').length} photos
+            {photos.some(p => p.kind === 'video') && ` · ${photos.filter(p => p.kind === 'video').length} videos`}
+            {isPerClient ? ` · ${events.length} events` : ''}
+          </div>
         </div>
         <div className="ad-head-actions">
           <button className="refresh ad-ev-btn" onClick={openFavorites} title="See which photos clients marked as favorites">⭐ Favorites</button>
@@ -1741,8 +1786,19 @@ function AlbumDetail({ albumId, onBack }) {
       ) : (
         <div className="ad-grid">
           {visible.map((p, idx) => (
-            <div key={p.id} className="ad-photo" title={p.filename}>
-              <img className="ad-photo-img" src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`} loading="lazy" onClick={() => setLightbox(idx)} />
+            <div key={p.id} className={`ad-photo ${p.kind === 'video' ? 'is-video' : ''}`} title={p.filename}>
+              {/* A film with no poster has no thumbnail to fetch, so asking for
+                  one gives a broken tile. Hide the image and let the play badge
+                  sit on a plain card instead. */}
+              <img className="ad-photo-img" src={`${api.fileUrl(p.id, 'thumb')}?token=${token}`}
+                loading="lazy" onClick={() => setLightbox(idx)}
+                onError={e => { e.currentTarget.style.visibility = 'hidden'; }} />
+              {p.kind === 'video' && (
+                <span className="ad-vid-badge" onClick={() => setLightbox(idx)}>
+                  <span className="ad-vid-play">▶</span>
+                  {p.duration_s ? <span className="ad-vid-time">{fmtDur(p.duration_s)}</span> : null}
+                </span>
+              )}
               {p.is_selected && <span className="ad-picked">✅ Picked</span>}
               <button className="ad-photo-del" onClick={() => delPhoto(p.id)}>🗑️</button>
               <span className="ad-photo-name">{(p.filename || '').replace(/\.[^.]+$/, '')}</span>
@@ -1764,12 +1820,26 @@ function AlbumDetail({ albumId, onBack }) {
           {lightbox > 0 && (
             <button className="ad-lb-nav prev" onClick={e => { e.stopPropagation(); setLightbox(i => i - 1); }}>‹</button>
           )}
-          <img
-            className="ad-lb-img"
-            src={`${api.fileUrl(visible[lightbox].id, 'preview')}?token=${token}`}
-            alt={visible[lightbox].filename || ''}
-            onClick={e => e.stopPropagation()}
-          />
+          {visible[lightbox].kind === 'video' ? (
+            /* The panel showed a film as an <img> pointed at its poster, which
+               meant a vendor could never watch what they had just uploaded —
+               and with no poster it was simply a broken image. */
+            <video
+              key={visible[lightbox].id}
+              className="ad-lb-video"
+              src={`${api.fileUrl(visible[lightbox].id, 'orig')}?token=${token}`}
+              poster={`${api.fileUrl(visible[lightbox].id, 'preview')}?token=${token}`}
+              controls autoPlay playsInline preload="metadata"
+              onClick={e => e.stopPropagation()}
+            />
+          ) : (
+            <img
+              className="ad-lb-img"
+              src={`${api.fileUrl(visible[lightbox].id, 'preview')}?token=${token}`}
+              alt={visible[lightbox].filename || ''}
+              onClick={e => e.stopPropagation()}
+            />
+          )}
           {lightbox < visible.length - 1 && (
             <button className="ad-lb-nav next" onClick={e => { e.stopPropagation(); setLightbox(i => i + 1); }}>›</button>
           )}
