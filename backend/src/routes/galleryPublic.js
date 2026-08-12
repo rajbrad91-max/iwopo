@@ -107,13 +107,13 @@ const ROOT = GALLERIES_ROOT;
  * originals, and a zip of four hundred of them would otherwise be read into
  * memory one at a time.
  */
-async function galleryStream(vendorId, rel) {
+async function galleryStream(vendorId, rel, range) {
   if (!rel || !await objects.enabled(objects.PRIVATE)) return null;
   const parts = String(rel).split('/').filter(Boolean);
   if (parts.length < 3) return null;                      // not vendor/album/name
   try {
     const o = await objects.getStream(objects.PRIVATE,
-      objects.keyFor(vendorId, 'galleries', parts[1], parts[2]));
+      objects.keyFor(vendorId, 'galleries', parts[1], parts[2]), range);
     return o;
   } catch { return null; }                                // not migrated yet
 }
@@ -276,9 +276,20 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
     if (req.params.type === 'orig') rel = p.storage_path;
     else if (req.params.type === 'thumb') rel = p.thumb_path;
     else rel = p.preview_path; // 'full' → the 2200px display file (preview_path column)
-    const o = await galleryStream(p.vendor_id, rel);
+    /* 🎞 Range matters here and it is not a nicety. res.sendFile used to handle
+       it for us; serving from R2 does not, and a film served whole with a 200
+       will not play in Safari or on iOS at all — both ask for a range first and
+       refuse anything else — while no browser can seek without being able to
+       request the middle of the file. */
+    const range = req.headers.range;
+    const o = await galleryStream(p.vendor_id, rel, range);
     if (o) {
       if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      res.setHeader('Accept-Ranges', 'bytes');            // tells the player it may ask
+      if (o.contentRange) {
+        res.status(206);
+        res.setHeader('Content-Range', o.contentRange);
+      }
       if (o.size) res.setHeader('Content-Length', o.size);
       return o.stream.pipe(res);                          // streamed, never buffered
     }

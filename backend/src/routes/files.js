@@ -60,9 +60,9 @@ function fileKey(vendorId, storedName) {
  * A File Flyer object as a stream: R2 if it is there, disk if it is not.
  * Never a buffer — a share can be tens of gigabytes.
  */
-async function fileStream(vendorId, storedName) {
+async function fileStream(vendorId, storedName, range) {
   if (!storedName || !await objects.enabled(objects.PRIVATE)) return null;
-  try { return await objects.getStream(objects.PRIVATE, fileKey(vendorId, storedName)); }
+  try { return await objects.getStream(objects.PRIVATE, fileKey(vendorId, storedName), range); }
   catch { return null; }                          // not migrated yet
 }
 
@@ -728,10 +728,14 @@ router.get('/item/:itemId/download', requireAuth, async (req, res) => {
     const item = await prisma.file_share_items.findUnique({ where: { id: itemId } });
     if (!item) return res.status(404).json({ error: 'Not found' });
     if (item.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
-    const o = await fileStream(item.vendor_id, item.stored_name);
+    // a share can hold a film, and a download manager resuming a 20GB file asks
+    // for a range exactly as a player does
+    const o = await fileStream(item.vendor_id, item.stored_name, req.headers.range);
     if (o) {
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(item.filename)}"`);
       if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
+      if (o.contentRange) { res.status(206); res.setHeader('Content-Range', o.contentRange); }
       if (o.size) res.setHeader('Content-Length', o.size);
       return o.stream.pipe(res);                  // streamed, never buffered
     }

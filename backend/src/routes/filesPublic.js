@@ -290,10 +290,13 @@ router.get('/:token/download/:itemId', async (req, res) => {
     if (!(await withinShare(item.folder_id, share.folder_id, share.vendor_id))) {
       return res.status(404).json({ error: 'Not found' });
     }
-    const o = await fileStream(share.vendor_id, item.stored_name);
+    // the client's own download — the one most likely to be resumed
+    const o = await fileStream(share.vendor_id, item.stored_name, req.headers.range);
     if (o) {
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(item.filename)}"`);
       if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
+      if (o.contentRange) { res.status(206); res.setHeader('Content-Range', o.contentRange); }
       if (o.size) res.setHeader('Content-Length', o.size);
       return o.stream.pipe(res);                  // streamed, never buffered
     }

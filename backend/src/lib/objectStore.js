@@ -147,10 +147,22 @@ export async function putObject(cls, key, body, contentType) {
  * first byte reached the client. Reading into memory here would reintroduce
  * exactly that problem, one object at a time.
  */
-export async function getStream(cls, key) {
+export async function getStream(cls, key, range) {
   const { client, bucket } = await clientFor(cls);
-  const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-  return { stream: out.Body, size: out.ContentLength, contentType: out.ContentType };
+  const out = await client.send(new GetObjectCommand({
+    Bucket: bucket, Key: key,
+    // A browser asking for part of a film is not an optimisation. Safari and iOS
+    // send a Range request before they will play anything at all and refuse a
+    // 200, and no player can seek without being able to ask for the middle.
+    ...(range ? { Range: range } : {}),
+  }));
+  return {
+    stream: out.Body,
+    size: out.ContentLength,
+    contentType: out.ContentType,
+    // present only on a partial reply — e.g. "bytes 0-1048575/73400320"
+    contentRange: out.ContentRange || null,
+  };
 }
 
 export async function headObject(cls, key) {
