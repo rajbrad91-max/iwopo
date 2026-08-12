@@ -740,7 +740,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
       let album;
       if (edit) { const d = await api.updateAlbum(edit.id, f); album = d.album; }
       else { const d = await api.createAlbum(f); album = d.album; }
-      if (coverFile && album) { try { await api.uploadAlbumCover(album.id, coverFile); } catch {} }
+      if (coverFile && album) { try { await api.uploadAlbumCover(album.id, coverFile, coverFocus); } catch {} }
       // save focal point whenever there's a cover (new or existing)
       if (album && (coverFile || edit?.cover_photo)) { try { await api.saveCoverFocus(album.id, coverFocus); } catch {} }
       resetForm(); setShowNew(false); load();

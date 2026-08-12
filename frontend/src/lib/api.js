@@ -529,9 +529,11 @@ export const api = {
   galleryTheme: () => request('/albums/theme'),
   saveGalleryTheme: (data) => request('/albums/theme', { method: 'PUT', body: JSON.stringify(data) }),
   emailAlbumInstructions: (id, payload) => request(`/albums/${id}/email-instructions`, { method: 'POST', body: JSON.stringify(payload || {}) }),
-  uploadAlbumCover: async (albumId, file) => {
+  uploadAlbumCover: async (albumId, file, focus) => {
     const fd = new FormData();
     fd.append('cover', file);
+    // the crop happens during the upload, so it has to be told where to cut
+    if (focus) fd.append('focus', focus);
     const token = localStorage.getItem('iwopo_token');
     const res = await fetch(`/api/albums/${albumId}/cover`, {
       method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd,

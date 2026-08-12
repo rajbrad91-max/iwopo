@@ -527,7 +527,14 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // returning visitor doesn't see the login flash past
   if (restoring && !session) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
 
-  const coverUrl = meta.album.cover ? `${API}/${token}/cover` : null;
+  /* The hero is as tall as the viewport and as wide as the screen, so its shape
+     is about 2:1 on a laptop and about 9:16 on a phone. Two crops exist; ask for
+     the one that fits, or a portrait cover gets its sides cut away on a phone
+     and a landscape one loses its top and bottom on a desktop. */
+  const wantTall = typeof window !== 'undefined' && window.innerWidth < 700;
+  const coverUrl = meta.album.cover
+    ? `${API}/${token}/cover${wantTall ? '?v=tall' : ''}`
+    : null;
 
   if (!session) {
     const m = meta.album;

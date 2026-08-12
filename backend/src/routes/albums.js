@@ -2,6 +2,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
 import { wouldExceed } from '../lib/storageQuota.js';
 import { orderEvents, VIDEO_FOLDER } from '../lib/albumEvents.js';
+import { writeMaster, writeCrops, SHAPES } from '../lib/coverImage.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -300,14 +301,82 @@ router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) 
     if (!req.file) return res.status(400).json({ error: 'No file' });
     const dir = path.join(ROOT, String(id));
     fs.mkdirSync(dir, { recursive: true });
-    const fname = `cover_${Date.now()}.webp`;
-    await sharp(req.file.path).rotate().resize(1200, 1200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fname));
-    fs.unlink(req.file.path, () => {});
-    await prisma.albums.updateMany({ where: { id, vendor_id: v }, data: { cover_photo: fname } });
+    /* A master, then two crops from it. The master is what lets the focal point
+       stay adjustable — moving it later re-cuts from a picture we still hold
+       rather than asking the vendor to upload the photograph again.
+
+       The focus arrives WITH the upload. It used to be saved in a separate call
+       afterwards, which was fine while the cover was only resized, but a crop
+       has to know where to crop before it happens. */
+    const base = `cover_${Date.now()}`;
+    const master = `${base}_master.webp`;
+    await writeMaster(req.file.path, path.join(dir, master));
+    fs.unlink(req.file.path, () => {});          // the camera file has served its purpose
+
+    const focus = req.body?.focus || '50% 50%';
+    await writeCrops(path.join(dir, master), dir, base, focus);
+    await coverToR2(v, id, dir, [master, `${base}.webp`, `${base}_tall.webp`]);
+    await removeOldCover(v, id, dir);            // whatever the previous cover was
+
+    await prisma.albums.updateMany({
+      where: { id, vendor_id: v },
+      data: { cover_photo: `${base}.webp`, cover_focus: /^\d{1,3}%\s\d{1,3}%$/.test(focus) ? focus : '50% 50%' },
+    });
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+/**
+ * Covers live in R2 too. They were never wired across when the rest of the
+ * gallery moved, so they existed only on the VPS disk — absent from the bucket
+ * and from every assumption made elsewhere about where gallery media lives.
+ */
+async function coverToR2(vendorId, albumId, dir, files) {
+  if (!await objects.enabled(objects.PRIVATE)) return;
+  await Promise.all(files.map(async (f) => {
+    try {
+      await objects.putObject(objects.PRIVATE, galleryKey(vendorId, albumId, f),
+        fs.createReadStream(path.join(dir, f)));
+    } catch (e) { console.error('[cover] R2 upload failed for', f, e.message); }
+  }));
+}
+
+/**
+ * Which rendition to hand back. "?v=tall" asks for the phone-shaped one; a
+ * cover uploaded before this existed has no tall file, so the caller falls
+ * through to the disk and gets the wide one — old covers keep working.
+ */
+function coverVariant(coverPhoto, want) {
+  if (want !== 'tall') return coverPhoto;
+  return coverPhoto.replace(/\.webp$/, '_tall.webp');
+}
+
+/** Covers read from R2 first, like every other piece of gallery media. */
+async function serveCoverFromR2(res, vendorId, albumId, file) {
+  if (!vendorId || !await objects.enabled(objects.PRIVATE)) return false;
+  try {
+    const o = await objects.getStream(objects.PRIVATE, galleryKey(vendorId, albumId, file));
+    if (o.contentType) res.setHeader('Content-Type', o.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (o.size) res.setHeader('Content-Length', o.size);
+    o.stream.pipe(res);
+    return true;
+  } catch { return false; }               // not in R2 — the disk still has it
+}
+
+/** Replacing a cover should not leave the old one occupying the vendor's pool. */
+async function removeOldCover(vendorId, albumId, dir) {
+  const prev = await prisma.albums.findFirst({ where: { id: albumId, vendor_id: vendorId }, select: { cover_photo: true } });
+  if (!prev?.cover_photo) return;
+  const base = prev.cover_photo.replace(/\.webp$/, '');
+  for (const f of [`${base}.webp`, `${base}_tall.webp`, `${base}_master.webp`]) {
+    try { fs.unlinkSync(path.join(dir, f)); } catch { /* already gone */ }
+    if (await objects.enabled(objects.PRIVATE)) {
+      try { await objects.deleteObject(objects.PRIVATE, galleryKey(vendorId, albumId, f)); } catch { /* fine */ }
+    }
+  }
+}
 
 // 🎯 save the cover focal point ("X% Y%") so covers frame well on any aspect ratio
 router.put('/:id/cover-focus', requireAuth, async (req, res) => {
@@ -319,6 +388,24 @@ router.put('/:id/cover-focus', requireAuth, async (req, res) => {
     if (!/^\d{1,3}%\s\d{1,3}%$/.test(focus)) return res.status(400).json({ error: 'Bad focus format' });
     const { count } = await prisma.albums.updateMany({ where: { id, vendor_id: v }, data: { cover_focus: focus } }); // 🔒 tenancy
     if (!count) return res.status(404).json({ error: 'Not found' });
+
+    /* Re-cut both renditions around the new point. This is the whole reason the
+       master is kept: without it, moving the focal point would mean uploading
+       the photograph again. */
+    try {
+      const cur = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { cover_photo: true } });
+      if (cur?.cover_photo) {
+        const dir = path.join(ROOT, String(id));
+        const base = cur.cover_photo.replace(/\.webp$/, '');
+        const master = path.join(dir, `${base}_master.webp`);
+        if (fs.existsSync(master)) {
+          await writeCrops(master, dir, base, focus);
+          await coverToR2(v, id, dir, [`${base}.webp`, `${base}_tall.webp`]);
+        }
+        // a cover uploaded before the master existed simply keeps its old crop;
+        // the focal point still moves for anything uploaded since
+      }
+    } catch (e) { console.error('[cover] re-crop failed:', e.message); }
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -329,10 +416,12 @@ router.get('/cover/:id', async (req, res) => {
   try {
     const a = await prisma.albums.findUnique({
       where: { id: Number(req.params.id) },
-      select: { cover_photo: true },
+      select: { cover_photo: true, vendor_id: true },
     });
     if (!a?.cover_photo) return res.status(404).end();
-    res.sendFile(path.join(ROOT, String(req.params.id), a.cover_photo), (err) => {
+    const file = coverVariant(a.cover_photo, req.query.v);
+    if (await serveCoverFromR2(res, a.vendor_id, Number(req.params.id), file)) return;
+    res.sendFile(path.join(ROOT, String(req.params.id), file), (err) => {
       if (err && !res.headersSent) res.status(404).end();
     });
   } catch { res.status(404).end(); }

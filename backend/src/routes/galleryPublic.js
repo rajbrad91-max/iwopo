@@ -173,11 +173,30 @@ router.get('/vendor/:token', async (req, res) => {
 });
 
 // 🌐 cover for an album in the index (by album token, public — no password)
+/** Covers read from R2 first, like every other piece of gallery media. */
+async function coverFromR2(res, album, file) {
+  if (!album?.vendor_id || !await objects.enabled(objects.PRIVATE)) return false;
+  try {
+    const o = await objects.getStream(objects.PRIVATE,
+      objects.keyFor(album.vendor_id, 'galleries', String(album.id), file));
+    if (o.contentType) res.setHeader('Content-Type', o.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (o.size) res.setHeader('Content-Length', o.size);
+    o.stream.pipe(res);
+    return true;
+  } catch { return false; }              // not in R2 — the disk still has it
+}
+
 router.get('/vendor-cover/:albumToken', async (req, res) => {
   try {
     const a = await findAlbum(req.params.albumToken);
     if (!a || !a.cover_photo) return res.status(404).end();
-    res.sendFile(path.join(ROOT, String(a.id), a.cover_photo), (err) => {
+    const file = req.query.v === 'tall' ? a.cover_photo.replace(/\.webp$/, '_tall.webp') : a.cover_photo;
+    if (await coverFromR2(res, a, file)) return;
+    /* An older cover has no tall rendition, so a phone asking for one falls
+       back to the wide file rather than getting nothing. */
+    const disk = path.join(ROOT, String(a.id), file);
+    res.sendFile(fs.existsSync(disk) ? disk : path.join(ROOT, String(a.id), a.cover_photo), (err) => {
       if (err && !res.headersSent) res.status(404).end();
     });
   } catch { res.status(404).end(); }
@@ -206,7 +225,12 @@ router.get('/:token/cover', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a || !a.cover_photo) return res.status(404).end();
-    res.sendFile(path.join(ROOT, String(a.id), a.cover_photo), (err) => {
+    const file = req.query.v === 'tall' ? a.cover_photo.replace(/\.webp$/, '_tall.webp') : a.cover_photo;
+    if (await coverFromR2(res, a, file)) return;
+    /* An older cover has no tall rendition, so a phone asking for one falls
+       back to the wide file rather than getting nothing. */
+    const disk = path.join(ROOT, String(a.id), file);
+    res.sendFile(fs.existsSync(disk) ? disk : path.join(ROOT, String(a.id), a.cover_photo), (err) => {
       if (err && !res.headersSent) res.status(404).end();
     });
   } catch { res.status(404).end(); }
