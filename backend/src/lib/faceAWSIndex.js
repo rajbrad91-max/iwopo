@@ -18,6 +18,8 @@ import {
   collectionIdFor, deleteFaces,
 } from './faceAWS.js';
 import { portraitScore } from './portraitScore.js';
+import * as objects from './objectStore.js';
+import { withLocalFile, galleryKeyFromRel } from './localFile.js';
 
 const ROOT = GALLERIES_ROOT;
 const MATCH_THRESHOLD = 80;   // AWS similarity %, same as PerfectPoses
@@ -48,11 +50,15 @@ export async function indexAlbumAWS(albumId) {
 
   for (const p of photos) {
     const rel = p.preview_path || p.thumb_path;
-    const abs = rel ? path.join(ROOT, rel) : null;
-    if (!abs || !fs.existsSync(abs)) { skipped++; continue; }
+    if (!rel) { skipped++; continue; }
 
     try {
-      const found = await indexPhotoFaces(album.id, abs, p.filename || `photo-${p.id}`);
+      // same reason as the local engine: this needs a real file, from wherever
+      const found = await withLocalFile(
+        path.join(ROOT, rel), objects.PRIVATE, galleryKeyFromRel(rel),
+        (local) => indexPhotoFaces(album.id, local, p.filename || `photo-${p.id}`),
+      );
+      if (!found) { skipped++; continue; }
 
       for (const f of found) {
         await prisma.album_faces.upsert({

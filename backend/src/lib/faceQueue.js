@@ -20,6 +20,8 @@ import { getFaceDescriptors } from './faceEngine.js';
 import { getSetting } from './settings.js';
 import { clusterAlbum } from './faceCluster.js';
 import { indexAlbumAWS, groupAlbumFacesAWS } from './faceAWSIndex.js';
+import * as objects from './objectStore.js';
+import { withLocalFile, galleryKeyFromRel } from './localFile.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -109,10 +111,17 @@ async function drain() {
 
 // index one image → store descriptors (engine already chosen for the album)
 async function indexPhoto(p, engine) {
-  const full = path.join(ROOT, p.preview_path);
-  if (!fs.existsSync(full)) return;
-  // local engine only — AWS albums are handled by faceAWSIndex.js before this runs
-  const found = await getFaceDescriptors(full);
+  /* The face engine wants a path, not a stream, so the file has to exist
+     somewhere. Once storage stops keeping a local copy this pulls it from R2
+     into a temp file and removes it afterwards. */
+  const found = await withLocalFile(
+    path.join(ROOT, p.preview_path),
+    objects.PRIVATE,
+    galleryKeyFromRel(p.preview_path),
+    // local engine only — AWS albums are handled by faceAWSIndex.js before this runs
+    (local) => getFaceDescriptors(local),
+  );
+  if (!found) return;                            // not on disk, not in R2
   await prisma.photos.update({
     where: { id: p.id },
     data: { faces: found, face_count: found.length, face_indexed: true, face_engine: engine },

@@ -11,6 +11,7 @@ import { FILES_DIR } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { sendAsVendor } from './email.js';
+import { withLocalFile, dropLocal } from '../lib/localFile.js';
 
 const router = express.Router();
 
@@ -222,18 +223,26 @@ export async function thumbPathFor(vendorId, item, size = 'thumb') {
   if (!maybeImage(item)) return null;
   const cfg = SIZES[size] || SIZES.thumb;
   const dir = vendorDir(vendorId);
-  const src = path.join(dir, item.stored_name);
-  if (!fs.existsSync(src)) return null;
   const out = path.join(dir, item.stored_name + cfg.suffix);
-  if (fs.existsSync(out)) return out;
-  try {
-    await sharp(src)
-      .rotate()                                  // honour EXIF, or phone photos land sideways
-      .resize(cfg.px, cfg.px, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: cfg.q })
-      .toFile(out);
-    return out;
-  } catch { return null; }                       // corrupt or unsupported — icon instead
+  if (fs.existsSync(out)) return out;            // made earlier, still here
+
+  /* The original may not be on this disk at all — storage keeps it in R2. sharp
+     needs a path, so it is fetched to a temp file, resized, and the temp thrown
+     away; the preview itself stays local because it is small and is about to be
+     asked for again. */
+  fs.mkdirSync(dir, { recursive: true });
+  const made = await withLocalFile(
+    path.join(dir, item.stored_name), objects.PRIVATE, fileKey(vendorId, item.stored_name),
+    async (src) => {
+      await sharp(src)
+        .rotate()                                // honour EXIF, or phone photos land sideways
+        .resize(cfg.px, cfg.px, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: cfg.q })
+        .toFile(out);
+      return out;
+    },
+  ).catch(() => null);                           // corrupt or unsupported — icon instead
+  return made;
 }
 
 // GET /api/files/item/:itemId/thumb
@@ -658,6 +667,9 @@ router.post('/upload', requireAuth, upload.array('files', 30), async (req, res) 
         try {
           await objects.putObject(objects.PRIVATE, fileKey(v, stored),
             fs.createReadStream(path.join(dir, stored)), f.mimetype || undefined);
+          /* The generated .thumb.webp / .lg.webp beside it stay local on
+             purpose — they are small and asked for repeatedly. */
+          dropLocal(path.join(dir, stored));
         } catch (e) { console.error('[files] R2 upload failed for', stored, e.message); }
       }
       rows.push({

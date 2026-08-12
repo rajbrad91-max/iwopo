@@ -18,6 +18,7 @@ import { searchBySelfie, deleteCollection } from '../lib/faceAWS.js';
 import { forgetPhotoFacesAWS } from '../lib/faceAWSIndex.js';
 import { enqueueAlbum, indexAlbumNow } from '../lib/faceQueue.js';
 import { getSetting } from '../lib/settings.js';
+import { withLocalFile, dropLocal } from '../lib/localFile.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -338,6 +339,7 @@ async function coverToR2(vendorId, albumId, dir, files) {
     try {
       await objects.putObject(objects.PRIVATE, galleryKey(vendorId, albumId, f),
         fs.createReadStream(path.join(dir, f)));
+      dropLocal(path.join(dir, f));
     } catch (e) { console.error('[cover] R2 upload failed for', f, e.message); }
   }));
 }
@@ -397,11 +399,19 @@ router.put('/:id/cover-focus', requireAuth, async (req, res) => {
       if (cur?.cover_photo) {
         const dir = path.join(ROOT, String(id));
         const base = cur.cover_photo.replace(/\.webp$/, '');
-        const master = path.join(dir, `${base}_master.webp`);
-        if (fs.existsSync(master)) {
-          await writeCrops(master, dir, base, focus);
-          await coverToR2(v, id, dir, [`${base}.webp`, `${base}_tall.webp`]);
-        }
+        /* The master may only exist in R2, so it is fetched to a temp file to
+           cut from. A cover uploaded before masters existed has none at all and
+           simply keeps its old crop. */
+        const done = await withLocalFile(
+          path.join(dir, `${base}_master.webp`),
+          objects.PRIVATE, galleryKey(v, id, `${base}_master.webp`),
+          async (master) => {
+            await writeCrops(master, dir, base, focus);
+            await coverToR2(v, id, dir, [`${base}.webp`, `${base}_tall.webp`]);
+            return true;
+          },
+        );
+        if (!done) console.warn('[cover] no master for album', id, '— crop unchanged');
         // a cover uploaded before the master existed simply keeps its old crop;
         // the focal point still moves for anything uploaded since
       }
@@ -581,6 +591,7 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
           try {
             await objects.putObject(objects.PRIVATE, galleryKey(v, id, n),
               fs.createReadStream(path.join(dir, n)));
+            dropLocal(path.join(dir, n));      // R2 has it; the VPS need not
           } catch (e) { console.error('[gallery] R2 upload failed for', n, e.message); }
         }));
       }
@@ -718,6 +729,7 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
         try {
           await objects.putObject(objects.PRIVATE, galleryKey(v, id, n),
             fs.createReadStream(path.join(dir, n)));
+          dropLocal(path.join(dir, n));
         } catch (e) { console.error('[video] R2 upload failed for', n, e.message); }
       }
     }
@@ -873,6 +885,7 @@ router.post('/:id/videos/complete', requireAuth, uploadVideo.single('poster'), a
         if (await objects.enabled(objects.PRIVATE)) {
           for (const n2 of [thumbName, fullName]) {
             await objects.putObject(objects.PRIVATE, galleryKey(v, id, n2), fs.createReadStream(path.join(dir, n2)));
+            dropLocal(path.join(dir, n2));
           }
         }
       } catch (e) {
