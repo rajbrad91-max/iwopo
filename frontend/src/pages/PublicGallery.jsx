@@ -797,8 +797,13 @@ export default function PublicGallery({ token, embedded, onBack }) {
         ))}
       </div>
 
+      {/* Films counted apart — a gallery holding one film and no pictures
+          told the couple it had one image. */}
       {photos.length > 0 && (
-        <div className="pg-grid-end">No more images to display. (Total Images: {photos.length})</div>
+        <div className="pg-grid-end">
+          No more to display. (Total: {photos.filter(p => p.kind !== 'video').length} images
+          {photos.some(p => p.kind === 'video') && `, ${photos.filter(p => p.kind === 'video').length} videos`})
+        </div>
       )}
 
       {nPicked > 0 && (

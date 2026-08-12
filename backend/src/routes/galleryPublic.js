@@ -64,8 +64,13 @@ function normaliseBox(raw, imgW, imgH) {
 const NAT_SORT = `ORDER BY regexp_replace(lower(filename), '(\\d+)', lpad('\\1', 10, '0'), 'g') ASC, id ASC`;
 
 async function photosInAlbum(albumId) {
+  /* kind and duration_s are selected because a film has to be recognisable as
+     one. Without them the shaping below defaulted every row to a photograph,
+     so the public gallery drew a film as a still image and offered no way to
+     play it — the panel had the same list with the same defect and it was
+     only noticed there first. */
   return prisma.$queryRawUnsafe(
-    `SELECT id, filename, event_id, face_count FROM photos WHERE album_id = $1 ${NAT_SORT}`,
+    `SELECT id, filename, event_id, face_count, kind, duration_s FROM photos WHERE album_id = $1 ${NAT_SORT}`,
     albumId
   );
 }
@@ -188,7 +193,10 @@ router.get('/:token', async (req, res) => {
     const v = await prisma.vendors.findUnique({
       where: { id: a.vendor_id }, select: { business_name: true },
     });
-    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null } });
+    /* Counted apart. A gallery holding one film and no photographs announced
+       itself as "1 photo" on the page a couple lands on. */
+    const nVideo = await prisma.photos.count({ where: { album_id: a.id, kind: 'video' } });
+    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n - nVideo, video_count: nVideo, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
