@@ -300,14 +300,23 @@ router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) =
 
 // 🔒 Super admin: update a PACKAGE price
 router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { price_monthly, price_annual, price_annual_regular } = req.body;
+  const { price_monthly, price_annual, price_annual_regular, storage_gb } = req.body;
   try {
+    /* Storage is edited here rather than per vendor, so changing it moves every
+       vendor on this package at once. Left alone when the field is absent, so
+       the price form can keep sending only prices. */
+    const gb = Number(storage_gb);
+    const storage = Number.isFinite(gb) && gb > 0
+      ? { storage_gb: Math.min(Math.round(gb), 100000) }   // 100TB, a sanity ceiling
+      : {};
+
     await prisma.packages.update({
       where: { id: Number(req.params.id) },
       data: {
         price_monthly: price_monthly ?? null,
         price_annual: price_annual ?? null,
         price_annual_regular: price_annual_regular ?? null,
+        ...storage,
       },
     });
     res.json({ ok: true });

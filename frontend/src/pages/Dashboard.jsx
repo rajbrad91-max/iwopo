@@ -545,6 +545,37 @@ function ServicePriceEditor({ service, onSaved }) {
   );
 }
 
+/**
+ * 📦 How much storage this package includes.
+ *
+ * Edited on the package rather than per vendor, so raising it here raises it
+ * for every vendor on this package at once — which is what makes it a property
+ * of what they bought rather than a number someone has to remember to copy onto
+ * each account.
+ */
+function StorageEditor({ pkg, onSaved }) {
+  const [gb, setGb] = useState(pkg.storage_gb ?? 50);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const n = Number(gb);
+    if (!Number.isFinite(n) || n <= 0) return;
+    setBusy(true);
+    try { await api.updatePackagePrice(pkg.id, { storage_gb: Math.round(n) }); onSaved?.(); }
+    catch { /* the list reloads either way */ }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="pkg-storage">
+      <label>Storage included</label>
+      <input type="number" min="1" value={gb} onChange={e => setGb(e.target.value)}
+        onBlur={save} disabled={busy} />
+      <span>GB</span>
+    </div>
+  );
+}
+
 function PriceEditor({ item, isPackage, onSaved }) {
   const dialog = useDialog();
   const [m, setM] = useState(item.price_monthly ?? '');
@@ -581,6 +612,7 @@ function PackageCard({ pkg, editMode, onSaved }) {
         </div>
       </div>
 
+      {editMode && <StorageEditor pkg={pkg} onSaved={onSaved} />}
       {pkg.price_monthly != null ? (
         editMode ? <><PriceEditor item={pkg} isPackage onSaved={onSaved} /><CountryPriceEditor type="package" item={pkg} baseField="price_monthly" onSaved={onSaved} /></> : (
           <div className="sa-pkg-price">

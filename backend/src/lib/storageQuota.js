@@ -17,11 +17,54 @@
  */
 import prisma from '../config/prisma.js';
 
-const DEFAULT_LIMIT_MB = 1024;
+/* A vendor on the free trial has no package — signup writes plan 'starter',
+   which is not a package key. The trial's allowance therefore lives here rather
+   than on a row, and it is small on purpose: a trial is for trying the product,
+   not for delivering a season's weddings through. */
+const TRIAL_LIMIT_MB = 5 * 1024;
+
+/* Only reached if a vendor's plan names a package that no longer exists —
+   deliberately small, so a broken plan shows up as a vendor who cannot upload
+   much rather than one quietly handed the largest allowance in the system. */
+const FALLBACK_LIMIT_MB = 1024;
+
+/**
+ * 📦 What a vendor is allowed, and where that number comes from.
+ *
+ * The package decides it. Raising a package's storage_gb in the super panel
+ * raises it for every vendor on that package at once, which is the whole reason
+ * it lives on the package rather than being copied onto each account at signup.
+ *
+ * vendor_settings.storage_limit_mb remains as an OVERRIDE and nothing else. A
+ * super admin can grant one vendor more than their package — an apology, a
+ * migration, a special case — without inventing a package for them. Null means
+ * "just use the package", which is what almost every vendor should be.
+ */
+async function limitMbFor(vendorId) {
+  const vendor = await prisma.vendors.findUnique({
+    where: { id: Number(vendorId) },
+    select: { plan: true, vendor_settings: { select: { storage_limit_mb: true } } },
+  });
+  const override = vendor?.vendor_settings?.storage_limit_mb;
+  if (override != null) return { limitMb: override, source: 'override' };
+
+  const key = vendor?.plan;
+  if (!key || key === 'starter' || key === 'trial') {
+    return { limitMb: TRIAL_LIMIT_MB, source: 'trial', planName: 'Free trial' };
+  }
+
+  const pkg = await prisma.packages.findFirst({
+    where: { key },
+    select: { storage_gb: true, name: true },
+  });
+  if (pkg) return { limitMb: pkg.storage_gb * 1024, source: 'package', planName: pkg.name };
+
+  return { limitMb: FALLBACK_LIMIT_MB, source: 'fallback' };
+}
 
 export async function storageFor(vendorId) {
   const v = Number(vendorId);
-  const [files, photos, settings] = await Promise.all([
+  const [files, photos, limit] = await Promise.all([
     prisma.file_share_items.aggregate({
       where: { vendor_id: v },                          // 🔒 tenancy
       _sum: { size_bytes: true },
@@ -30,16 +73,13 @@ export async function storageFor(vendorId) {
       where: { vendor_id: v },                          // 🔒 tenancy
       _sum: { size_bytes: true },
     }),
-    prisma.vendor_settings.findUnique({
-      where: { vendor_id: v },
-      select: { storage_limit_mb: true },
-    }),
+    limitMbFor(v),
   ]);
 
   const fileBytes = Number(files._sum.size_bytes || 0);
   const photoBytes = Number(photos._sum.size_bytes || 0);
   const usedBytes = fileBytes + photoBytes;
-  const limitMb = settings?.storage_limit_mb ?? DEFAULT_LIMIT_MB;
+  const limitMb = limit.limitMb;
   const limitBytes = limitMb * 1024 * 1024;
 
   return {
@@ -49,6 +89,10 @@ export async function storageFor(vendorId) {
     used_photos_bytes: photoBytes,
     limit_bytes: limitBytes,
     limit_mb: limitMb,
+    // so a vendor asking "why is my limit this?" can be told, and a super admin
+    // can see at a glance whether an account is on its plan or an override
+    limit_source: limit.source,
+    plan_name: limit.planName || null,
     remaining_bytes: Math.max(limitBytes - usedBytes, 0),
   };
 }

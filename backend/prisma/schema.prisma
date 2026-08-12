@@ -478,6 +478,10 @@ model packages {
   sort_order           Int?            @default(0)
   country_prices       Json?           @default("{}")
   package_items        package_items[]
+  /* What this package includes. A vendor's storage limit is derived from here,
+     so raising a package's allowance raises it for everyone on that package at
+     once — which is why it lives on the package and not on the account. */
+  storage_gb           Int      @default(50)
 }
 
 model password_reset_tokens {
@@ -726,7 +730,8 @@ model vendor_settings {
   currency                String?   @db.VarChar(3)
   auto_release_contract   Boolean   @default(false)
   default_deposit_percent Decimal   @default(30) @db.Decimal(5, 2)
-  storage_limit_mb        Int       @default(1024)
+  // null means "no override — use the plan's allowance"
+  storage_limit_mb   Int?
   vendors                 vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
