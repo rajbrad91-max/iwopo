@@ -1134,8 +1134,14 @@ function AlbumDetail({ albumId, onBack }) {
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => {
     setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);
-    // per-client: default to the first event (no "All" tab)
-    if ((d.events || []).length > 0) {
+    /* Open on the first folder, but ONLY if every photograph is in one.
+       A photograph with no event belongs to no tab, and this used to select a
+       folder anyway — so an album could report seven photographs and show an
+       empty folder, with the other six unreachable through the interface. It
+       happened the moment a Videos folder appeared beside photographs that had
+       been uploaded before any folder existed. */
+    const stranded = (d.photos || []).some(p => p.event_id == null);
+    if ((d.events || []).length > 0 && !stranded) {
       setActiveEvent(prev => prev === 'all' ? d.events[0].id : prev);
     }
   }).catch(() => {}); }
@@ -1531,6 +1537,15 @@ function AlbumDetail({ albumId, onBack }) {
 
       {isPerClient && (
         <div className="ad-events">
+          {/* A tab for anything sitting outside every folder. It appears only
+              when there is something in it, so an album whose photographs are
+              all filed looks exactly as before — but nothing can be invisible. */}
+          {photos.some(p => p.event_id == null) && (
+            <button className={`pg-ev ${activeEvent === 'all' ? 'on' : ''}`} onClick={() => setActiveEvent('all')}>
+              <span>All</span>
+              <span className="pg-ev-count">{photos.length}</span>
+            </button>
+          )}
           {events.map(ev => {
             const n = photos.filter(p => String(p.event_id) === String(ev.id)).length;
             return (
