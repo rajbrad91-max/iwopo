@@ -804,3 +804,13 @@
   .pg-vid-play { width: 38px; height: 38px; font-size: 13px; }
   .pg-vid-fallback { padding: 30px 22px; }
 }
+
+/* a film's name under its tile — photographs are looked at, films are chosen */
+.pg-vid-name {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 18px 10px 8px;
+  font-size: 11.5px; line-height: 1.3; text-align: left; color: #fff;
+  background: linear-gradient(to top, rgba(10,10,12,.72), rgba(10,10,12,0));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}

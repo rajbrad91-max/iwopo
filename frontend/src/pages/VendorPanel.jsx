@@ -1539,7 +1539,17 @@ function AlbumDetail({ albumId, onBack }) {
   const pendingShown = (isPerClient && activeEvent !== 'all')
     ? pending.filter(p => p.eventId === String(activeEvent))
     : pending;
+  /* 🎬 The Videos folder is a different kind of thing to an event.
+     Favorites and Selection are about which photographs a couple wants
+     printed; renaming or deleting the Videos folder would break the rule that
+     it is always there and always last; and Upload to this event sends
+     photographs, which have no business in it. All six are shown faded rather
+     than hidden, so a vendor can see they exist and be told why they are off. */
+  const inVideos = events.find(e => String(e.id) === String(activeEvent))?.name === 'Videos';
+  const onlyPhotos = inVideos ? 'Only for photos — you are in the Videos folder' : undefined;
+
   const uploadLabel = uploading ? '⏳ Uploading…'
+    : inVideos ? '📤 Photos go in a photo folder'
     : isPerClient ? (activeEvent === 'all' ? '📤 Pick an event to upload' : '📤 Upload to this event')
     : '📤 Upload photos';
 
@@ -1558,18 +1568,24 @@ function AlbumDetail({ albumId, onBack }) {
           </div>
         </div>
         <div className="ad-head-actions">
-          <button className="refresh ad-ev-btn" onClick={openFavorites} title="See which photos clients marked as favorites">⭐ Favorites</button>
-          <button className="refresh ad-ev-btn" onClick={openSelection} title="See the photo selection the client sent you">📩 Selection</button>
+          <button className="refresh ad-ev-btn" onClick={openFavorites} disabled={inVideos}
+            title={onlyPhotos || 'See which photos clients marked as favorites'}>⭐ Favorites</button>
+          <button className="refresh ad-ev-btn" onClick={openSelection} disabled={inVideos}
+            title={onlyPhotos || 'See the photo selection the client sent you'}>📩 Selection</button>
           {isPerClient && (
             <div className="ad-ev-actions">
-              <button className="refresh ad-ev-btn" onClick={openAddEvent} title="Add a new event">➕ Add Event</button>
-              <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all'} title="Rename the selected event">✏️ Rename</button>
-              <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all'} title="Delete the selected event">🗑️ Delete</button>
+              <button className="refresh ad-ev-btn" onClick={openAddEvent} disabled={inVideos}
+                title={onlyPhotos || 'Add a new event'}>➕ Add Event</button>
+              <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all' || inVideos}
+                title={onlyPhotos || 'Rename the selected event'}>✏️ Rename</button>
+              <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all' || inVideos}
+                title={onlyPhotos || 'Delete the selected event'}>🗑️ Delete</button>
             </div>
           )}
-          <label className={`refresh ad-upload ${isPerClient && activeEvent === 'all' ? 'ad-upload-off' : ''}`}>
+          <label className={`refresh ad-upload ${(isPerClient && activeEvent === 'all') || inVideos ? 'ad-upload-off' : ''}`}
+            title={onlyPhotos || undefined}>
             {uploadLabel}
-            <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || (isPerClient && activeEvent === 'all')} />
+            <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || inVideos || (isPerClient && activeEvent === 'all')} />
           </label>
           {/* Films go to their own Videos folder wherever you are, so unlike
               photographs this is never disabled by which tab is open. */}

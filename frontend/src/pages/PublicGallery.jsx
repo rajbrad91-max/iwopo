@@ -707,6 +707,11 @@ export default function PublicGallery({ token, embedded, onBack }) {
           {onBack && <button className="pg-back" onClick={onBack}>← Back</button>}
           {showScenes && session.events.map(ev => {
             const evCount = allPhotos.filter(p => String(p.event_id) === String(ev.id)).length;
+            /* An empty folder is a promise of something that is not there. The
+               Videos folder is created the moment a vendor uploads their first
+               film, so an album whose films were all removed would otherwise
+               keep offering a tab with nothing behind it. */
+            if (evCount === 0) return null;
             return (
               <button
                 key={ev.id}
@@ -732,7 +737,10 @@ export default function PublicGallery({ token, embedded, onBack }) {
       )}
 
       {/* bar 2 — the people in this gallery */}
-      {(faces.length > 0 || session.faceReady) && (
+      {/* Face search is a photograph feature. On the Videos folder it offered
+          "Find me" against a set with no faces in it, and sat there saying
+          "Finding faces…" over a single film. */}
+      {(faces.length > 0 || session.faceReady) && !photos.every(p => p.kind === 'video') && (
         <div className="pg-people">
           <div className={`pg-faces ${allFacesOpen ? 'is-expanded' : ''}`}>
             {faces.map(f => (
@@ -803,10 +811,19 @@ export default function PublicGallery({ token, embedded, onBack }) {
               onError={e => { e.currentTarget.style.visibility = 'hidden'; }}
             />
             {p.kind === 'video' && (
-              <span className="pg-vid-badge">
-                <span className="pg-vid-play">▶</span>
-                {p.duration_s ? <span className="pg-vid-time">{fmtDur(p.duration_s)}</span> : null}
-              </span>
+              <>
+                <span className="pg-vid-badge">
+                  <span className="pg-vid-play">▶</span>
+                  {p.duration_s ? <span className="pg-vid-time">{fmtDur(p.duration_s)}</span> : null}
+                </span>
+                {/* Photographs are looked at; a film is chosen. A couple with
+                    three of them needs to know which is the ceremony and which
+                    the speeches, and a row of identical play badges does not
+                    say. The extension is dropped — it is ours, not theirs. */}
+                <figcaption className="pg-vid-name" title={p.name || ''}>
+                  {String(p.name || '').replace(/\.[^.]+$/, '')}
+                </figcaption>
+              </>
             )}
             {/* Selection is for choosing which photographs go in an album, and
                 a film is not one of them. The tick appeared on films and a
