@@ -1134,14 +1134,8 @@ function AlbumDetail({ albumId, onBack }) {
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => {
     setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);
-    /* Open on the first folder, but ONLY if every photograph is in one.
-       A photograph with no event belongs to no tab, and this used to select a
-       folder anyway — so an album could report seven photographs and show an
-       empty folder, with the other six unreachable through the interface. It
-       happened the moment a Videos folder appeared beside photographs that had
-       been uploaded before any folder existed. */
-    const stranded = (d.photos || []).some(p => p.event_id == null);
-    if ((d.events || []).length > 0 && !stranded) {
+    // an album with folders opens on the first of them
+    if ((d.events || []).length > 0) {
       setActiveEvent(prev => prev === 'all' ? d.events[0].id : prev);
     }
   }).catch(() => {}); }
@@ -1530,8 +1524,15 @@ function AlbumDetail({ albumId, onBack }) {
 
   if (!album) return <div className="loading">Loading…</div>;
 
+  /* A photograph with no folder is shown in the FIRST folder rather than
+     nowhere. The upload button is disabled until a folder is chosen, so this
+     should never happen — but it did once, when a Videos folder appeared beside
+     photographs uploaded before any folder existed, and the album then reported
+     seven photographs while showing none. Somewhere wrong beats invisible. */
+  const firstEventId = events.length ? String(events[0].id) : null;
   const shown = isPerClient && activeEvent !== 'all'
-    ? photos.filter(p => String(p.event_id) === String(activeEvent))
+    ? photos.filter(p => String(p.event_id) === String(activeEvent)
+        || (p.event_id == null && String(activeEvent) === firstEventId))
     : photos;
   const visible = shown.slice(0, visibleCount); // infinite-scroll window
   visibleLenRef.current = visible.length; // keep the keyboard handler's bound current
@@ -1598,17 +1599,12 @@ function AlbumDetail({ albumId, onBack }) {
 
       {isPerClient && (
         <div className="ad-events">
-          {/* A tab for anything sitting outside every folder. It appears only
-              when there is something in it, so an album whose photographs are
-              all filed looks exactly as before — but nothing can be invisible. */}
-          {photos.some(p => p.event_id == null) && (
-            <button className={`pg-ev ${activeEvent === 'all' ? 'on' : ''}`} onClick={() => setActiveEvent('all')}>
-              <span>All</span>
-              <span className="pg-ev-count">{photos.length}</span>
-            </button>
-          )}
           {events.map(ev => {
-            const n = photos.filter(p => String(p.event_id) === String(ev.id)).length;
+            /* Counted the same way the grid filters, so the number on the tab
+               and the number of tiles behind it cannot disagree — including a
+               photograph with no folder, which lands in the first one. */
+            const n = photos.filter(p => String(p.event_id) === String(ev.id)
+              || (p.event_id == null && String(ev.id) === firstEventId)).length;
             return (
               <button key={ev.id} className={`pg-ev ${String(activeEvent) === String(ev.id) ? 'on' : ''}`} onClick={() => setActiveEvent(ev.id)}>
                 <span>{ev.name}</span>
