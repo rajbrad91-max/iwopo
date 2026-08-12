@@ -76,6 +76,21 @@ async function refreshVendorOrigins() {
   } catch { /* keep the previous list rather than locking everyone out */ }
 }
 
+/**
+ * 🔢 BigInt has no JSON representation, so JSON.stringify throws on one rather
+ * than skipping it — and the whole response becomes a 500.
+ *
+ * photos.size_bytes is a BigInt, and a dozen routes hand back whole photo rows.
+ * Two of them were fixed one at a time when this first appeared, which missed
+ * the one that matters most: the route the album page calls to load itself.
+ * A vendor uploaded a film successfully and then watched the page hang on
+ * "Loading" forever, because the upload worked and the reload did not.
+ *
+ * Fixed once, here, rather than twelve times and counting. Number is exact for
+ * anything below nine petabytes, which is comfortably more than a wedding.
+ */
+app.set('json replacer', (key, value) => (typeof value === 'bigint' ? Number(value) : value));
+
 app.use(cors({
   origin: async (origin, cb) => {
     if (!origin) return cb(null, true);                 // not a browser

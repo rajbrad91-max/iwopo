@@ -1219,6 +1219,17 @@ function AlbumDetail({ albumId, onBack }) {
   const isPerClient = true; // per-client is the only gallery mode
 
   const [vidBusy, setVidBusy] = useState('');
+
+  /* 🚧 Closing the tab mid-upload throws the work away, and a vendor an hour
+     into a large film should be asked first. Switching tabs or minimising is
+     fine and needs no guard — fetch keeps running in a background tab; it is
+     only leaving the page that kills it. */
+  useEffect(() => {
+    if (!vidBusy && !uploading) return undefined;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [vidBusy, uploading]);
   const vidLabel = vidBusy || '🎬 Add Videos';
 
   /**
@@ -1319,7 +1330,11 @@ function AlbumDetail({ albumId, onBack }) {
             sent = true;
           } catch (err) {
             lastErr = err;
-            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+            /* A background tab clamps setTimeout to about once a minute, so a
+               one-second backoff can become a sixty-second stall. Kept short
+               deliberately — the delay is only there to let a blip pass, and a
+               longer one costs a vendor real time for no benefit. */
+            await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
           }
         }
         if (!sent) throw lastErr || new Error('Part ' + n + ' failed');
