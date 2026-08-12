@@ -60,6 +60,28 @@ function fileKey(vendorId, storedName) {
  * A File Flyer object as a stream: R2 if it is there, disk if it is not.
  * Never a buffer — a share can be tens of gigabytes.
  */
+/**
+ * 🧹 Everything one File Flyer item occupies.
+ *
+ * The original plus the two previews generated beside it on demand. Deleting
+ * only the original left those behind — small individually, but a vendor who
+ * cleared out a share got only part of their space back, and the leftovers
+ * were invisible because nothing in the database mentions them.
+ *
+ * The derived files are local only: they are made on demand from the original,
+ * so R2 never holds them.
+ */
+async function purgeFileItem(vendorId, storedName) {
+  const dir = vendorDir(vendorId);
+  for (const suffix of ['', '.thumb.webp', '.lg.webp']) {
+    try { fs.unlinkSync(path.join(dir, storedName + suffix)); } catch { /* already gone */ }
+  }
+  if (await objects.enabled(objects.PRIVATE)) {
+    try { await objects.deleteObject(objects.PRIVATE, fileKey(vendorId, storedName)); }
+    catch (e) { console.error('[files] R2 delete failed for', storedName, e.message); }
+  }
+}
+
 async function fileStream(vendorId, storedName, range) {
   if (!storedName || !await objects.enabled(objects.PRIVATE)) return null;
   try { return await objects.getStream(objects.PRIVATE, fileKey(vendorId, storedName), range); }
@@ -570,12 +592,8 @@ router.delete('/folder/:folderId', requireAuth, async (req, res) => {
       select: { stored_name: true },
     });
     await prisma.file_folders.delete({ where: { id: fid } });     // children cascade
-    const r2on = await objects.enabled(objects.PRIVATE);
     for (const d of doomed) {
-      if (r2on) {
-        try { await objects.deleteObject(objects.PRIVATE, fileKey(f.vendor_id, d.stored_name)); }
-        catch (e) { console.error('[files] R2 delete failed for', d.stored_name, e.message); }
-      }
+      await purgeFileItem(f.vendor_id, d.stored_name);
       try { fs.unlinkSync(path.join(vendorDir(f.vendor_id), d.stored_name)); }
       catch { /* already gone from disk */ }
     }
@@ -719,16 +737,7 @@ router.delete('/item/:itemId', requireAuth, async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Not found' });
     if (item.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
 
-    try { fs.unlinkSync(path.join(vendorDir(item.vendor_id), item.stored_name)); }
-    catch { /* already gone from disk — still drop the row */ }
-    /* And from R2. Removing only the local copy left the object behind with
-       nothing pointing at it — invisible, permanent, and still counted against
-       the vendor's storage pool, so deleting a file would not give the space
-       back. Failure here leaks an object rather than blocking the delete. */
-    if (await objects.enabled(objects.PRIVATE)) {
-      try { await objects.deleteObject(objects.PRIVATE, fileKey(item.vendor_id, item.stored_name)); }
-      catch (e) { console.error('[files] R2 delete failed for', item.stored_name, e.message); }
-    }
+    await purgeFileItem(item.vendor_id, item.stored_name);
     await prisma.file_share_items.delete({ where: { id: itemId } });
     res.json({ ok: true, storage: await storageFor(item.vendor_id) });
   } catch (e) { res.status(500).json({ error: e.message }); }
