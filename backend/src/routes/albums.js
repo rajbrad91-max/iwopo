@@ -688,7 +688,7 @@ router.post('/:id/videos/sign', requireAuth, async (req, res) => {
 });
 
 // complete — stitch the parts, then record the film
-router.post('/:id/videos/complete', requireAuth, async (req, res) => {
+router.post('/:id/videos/complete', requireAuth, uploadVideo.single('poster'), async (req, res) => {
   const v = vid(req);
   const id = Number(req.params.id);
   try {
@@ -716,12 +716,44 @@ router.post('/:id/videos/complete', requireAuth, async (req, res) => {
 
     const name = path.basename(key);
     const dur = Number(req.body?.duration_s);
+
+    /* 🖼 The poster the browser drew before uploading. It comes through this
+       server rather than going direct, because it is a few hundred kilobytes
+       rather than a few hundred gigabytes — and it has to be resized into the
+       same two tiers a photograph uses, so the grid and the viewer need no
+       special case for a film. Without it a film shows as a blank tile. */
+    const base = name.replace(/_video\.[^.]+$/, '');
+    let thumbName = null, fullName = null;
+    if (req.file) {
+      const dir = path.join(ROOT, String(v), String(id));
+      fs.mkdirSync(dir, { recursive: true });
+      thumbName = `${base}_thumb.webp`;
+      fullName = `${base}_full.webp`;
+      try {
+        await sharp(req.file.path).resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
+        await sharp(req.file.path).resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
+        if (await objects.enabled(objects.PRIVATE)) {
+          for (const n2 of [thumbName, fullName]) {
+            await objects.putObject(objects.PRIVATE, galleryKey(v, id, n2), fs.createReadStream(path.join(dir, n2)));
+          }
+        }
+      } catch (e) {
+        // a missing poster is a plain tile, not a failed upload
+        console.error('[video] poster failed for', name, e.message);
+        thumbName = null; fullName = null;
+      }
+      try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
+    }
+
+    const rel = (n2) => (n2 ? `${v}/${id}/${n2}` : null);
     const photo = await prisma.photos.create({
       data: {
         album_id: id, vendor_id: v,                    // 🔒 tenancy stamped on the row
         kind: 'video',
         filename: String(req.body?.filename || name).slice(0, 200),
         storage_path: `${v}/${id}/${name}`,
+        thumb_path: rel(thumbName),
+        preview_path: rel(fullName),
         size_bytes: BigInt(actual),
         duration_s: Number.isFinite(dur) && dur > 0 ? Math.round(dur) : null,
         face_indexed: true,                            // a film never goes to the face engine

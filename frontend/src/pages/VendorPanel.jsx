@@ -1266,18 +1266,90 @@ function AlbumDetail({ albumId, onBack }) {
 
   /* One film per request, sequentially. They are gigabytes; sending five at
      once saturates the connection and makes every one of them slower. */
+  /**
+   * ⬆️ One film, carried by the browser straight to Cloudflare.
+   *
+   * The file never passes through our server. It is cut into parts, each sent
+   * to a signed URL, and only the paperwork — begin, sign, complete — goes to
+   * the API. That is what makes a hundred-gigabyte film possible at all: a
+   * single request that size would exceed R2's own limit, need twice the file
+   * in free disk, and drop long before it finished.
+   *
+   * A failed part is retried on its own rather than restarting the film, which
+   * is the difference between a wobbly connection costing seconds and costing
+   * an hour.
+   */
+  async function uploadOneFilm(file, onProgress) {
+    let begun;
+    try {
+      begun = await api.videoBegin(albumId, {
+        size_bytes: file.size,
+        filename: file.name,
+        content_type: file.type || 'video/mp4',
+      });
+    } catch (err) {
+      /* Direct upload needs object storage. Where it is not configured — a
+         fresh install, or a deployment still on local disk — fall back to
+         sending the file through our server. That path caps out at four
+         gigabytes, which is the honest limit of what a single request can
+         carry, but it means video is never simply broken. */
+      if (/R2 storage/i.test(err.message || '')) {
+        const { poster, duration } = await posterFor(file);
+        onProgress?.(1, 1);
+        return api.uploadAlbumVideo(albumId, file, poster, duration, null);
+      }
+      throw err;
+    }
+    const { upload_id: uploadId, key } = begun;
+    const partSize = begun.part_size || 64 * 1024 * 1024;
+    const total = Math.max(1, Math.ceil(file.size / partSize));
+
+    try {
+      for (let n = 1; n <= total; n++) {
+        const blob = file.slice((n - 1) * partSize, n * partSize);
+        const { url } = await api.videoSign(albumId, { key, upload_id: uploadId, part_number: n });
+
+        /* Three attempts per part. A part is the unit of failure here, so a
+           blip costs one retry of sixty-four megabytes rather than the film. */
+        let sent = false, lastErr;
+        for (let attempt = 0; attempt < 3 && !sent; attempt++) {
+          try {
+            const r = await fetch(url, { method: 'PUT', body: blob });
+            if (!r.ok) throw new Error('Part ' + n + ' rejected (' + r.status + ')');
+            sent = true;
+          } catch (err) {
+            lastErr = err;
+            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          }
+        }
+        if (!sent) throw lastErr || new Error('Part ' + n + ' failed');
+        onProgress?.(n, total);
+      }
+
+      const { poster, duration } = await posterFor(file);
+      return await api.videoComplete(albumId, {
+        key, upload_id: uploadId, filename: file.name, duration_s: duration,
+      }, poster);
+    } catch (err) {
+      // leave nothing half-uploaded to sit in the bucket costing storage
+      api.videoAbort(albumId, { key, upload_id: uploadId }).catch(() => {});
+      throw err;
+    }
+  }
+
   async function onVideos(e) {
     const files = [...e.target.files];
     e.target.value = '';
     if (!files.length) return;
     let ok = 0;
     for (let i = 0; i < files.length; i++) {
-      setVidBusy(files.length > 1 ? `${i + 1}/${files.length}…` : 'Uploading…');
+      const label = files.length > 1 ? `${i + 1}/${files.length} ` : '';
+      setVidBusy(label + 'Uploading…');
       try {
-        const { poster, duration } = await posterFor(files[i]);
-        // no event is named: films always land in the Videos folder, which the
-        // server creates the first time one is uploaded
-        await api.uploadAlbumVideo(albumId, files[i], poster, duration, null);
+        await uploadOneFilm(files[i], (n, total) => {
+          // a vendor watching a twenty-minute upload deserves to know it moved
+          setVidBusy(label + Math.round((n / total) * 100) + '%');
+        });
         ok++;
       } catch (err) {
         setVidBusy('');

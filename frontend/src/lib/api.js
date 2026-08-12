@@ -387,6 +387,20 @@ export const api = {
   /* One film per request. They are gigabytes, and batching them means one
      dropped connection loses every one. The poster and duration are worked out
      in the browser before this is called — no ffmpeg anywhere. */
+  /* The four steps of a direct upload. The file itself never comes through
+     these — only the paperwork does. */
+  videoBegin: (albumId, body) => request(`/albums/${albumId}/videos/begin`, { method: 'POST', body: JSON.stringify(body) }),
+  videoSign: (albumId, body) => request(`/albums/${albumId}/videos/sign`, { method: 'POST', body: JSON.stringify(body) }),
+  /* multipart, because the poster rides along — it is a few hundred kilobytes
+     and goes through our server, unlike the film itself */
+  videoComplete: (albumId, body, poster) => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(body)) if (v != null) fd.append(k, String(v));
+    if (poster) fd.append('poster', poster, 'poster.jpg');
+    return request(`/albums/${albumId}/videos/complete`, { method: 'POST', body: fd });
+  },
+  videoAbort: (albumId, body) => request(`/albums/${albumId}/videos/abort`, { method: 'POST', body: JSON.stringify(body) }),
+
   uploadAlbumVideo: (albumId, file, poster, durationS, eventId) => {
     const fd = new FormData();
     fd.append('video', file);
