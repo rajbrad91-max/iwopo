@@ -555,6 +555,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // between each event's own favorites (Jaggo vs Wedding are independent lists).
   const showScenes = session.events.length > 0 && matchIds === null && !pickedOnly;
 
+  const nVids = allPhotos.filter(p => p.kind === 'video').length;
+  const nPics = allPhotos.length - nVids;
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const coverMeta = [nPics && plural(nPics, 'photo'), nVids && plural(nVids, 'video')]
+    .filter(Boolean).join(' · ') || 'Nothing here yet';
+
   return (
     <div className="pg-wrap" style={styleVars}>
 
@@ -570,10 +576,13 @@ export default function PublicGallery({ token, embedded, onBack }) {
         <div className="pg-cover-inner">
           <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
           <h1 className="pg-cover-title">{session.title}</h1>
-          <div className="pg-cover-meta">{allPhotos.length} photos</div>
+          {/* The first thing a couple reads. A gallery holding one film and no
+              pictures announced itself as "1 photos", which is both wrong and
+              the wrong plural. Say what is actually in it. */}
+          <div className="pg-cover-meta">{coverMeta}</div>
         </div>
         <button className="pg-scroll" onClick={() => gridRef.current?.scrollIntoView({ behavior: 'smooth' })}>
-          <span>View photos</span>
+          <span>{nPics && nVids ? 'View gallery' : nVids ? 'View videos' : 'View photos'}</span>
           <i />
         </button>
       </section>
@@ -811,10 +820,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
       {/* Films counted apart — a gallery holding one film and no pictures
           told the couple it had one image. */}
       {photos.length > 0 && (
-        <div className="pg-grid-end">
-          No more to display. (Total: {photos.filter(p => p.kind !== 'video').length} images
-          {photos.some(p => p.kind === 'video') && `, ${photos.filter(p => p.kind === 'video').length} videos`})
-        </div>
+        <div className="pg-grid-end">No more to display. ({coverMeta})</div>
       )}
 
       {nPicked > 0 && (
