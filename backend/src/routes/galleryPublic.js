@@ -1,5 +1,6 @@
 import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
+import { orderEvents } from '../lib/albumEvents.js';
 import { limit } from '../middleware/rateLimit.js';
 import express from 'express';
 import fs from 'fs';
@@ -227,7 +228,7 @@ router.get('/:token/session', async (req, res) => {
       where: { album_id: a.id },
       select: { id: true, name: true },
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
-    });
+    }).then(orderEvents);
     const faceReady = photos.some(p => (p.face_count || 0) > 0);
     res.json({
       role: rec.role, vt: req.query.vt, title: a.title, mode: 'per_client', theme, events, faceReady,
@@ -261,7 +262,7 @@ router.post('/:token/auth',
       where: { album_id: a.id },
       select: { id: true, name: true },
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
-    });
+    }).then(orderEvents);
     const faceReady = photos.some(p => (p.face_count || 0) > 0);
     const vt = makeViewToken(a.id, role);
     res.json({

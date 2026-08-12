@@ -1,6 +1,7 @@
 import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
 import { wouldExceed } from '../lib/storageQuota.js';
+import { orderEvents, VIDEO_FOLDER } from '../lib/albumEvents.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -353,7 +354,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       select: { id: true, name: true, sort_order: true },
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     });
-    res.json({ album, photos, events });
+    res.json({ album, photos, events: orderEvents(events) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -531,8 +532,6 @@ router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, 
  * Sorted last on purpose: the photographs are what a couple opens the gallery
  * for, and the films should not push them down the page.
  */
-const VIDEO_FOLDER = 'Videos';
-
 async function videoEventId(albumId, vendorId) {
   const existing = await prisma.album_events.findFirst({
     where: { album_id: albumId, vendor_id: vendorId, name: VIDEO_FOLDER },  // 🔒 tenancy
