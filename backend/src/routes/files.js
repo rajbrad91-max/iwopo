@@ -570,7 +570,12 @@ router.delete('/folder/:folderId', requireAuth, async (req, res) => {
       select: { stored_name: true },
     });
     await prisma.file_folders.delete({ where: { id: fid } });     // children cascade
+    const r2on = await objects.enabled(objects.PRIVATE);
     for (const d of doomed) {
+      if (r2on) {
+        try { await objects.deleteObject(objects.PRIVATE, fileKey(f.vendor_id, d.stored_name)); }
+        catch (e) { console.error('[files] R2 delete failed for', d.stored_name, e.message); }
+      }
       try { fs.unlinkSync(path.join(vendorDir(f.vendor_id), d.stored_name)); }
       catch { /* already gone from disk */ }
     }
@@ -716,6 +721,14 @@ router.delete('/item/:itemId', requireAuth, async (req, res) => {
 
     try { fs.unlinkSync(path.join(vendorDir(item.vendor_id), item.stored_name)); }
     catch { /* already gone from disk — still drop the row */ }
+    /* And from R2. Removing only the local copy left the object behind with
+       nothing pointing at it — invisible, permanent, and still counted against
+       the vendor's storage pool, so deleting a file would not give the space
+       back. Failure here leaks an object rather than blocking the delete. */
+    if (await objects.enabled(objects.PRIVATE)) {
+      try { await objects.deleteObject(objects.PRIVATE, fileKey(item.vendor_id, item.stored_name)); }
+      catch (e) { console.error('[files] R2 delete failed for', item.stored_name, e.message); }
+    }
     await prisma.file_share_items.delete({ where: { id: itemId } });
     res.json({ ok: true, storage: await storageFor(item.vendor_id) });
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -396,6 +396,20 @@ router.delete('/:id', requireAuth, async (req, res) => {
     try { await deleteCollection(req.params.id); } catch { /* best effort */ }
     // remove the album's entire storage folder (all photos + tiers) from disk
     try { fs.rmSync(path.join(ROOT, String(v), String(req.params.id)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
+
+    /* And the same folder in R2. Object storage has no folders, so "delete the
+       folder" means listing the prefix and removing each key — a whole wedding
+       left behind here is hundreds of objects nothing points at, charged to the
+       vendor forever. Done after the row is gone so a storage failure cannot
+       block the delete itself. */
+    if (await objects.enabled(objects.PRIVATE)) {
+      try {
+        const prefix = objects.keyFor(v, 'galleries', String(req.params.id)) + '/';
+        const keys = await objects.listAll(objects.PRIVATE, prefix);
+        for (const o of keys) await objects.deleteObject(objects.PRIVATE, o.key);
+        if (keys.length) console.log('[album] removed', keys.length, 'objects under', prefix);
+      } catch (e) { console.error('[album] R2 cleanup failed:', e.message); }
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -582,6 +596,20 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
       await sharp(poster.path).resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
       await sharp(poster.path).resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
       fs.unlinkSync(poster.path);
+    }
+
+    /* ☁️ And to R2, which this route never did — it was written before object
+       storage existed and was missed when the rest of the gallery moved across.
+       A film uploaded this way lived only on the VPS disk, so it was absent
+       from every backup and every assumption made elsewhere about where
+       gallery media lives. */
+    if (await objects.enabled(objects.PRIVATE)) {
+      for (const n of [vidName, thumbName, fullName].filter(Boolean)) {
+        try {
+          await objects.putObject(objects.PRIVATE, galleryKey(v, id, n),
+            fs.createReadStream(path.join(dir, n)));
+        } catch (e) { console.error('[video] R2 upload failed for', n, e.message); }
+      }
     }
 
     const rel = (n) => (n ? `${v}/${id}/${n}` : null);
@@ -797,10 +825,25 @@ router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
 
     await prisma.photos.deleteMany({ where });
 
-    // remove all 3 tiers from disk (original + 2200px full + thumb); ignore if already gone
+    /* Remove every tier from BOTH places. Deleting only the local copy left the
+       objects in R2 with nothing pointing at them — invisible, permanent, and
+       still counted against the vendor's storage pool, so a vendor who tidied
+       up their gallery would watch their space refuse to come back.
+
+       The row is already gone at this point, so a failure here leaks an object
+       rather than blocking the delete: better a stray file than a photograph a
+       vendor cannot remove. */
+    const r2on = await objects.enabled(objects.PRIVATE);
     for (const rel of [p.storage_path, p.preview_path, p.thumb_path]) {
       if (!rel) continue;
-      try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* file already missing — fine */ }
+      try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* already gone — fine */ }
+      if (r2on) {
+        const parts = String(rel).split('/').filter(Boolean);
+        if (parts.length >= 3) {
+          try { await objects.deleteObject(objects.PRIVATE, objects.keyFor(v, 'galleries', parts[1], parts[2])); }
+          catch (e) { console.error('[gallery] R2 delete failed for', rel, e.message); }
+        }
+      }
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
