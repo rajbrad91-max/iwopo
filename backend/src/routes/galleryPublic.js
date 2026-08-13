@@ -63,7 +63,26 @@ function normaliseBox(raw, imgW, imgH) {
 // regexp expression that Prisma's orderBy can't express, so these reads use
 // $queryRawUnsafe with bound parameters — the only raw SQL in the app.
 // NOTE: the regex backslashes must survive JS string escaping, hence \\d / \\1.
-const NAT_SORT = `ORDER BY regexp_replace(lower(filename), '(\\d+)', lpad('\\1', 10, '0'), 'g') ASC, id ASC`;
+/* Ordered by id in SQL and then properly in JavaScript.
+
+   The expression this replaces looked right and never worked: lpad('\\1', 10, '0')
+   is evaluated BEFORE regexp_replace ever sees it, so the backreference is not a
+   number being padded to ten characters — it is the literal two-character string
+   '\\1' padded to ten, giving '00000000\\1'. The captured digits are then appended
+   to eight zeros rather than padded to a fixed width, so "1" became nine
+   characters and "10" became ten. Different lengths compare wrong, and a couple
+   saw 1, 10, 11, 12, 13, 14, 15, 2, 3.
+
+   Postgres cannot call a function on a backreference, so this cannot be fixed by
+   adjusting the expression. localeCompare with numeric ordering is exactly what
+   a natural sort is, and it runs on one album's rows which are already in hand. */
+const NAT_SORT = `ORDER BY id ASC`;
+
+const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+export function naturalSort(rows) {
+  return [...rows].sort((a, b) =>
+    collator.compare(a.filename || '', b.filename || '') || (a.id - b.id));
+}
 
 async function photosInAlbum(albumId) {
   /* kind and duration_s are selected because a film has to be recognisable as
@@ -74,13 +93,13 @@ async function photosInAlbum(albumId) {
   return prisma.$queryRawUnsafe(
     `SELECT id, filename, event_id, face_count, kind, duration_s FROM photos WHERE album_id = $1 ${NAT_SORT}`,
     albumId
-  );
+  ).then(naturalSort);
 }
 async function photosInEvent(albumId, eventId) {
   return prisma.$queryRawUnsafe(
     `SELECT * FROM photos WHERE album_id = $1 AND event_id = $2 ${NAT_SORT}`,
     albumId, eventId
-  );
+  ).then(naturalSort);
 }
 async function allPhotoRowsInAlbum(albumId) {
   return prisma.$queryRawUnsafe(
@@ -89,7 +108,7 @@ async function allPhotoRowsInAlbum(albumId) {
        films are downloaded one at a time, from their own page. */
     `SELECT * FROM photos WHERE album_id = $1 AND kind <> 'video' ${NAT_SORT}`,
     albumId
-  );
+  ).then(naturalSort);            // the zip should read in order too
 }
 
 const THEME_DEFAULTS = {
