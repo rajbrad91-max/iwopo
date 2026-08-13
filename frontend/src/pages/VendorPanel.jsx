@@ -1595,8 +1595,10 @@ function AlbumDetail({ albumId, onBack }) {
             title={onlyPhotos || 'See the photo selection the client sent you'}>📩 Selection</button>
           {isPerClient && (
             <div className="ad-ev-actions">
-              <button className="refresh ad-ev-btn" onClick={openAddEvent} disabled={inVideos}
-                title={onlyPhotos || 'Add a new event'}>➕ Add Event</button>
+              {/* Not faded in the Videos folder: adding a photo folder is the
+                  one thing a vendor standing there is most likely to want. */}
+              <button className="refresh ad-ev-btn" onClick={openAddEvent}
+                title="Add a photos folder">➕ Add Photos Folder</button>
               <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all' || inVideos}
                 title={onlyPhotos || 'Rename the selected event'}>✏️ Rename</button>
               <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all' || inVideos}
