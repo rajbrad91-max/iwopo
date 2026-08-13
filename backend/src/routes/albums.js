@@ -496,14 +496,55 @@ router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
     res.json({ event });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+/**
+ * 🗑️ Delete a folder AND everything in it.
+ *
+ * The foreign key is ON DELETE SET NULL, so removing the row left every
+ * photograph in the album with no folder at all. They were not deleted, not
+ * visible where they had been, and — once a Videos folder existed — turned up
+ * under it, because that was the only folder left for them to fall into.
+ *
+ * Deleting a folder means deleting its contents. Anything else is a vendor
+ * pressing delete and watching fifteen photographs move somewhere they do not
+ * belong.
+ */
 router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
   const v = vid(req);
+  const albumId = Number(req.params.id);
+  const eventId = Number(req.params.eventId);
   try {
-    const { count } = await prisma.album_events.deleteMany({
-      where: { id: Number(req.params.eventId), album_id: Number(req.params.id), vendor_id: v }, // 🔒 tenancy
+    const own = await prisma.album_events.findFirst({
+      where: { id: eventId, album_id: albumId, vendor_id: v },   // 🔒 tenancy
+      select: { id: true },
     });
-    if (!count) return res.status(404).json({ error: 'Not found' });
-    res.json({ ok: true });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+
+    const doomed = await prisma.photos.findMany({
+      where: { album_id: albumId, vendor_id: v, event_id: eventId },   // 🔒
+      select: { id: true, storage_path: true, preview_path: true, thumb_path: true },
+    });
+
+    await prisma.photos.deleteMany({ where: { album_id: albumId, vendor_id: v, event_id: eventId } });
+    await prisma.album_events.deleteMany({ where: { id: eventId, album_id: albumId, vendor_id: v } });
+
+    // files after the rows, so a storage failure leaks an object rather than
+    // leaving a photograph the vendor cannot remove
+    const r2on = await objects.enabled(objects.PRIVATE);
+    const dir = path.join(ROOT, String(v), String(albumId));
+    for (const p of doomed) {
+      for (const rel of [p.storage_path, p.preview_path, p.thumb_path].filter(Boolean)) {
+        try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* already gone */ }
+        if (r2on) {
+          const parts = String(rel).split('/').filter(Boolean);
+          if (parts.length >= 3) {
+            try { await objects.deleteObject(objects.PRIVATE, objects.keyFor(v, 'galleries', parts[1], parts[2])); }
+            catch (e) { console.error('[events] R2 delete failed for', rel, e.message); }
+          }
+        }
+      }
+    }
+    void dir;
+    res.json({ ok: true, deleted_photos: doomed.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

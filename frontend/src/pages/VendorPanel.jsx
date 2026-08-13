@@ -1544,7 +1544,12 @@ function AlbumDetail({ albumId, onBack }) {
      should never happen — but it did once, when a Videos folder appeared beside
      photographs uploaded before any folder existed, and the album then reported
      seven photographs while showing none. Somewhere wrong beats invisible. */
-  const firstEventId = events.length ? String(events[0].id) : null;
+  /* Where a photograph with no folder is shown. The FIRST folder was wrong: on
+     an album whose only remaining folder is Videos, deleting the photo folder
+     tipped every photograph into it. A film folder is the one place a
+     photograph must never appear. */
+  const firstPhotoEvent = events.find(e => e.name !== 'Videos');
+  const firstEventId = firstPhotoEvent ? String(firstPhotoEvent.id) : null;
   const shown = isPerClient && activeEvent !== 'all'
     ? photos.filter(p => String(p.event_id) === String(activeEvent)
         || (p.event_id == null && String(activeEvent) === firstEventId))
@@ -1641,7 +1646,13 @@ function AlbumDetail({ albumId, onBack }) {
 
             {evModal.type === 'delete' ? (
               <p className="ev-modal-text">
-                Delete <strong>“{evModal.ev.name}”</strong>? The photos stay in the gallery but become ungrouped from this event.
+                Delete <strong>“{evModal.ev.name}”</strong>
+                {(() => {
+                  const n = photos.filter(p => String(p.event_id) === String(evModal.ev.id)).length;
+                  return n
+                    ? <> and the <strong>{n} photo{n > 1 ? 's' : ''}</strong> in it? This cannot be undone.</>
+                    : <>? It is empty.</>;
+                })()}
               </p>
             ) : (
               <>
