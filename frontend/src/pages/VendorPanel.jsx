@@ -1416,6 +1416,7 @@ function AlbumDetail({ albumId, onBack }) {
     if (ok) {
       setProg(`✅ ${ok} video${ok > 1 ? 's' : ''} uploaded`);
       setTimeout(() => setProg(''), 4000);
+      api.uploadsDone(albumId).catch(() => {});   // films end a batch too
       // the films are in the Videos folder, so that is where to look
       api.album(albumId).then(d => {
         setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);
@@ -1475,6 +1476,10 @@ function AlbumDetail({ albumId, onBack }) {
       // drop all previews (real photos have replaced them) and free their memory
       setPending(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
       reloadPhotos();
+      /* This is the one place that knows the batch is over — the server only
+         sees N separate requests and has to guess. Telling it saves the wait.
+         Failure is harmless: the server's own timer still fires. */
+      api.uploadsDone(albumId).catch(() => {});
     };
     worker.onmessage = (ev) => {
       const m = ev.data;

@@ -16,7 +16,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
 import { searchBySelfie, deleteCollection } from '../lib/faceAWS.js';
 import { forgetPhotoFacesAWS } from '../lib/faceAWSIndex.js';
-import { enqueueAlbum, indexAlbumNow } from '../lib/faceQueue.js';
+import { enqueueAlbum, indexAlbumNow, uploadsFinished } from '../lib/faceQueue.js';
 import { getSetting } from '../lib/settings.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { naturalSort, byFilename } from '../lib/naturalSort.js';
@@ -932,6 +932,21 @@ router.post('/:id/videos/abort', requireAuth, async (req, res) => {
     if (key !== galleryKey(v, id, path.basename(key))) return res.status(403).json({ error: 'Not your key' });  // 🔒
     await objects.abortMultipart(objects.PRIVATE, key, uploadId);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * 📤 The panel calls this when its upload loop ends, so grouping does not have
+ * to wait out the quiet window. Purely an optimisation — the debounce still
+ * fires on its own if this never arrives, which is what covers a closed tab.
+ */
+router.post('/:id/uploads-done', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });  // 🔒
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+    res.json(await uploadsFinished(id));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

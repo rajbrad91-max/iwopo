@@ -104,6 +104,13 @@ async function resolveAlbumEngine(albumId) {
 const CLUSTER_QUIET_MS = 45_000;
 const clusterTimers = new Map();
 
+/* Albums whose uploader has said it is finished. The signal can arrive while
+   photographs are still being indexed, so it is remembered rather than acted on
+   once — the moment indexing drains, grouping runs without waiting out the
+   window. Without this an album that took longer to index than to upload would
+   still sit through the full forty-five seconds. */
+const uploadsDone = new Set();
+
 function scheduleClustering(albumId) {
   const id = String(albumId);
   clearTimeout(clusterTimers.get(id));
@@ -119,6 +126,31 @@ function scheduleClustering(albumId) {
 async function groupAlbum(albumId) {
   const engine = await resolveAlbumEngine(albumId);
   return engine === 'aws' ? groupAlbumFacesAWS(albumId) : clusterAlbum(albumId);
+}
+
+/**
+ * The uploader says it has finished.
+ *
+ * The debounce below cannot know which batch is the last, so it guesses by
+ * waiting for quiet. The browser running the loop DOES know, so when it tells
+ * us, group straight away instead of sitting out the remaining wait.
+ *
+ * If photographs are still being indexed the timer is simply reset — grouping
+ * would otherwise run over a half-indexed album. It fires when that finishes.
+ */
+export async function uploadsFinished(albumId) {
+  const id = String(albumId);
+  const pending = await prisma.photos.count({
+    where: { album_id: Number(albumId), face_indexed: false, kind: 'photo' },
+  });
+  if (pending > 0) {
+    uploadsDone.add(id);              // remembered — indexing will group on the way out
+    scheduleClustering(albumId);      // and the timer stays as the backstop
+    return { grouped: false, pending };
+  }
+  uploadsDone.delete(id);
+  await clusterNow(albumId);
+  return { grouped: true, pending: 0 };
 }
 
 /** Group now rather than waiting — for the re-index button, which has no
@@ -213,10 +245,17 @@ async function indexOneAlbum(albumId) {
     await new Promise(r => setTimeout(r, PAUSE_MS));   // breather
   }
 
-  /* 🧑‍🤝‍🧑 Grouping is deferred, not skipped. Whichever batch turns out to be
-     the last one leaves the album quiet, and the timer fires then — over every
-     photograph, not just this batch's. */
-  scheduleClustering(albumId);
+  /* 🧑‍🤝‍🧑 Grouping is deferred, not skipped. If the uploader has already said
+     it is finished, this was the last of the work and grouping runs now.
+     Otherwise the timer waits for quiet, which is the only way to tell on an
+     upload that simply stops. */
+  if (uploadsDone.has(String(albumId))) {
+    uploadsDone.delete(String(albumId));
+    try { await clusterNow(albumId); }
+    catch (e) { console.error('face clustering failed:', e.message); }
+  } else {
+    scheduleClustering(albumId);
+  }
 }
 
 // manual full re-index (vendor/admin button) — still adaptive + throttled

@@ -389,6 +389,7 @@ export const api = {
      in the browser before this is called — no ffmpeg anywhere. */
   /* The four steps of a direct upload. The file itself never comes through
      these — only the paperwork does. */
+  uploadsDone: (albumId) => request(`/albums/${albumId}/uploads-done`, { method: 'POST' }),
   videoBegin: (albumId, body) => request(`/albums/${albumId}/videos/begin`, { method: 'POST', body: JSON.stringify(body) }),
   videoSign: (albumId, body) => request(`/albums/${albumId}/videos/sign`, { method: 'POST', body: JSON.stringify(body) }),
   /* multipart, because the poster rides along — it is a few hundred kilobytes
