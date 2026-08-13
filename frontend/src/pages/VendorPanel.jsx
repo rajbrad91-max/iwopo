@@ -1089,7 +1089,8 @@ function AlbumDetail({ albumId, onBack }) {
   const [copiedNames, setCopiedNames] = useState(false);
   const [selActBusy, setSelActBusy] = useState(false);   // mark-complete / clear in flight
   const [selClearAsk, setSelClearAsk] = useState(false); // confirm clearing the selection
-  const dropInputRef = useRef(null); // hidden input the big drop zone clicks
+  const dropInputRef = useRef(null);
+  const dropVidInputRef = useRef(null);   // the same zone, for the Videos folder
   const sentinelRef = useRef(null);
   const workerRef = useRef(null);
   const visibleLenRef = useRef(0); // holds current visible-photo count for the keyboard handler
@@ -1430,10 +1431,19 @@ function AlbumDetail({ albumId, onBack }) {
     startUpload(files);
   }
   // drag-and-drop onto the big upload zone
+  /* Declared here rather than beside the other view helpers further down:
+     onDrop reads it, and a const is unusable until its own line has run — so a
+     drop would have thrown instead of uploading. */
+  const inVideos = events.find(e => String(e.id) === String(activeEvent))?.name === 'Videos';
+
   function onDrop(e) {
     e.preventDefault();
     setDragOver(false);
-    startUpload(e.dataTransfer.files);
+    /* The drop zone belongs to whichever folder it is standing in. Dropping a
+       film onto the Videos folder used to be silently ignored — startUpload
+       keeps only images — which looked like the upload had failed. */
+    if (inVideos) onVideos({ target: { files: e.dataTransfer.files, value: '' } });
+    else startUpload(e.dataTransfer.files);
   }
   function onDragOver(e) { e.preventDefault(); if (!dragOver) setDragOver(true); }
   function onDragLeave(e) { e.preventDefault(); setDragOver(false); }
@@ -1546,7 +1556,6 @@ function AlbumDetail({ albumId, onBack }) {
      it is always there and always last; and Upload to this event sends
      photographs, which have no business in it. All six are shown faded rather
      than hidden, so a vendor can see they exist and be told why they are off. */
-  const inVideos = events.find(e => String(e.id) === String(activeEvent))?.name === 'Videos';
   const onlyPhotos = inVideos ? 'Only for photos — you are in the Videos folder' : undefined;
 
   const uploadLabel = uploading ? '⏳ Uploading…'
@@ -1780,17 +1789,26 @@ function AlbumDetail({ albumId, onBack }) {
         ) : (
           <div
             className={`ad-dropzone ${dragOver ? 'is-drag' : ''} ${uploading || (isPerClient && activeEvent === 'all') ? 'is-off' : ''}`}
-            onClick={() => { if (!uploading && !(isPerClient && activeEvent === 'all')) dropInputRef.current?.click(); }}
+            onClick={() => {
+              if (uploading || vidBusy || (isPerClient && activeEvent === 'all')) return;
+              (inVideos ? dropVidInputRef : dropInputRef).current?.click();
+            }}
             onDrop={onDrop}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
           >
+            {/* Two inputs, and the folder decides which one the zone opens.
+                An empty Videos folder used to offer to choose PHOTOS, which is
+                the one thing that cannot go in it. */}
             <input ref={dropInputRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
+            <input ref={dropVidInputRef} type="file" accept="video/*" multiple hidden onChange={onVideos} />
             <div className="ad-dropzone-inner">
-              <div className="ad-dropzone-ico">📤</div>
+              <div className="ad-dropzone-ico">{inVideos ? '🎬' : '📤'}</div>
               <div className="ad-dropzone-title">
                 {isPerClient && activeEvent === 'all' ? 'Pick an event above to upload'
-                  : dragOver ? 'Drop photos to upload' : 'Click to choose photos, or drag & drop them here'}
+                  : inVideos
+                    ? (dragOver ? 'Drop videos to upload' : 'Click to choose videos, or drag & drop them here')
+                    : (dragOver ? 'Drop photos to upload' : 'Click to choose photos, or drag & drop them here')}
               </div>
             </div>
           </div>
