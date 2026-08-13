@@ -87,6 +87,48 @@ async function resolveAlbumEngine(albumId) {
   return engine;
 }
 
+/* 🕰️ Clustering waits until the uploading stops.
+
+   Detection runs per batch, as it should — a photograph can be indexed the
+   moment it lands. Grouping the faces into people is different: it throws away
+   every cluster and rebuilds from scratch, so running it after each batch means
+   a two hundred photograph upload rebuilds twenty times instead of once, on a
+   four-core box shared with the API. A client opening the gallery mid-upload
+   also watches the circles appear, vanish and rearrange.
+
+   The server cannot tell which batch is the last — the browser simply sends N
+   requests and stops. So this waits for quiet rather than for a signal: every
+   upload pushes the timer out, and clustering runs once the album has been
+   still for a while. A vendor who closes the tab half way still gets clustered,
+   which a "done" button would not survive. */
+const CLUSTER_QUIET_MS = 45_000;
+const clusterTimers = new Map();
+
+function scheduleClustering(albumId) {
+  const id = String(albumId);
+  clearTimeout(clusterTimers.get(id));
+  clusterTimers.set(id, setTimeout(async () => {
+    clusterTimers.delete(id);
+    try { await groupAlbum(id); }
+    catch (e) { console.error('face clustering failed:', e.message); }
+  }, CLUSTER_QUIET_MS));
+}
+
+/** Group by whichever engine this album is locked to. The two keep their people
+ *  in different tables, so the wrong one would silently produce no circles. */
+async function groupAlbum(albumId) {
+  const engine = await resolveAlbumEngine(albumId);
+  return engine === 'aws' ? groupAlbumFacesAWS(albumId) : clusterAlbum(albumId);
+}
+
+/** Group now rather than waiting — for the re-index button, which has no
+ *  upload trailing it to go quiet. */
+export async function clusterNow(albumId) {
+  clearTimeout(clusterTimers.get(String(albumId)));
+  clusterTimers.delete(String(albumId));
+  return groupAlbum(albumId);
+}
+
 export function enqueueAlbum(albumId) {
   const id = String(albumId);
   if (queued.has(id)) return;
@@ -137,7 +179,10 @@ async function indexOneAlbum(albumId) {
   if (engine === 'aws') {
     try {
       await indexAlbumAWS(albumId);
-      await groupAlbumFacesAWS(albumId);
+      // grouping is deferred for the same reason as the local path: it wipes
+      // and rebuilds, and on AWS it also costs one API call per person each
+      // time it runs
+      scheduleClustering(albumId);
     } catch (e) { console.error('aws face indexing failed:', e.message); }
     return;
   }
@@ -168,9 +213,10 @@ async function indexOneAlbum(albumId) {
     await new Promise(r => setTimeout(r, PAUSE_MS));   // breather
   }
 
-  // 🧑‍🤝‍🧑 group the faces into people so the gallery can show face circles
-  try { await clusterAlbum(albumId); }
-  catch (e) { console.error('face clustering failed:', e.message); }
+  /* 🧑‍🤝‍🧑 Grouping is deferred, not skipped. Whichever batch turns out to be
+     the last one leaves the album quiet, and the timer fires then — over every
+     photograph, not just this batch's. */
+  scheduleClustering(albumId);
 }
 
 // manual full re-index (vendor/admin button) — still adaptive + throttled
@@ -178,6 +224,10 @@ export async function indexAlbumNow(albumId) {
   const where = { album_id: Number(albumId), face_indexed: false };
   const before = await prisma.photos.count({ where });
   await indexOneAlbum(albumId);
+  // pressed by hand, with nothing following it — group straight away rather
+  // than leaving the vendor watching an empty face bar for forty-five seconds
+  try { await clusterNow(albumId); }
+  catch (e) { console.error('face clustering failed:', e.message); }
   const after = await prisma.photos.count({ where });
   return { requested: before, remaining: after };
 }
