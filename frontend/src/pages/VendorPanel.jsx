@@ -1568,8 +1568,9 @@ function AlbumDetail({ albumId, onBack }) {
      than hidden, so a vendor can see they exist and be told why they are off. */
   const onlyPhotos = inVideos ? 'Only for photos — you are in the Videos folder' : undefined;
 
+  /* The label is left alone in the Videos folder. Fading the button and saying
+     why on hover was what was asked for; rewriting what it says was not. */
   const uploadLabel = uploading ? '⏳ Uploading…'
-    : inVideos ? '📤 Photos go in a photo folder'
     : isPerClient ? (activeEvent === 'all' ? '📤 Pick an event to upload' : '📤 Upload to this event')
     : '📤 Upload photos';
 
