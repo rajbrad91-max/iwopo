@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Selling from './pages/Selling';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -17,7 +17,7 @@ import VendorGallery from './pages/VendorGallery';
 import Vote from './pages/Vote';
 import KnowledgeFill from './pages/KnowledgeFill';
 import ResetPassword from './pages/ResetPassword';
-import { getUser, sessionMismatch, clearSession } from './lib/api';
+import { getUser, sessionMismatch, clearSession, clearTabSession } from './lib/api';
 
 export default function App() {
   // 🔑 If the stored user and the actual token disagree (e.g. logging into the
@@ -29,6 +29,7 @@ export default function App() {
     return getUser();
   });
   const [showLogin, setShowLogin] = useState(false);
+  const switchedRef = useRef(false);   // clear the tab once, not on every render
   // re-render on Back/Forward so URL-driven routes (e.g. /panel ↔ /) stay in sync
   const [, forceUrlTick] = useState(0);
   useEffect(() => {
@@ -119,6 +120,21 @@ export default function App() {
   const st = window.location.pathname.match(/^\/site\/([a-z0-9-]+)(?:\/([a-z]+))?/i);
   if (st) return <PublicSite slug={st[1]} page={st[2] || 'home'} />;
 
+
+  /* 🪟 /panel?switch — sign in as someone else in THIS tab.
+     Opening it in a new tab gives a login screen while the tab you came from
+     stays exactly as it was, so the super panel and a vendor panel can be open
+     together. Handled before the user check, or an existing session would send
+     you straight back to the panel you were trying to leave. */
+  if (window.location.pathname.replace(/\/+$/, '') === '/panel'
+      && new URLSearchParams(window.location.search).has('switch')) {
+    if (!switchedRef.current) { switchedRef.current = true; clearTabSession(); if (user) setUser(null); }
+    return <Login onLogin={(u) => {
+      // drop the ?switch so a refresh does not sign this tab out again
+      window.history.replaceState({}, '', '/panel');
+      setUser(u);
+    }} onBack={() => { window.location.href = '/panel'; }} />;
+  }
 
   if (user) {
     if (user.role === 'super_admin') return <Dashboard onLogout={() => setUser(null)} />;

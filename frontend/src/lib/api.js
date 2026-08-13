@@ -177,6 +177,22 @@ export function setSession(token, user) {
   localStorage.setItem('iwopo_user', JSON.stringify(user));
 }
 
+/**
+ * 🪟 Sign out of this tab only.
+ *
+ * Sessions are already per tab, so a super-admin tab and a vendor tab sit side
+ * by side quite happily — but a NEW tab copies whatever the shared seed holds,
+ * and the only way out of that was a full sign-out, which took the seed with it
+ * and left every future tab logged out too.
+ *
+ * This clears the tab and leaves localStorage alone, so the other tab keeps
+ * working and the next new tab still opens signed in.
+ */
+export function clearTabSession() {
+  sessionStorage.removeItem('iwopo_token');
+  sessionStorage.removeItem('iwopo_user');
+}
+
 export function clearSession() {
   sessionStorage.removeItem('iwopo_token');
   sessionStorage.removeItem('iwopo_user');
