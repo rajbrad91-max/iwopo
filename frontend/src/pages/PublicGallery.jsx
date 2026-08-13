@@ -91,7 +91,11 @@ export default function PublicGallery({ token, embedded, onBack }) {
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    /* A hidden tab does not run resize callbacks, so a gallery opened in a
+       background tab can measure before the strip has been laid out and then
+       never correct itself. Re-measure when it comes to the front. */
+    document.addEventListener('visibilitychange', measure);
+    return () => { ro.disconnect(); document.removeEventListener('visibilitychange', measure); };
   }, [faces, allFacesOpen]);
   // The face strip scrolls horizontally with snap points rather than trying to
   // fit an exact number of circles. Measuring "how many fit" was off by a few
