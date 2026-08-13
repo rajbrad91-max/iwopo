@@ -10,6 +10,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { CURRENCIES, CURRENCY_CODES, currencyFor } from '../lib/currencies.js';
+import { storageFor } from '../lib/storageQuota.js';
 
 const router = express.Router();
 const LOGO_DIR = LOGO_DIR_CFG;
@@ -28,6 +29,30 @@ router.get('/features', requireAuth, async (req, res) => {
 // GET /api/me/currencies → the list the preferences dropdown offers.
 // Served from the backend so the country-to-currency map lives in exactly one
 // place; the panel needs the choices, not a second copy of the rules.
+/**
+ * 💾 GET /api/me/storage → this vendor's own usage, and where to go next.
+ *
+ * Same meter the upload path enforces, so the bar a vendor watches and the
+ * refusal they eventually hit come from one number. Also names the next package
+ * up — a bar filling with no way forward is a complaint, not a feature.
+ */
+router.get('/storage', requireAuth, async (req, res) => {
+  const v = req.user.vendor_id;                       // 🔒 from the token, never the request
+  if (!v) return res.status(400).json({ error: 'Not a vendor account' });
+  try {
+    const st = await storageFor(v);
+    /* The next package that actually offers MORE room than this vendor has.
+       Sorted by storage rather than price, because "upgrade" here means space —
+       and a cheaper package with more of it would still be the right answer. */
+    const bigger = await prisma.packages.findMany({
+      where: { storage_gb: { gt: Math.ceil(st.limit_mb / 1024) } },
+      orderBy: [{ storage_gb: 'asc' }],
+      select: { key: true, name: true, price_monthly: true, storage_gb: true },
+    });
+    res.json({ ...st, next_package: bigger[0] || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/currencies', requireAuth, (req, res) => {
   res.json({ currencies: CURRENCIES });
 });

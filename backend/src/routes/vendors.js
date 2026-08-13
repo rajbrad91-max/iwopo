@@ -3,6 +3,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { tenantScope } from '../middleware/tenant.js';
 import { getFeatures } from '../lib/entitlements.js';
+import { storageFor } from '../lib/storageQuota.js';
 
 const router = express.Router();
 
@@ -35,7 +36,17 @@ async function featureList() {
 router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const vendors = await prisma.vendors.findMany({ orderBy: { created_at: 'desc' } });
-    res.json({ vendors });
+    /* Storage per buyer, from the same meter the uploads use. Done in one pass
+       rather than a request per row — the list is the place a super admin
+       notices someone is full, and a number that needs a click is a number
+       nobody looks at. */
+    const withStorage = await Promise.all(vendors.map(async (v) => {
+      try {
+        const st = await storageFor(v.id);
+        return { ...v, storage: { used_bytes: st.used_bytes, limit_mb: st.limit_mb, percent: st.percent, limit_source: st.limit_source } };
+      } catch { return { ...v, storage: null }; }
+    }));
+    res.json({ vendors: withStorage });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -49,7 +60,17 @@ router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
 router.put('/:id/storage', requireAuth, requireSuperAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
-    const mb = Number(req.body?.storage_limit_mb);
+    /* null clears the override and hands the vendor back to their package.
+       Without this a limit set once could never be undone — only replaced by
+       another guess at what the package gives. */
+    const raw = req.body?.storage_limit_mb;
+    if (raw === null || raw === '') {
+      const vendor0 = await prisma.vendors.findUnique({ where: { id }, select: { id: true } });
+      if (!vendor0) return res.status(404).json({ error: 'Vendor not found' });
+      await prisma.vendor_settings.updateMany({ where: { vendor_id: id }, data: { storage_limit_mb: null } });
+      return res.json({ ok: true, storage_limit_mb: null, cleared: true });
+    }
+    const mb = Number(raw);
     if (!Number.isFinite(mb) || mb < 0) return res.status(400).json({ error: 'Give a number of MB' });
     const vendor = await prisma.vendors.findUnique({ where: { id }, select: { id: true } });
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
@@ -95,16 +116,23 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
      * moment anything fails halfway, and then the number a vendor is judged by
      * is quietly wrong.
      */
-    const usedAgg = await prisma.file_share_items.aggregate({
-      where: { vendor_id: id },
-      _sum: { size_bytes: true },
-    });
+    /* One meter, not a second opinion. This used to add up File Flyer alone —
+       so a vendor with forty gigabytes of galleries read as empty — and fall
+       back to 1024MB when there was no override, which showed a two hundred
+       gigabyte vendor as having one. storageFor() is what the upload path
+       enforces, so it is the only number that can be right. */
+    const st = await storageFor(id);
     const vset = await prisma.vendor_settings.findUnique({
       where: { vendor_id: id }, select: { storage_limit_mb: true },
     });
     const storage = {
-      used_bytes: Number(usedAgg._sum.size_bytes || 0),
-      limit_mb: vset?.storage_limit_mb ?? 1024,
+      used_bytes: st.used_bytes,
+      used_photos_bytes: st.used_photos_bytes,
+      used_files_bytes: st.used_files_bytes,
+      limit_mb: st.limit_mb,
+      limit_source: st.limit_source,          // trial | package | override | fallback
+      plan_name: st.plan_name,
+      override_mb: vset?.storage_limit_mb ?? null,   // what the box should show as set
     };
 
     const emails = users.map(u => u.email).filter(Boolean);

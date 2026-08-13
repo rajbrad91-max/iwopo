@@ -30,6 +30,51 @@ function FeatureLocked({ goServices }) {
   );
 }
 
+/**
+ * 💾 How much room is left, at the foot of the sidebar.
+ *
+ * The same meter the upload path enforces, so the bar and the eventual refusal
+ * agree. A vendor who fills up mid-wedding otherwise discovers it as a failed
+ * upload with no warning that it was coming.
+ *
+ * The upgrade button appears only when there is somewhere to go — on the
+ * largest package it would be an invitation to nothing. Below 60% it stays out
+ * of the way entirely; nobody needs prompting to buy space they are not using.
+ */
+function StorageBar({ onUpgrade }) {
+  const [s, setS] = useState(null);
+  useEffect(() => { api.myStorage().then(setS).catch(() => {}); }, []);
+  if (!s) return null;
+
+  const pct = Math.min(100, s.percent ?? 0);
+  const tone = pct >= 95 ? '#f87171' : pct >= 80 ? '#fbbf24' : 'var(--brand, #2dd4bf)';
+  const fmt = (b) => {
+    const n = Number(b) || 0;
+    if (n >= 1099511627776) return (n / 1099511627776).toFixed(2) + ' TB';
+    if (n >= 1073741824) return (n / 1073741824).toFixed(1) + ' GB';
+    if (n >= 1048576) return Math.round(n / 1048576) + ' MB';
+    return Math.max(0, Math.round(n / 1024)) + ' KB';
+  };
+  const limit = s.limit_mb >= 1024 ? Math.round(s.limit_mb / 1024) + ' GB' : s.limit_mb + ' MB';
+
+  return (
+    <div className="vp-storage" title={`Photos ${fmt(s.used_photos_bytes)} · Files ${fmt(s.used_files_bytes)}`}>
+      <div className="vp-storage-top">
+        <span className="nav-ic">💾</span>
+        <span className="vp-storage-lbl">Storage</span>
+        <span className="vp-storage-pct">{pct}%</span>
+      </div>
+      <div className="vp-storage-bar"><span style={{ width: pct + '%', background: tone }} /></div>
+      <div className="vp-storage-txt">{fmt(s.used_bytes)} of {limit}</div>
+      {s.next_package && pct >= 60 && (
+        <button className="vp-storage-up" onClick={onUpgrade}>
+          ⬆️ {s.next_package.storage_gb} GB — {s.next_package.name}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function VendorPanel({ onLogout }) {
   const [services, setServices] = useState([]);
   // seeded from the last session so the sidebar and tab render immediately;
@@ -176,6 +221,7 @@ export default function VendorPanel({ onLogout }) {
         <div className="nav-group">ACCOUNT</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => go('refer')}><span className="nav-ic">👥</span><span className="nav-txt">Refer a Friend</span></div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => go('settings')}><span className="nav-ic">⚙️</span><span className="nav-txt">Settings</span></div>
+        <StorageBar onUpgrade={() => go('packages')} />
         <div className="logout" onClick={handleLogout}><span className="nav-ic">↪️</span><span className="nav-txt">Log out</span></div>
       </aside>
 

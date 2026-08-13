@@ -2103,3 +2103,20 @@ tr:hover .bk-del { opacity: .8; }
   font-variant-numeric: tabular-nums; color: #fff; background: rgba(12,12,14,.62);
   border-radius: 4px; padding: 1px 5px; }
 .ad-lb-video { max-width: 92vw; max-height: 86vh; display: block; background: #000; outline: none; }
+
+/* 💾 storage at the foot of the sidebar */
+.vp-storage { margin: 14px 10px 6px; padding: 10px 11px; border-radius: 10px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); }
+.vp-storage-top { display: flex; align-items: center; gap: 7px; }
+.vp-storage-lbl { font-size: 12.5px; font-weight: 600; }
+.vp-storage-pct { margin-left: auto; font-size: 11.5px; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.vp-storage-bar { height: 5px; margin-top: 8px; border-radius: 3px;
+  background: rgba(255,255,255,.1); overflow: hidden; }
+.vp-storage-bar span { display: block; height: 100%; border-radius: 3px; transition: width .35s ease; }
+.vp-storage-txt { margin-top: 6px; font-size: 11px; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.vp-storage-up { width: 100%; margin-top: 9px; padding: 6px 8px; border-radius: 7px; cursor: pointer;
+  font-size: 11.5px; font-weight: 600; border: 1px solid rgba(45,212,191,.35);
+  background: rgba(45,212,191,.12); color: var(--brand, #2dd4bf); transition: background .2s ease; }
+.vp-storage-up:hover { background: rgba(45,212,191,.2); }

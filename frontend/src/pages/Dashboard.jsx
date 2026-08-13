@@ -1087,15 +1087,19 @@ function BuyersView({ vendors }) {
       <div className="sa-section-title">All Buyers</div>
       <div className="sa-table-wrap">
         <table>
-          <thead><tr><th>Buyer</th><th>Plan</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Buyer</th><th>Plan</th><th>Status</th><th>Storage</th><th></th></tr></thead>
           <tbody>
             {vendors.length === 0 ? (
-              <tr><td colSpan="4" className="sa-empty">No buyers yet.</td></tr>
+              <tr><td colSpan="5" className="sa-empty">No buyers yet.</td></tr>
             ) : vendors.map(v => (
               <tr key={v.id}>
                 <td className="biz">{v.business_name}</td>
                 <td>{v.plan}</td>
                 <td><span className={`sa-badge ${v.status}`}>{v.status}</span></td>
+                {/* Storage in the LIST, not only behind Manage. This is where a
+                    super admin notices someone is nearly full, and a number
+                    that needs a click is a number nobody looks at. */}
+                <td>{v.storage ? <StorageCell s={v.storage} /> : <span className="sa-muted">—</span>}</td>
                 <td><button className="sa-view-btn" onClick={() => setOpenId(v.id)}>Manage</button></td>
               </tr>
             ))}
@@ -1105,6 +1109,39 @@ function BuyersView({ vendors }) {
       {openId && <VendorDrawer vendorId={openId} onClose={() => setOpenId(null)} />}
     </>
   );
+}
+
+/**
+ * 💾 One buyer's storage: a bar, the figures, and where the limit came from.
+ *
+ * Amber past 80% and red past 95% — a vendor at 96% is about to be refused an
+ * upload, and that is worth seeing before they write in about it.
+ */
+function StorageCell({ s }) {
+  const pct = Math.min(100, s.percent ?? 0);
+  const tone = pct >= 95 ? '#f87171' : pct >= 80 ? '#fbbf24' : '#2dd4bf';
+  return (
+    <div className="sa-store" title={`${fmtBytes(s.used_bytes)} of ${fmtMb(s.limit_mb)} — limit from ${s.limit_source}`}>
+      <div className="sa-store-bar"><span style={{ width: pct + '%', background: tone }} /></div>
+      <div className="sa-store-txt">
+        {fmtBytes(s.used_bytes)} / {fmtMb(s.limit_mb)}
+        {s.limit_source === 'override' && <span className="sa-store-tag">set</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Bytes a person can read — MB below a gigabyte, GB above, TB above that. */
+function fmtBytes(n) {
+  const b = Number(n) || 0;
+  if (b >= 1099511627776) return (b / 1099511627776).toFixed(2) + ' TB';
+  if (b >= 1073741824) return (b / 1073741824).toFixed(1) + ' GB';
+  if (b >= 1048576) return Math.round(b / 1048576) + ' MB';
+  return Math.max(0, Math.round(b / 1024)) + ' KB';
+}
+function fmtMb(mb) {
+  const m = Number(mb) || 0;
+  return m >= 1024 ? (m / 1024 >= 100 ? Math.round(m / 1024) : (m / 1024).toFixed(0)) + ' GB' : m + ' MB';
 }
 
 /* ---------- BILLING ---------- */

@@ -339,3 +339,12 @@
 .pkg-storage input { width: 90px; padding: 5px 8px; border-radius: 7px;
   border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 12px; }
 .pkg-storage span { color: var(--muted); }
+
+/* 💾 storage per buyer, in the list */
+.sa-store { min-width: 118px; }
+.sa-store-bar { height: 5px; border-radius: 3px; background: #22313a; overflow: hidden; }
+.sa-store-bar span { display: block; height: 100%; border-radius: 3px; transition: width .3s ease; }
+.sa-store-txt { margin-top: 4px; font-size: 11.5px; color: var(--sa-muted, #7c9199); font-variant-numeric: tabular-nums; }
+.sa-store-tag { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px;
+  background: #1d3a3f; color: #2dd4bf; text-transform: uppercase; letter-spacing: .04em; }
+.sa-muted { color: var(--sa-muted, #7c9199); }

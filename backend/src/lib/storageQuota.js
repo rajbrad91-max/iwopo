@@ -94,6 +94,11 @@ export async function storageFor(vendorId) {
     limit_source: limit.source,
     plan_name: limit.planName || null,
     remaining_bytes: Math.max(limitBytes - usedBytes, 0),
+    /* Worked out here rather than by each caller, so the bar in a vendor's
+       sidebar and the figure in the super panel cannot disagree. Capped at 100
+       because an override lowered below what is already stored would otherwise
+       draw a bar past the end of its track. */
+    percent: limitBytes > 0 ? Math.min(100, Math.round((usedBytes / limitBytes) * 1000) / 10) : 0,
   };
 }
 
