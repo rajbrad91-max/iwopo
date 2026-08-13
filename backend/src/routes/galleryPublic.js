@@ -16,6 +16,7 @@ import { albumPeopleAWS, photoIdsForPersonAWS } from '../lib/faceAWSIndex.js';
 import { getSetting } from '../lib/settings.js';
 import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
 import { withLocalFile, galleryKeyFromRel } from '../lib/localFile.js';
+import { naturalSort } from '../lib/naturalSort.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -78,11 +79,8 @@ function normaliseBox(raw, imgW, imgH) {
    a natural sort is, and it runs on one album's rows which are already in hand. */
 const NAT_SORT = `ORDER BY id ASC`;
 
-const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
-export function naturalSort(rows) {
-  return [...rows].sort((a, b) =>
-    collator.compare(a.filename || '', b.filename || '') || (a.id - b.id));
-}
+/* The sort itself lives in lib/naturalSort.js — the vendor's panel needs the
+   same one, and two copies would drift. */
 
 async function photosInAlbum(albumId) {
   /* kind and duration_s are selected because a film has to be recognisable as

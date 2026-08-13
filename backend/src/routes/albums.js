@@ -19,6 +19,7 @@ import { forgetPhotoFacesAWS } from '../lib/faceAWSIndex.js';
 import { enqueueAlbum, indexAlbumNow } from '../lib/faceQueue.js';
 import { getSetting } from '../lib/settings.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
+import { naturalSort, byFilename } from '../lib/naturalSort.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -444,10 +445,14 @@ router.get('/:id', requireAuth, async (req, res) => {
   try {
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });   // 🔒 tenancy
     if (!album) return res.status(404).json({ error: 'Album not found' });
-    const photos = await prisma.photos.findMany({
+    /* By filename, not upload time. A vendor dragging in a folder does not
+       control the order the browser hands the files over, so upload time is
+       whatever the machine happened to do — and the client's page sorts by
+       filename, so the two disagreed about the same album. */
+    const photos = naturalSort(await prisma.photos.findMany({
       where: { album_id: id, vendor_id: v },        // 🔒 tenancy
-      orderBy: { created_at: 'asc' },
-    });
+      orderBy: { id: 'asc' },
+    }));
     const events = await prisma.album_events.findMany({
       where: { album_id: id, vendor_id: v },        // 🔒 tenancy
       select: { id: true, name: true, sort_order: true },
@@ -1130,7 +1135,7 @@ router.get('/:id/selection', requireAuth, async (req, res) => {
     // order by event name (ungrouped first), then filename — matches the previous SQL ordering
     rows.sort((a, b) =>
       (a.event_name || '').localeCompare(b.event_name || '') ||
-      (a.filename || '').localeCompare(b.filename || ''));
+      byFilename(a.filename, b.filename));          // 2 before 10
     const evMap = new Map();
     for (const r of rows) {
       const key = r.event_id == null ? 'none' : String(r.event_id);
@@ -1201,7 +1206,7 @@ router.get('/:id/selection.zip', async (req, res) => {
     const rows = sels
       .map(s => s.photos)
       .filter(Boolean)
-      .sort((a, b) => (a.filename || '').localeCompare(b.filename || ''));
+      .sort((a, b) => byFilename(a.filename, b.filename));   // 2 before 10
     if (!rows.length) return res.status(404).json({ error: 'Nothing selected' });
     const safe = `${own.title || 'gallery'}-selection`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);
