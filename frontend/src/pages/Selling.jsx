@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
+import { PROFESSION_LIST } from '../lib/professions';
 import './selling.css';
 
 /**
@@ -158,11 +159,10 @@ function FeatVisual({ id }) {
   );
 }
 
-const INDUSTRIES = [
-  ['📷', 'Photographers'], ['🎥', 'Videographers'], ['🎧', 'DJs'], ['🎉', 'Planners'],
-  ['🌸', 'Florists'], ['🏛️', 'Venues'], ['✨', 'Decorators'], ['🎸', 'Live bands'],
-  ['💄', 'Makeup artists'], ['💇', 'Hair stylists'], ['🎂', 'Cake designers'], ['🚗', 'Transportation'],
-];
+/* Advertised straight from the shared list, so this page cannot offer a trade
+   a vendor is unable to select. It previously listed Venues, Decorators, Live
+   bands and Hair stylists, none of which existed anywhere else in the product. */
+const INDUSTRIES = PROFESSION_LIST.map(p => [p.icon, p.label]);
 
 const FAQ = [
   ['Is there really a free trial?', 'Yes. Start on a trial with no card required. When it ends you simply choose a plan to keep going — nothing is charged automatically.'],

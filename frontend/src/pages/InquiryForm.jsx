@@ -5,21 +5,10 @@ import ChatWidget from './ChatWidget';
 import './inquiry.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
-// professions for the background watermark
-export const PROFESSIONS = {
-  none: { label: 'None', icon: '' },
-  photographer: { label: 'Photographer', icon: '📷' },
-  videographer: { label: 'Videographer', icon: '🎥' },
-  photo_video: { label: 'Photo & Video', icon: '🎬' },
-  dj: { label: 'DJ', icon: '🎧' },
-  makeup: { label: 'Make-Up Artist', icon: '💄' },
-  cake: { label: 'Cake Maker', icon: '🎂' },
-  florist: { label: 'Florist / Floor Wrapper', icon: '💐' },
-  bartender: { label: 'Bartender', icon: '🍸' },
-  caterer: { label: 'Caterer', icon: '🍽️' },
-  planner: { label: 'Wedding Planner', icon: '📋' },
-  musician: { label: 'Musician / Singer', icon: '🎶' },
-};
+// The list lives in lib/professions.js — the public page and the super panel
+// need the same one. Re-exported so existing imports keep working.
+export { PROFESSIONS } from '../lib/professions';
+import { PROFESSIONS } from '../lib/professions';
 
 export default function InquiryForm({ handle, byHost = false }) {
   /* On a vendor's own domain there is no handle in the URL — the Host header

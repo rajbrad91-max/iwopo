@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import './super.css';
 import { useDialog } from '../lib/dialog.jsx';
+import { PROFESSIONS } from '../lib/professions';
 
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
@@ -144,16 +145,25 @@ function DashboardView({ vendors, packages, trials }) {
     { m: 'Mar', mrr: 5.7, sellers: 8 }, { m: 'Apr', mrr: 6.0, sellers: 11 },
     { m: 'May', mrr: 6.2, sellers: 9 }, { m: 'Jun', mrr: 6.4, sellers: 12 },
   ];
-  const vTypes = [
-    { n: '📸 Photographer', v: 61, c: '#2dd4bf' }, { n: '💄 Makeup', v: 17, c: '#4ade80' },
-    { n: '🎬 Editor', v: 14, c: '#60a5fa' }, { n: '🎧 DJ', v: 10, c: '#fbbf24' },
-    { n: '🎪 360 Booth', v: 9, c: '#a78bfa' }, { n: 'Other', v: 17, c: '#7c9199' },
-  ];
   // 🌍 Where sellers actually are. This used to be a hardcoded list that read as
   // real — Canada 52, US 38 — on a platform with three sellers. It now comes
   // from the vendors table, and says so plainly when there's nothing to show.
   const [geo, setGeo] = useState(null);
   useEffect(() => { api.adminVendorStats().then(setGeo).catch(() => setGeo({ countries: [], unset: 0, total: 0 })); }, []);
+  /* 🍩 Vendors per profession, counted for real. This was a hardcoded list —
+     Photographer 61, Editor 14, 360 Booth 9 — on a platform with three
+     vendors, and it charted trades that existed nowhere else in the product.
+     It now comes from what vendors actually picked, using the same list the
+     inquiry form and the public page use. */
+  const TYPE_COLOURS = ['#2dd4bf','#4ade80','#60a5fa','#fbbf24','#a78bfa','#f472b6','#22d3ee','#fb923c','#e879f9','#34d399','#f87171','#c084fc','#94a3b8'];
+  const vTypes = [
+    ...(geo?.professions || []).map((p, i) => ({
+      n: `${PROFESSIONS[p.key]?.icon || ''} ${PROFESSIONS[p.key]?.label || p.key}`.trim(),
+      v: p.count,
+      c: TYPE_COLOURS[i % TYPE_COLOURS.length],
+    })),
+    ...(geo?.professions_unset ? [{ n: 'Not set', v: geo.professions_unset, c: '#7c9199' }] : []),
+  ];
   const cName = (code) => (COUNTRIES.find(c => c.code === code)?.name) || `🌐 ${code}`;
   const countries = (geo?.countries || []).map(c => [cName(c.code), c.count]);
   const maxC = Math.max(1, ...countries.map(c => c[1]));
