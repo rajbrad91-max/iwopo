@@ -1196,7 +1196,7 @@ router.get('/:id/selection.zip', async (req, res) => {
     if (!own) return res.status(404).json({ error: 'Not found' });
     const sels = await prisma.selections.findMany({
       where: { album_id: id },
-      include: { photos: { select: { id: true, storage_path: true, filename: true } } },
+      include: { photos: { select: { id: true, vendor_id: true, storage_path: true, filename: true } } },
     });
     const rows = sels
       .map(s => s.photos)
@@ -1208,9 +1208,22 @@ router.get('/:id/selection.zip', async (req, res) => {
     const archive = archiver('zip', { zlib: { level: 6 } });
     archive.on('error', () => { try { res.status(500).end(); } catch { /* stream already closed */ } });
     archive.pipe(res);
+    /* The vendor's zip of what a couple chose. It was reading the disk alone,
+       so once storage stopped keeping local copies it would have produced an
+       empty archive — with no error, which is the worst way for it to fail. */
     for (const p of rows) {
+      const name = p.filename || `photo-${p.id}.jpg`;
+      const parts = String(p.storage_path || '').split('/').filter(Boolean);
+      if (parts.length >= 3 && await objects.enabled(objects.PRIVATE)) {
+        try {
+          const o = await objects.getStream(objects.PRIVATE,
+            objects.keyFor(p.vendor_id, 'galleries', parts[1], parts[2]));
+          archive.append(o.stream, { name });        // streamed, never buffered
+          continue;
+        } catch { /* not in R2 — try the disk */ }
+      }
       const full = path.join(ROOT, p.storage_path);
-      if (fs.existsSync(full)) archive.file(full, { name: p.filename || `photo-${p.id}.jpg` });
+      if (fs.existsSync(full)) archive.file(full, { name });
     }
     archive.finalize();
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -15,6 +15,7 @@ import { searchBySelfie } from '../lib/faceAWS.js';
 import { albumPeopleAWS, photoIdsForPersonAWS } from '../lib/faceAWSIndex.js';
 import { getSetting } from '../lib/settings.js';
 import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
+import { withLocalFile, galleryKeyFromRel } from '../lib/localFile.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -346,6 +347,19 @@ router.get('/:token/download/:photoId', async (req, res) => {
       where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 tenancy
     });
     if (!p) return res.status(404).end();
+
+    /* R2 first. This route was still reading the disk alone, so once storage
+       stopped keeping a local copy a couple pressing download on a single
+       photograph got nothing at all. */
+    const o = await galleryStream(p.vendor_id, p.storage_path, req.headers.range);
+    if (o) {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(p.filename || `photo-${p.id}.jpg`)}"`);
+      if (o.contentType) res.setHeader('Content-Type', o.contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
+      if (o.contentRange) { res.status(206); res.setHeader('Content-Range', o.contentRange); }
+      if (o.size) res.setHeader('Content-Length', o.size);
+      return o.stream.pipe(res);
+    }
     const full = path.join(ROOT, p.storage_path);
     if (!fs.existsSync(full)) return res.status(404).end();
     res.download(full, p.filename || `photo-${p.id}.jpg`);
@@ -524,16 +538,19 @@ router.get('/:token/face/:clusterId', async (req, res) => {
       relPath = coverPhoto.preview_path;
     }
 
-    const full = path.join(ROOT, relPath);
-    if (!fs.existsSync(full)) return res.status(404).end();
+    /* A face circle is not a stored file — it is cut from the photograph's
+       preview on every request, using a box held in the database. sharp needs a
+       real path, so the preview is fetched from R2 when it is not on the disk.
 
+       This was the last route still reading the disk alone, and the circles
+       went blank the moment storage stopped keeping local copies. */
+    const cut = await withLocalFile(
+      path.join(ROOT, relPath), objects.PRIVATE, galleryKeyFromRel(relPath),
+      async (full) => {
     const meta = await sharp(full).metadata();
     const box = normaliseBox(boxRaw, meta.width, meta.height);
-    // no usable box → serve the whole photo and let the browser round it
-    if (!box) {
-      res.type('webp');
-      return res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });
-    }
+    // no usable box → hand back the whole picture and let the browser round it
+    if (!box) return sharp(full).webp({ quality: 82 }).toBuffer();
 
     // 🔍 Crop tight enough that the face fills the circle. The padding is a
     // fraction of the face size added on each side.
@@ -564,17 +581,20 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     const width = Math.min(size, meta.width - left);
     const height = Math.min(size, meta.height - top);
 
-    const buf = await sharp(full)
+    return sharp(full)
       .extract({ left, top, width, height })
       // 256 rather than 160: circles render around 72-96 CSS px, which is
       // 200-290 device px on a retina phone — 160 looked soft there.
       .resize(256, 256, { fit: 'cover' })
       .webp({ quality: 82 })
       .toBuffer();
+      },
+    );
 
+    if (!cut) return res.status(404).end();          // neither on disk nor in R2
     res.type('webp');
     res.set('Cache-Control', 'public, max-age=86400');
-    res.send(buf);
+    res.send(cut);
   } catch { res.status(404).end(); }
 });
 
