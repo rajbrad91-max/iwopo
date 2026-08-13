@@ -676,10 +676,19 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
   async function deleteChecked() {
     if (!checked.length) return;
     if (!await dialog.confirm(`${checked.length} album${checked.length === 1 ? '' : 's'} and every photo inside will be deleted. This cannot be undone.`, { title: 'Delete albums?', okLabel: 'Delete' })) return;
-    try {
-      for (const id of checked) { await api.deleteAlbum(id); }
-      setChecked([]); setSelectMode(false); load();
-    } catch (e) { dialog.alert(e.message, { error: true }); }
+    /* Each album is deleted on its own terms. The loop used to abort on the
+       first failure, so a request that timed out on album one left album two
+       untouched — and the vendor was told something went wrong without being
+       told which, or that anything had succeeded. */
+    const failed = [];
+    for (const id of checked) {
+      try { await api.deleteAlbum(id); }
+      catch (e) { failed.push(e.message || 'failed'); }
+    }
+    setChecked([]); setSelectMode(false); load();
+    if (failed.length) {
+      dialog.alert(`${failed.length} of ${checked.length} could not be deleted: ${failed[0]}`, { error: true });
+    }
   }
   function toggleCheck(id, e) {
     e.stopPropagation();

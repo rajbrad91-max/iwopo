@@ -548,6 +548,26 @@ router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * Remove a deleted album's objects from R2, after the response has gone.
+ *
+ * Deleted in batches rather than one at a time: three hundred sequential round
+ * trips to Cloudflare is most of a minute, and there is no reason for them to
+ * wait on each other. Twenty at a time is brisk without hammering the API.
+ */
+async function cleanupAlbumObjects(vendorId, albumId) {
+  if (!await objects.enabled(objects.PRIVATE)) return;
+  try {
+    const prefix = objects.keyFor(vendorId, 'galleries', String(albumId)) + '/';
+    const keys = await objects.listAll(objects.PRIVATE, prefix);
+    for (let i = 0; i < keys.length; i += 20) {
+      await Promise.all(keys.slice(i, i + 20).map(o =>
+        objects.deleteObject(objects.PRIVATE, o.key).catch(() => {})));
+    }
+    if (keys.length) console.log('[album] removed', keys.length, 'objects under', prefix);
+  } catch (e) { console.error('[album] R2 cleanup failed:', e.message); }
+}
+
 // 🔒 delete album (tenant-checked, cascades photos)
 router.delete('/:id', requireAuth, async (req, res) => {
   const v = vid(req);
@@ -562,20 +582,15 @@ router.delete('/:id', requireAuth, async (req, res) => {
     // remove the album's entire storage folder (all photos + tiers) from disk
     try { fs.rmSync(path.join(ROOT, String(v), String(req.params.id)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
 
-    /* And the same folder in R2. Object storage has no folders, so "delete the
-       folder" means listing the prefix and removing each key — a whole wedding
-       left behind here is hundreds of objects nothing points at, charged to the
-       vendor forever. Done after the row is gone so a storage failure cannot
-       block the delete itself. */
-    if (await objects.enabled(objects.PRIVATE)) {
-      try {
-        const prefix = objects.keyFor(v, 'galleries', String(req.params.id)) + '/';
-        const keys = await objects.listAll(objects.PRIVATE, prefix);
-        for (const o of keys) await objects.deleteObject(objects.PRIVATE, o.key);
-        if (keys.length) console.log('[album] removed', keys.length, 'objects under', prefix);
-      } catch (e) { console.error('[album] R2 cleanup failed:', e.message); }
-    }
+    /* The album is gone as far as anyone can see, so answer now. Object storage
+       has no folders — removing one means listing the prefix and deleting every
+       key — and a wedding is hundreds of objects. Holding the response until
+       that finished meant a vendor deleting two albums watched the first one
+       hang for fourteen seconds, gave up, and the second was never attempted.
+       Nothing waits on this: the row is deleted, the files are unreachable, and
+       what is left is housekeeping. */
     res.json({ ok: true });
+    cleanupAlbumObjects(v, Number(req.params.id));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
