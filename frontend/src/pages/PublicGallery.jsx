@@ -73,7 +73,26 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [faces, setFaces] = useState([]);           // face circles, most photos first
   const [activeFace, setActiveFace] = useState(null);
   const [findMeOpen, setFindMeOpen] = useState(false);
+
   const [allFacesOpen, setAllFacesOpen] = useState(false);  // "More" → every face in a grid
+  /* 👥 "More" opens a wrapped view of everyone. That is only worth offering when
+     some of them are off the edge — on a wide screen with four people it
+     promised something the viewer could already see in full.
+
+     Measured rather than counted, because how many circles fit depends on the
+     window: six is an overflow on a phone and nothing of the sort on a desktop.
+     Re-measured on resize, and whenever the set of faces changes. */
+  const facesRef = useRef(null);
+  const [facesOverflow, setFacesOverflow] = useState(false);
+  useEffect(() => {
+    const el = facesRef.current;
+    if (!el) return undefined;
+    const measure = () => setFacesOverflow(el.scrollWidth > el.clientWidth + 2);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [faces, allFacesOpen]);
   // The face strip scrolls horizontally with snap points rather than trying to
   // fit an exact number of circles. Measuring "how many fit" was off by a few
   // pixels on narrow screens, so the last circle rendered half-clipped.
@@ -742,7 +761,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
           "Finding faces…" over a single film. */}
       {(faces.length > 0 || session.faceReady) && !photos.every(p => p.kind === 'video') && (
         <div className="pg-people">
-          <div className={`pg-faces ${allFacesOpen ? 'is-expanded' : ''}`}>
+          <div ref={facesRef} className={`pg-faces ${allFacesOpen ? 'is-expanded' : ''}`}>
             {faces.map(f => (
               <button
                 key={f.id}
@@ -769,15 +788,18 @@ export default function PublicGallery({ token, embedded, onBack }) {
                 <span className="pg-facebtn-lbl">Show all</span>
               </button>
             )}
-            <button
-              className={`pg-facebtn ${allFacesOpen ? 'is-on' : ''}`}
-              onClick={() => setAllFacesOpen(v => !v)}
-              disabled={faces.length === 0}
-              title={allFacesOpen ? 'Show fewer faces' : `See everyone in this gallery (${faces.length})`}
-            >
-              <span className="pg-facebtn-ic">{IconPeople}</span>
-              <span className="pg-facebtn-lbl">{allFacesOpen ? 'Fewer' : 'More'}</span>
-            </button>
+            {/* Hidden when everyone already fits — but kept while expanded, or
+                there would be no way back to the strip. */}
+            {(facesOverflow || allFacesOpen) && (
+              <button
+                className={`pg-facebtn ${allFacesOpen ? 'is-on' : ''}`}
+                onClick={() => setAllFacesOpen(v => !v)}
+                title={allFacesOpen ? 'Show fewer faces' : `See everyone in this gallery (${faces.length})`}
+              >
+                <span className="pg-facebtn-ic">{IconPeople}</span>
+                <span className="pg-facebtn-lbl">{allFacesOpen ? 'Fewer' : 'More'}</span>
+              </button>
+            )}
             <button className="pg-facebtn" onClick={() => setFindMeOpen(true)} disabled={selfieBusy} title="Find photos of yourself">
               <span className="pg-facebtn-ic">{IconUser}</span>
               <span className="pg-facebtn-lbl">{selfieBusy ? '…' : 'Find me'}</span>
