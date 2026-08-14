@@ -80,7 +80,7 @@ function StorageBar({ onUpgrade }) {
           would lead nowhere. */}
       {s.next_package && (
         <button className="vp-storage-up" onClick={onUpgrade}>
-          Get {s.next_package.storage_gb} GB — {s.next_package.name}
+          Upgrade
         </button>
       )}
     </div>
