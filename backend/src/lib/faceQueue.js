@@ -30,7 +30,21 @@ const PAUSE_MS = 250;            // 0.25s breather between photos
 const CORES = os.cpus().length;  // 4 on this box
 const LOAD_LINE = 1.5;           // load < 1.5 → allow 2 workers; else 1 (traffic-first)
 const MAX_CONCURRENCY = 2;       // never more than 2 local at once
-const BACKLOG_AWS_LINE = 200;    // safety_net: overflow NEW albums to AWS above this
+/* safety_net: overflow NEW albums to AWS above this many photographs waiting
+   platform-wide.
+
+   The number is really a WAITING TIME. Local detection runs at about 3.3
+   photographs a second, so 200 was roughly one minute — far too twitchy, and it
+   meant two vendors uploading a wedding each tipped the platform onto a paid
+   service for a wait nobody would have noticed. Four thousand is about twenty
+   minutes, which Raj is comfortable with, and it makes AWS what it should be:
+   an overflow valve for a bad day rather than a routine cost.
+
+   ⚠️ This is NOT what protects the CPU. That is allowedConcurrency(), which
+   drops from two workers to one whenever the load average passes 1.5, checked
+   before every single photograph. The box is throttled by LOAD, not by queue
+   depth — this line only decides who pays for the work. */
+const BACKLOG_AWS_LINE = 4000;
 const MAX_ATTEMPTS = 2;          // retry a failed photo before skipping
 
 const albumQueue = [];
