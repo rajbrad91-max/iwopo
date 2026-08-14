@@ -1532,7 +1532,10 @@ function AlbumDetail({ albumId, onBack }) {
       eventId: eventId ? String(eventId) : null,
     }));
     setPending(previews);
-    setUploading(true); setProg(`Uploading 0 / ${total} photos…`);
+    /* "Uploading 18 / 80" read as though eighteen were in flight, when in fact
+       eighteen had already landed. The number is a count of what is DONE, so it
+       says so. */
+    setUploading(true); setProg(`0 of ${total} photos uploaded…`);
 
     // upload on a background thread so it keeps running when the tab is hidden
     if (workerRef.current) workerRef.current.terminate();
@@ -1551,7 +1554,7 @@ function AlbumDetail({ albumId, onBack }) {
     worker.onmessage = (ev) => {
       const m = ev.data;
       if (m.type === 'progress') {
-        setProg(`Uploading ${m.done} / ${m.total} photos…`);
+        setProg(`${m.done} of ${m.total} photos uploaded…`);
         // photos 0..done have landed as real thumbs — drop that many previews from the front
         setPending(() => {
           const consumed = previews.slice(0, m.done);
