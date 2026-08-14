@@ -183,18 +183,62 @@ export function enqueueAlbum(albumId) {
   drain();
 }
 
+/* 🧵 Albums are worked on several at a time.
+
+   This loop used to await each album start to finish, so a vendor uploading
+   twenty photographs sat behind one uploading two thousand, no matter which
+   engine either was using. On AWS that is pure waiting — the work happens on
+   Rekognition's side and this process is idle between round trips — so running
+   them one after another spent hours doing nothing.
+
+   The CPU is still protected, and by the same amount: local detection now draws
+   from ONE global budget rather than a per-album one, so four albums in flight
+   share the same one or two workers that a single album had. What changes is
+   that AWS albums no longer block the queue behind them, and a small local
+   album is no longer stuck behind a huge one. */
+const ALBUM_SLOTS = 4;
+
 async function drain() {
   if (running) return;
   running = true;
   try {
-    while (albumQueue.length) {
-      const albumId = albumQueue.shift();
-      queued.delete(albumId);
-      await indexOneAlbum(albumId);
+    const inFlight = new Set();
+    while (albumQueue.length || inFlight.size) {
+      while (albumQueue.length && inFlight.size < ALBUM_SLOTS) {
+        const albumId = albumQueue.shift();
+        queued.delete(albumId);
+        const job = indexOneAlbum(albumId)
+          .catch(e => console.error('face indexing failed for album', albumId, e.message))
+          .finally(() => inFlight.delete(job));
+        inFlight.add(job);
+      }
+      if (inFlight.size) await Promise.race(inFlight);
     }
   } finally {
     running = false;
   }
+}
+
+/* 🚦 One budget for local detection across the whole platform.
+
+   allowedConcurrency() already backed off from two workers to one when the box
+   got busy, but it did that PER ALBUM — four albums each backing off to one
+   would still be four photographs decoding at once on four cores, which is the
+   API starved. Held globally, "one or two at a time" means what it says however
+   many albums are running. */
+let localBusy = 0;
+const localWaiting = [];
+
+async function takeLocalSlot() {
+  while (localBusy >= allowedConcurrency()) {
+    await new Promise(r => localWaiting.push(r));
+  }
+  localBusy++;
+}
+function freeLocalSlot() {
+  localBusy--;
+  const next = localWaiting.shift();
+  if (next) next();
 }
 
 // index one image → store descriptors (engine already chosen for the album)
@@ -245,19 +289,21 @@ async function indexOneAlbum(albumId) {
     });
   } catch { return; }
 
-  let i = 0;
-  while (i < photos.length) {
-    const conc = allowedConcurrency();          // re-check load every batch → adapts to traffic
-    const batch = photos.slice(i, i + conc);
-    await Promise.all(batch.map(async (p) => {
+  /* Each photograph waits for a slot in the global budget rather than the album
+     taking a batch of its own. Same ceiling on the box, but albums interleave
+     instead of queueing. */
+  await Promise.all(photos.map(async (p) => {
+    await takeLocalSlot();
+    try {
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try { await indexPhoto(p, engine); return; }
         catch { if (attempt >= MAX_ATTEMPTS) { /* skip, leave for a later pass */ } }
       }
-    }));
-    i += batch.length;
-    await new Promise(r => setTimeout(r, PAUSE_MS));   // breather
-  }
+    } finally {
+      freeLocalSlot();
+      await new Promise(r => setTimeout(r, PAUSE_MS));   // breather, per photo
+    }
+  }));
 
   /* 🧑‍🤝‍🧑 Grouping is deferred, not skipped. If the uploader has already said
      it is finished, this was the last of the work and grouping runs now.
