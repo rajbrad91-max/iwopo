@@ -101,7 +101,17 @@ async function resolveAlbumEngine(albumId) {
    upload pushes the timer out, and clustering runs once the album has been
    still for a while. A vendor who closes the tab half way still gets clustered,
    which a "done" button would not survive. */
-const CLUSTER_QUIET_MS = 45_000;
+/* Five minutes, not forty-five seconds.
+
+   Forty-five was picked without measuring anything, and a real upload turned
+   out to leave gaps of forty-four to fifty-two seconds between batches — so the
+   window expired BETWEEN batches and grouping ran over and over mid-upload,
+   which is the exact thing deferring it was meant to stop.
+   
+   This is a backstop, not the normal path: the panel says when it has finished
+   and grouping happens then. The only job left for the timer is covering a tab
+   that closed, and for that it can afford to be patient. */
+const CLUSTER_QUIET_MS = 5 * 60_000;
 const clusterTimers = new Map();
 
 /* Albums whose uploader has said it is finished. The signal can arrive while
@@ -163,6 +173,10 @@ export async function clusterNow(albumId) {
 
 export function enqueueAlbum(albumId) {
   const id = String(albumId);
+  /* Push the window out on every arrival. Waiting until indexing finished to
+     reset it meant a batch that indexed quickly started the clock early, and
+     the next batch arrived after it had already run. */
+  if (clusterTimers.has(id)) scheduleClustering(id);
   if (queued.has(id)) return;
   queued.add(id);
   albumQueue.push(id);
