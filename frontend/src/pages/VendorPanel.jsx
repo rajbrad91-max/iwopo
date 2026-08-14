@@ -47,28 +47,39 @@ function StorageBar({ onUpgrade }) {
   if (!s) return null;
 
   const pct = Math.min(100, s.percent ?? 0);
-  const tone = pct >= 95 ? '#f87171' : pct >= 80 ? '#fbbf24' : 'var(--brand, #2dd4bf)';
-  const fmt = (b) => {
-    const n = Number(b) || 0;
-    if (n >= 1099511627776) return (n / 1099511627776).toFixed(2) + ' TB';
-    if (n >= 1073741824) return (n / 1073741824).toFixed(1) + ' GB';
-    if (n >= 1048576) return Math.round(n / 1048576) + ' MB';
-    return Math.max(0, Math.round(n / 1024)) + ' KB';
-  };
-  const limit = s.limit_mb >= 1024 ? Math.round(s.limit_mb / 1024) + ' GB' : s.limit_mb + ' MB';
+  const near = pct >= 80;
+  const tone = pct >= 95 ? '#f87171' : near ? '#fbbf24' : 'var(--brand, #2dd4bf)';
+
+  /* Whole gigabytes, both sides. A vendor thinks in weddings, not kilobytes —
+     "0 KB of 5 GB" is precise and says nothing. Used rounds to the nearest GB;
+     what is LEFT rounds down, so the number never promises room that is not
+     there. */
+  const GB = 1073741824;
+  const usedGb = Math.round((s.used_bytes || 0) / GB);
+  const limitGb = Math.max(1, Math.round((s.limit_mb || 0) / 1024));
+  const leftBytes = Math.max(0, (s.limit_bytes || 0) - (s.used_bytes || 0));
+  const leftGb = Math.floor(leftBytes / GB);
+  /* Under a gigabyte, whole-gigabyte rounding says "0 GB left" while there is
+     still room — which reads as full when it is not. Said in words instead, so
+     the scale stays gigabytes without claiming the tank is empty. */
+  const leftTxt = leftBytes === 0 ? 'Full'
+    : leftGb === 0 ? 'Under 1 GB left'
+    : `${leftGb} GB left`;
 
   return (
-    <div className="vp-storage" title={`Photos ${fmt(s.used_photos_bytes)} · Files ${fmt(s.used_files_bytes)}`}>
+    <div className="vp-storage" title={`${(s.used_bytes / 1048576).toFixed(0)} MB used — photos and File Flyer together`}>
       <div className="vp-storage-top">
-        <span className="nav-ic">💾</span>
         <span className="vp-storage-lbl">Storage</span>
-        <span className="vp-storage-pct">{pct}%</span>
+        <span className="vp-storage-num" style={near ? { color: tone } : undefined}>
+          {near ? leftTxt : `${usedGb} GB / ${limitGb} GB`}
+        </span>
       </div>
       <div className="vp-storage-bar"><span style={{ width: pct + '%', background: tone }} /></div>
-      <div className="vp-storage-txt">{fmt(s.used_bytes)} of {limit}</div>
-      {s.next_package && pct >= 60 && (
+      {/* Only when it is nearly full and there is somewhere to go — on the
+          largest package this would be an invitation to nothing. */}
+      {near && s.next_package && (
         <button className="vp-storage-up" onClick={onUpgrade}>
-          ⬆️ {s.next_package.storage_gb} GB — {s.next_package.name}
+          Get {s.next_package.storage_gb} GB — {s.next_package.name}
         </button>
       )}
     </div>
