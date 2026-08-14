@@ -75,9 +75,10 @@ function StorageBar({ onUpgrade }) {
         </span>
       </div>
       <div className="vp-storage-bar"><span style={{ width: pct + '%', background: tone }} /></div>
-      {/* Only when it is nearly full and there is somewhere to go — on the
-          largest package this would be an invitation to nothing. */}
-      {near && s.next_package && (
+      {/* Always offered, at Raj's request. The only thing still gated is
+          whether there IS a bigger package — on the largest one the button
+          would lead nowhere. */}
+      {s.next_package && (
         <button className="vp-storage-up" onClick={onUpgrade}>
           Get {s.next_package.storage_gb} GB — {s.next_package.name}
         </button>
