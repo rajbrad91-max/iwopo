@@ -48,66 +48,85 @@ export async function indexAlbumAWS(albumId) {
 
   let indexed = 0, faceTotal = 0, skipped = 0, errors = 0;
 
-  for (const p of photos) {
-    const rel = p.preview_path || p.thumb_path;
-    if (!rel) { skipped++; continue; }
+  /* 🌐 Several photographs in flight at once.
 
-    try {
-      // same reason as the local engine: this needs a real file, from wherever
-      const found = await withLocalFile(
-        path.join(ROOT, rel), objects.PRIVATE, galleryKeyFromRel(rel),
-        (local) => indexPhotoFaces(album.id, local, p.filename || `photo-${p.id}`),
-      );
-      if (!found) { skipped++; continue; }
+     This sent them one at a time with a sixty millisecond pause between, which
+     made sense when the worry was hammering the API. But the work is not
+     happening here — Rekognition does it, and this process sits idle for about
+     a second per photograph waiting for the reply. On a busy platform that idle
+     time IS the queue.
 
-      for (const f of found) {
-        await prisma.album_faces.upsert({
-          where: { album_id_rekognition_face_id: { album_id: album.id, rekognition_face_id: f.faceId } },
-          update: {},                                   // already indexed — leave it
-          create: {
-            album_id: album.id,
-            photo_id: p.id,
-            vendor_id: album.vendor_id,                 // 🔒 tenancy
-            rekognition_face_id: f.faceId,
-            collection_id: collectionIdFor(album.id),
-            // the box is all that's needed — the circle is cropped on demand
-            // from the photo already on disk, so no extra image is stored
-            bounding_box: f.boundingBox ?? undefined,
-            confidence: f.confidence ?? undefined,
-            // how good this face is AS A CIRCLE (front-facing, large, sharp).
-            // The best-scoring face of a person becomes their circle.
-            portrait_score: portraitScore({
-              yaw: f.yaw, pitch: f.pitch,
-              sharpness: f.sharpness, brightness: f.brightness,
-              eyesOpen: f.eyesOpen, areaFrac: f.areaFrac,
-              detScore: (f.confidence ?? 100) / 100,
-            }),
+     Six at a time per album, and four albums run together, so roughly two dozen
+     requests are outstanding. Rekognition's default IndexFaces limit is around
+     fifty per second, so there is room. None of this touches the CPU, so
+     raising it costs the site and the local engine nothing. */
+  const AWS_PHOTO_SLOTS = 6;
+  let cursor = 0;
+
+  const worker = async () => {
+    while (cursor < photos.length) {
+      const p = photos[cursor++];
+      const rel = p.preview_path || p.thumb_path;
+      if (!rel) { skipped++; continue; }
+
+      try {
+        // same reason as the local engine: this needs a real file, from wherever
+        const found = await withLocalFile(
+          path.join(ROOT, rel), objects.PRIVATE, galleryKeyFromRel(rel),
+          (local) => indexPhotoFaces(album.id, local, p.filename || `photo-${p.id}`),
+        );
+        if (!found) { skipped++; continue; }
+
+        for (const f of found) {
+          await prisma.album_faces.upsert({
+            where: { album_id_rekognition_face_id: { album_id: album.id, rekognition_face_id: f.faceId } },
+            update: {},                                 // already indexed — leave it
+            create: {
+              album_id: album.id,
+              photo_id: p.id,
+              vendor_id: album.vendor_id,               // 🔒 tenancy
+              rekognition_face_id: f.faceId,
+              collection_id: collectionIdFor(album.id),
+              // the box is all that's needed — the circle is cropped on demand
+              // from the photo already on disk, so no extra image is stored
+              bounding_box: f.boundingBox ?? undefined,
+              confidence: f.confidence ?? undefined,
+              // how good this face is AS A CIRCLE (front-facing, large, sharp).
+              // The best-scoring face of a person becomes their circle.
+              portrait_score: portraitScore({
+                yaw: f.yaw, pitch: f.pitch,
+                sharpness: f.sharpness, brightness: f.brightness,
+                eyesOpen: f.eyesOpen, areaFrac: f.areaFrac,
+                detScore: (f.confidence ?? 100) / 100,
+              }),
+            },
+          });
+        }
+
+        await prisma.photos.update({
+          where: { id: p.id },
+          data: {
+            face_indexed: true,
+            face_count: found.length,
+            face_engine: 'aws',
+            // AWS keeps the signatures in its collection, so this column must be
+            // EMPTIED — not skipped. `faces: undefined` means "leave unchanged" in
+            // Prisma, which silently kept stale local descriptors on an album that
+            // had previously been indexed locally.
+            faces: Prisma.DbNull,
           },
         });
+
+        indexed++;
+        faceTotal += found.length;
+      } catch (e) {
+        errors++;
+        console.error(`[faceAWSIndex] photo ${p.id}:`, e.message);
       }
-
-      await prisma.photos.update({
-        where: { id: p.id },
-        data: {
-          face_indexed: true,
-          face_count: found.length,
-          face_engine: 'aws',
-          // AWS keeps the signatures in its collection, so this column must be
-          // EMPTIED — not skipped. `faces: undefined` means "leave unchanged" in
-          // Prisma, which silently kept stale local descriptors on an album that
-          // had previously been indexed locally.
-          faces: Prisma.DbNull,
-        },
-      });
-
-      indexed++;
-      faceTotal += found.length;
-    } catch (e) {
-      errors++;
-      console.error(`[faceAWSIndex] photo ${p.id}:`, e.message);
     }
-    await new Promise(r => setTimeout(r, 60));   // be gentle on the API
-  }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(AWS_PHOTO_SLOTS, photos.length) }, worker));
 
   return { indexed, faces: faceTotal, skipped, errors };
 }
