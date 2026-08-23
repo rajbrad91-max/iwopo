@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, getUser, clearSession, fmtDateTime } from '../lib/api';
+import { api, getUser, clearSession, fmtDateTime , logout as apiLogout } from '../lib/api';
 import { COUNTRIES } from '../lib/countries';
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -46,7 +46,7 @@ export default function Dashboard({ onLogout }) {
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
-  function logout() { clearSession(); onLogout(); }
+  function logout() { apiLogout(); onLogout(); }
 
   const trials = vendors.filter(v => v.status === 'trial').length;
 

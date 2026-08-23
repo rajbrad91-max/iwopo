@@ -3,7 +3,7 @@ import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import PublicSite from './PublicSite';
-import { api, getUser, clearSession, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
+import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody } from './InquiryForm';
@@ -177,7 +177,7 @@ export default function VendorPanel({ onLogout }) {
     else if (n.link_type === 'aichat') navigate({ tab: 'aichat' });
   }
 
-  function handleLogout() { clearSession(); onLogout(); }
+  function handleLogout() { logout(); onLogout(); }
 
   // the vendor's brand hue, tinting the panel's own tokens
   const dashRef = useRef(null);

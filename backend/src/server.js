@@ -32,6 +32,7 @@ import fileRoutes from './routes/files.js';
 import filePublicRoutes from './routes/filesPublic.js';
 import siteRoutes from './routes/sites.js';
 import { gate } from './lib/entitlements.js';
+import { sweepRevoked } from './lib/tokenRevocation.js';
 
 dotenv.config();
 
@@ -158,6 +159,12 @@ app.use((err, req, res, _next) => {
 // none of nginx's handling in front of it. The firewall was the only thing
 // between that port and the internet, which is one rule away from being wrong.
 // nginx proxies to localhost, so nothing that should reach it is affected.
+/* 🧹 A revocation row is pointless once the token it names would have expired
+   anyway. Without this the table grows by one row per logout and never shrinks.
+   Hourly is plenty for something whose rows live at most seven days. */
+setInterval(() => { sweepRevoked().catch(() => {}); }, 60 * 60_000).unref();
+sweepRevoked().catch(() => {});
+
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
 });

@@ -193,6 +193,19 @@ export function clearTabSession() {
   sessionStorage.removeItem('iwopo_user');
 }
 
+/**
+ * Sign out properly: tell the server to cancel this token, then forget it here.
+ *
+ * Clearing storage alone left the token valid for the rest of its seven days,
+ * so anyone holding a copy could carry on. The request is not awaited to a
+ * fault — if it fails the local session still goes, and the token expires on
+ * its own — but it is what makes Log out mean something.
+ */
+export function logout() {
+  request('/auth/logout', { method: 'POST' }).catch(() => {});
+  clearSession();
+}
+
 export function clearSession() {
   sessionStorage.removeItem('iwopo_token');
   sessionStorage.removeItem('iwopo_user');

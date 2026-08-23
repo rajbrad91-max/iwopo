@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { requireAuth } from '../middleware/auth.js';
 import { notifyNewLead, sendLeadEmail } from './email.js';
 import { notify } from './notifications.js';
+import { tokenStillValid } from '../lib/tokenRevocation.js';
 
 const router = express.Router();
 
@@ -353,6 +354,8 @@ router.post('/', async (req, res) => {
   if (auth.startsWith('Bearer ')) {
     try {
       const user = jwt.verify(auth.slice(7), process.env.JWT_SECRET || 'dev-secret-change-me');
+      // 🎟️ a cancelled token falls back to the public path, same as a bad one
+      if (!await tokenStillValid(user)) throw new Error('revoked');
       if (user.role === 'super_admin') vendor_id = b.vendor_id || null;   // super admin must say which vendor
       else vendor_id = user.vendor_id;                                     // vendors always their own
     } catch { /* bad token → fall back to body (public form) */ }

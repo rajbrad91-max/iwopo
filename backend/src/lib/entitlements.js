@@ -3,6 +3,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import prisma from '../config/prisma.js';
+import { tokenStillValid } from './tokenRevocation.js';
 dotenv.config();
 
 const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -68,6 +69,10 @@ export function gate(featureKey) {
   return async (req, res, next) => {
     const user = tryUser(req);
     if (!user) return next();                    // public route (signing links etc.)
+    /* 🎟️ A cancelled token must not buy feature access either. Treated as
+       anonymous rather than refused — this gate also fronts public routes, and
+       requireAuth is what turns a dead token into a 401. */
+    if (!await tokenStillValid(user)) return next();
     if (user.role === 'super_admin') return next();
     if (!user.vendor_id) return next();
     try {

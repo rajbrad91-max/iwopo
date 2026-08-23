@@ -11,6 +11,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { CURRENCIES, CURRENCY_CODES, currencyFor } from '../lib/currencies.js';
 import { storageFor } from '../lib/storageQuota.js';
+import { revokeAllForUser } from '../lib/tokenRevocation.js';
 
 const router = express.Router();
 const LOGO_DIR = LOGO_DIR_CFG;
@@ -157,6 +158,10 @@ router.put('/password', requireAuth, async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Wrong current password' });
     const hash = await bcrypt.hash(next, 10);
     await prisma.users.update({ where: { id: req.user.id }, data: { password_hash: hash } });
+    /* 🎟️ Every token issued before now stops working. Changing a password
+       because you fear someone has it is pointless if their session survives
+       the change — which is exactly what happened before. */
+    await revokeAllForUser(req.user.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

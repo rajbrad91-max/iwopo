@@ -22,6 +22,7 @@ import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { naturalSort, byFilename } from '../lib/naturalSort.js';
 import bcrypt from 'bcryptjs';
 import { hashSharePassword } from '../lib/sharePassword.js';
+import { tokenStillValid } from '../lib/tokenRevocation.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -1140,6 +1141,8 @@ router.get('/file/:photoId/:type', async (req, res) => {
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
   let user;
   try { user = jwt.verify(tok, SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+  // 🎟️ the signature is fine, but the token may have been cancelled since
+  if (!await tokenStillValid(user)) return res.status(401).json({ error: 'Session ended' });
   const v = user.vendor_id;
   try {
     const p = await prisma.photos.findFirst({
@@ -1349,6 +1352,8 @@ router.get('/:id/selection.zip', async (req, res) => {
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
   let user;
   try { user = jwt.verify(tok, SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+  // 🎟️ the signature is fine, but the token may have been cancelled since
+  if (!await tokenStillValid(user)) return res.status(401).json({ error: 'Session ended' });
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({

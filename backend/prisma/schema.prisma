@@ -477,11 +477,11 @@ model packages {
   trial_days           Int?            @default(30)
   sort_order           Int?            @default(0)
   country_prices       Json?           @default("{}")
+  /// What this package includes. A vendor's storage limit is derived from here,
+  ///      so raising a package's allowance raises it for everyone on that package at
+  ///      once — which is why it lives on the package and not on the account.
+  storage_gb           Int             @default(50)
   package_items        package_items[]
-  /* What this package includes. A vendor's storage limit is derived from here,
-     so raising a package's allowance raises it for everyone on that package at
-     once — which is why it lives on the package and not on the account. */
-  storage_gb           Int      @default(50)
 }
 
 model password_reset_tokens {
@@ -539,12 +539,8 @@ model photos {
   face_count   Int?          @default(0)
   event_id     Int?
   face_engine  String?       @db.VarChar(20)
-  // 'photo' or 'video'. A video row reuses thumb_path and preview_path for its
-  // poster frame, so nothing downstream needs a new concept for thumbnails.
   kind         String        @default("photo") @db.VarChar(10)
   duration_s   Int?
-  // every byte this photo costs — the original plus both derived tiers, so the
-  // storage a vendor is charged for is the storage actually used
   size_bytes   BigInt?
   album_faces  album_faces[]
   favorites    favorites[]
@@ -555,6 +551,7 @@ model photos {
 
   @@index([album_id], map: "idx_photos_album")
   @@index([vendor_id], map: "idx_photos_vendor")
+  @@index([album_id, kind], map: "idx_photos_kind")
 }
 
 model plan_features {
@@ -672,7 +669,9 @@ model users {
   role                  String                  @default("vendor") @db.VarChar(50)
   vendor_id             Int?
   created_at            DateTime?               @default(now()) @db.Timestamp(6)
+  tokens_valid_from     DateTime?               @db.Timestamp(6)
   password_reset_tokens password_reset_tokens[]
+  revoked_tokens        revoked_tokens[]
   vendors               vendors?                @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_users_vendor")
@@ -730,8 +729,7 @@ model vendor_settings {
   currency                String?   @db.VarChar(3)
   auto_release_contract   Boolean   @default(false)
   default_deposit_percent Decimal   @default(30) @db.Decimal(5, 2)
-  // null means "no override — use the plan's allowance"
-  storage_limit_mb   Int?
+  storage_limit_mb        Int?
   vendors                 vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -840,38 +838,38 @@ model lead_packages {
 }
 
 model vendor_sites {
-  id              Int       @id @default(autoincrement())
-  vendor_id       Int       @unique
-  theme           String    @default("aperture") @db.VarChar(30)
-  accent          String    @default("#b8922a") @db.VarChar(9)
-  heading_font    String    @default("Playfair Display") @db.VarChar(60)
-  body_font       String    @default("Inter") @db.VarChar(60)
-  site_title      String?   @db.VarChar(120)
-  tagline         String?   @db.VarChar(200)
-  about_heading   String?   @db.VarChar(120)
-  about_body      String?
-  contact_email   String?   @db.VarChar(160)
-  contact_phone   String?   @db.VarChar(40)
-  instagram       String?   @db.VarChar(200)
-  facebook        String?   @db.VarChar(200)
-  sections        Json      @default("[]")
-  slug            String?   @unique @db.VarChar(60)
-  custom_domain      String?   @unique @db.VarChar(255)
+  id                 Int       @id @default(autoincrement())
+  vendor_id          Int       @unique
+  theme              String    @default("aperture") @db.VarChar(30)
+  accent             String    @default("#b8922a") @db.VarChar(9)
+  heading_font       String    @default("Playfair Display") @db.VarChar(60)
+  body_font          String    @default("Inter") @db.VarChar(60)
+  site_title         String?   @db.VarChar(120)
+  tagline            String?   @db.VarChar(200)
+  about_heading      String?   @db.VarChar(120)
+  about_body         String?
+  contact_email      String?   @db.VarChar(160)
+  contact_phone      String?   @db.VarChar(40)
+  instagram          String?   @db.VarChar(200)
+  facebook           String?   @db.VarChar(200)
+  sections           Json      @default("[]")
+  slug               String?   @unique @db.VarChar(60)
+  published          Boolean   @default(false)
+  published_at       DateTime? @db.Timestamp(6)
+  created_at         DateTime  @default(now()) @db.Timestamp(6)
+  updated_at         DateTime  @default(now()) @db.Timestamp(6)
+  cover_photo        String?   @db.VarChar(300)
+  cover_focus        String    @default("50% 50%") @db.VarChar(20)
+  portfolio          Json      @default("[]")
+  clients            Json      @default("[]")
+  testimonials       Json      @default("[]")
+  clients_heading    String?   @db.VarChar(160)
+  custom_domain      String?   @unique(where: raw("(custom_domain IS NOT NULL)")) @db.VarChar(255)
   domain_verified_at DateTime? @db.Timestamptz(6)
   domain_status      String    @default("none") @db.VarChar(20)
-  published       Boolean   @default(false)
-  published_at    DateTime? @db.Timestamp(6)
-  created_at      DateTime  @default(now()) @db.Timestamp(6)
-  updated_at      DateTime  @default(now()) @db.Timestamp(6)
-  cover_photo     String?   @db.VarChar(300)
-  cover_focus     String    @default("50% 50%") @db.VarChar(20)
-  portfolio       Json      @default("[]")
-  clients         Json      @default("[]")
-  testimonials    Json      @default("[]")
-  clients_heading String?   @db.VarChar(160)
-  gallery_heading String?   @db.VarChar(160)
-  gallery_body    String?
-  vendors         vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  gallery_heading    String?   @db.VarChar(160)
+  gallery_body       String?
+  vendors            vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([slug], map: "idx_vendor_sites_slug", where: raw("(slug IS NOT NULL)"))
 }
@@ -931,4 +929,15 @@ model file_folders {
 
   @@index([parent_id], map: "idx_file_folders_parent")
   @@index([vendor_id], map: "idx_file_folders_vendor")
+}
+
+model revoked_tokens {
+  jti        String   @id @db.VarChar(64)
+  user_id    Int
+  expires_at DateTime @db.Timestamp(6)
+  revoked_at DateTime @default(now()) @db.Timestamp(6)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at], map: "idx_revoked_expires")
+  @@index([user_id], map: "idx_revoked_user")
 }

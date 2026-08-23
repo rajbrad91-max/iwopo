@@ -6,6 +6,8 @@ import prisma from '../config/prisma.js';
 import { uniqueVendorSlug } from '../lib/vendorSlug.js';
 import { signToken } from '../middleware/auth.js';
 import { sendPlatformEmail } from './email.js';
+import { revokeToken, revokeAllForUser } from '../lib/tokenRevocation.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 const TRIAL_LIMIT = 2; // max trials per IP
@@ -192,5 +194,32 @@ router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), 
 // Password changes live at PUT /api/me/password. This file used to carry a
 // second, identical implementation at POST /auth/change-password — nothing
 // called it, and two ways to change a password means two things to keep right.
+
+/**
+ * 🎟️ POST /api/auth/logout — cancel THIS token.
+ *
+ * There was no server-side logout at all: the panel cleared its own storage and
+ * the token stayed perfectly valid for the rest of its seven days. Anyone
+ * holding a copy could carry on.
+ *
+ * Only this token is cancelled, deliberately — signing out on a phone should
+ * not sign out the desktop. Cancelling everything is what a password change
+ * does.
+ */
+router.post('/logout', requireAuth, async (req, res) => {
+  await revokeToken(req.user);
+  res.json({ ok: true });
+});
+
+/**
+ * 🚨 POST /api/auth/logout-everywhere — cancel every token this user holds.
+ *
+ * For the case that actually matters: a lost laptop, or "I think someone got
+ * into my account". Precision is the wrong instinct there.
+ */
+router.post('/logout-everywhere', requireAuth, async (req, res) => {
+  await revokeAllForUser(req.user.id);
+  res.json({ ok: true });
+});
 
 export default router;
