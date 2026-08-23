@@ -12,6 +12,7 @@ import * as objects from '../lib/objectStore.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { sendAsVendor } from './email.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
+import { hashSharePassword } from '../lib/sharePassword.js';
 
 const router = express.Router();
 
@@ -146,7 +147,9 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (title !== undefined) data.title = String(title).trim().slice(0, 200);
     if (note !== undefined) data.note = note ? String(note).slice(0, 2000) : null;
     // an empty string clears the gate; undefined leaves it alone
-    if (password !== undefined) data.password = password ? String(password).slice(0, 120) : null;
+    if (password !== undefined) {
+      data.password = password ? await hashSharePassword(String(password).slice(0, 120)) : null;
+    }
     if (allow_upload !== undefined) data.allow_upload = !!allow_upload;
     if (expires_at !== undefined) data.expires_at = expires_at ? new Date(expires_at) : null;
 
@@ -703,7 +706,12 @@ router.post('/folder/:folderId/share', requireAuth, async (req, res) => {
 
     const patch = {};
     if (req.body?.password !== undefined) {
-      patch.password = String(req.body.password || '').trim() || null;
+      /* Hashed, like every other shared password. This route was missed on the
+         first pass and stored the value as typed — the unlock then refused it,
+         because checkSharePassword will not compare a non-hash as text. That
+         refusal is the safety net working; this is the hole it was covering. */
+      const raw = String(req.body.password || '').trim();
+      patch.password = raw ? await hashSharePassword(raw) : null;
     }
     if (req.body?.expires_at !== undefined) {
       patch.expires_at = req.body.expires_at ? new Date(req.body.expires_at) : null;

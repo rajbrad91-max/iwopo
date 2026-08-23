@@ -21,6 +21,7 @@ import { getSetting } from '../lib/settings.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { naturalSort, byFilename } from '../lib/naturalSort.js';
 import bcrypt from 'bcryptjs';
+import { hashSharePassword } from '../lib/sharePassword.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -97,7 +98,7 @@ router.get('/', requireAuth, async (req, res) => {
         selected_count: pickedBy.get(a.id) || 0,
       };
     });
-    res.json({ albums: rows });
+    res.json({ albums: rows.map(publicAlbum) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -119,8 +120,10 @@ router.post('/', requireAuth, async (req, res) => {
       data: {
         vendor_id: v, title,
         category: category || null,
-        guest_username: guest_username || null, guest_password: guest_password || null,
-        admin_username: admin_username || null, admin_password: admin_password || null,
+        guest_username: guest_username || null,
+        guest_password: await hashSharePassword(guest_password),
+        admin_username: admin_username || null,
+        admin_password: await hashSharePassword(admin_password),
         client_email: client_email || null,
         exp_enabled: !!exp_enabled,
         exp_from_date: exp_from_date ? new Date(exp_from_date) : null,
@@ -232,8 +235,8 @@ router.put('/:id', requireAuth, async (req, res) => {
     // 🔒 tenancy: scope the update itself by vendor, so it can't touch another vendor's album
     const data = {
       category: category || null,
-      guest_username: guest_username || null, guest_password: guest_password || null,
-      admin_username: admin_username || null, admin_password: admin_password || null,
+      guest_username: guest_username || null,
+      admin_username: admin_username || null,
       client_email: client_email || null,
       exp_enabled: !!exp_enabled,
       exp_from_date: exp_from_date ? new Date(exp_from_date) : null,
@@ -242,10 +245,17 @@ router.put('/:id', requireAuth, async (req, res) => {
       face_ai: !!face_ai,
     };
     if (title) data.title = title;              // COALESCE($1,title): keep existing when blank
+
+    /* A blank password field means "leave it as it is", not "remove it".
+       The panel cannot show the current password any more — it is a hash — so it
+       sends an empty field unless the vendor deliberately types a new one, and
+       treating that as a removal would silently unlock the gallery. */
+    if (guest_password) data.guest_password = await hashSharePassword(guest_password);
+    if (admin_password) data.admin_password = await hashSharePassword(admin_password);
     const { count } = await prisma.albums.updateMany({ where: { id, vendor_id: v }, data });
     if (!count) return res.status(404).json({ error: 'Not found' });
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
-    res.json({ album });
+    res.json({ album: publicAlbum(album) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -268,10 +278,16 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
         where: { vendor_id: v },                // 🔒 tenancy
         select: { instructions_template: true },
       });
+      /* The stored passwords are hashes now, so they cannot be put in an email
+         — dropping them in would send a client a line of bcrypt. The panel
+         fills the template while the vendor still has the typed value in front
+         of them and sends the finished body; this fallback runs only when no
+         body arrived, and leaves the placeholder visible so whoever sends it
+         can see what is missing rather than a blank line. */
       body = (st?.instructions_template || DEFAULT_INSTRUCTIONS)
         .replaceAll('{client_name}', a.title || 'Client')
-        .replaceAll('{admin_password}', a.admin_password || '')
-        .replaceAll('{guest_password}', a.guest_password || '');
+        .replaceAll('{admin_password}', '(type the password here)')
+        .replaceAll('{guest_password}', '(type the password here)');
     }
 
     // remember the entered email on the album for next time
@@ -330,7 +346,7 @@ router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) 
       data: { cover_photo: `${base}.webp`, cover_focus: /^\d{1,3}%\s\d{1,3}%$/.test(focus) ? focus : '50% 50%' },
     });
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
-    res.json({ album });
+    res.json({ album: publicAlbum(album) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -423,7 +439,7 @@ router.put('/:id/cover-focus', requireAuth, async (req, res) => {
       }
     } catch (e) { console.error('[cover] re-crop failed:', e.message); }
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
-    res.json({ album });
+    res.json({ album: publicAlbum(album) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -463,7 +479,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       select: { id: true, name: true, sort_order: true },
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     });
-    res.json({ album, photos, events: orderEvents(events) });
+    res.json({ album: publicAlbum(album), photos, events: orderEvents(events) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1030,6 +1046,24 @@ router.post('/:id/uploads-done', requireAuth, async (req, res) => {
  *      is plenty to find.
  */
 const MIN_GALLERY_PW = 4;
+
+/**
+ * An album as the panel should see it: everything except the password hashes.
+ *
+ * A hash is no use to the browser — it cannot be shown to the vendor and cannot
+ * be typed back — so sending it is pure exposure. The panel tells whether a
+ * password EXISTS from has_guest_password / has_admin_password, which is all it
+ * needs to label the field.
+ */
+function publicAlbum(a) {
+  if (!a) return a;
+  const { guest_password, admin_password, ...rest } = a;
+  return {
+    ...rest,
+    has_guest_password: !!guest_password,
+    has_admin_password: !!admin_password,
+  };
+}
 
 async function checkGalleryPasswords(vendorId, values) {
   const given = values.filter(v => v != null && v !== '');

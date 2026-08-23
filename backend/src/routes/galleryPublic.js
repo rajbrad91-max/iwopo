@@ -17,6 +17,7 @@ import { getSetting } from '../lib/settings.js';
 import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
 import { withLocalFile, galleryKeyFromRel } from '../lib/localFile.js';
 import { naturalSort } from '../lib/naturalSort.js';
+import { checkSharePassword } from '../lib/sharePassword.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -293,8 +294,11 @@ router.post('/:token/auth',
     if (!pw) return res.status(400).json({ error: 'Password required' });
 
     let role = null;
-    if (a.admin_password && pw === a.admin_password) role = 'admin';
-    else if (a.guest_password && pw === a.guest_password) role = 'guest';
+    /* Hashed, so each branch is a bcrypt check rather than a comparison. Admin
+       first: the two passwords could in principle be the same, and the more
+       capable role should win. */
+    if (await checkSharePassword(pw, a.admin_password)) role = 'admin';
+    else if (await checkSharePassword(pw, a.guest_password)) role = 'guest';
     if (!role) return res.status(401).json({ error: 'Wrong password' });
 
     const photos = await photosInAlbum(a.id);     // natural filename order

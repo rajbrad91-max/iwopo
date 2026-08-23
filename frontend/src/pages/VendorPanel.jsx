@@ -673,6 +673,10 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
   const [showSettings, setShowSettings] = useState(false);
   const [tpl, setTpl] = useState('');
   const [showPw, setShowPw] = useState({ guest: false, admin: false });
+  /* What the vendor typed, by album id, for this browser session only. Never
+     stored, never sent back from the server — it exists so the share email can
+     be filled in the sitting where the password was set. */
+  const [pwMemory, setPwMemory] = useState({});
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [galleryToken, setGalleryToken] = useState('');
   const [copiedGallery, setCopiedGallery] = useState(false);
@@ -807,6 +811,14 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
       let album;
       if (edit) { const d = await api.updateAlbum(edit.id, f); album = d.album; }
       else { const d = await api.createAlbum(f); album = d.album; }
+      /* Keep what was typed for this session, so the share email can be filled
+         in the same sitting. The server hashes it and never sends it back. */
+      if (album && (f.guest_password || f.admin_password)) {
+        setPwMemory(m => ({ ...m, [album.id]: {
+          guest: f.guest_password || m[album.id]?.guest,
+          admin: f.admin_password || m[album.id]?.admin,
+        } }));
+      }
       if (coverFile && album) { try { await api.uploadAlbumCover(album.id, coverFile, coverFocus); } catch {} }
       // save focal point whenever there's a cover (new or existing)
       if (album && (coverFile || edit?.cover_photo)) { try { await api.saveCoverFocus(album.id, coverFocus); } catch {} }
@@ -815,20 +827,29 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
   }
   function startEdit(a) {
     setEdit(a);
+    /* Blank, because the stored value is a hash and there is nothing to show.
+       An empty field on save means "leave the password as it is". */
     setF({
       title: a.title || '', category: a.category || '', client_email: a.client_email || '',
-      guest_password: a.guest_password || '', admin_password: a.admin_password || '',
+      guest_password: '', admin_password: '',
     });
     setCoverFile(null); setCoverFocus(a.cover_focus || '50% 50%'); setFocusView('desktop'); setShowNew(true); setMsg('');
   }
 
   // 📧 fill instructions template with this album's values
+  /* Passwords are hashed on the server and never come back, so the only place
+     the real one exists is here — the value the vendor typed while setting it,
+     kept for this browser session. Set a password and send the email in the
+     same sitting and it fills itself; come back tomorrow and the placeholder
+     stays visible, because a blank line in a client's email is worse than an
+     obvious gap. */
   function fillTpl(a, raw) {
     const base = raw || tpl || DEFAULT_GALLERY_TPL;
+    const typed = pwMemory[a.id] || {};
     return base
       .replaceAll('{client_name}', a.title || 'Client')
-      .replaceAll('{guest_password}', a.guest_password || '')
-      .replaceAll('{admin_password}', a.admin_password || '');
+      .replaceAll('{guest_password}', typed.guest || '(type the password here)')
+      .replaceAll('{admin_password}', typed.admin || '(type the password here)');
   }
   function openSend(a) {
     setSendMsg('');
@@ -900,6 +921,14 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
                 A prefix is added in front of the last 4 characters of the password —
                 e.g. prefix <code>susan</code> + <code>4821</code> = <code>susan4821</code>.
               </div>
+              {/* Said plainly, because it changes what a vendor can rely on: once
+                  saved, a password cannot be looked up again by anyone. */}
+              {edit && (
+                <div className="gal-sec-note gal-pw-hint">
+                  🔒 Passwords are stored encrypted and can't be shown again.
+                  Leave these blank to keep the current ones, or type a new one to replace it.
+                </div>
+              )}
               <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
                 <div className="gal-pw-wrap">
                   <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />

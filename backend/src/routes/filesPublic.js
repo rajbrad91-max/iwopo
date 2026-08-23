@@ -8,6 +8,7 @@ import prisma from '../config/prisma.js';
 import archiver from 'archiver';
 import { thumbPathFor } from './files.js';
 import { storageFor, vendorDir, fileStream } from './files.js';
+import { checkSharePassword } from '../lib/sharePassword.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -258,7 +259,7 @@ router.post('/:token/unlock', limit({ name: 'share-unlock', max: 12, windowMs: 1
     const { share, expired } = found;
     if (expired) return res.status(410).json({ error: 'expired' });
     if (!share.password) return res.json({ ok: true });     // nothing to unlock
-    if (String(req.body?.password || '') !== share.password) {
+    if (!await checkSharePassword(req.body?.password, share.password)) {
       return res.status(403).json({ error: "That password doesn't match" });
     }
     res.cookie('ff_' + share.id, '1', { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
