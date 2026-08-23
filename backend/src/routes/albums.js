@@ -20,6 +20,7 @@ import { enqueueAlbum, indexAlbumNow, uploadsFinished } from '../lib/faceQueue.j
 import { getSetting } from '../lib/settings.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { naturalSort, byFilename } from '../lib/naturalSort.js';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -107,6 +108,8 @@ router.post('/', requireAuth, async (req, res) => {
   const { title, category, guest_username, guest_password, admin_username, admin_password,
     client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai } = req.body;
   if (!title) return res.status(400).json({ error: 'Title required' });
+  const pwErr = await checkGalleryPasswords(vid(req), [guest_password, admin_password]);
+  if (pwErr) return res.status(400).json({ error: pwErr });
   try {
     // 16 bytes, matching the rest of the app. Six was 48 bits — short enough
     // that guessing gallery links was worth someone's time, and a gallery is
@@ -224,6 +227,8 @@ router.put('/:id', requireAuth, async (req, res) => {
   const { title, category, guest_username, guest_password, admin_username, admin_password,
     client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai } = req.body;
   try {
+    const pwErr = await checkGalleryPasswords(v, [guest_password, admin_password]);
+    if (pwErr) return res.status(400).json({ error: pwErr });
     // 🔒 tenancy: scope the update itself by vendor, so it can't touch another vendor's album
     const data = {
       category: category || null,
@@ -1005,6 +1010,53 @@ router.post('/:id/uploads-done', requireAuth, async (req, res) => {
     res.json(await uploadsFinished(id));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+/**
+ * 🔑 Gallery passwords are deliberately readable.
+ *
+ * They are not account credentials — a vendor emails one to a couple, and being
+ * able to answer "what was our password again?" without resetting it for
+ * everyone else is worth more here than storing a hash nobody can read back.
+ * Guessing is already throttled at twelve attempts per fifteen minutes.
+ *
+ * What that choice DOES require is that they never overlap with something that
+ * matters. Two rules:
+ *
+ *   1. A gallery password may not be the vendor's own account password. It is
+ *      shared by design and stored readable, so reuse would hand out account
+ *      access with a wedding link.
+ *   2. Four characters minimum. There was no floor at all, and albums exist
+ *      today whose password is the single character "1" — which twelve attempts
+ *      is plenty to find.
+ */
+const MIN_GALLERY_PW = 4;
+
+async function checkGalleryPasswords(vendorId, values) {
+  const given = values.filter(v => v != null && v !== '');
+  if (!given.length) return null;
+
+  for (const v of given) {
+    if (String(v).trim().length < MIN_GALLERY_PW) {
+      return `Gallery passwords need at least ${MIN_GALLERY_PW} characters`;
+    }
+  }
+
+  /* Compared against the hash rather than a stored copy — the account password
+     is not readable, and should not become readable to make this check easier. */
+  const users = await prisma.users.findMany({
+    where: { vendor_id: Number(vendorId) },       // 🔒 this vendor's logins only
+    select: { password_hash: true },
+  });
+  for (const u of users) {
+    if (!u.password_hash) continue;
+    for (const v of given) {
+      if (await bcrypt.compare(String(v), u.password_hash)) {
+        return 'A gallery password cannot be your own account password — it is shared with clients';
+      }
+    }
+  }
+  return null;
+}
 
 // 🔒 delete a photo (tenant-checked)
 router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
