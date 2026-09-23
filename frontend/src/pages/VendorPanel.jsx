@@ -10,6 +10,7 @@ import { PROFESSIONS, LeadFormBody } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
+import PlansView from './PlansView.jsx';
 import './vendor.css';
 
 // 🗝️ tab → required feature (one map controls everything)
@@ -233,7 +234,9 @@ export default function VendorPanel({ onLogout }) {
         <div className="nav-group">ACCOUNT</div>
         <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => go('refer')}><span className="nav-ic">👥</span><span className="nav-txt">Refer a Friend</span></div>
         <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => go('settings')}><span className="nav-ic">⚙️</span><span className="nav-txt">Settings</span></div>
-        <StorageBar onUpgrade={() => go('packages')} />
+        {/* ⚠️ This went to 'packages', which is the vendor's own client-facing
+            price list — nothing to do with their subscription. */}
+        <StorageBar onUpgrade={() => go('plans')} />
         <div className="logout" onClick={handleLogout}><span className="nav-ic">↪️</span><span className="nav-txt">Log out</span></div>
       </aside>
 
@@ -242,7 +245,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -265,6 +268,8 @@ export default function VendorPanel({ onLogout }) {
           <ContractsTab />
         ) : tab === 'crew' ? (
           <CrewView />
+        ) : tab === 'plans' ? (
+          <PlansView />
         ) : tab === 'fileflyer' ? (
           <FileFlyerView />
         ) : tab === 'galleries' ? (
@@ -294,7 +299,11 @@ export default function VendorPanel({ onLogout }) {
                   <tr key={s.id}>
                     <td className="biz">{s.icon} {s.name}</td>
                     <td>${s.price}/mo</td>
-                    <td><span className={`badge ${s.enabled?'active':'trial'}`}>{s.enabled ? 'Active' : 'Off'}</span></td>
+                    {/* "Off" told a vendor a feature was unavailable and left
+                        them there. It now says what to do about it. */}
+                    <td>{s.enabled
+                      ? <span className="badge active">Active</span>
+                      : <button className="svc-upgrade" onClick={() => go('plans')}>Upgrade</button>}</td>
                   </tr>
                 ))}
               </tbody>

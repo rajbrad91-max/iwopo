@@ -751,6 +751,8 @@ export const api = {
   confirmPaymentClaim: (leadId, data) => request(`/payments/lead/${leadId}/confirm-claim`,
     { method: 'PUT', body: JSON.stringify(data) }),
   myServices: () => request('/vendors/me/services'),
+  // 💳 the upgrade page — current plan, what else exists, what each grants
+  myPlans: () => request('/me/plans'),
   myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

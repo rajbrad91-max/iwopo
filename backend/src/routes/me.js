@@ -54,6 +54,73 @@ router.get('/storage', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * 💳 GET /api/me/plans → everything the upgrade page needs, in one call.
+ *
+ * What the vendor is on, what else exists, and what each one would give them.
+ * Storage comes from the PLAN because that is what the quota enforces; price
+ * and presentation come from the matching package, which is the catalogue.
+ * The two are kept in step whenever a super admin changes either.
+ */
+router.get('/plans', requireAuth, async (req, res) => {
+  const v = Number(req.user.vendor_id);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  try {
+    const [st, plans, packages] = await Promise.all([
+      storageFor(v),
+      prisma.plans.findMany({
+        select: {
+          id: true, code: true, name: true, price_monthly: true, storage_gb: true,
+          plan_features: { select: { feature_key: true } },
+        },
+        orderBy: { id: 'asc' },
+      }),
+      prisma.packages.findMany({
+        select: { key: true, tagline: true, icon: true, price_monthly: true, price_annual: true, sort_order: true },
+      }),
+    ]);
+
+    const byKey = Object.fromEntries(packages.map(p => [p.key, p]));
+    const currentGb = Math.round(st.limit_mb / 1024);
+
+    const rows = plans.map(p => {
+      const pkg = byKey[p.code] || {};
+      return {
+        id: p.id, code: p.code, name: p.name,
+        tagline: pkg.tagline || null,
+        icon: pkg.icon || null,
+        price_monthly: Number(pkg.price_monthly ?? p.price_monthly ?? 0),
+        price_annual: pkg.price_annual != null ? Number(pkg.price_annual) : null,
+        storage_gb: p.storage_gb,
+        features: p.plan_features.map(f => f.feature_key),
+        /* The plan they are actually on, which is the subscription — not
+           whatever their storage happens to equal, since an override can make
+           those match by coincidence. */
+        current: st.limit_source === 'plan' && st.plan_name === p.name,
+        /* An upgrade is more storage than they have now. A cheaper plan with
+           more of it would still be the right suggestion, so this is measured
+           in gigabytes rather than pounds. */
+        upgrade: (p.storage_gb || 0) > currentGb,
+        sort_order: pkg.sort_order ?? p.id,
+      };
+    }).sort((a, b) => (a.storage_gb || 0) - (b.storage_gb || 0));
+
+    res.json({
+      plans: rows,
+      current: {
+        on_plan: st.limit_source === 'plan',
+        name: st.limit_source === 'plan' ? st.plan_name : 'Free trial',
+        limit_gb: currentGb,
+        used_bytes: st.used_bytes,
+        percent: st.percent,
+        /* Said plainly, because a vendor on an override who is told to upgrade
+           for more space would be confused when the number did not move. */
+        overridden: st.limit_source === 'override',
+      },
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/currencies', requireAuth, (req, res) => {
   res.json({ currencies: CURRENCIES });
 });

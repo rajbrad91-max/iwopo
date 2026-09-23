@@ -1,0 +1,48 @@
+/* 💳 Plans — what a vendor is on, and what else they could be on.
+   Uses the panel's real tokens: --teal, --panel, --line, --text, --muted. */
+.pl { max-width: 980px; }
+
+.pl-now { padding: 18px 20px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); margin-bottom: 22px; }
+.pl-now-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.pl-now-label { font-size: 12.5px; color: var(--muted); }
+.pl-now-name { font-size: 17px; font-weight: 700; color: var(--text); }
+.pl-now-bar { height: 5px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.pl-now-bar span { display: block; height: 100%; border-radius: 3px; background: var(--teal); }
+.pl-now-figs { margin-top: 8px; font-size: 12.5px; color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.pl-note { margin: 10px 0 0; font-size: 12.5px; color: var(--amber); }
+
+.pl-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.pl-card { position: relative; padding: 22px 20px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; }
+.pl-card.is-current { border-color: var(--teal); }
+.pl-tag { position: absolute; top: -9px; left: 18px; padding: 2px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; background: var(--teal); color: #fff; }
+.pl-card h3 { margin: 0 0 4px; font-size: 16px; color: var(--text); }
+.pl-tagline { margin: 0 0 14px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+.pl-price { margin-bottom: 4px; color: var(--text); }
+.pl-price b { font-size: 26px; font-weight: 700; }
+.pl-price span { font-size: 12.5px; color: var(--muted); margin-left: 3px; }
+.pl-storage { font-size: 13px; color: var(--teal); font-weight: 600; margin-bottom: 14px; }
+
+.pl-feats { list-style: none; margin: 0 0 18px; padding: 0; display: flex;
+  flex-direction: column; gap: 6px; }
+.pl-feats li { font-size: 12.5px; color: var(--text); }
+.pl-feats-none { margin: 0 0 18px; }
+
+.pl-b { margin-top: auto; display: block; width: 100%; padding: 9px 12px; border-radius: 8px;
+  text-align: center; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+.pl-b:disabled { cursor: default; }
+.pl-b.is-primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+.pl-b.is-primary:hover { background: var(--teal-2); border-color: var(--teal-2); }
+
+.pl-quiet { color: var(--muted); font-size: 13px; }
+.pl-foot { margin-top: 20px; font-size: 12.5px; color: var(--muted); }
+
+/* the Upgrade button that replaced an "Off" badge in My Services */
+.svc-upgrade { padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 12px;
+  font-weight: 600; border: 1px solid var(--teal); background: var(--teal-soft); color: var(--teal); }
+.svc-upgrade:hover { background: var(--teal); color: #fff; }
