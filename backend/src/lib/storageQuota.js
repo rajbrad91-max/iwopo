@@ -16,6 +16,7 @@
  * practical gain. If site media ever stops being small, that changes.
  */
 import prisma from '../config/prisma.js';
+import { ledgerBytesFor } from './storageLedger.js';
 
 /* A vendor on the free trial has no package — signup writes plan 'starter',
    which is not a package key. The trial's allowance therefore lives here rather
@@ -64,7 +65,7 @@ async function limitMbFor(vendorId) {
 
 export async function storageFor(vendorId) {
   const v = Number(vendorId);
-  const [files, photos, limit] = await Promise.all([
+  const [files, photos, ledger, limit] = await Promise.all([
     prisma.file_share_items.aggregate({
       where: { vendor_id: v },                          // 🔒 tenancy
       _sum: { size_bytes: true },
@@ -73,12 +74,22 @@ export async function storageFor(vendorId) {
       where: { vendor_id: v },                          // 🔒 tenancy
       _sum: { size_bytes: true },
     }),
+    ledgerBytesFor(v),
     limitMbFor(v),
   ]);
 
   const fileBytes = Number(files._sum.size_bytes || 0);
   const photoBytes = Number(photos._sum.size_bytes || 0);
-  const usedBytes = fileBytes + photoBytes;
+
+  /* 📒 Everything actually in the buckets, including what no row describes:
+     album covers are three objects apiece belonging to no row at all, and
+     website images and logos were never counted either.
+
+     The ledger is the truth and the row sums are the fallback, not the other
+     way round — if the ledger has not been built yet, or a reconcile is mid
+     flight, falling back to the old figure under-reports rather than letting a
+     vendor upload without limit. */
+  const usedBytes = ledger > 0 ? ledger : fileBytes + photoBytes;
   const limitMb = limit.limitMb;
   const limitBytes = limitMb * 1024 * 1024;
 

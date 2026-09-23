@@ -26,6 +26,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand,
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getSetting } from './settings.js';
 import path from 'node:path';
+import { recordObject, forgetObject } from './storageLedger.js';
 
 /** Which of the two classes an object belongs to. */
 export const PRIVATE = 'private';
@@ -138,6 +139,18 @@ export async function putObject(cls, key, body, contentType) {
     Bucket: bucket, Key: key, Body: body,
     ...(contentType ? { ContentType: contentType } : {}),
   }));
+
+  /* 📒 Note what this now costs the vendor.
+     Done HERE rather than in each of the eight upload routes, because three of
+     them had already been forgotten — covers, website images and logos were
+     stored and never charged for. Written after the object is safely across,
+     and the ledger swallows its own errors: a photograph must not fail because
+     an accounting row would not insert. */
+  try {
+    const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    await recordObject(cls, key, Number(head?.ContentLength || 0));
+  } catch { /* reconcile() rebuilds the ledger from the bucket */ }
+
   return key;
 }
 
@@ -184,9 +197,10 @@ export async function deleteObject(cls, key) {
   const { client, bucket } = await clientFor(cls);
   try {
     await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    await forgetObject(cls, key);              // 📒 and it stops costing anything
     return true;
   } catch (e) {
-    if (e?.$metadata?.httpStatusCode === 404) return false;
+    if (e?.$metadata?.httpStatusCode === 404) { await forgetObject(cls, key); return false; }
     throw e;
   }
 }
@@ -273,6 +287,8 @@ export async function listParts(cls, key, uploadId) {
  * client that reported fewer parts than it sent would produce a truncated one.
  */
 export async function completeMultipart(cls, key, uploadId) {
+  /* 📒 recorded at the end of this function, once the parts are stitched and
+     the real size is known — see the recordObject call below. */
   const { client, bucket } = await clientFor(cls);
   const parts = (await listParts(cls, key, uploadId))
     .sort((a, b) => a.PartNumber - b.PartNumber)
@@ -282,6 +298,15 @@ export async function completeMultipart(cls, key, uploadId) {
     Bucket: bucket, Key: key, UploadId: uploadId,
     MultipartUpload: { Parts: parts },
   }));
+
+  /* 📒 A stitched upload is a new object, and often the largest one a vendor
+     owns — a film can be tens of gigabytes. Asked of R2 rather than summed from
+     the parts, so the figure is what is really stored. */
+  try {
+    const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    await recordObject(cls, key, Number(head?.ContentLength || 0));
+  } catch { /* reconcile() rebuilds from the bucket */ }
+
   return { key, parts: parts.length };
 }
 

@@ -997,3 +997,15 @@ model share_recipients {
   @@unique([share_id, contact_id], map: "idx_share_recipient")
   @@index([contact_id], map: "idx_recipient_contact")
 }
+
+model storage_objects {
+  id         BigInt   @id @default(autoincrement())
+  vendor_id  Int
+  cls        String   @db.VarChar(16)
+  object_key String
+  bytes      BigInt
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([cls, object_key], map: "idx_storage_key")
+  @@index([vendor_id], map: "idx_storage_vendor")
+}

@@ -35,6 +35,8 @@ import { gate } from './lib/entitlements.js';
 import { sweepRevoked } from './lib/tokenRevocation.js';
 import { sweepAbandonedUploads } from './lib/uploadSweep.js';
 import contactRoutes from './routes/contacts.js';
+import { reconcile } from './lib/storageLedger.js';
+import * as objects from './lib/objectStore.js';
 
 dotenv.config();
 
@@ -173,6 +175,12 @@ sweepRevoked().catch(() => {});
    a row nobody will ever finish, and parts still costing storage. */
 setInterval(() => { sweepAbandonedUploads().catch(() => {}); }, 60 * 60_000).unref();
 sweepAbandonedUploads().catch(() => {});
+
+/* 📒 Rebuild the storage ledger from the buckets, nightly.
+   The ledger is written best-effort inside putObject — it must never break an
+   upload — so it can drift: a failed insert, an object removed outside the app.
+   This is the cure, and it is cheap enough at this size to simply redo. */
+setInterval(() => { reconcile(objects).catch(() => {}); }, 24 * 60 * 60_000).unref();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
