@@ -1,3 +1,4 @@
+import { uploadInParts } from './bigUpload';
 // 🔌 API helper — talks to the backend
 const BASE = '/api';
 
@@ -375,12 +376,40 @@ export const api = {
     request(`/files/${id}/email`, { method: 'POST', body: JSON.stringify(body) }),
   updateFileShare: (id, body) => request(`/files/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteFileShare: (id) => request(`/files/${id}`, { method: 'DELETE' }),
-  uploadShareFiles: (files, folderId) => {
-    const fd = new FormData();
-    for (const f of files) fd.append('files', f);
-    // the folder currently open, so a drop lands where the vendor is looking
-    if (folderId) fd.append('folder_id', String(folderId));
-    return request('/files/upload', { method: 'POST', body: fd });
+  /**
+   * Send files, routing by size.
+   *
+   * Anything under the threshold goes the ordinary way — one request, which is
+   * quicker for a handful of documents than three round trips per file. Above
+   * it, the file goes straight to Cloudflare in parts, because the ordinary
+   * route dies somewhere past two gigabytes and a vendor delivering a wedding
+   * should not have to know which path they are on.
+   */
+  uploadShareFiles: async (files, folderId, onProgress) => {
+    const list = [...files];
+    const BIG = 512 * 1024 * 1024;              // comfortably under the 2GB ceiling
+    const small = list.filter(f => f.size < BIG);
+    const large = list.filter(f => f.size >= BIG);
+
+    let added = 0;
+    if (small.length) {
+      const fd = new FormData();
+      for (const f of small) fd.append('files', f);
+      // the folder currently open, so a drop lands where the vendor is looking
+      if (folderId) fd.append('folder_id', String(folderId));
+      const r = await request('/files/upload', { method: 'POST', body: fd });
+      added += r?.added || small.length;
+    }
+    for (const f of large) {
+      await uploadInParts(f, {
+        begin: (b) => api.bigBegin({ ...b, folder_id: folderId || null }),
+        sign: (b) => api.bigSign(b),
+        complete: (b) => api.bigComplete({ ...b, folder_id: folderId || null }),
+        abort: (b) => api.bigAbort(b),
+      }, (done, total) => onProgress?.(f.name, done, total));
+      added++;
+    }
+    return { added };
   },
   deleteShareItem: (itemId) => request(`/files/item/${itemId}`, { method: 'DELETE' }),
 
@@ -389,11 +418,39 @@ export const api = {
   // one level of a share: its folders, its files and the trail back up
   shareBrowse: (token, folderId) => request(`/f/${token}/browse${folderId ? '?folder=' + folderId : ''}`),
   unlockShare: (token, password) => request(`/f/${token}/unlock`, { method: 'POST', body: JSON.stringify({ password }) }),
-  clientUploadFiles: (token, files, uploaderName) => {
-    const fd = new FormData();
-    for (const f of files) fd.append('files', f);
-    if (uploaderName) fd.append('uploader_name', uploaderName);
-    return request(`/f/${token}/upload`, { method: 'POST', body: fd });
+  /**
+   * A client sending files back, routed by size like the vendor's own upload.
+   *
+   * Also carries the folder they are looking at, so something sent while inside
+   * Ceremony lands in Ceremony rather than at the top — which matters now that
+   * the share has folders to be inside.
+   */
+  clientUploadFiles: async (token, files, uploaderName, folderId, onProgress) => {
+    const list = [...files];
+    const BIG = 512 * 1024 * 1024;
+    const small = list.filter(f => f.size < BIG);
+    const large = list.filter(f => f.size >= BIG);
+
+    let added = 0;
+    if (small.length) {
+      const fd = new FormData();
+      for (const f of small) fd.append('files', f);
+      if (uploaderName) fd.append('uploader_name', uploaderName);
+      if (folderId) fd.append('folder_id', String(folderId));
+      const r = await request(`/f/${token}/upload`, { method: 'POST', body: fd });
+      added += r?.added || small.length;
+    }
+    for (const f of large) {
+      const extra = { folder_id: folderId || null, uploader_name: uploaderName || null };
+      await uploadInParts(f, {
+        begin: (b) => request(`/f/${token}/big/begin`, { method: 'POST', body: JSON.stringify({ ...b, ...extra }) }),
+        sign: (b) => request(`/f/${token}/big/sign`, { method: 'POST', body: JSON.stringify(b) }),
+        complete: (b) => request(`/f/${token}/big/complete`, { method: 'POST', body: JSON.stringify({ ...b, ...extra }) }),
+        abort: (b) => request(`/f/${token}/big/abort`, { method: 'POST', body: JSON.stringify(b) }),
+      }, (done, total) => onProgress?.(f.name, done, total));
+      added++;
+    }
+    return { added };
   },
 
   // 🌐 Website Builder
@@ -422,6 +479,12 @@ export const api = {
      these — only the paperwork does. */
   myStorage: () => request('/me/storage'),
   uploadsDone: (albumId) => request(`/albums/${albumId}/uploads-done`, { method: 'POST' }),
+  // 📦 File Flyer, files of any size — the vendor's own drive
+  bigBegin: (body) => request('/files/big/begin', { method: 'POST', body: JSON.stringify(body) }),
+  bigSign: (body) => request('/files/big/sign', { method: 'POST', body: JSON.stringify(body) }),
+  bigComplete: (body) => request('/files/big/complete', { method: 'POST', body: JSON.stringify(body) }),
+  bigAbort: (body) => request('/files/big/abort', { method: 'POST', body: JSON.stringify(body) }),
+
   videoBegin: (albumId, body) => request(`/albums/${albumId}/videos/begin`, { method: 'POST', body: JSON.stringify(body) }),
   videoSign: (albumId, body) => request(`/albums/${albumId}/videos/sign`, { method: 'POST', body: JSON.stringify(body) }),
   /* multipart, because the poster rides along — it is a few hundred kilobytes

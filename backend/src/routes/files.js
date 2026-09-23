@@ -688,6 +688,134 @@ router.post('/upload', requireAuth, upload.array('files', 30), async (req, res) 
   } catch (e) { cleanup(); res.status(500).json({ error: e.message }); }
 });
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   📦 Files of any size, straight from the browser to Cloudflare.
+
+   The ordinary upload route sends the file through this VPS: multer writes it
+   to /tmp, the route pushes it to R2, then deletes the temp. That works up to
+   about two gigabytes and then stops — nginx refuses a bigger body, multer
+   refuses a bigger file, and a request that takes an hour gets dropped by
+   something in between long before it finishes.
+
+   These four routes do what the gallery's film upload already does: the browser
+   talks to Cloudflare directly, in 64MB parts, and this server only hands out
+   signed URLs and records the result. Nothing large ever crosses the VPS, so a
+   200GB delivery costs no disk, no memory and no bandwidth here.
+
+   begin → sign (per part) → complete, with abort for a cancelled upload.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const PART_SIZE = 64 * 1024 * 1024;        // S3 refuses any part but the last under 5 MiB
+const MIN_PART_SIZE = 5 * 1024 * 1024;     // …and it refuses it at COMPLETION, not on upload
+
+/** Start a multipart upload and say where to put the parts. */
+router.post('/big/begin', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    if (!await objects.enabled(objects.PRIVATE)) {
+      return res.status(400).json({ error: 'Large uploads need R2 storage to be configured' });
+    }
+    const folderId = req.body?.folder_id ? Number(req.body.folder_id) : null;
+    if (folderId && !(await folderTrail(folderId, v))) {          // 🔒 must be this vendor's
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+
+    const size = Number(req.body?.size_bytes);
+    if (!Number.isFinite(size) || size <= 0) return res.status(400).json({ error: 'size_bytes required' });
+
+    /* 📏 Checked before a byte moves, and again on completion against what
+       actually landed — the browser reports this figure and a client
+       under-reporting it would otherwise walk straight past the plan. */
+    const st = await storageFor(v);
+    if (size > st.remaining_bytes) {
+      return res.status(413).json({ error: 'over_quota', message: 'That would go over your storage limit.', storage: st });
+    }
+
+    const stored = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}${path.extname(String(req.body?.filename || '')).slice(0, 12)}`;
+    const key = fileKey(v, stored);
+    const uploadId = await objects.beginMultipart(objects.PRIVATE, key, req.body?.content_type || undefined);
+
+    res.json({
+      upload_id: uploadId, key, stored_name: stored,
+      part_size: PART_SIZE, min_part_size: MIN_PART_SIZE,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** One presigned URL per part, so a resumed upload re-signs only what it needs. */
+router.post('/big/sign', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const { key, upload_id: uploadId } = req.body || {};
+    const part = Number(req.body?.part_number);
+    if (!key || !uploadId || !Number.isInteger(part) || part < 1) {
+      return res.status(400).json({ error: 'key, upload_id and part_number required' });
+    }
+    /* 🔒 The key comes back from the client on every call, so it is re-checked
+       against the prefix this vendor owns. Without this, a caller could sign a
+       part for somebody else's key and write into their drive. */
+    if (key !== fileKey(v, path.basename(key))) {
+      return res.status(403).json({ error: 'Not your key' });
+    }
+    res.json({ url: await objects.signPart(objects.PRIVATE, key, uploadId, part) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** Stitch the parts and record the file. */
+router.post('/big/complete', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const { key, upload_id: uploadId } = req.body || {};
+    if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
+    if (key !== fileKey(v, path.basename(key))) {                 // 🔒 same check as signing
+      return res.status(403).json({ error: 'Not your key' });
+    }
+    const folderId = req.body?.folder_id ? Number(req.body.folder_id) : null;
+    if (folderId && !(await folderTrail(folderId, v))) {
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+
+    /* The part list is read back FROM R2 rather than trusted from the browser —
+       a client could otherwise claim parts it never uploaded. */
+    await objects.completeMultipart(objects.PRIVATE, key, uploadId);
+    const head = await objects.headObject(objects.PRIVATE, key);
+    const realSize = Number(head?.size || 0);
+
+    /* 📏 The real size, now that it is known. A file that overran the plan is
+       deleted rather than kept — it is already paid for in storage, and
+       accepting it would make the limit advisory. */
+    const st = await storageFor(v);
+    if (realSize > st.remaining_bytes) {
+      try { await objects.deleteObject(objects.PRIVATE, key); } catch { /* best effort */ }
+      return res.status(413).json({ error: 'over_quota', message: 'That file goes over your storage limit.', storage: st });
+    }
+
+    const row = await prisma.file_share_items.create({
+      data: {
+        vendor_id: v, folder_id: folderId,
+        filename: String(req.body?.filename || 'file').slice(0, 300),
+        stored_name: path.basename(key),
+        size_bytes: BigInt(realSize),
+        mime: req.body?.content_type ? String(req.body.content_type).slice(0, 150) : null,
+        uploaded_by: 'vendor',
+      },
+    });
+    res.status(201).json({ item: { ...row, size_bytes: Number(row.size_bytes) }, storage: await storageFor(v) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** Throw away a cancelled upload, so its parts stop costing storage. */
+router.post('/big/abort', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const { key, upload_id: uploadId } = req.body || {};
+    if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
+    if (key !== fileKey(v, path.basename(key))) return res.status(403).json({ error: 'Not your key' });
+    await objects.abortMultipart(objects.PRIVATE, key, uploadId);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /**
  * POST /api/files/folder/:folderId/share → the link for this folder.
  *

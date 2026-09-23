@@ -9,6 +9,7 @@ import archiver from 'archiver';
 import { thumbPathFor } from './files.js';
 import { storageFor, vendorDir, fileStream } from './files.js';
 import { checkSharePassword } from '../lib/sharePassword.js';
+import * as objects from '../lib/objectStore.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -320,6 +321,150 @@ router.get('/:token/download/:itemId', async (req, res) => {
  * the storage and chose to open this share for uploads, so a client filling it
  * is the vendor's problem to manage, and they can turn uploads off.
  */
+/* ═══════════════════════════════════════════════════════════════════════════
+   📦 A client sending back something enormous.
+
+   Same shape as the vendor's own large upload, with one difference that matters:
+   there is no login here. Every permission is read from the share token — the
+   vendor id is STAMPED from the share and never accepted from the request, the
+   link must still allow uploads, and a password-protected link must already
+   have been unlocked. A caller who guesses a key cannot use it, because the key
+   is rebuilt from the share's own vendor id and compared.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const BIG_PART_SIZE = 64 * 1024 * 1024;
+const BIG_MIN_PART_SIZE = 5 * 1024 * 1024;
+
+/** Everything these routes need, or a reason to refuse. */
+async function shareForUpload(req, res) {
+  const found = await shareByToken(req.params.token);
+  if (!found) { res.status(404).json({ error: 'This link is not valid' }); return null; }
+  const { share, expired } = found;
+  if (expired) { res.status(410).json({ error: 'expired' }); return null; }
+  if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+    res.status(403).json({ error: 'Locked' }); return null;
+  }
+  if (!share.allow_upload) {
+    res.status(403).json({ error: 'This link is download-only' }); return null;
+  }
+  return share;
+}
+
+router.post('/:token/big/begin', async (req, res) => {
+  try {
+    const share = await shareForUpload(req, res);
+    if (!share) return;
+    if (!await objects.enabled(objects.PRIVATE)) {
+      return res.status(400).json({ error: 'Large uploads are not available on this link' });
+    }
+
+    let folderId = req.body?.folder_id ? Number(req.body.folder_id) : null;
+    if (folderId) {
+      const f = await prisma.file_folders.findUnique({ where: { id: folderId } });
+      if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) {
+        return res.status(404).json({ error: 'Folder not found' });
+      }
+    }
+
+    const size = Number(req.body?.size_bytes);
+    if (!Number.isFinite(size) || size <= 0) return res.status(400).json({ error: 'size_bytes required' });
+
+    /* The vendor's plan pays for this, not the client's, so it is their
+       remaining space that decides — and the message says so without naming
+       figures a client has no business seeing. */
+    const st = await storageFor(share.vendor_id);
+    if (size > st.remaining_bytes) {
+      return res.status(413).json({ error: 'storage_full',
+        message: 'There is not enough space left on this link. Please let them know.' });
+    }
+
+    const stored = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}${path.extname(String(req.body?.filename || '')).slice(0, 12)}`;
+    const key = objects.keyFor(share.vendor_id, 'files', stored);   // 🔒 vendor from the SHARE
+    const uploadId = await objects.beginMultipart(objects.PRIVATE, key, req.body?.content_type || undefined);
+
+    res.json({ upload_id: uploadId, key, stored_name: stored,
+      part_size: BIG_PART_SIZE, min_part_size: BIG_MIN_PART_SIZE });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/:token/big/sign', async (req, res) => {
+  try {
+    const share = await shareForUpload(req, res);
+    if (!share) return;
+    const { key, upload_id: uploadId } = req.body || {};
+    const part = Number(req.body?.part_number);
+    if (!key || !uploadId || !Number.isInteger(part) || part < 1) {
+      return res.status(400).json({ error: 'key, upload_id and part_number required' });
+    }
+    /* 🔒 Rebuilt from the share's vendor id, so a key belonging to anyone else
+       cannot be signed however it was obtained. */
+    if (key !== objects.keyFor(share.vendor_id, 'files', path.basename(key))) {
+      return res.status(403).json({ error: 'Not your key' });
+    }
+    res.json({ url: await objects.signPart(objects.PRIVATE, key, uploadId, part) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/:token/big/complete', async (req, res) => {
+  try {
+    const share = await shareForUpload(req, res);
+    if (!share) return;
+    const { key, upload_id: uploadId } = req.body || {};
+    if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
+    if (key !== objects.keyFor(share.vendor_id, 'files', path.basename(key))) {
+      return res.status(403).json({ error: 'Not your key' });
+    }
+
+    let folderId = req.body?.folder_id ? Number(req.body.folder_id) : null;
+    if (folderId) {
+      const f = await prisma.file_folders.findUnique({ where: { id: folderId } });
+      if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) {
+        return res.status(404).json({ error: 'Folder not found' });
+      }
+    }
+
+    await objects.completeMultipart(objects.PRIVATE, key, uploadId);
+    const head = await objects.headObject(objects.PRIVATE, key);
+    const realSize = Number(head?.size || 0);
+
+    // measured, not claimed — see the vendor route for why
+    const st = await storageFor(share.vendor_id);
+    if (realSize > st.remaining_bytes) {
+      try { await objects.deleteObject(objects.PRIVATE, key); } catch { /* best effort */ }
+      return res.status(413).json({ error: 'storage_full',
+        message: 'There is not enough space left on this link. Please let them know.' });
+    }
+
+    const row = await prisma.file_share_items.create({
+      data: {
+        vendor_id: share.vendor_id,                    // 🔒 stamped from the share
+        folder_id: folderId,
+        filename: String(req.body?.filename || 'file').slice(0, 300),
+        stored_name: path.basename(key),
+        size_bytes: BigInt(realSize),
+        mime: req.body?.content_type ? String(req.body.content_type).slice(0, 150) : null,
+        uploaded_by: 'client',
+        uploader_name: String(req.body?.uploader_name || '').trim().slice(0, 120) || null,
+      },
+    });
+    res.status(201).json({ added: 1, id: row.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/:token/big/abort', async (req, res) => {
+  try {
+    const share = await shareForUpload(req, res);
+    if (!share) return;
+    const { key, upload_id: uploadId } = req.body || {};
+    if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
+    if (key !== objects.keyFor(share.vendor_id, 'files', path.basename(key))) {
+      return res.status(403).json({ error: 'Not your key' });
+    }
+    await objects.abortMultipart(objects.PRIVATE, key, uploadId);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
   const tmp = (req.files || []).map(f => f.path);
   const cleanup = () => tmp.forEach(p => { try { fs.unlinkSync(p); } catch { /* already gone */ } });
@@ -359,6 +504,18 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
       const ext = path.extname(f.originalname || '').slice(0, 12);
       const stored = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}${ext}`;
       fs.renameSync(f.path, path.join(dir, stored));
+
+      /* ☁️ And to R2. This route never did — a file a couple sent back was
+         written to the VPS disk and left there, while the vendor's own uploads
+         went to the bucket. Storage is R2-only now, so the disk copy is dropped
+         once the object is safely across, exactly as the vendor path does. */
+      if (await objects.enabled(objects.PRIVATE)) {
+        try {
+          await objects.putObject(objects.PRIVATE, objects.keyFor(share.vendor_id, 'files', stored),
+            fs.createReadStream(path.join(dir, stored)), f.mimetype || undefined);
+          try { fs.unlinkSync(path.join(dir, stored)); } catch { /* already gone */ }
+        } catch (e) { console.error('[files] R2 upload failed for', stored, e.message); }
+      }
       await prisma.file_share_items.create({
         data: {
           vendor_id: share.vendor_id,                     // 🔒 stamped from the share

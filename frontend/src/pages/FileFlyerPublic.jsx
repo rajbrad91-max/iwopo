@@ -24,6 +24,9 @@ export default function FileFlyerPublic({ token }) {
   const [pwErr, setPwErr] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  /* A large file goes up in parts, and without this the button says "Uploading…"
+     for an hour with no sign of life. */
+  const [prog, setProg] = useState('');
   const [msg, setMsg] = useState('');
   const fileRef = useRef(null);
   useDocumentTitle(data?.business_name);
@@ -61,7 +64,7 @@ export default function FileFlyerPublic({ token }) {
     setPwErr(''); setBusy(true);
     try { await api.unlockShare(token, pw); await load(); }
     catch (er) { setPwErr(er.message); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setProg(''); }
   }
 
   async function onPick(e) {
@@ -69,13 +72,14 @@ export default function FileFlyerPublic({ token }) {
     if (!files.length) return;
     setBusy(true); setMsg('');
     try {
-      await api.clientUploadFiles(token, files, name);
+      await api.clientUploadFiles(token, files, name, folderId, (fname, done, total) =>
+        setProg(`${fname} — ${done} of ${total} parts sent`));
       await load();
       await loadFolder(folderId);
       setMsg(`✅ Sent ${files.length} file${files.length === 1 ? '' : 's'} — thank you!`);
     } catch (er) { setMsg('⚠️ ' + er.message); }
     finally {
-      setBusy(false);
+      setBusy(false); setProg('');
       if (fileRef.current) fileRef.current.value = '';
       setTimeout(() => setMsg(''), 4000);
     }
@@ -195,7 +199,7 @@ export default function FileFlyerPublic({ token }) {
               value={name} onChange={e => setName(e.target.value)} />
             <input ref={fileRef} type="file" multiple onChange={onPick} disabled={busy} id="ffp-file" hidden />
             <label htmlFor="ffp-file" className={`ffp-drop ${busy ? 'is-busy' : ''}`}>
-              {busy ? 'Uploading…' : '📎 Choose files to send'}
+              {busy ? (prog || 'Uploading…') : '📎 Choose files to send'}
             </label>
           </>
         )}
