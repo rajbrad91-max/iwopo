@@ -33,6 +33,7 @@ import filePublicRoutes from './routes/filesPublic.js';
 import siteRoutes from './routes/sites.js';
 import { gate } from './lib/entitlements.js';
 import { sweepRevoked } from './lib/tokenRevocation.js';
+import { sweepAbandonedUploads } from './lib/uploadSweep.js';
 
 dotenv.config();
 
@@ -164,6 +165,11 @@ app.use((err, req, res, _next) => {
    Hourly is plenty for something whose rows live at most seven days. */
 setInterval(() => { sweepRevoked().catch(() => {}); }, 60 * 60_000).unref();
 sweepRevoked().catch(() => {});
+
+/* 🧹 And uploads that were begun and abandoned — same cadence, same reason:
+   a row nobody will ever finish, and parts still costing storage. */
+setInterval(() => { sweepAbandonedUploads().catch(() => {}); }, 60 * 60_000).unref();
+sweepAbandonedUploads().catch(() => {});
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
