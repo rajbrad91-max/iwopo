@@ -28,8 +28,15 @@ const CONCURRENCY = 4;
    one retry of sixty-four megabytes rather than the whole file. */
 const ATTEMPTS = 3;
 
-export async function uploadInParts(file, io, onProgress) {
-  const begun = await io.begin({
+/**
+ * @param {File}   file
+ * @param {object} io        { begin, sign, complete, abort }
+ * @param {object} [resume]  what the server already has — { upload_id, key,
+ *                           part_size, done_parts }. When present, begin() is
+ *                           skipped and only the missing parts are sent.
+ */
+export async function uploadInParts(file, io, onProgress, resume) {
+  const begun = resume || await io.begin({
     size_bytes: file.size,
     filename: file.name,
     content_type: file.type || 'application/octet-stream',
@@ -39,8 +46,14 @@ export async function uploadInParts(file, io, onProgress) {
   const partSize = begun.part_size || 64 * 1024 * 1024;
   const total = Math.max(1, Math.ceil(file.size / partSize));
 
+  /* Parts R2 already holds. Sending one again is not an error — it simply
+     overwrites — but on a two hundred gigabyte upload that died at ninety per
+     cent it is hours of somebody's evening for no reason. */
+  const already = new Set(begun.done_parts || []);
+
   try {
-    let done = 0, next = 1, failed = null;
+    let done = already.size, next = 1, failed = null;
+    if (already.size) onProgress?.(done, total, 'resuming');
 
     const sendPart = async (n) => {
       const blob = file.slice((n - 1) * partSize, n * partSize);
@@ -66,6 +79,7 @@ export async function uploadInParts(file, io, onProgress) {
       while (!failed) {
         const n = next++;
         if (n > total) return;
+        if (already.has(n)) continue;          // R2 already holds this part
         try { await sendPart(n); } catch (e) { failed = e; return; }
         onProgress?.(++done, total);
       }

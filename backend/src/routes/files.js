@@ -735,6 +735,21 @@ router.post('/big/begin', requireAuth, async (req, res) => {
     const key = fileKey(v, stored);
     const uploadId = await objects.beginMultipart(objects.PRIVATE, key, req.body?.content_type || undefined);
 
+    /* 📌 Remembered, so this upload can be found again after a reload, a
+       crash, or the desktop app being closed. Without a record of the id, a
+       resumed upload has no way to ask R2 what already landed and starts from
+       part one — while the parts it already sent keep costing storage. */
+    await prisma.pending_uploads.create({
+      data: {
+        vendor_id: v, folder_id: folderId, object_key: key, upload_id: uploadId,
+        filename: String(req.body?.filename || 'file').slice(0, 300),
+        size_bytes: BigInt(size),
+        mime: req.body?.content_type ? String(req.body.content_type).slice(0, 150) : null,
+        part_size: PART_SIZE,
+        source: String(req.body?.source || 'vendor').slice(0, 16),
+      },
+    });
+
     res.json({
       upload_id: uploadId, key, stored_name: stored,
       part_size: PART_SIZE, min_part_size: MIN_PART_SIZE,
@@ -800,6 +815,7 @@ router.post('/big/complete', requireAuth, async (req, res) => {
         uploaded_by: 'vendor',
       },
     });
+    await prisma.pending_uploads.deleteMany({ where: { object_key: key } });   // finished
     res.status(201).json({ item: { ...row, size_bytes: Number(row.size_bytes) }, storage: await storageFor(v) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -812,6 +828,99 @@ router.post('/big/abort', requireAuth, async (req, res) => {
     if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
     if (key !== fileKey(v, path.basename(key))) return res.status(403).json({ error: 'Not your key' });
     await objects.abortMultipart(objects.PRIVATE, key, uploadId);
+    await prisma.pending_uploads.deleteMany({ where: { object_key: key } });   // abandoned
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * GET /api/files/big/pending → uploads this vendor started but never finished.
+ *
+ * Shown in the panel so an interrupted delivery is visible rather than lost.
+ * Each row carries how far it actually got, read from R2 rather than from
+ * anything the browser remembers — the browser is the thing that went away.
+ */
+router.get('/big/pending', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const rows = await prisma.pending_uploads.findMany({
+      where: { vendor_id: v },                        // 🔒 this vendor's only
+      orderBy: { created_at: 'desc' },
+      take: 50,
+    });
+
+    const out = [];
+    for (const r of rows) {
+      let done = 0, bytes = 0;
+      try {
+        const parts = await objects.listParts(objects.PRIVATE, r.object_key, r.upload_id);
+        done = parts.length;
+        bytes = parts.reduce((n, p) => n + Number(p.Size || 0), 0);
+      } catch {
+        /* R2 has forgotten it — its own rule clears abandoned parts after seven
+           days. The row is stale, so it goes rather than offering the vendor a
+           resume that cannot work. */
+        await prisma.pending_uploads.delete({ where: { id: r.id } }).catch(() => {});
+        continue;
+      }
+      out.push({
+        id: r.id, filename: r.filename,
+        size_bytes: Number(r.size_bytes),
+        folder_id: r.folder_id,
+        parts_done: done,
+        parts_total: Math.max(1, Math.ceil(Number(r.size_bytes) / r.part_size)),
+        bytes_done: bytes,
+        started_at: r.created_at,
+      });
+    }
+    res.json({ pending: out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * POST /api/files/big/resume → everything needed to carry on.
+ *
+ * Hands back the key, the upload id and the part numbers R2 ALREADY HAS, so the
+ * browser or the app sends only what is missing. A two hundred gigabyte upload
+ * that died at ninety per cent resumes as twenty gigabytes rather than starting
+ * over.
+ */
+router.post('/big/resume', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const row = await prisma.pending_uploads.findFirst({
+      where: { id: Number(req.body?.id), vendor_id: v },   // 🔒 tenancy
+    });
+    if (!row) return res.status(404).json({ error: 'Upload not found' });
+
+    let parts;
+    try {
+      parts = await objects.listParts(objects.PRIVATE, row.object_key, row.upload_id);
+    } catch {
+      await prisma.pending_uploads.delete({ where: { id: row.id } }).catch(() => {});
+      return res.status(410).json({ error: 'expired', message: 'This upload is too old to resume — please start it again.' });
+    }
+
+    res.json({
+      key: row.object_key, upload_id: row.upload_id,
+      part_size: row.part_size, min_part_size: MIN_PART_SIZE,
+      filename: row.filename, size_bytes: Number(row.size_bytes),
+      folder_id: row.folder_id,
+      done_parts: parts.map(p => p.PartNumber).sort((a, b) => a - b),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** Throw one away without finishing it. */
+router.delete('/big/pending/:id', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const row = await prisma.pending_uploads.findFirst({
+      where: { id: Number(req.params.id), vendor_id: v },  // 🔒 tenancy
+    });
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    try { await objects.abortMultipart(objects.PRIVATE, row.object_key, row.upload_id); } catch { /* already gone */ }
+    await prisma.pending_uploads.delete({ where: { id: row.id } });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

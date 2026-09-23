@@ -293,3 +293,18 @@
   border-radius: 6px; object-fit: cover; background: rgba(0,0,0,.05); }
 .ffp-thumb-doc { display: flex; align-items: center; justify-content: center;
   font-size: 17px; }
+
+/* 🔄 an upload that never finished */
+.fd-resume { margin: 10px 0 4px; display: flex; flex-direction: column; gap: 6px; }
+.fd-resume-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  border-radius: 9px; background: #fff7ed; border: 1px solid #fed7aa; font-size: 13px; }
+.fd-resume-ic { flex: none; }
+.fd-resume-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-resume-at { color: #9a6b2f; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fd-resume-go { margin-left: auto; padding: 5px 11px; border-radius: 7px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; border: 1px solid #f59e0b;
+  background: #fffbeb; color: #92400e; }
+.fd-resume-go:hover:not(:disabled) { background: #fef3c7; }
+.fd-resume-go:disabled { opacity: .5; cursor: not-allowed; }
+.fd-resume-x { flex: none; border: 0; background: none; cursor: pointer; color: #9a6b2f;
+  font-size: 14px; padding: 2px 4px; }

@@ -150,6 +150,10 @@ export default function ShareDrive({ onStorage }) {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(() => localStorage.getItem('ff_view') || 'grid');
   const [busy, setBusy] = useState(false);
+  const [prog, setProg] = useState('');          // part x of y, while a big file uploads
+  const [pending, setPending] = useState([]);    // uploads that never finished
+  const resumeInput = useRef(null);
+  const resumeFor = useRef(null);
   const [zipping, setZipping] = useState(false);
   const [msg, setMsg] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -226,9 +230,45 @@ export default function ShareDrive({ onStorage }) {
   async function upload(files) {
     if (!files?.length) return;
     setBusy(true);
-    try { await api.uploadShareFiles(files, folderId); load(folderId); flash(`✅ ${files.length} added`); }
+    try {
+      /* A large file goes up in parts, which can take an hour. Without this the
+         panel says nothing at all for that hour. */
+      await api.uploadShareFiles(files, folderId,
+        (name, done, total) => setProg(`${name} — part ${done} of ${total}`));
+      load(folderId); loadPending(); flash(`✅ ${files.length} added`);
+    }
+    catch (e) { dialog.alert(e.message, { error: true }); loadPending(); }
+    finally { setBusy(false); setProg(''); }
+  }
+
+
+  /** Uploads that started and never finished — shown so they are not lost.
+      useCallback so the effect below can depend on it honestly rather than
+      silencing the warning that it does not. */
+  const loadPending = useCallback(async () => {
+    try { setPending((await api.bigPending()).pending || []); } catch { /* not fatal */ }
+  }, []);
+
+  useEffect(() => { loadPending(); }, [loadPending]);
+
+  /** Carry on one of them. The file has to be picked again; only the missing
+      parts are sent. */
+  async function resume(p, file) {
+    setBusy(true);
+    try {
+      await api.resumeBigUpload(p.id, file,
+        (name, done, total) => setProg(`${name} — part ${done} of ${total}`));
+      load(folderId); loadPending(); flash('✅ Finished');
+    }
     catch (e) { dialog.alert(e.message, { error: true }); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setProg(''); }
+  }
+
+  async function discard(p) {
+    if (!await dialog.confirm(`"${p.filename}" was never finished. Throw it away?`,
+      { title: 'Discard upload?', okLabel: 'Discard' })) return;
+    try { await api.bigDiscard(p.id); loadPending(); flash('🗑️ Discarded'); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   /** Share the folder being viewed, or the one whose badge was pressed. */
@@ -269,6 +309,36 @@ export default function ShareDrive({ onStorage }) {
       onDrop={e => { e.preventDefault(); setDragging(false); upload([...(e.dataTransfer?.files || [])]); }}>
 
       {/* one bar: where you are, what you can do, how full you are */}
+      {/* 🔄 Uploads that started and never finished. Shown rather than
+          silently forgotten: a delivery that died at ninety per cent is worth
+          an hour of somebody's evening, and the parts are sitting in the bucket
+          either way until they are used or discarded. */}
+      {pending.length > 0 && (
+        <div className="fd-resume">
+          {pending.map(p => (
+            <div key={p.id} className="fd-resume-row">
+              <span className="fd-resume-ic">🔄</span>
+              <span className="fd-resume-name">{p.filename}</span>
+              <span className="fd-resume-at">
+                {fmtBytes(p.bytes_done)} of {fmtBytes(p.size_bytes)} sent
+              </span>
+              <button className="fd-resume-go" disabled={busy}
+                onClick={() => { resumeFor.current = p; resumeInput.current?.click(); }}>
+                Pick the file to carry on
+              </button>
+              <button className="fd-resume-x" onClick={() => discard(p)} aria-label="Discard">✕</button>
+            </div>
+          ))}
+          {/* The browser cannot hold a file across a reload, so it has to be
+              chosen again — but only the missing parts are sent. */}
+          <input ref={resumeInput} type="file" hidden onChange={e => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (f && resumeFor.current) resume(resumeFor.current, f);
+          }} />
+        </div>
+      )}
+
       <div className="fd-bar">
         <nav className="fd-crumbs" aria-label="Location">
           <button className={`fd-crumb ${!folderId ? 'is-here' : ''}`} onClick={() => setFolderId(null)}>My files</button>
@@ -289,7 +359,7 @@ export default function ShareDrive({ onStorage }) {
 
         <div className="fd-actions">
           <button className="fd-b is-primary" disabled={busy} onClick={() => fileRef.current?.click()}>
-            {busy ? 'Uploading…' : 'Upload'}
+            {busy ? (prog || 'Uploading…') : 'Upload'}
           </button>
           <button className="fd-b" onClick={newFolder}>New folder</button>
           {/* only offered inside a folder — zipping the entire drive is rarely

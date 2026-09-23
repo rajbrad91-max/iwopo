@@ -484,6 +484,31 @@ export const api = {
   bigSign: (body) => request('/files/big/sign', { method: 'POST', body: JSON.stringify(body) }),
   bigComplete: (body) => request('/files/big/complete', { method: 'POST', body: JSON.stringify(body) }),
   bigAbort: (body) => request('/files/big/abort', { method: 'POST', body: JSON.stringify(body) }),
+  // 🔄 uploads that started and never finished
+  bigPending: () => request('/files/big/pending'),
+  bigResume: (id) => request('/files/big/resume', { method: 'POST', body: JSON.stringify({ id }) }),
+  bigDiscard: (id) => request(`/files/big/pending/${id}`, { method: 'DELETE' }),
+
+  /**
+   * Carry on an upload that was interrupted.
+   *
+   * The file has to be picked again — a browser cannot hold onto one across a
+   * reload — but only the missing parts are sent, so a delivery that died at
+   * ninety per cent finishes in the last ten rather than starting over.
+   */
+  resumeBigUpload: async (id, file, onProgress) => {
+    const r = await api.bigResume(id);
+    if (Number(r.size_bytes) !== file.size) {
+      throw new Error('That is a different file — pick the one you were sending.');
+    }
+    await uploadInParts(file, {
+      begin: () => r,
+      sign: (b) => api.bigSign(b),
+      complete: (b) => api.bigComplete({ ...b, folder_id: r.folder_id || null, filename: r.filename }),
+      abort: (b) => api.bigAbort(b),
+    }, (done, total, note) => onProgress?.(r.filename, done, total, note), r);
+    return { ok: true };
+  },
 
   videoBegin: (albumId, body) => request(`/albums/${albumId}/videos/begin`, { method: 'POST', body: JSON.stringify(body) }),
   videoSign: (albumId, body) => request(`/albums/${albumId}/videos/sign`, { method: 'POST', body: JSON.stringify(body) }),

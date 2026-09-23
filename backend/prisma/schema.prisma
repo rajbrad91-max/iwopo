@@ -478,8 +478,8 @@ model packages {
   sort_order           Int?            @default(0)
   country_prices       Json?           @default("{}")
   /// What this package includes. A vendor's storage limit is derived from here,
-  ///      so raising a package's allowance raises it for everyone on that package at
-  ///      once — which is why it lives on the package and not on the account.
+  /// so raising a package's allowance raises it for everyone on that package at
+  /// once — which is why it lives on the package and not on the account.
   storage_gb           Int             @default(50)
   package_items        package_items[]
 }
@@ -781,6 +781,7 @@ model vendors {
   notifications            notifications[]
   package_templates        package_templates[]
   payments                 payments[]
+  pending_uploads          pending_uploads[]
   referrals                referrals[]
   trial_signups            trial_signups[]
   users                    users[]
@@ -926,6 +927,7 @@ model file_folders {
   vendors            vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   file_share_items   file_share_items[]
   file_shares        file_shares[]
+  pending_uploads    pending_uploads[]
 
   @@index([parent_id], map: "idx_file_folders_parent")
   @@index([vendor_id], map: "idx_file_folders_vendor")
@@ -940,4 +942,23 @@ model revoked_tokens {
 
   @@index([expires_at], map: "idx_revoked_expires")
   @@index([user_id], map: "idx_revoked_user")
+}
+
+model pending_uploads {
+  id           Int           @id @default(autoincrement())
+  vendor_id    Int
+  folder_id    Int?
+  object_key   String        @unique(map: "idx_pending_key")
+  upload_id    String
+  filename     String
+  size_bytes   BigInt
+  mime         String?       @db.VarChar(150)
+  part_size    Int
+  source       String        @default("vendor") @db.VarChar(16)
+  created_at   DateTime      @default(now()) @db.Timestamp(6)
+  updated_at   DateTime      @default(now()) @db.Timestamp(6)
+  file_folders file_folders? @relation(fields: [folder_id], references: [id], onUpdate: NoAction)
+  vendors      vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, created_at(sort: Desc)], map: "idx_pending_vendor")
 }
