@@ -564,6 +564,9 @@ function ServicePriceEditor({ service, onSaved }) {
  * each account.
  */
 function StorageEditor({ pkg, onSaved }) {
+  /* Same as PriceEditor beside it — these two edit the same row and a failure
+     in one should not look different from a failure in the other. */
+  const dialog = useDialog();
   const [gb, setGb] = useState(pkg.storage_gb ?? 50);
   const [busy, setBusy] = useState(false);
 
@@ -572,7 +575,10 @@ function StorageEditor({ pkg, onSaved }) {
     if (!Number.isFinite(n) || n <= 0) return;
     setBusy(true);
     try { await api.updatePackagePrice(pkg.id, { storage_gb: Math.round(n) }); onSaved?.(); }
-    catch { /* the list reloads either way */ }
+    /* The list reloading is not an answer: it shows the OLD figure, which looks
+       identical to a save that simply had nothing to change. This decides what
+       every vendor on the plan is allowed. */
+    catch (e) { dialog.alert(e.message, { title: 'Could not save the storage', error: true }); }
     finally { setBusy(false); }
   }
 
@@ -894,6 +900,7 @@ function ReferralsView() {
 }
 
 function FeatureToggles({ vendorId }) {
+  const dialog = useDialog();
   const [feats, setFeats] = useState(null);
   const [busy, setBusy] = useState('');
   useEffect(() => {
@@ -906,7 +913,14 @@ function FeatureToggles({ vendorId }) {
       await api.setVendorFeature(vendorId, f.key, { enabled: !f.enabled });
       const d = await api.vendorFeatures(vendorId);
       setFeats(d.features || []);
-    } catch { /* keep prior state */ }
+    } catch (e) {
+      /* This swallowed the answer. The server refuses to switch on a feature
+         marked as not built and says exactly that — File Flyer was flagged
+         is_live=false long after it shipped, so the toggle did nothing and
+         explained nothing, and the time went on wondering whether the button
+         was broken. */
+      dialog.alert(e.message, { title: 'Could not change that', error: true });
+    }
     setBusy('');
   }
 

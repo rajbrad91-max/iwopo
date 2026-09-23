@@ -831,9 +831,18 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
           admin: f.admin_password || m[album.id]?.admin,
         } }));
       }
-      if (coverFile && album) { try { await api.uploadAlbumCover(album.id, coverFile, coverFocus); } catch {} }
+      /* The gallery itself is already saved by now, so a failed cover must not
+         look like a failed save — but it must not look like a success either. A
+         vendor who picked a cover and got none would blame the picture. */
+      if (coverFile && album) {
+        try { await api.uploadAlbumCover(album.id, coverFile, coverFocus); }
+        catch (e) { dialog.alert('The gallery was saved, but the cover image was not: ' + e.message, { error: true }); }
+      }
       // save focal point whenever there's a cover (new or existing)
-      if (album && (coverFile || edit?.cover_photo)) { try { await api.saveCoverFocus(album.id, coverFocus); } catch {} }
+      if (album && (coverFile || edit?.cover_photo)) {
+        try { await api.saveCoverFocus(album.id, coverFocus); }
+        catch (e) { dialog.alert('The gallery was saved, but the focal point was not: ' + e.message, { error: true }); }
+      }
       resetForm(); setShowNew(false); load();
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -1307,7 +1316,7 @@ function AlbumDetail({ albumId, onBack }) {
       await api.clearSelection(albumId);
       setSelData({ total: 0, events: [], note: '', sent_at: null, completed_at: null });
       setSelClearAsk(false);
-    } catch { /* leave state as-is */ }
+    } catch (e) { dialog.alert(e.message, { error: true }); }
     finally { setSelActBusy(false); }
   }
 
@@ -2065,7 +2074,8 @@ function CrewView() {
 
   async function del(id) {
     if (!await dialog.confirm('They will be removed from your crew list.', { title: 'Remove crew member?', okLabel: 'Remove' })) return;
-    try { await api.deleteCrew(id); setCrew(c => c.filter(x => x.id !== id)); } catch {}
+    try { await api.deleteCrew(id); setCrew(c => c.filter(x => x.id !== id)); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   function checkinUrl(token) {
@@ -2665,7 +2675,8 @@ function LeadsView({ routeLead, onOpenLead }) {
 
   async function restore(id, e) {
     e.stopPropagation();
-    try { await api.restoreLead(id); load(); } catch {}
+    try { await api.restoreLead(id); load(); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   // 📤 Sending from the list opens the same compose modal as the lead detail —
@@ -3367,7 +3378,8 @@ function MoneySection({ lead }) {
   }
   async function delPay(id) {
     if (!await dialog.confirm('This payment record will be deleted and the balance recalculated.', { title: 'Remove payment?', okLabel: 'Remove' })) return;
-    try { await api.deletePayment(id); load(); } catch {}
+    try { await api.deletePayment(id); load(); }
+    catch (e) { dialog.alert(e.message, { error: true }); }   // a payment record, of all things
   }
   async function changeStatus(s) {
     setStatus(s);
@@ -3833,7 +3845,8 @@ function ContractSetup() {
   }
   async function del(id) {
     if (!await dialog.confirm('This contract template will be deleted.', { title: 'Delete template?', okLabel: 'Delete' })) return;
-    try { await api.deleteCtTemplate(id); setSel(null); load(); } catch { /* stay put */ }
+    try { await api.deleteCtTemplate(id); setSel(null); load(); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   const setSection = (i, patch) => setSel(t => {
@@ -4888,7 +4901,8 @@ function SettingsView({ user, onProfileChange }) {
     localStorage.setItem('vf_time_format', next.time_format || '12h');
     localStorage.setItem('vf_timezone', next.timezone || '');
     if (next.currency) localStorage.setItem('vf_currency', next.currency);
-    try { await api.saveSettings(next); setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500); } catch {}
+    try { await api.saveSettings(next); setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500); }
+    catch (e) { setSaved('⚠️ ' + e.message); }
   }
   async function saveEmail() {
     setMsg('');

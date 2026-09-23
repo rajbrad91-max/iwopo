@@ -310,7 +310,22 @@ async function request(path, options = {}) {
     throw new Error('Your session expired — please log in again.');
   }
 
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  if (!res.ok) {
+    /* A route that sends BOTH a code and a sentence meant the sentence to be
+       read. This showed data.error and dropped data.message, so a super admin
+       toggling File Flyer saw "not_built" where the server had said "File Flyer
+       isn't built yet, so switching it on wouldn't give the vendor anything."
+       Fourteen routes send both, and every one of them was throwing away the
+       half a person could act on.
+
+       The code is kept on .code rather than in the text, so anything that needs
+       to branch on it can, without a UI matching against a string meant for a
+       human. Nothing does today — checked before changing this. */
+    const err = new Error(data.message || data.error || 'Request failed');
+    err.code = data.error || null;
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
