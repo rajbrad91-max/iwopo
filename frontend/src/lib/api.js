@@ -552,6 +552,13 @@ export const api = {
   adminServices: () => request('/admin/services'),
   adminPackages: () => request('/admin/packages'),
   trialEligible: () => request('/auth/trial-eligible'),
+  // 🎫 plans — what a subscription grants, including its storage
+  plansList: () => request('/vendors/plans'),
+  setPlanStorage: (planId, gb) =>
+    request(`/vendors/plans/${planId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_gb: gb }) }),
+  setVendorPlan: (vendorId, planId) =>
+    request(`/vendors/${vendorId}/plan`, { method: 'PUT', body: JSON.stringify({ plan_id: planId }) }),
+
   updatePackagePrice: (id, prices) =>
     request(`/packages/${id}/price`, { method: 'PUT', body: JSON.stringify(prices) }),
   updateItemPrice: (id, prices) =>

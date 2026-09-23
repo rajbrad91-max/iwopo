@@ -568,6 +568,7 @@ model plans {
   name                 String                 @db.VarChar(120)
   price_monthly        Decimal                @db.Decimal(8, 2)
   created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  storage_gb           Int?
   plan_features        plan_features[]
   vendor_subscriptions vendor_subscriptions[]
 }

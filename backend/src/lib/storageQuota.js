@@ -24,10 +24,6 @@ import { ledgerBytesFor } from './storageLedger.js';
    not for delivering a season's weddings through. */
 const TRIAL_LIMIT_MB = 5 * 1024;
 
-/* Only reached if a vendor's plan names a package that no longer exists —
-   deliberately small, so a broken plan shows up as a vendor who cannot upload
-   much rather than one quietly handed the largest allowance in the system. */
-const FALLBACK_LIMIT_MB = 1024;
 
 /**
  * 📦 What a vendor is allowed, and where that number comes from.
@@ -41,26 +37,56 @@ const FALLBACK_LIMIT_MB = 1024;
  * migration, a special case — without inventing a package for them. Null means
  * "just use the package", which is what almost every vendor should be.
  */
+/**
+ * What this vendor is allowed, and why.
+ *
+ * ⚠️ This used to read vendors.plan — a column NOTHING in the codebase ever
+ * wrote. Every vendor therefore sat on 'starter' and got the trial allowance
+ * however much they paid: vendor 1 held an ACTIVE Studio Special subscription
+ * and was still capped at five gigabytes. Only a manual override did anything,
+ * which is why it looked like it worked.
+ *
+ * The subscription is the source of truth now. Order matters:
+ *
+ *   1. an override set by a super admin — always wins, so a one-off arrangement
+ *      does not need a special plan invented for it
+ *   2. the ACTIVE, unexpired subscription's plan
+ *   3. the free trial
+ */
 async function limitMbFor(vendorId) {
-  const vendor = await prisma.vendors.findUnique({
-    where: { id: Number(vendorId) },
-    select: { plan: true, vendor_settings: { select: { storage_limit_mb: true } } },
-  });
-  const override = vendor?.vendor_settings?.storage_limit_mb;
-  if (override != null) return { limitMb: override, source: 'override' };
+  const v = Number(vendorId);
 
-  const key = vendor?.plan;
-  if (!key || key === 'starter' || key === 'trial') {
-    return { limitMb: TRIAL_LIMIT_MB, source: 'trial', planName: 'Free trial' };
+  const settings = await prisma.vendor_settings.findUnique({
+    where: { vendor_id: v },                                  // 🔒 tenancy
+    select: { storage_limit_mb: true },
+  });
+  if (settings?.storage_limit_mb != null) {
+    return { limitMb: settings.storage_limit_mb, source: 'override' };
   }
 
-  const pkg = await prisma.packages.findFirst({
-    where: { key },
-    select: { storage_gb: true, name: true },
+  /* The same conditions the feature gate uses, so a vendor cannot have the
+     features of a plan without its storage or the other way round. */
+  const sub = await prisma.vendor_subscriptions.findFirst({
+    where: {
+      vendor_id: v,                                           // 🔒 tenancy
+      status: 'active',
+      OR: [{ ends_at: null }, { ends_at: { gt: new Date() } }],
+    },
+    orderBy: { started_at: 'desc' },                          // the most recent one wins
+    select: { plans: { select: { name: true, storage_gb: true } } },
   });
-  if (pkg) return { limitMb: pkg.storage_gb * 1024, source: 'package', planName: pkg.name };
 
-  return { limitMb: FALLBACK_LIMIT_MB, source: 'fallback' };
+  const plan = sub?.plans;
+  if (plan?.storage_gb) {
+    return { limitMb: plan.storage_gb * 1024, source: 'plan', planName: plan.name };
+  }
+
+  /* A subscription whose plan has no storage set is a configuration mistake,
+     not a free-for-all. It falls to the trial and says 'plan' so a super admin
+     looking at the Buyers list can see something is wrong. */
+  if (sub) return { limitMb: TRIAL_LIMIT_MB, source: 'plan', planName: (plan?.name || 'Plan') + ' (no storage set)' };
+
+  return { limitMb: TRIAL_LIMIT_MB, source: 'trial', planName: 'Free trial' };
 }
 
 export async function storageFor(vendorId) {

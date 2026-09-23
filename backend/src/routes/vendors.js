@@ -43,7 +43,9 @@ router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
     const withStorage = await Promise.all(vendors.map(async (v) => {
       try {
         const st = await storageFor(v.id);
-        return { ...v, storage: { used_bytes: st.used_bytes, limit_mb: st.limit_mb, percent: st.percent, limit_source: st.limit_source } };
+        // plan_name too — the Buyers table shows which plan a vendor is on, and
+        // without it the column sat empty for everybody who actually had one
+        return { ...v, storage: { used_bytes: st.used_bytes, limit_mb: st.limit_mb, percent: st.percent, limit_source: st.limit_source, plan_name: st.plan_name } };
       } catch { return { ...v, storage: null }; }
     }));
     res.json({ vendors: withStorage });
@@ -57,6 +59,92 @@ router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
  * the allowance is a commercial decision made about a particular vendor, and
  * tying it to a plan would mean changing everyone on that plan to change one.
  */
+/**
+ * 📋 GET /api/vendors/plans → the plans a vendor can be put on.
+ *
+ * Plans are what a SUBSCRIPTION grants, and since Raj's decision they own the
+ * storage allowance too — so this is the list a super admin picks from.
+ */
+router.get('/plans', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const plans = await prisma.plans.findMany({
+      select: { id: true, code: true, name: true, price_monthly: true, storage_gb: true },
+      orderBy: { id: 'asc' },
+    });
+    res.json({ plans });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * 💾 PUT /api/vendors/plans/:planId/storage → what this plan grants.
+ *
+ * Changing it moves every vendor on that plan at once, which is the point: a
+ * plan's allowance is a product decision, not a per-vendor one. The per-vendor
+ * override above is for the exceptions.
+ */
+router.put('/plans/:planId/storage', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const gb = Number(req.body?.storage_gb);
+    if (!Number.isFinite(gb) || gb < 0) return res.status(400).json({ error: 'Give a number of GB' });
+
+    const plan = await prisma.plans.update({
+      where: { id: Number(req.params.planId) },
+      data: { storage_gb: Math.round(gb) },
+      select: { id: true, code: true, name: true, storage_gb: true },
+    });
+
+    /* The packages table carries the same figure for the pricing page, and the
+       two drifting apart is how a vendor ends up shown one number and given
+       another. Kept in step by key, silently — a package that no longer exists
+       simply matches nothing. */
+    await prisma.packages.updateMany({
+      where: { key: plan.code },
+      data: { storage_gb: Math.round(gb) },
+    });
+
+    res.json({ plan });
+  } catch (e) {
+    if (e?.code === 'P2025') return res.status(404).json({ error: 'Plan not found' });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * 🎫 PUT /api/vendors/:id/plan → put this vendor on a plan, or back on the trial.
+ *
+ * There was no way to do this at all: nothing in the codebase created a
+ * subscription, so the seeded row on vendor 1 was the only one that had ever
+ * existed. A vendor who paid stayed on the trial allowance.
+ *
+ * Sending null ends their subscription rather than deleting it, so the history
+ * of what somebody was on survives.
+ */
+router.put('/:id/plan', requireAuth, requireSuperAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const vendor = await prisma.vendors.findUnique({ where: { id }, select: { id: true } });
+    if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+
+    const planId = req.body?.plan_id === null || req.body?.plan_id === '' ? null : Number(req.body?.plan_id);
+
+    // whatever they were on stops now, in both cases
+    await prisma.vendor_subscriptions.updateMany({
+      where: { vendor_id: id, status: 'active' },
+      data: { status: 'ended', ends_at: new Date() },
+    });
+
+    if (planId === null) return res.json({ ok: true, plan_id: null, ended: true });
+
+    const plan = await prisma.plans.findUnique({ where: { id: planId }, select: { id: true, name: true } });
+    if (!plan) return res.status(404).json({ error: 'Plan not found' });
+
+    await prisma.vendor_subscriptions.create({
+      data: { vendor_id: id, plan_id: plan.id, status: 'active', started_at: new Date() },
+    });
+    res.json({ ok: true, plan_id: plan.id, plan_name: plan.name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.put('/:id/storage', requireAuth, requireSuperAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
@@ -130,7 +218,7 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
       used_photos_bytes: st.used_photos_bytes,
       used_files_bytes: st.used_files_bytes,
       limit_mb: st.limit_mb,
-      limit_source: st.limit_source,          // trial | package | override | fallback
+      limit_source: st.limit_source,          // trial | plan | override
       plan_name: st.plan_name,
       override_mb: vset?.storage_limit_mb ?? null,   // what the box should show as set
     };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api, getUser, clearSession, fmtDateTime , logout as apiLogout } from '../lib/api';
 import { COUNTRIES } from '../lib/countries';
 import {
@@ -933,9 +933,13 @@ function FeatureToggles({ vendorId }) {
 function VendorDrawer({ vendorId, onClose }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
-  useEffect(() => {
+  /* Named so the plan picker can call it: changing a plan changes the storage
+     figures beside it, and a drawer still showing the old allowance is how
+     somebody sets the same thing twice. */
+  const load = useCallback(() => {
     api.vendorDetail(vendorId).then(setD).catch(e => setErr(e.message));
   }, [vendorId]);
+  useEffect(() => { load(); }, [load]);
 
   const fmt = (x) => x ? String(x).slice(0, 10) : '—';
   const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 60 };
@@ -996,6 +1000,7 @@ function VendorDrawer({ vendorId, onClose }) {
             <FeatureToggles vendorId={vendorId} />
 
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>File Flyer storage</div>
+            <PlanPicker vendorId={vendorId} storage={d.storage} onChanged={load} />
             <StorageLimit vendorId={vendorId} storage={d.storage} />
 
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Subscription history</div>
@@ -1015,6 +1020,58 @@ function VendorDrawer({ vendorId, onClose }) {
 }
 
 /**
+ * 🎫 Which plan this vendor is on — and therefore what they are allowed.
+ *
+ * Nothing in the app created a subscription before this, so a vendor who paid
+ * stayed on the trial allowance until somebody set a per-vendor override by
+ * hand. The plan is the answer; the override below is for the exceptions.
+ */
+function PlanPicker({ vendorId, storage, onChanged }) {
+  const [plans, setPlans] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => { api.plansList().then(d => setPlans(d.plans || [])).catch(() => {}); }, []);
+
+  const onPlan = storage?.limit_source === 'plan';
+  const current = onPlan ? plans.find(p => p.name === storage.plan_name)?.id ?? '' : '';
+
+  async function pick(v) {
+    setBusy(true); setMsg('');
+    try {
+      await api.setVendorPlan(vendorId, v === '' ? null : Number(v));
+      setMsg('✅ Saved');
+      onChanged?.();
+      setTimeout(() => setMsg(''), 1800);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ padding: '6px 0 14px' }}>
+      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
+        Plan {storage?.limit_source === 'override'
+          ? <span>— <b style={{ color: 'var(--text)' }}>an override is in force</b>, so the plan is not deciding the limit</span>
+          : null}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <select value={current} disabled={busy} onChange={e => pick(e.target.value)}
+          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line)',
+                   background: 'var(--panel)', color: 'var(--text)', fontSize: 13 }}>
+          <option value="">Free trial</option>
+          {plans.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.name} — {p.storage_gb ? p.storage_gb + ' GB' : 'no storage set'}
+            </option>
+          ))}
+        </select>
+        {msg && <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+/**
  * 💾 One vendor's File Flyer allowance.
  *
  * Per-vendor on purpose rather than a plan feature — the allowance is a
@@ -1025,6 +1082,12 @@ function StorageLimit({ vendorId, storage }) {
   const [mb, setMb] = useState(storage?.limit_mb ?? 1024);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+
+  /* useState only reads its argument once, so changing the plan above left this
+     box showing the OLD allowance — 512000 MB beside a vendor who had just been
+     moved to 200 GB. A super admin who then pressed Save would have set an
+     override they never meant to, pinning them at the previous plan's figure. */
+  useEffect(() => { setMb(storage?.limit_mb ?? 1024); }, [storage?.limit_mb]);
 
   const usedMb = (Number(storage?.used_bytes || 0) / 1024 / 1024);
   const pct = mb > 0 ? Math.min(100, Math.round(usedMb / mb * 100)) : 0;
@@ -1094,7 +1157,12 @@ function BuyersView({ vendors }) {
             ) : vendors.map(v => (
               <tr key={v.id}>
                 <td className="biz">{v.business_name}</td>
-                <td>{v.plan}</td>
+                {/* ⚠️ This showed vendors.plan, a column nothing ever wrote —
+                    so every buyer read "starter" whatever they were paying.
+                    The real answer comes from the active subscription. */}
+                <td>{v.storage?.limit_source === 'plan' ? v.storage.plan_name
+                   : v.storage?.limit_source === 'override' ? <span className="sa-muted">Override</span>
+                   : <span className="sa-muted">Trial</span>}</td>
                 <td><span className={`sa-badge ${v.status}`}>{v.status}</span></td>
                 {/* Storage in the LIST, not only behind Manage. This is where a
                     super admin notices someone is nearly full, and a number
