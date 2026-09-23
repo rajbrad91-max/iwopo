@@ -9,6 +9,8 @@ import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { getAllSettings, setSetting } from '../lib/settings.js';
 import { queueStatus, enqueueAlbum } from '../lib/faceQueue.js';
 import { deleteCollection } from '../lib/faceAWS.js';
+import { platformMail } from './email.js';
+import nodemailer from 'nodemailer';
 
 const router = express.Router();
 
@@ -32,6 +34,10 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
     for (const k of ['r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key']) {
       if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
     }
+    /* 📧 The mail password never goes back out, not even partially. Unlike an
+       access key ID there is nothing useful to recognise it by, so the whole
+       thing is replaced rather than clipped. */
+    if (s.smtp_pass) s.smtp_pass = '••••••••';
     res.json({ settings: s });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -112,6 +118,52 @@ router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req,
 });
 
 // 🔓 Super admin: reveal full AWS creds (edit-mode eye toggle)
+/**
+ * 📧 POST /api/settings/platform/test-email → prove the settings work.
+ *
+ * Mail configuration fails quietly: a wrong port, a password the provider
+ * rejects, a from-address the domain does not authorise. Every one of those
+ * looks identical from the panel — a saved form and silence — and the first
+ * anybody hears of it is a client who never got their gallery link.
+ *
+ * So this actually sends one, and reports what the mail server said.
+ */
+router.post('/settings/platform/test-email', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const to = String(req.body?.to || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+      return res.status(400).json({ error: 'Give an address to send the test to' });
+    }
+
+    const p = await platformMail();
+    if (!p.ready) {
+      return res.status(400).json({ error: 'Set the mail host, username and password first.' });
+    }
+
+    const t = nodemailer.createTransport({
+      host: p.host, port: p.port, secure: p.port === 465,
+      auth: { user: p.user, pass: p.pass },
+    });
+
+    /* Checked before sending. verify() catches a wrong host, port or password
+       and says which — sendMail on a bad connection often just times out. */
+    try { await t.verify(); }
+    catch (e) { return res.status(400).json({ error: 'The mail server refused the connection — ' + e.message }); }
+
+    const info = await t.sendMail({
+      from: `"${p.fromName}" <${p.from || p.user}>`,
+      to,
+      subject: 'iwopo — mail is working',
+      text: 'If you are reading this, iwopo can send email.\n\nSent from your platform settings.',
+      html: '<p>If you are reading this, <b>iwopo can send email</b>.</p><p style="color:#667">Sent from your platform settings.</p>',
+    });
+
+    res.json({ ok: true, to, from: p.from || p.user, response: info.response || null });
+  } catch (e) {
+    res.status(500).json({ error: 'Could not send — ' + e.message });
+  }
+});
+
 router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const s = await getAllSettings();
@@ -121,6 +173,7 @@ router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (r
       r2_secret_access_key: s.r2_secret_access_key || '',
       r2_private_secret_access_key: s.r2_private_secret_access_key || '',
       r2_public_secret_access_key: s.r2_public_secret_access_key || '',
+      smtp_pass: s.smtp_pass || '',
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -135,7 +188,11 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
       'r2_bucket_private', 'r2_private_access_key_id', 'r2_private_secret_access_key',
       // 🌐 public — website images and logos
       'r2_bucket_public', 'r2_public_access_key_id', 'r2_public_secret_access_key',
-      'r2_public_url'];
+      'r2_public_url',
+      /* 📧 Platform email. These were environment variables, which meant the
+         one person who could set them had to edit a file on the server — so
+         they were never set, and nothing in the product could send anything. */
+      'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name'];
 
     /* 🔒 One bucket for both classes would silently un-gate every client gallery
        and every File Flyer link at once: the album password and the share token

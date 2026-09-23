@@ -2,6 +2,7 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getAllSettings } from '../lib/settings.js';
 
 const router = express.Router();
 
@@ -62,17 +63,45 @@ router.put('/settings', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-function transporterFor(s) {
+/**
+ * 📧 The platform's own mail account, from the super-admin settings.
+ *
+ * These used to be environment variables only, which meant the one person who
+ * could set them had to edit a file on the server — so they never were, and
+ * nothing in the product could send anything at all. They live beside the R2
+ * and AWS credentials now, where they can be typed in.
+ *
+ * The environment is still read as a fallback, so a deployment that sets them
+ * that way keeps working.
+ */
+export async function platformMail() {
+  const s = await getAllSettings().catch(() => ({}));
+  const host = s.smtp_host || PLATFORM.host;
+  const user = s.smtp_user || PLATFORM.user;
+  const pass = s.smtp_pass || PLATFORM.pass;
+  const port = Number(s.smtp_port || PLATFORM.port || 587);
+  return {
+    host, user, pass, port,
+    from: s.smtp_from || PLATFORM.from,
+    fromName: s.smtp_from_name || 'iwopo',
+    ready: !!(host && user && pass),
+  };
+}
+
+async function transporterFor(s) {
+  /* A vendor's own mail account first, so their clients see their address
+     rather than ours. */
   if (s.mode === 'smtp' && s.smtp_host && s.smtp_user) {
     return nodemailer.createTransport({
       host: s.smtp_host, port: s.smtp_port || 587, secure: (s.smtp_port || 587) === 465,
       auth: { user: s.smtp_user, pass: s.smtp_pass },
     });
   }
-  if (PLATFORM.host && PLATFORM.user) {
+  const p = await platformMail();
+  if (p.ready) {
     return nodemailer.createTransport({
-      host: PLATFORM.host, port: PLATFORM.port, secure: PLATFORM.port === 465,
-      auth: { user: PLATFORM.user, pass: PLATFORM.pass },
+      host: p.host, port: p.port, secure: p.port === 465,
+      auth: { user: p.user, pass: p.pass },
     });
   }
   return null;
@@ -185,7 +214,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     if (s.mode === 'self')
       return res.status(400).json({ error: 'self_mode', message: 'You are in self-receive mode — reply from your own inbox 📥' });
 
-    const t = transporterFor(s);
+    const t = await transporterFor(s);
     if (!t) {
     // which side is missing is knowable, so say so rather than making the
     // vendor guess whether it's their fault or ours
@@ -215,7 +244,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
 export async function sendLeadEmail(req, lead, subject, body) {
   const s = await getSettings(lead.vendor_id);
   if (s.mode === 'self') { const e = new Error('You are in self-receive mode — reply from your own inbox 📥'); e.code = 'self_mode'; throw e; }
-  const t = transporterFor(s);
+  const t = await transporterFor(s);
   if (!t) throw new Error('No email server configured yet. Add SMTP creds in Settings → Email ⚙️');
   const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
   const fromName = s.from_name || 'iwopo';
@@ -228,7 +257,7 @@ export async function notifyNewLead(lead) {
     const s = await getSettings(lead.vendor_id);
     const to = s.notify_email || s.from_email || s.smtp_user;
     if (!to) return;
-    const t = transporterFor(s);
+    const t = await transporterFor(s);
     if (!t) return;
     const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
     await t.sendMail({
@@ -273,7 +302,7 @@ export async function sendPlatformEmail(to, subject, text, html) {
 export async function sendAsVendor(vendorId, { to, subject, html, text, replyTo }) {
   try {
     const s = await getSettings(vendorId);
-    const tx = transporterFor(s);
+    const tx = await transporterFor(s);
     if (!tx) {
       return {
         ok: false,

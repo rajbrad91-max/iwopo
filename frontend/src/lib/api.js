@@ -554,6 +554,8 @@ export const api = {
   trialEligible: () => request('/auth/trial-eligible'),
   // 🎫 plans — what a subscription grants, including its storage
   plansList: () => request('/vendors/plans'),
+  // 📧 prove the platform mail settings actually work
+  testPlatformEmail: (to) => request('/settings/platform/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
   setPlanStorage: (planId, gb) =>
     request(`/vendors/plans/${planId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_gb: gb }) }),
   setVendorPlan: (vendorId, planId) =>

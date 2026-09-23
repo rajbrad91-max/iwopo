@@ -1636,6 +1636,21 @@ function FaceEngineSettings() {
   /* R2 is a long block of eight fields that is set once and then never looked
      at again. Folded away by default, like the AWS credentials above it. */
   const [r2Open, setR2Open] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
+  const [testTo, setTestTo] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState(null);
+
+  /** Actually send one, and say what the mail server said. */
+  async function sendTest() {
+    setTesting(true); setTestMsg(null);
+    try {
+      const r = await api.testPlatformEmail(testTo.trim());
+      setTestMsg({ ok: true, text: `✅ Sent to ${r.to} from ${r.from}. If it does not arrive, check the spam folder — that usually means the domain's SPF or DKIM records are missing.` });
+    } catch (e) {
+      setTestMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not send') });
+    } finally { setTesting(false); }
+  }
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
   const roBox = { ...box, opacity: 0.7, cursor: 'not-allowed' };
 
@@ -1853,6 +1868,90 @@ function FaceEngineSettings() {
               </div>
               </div>
               )}
+        </div>
+
+        {/* 📧 Platform email.
+            These were environment variables, which meant the one person who
+            could set them had to edit a file on the server — so they never were,
+            and nothing in the product could send anything at all. */}
+        <div className="fr-cred">
+          <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
+            onClick={() => setMailOpen(o => !o)} aria-expanded={mailOpen}>
+            <span>📧 Platform email</span>
+            <span className="fr-cred-chev">{mailOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {mailOpen && (
+          <div className="fr-cred-body">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+              {!editing ? (
+                <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                </div>
+              )}
+            </div>
+
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+              Used for everything iwopo sends. A vendor who sets their own mail
+              account under Setup Email uses that instead, so their clients see
+              their address rather than ours.
+            </p>
+
+            <div><label className="lbl">Host</label>
+              <input style={editing ? box : roBox} readOnly={!editing}
+                placeholder="smtp.resend.com"
+                value={s.smtp_host || ''}
+                onChange={e => setS({ ...s, smtp_host: e.target.value })} /></div>
+
+            <div><label className="lbl">Port</label>
+              <input style={editing ? box : roBox} readOnly={!editing}
+                placeholder="587"
+                value={s.smtp_port || ''}
+                onChange={e => setS({ ...s, smtp_port: e.target.value })} /></div>
+
+            <div><label className="lbl">Username</label>
+              <input style={editing ? box : roBox} readOnly={!editing}
+                value={s.smtp_user || ''}
+                onChange={e => setS({ ...s, smtp_user: e.target.value })} /></div>
+
+            <div><label className="lbl">Password</label>
+              <input type="password" style={editing ? box : roBox} readOnly={!editing}
+                value={s.smtp_pass || ''}
+                onChange={e => setS({ ...s, smtp_pass: e.target.value })} /></div>
+
+            <div><label className="lbl">From address</label>
+              <input style={editing ? box : roBox} readOnly={!editing}
+                placeholder="noreply@iwopo.com"
+                value={s.smtp_from || ''}
+                onChange={e => setS({ ...s, smtp_from: e.target.value })} /></div>
+
+            <div><label className="lbl">From name</label>
+              <input style={editing ? box : roBox} readOnly={!editing}
+                placeholder="iwopo"
+                value={s.smtp_from_name || ''}
+                onChange={e => setS({ ...s, smtp_from_name: e.target.value })} /></div>
+
+            {/* Mail fails quietly — a wrong port or a rejected password looks
+                exactly like a saved form and silence. This actually sends one. */}
+            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Send a test</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+              <input style={box} placeholder="your@email.com"
+                value={testTo} onChange={e => setTestTo(e.target.value)} />
+              <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5, whiteSpace: 'nowrap' }}
+                disabled={testing} onClick={sendTest}>
+                {testing ? 'Sending…' : 'Send test'}
+              </button>
+            </div>
+            {testMsg && (
+              <div style={{ marginTop: 10, fontSize: 12.5, color: testMsg.ok ? '#4ade80' : '#f87171' }}>
+                {testMsg.text}
+              </div>
+            )}
+          </div>
+          )}
         </div>
         {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#4ade80' }}>{msg}</div>}
       </div>
