@@ -926,6 +926,74 @@ router.delete('/big/pending/:id', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/files/shares/:id/recipients → who this share went to.
+ *
+ * Nothing recorded this before: a link was handed out and the vendor had no
+ * list of who holds it. It is also the foundation for client logins — when a
+ * client signs in, the shares they may see are exactly the ones joined to their
+ * contact row.
+ */
+router.get('/shares/:id/recipients', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const share = await prisma.file_shares.findFirst({
+      where: { id: Number(req.params.id), vendor_id: v },     // 🔒 tenancy
+      select: { id: true },
+    });
+    if (!share) return res.status(404).json({ error: 'Share not found' });
+
+    const rows = await prisma.share_recipients.findMany({
+      where: { share_id: share.id },
+      include: { contacts: { select: { id: true, name: true, email: true } } },
+      orderBy: { created_at: 'asc' },
+    });
+    res.json({
+      recipients: rows.map(r => ({
+        id: r.id, contact_id: r.contact_id,
+        name: r.contacts?.name, email: r.contacts?.email,
+        sent_at: r.sent_at, opened_at: r.opened_at,
+      })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** PUT /api/files/shares/:id/recipients — set who it is for. */
+router.put('/shares/:id/recipients', requireAuth, async (req, res) => {
+  const v = Number(vid(req));
+  try {
+    const share = await prisma.file_shares.findFirst({
+      where: { id: Number(req.params.id), vendor_id: v },     // 🔒 tenancy
+      select: { id: true },
+    });
+    if (!share) return res.status(404).json({ error: 'Share not found' });
+
+    const ids = Array.isArray(req.body?.contact_ids) ? req.body.contact_ids.map(Number).filter(Boolean) : [];
+
+    /* 🔒 Every id is checked against this vendor before anything is written.
+       Without it, a caller could attach somebody else's contact to their own
+       share — and once client logins exist, that would hand a stranger's
+       account a view of these files. */
+    const mine = await prisma.contacts.findMany({
+      where: { id: { in: ids }, vendor_id: v },
+      select: { id: true },
+    });
+    const allowed = mine.map(c => c.id);
+
+    await prisma.share_recipients.deleteMany({
+      where: { share_id: share.id, contact_id: { notIn: allowed.length ? allowed : [0] } },
+    });
+    for (const cid of allowed) {
+      await prisma.share_recipients.upsert({
+        where: { share_id_contact_id: { share_id: share.id, contact_id: cid } },
+        update: {},                                          // already there — leave sent_at/opened_at alone
+        create: { share_id: share.id, contact_id: cid, vendor_id: v },
+      });
+    }
+    res.json({ ok: true, count: allowed.length, ignored: ids.length - allowed.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * POST /api/files/folder/:folderId/share → the link for this folder.
  *
  * Idempotent: pressing Share twice hands back the same link rather than

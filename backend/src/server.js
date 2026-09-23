@@ -34,6 +34,7 @@ import siteRoutes from './routes/sites.js';
 import { gate } from './lib/entitlements.js';
 import { sweepRevoked } from './lib/tokenRevocation.js';
 import { sweepAbandonedUploads } from './lib/uploadSweep.js';
+import contactRoutes from './routes/contacts.js';
 
 dotenv.config();
 
@@ -107,6 +108,8 @@ app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/leads', gate('leads'), leadRoutes);
+// 📇 the address book — not gated: sending files is not a leads feature
+app.use('/api/contacts', contactRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/vendor-packages', vendorPackageRoutes);
 app.use('/api/payments', gate('leads'), paymentRoutes);

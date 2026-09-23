@@ -485,6 +485,17 @@ export const api = {
   bigComplete: (body) => request('/files/big/complete', { method: 'POST', body: JSON.stringify(body) }),
   bigAbort: (body) => request('/files/big/abort', { method: 'POST', body: JSON.stringify(body) }),
   // 🔄 uploads that started and never finished
+  // 📇 contacts — the people a vendor sends things to
+  contacts: (q) => request('/contacts' + (q ? '?q=' + encodeURIComponent(q) : '')),
+  addContact: (body) => request('/contacts', { method: 'POST', body: JSON.stringify(body) }),
+  updateContact: (id, body) => request(`/contacts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteContact: (id) => request(`/contacts/${id}`, { method: 'DELETE' }),
+  contactsFromLeads: () => request('/contacts/from-leads', { method: 'POST' }),
+  // 📨 who a share is for
+  shareRecipients: (shareId) => request(`/files/shares/${shareId}/recipients`),
+  setShareRecipients: (shareId, contactIds) =>
+    request(`/files/shares/${shareId}/recipients`, { method: 'PUT', body: JSON.stringify({ contact_ids: contactIds }) }),
+
   bigPending: () => request('/files/big/pending'),
   bigResume: (id) => request('/files/big/resume', { method: 'POST', body: JSON.stringify({ id }) }),
   bigDiscard: (id) => request(`/files/big/pending/${id}`, { method: 'DELETE' }),

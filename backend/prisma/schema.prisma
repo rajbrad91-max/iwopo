@@ -392,6 +392,7 @@ model leads {
   packages_sent_at        DateTime?          @db.Timestamp(6)
   payment_claimed_at      DateTime?          @db.Timestamp(6)
   deposit_amount_override Decimal?           @db.Decimal(10, 2)
+  contacts                contacts[]
   contracts               contracts[]
   invoices                invoices[]
   lead_crew               lead_crew[]
@@ -767,6 +768,7 @@ model vendors {
   chatbot_subscribers      chatbot_subscribers?
   chatbot_transcripts      chatbot_transcripts[]
   chatbot_usage            chatbot_usage[]
+  contacts                 contacts[]
   contract_templates       contract_templates[]
   contracts                contracts[]
   crew_members             crew_members[]
@@ -783,6 +785,7 @@ model vendors {
   payments                 payments[]
   pending_uploads          pending_uploads[]
   referrals                referrals[]
+  share_recipients         share_recipients[]
   trial_signups            trial_signups[]
   users                    users[]
   vendor_feature_overrides vendor_feature_overrides[]
@@ -895,19 +898,20 @@ model file_share_items {
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model file_shares {
-  id           Int           @id @default(autoincrement())
-  vendor_id    Int
-  title        String        @db.VarChar(200)
-  token        String        @unique @db.VarChar(64)
-  note         String?
-  password     String?       @db.VarChar(120)
-  allow_upload Boolean       @default(true)
-  expires_at   DateTime?     @db.Timestamp(6)
-  created_at   DateTime      @default(now()) @db.Timestamp(6)
-  updated_at   DateTime      @default(now()) @db.Timestamp(6)
-  folder_id    Int?
-  file_folders file_folders? @relation(fields: [folder_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  vendors      vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id               Int                @id @default(autoincrement())
+  vendor_id        Int
+  title            String             @db.VarChar(200)
+  token            String             @unique @db.VarChar(64)
+  note             String?
+  password         String?            @db.VarChar(120)
+  allow_upload     Boolean            @default(true)
+  expires_at       DateTime?          @db.Timestamp(6)
+  created_at       DateTime           @default(now()) @db.Timestamp(6)
+  updated_at       DateTime           @default(now()) @db.Timestamp(6)
+  folder_id        Int?
+  file_folders     file_folders?      @relation(fields: [folder_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors          vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  share_recipients share_recipients[]
 
   @@index([token], map: "idx_file_shares_token")
   @@index([vendor_id], map: "idx_file_shares_vendor")
@@ -961,4 +965,38 @@ model pending_uploads {
   vendors      vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, created_at(sort: Desc)], map: "idx_pending_vendor")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model contacts {
+  id               Int                @id @default(autoincrement())
+  vendor_id        Int
+  name             String             @db.VarChar(200)
+  email            String             @db.VarChar(320)
+  phone            String?            @db.VarChar(60)
+  note             String?            @db.VarChar(500)
+  from_lead_id     Int?
+  created_at       DateTime           @default(now()) @db.Timestamp(6)
+  updated_at       DateTime           @default(now()) @db.Timestamp(6)
+  leads            leads?             @relation(fields: [from_lead_id], references: [id], onUpdate: NoAction)
+  vendors          vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  share_recipients share_recipients[]
+
+  @@index([vendor_id, name], map: "idx_contacts_vendor")
+}
+
+model share_recipients {
+  id          Int         @id @default(autoincrement())
+  share_id    Int
+  contact_id  Int
+  vendor_id   Int
+  sent_at     DateTime?   @db.Timestamp(6)
+  opened_at   DateTime?   @db.Timestamp(6)
+  created_at  DateTime    @default(now()) @db.Timestamp(6)
+  contacts    contacts    @relation(fields: [contact_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  file_shares file_shares @relation(fields: [share_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors     vendors     @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([share_id, contact_id], map: "idx_share_recipient")
+  @@index([contact_id], map: "idx_recipient_contact")
 }

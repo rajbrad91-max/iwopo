@@ -1,0 +1,48 @@
+/* 📇 Contacts — the address book.
+   Uses the panel's real variables: --teal, --panel, --line, --text, --muted.
+   An earlier version invented --brand and --card, which do not exist here, so
+   the primary button rendered transparent with white text — invisible. */
+.cts { max-width: 900px; }
+.cts-intro { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; line-height: 1.55; }
+
+.cts-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.cts-search { flex: 1 1 240px; min-width: 200px; padding: 8px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 13.5px; }
+.cts-search:focus { outline: none; border-color: var(--teal); }
+
+.cts-b { padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.cts-b:hover:not(:disabled) { border-color: var(--teal); }
+.cts-b:disabled { opacity: .55; cursor: not-allowed; }
+.cts-b.is-primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+.cts-b.is-primary:hover:not(:disabled) { background: var(--teal-2); border-color: var(--teal-2); }
+
+.cts-flash { margin-bottom: 12px; font-size: 13px; color: var(--teal); }
+.cts-quiet { color: var(--muted); font-size: 13.5px; padding: 26px 0; }
+
+.cts-list { display: flex; flex-direction: column; gap: 6px; }
+.cts-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+  border-radius: 9px; border: 1px solid var(--line); background: var(--panel); }
+.cts-who { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.cts-name { font-weight: 600; font-size: 13.5px; color: var(--text); }
+.cts-email { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.cts-phone { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.cts-note { font-size: 12px; color: var(--teal); padding: 2px 9px; border-radius: 20px;
+  background: var(--teal-soft); white-space: nowrap; }
+.cts-x { flex: none; border: 0; background: none; cursor: pointer; color: var(--muted);
+  font-size: 14px; padding: 3px 6px; border-radius: 6px; }
+.cts-x:hover { color: var(--text); background: var(--v-navhover); }
+
+/* the add / edit card */
+.cts-modal { position: fixed; inset: 0; background: rgba(12,22,24,.45); z-index: 900;
+  display: flex; align-items: center; justify-content: center; padding: 20px; }
+.cts-card { background: var(--panel); border-radius: 14px; padding: 22px; width: 100%;
+  max-width: 420px; border: 1px solid var(--line); }
+.cts-card h3 { margin: 0 0 16px; font-size: 16px; color: var(--text); }
+.cts-card label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+.cts-card input { display: block; width: 100%; margin-top: 5px; padding: 9px 11px;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2);
+  color: var(--text); font-size: 13.5px; box-sizing: border-box; }
+.cts-card input:focus { outline: none; border-color: var(--teal); }
+.cts-opt { opacity: .6; font-size: 11.5px; }
+.cts-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
