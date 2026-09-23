@@ -77,6 +77,10 @@ router.get('/plans', requireAuth, async (req, res) => {
     ]);
 
     const byKey = Object.fromEntries(packages.map(p => [p.key, p]));
+    const sellable = new Set(
+      (await prisma.services.findMany({ where: { is_private: false, feature_key: { not: null } }, select: { feature_key: true } }))
+        .map(r => r.feature_key),
+    );
     const currentGb = Math.round(st.limit_mb / 1024);
 
     const rows = plans.map(p => {
@@ -88,7 +92,10 @@ router.get('/plans', requireAuth, async (req, res) => {
         price_monthly: Number(pkg.price_monthly ?? p.price_monthly ?? 0),
         price_annual: pkg.price_annual != null ? Number(pkg.price_annual) : null,
         storage_gb: p.storage_gb,
-        features: p.plan_features.map(f => f.feature_key),
+        /* 🔒 A private feature attached to a plan by accident would be
+         advertised on the upgrade page. Filtered against the catalogue rather
+         than trusted from plan_features. */
+      features: p.plan_features.map(f => f.feature_key).filter(k => sellable.has(k)),
         /* The plan they are actually on, which is the subscription — not
            whatever their storage happens to equal, since an override can make
            those match by coincidence. */

@@ -635,6 +635,7 @@ model services {
   country_prices       Json?             @default("{}")
   is_live              Boolean           @default(true)
   description          String?           @db.VarChar(200)
+  is_private           Boolean           @default(false)
   services             services?         @relation("servicesToservices", fields: [requires_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   other_services       services[]        @relation("servicesToservices")
   vendor_services      vendor_services[]

@@ -17,9 +17,14 @@ const router = express.Router();
  * Services that aren't built yet come back marked, so the panel can show them
  * without pretending a toggle would do something.
  */
-async function featureList() {
+/**
+ * @param {boolean} includePrivate  super-admin screens pass true; anything a
+ *   vendor can see must not, or a private feature is advertised by its absence
+ *   being noticed.
+ */
+async function featureList(includePrivate = false) {
   const rows = await prisma.services.findMany({
-    where: { feature_key: { not: null } },
+    where: { feature_key: { not: null }, ...(includePrivate ? {} : { is_private: false }) },
     select: { feature_key: true, name: true, icon: true, description: true, is_live: true },
     orderBy: [{ is_live: 'desc' }, { name: 'asc' }],
   });
@@ -241,7 +246,10 @@ router.get('/me/services', requireAuth, tenantScope, async (req, res) => {
   try {
     // LEFT JOIN vendor_services ON service_id AND vendor_id: every service row is
     // returned, with `enabled` coming only from THIS tenant's row (false if none).
-    const services = await prisma.services.findMany({ orderBy: { id: 'asc' } });
+    /* 🔒 A private feature is not part of the product and must not appear in a
+       vendor's list — not even switched off, because a locked row is an advert
+       for something they cannot have. */
+    const services = await prisma.services.findMany({ where: { is_private: false }, orderBy: { id: 'asc' } });
     const mine = await prisma.vendor_services.findMany({
       where: { vendor_id: req.tenantId },        // 🔒 locked to this tenant
       select: { service_id: true, enabled: true },
@@ -279,7 +287,7 @@ router.get('/:id/features', requireAuth, requireSuperAdmin, async (req, res) => 
       select: { feature_key: true, enabled: true },
     });
     const overrideMap = Object.fromEntries(ovr.map(o => [o.feature_key, o.enabled]));
-    const list = await featureList();
+    const list = await featureList(true);        // 🔒 super admin only — private ones included
     const features = list.map(f => ({
       key: f.key,
       label: f.label,
@@ -300,7 +308,7 @@ router.put('/:id/features/:key', requireAuth, requireSuperAdmin, async (req, res
   const id = Number(req.params.id);
   const { key } = req.params;
   const { enabled, clear } = req.body;
-  const list = await featureList();
+  const list = await featureList(true);          // 🔒 super admin only — a private feature must be grantable
   const feat = list.find(f => f.key === key);
   if (!feat) return res.status(400).json({ error: 'Unknown feature' });
   // Refuse to switch on something that doesn't exist yet. Turning it on would

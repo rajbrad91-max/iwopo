@@ -296,7 +296,10 @@ router.post('/support', async (req, res) => {
 // 🔒 Super admin: full services incl. country_prices (for editor)
 router.get('/admin/services', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const services = await prisma.services.findMany({ orderBy: { id: 'asc' } });
+    /* 🔒 Private features are not part of the product. They never appear in a
+       catalogue, a price list or a plan — only a super admin can grant one to a
+       particular vendor. */
+    const services = await prisma.services.findMany({ where: { is_private: false }, orderBy: { id: 'asc' } });
     res.json({ services });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -305,7 +308,7 @@ router.get('/admin/services', requireAuth, requireSuperAdmin, async (req, res) =
 router.get('/services', async (req, res) => {
   try {
     const geo = geoFrom(req);
-    const rows = await prisma.services.findMany({ orderBy: { id: 'asc' } });
+    const rows = await prisma.services.findMany({ where: { is_private: false }, orderBy: { id: 'asc' } });   // 🔒 see above
     const services = rows.map(s => {
       const gp = geoPrice(s, geo);
       const { country_prices, ...pub } = s; // 🔒 don't expose all-country pricing publicly
