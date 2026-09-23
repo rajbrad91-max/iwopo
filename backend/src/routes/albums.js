@@ -134,7 +134,7 @@ router.post('/', requireAuth, async (req, res) => {
         public_token: token,
       },
     });
-    res.status(201).json({ album });
+    res.status(201).json({ album: publicAlbum(album) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
