@@ -76,14 +76,17 @@ function StorageBar({ onUpgrade }) {
         </span>
       </div>
       <div className="vp-storage-bar"><span style={{ width: pct + '%', background: tone }} /></div>
-      {/* Always offered, at Raj's request. The only thing still gated is
-          whether there IS a bigger package — on the largest one the button
-          would lead nowhere. */}
-      {s.next_package && (
-        <button className="vp-storage-up" onClick={onUpgrade}>
-          Upgrade
-        </button>
-      )}
+      {/* Always there, no condition at all.
+
+          It used to hide when no BIGGER package existed, which was right when
+          the button led nowhere useful — but it now opens Plans & Upgrades,
+          which is worth seeing whatever plan you are on: it shows what you
+          have, what it costs and what it includes. A vendor on the largest
+          plan losing the only link to their own plan details is worse than a
+          button that sometimes says "you already have the best one". */}
+      <button className="vp-storage-up" onClick={onUpgrade}>
+        Upgrade
+      </button>
     </div>
   );
 }

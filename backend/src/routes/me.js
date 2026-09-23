@@ -41,16 +41,12 @@ router.get('/storage', requireAuth, async (req, res) => {
   const v = req.user.vendor_id;                       // 🔒 from the token, never the request
   if (!v) return res.status(400).json({ error: 'Not a vendor account' });
   try {
-    const st = await storageFor(v);
-    /* The next package that actually offers MORE room than this vendor has.
-       Sorted by storage rather than price, because "upgrade" here means space —
-       and a cheaper package with more of it would still be the right answer. */
-    const bigger = await prisma.packages.findMany({
-      where: { storage_gb: { gt: Math.ceil(st.limit_mb / 1024) } },
-      orderBy: [{ storage_gb: 'asc' }],
-      select: { key: true, name: true, price_monthly: true, storage_gb: true },
-    });
-    res.json({ ...st, next_package: bigger[0] || null });
+    /* next_package used to be worked out here, to decide whether the sidebar
+       button was worth showing. The button is unconditional now — it opens
+       Plans & Upgrades, which is worth reading on any plan — so this was a
+       database query on every storage call whose answer nobody read. The same
+       comparison lives in /me/plans, where it is actually used. */
+    res.json(await storageFor(v));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
