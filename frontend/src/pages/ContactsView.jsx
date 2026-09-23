@@ -6,10 +6,11 @@ import './contacts.css';
 /**
  * 📇 The address book — people a vendor sends files to.
  *
- * Deliberately not the Leads list. A lead is somebody who might book; a contact
- * is simply somebody you send things to, and is often neither — the editor, the
- * second shooter, the venue coordinator. The two do overlap, which is why the
- * couple already in Leads can be pulled across rather than typed again.
+ * These belong to File Flyer alone. They exist for one purpose — choosing who a
+ * file goes to — and have nothing to do with Leads. A lead is somebody who might
+ * book; a contact is often somebody who never would, like the editor or the
+ * second shooter. Kept completely separate at Raj's request, so there is no
+ * import between them.
  */
 export default function ContactsView() {
   const dialog = useDialog();
@@ -53,16 +54,6 @@ export default function ContactsView() {
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
-  async function fromLeads() {
-    setBusy(true);
-    try {
-      const r = await api.contactsFromLeads();
-      load(q.trim());
-      flash(r.added ? `✅ Added ${r.added}` : 'Everyone is already here');
-    } catch (e) { dialog.alert(e.message, { error: true }); }
-    finally { setBusy(false); }
-  }
-
   return (
     <div className="cts">
       <p className="cts-intro">
@@ -76,16 +67,13 @@ export default function ContactsView() {
         <button className="cts-b is-primary" onClick={() => setEdit({ name: '', email: '' })}>
           Add contact
         </button>
-        <button className="cts-b" disabled={busy} onClick={fromLeads}>
-          Add from Leads
-        </button>
       </div>
 
       {msg && <div className="cts-flash">{msg}</div>}
 
       {rows.length === 0 ? (
         <p className="cts-quiet">
-          {q ? 'Nobody matches that.' : 'No contacts yet. Add one, or pull them across from Leads.'}
+          {q ? 'Nobody matches that.' : 'No contacts yet. Add the people you send files to.'}
         </p>
       ) : (
         <div className="cts-list">

@@ -1,11 +1,11 @@
 /**
  * 📇 Contacts — the people a vendor sends things to.
  *
- * Kept apart from `leads` on purpose. A lead is somebody who might book and
- * carries sales state; a contact is simply somebody you send files to, and is
- * often not a lead at all — the editor, the second shooter, the venue
- * coordinator. A contact can be created FROM a lead so the couple already in
- * the system is not typed twice.
+ * These belong to File Flyer and nothing else. They exist for one purpose —
+ * choosing who a file goes to — and are deliberately unconnected to Leads: a
+ * lead is somebody who might book, while a contact is often somebody who never
+ * would, like the editor or the second shooter. Raj asked for the two kept
+ * completely apart, so there is no import between them and no shared row.
  *
  * 🔒 Every query is scoped by the vendor id on the token. The id is never read
  * from the body, and a contact belonging to another vendor is a 404 rather than
@@ -69,7 +69,7 @@ router.post('/', requireAuth, async (req, res) => {
     if (dup) return res.status(409).json({ error: `${dup.name} already uses that email`, id: dup.id });
 
     const row = await prisma.contacts.create({
-      data: { ...c, vendor_id: v, from_lead_id: req.body?.from_lead_id ? Number(req.body.from_lead_id) : null },
+      data: { ...c, vendor_id: v },
     });
     res.status(201).json({ contact: row });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -101,40 +101,6 @@ router.delete('/:id', requireAuth, async (req, res) => {
     });
     if (!count) return res.status(404).json({ error: 'Contact not found' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-/**
- * POST /api/contacts/from-leads — pull people already in the system.
- *
- * A vendor talking to a couple should not have to type their address again.
- * Leads without an email are skipped, and anyone already a contact is left
- * alone rather than duplicated.
- */
-router.post('/from-leads', requireAuth, async (req, res) => {
-  const v = vid(req);
-  try {
-    const leads = await prisma.leads.findMany({
-      where: { vendor_id: v, email: { not: null } },        // 🔒 tenancy
-      select: { id: true, name: true, email: true, phone: true },
-    });
-    const existing = new Set(
-      (await prisma.contacts.findMany({ where: { vendor_id: v }, select: { email: true } }))
-        .map(c => c.email.toLowerCase()),
-    );
-
-    const fresh = [];
-    for (const l of leads) {
-      const email = String(l.email || '').trim().toLowerCase();
-      if (!EMAIL.test(email) || existing.has(email)) continue;
-      existing.add(email);                                  // a lead list can repeat an address
-      fresh.push({
-        vendor_id: v, name: String(l.name || email).slice(0, 200), email,
-        phone: l.phone ? String(l.phone).slice(0, 60) : null, from_lead_id: l.id,
-      });
-    }
-    if (fresh.length) await prisma.contacts.createMany({ data: fresh, skipDuplicates: true });
-    res.json({ added: fresh.length, skipped: leads.length - fresh.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

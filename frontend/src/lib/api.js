@@ -490,7 +490,6 @@ export const api = {
   addContact: (body) => request('/contacts', { method: 'POST', body: JSON.stringify(body) }),
   updateContact: (id, body) => request(`/contacts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteContact: (id) => request(`/contacts/${id}`, { method: 'DELETE' }),
-  contactsFromLeads: () => request('/contacts/from-leads', { method: 'POST' }),
   // 📨 who a share is for
   shareRecipients: (shareId) => request(`/files/shares/${shareId}/recipients`),
   setShareRecipients: (shareId, contactIds) =>

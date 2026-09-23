@@ -308,3 +308,13 @@
 .fd-resume-go:disabled { opacity: .5; cursor: not-allowed; }
 .fd-resume-x { flex: none; border: 0; background: none; cursor: pointer; color: #9a6b2f;
   font-size: 14px; padding: 2px 4px; }
+
+/* 📑 Files / Contacts — two halves of the same tool, so they share a page
+   rather than sitting apart in the sidebar. Contacts exist only to choose who
+   a file goes to; they are not a general address book. */
+.ff-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.ff-tab { padding: 9px 16px; border: 0; background: none; cursor: pointer;
+  font-size: 13.5px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.ff-tab:hover { color: var(--text); }
+.ff-tab.is-on { color: var(--teal); border-bottom-color: var(--teal); }

@@ -10,7 +10,6 @@ import { PROFESSIONS, LeadFormBody } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
-import ContactsView from './ContactsView.jsx';
 import './vendor.css';
 
 // 🗝️ tab → required feature (one map controls everything)
@@ -18,9 +17,6 @@ const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
   contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
   website: 'website', fileflyer: 'fileflyer',
-  // 📇 Contacts belongs to File Flyer — it is the address book for sending files,
-  // not a feature anyone buys separately, so it unlocks with the same key.
-  contacts: 'fileflyer',
 };
 
 function FeatureLocked({ goServices }) {
@@ -228,7 +224,6 @@ export default function VendorPanel({ onLogout }) {
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">Crew Management</span></div>}
         {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
         {has('fileflyer') && <div className={`nav-item ${tab==='fileflyer'?'active':''}`} onClick={() => go('fileflyer')}><span className="nav-ic">📤</span><span className="nav-txt">File Flyer</span></div>}
-        {has('fileflyer') && <div className={`nav-item ${tab==='contacts'?'active':''}`} onClick={() => go('contacts')}><span className="nav-ic">📇</span><span className="nav-txt">Contacts</span></div>}
         {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
         <div className="nav-group">SETUP</div>
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
@@ -247,7 +242,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'contacts' ? 'Contacts' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -270,8 +265,6 @@ export default function VendorPanel({ onLogout }) {
           <ContractsTab />
         ) : tab === 'crew' ? (
           <CrewView />
-        ) : tab === 'contacts' ? (
-          <ContactsView />
         ) : tab === 'fileflyer' ? (
           <FileFlyerView />
         ) : tab === 'galleries' ? (
