@@ -213,7 +213,13 @@ router.get('/:token/zip', async (req, res) => {
       return res.status(403).json({ error: 'Locked' });
     }
 
-    let rootId = null, label = share.title;
+    /* 🔒 Default to the share's OWN folder, not null.
+       null means "everything this vendor has" in zipInto, so a share of one
+       wedding folder was handing the client every other client's folder too —
+       proven by a zip of three files arriving with seventeen entries in it,
+       including another couple's. The browse route was already scoped; this one
+       was not. */
+    let rootId = share.folder_id ?? null, label = share.title;
     if (req.query.folder) {
       const f = await prisma.file_folders.findUnique({ where: { id: Number(req.query.folder) } });
       if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) return res.status(404).json({ error: 'Folder not found' });

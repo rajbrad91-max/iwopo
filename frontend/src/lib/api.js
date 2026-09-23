@@ -386,6 +386,8 @@ export const api = {
 
   // 📤 File Flyer — the client's side, token only, no auth
   publicShare: (token) => request(`/f/${token}`),
+  // one level of a share: its folders, its files and the trail back up
+  shareBrowse: (token, folderId) => request(`/f/${token}/browse${folderId ? '?folder=' + folderId : ''}`),
   unlockShare: (token, password) => request(`/f/${token}/unlock`, { method: 'POST', body: JSON.stringify({ password }) }),
   clientUploadFiles: (token, files, uploaderName) => {
     const fd = new FormData();
