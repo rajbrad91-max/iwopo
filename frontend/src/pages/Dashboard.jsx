@@ -966,7 +966,8 @@ function VendorDrawer({ vendorId, onClose }) {
             <div style={{ marginBottom: 16 }}><span className={`sa-badge ${d.vendor.status}`}>{d.vendor.status}</span></div>
 
             <div className="sa-section-title" style={{ fontSize: 12, margin: '6px 0' }}>Account</div>
-            {row('Plan', d.vendor.plan)}
+            {/* from the subscription, not the old vendors.plan column */}
+            {row('Plan', d.storage?.limit_source === 'plan' ? d.storage.plan_name : 'Free trial')}
             {row('Country', d.vendor.country)}
             {row('🌍 Signup IP', d.vendor.signup_ip)}
             {row('Storage', d.vendor.storage_mb ? `${d.vendor.storage_mb} MB` : '—')}

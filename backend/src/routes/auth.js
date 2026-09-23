@@ -89,7 +89,11 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
         data: {
           business_name: businessName,
           slug: await uniqueVendorSlug(tx, businessName),
-          plan: isPaid ? plan : 'starter',
+          /* ⚠️ vendors.plan used to be set here and read by the storage quota,
+             which is how a paying vendor could be capped at the trial
+             allowance: this wrote the name of a plan but never created the
+             SUBSCRIPTION that grants it. The subscription is made below and is
+             the only thing that decides what anybody gets. */
           status: isPaid ? 'active' : 'trial',
           signup_ip: ip,
         },
@@ -108,7 +112,19 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
         select: { id: true, name: true, role: true, vendor_id: true },
       });
 
-      // 3. Record trial against IP (only for trials)
+      /* 3. The subscription itself, for a paid signup.
+            Looked up by code rather than trusted from the body, so a caller
+            inventing a plan name gets a trial rather than an allowance. */
+      if (isPaid) {
+        const chosen = await tx.plans.findFirst({ where: { code: String(plan) }, select: { id: true } });
+        if (chosen) {
+          await tx.vendor_subscriptions.create({
+            data: { vendor_id: vendor.id, plan_id: chosen.id, status: 'active', started_at: new Date() },
+          });
+        }
+      }
+
+      // 4. Record trial against IP (only for trials)
       if (!isPaid) {
         await tx.trial_signups.create({
           data: { ip_address: ip, email, vendor_id: vendor.id },

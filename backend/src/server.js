@@ -37,6 +37,7 @@ import { sweepAbandonedUploads } from './lib/uploadSweep.js';
 import contactRoutes from './routes/contacts.js';
 import { reconcile } from './lib/storageLedger.js';
 import * as objects from './lib/objectStore.js';
+import { sweepExpiredSubscriptions } from './lib/subscriptionSweep.js';
 
 dotenv.config();
 
@@ -181,6 +182,11 @@ sweepAbandonedUploads().catch(() => {});
    upload — so it can drift: a failed insert, an object removed outside the app.
    This is the cure, and it is cheap enough at this size to simply redo. */
 setInterval(() => { reconcile(objects).catch(() => {}); }, 24 * 60 * 60_000).unref();
+
+/* 🎫 Close subscriptions whose end date has passed. The quota already ignores
+   them, so this is about the record being honest rather than the allowance. */
+setInterval(() => { sweepExpiredSubscriptions().catch(() => {}); }, 60 * 60_000).unref();
+sweepExpiredSubscriptions().catch(() => {});
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);

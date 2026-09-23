@@ -750,7 +750,6 @@ model vendor_subscriptions {
 model vendors {
   id                       Int                        @id @default(autoincrement())
   business_name            String                     @db.VarChar(200)
-  plan                     String?                    @default("starter") @db.VarChar(50)
   status                   String?                    @default("trial") @db.VarChar(50)
   storage_mb               Int?                       @default(0)
   country                  String?                    @db.VarChar(100)
