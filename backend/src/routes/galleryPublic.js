@@ -18,6 +18,7 @@ import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
 import { withLocalFile, galleryKeyFromRel } from '../lib/localFile.js';
 import { naturalSort } from '../lib/naturalSort.js';
 import { checkSharePassword } from '../lib/sharePassword.js';
+import { recordEvent } from '../lib/siteEvents.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -301,6 +302,11 @@ router.post('/:token/auth',
     else if (await checkSharePassword(pw, a.guest_password)) role = 'guest';
     if (!role) return res.status(401).json({ error: 'Wrong password' });
 
+    /* One row per time somebody gets IN, not per photograph drawn. A gallery
+       page pulls hundreds of thumbnails and recording those would bury the
+       signal under its own noise. */
+    recordEvent(req, a.vendor_id, 'gallery_open', { targetId: a.id, label: a.title });
+
     const photos = await photosInAlbum(a.id);     // natural filename order
     const theme = await getTheme(a.vendor_id);
     // per-client: photos are always grouped under events
@@ -369,6 +375,8 @@ router.get('/:token/download/:photoId', async (req, res) => {
     });
     if (!p) return res.status(404).end();
 
+    recordEvent(req, a.vendor_id, 'photo_download', { targetId: p.id, label: p.filename });
+
     /* R2 first. This route was still reading the disk alone, so once storage
        stopped keeping a local copy a couple pressing download on a single
        photograph got nothing at all. */
@@ -407,6 +415,8 @@ router.get('/:token/download-all', async (req, res) => {
       photos = await allPhotoRowsInAlbum(a.id);
     }
     if (!photos.length) return res.status(404).json({ error: 'No photos' });
+
+    recordEvent(req, a.vendor_id, 'zip_download', { targetId: a.id, label: zipLabel });
 
     const safe = zipLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);

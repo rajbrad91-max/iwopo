@@ -10,6 +10,7 @@ import { thumbPathFor } from './files.js';
 import { storageFor, vendorDir, fileStream } from './files.js';
 import { checkSharePassword } from '../lib/sharePassword.js';
 import * as objects from '../lib/objectStore.js';
+import { recordEvent } from '../lib/siteEvents.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -227,6 +228,8 @@ router.get('/:token/zip', async (req, res) => {
       rootId = f.id; label = f.name;
     }
 
+    recordEvent(req, share.vendor_id, 'zip_download', { targetId: share.id, label });
+
     res.attachment(safeZipName(label) + '.zip');
     const archive = archiver('zip', { zlib: { level: 6 } });
     archive.on('error', () => { if (!res.headersSent) res.status(500).end(); });
@@ -298,6 +301,8 @@ router.get('/:token/download/:itemId', async (req, res) => {
     if (!(await withinShare(item.folder_id, share.folder_id, share.vendor_id))) {
       return res.status(404).json({ error: 'Not found' });
     }
+
+    recordEvent(req, share.vendor_id, 'file_download', { targetId: item.id, label: item.filename });
     // the client's own download — the one most likely to be resumed
     const o = await fileStream(share.vendor_id, item.stored_name, req.headers.range);
     if (o) {

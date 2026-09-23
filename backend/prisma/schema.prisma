@@ -786,6 +786,7 @@ model vendors {
   pending_uploads          pending_uploads[]
   referrals                referrals[]
   share_recipients         share_recipients[]
+  site_events              site_events[]
   trial_signups            trial_signups[]
   users                    users[]
   vendor_feature_overrides vendor_feature_overrides[]
@@ -1009,4 +1010,21 @@ model storage_objects {
 
   @@unique([cls, object_key], map: "idx_storage_key")
   @@index([vendor_id], map: "idx_storage_vendor")
+}
+
+model site_events {
+  id         BigInt   @id @default(autoincrement())
+  vendor_id  Int
+  kind       String   @db.VarChar(24)
+  target_id  Int?
+  label      String?  @db.VarChar(200)
+  ip_prefix  String?  @db.VarChar(45)
+  country    String?  @db.VarChar(2)
+  referrer   String?  @db.VarChar(300)
+  ua_kind    String?  @db.VarChar(16)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, kind, created_at(sort: Desc)], map: "idx_events_kind")
+  @@index([vendor_id, created_at(sort: Desc)], map: "idx_events_vendor")
 }

@@ -38,6 +38,7 @@ import contactRoutes from './routes/contacts.js';
 import { reconcile } from './lib/storageLedger.js';
 import * as objects from './lib/objectStore.js';
 import { sweepExpiredSubscriptions } from './lib/subscriptionSweep.js';
+import { sweepOldEvents } from './lib/siteEvents.js';
 
 dotenv.config();
 
@@ -187,6 +188,11 @@ setInterval(() => { reconcile(objects).catch(() => {}); }, 24 * 60 * 60_000).unr
    them, so this is about the record being honest rather than the allowance. */
 setInterval(() => { sweepExpiredSubscriptions().catch(() => {}); }, 60 * 60_000).unref();
 sweepExpiredSubscriptions().catch(() => {});
+
+/* 📊 Visitor events older than a year. Long enough to compare this season with
+   last, and no longer — a table that only grows is a bill nobody decided to
+   pay, and old visitor data is a liability rather than an asset. */
+setInterval(() => { sweepOldEvents().catch(() => {}); }, 24 * 60 * 60_000).unref();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);

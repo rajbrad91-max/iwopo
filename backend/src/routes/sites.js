@@ -23,6 +23,7 @@ import { normalizeDomain, checkDomain, dnsInstructions } from '../lib/customDoma
 import { requireAuth } from '../middleware/auth.js';
 import { SITES_DIR } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
+import { recordEvent } from '../lib/siteEvents.js';
 
 const router = express.Router();
 
@@ -271,6 +272,8 @@ router.get('/by-host', async (req, res) => {
     // else's site — a wrong answer here shows one vendor's work on another's
     // domain, which is worse than showing nothing.
     if (!site) return res.status(404).json({ error: 'Unknown site' });
+
+    recordEvent(req, site.vendor_id, 'site_view', { label: host });
     res.json({ site: shapePublicSite(site) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -366,7 +369,7 @@ router.get('/:slug', async (req, res) => {
     });
     if (!site) return res.status(404).json({ error: 'Site not found' });
 
-
+    recordEvent(req, site.vendor_id, 'site_view', { label: req.params.slug });
     res.json({ site: shapePublicSite(site) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
