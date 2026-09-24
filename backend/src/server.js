@@ -39,6 +39,7 @@ import { reconcile } from './lib/storageLedger.js';
 import * as objects from './lib/objectStore.js';
 import { sweepExpiredSubscriptions } from './lib/subscriptionSweep.js';
 import { sweepOldEvents } from './lib/siteEvents.js';
+import analyticsRoutes from './routes/analytics.js';
 
 dotenv.config();
 
@@ -134,6 +135,9 @@ app.use('/api/lead-packages', gate('leads'), leadPackageRoutes);
 // whether a vendor can build one — the public /:slug read carries no token, and
 // gate() lets unauthenticated requests through to the route's own checks.
 app.use('/api/files', gate('fileflyer'), fileRoutes);
+// 📊 private to the platform owner — services.is_private keeps it out of every
+// catalogue, and gate() keeps the data behind it
+app.use('/api/analytics', gate('analytics'), analyticsRoutes);
 app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
 

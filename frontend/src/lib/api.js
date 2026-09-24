@@ -770,6 +770,8 @@ export const api = {
   myServices: () => request('/vendors/me/services'),
   // 💳 the upgrade page — current plan, what else exists, what each grants
   myPlans: () => request('/me/plans'),
+  // 📊 private to the platform owner
+  analytics: (days) => request('/analytics?days=' + (days || 30)),
   myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {
