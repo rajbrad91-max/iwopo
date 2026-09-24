@@ -12,13 +12,14 @@ import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
 import PlansView from './PlansView.jsx';
 import AnalyticsView from './AnalyticsView.jsx';
+import CommsView from './CommsView.jsx';
 import './vendor.css';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
   contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
-  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics',
+  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms',
 };
 
 function FeatureLocked({ goServices }) {
@@ -232,6 +233,7 @@ export default function VendorPanel({ onLogout }) {
         {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
         {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
+        {has('comms') && <div className={`nav-item ${tab==='comms'?'active':''}`} onClick={() => go('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></div>}
         <div className="nav-group">SETUP</div>
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
         {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => go('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></div>}
@@ -251,7 +253,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -276,6 +278,8 @@ export default function VendorPanel({ onLogout }) {
           <CrewView />
         ) : tab === 'plans' ? (
           <PlansView />
+        ) : tab === 'comms' ? (
+          <CommsView />
         ) : tab === 'analytics' ? (
           <AnalyticsView />
         ) : tab === 'fileflyer' ? (

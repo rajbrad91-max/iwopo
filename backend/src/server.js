@@ -42,6 +42,7 @@ import { sweepOldEvents } from './lib/siteEvents.js';
 import analyticsRoutes from './routes/analytics.js';
 import commsWebhookRoutes from './routes/commsWebhook.js';
 import { pollComms } from './lib/commsPoll.js';
+import commsRoutes from './routes/comms.js';
 
 dotenv.config();
 
@@ -146,6 +147,8 @@ app.use('/api/files', gate('fileflyer'), fileRoutes);
 // 📊 private to the platform owner — services.is_private keeps it out of every
 // catalogue, and gate() keeps the data behind it
 app.use('/api/analytics', gate('analytics'), analyticsRoutes);
+// 📞 also private to the platform owner
+app.use('/api/comms', gate('comms'), commsRoutes);
 app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
 

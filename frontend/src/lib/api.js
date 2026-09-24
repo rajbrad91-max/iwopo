@@ -772,6 +772,15 @@ export const api = {
   myPlans: () => request('/me/plans'),
   // 📊 private to the platform owner
   analytics: (days) => request('/analytics?days=' + (days || 30)),
+  // 📞 the timeline; 'since' is what keeps the open page live
+  comms: ({ kind, q, since } = {}) => {
+    const p = new URLSearchParams();
+    if (kind) p.set('kind', kind);
+    if (q) p.set('q', q);
+    if (since) p.set('since', since);
+    return request('/comms' + (p.toString() ? '?' + p : ''));
+  },
+  commsSync: () => request('/comms/sync', { method: 'POST' }),
   myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {
