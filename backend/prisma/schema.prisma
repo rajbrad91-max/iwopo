@@ -26,37 +26,40 @@ model album_settings {
 }
 
 model albums {
-  id               Int              @id @default(autoincrement())
-  vendor_id        Int
-  title            String           @db.VarChar(160)
-  category         String?          @db.VarChar(80)
-  cover_photo      String?          @db.VarChar(300)
-  guest_username   String?          @db.VarChar(80)
-  guest_password   String?          @db.VarChar(120)
-  admin_username   String?          @db.VarChar(80)
-  admin_password   String?          @db.VarChar(120)
-  created_at       DateTime?        @default(now()) @db.Timestamp(6)
-  exp_enabled      Boolean?         @default(false)
-  exp_from_date    DateTime?        @db.Date
-  exp_date         DateTime?        @db.Date
-  exp_notes        String?
-  client_email     String?          @db.VarChar(160)
-  face_ai          Boolean?         @default(false)
-  public_token     String?          @unique @db.VarChar(40)
-  gallery_mode     String?          @db.VarChar(20)
-  faces_clustered  Boolean?         @default(false)
-  face_engine_lock String?          @db.VarChar(10)
-  cover_focus      String?          @default("50% 50%") @db.VarChar(20)
-  has_collection   Boolean          @default(false)
-  album_events     album_events[]
-  album_faces      album_faces[]
-  face_clusters    face_clusters[]
-  favorites        favorites[]
-  photos           photos[]
-  selection_notes  selection_notes?
-  selections       selections[]
+  id                Int              @id @default(autoincrement())
+  vendor_id         Int
+  title             String           @db.VarChar(160)
+  category          String?          @db.VarChar(80)
+  cover_photo       String?          @db.VarChar(300)
+  guest_username    String?          @db.VarChar(80)
+  guest_password    String?          @db.VarChar(120)
+  admin_username    String?          @db.VarChar(80)
+  admin_password    String?          @db.VarChar(120)
+  created_at        DateTime?        @default(now()) @db.Timestamp(6)
+  exp_enabled       Boolean?         @default(false)
+  exp_from_date     DateTime?        @db.Date
+  exp_date          DateTime?        @db.Date
+  exp_notes         String?
+  client_email      String?          @db.VarChar(160)
+  face_ai           Boolean?         @default(false)
+  public_token      String?          @unique @db.VarChar(40)
+  gallery_mode      String?          @db.VarChar(20)
+  faces_clustered   Boolean?         @default(false)
+  face_engine_lock  String?          @db.VarChar(10)
+  cover_focus       String?          @default("50% 50%") @db.VarChar(20)
+  has_collection    Boolean          @default(false)
+  kind              String           @default("gallery") @db.VarChar(16)
+  selfie_strictness Int?             @db.SmallInt
+  album_events      album_events[]
+  album_faces       album_faces[]
+  face_clusters     face_clusters[]
+  favorites         favorites[]
+  photos            photos[]
+  selection_notes   selection_notes?
+  selections        selections[]
 
   @@index([vendor_id], map: "idx_albums_vendor")
+  @@index([vendor_id, kind], map: "idx_albums_kind")
 }
 
 model chatbot_knowledge {
