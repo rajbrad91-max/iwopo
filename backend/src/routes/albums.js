@@ -23,6 +23,7 @@ import { naturalSort, byFilename } from '../lib/naturalSort.js';
 import bcrypt from 'bcryptjs';
 import { hashSharePassword } from '../lib/sharePassword.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
+import { deviceOrAuth } from '../lib/deviceAuth.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -617,7 +618,11 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 // 🔒 upload photos → 3-tier pipeline (thumb 800 / full 2200 webp / original)
-router.post('/:id/photos', requireAuth, upload.array('photos', 50), async (req, res) => {
+/* 🔑 deviceOrAuth, not requireAuth: the watcher on Raj's editing machine
+   posts here as itself. A person's token still works unchanged, and the
+   tenancy check below needs no special case because a device is shaped like a
+   user with a vendor_id. */
+router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req, res) => {
   const v = vid(req);
   const id = Number(req.params.id);
   try {

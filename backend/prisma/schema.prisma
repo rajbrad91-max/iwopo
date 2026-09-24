@@ -773,6 +773,7 @@ model vendors {
   contract_templates       contract_templates[]
   contracts                contracts[]
   crew_members             crew_members[]
+  device_tokens            device_tokens[]
   email_settings           email_settings?
   email_templates          email_templates[]
   file_folders             file_folders[]
@@ -1050,4 +1051,19 @@ model comms_events {
 
   @@index([vendor_id, from_number, to_number], map: "idx_comms_party")
   @@index([vendor_id, occurred_at(sort: Desc)], map: "idx_comms_vendor")
+}
+
+model device_tokens {
+  id         Int       @id @default(autoincrement())
+  vendor_id  Int
+  name       String    @db.VarChar(120)
+  token_hash String    @unique(map: "idx_device_hash") @db.VarChar(120)
+  scope      String    @default("upload") @db.VarChar(32)
+  last_used  DateTime? @db.Timestamp(6)
+  last_ip    String?   @db.VarChar(45)
+  revoked_at DateTime? @db.Timestamp(6)
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id], map: "idx_device_vendor")
 }
