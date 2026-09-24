@@ -64,8 +64,15 @@ router.get('/', requireAuth, async (req, res) => {
   const v = vid(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
+    /* 🎥 Galleries and live shoots are the same row with a different rule
+       about who sees what, but they are not the same LIST — a photographer
+       looking for a wedding to deliver should not scroll past a week of live
+       shoots to find it. Defaults to galleries, so every existing caller keeps
+       behaving exactly as it did. */
+    const kind = req.query.kind === 'liveshoot' ? 'liveshoot' : 'gallery';
+
     const albums = await prisma.albums.findMany({
-      where: { vendor_id: v },                    // 🔒 tenancy
+      where: { vendor_id: v, kind },              // 🔒 tenancy
       orderBy: { created_at: 'desc' },
       include: { _count: { select: { photos: true } } },
     });
@@ -122,6 +129,9 @@ router.post('/', requireAuth, async (req, res) => {
       data: {
         vendor_id: v, title,
         category: category || null,
+        /* 🎥 gallery unless asked otherwise — an unknown value must never
+           silently create something with different rules about who sees it */
+        kind: req.body?.kind === 'liveshoot' ? 'liveshoot' : 'gallery',
         guest_username: guest_username || null,
         guest_password: await hashSharePassword(guest_password),
         admin_username: admin_username || null,

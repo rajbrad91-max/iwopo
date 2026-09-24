@@ -19,7 +19,7 @@ import './vendor.css';
 const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
   contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
-  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms',
+  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms', liveshoot: 'liveshoot',
 };
 
 function FeatureLocked({ goServices }) {
@@ -234,6 +234,7 @@ export default function VendorPanel({ onLogout }) {
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
         {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
         {has('comms') && <div className={`nav-item ${tab==='comms'?'active':''}`} onClick={() => go('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></div>}
+        {has('liveshoot') && <div className={`nav-item ${tab==='liveshoot'?'active':''}`} onClick={() => go('liveshoot')}><span className="nav-ic">🎥</span><span className="nav-txt">Live Shoot</span></div>}
         <div className="nav-group">SETUP</div>
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
         {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => go('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></div>}
@@ -253,7 +254,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -278,6 +279,8 @@ export default function VendorPanel({ onLogout }) {
           <CrewView />
         ) : tab === 'plans' ? (
           <PlansView />
+        ) : tab === 'liveshoot' ? (
+          <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
         ) : tab === 'comms' ? (
           <CommsView />
         ) : tab === 'analytics' ? (
@@ -285,7 +288,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'fileflyer' ? (
           <FileFlyerView />
         ) : tab === 'galleries' ? (
-          <GalleriesView routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })} />
+          <GalleriesView key="galleries" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })} />
         ) : tab === 'website' ? (
           <WebsiteView />
         ) : tab === 'aichat' ? (
@@ -675,7 +678,15 @@ function FocalPicker({ src, focus, onFocus, view, onView }) {
   );
 }
 
-function GalleriesView({ routeAlbum, onOpenAlbum }) {
+/**
+ * @param {string} [kind]  'gallery' (default) or 'liveshoot'.
+ *
+ * 🎥 One component for both, because a live shoot IS an album — same upload,
+ * same face detection, same covers, same expiry. Only the delivery differs,
+ * and that happens on the public page. Forking this into a second view would
+ * mean every future gallery fix needing to be made twice.
+ */
+function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
   const dialog = useDialog();
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -793,7 +804,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
     }).catch(() => {});
     api.galleryTheme().then(d => setTheme(d.theme || {})).catch(() => {});
   }, []);
-  function load() { setLoading(true); api.albums().then(d => setAlbums(d.albums || [])).catch(() => {}).finally(() => setLoading(false)); }
+  function load() { setLoading(true); api.albums(kind).then(d => setAlbums(d.albums || [])).catch(() => {}).finally(() => setLoading(false)); }
 
   // 🤖 auto password = prefix + last-4 of phone
   function last4(phone) {
@@ -831,7 +842,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
       api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix, instructions_template: tpl }).catch(() => {});
       let album;
       if (edit) { const d = await api.updateAlbum(edit.id, f); album = d.album; }
-      else { const d = await api.createAlbum(f); album = d.album; }
+      else { const d = await api.createAlbum({ ...f, kind }); album = d.album; }
       /* Keep what was typed for this session, so the share email can be filled
          in the same sitting. The server hashes it and never sends it back. */
       if (album && (f.guest_password || f.admin_password)) {
@@ -904,7 +915,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum }) {
   return (
     <>
       <div className="gal-head">
-        <h2 className="gal-title">📸 Galleries</h2>
+        <h2 className="gal-title">{kind === 'liveshoot' ? '🎥 Live shoots' : '📸 Galleries'}</h2>
         <div className="gal-head-btns">
           <button className="lead-ic-btn" onClick={() => { if (showNew) resetForm(); setShowNew(s => !s); }} title={showNew ? 'Cancel' : 'New album'}>{showNew ? '✕' : '➕'}</button>
           <button className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); setSearch(''); }} title="Search albums">🔍</button>
