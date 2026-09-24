@@ -768,6 +768,7 @@ model vendors {
   chatbot_subscribers      chatbot_subscribers?
   chatbot_transcripts      chatbot_transcripts[]
   chatbot_usage            chatbot_usage[]
+  comms_events             comms_events[]
   contacts                 contacts[]
   contract_templates       contract_templates[]
   contracts                contracts[]
@@ -1027,4 +1028,26 @@ model site_events {
 
   @@index([vendor_id, kind, created_at(sort: Desc)], map: "idx_events_kind")
   @@index([vendor_id, created_at(sort: Desc)], map: "idx_events_vendor")
+}
+
+model comms_events {
+  id            BigInt   @id @default(autoincrement())
+  vendor_id     Int
+  external_id   String   @unique(map: "idx_comms_external") @db.VarChar(80)
+  kind          String   @db.VarChar(12)
+  direction     String   @db.VarChar(10)
+  status        String?  @db.VarChar(24)
+  from_number   String?  @db.VarChar(32)
+  to_number     String?  @db.VarChar(32)
+  contact_name  String?  @db.VarChar(160)
+  body          String?
+  transcript    String?
+  recording_url String?  @db.VarChar(500)
+  duration_sec  Int?
+  occurred_at   DateTime @db.Timestamp(6)
+  created_at    DateTime @default(now()) @db.Timestamp(6)
+  vendors       vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, from_number, to_number], map: "idx_comms_party")
+  @@index([vendor_id, occurred_at(sort: Desc)], map: "idx_comms_vendor")
 }

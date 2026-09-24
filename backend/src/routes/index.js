@@ -11,6 +11,7 @@ import { queueStatus, enqueueAlbum } from '../lib/faceQueue.js';
 import { deleteCollection } from '../lib/faceAWS.js';
 import { platformMail } from './email.js';
 import nodemailer from 'nodemailer';
+import { quoConfig, listPhoneNumbers } from '../lib/quo.js';
 
 const router = express.Router();
 
@@ -38,6 +39,9 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
        access key ID there is nothing useful to recognise it by, so the whole
        thing is replaced rather than clipped. */
     if (s.smtp_pass) s.smtp_pass = '••••••••';
+    for (const k of ['quo_api_key', 'quo_webhook_secret']) {
+      if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
+    }
     res.json({ settings: s });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -164,6 +168,34 @@ router.post('/settings/platform/test-email', requireAuth, requireSuperAdmin, asy
   }
 });
 
+/**
+ * 📞 POST /api/settings/platform/test-quo → does the key actually work?
+ *
+ * Listing the account's phone numbers is the cheapest proof: it needs a valid
+ * key and nothing else, and it hands back the number ids the backfill will
+ * need anyway. A saved key that turns out to be wrong looks exactly like a
+ * saved key that is right, until a week of calls has quietly not arrived.
+ */
+router.post('/settings/platform/test-quo', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const cfg = await quoConfig();
+    if (!cfg.ready) return res.status(400).json({ error: 'Add the Quo API key first.' });
+
+    const numbers = await listPhoneNumbers(cfg.key);
+    if (!numbers.length) {
+      return res.status(400).json({ error: 'The key works, but the account has no phone numbers on it.' });
+    }
+    res.json({ ok: true, numbers });
+  } catch (e) {
+    /* 401 from Quo means the key, not the network — worth saying so, because
+       "request failed" sends somebody to check their firewall. */
+    const msg = e.status === 401 || e.status === 403
+      ? 'Quo rejected that key.'
+      : 'Could not reach Quo — ' + e.message;
+    res.status(400).json({ error: msg });
+  }
+});
+
 router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const s = await getAllSettings();
@@ -174,6 +206,8 @@ router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (r
       r2_private_secret_access_key: s.r2_private_secret_access_key || '',
       r2_public_secret_access_key: s.r2_public_secret_access_key || '',
       smtp_pass: s.smtp_pass || '',
+      quo_api_key: s.quo_api_key || '',
+      quo_webhook_secret: s.quo_webhook_secret || '',
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -192,7 +226,10 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
       /* 📧 Platform email. These were environment variables, which meant the
          one person who could set them had to edit a file on the server — so
          they were never set, and nothing in the product could send anything. */
-      'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name'];
+      'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name',
+      /* 📞 Quo (OpenPhone) — calls and messages. Private to the platform owner,
+         so quo_vendor_id says whose timeline the mirrored events land in. */
+      'quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id'];
 
     /* 🔒 One bucket for both classes would silently un-gate every client gallery
        and every File Flyer link at once: the album password and the share token
