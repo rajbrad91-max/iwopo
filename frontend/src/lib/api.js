@@ -571,6 +571,8 @@ export const api = {
   plansList: () => request('/vendors/plans'),
   // 📧 prove the platform mail settings actually work
   testPlatformEmail: (to) => request('/settings/platform/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
+  // 📞 does the Quo key work? listing the numbers is the cheapest proof
+  testQuo: () => request('/settings/platform/test-quo', { method: 'POST' }),
   setPlanStorage: (planId, gb) =>
     request(`/vendors/plans/${planId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_gb: gb }) }),
   setVendorPlan: (vendorId, planId) =>

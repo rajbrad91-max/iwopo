@@ -1651,6 +1651,21 @@ function FaceEngineSettings() {
      at again. Folded away by default, like the AWS credentials above it. */
   const [r2Open, setR2Open] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
+  const [quoOpen, setQuoOpen] = useState(false);
+  const [quoTesting, setQuoTesting] = useState(false);
+  const [quoMsg, setQuoMsg] = useState(null);
+
+  /** Listing the numbers proves the key works and hands back the ids. */
+  async function testQuo() {
+    setQuoTesting(true); setQuoMsg(null);
+    try {
+      const r = await api.testQuo();
+      const list = (r.numbers || []).map(n => `${n.name} (${n.number}) — id ${n.id}`).join(' · ');
+      setQuoMsg({ ok: true, text: '✅ ' + list });
+    } catch (e) {
+      setQuoMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach Quo') });
+    } finally { setQuoTesting(false); }
+  }
   const [testTo, setTestTo] = useState('');
   const [testing, setTesting] = useState(false);
   const [testMsg, setTestMsg] = useState(null);
@@ -1962,6 +1977,81 @@ function FaceEngineSettings() {
             {testMsg && (
               <div style={{ marginTop: 10, fontSize: 12.5, color: testMsg.ok ? '#4ade80' : '#f87171' }}>
                 {testMsg.text}
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+
+        {/* 📞 Quo (OpenPhone) — calls and messages.
+            Private to the platform owner, so quo_vendor_id decides whose
+            timeline the mirrored events land in. */}
+        <div className="fr-cred">
+          <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
+            onClick={() => setQuoOpen(o => !o)} aria-expanded={quoOpen}>
+            <span>📞 Calls &amp; messages (Quo)</span>
+            <span className="fr-cred-chev">{quoOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {quoOpen && (
+          <div className="fr-cred-body">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+              {!editing ? (
+                <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                </div>
+              )}
+            </div>
+
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+              Mirrors calls and messages from Quo. It cannot place a call — their
+              API has no endpoint for it — so this is the history, not a phone.
+            </p>
+
+            <div><label className="lbl">API key</label>
+              <input type="password" style={editing ? box : roBox} readOnly={!editing}
+                value={s.quo_api_key || ''}
+                onChange={e => setS({ ...s, quo_api_key: e.target.value })} /></div>
+
+            <div><label className="lbl">Webhook signing secret</label>
+              <input type="password" style={editing ? box : roBox} readOnly={!editing}
+                value={s.quo_webhook_secret || ''}
+                onChange={e => setS({ ...s, quo_webhook_secret: e.target.value })} /></div>
+
+            <div><label className="lbl">Phone number ID <span style={{ opacity: .6 }}>optional</span></label>
+              <input style={editing ? box : roBox} readOnly={!editing}
+                placeholder="leave empty for every number on the account"
+                value={s.quo_phone_number_id || ''}
+                onChange={e => setS({ ...s, quo_phone_number_id: e.target.value })} /></div>
+
+            <div><label className="lbl">Whose timeline (vendor id)</label>
+              <input style={editing ? box : roBox} readOnly={!editing}
+                placeholder="1"
+                value={s.quo_vendor_id || ''}
+                onChange={e => setS({ ...s, quo_vendor_id: e.target.value })} /></div>
+
+            {/* The URL to paste into Quo. Shown rather than described, because
+                a webhook pointed at the wrong path fails silently forever. */}
+            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Webhook URL for Quo</div>
+            <code style={{ display: 'block', marginTop: 8, padding: '9px 11px', borderRadius: 8,
+              background: 'var(--panel-2)', border: '1px solid var(--line)',
+              fontSize: 12, color: 'var(--text)', wordBreak: 'break-all' }}>
+              {window.location.origin}/api/comms/webhook
+            </code>
+
+            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Check the key</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+              <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5 }}
+                disabled={quoTesting} onClick={testQuo}>
+                {quoTesting ? 'Checking…' : 'List my numbers'}
+              </button>
+            </div>
+            {quoMsg && (
+              <div style={{ marginTop: 10, fontSize: 12.5, color: quoMsg.ok ? '#4ade80' : '#f87171' }}>
+                {quoMsg.text}
               </div>
             )}
           </div>
