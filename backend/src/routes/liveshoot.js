@@ -1,3 +1,5 @@
+import * as objects from '../lib/objectStore.js';
+import { recordEvent } from '../lib/siteEvents.js';
 /**
  * 🎥 A live shoot — everybody sees only themselves.
  *
@@ -46,6 +48,27 @@ const DEFAULT_MATCH = 0.58;
    not carry access indefinitely. */
 const PASS_DAYS = 14;
 
+/* One header, parsed by hand. cookie-parser would be a dependency, a middleware
+   on every request in the app, and a supply-chain surface, to read a single
+   value on three routes. */
+function cookieFrom(req, name) {
+  const raw = String(req.headers.cookie || '');
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    if (part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return null;
+}
+
+/** The pass, from the cookie or from a header the page can send. */
+function passFor(req, albumId) {
+  const token = cookieFrom(req, 'live_pass_' + albumId)
+    || String(req.headers['x-live-pass'] || '')
+    || String(req.query.pass || '');
+  return readPass(token, albumId);
+}
+
 /** Sign what this device proved, so it need not prove it again. */
 function mintPass(albumId, clusterIds) {
   const body = JSON.stringify({ a: albumId, c: clusterIds, exp: Date.now() + PASS_DAYS * 864e5 });
@@ -87,7 +110,13 @@ router.get('/:token', async (req, res) => {
 
     const clusters = await prisma.face_clusters.count({ where: { album_id: a.id } });
     const photos = await prisma.photos.count({ where: { album_id: a.id } });
+
+    /* Somebody who proved themselves last week should land straight on their
+       photographs, not on a camera prompt they have already satisfied. */
+    const pass = passFor(req, a.id);
+
     res.json({
+      already_matched: !!pass,
       album: { title: a.title, cover_photo: a.cover_photo },
       photos, people: clusters,
       /* Said plainly, because "no photographs found" during the indexing lag
@@ -165,6 +194,88 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
     /* Always, on every path. The selfie does not outlive the request. */
     if (tmp) await fs.unlink(tmp).catch(() => {});
   }
+});
+
+/**
+ * GET /api/live/:token/mine → this device's photographs.
+ *
+ * 🔒 The clusters come from the SIGNED pass, never from the request. A guest
+ * asking for cluster 9 gets what their own pass says, not what they typed.
+ */
+router.get('/:token/mine', async (req, res) => {
+  try {
+    const a = await prisma.albums.findFirst({
+      where: { public_token: String(req.params.token), kind: 'liveshoot' },
+      select: { id: true },
+    });
+    if (!a) return res.status(404).json({ error: 'Not found' });
+
+    const pass = passFor(req, a.id);
+    if (!pass) return res.status(401).json({ error: 'Send a photo of yourself first.' });
+
+    const links = await prisma.photo_faces.findMany({
+      where: { cluster_id: { in: pass.c.map(Number) } },
+      select: { photo_id: true },
+    });
+    const photos = await prisma.photos.findMany({
+      where: { id: { in: [...new Set(links.map(l => l.photo_id))] }, album_id: a.id },  // 🔒 this album only
+      select: { id: true, filename: true },
+      orderBy: { filename: 'asc' },
+    });
+    res.json({ count: photos.length, photos, expires: pass.exp });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * GET /api/live/:token/photo/:id/:size → one image.
+ *
+ * 🔒 Two walls, both needed. The photograph must be in THIS album, and it must
+ * be in a cluster this device's pass names. Checking only the album would hand
+ * any guest the whole shoot by counting upwards through the ids.
+ */
+router.get('/:token/photo/:id/:size', async (req, res) => {
+  try {
+    const a = await prisma.albums.findFirst({
+      where: { public_token: String(req.params.token), kind: 'liveshoot' },
+      select: { id: true, vendor_id: true },
+    });
+    if (!a) return res.status(404).end();
+
+    const pass = passFor(req, a.id);
+    if (!pass) return res.status(401).end();
+
+    const id = Number(req.params.id);
+    const allowed = await prisma.photo_faces.findFirst({
+      where: { photo_id: id, cluster_id: { in: pass.c.map(Number) } },
+      select: { photo_id: true },
+    });
+    if (!allowed) return res.status(404).end();            // not this person's photograph
+
+    const p = await prisma.photos.findFirst({
+      where: { id, album_id: a.id },                       // 🔒 and it must be this album's
+      select: { storage_path: true, preview_path: true, thumb_path: true, filename: true },
+    });
+    if (!p) return res.status(404).end();
+
+    const size = req.params.size;
+    const rel = size === 'orig' ? p.storage_path : size === 'preview' ? p.preview_path : p.thumb_path;
+    if (!rel) return res.status(404).end();
+
+    const seg = String(rel).split('/').filter(Boolean);
+    const key = `vendor/${a.vendor_id}/galleries/${seg[1]}/${seg[2]}`;
+
+    if (size === 'orig') {
+      recordEvent(req, a.vendor_id, 'photo_download', { targetId: id, label: p.filename });
+      res.setHeader('Content-Disposition', `attachment; filename="${p.filename}"`);
+    }
+    /* getStream, not getObject — the latter does not exist, which lint could
+       not catch because objects is a namespace import. */
+    const obj = await objects.getStream(objects.PRIVATE, key);
+    if (!obj?.stream) return res.status(404).end();
+    if (obj.contentType) res.setHeader('Content-Type', obj.contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    obj.stream.pipe(res);
+  } catch { res.status(404).end(); }
 });
 
 export default router;

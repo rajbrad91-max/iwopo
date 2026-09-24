@@ -44,6 +44,7 @@ import commsWebhookRoutes from './routes/commsWebhook.js';
 import { pollComms } from './lib/commsPoll.js';
 import commsRoutes from './routes/comms.js';
 import deviceRoutes from './routes/devices.js';
+import liveshootRoutes from './routes/liveshoot.js';
 
 dotenv.config();
 
@@ -152,6 +153,9 @@ app.use('/api/analytics', gate('analytics'), analyticsRoutes);
 app.use('/api/comms', gate('comms'), commsRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
 app.use('/api/devices', deviceRoutes);
+/* 🎥 Live shoot — public, and deliberately so: a guest has no account. The
+   selfie and the signed pass are what stand in for one. */
+app.use('/api/live', liveshootRoutes);
 app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
 
