@@ -9,10 +9,18 @@
  * arrives, so this compares one selfie against those clusters. Nothing new is
  * indexed and nothing is recomputed.
  *
- * 🔒 The selfie is NOT stored. It is written to a temporary file, turned into
- * 128 numbers, and deleted in a finally block. A guest at somebody's wedding
- * did not agree to us keeping a photograph of their face, and a folder of
- * selfies is a liability nobody asked for.
+ * 🔒 Neither the selfie NOR the face numbers are stored. The photo becomes 128
+ * numbers, those are compared, and both are gone before the response is sent.
+ * A guest at somebody's wedding did not agree to us keeping a photograph of
+ * their face, and a folder of selfies is a liability nobody asked for.
+ *
+ * 🎟️ A device does not have to prove itself twice. A successful match sets a
+ * signed cookie naming the clusters this device matched, good for fourteen
+ * days — so somebody checks once and can come back all week. The cookie holds
+ * cluster ids and an album, nothing biometric: if it leaks it unlocks those
+ * photographs and nothing else, which a stored face descriptor could not
+ * promise. And because it names CLUSTERS rather than photographs, pictures
+ * taken later in the shoot appear for that guest as they arrive.
  */
 import express from 'express';
 import fs from 'node:fs/promises';
@@ -32,6 +40,41 @@ const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 
    are in none of their own photographs, which is the worse failure — they can
    see a photograph that is not them and shrug. */
 const DEFAULT_MATCH = 0.58;
+
+/* Fourteen days, as Raj asked. Long enough that a guest who looks on the night
+   can come back the following weekend; short enough that a borrowed phone does
+   not carry access indefinitely. */
+const PASS_DAYS = 14;
+
+/** Sign what this device proved, so it need not prove it again. */
+function mintPass(albumId, clusterIds) {
+  const body = JSON.stringify({ a: albumId, c: clusterIds, exp: Date.now() + PASS_DAYS * 864e5 });
+  const payload = Buffer.from(body).toString('base64url');
+  const sig = crypto.createHmac('sha256', process.env.JWT_SECRET || 'iwopo').update(payload).digest('base64url');
+  return payload + '.' + sig;
+}
+
+/**
+ * Read a pass back, or null.
+ *
+ * ⚠️ The signature is checked BEFORE the contents are trusted. Without that,
+ * anybody could edit the cluster list in their own cookie and see every guest's
+ * photographs — the whole point of the selfie undone by a text editor.
+ */
+export function readPass(token, albumId) {
+  try {
+    const [payload, sig] = String(token || '').split('.');
+    if (!payload || !sig) return null;
+    const expect = crypto.createHmac('sha256', process.env.JWT_SECRET || 'iwopo').update(payload).digest('base64url');
+    const a = Buffer.from(sig), b = Buffer.from(expect);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (data.exp < Date.now()) return null;              // expired
+    if (Number(data.a) !== Number(albumId)) return null; // a pass for another album
+    return data;
+  } catch { return null; }
+}
 
 /** GET /api/live/:token → what this link is, before anybody proves anything. */
 router.get('/:token', async (req, res) => {
@@ -102,13 +145,17 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
       orderBy: { filename: 'asc' },
     });
 
-    /* A short-lived pass, so the gallery page can fetch these images without
-       re-uploading the selfie for every thumbnail. It names the photographs it
-       covers, so it cannot be used to see anything else. */
-    const pass = crypto.randomBytes(24).toString('base64url');
+    const pass = mintPass(a.id, mine.map(m => m.id));
+    /* httpOnly so no script on the page can read it, sameSite lax so following
+       the link from a message still carries it. */
+    res.cookie('live_pass_' + a.id, pass, {
+      httpOnly: true, sameSite: 'lax', secure: true,
+      maxAge: PASS_DAYS * 864e5,
+    });
     res.json({
       matched: true,
       pass,
+      valid_days: PASS_DAYS,
       count: photos.length,
       photos: photos.map(p => ({ id: p.id, filename: p.filename })),
     });
