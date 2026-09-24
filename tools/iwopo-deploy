@@ -63,6 +63,21 @@ echo
 echo "═══ LIVE ═══"
 cd $L
 git pull -q origin main
+
+# ⚠️ Always, not only when the schema looks changed.
+#
+# This step was done by hand and therefore forgotten, four times in one day.
+# It stayed invisible until code actually USED a new column, and then live
+# returned 500 on every request that touched it — the client had been twelve
+# hours behind its own schema. Detecting whether the schema moved would be a
+# conditional that can be got wrong; regenerating unconditionally costs about
+# six hundred milliseconds on a deploy that already takes twenty seconds, and
+# cannot be skipped.
+#
+# Before the restart, deliberately: the running process loads the client at
+# boot, so regenerating after it would take effect on the NEXT deploy.
+cd $L/backend
+npx prisma generate 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma: /'
 cd $L/frontend && npm run build 2>&1 | grep -oE '✓ built in [0-9.]+s' | sed 's/^/  build: /'
 systemctl reload nginx
 pm2 restart iwopo-api >/dev/null 2>&1
@@ -76,5 +91,12 @@ diff -rq $L/backend/src $S/backend/src >/dev/null && echo "  backend/src identic
 a=$(grep -o 'assets/[^"]*\.js' $L/frontend/dist/index.html|head -1); b=$(grep -o 'assets/[^"]*\.js' $S/frontend/dist/index.html|head -1)
 [ "$a" = "$b" ] && echo "  bundle identical" || echo "  ⚠️  bundle DIFFERS"
 echo "  iwopo.com $(curl -s -o /dev/null -w '%{http_code}' https://iwopo.com/)  alphabetaone.com $(curl -s -o /dev/null -w '%{http_code}' https://alphabetaone.com/)"
+# a client older than the schema it is meant to match is the fault above,
+# and it can arrive from any direction — a manual pull, a rollback, an npm ci
+for d in $L $S; do
+  sc=$(stat -c %Y $d/backend/prisma/schema.prisma)
+  cl=$(stat -c %Y $d/backend/node_modules/.prisma/client/index.js 2>/dev/null || echo 0)
+  [ "$cl" -lt "$sc" ] && echo "  ⚠️  $(basename $d): prisma client is OLDER than its schema — run npx prisma generate"
+done
 ERR=$(pm2 logs iwopo-api --err --lines 20 --nostream 2>/dev/null | grep -viE 'tensorflow|oneDNN|env vars|APP_URL|PLATFORM_SMTP|TAILING|error.log last' | grep -vE '^\s*$' | tail -3)
 [ -n "$ERR" ] && echo "  ⚠️  $ERR" || echo "  error log clean"
