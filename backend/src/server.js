@@ -40,6 +40,8 @@ import * as objects from './lib/objectStore.js';
 import { sweepExpiredSubscriptions } from './lib/subscriptionSweep.js';
 import { sweepOldEvents } from './lib/siteEvents.js';
 import analyticsRoutes from './routes/analytics.js';
+import commsWebhookRoutes from './routes/commsWebhook.js';
+import { pollComms } from './lib/commsPoll.js';
 
 dotenv.config();
 
@@ -107,6 +109,12 @@ app.use(cors({
     return cb(null, vendorOrigins.has(origin));
   },
 }));
+/* 📞 Quo pushes calls and messages here. Mounted BEFORE express.json()
+   deliberately: the signature is an HMAC over the RAW bytes, and parsing then
+   re-stringifying changes them — key order, whitespace — so the check would
+   fail for reasons that look exactly like a wrong secret. */
+app.use('/api/comms/webhook', commsWebhookRoutes);
+
 app.use(express.json());
 
 app.use('/api', apiRoutes);
@@ -197,6 +205,12 @@ sweepExpiredSubscriptions().catch(() => {});
    last, and no longer — a table that only grows is a bill nobody decided to
    pay, and old visitor data is a liability rather than an asset. */
 setInterval(() => { sweepOldEvents().catch(() => {}); }, 24 * 60 * 60_000).unref();
+
+/* 📞 The net behind the webhook. Every minute, in-process — Perfect Poses used
+   a fifteen-minute cron in a hosting panel that nobody could see running, and
+   the result was calls that "hardly get updated". */
+setInterval(() => { pollComms().catch(() => {}); }, 60_000).unref();
+pollComms().catch(() => {});
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
