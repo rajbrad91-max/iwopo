@@ -272,7 +272,18 @@ router.get('/:token/photo/:id/:size', async (req, res) => {
        not catch because objects is a namespace import. */
     const obj = await objects.getStream(objects.PRIVATE, key);
     if (!obj?.stream) return res.status(404).end();
-    if (obj.contentType) res.setHeader('Content-Type', obj.contentType);
+    /* ⚠️ Not obj.contentType. R2 hands back application/octet-stream for these
+       objects, and a browser will not draw an <img> that claims to be a binary
+       download — the request succeeds, the bytes are a perfectly good WEBP, and
+       the grid stays blank. Inferred from the extension instead, which is the
+       thing that is actually true. */
+    const ext = String(rel).split('.').pop().toLowerCase();
+    const mime = ext === 'webp' ? 'image/webp'
+      : ext === 'png' ? 'image/png'
+      : ext === 'gif' ? 'image/gif'
+      : ext === 'mp4' ? 'video/mp4'
+      : 'image/jpeg';
+    res.setHeader('Content-Type', mime);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     obj.stream.pipe(res);
   } catch { res.status(404).end(); }
