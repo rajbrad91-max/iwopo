@@ -68,6 +68,7 @@ export default function LiveShootPublic({ token }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, step]);
   const fileRef = useRef(null);
+  const camRef = useRef(null);
 
   const base = `/api/live/${token}`;
 
@@ -89,6 +90,15 @@ export default function LiveShootPublic({ token }) {
       if (!r.ok) return;
       setPhotos((await r.json()).photos || []);
     } catch { /* the prompt stays; nothing is lost */ }
+  }
+
+  /* A phone gets handed round at a wedding. Whoever holds it next should see
+     their own photographs, not the ones belonging to whoever held it first. */
+  async function signOut() {
+    try { await fetch(`${base}/signout`, { method: 'POST', credentials: 'include' }); }
+    catch { /* clearing the view matters more than the round trip */ }
+    setPhotos(null);
+    setErr('');
   }
 
   async function send(file) {
@@ -117,7 +127,11 @@ export default function LiveShootPublic({ token }) {
       <header className="ls-head">
         <h1>{info.album?.title}</h1>
         {photos ? (
-          <p className="ls-sub">{photos.length} {photos.length === 1 ? 'photo' : 'photos'} of you</p>
+          <p className="ls-sub">
+            {photos.length} {photos.length === 1 ? 'photo' : 'photos'} of you
+            {' · '}
+            <button className="ls-out" onClick={signOut}>Not you?</button>
+          </p>
         ) : (
           <p className="ls-sub">{info.photos} photos · {info.people} people</p>
         )}
@@ -133,13 +147,21 @@ export default function LiveShootPublic({ token }) {
             saved.
           </p>
 
-          {/* capture="user" opens the front camera straight away on a phone,
-              which is where almost everybody will be standing. */}
-          <input ref={fileRef} type="file" accept="image/*" capture="user" hidden
+          {/* Two inputs rather than one, because capture="user" is not a
+              suggestion — a phone honours it and goes straight to the camera,
+              with no way to reach the camera roll. Somebody who already has a
+              good photograph of themselves should not have to take a worse one
+              standing in a dark venue. */}
+          <input ref={camRef} type="file" accept="image/*" capture="user" hidden
+            onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
+          <input ref={fileRef} type="file" accept="image/*" hidden
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
 
-          <button className="ls-b" disabled={busy} onClick={() => fileRef.current?.click()}>
-            {busy ? 'Looking…' : 'Take a photo'}
+          <button className="ls-b" disabled={busy} onClick={() => camRef.current?.click()}>
+            {busy ? 'Looking…' : '📷 Take a selfie'}
+          </button>
+          <button className="ls-b is-ghost" disabled={busy} onClick={() => fileRef.current?.click()}>
+            🖼️ Choose a photo
           </button>
 
           {info.still_indexing && (

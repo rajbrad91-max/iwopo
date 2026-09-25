@@ -232,6 +232,29 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
 });
 
 /**
+ * POST /api/live/:token/signout → forget this device.
+ *
+ * A phone gets handed round at a wedding. Whoever has it next should see their
+ * own photographs, not the ones belonging to whoever held it first, and there
+ * is otherwise no way to be rid of a pass for a fortnight.
+ *
+ * 🔒 Cleared by overwriting with an expiry in the past as well as clearing it,
+ * because a browser that ignores one will honour the other.
+ */
+router.post('/:token/signout', async (req, res) => {
+  try {
+    const a = await prisma.albums.findFirst({
+      where: { public_token: String(req.params.token), kind: 'liveshoot' },
+      select: { id: true },
+    });
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    res.clearCookie('live_pass_' + a.id, { httpOnly: true, sameSite: 'lax', secure: true });
+    res.cookie('live_pass_' + a.id, '', { httpOnly: true, sameSite: 'lax', secure: true, maxAge: 0 });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * GET /api/live/:token/mine → this device's photographs.
  *
  * 🔒 The clusters come from the SIGNED pass, never from the request. A guest

@@ -24,3 +24,13 @@
 
 
 
+
+/* the second way in — present but plainly secondary to the camera */
+.ls-b.is-ghost { margin-top: 8px; background: transparent; color: var(--teal);
+  border: 1px solid var(--teal); font-weight: 600; }
+
+/* "Not you?" — small, in the line it belongs to, not a button competing with
+   the photographs */
+.ls-out { border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--muted); text-decoration: underline; }
+.ls-out:hover { color: var(--text); }
