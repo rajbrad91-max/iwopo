@@ -113,10 +113,6 @@ export default function LiveShootPublic({ token }) {
               </button>
             ))}
           </div>
-          <p className="ls-foot">
-            You can come back to this link for the next two weeks without taking
-            another photo.
-          </p>
         </>
       )}
 
