@@ -125,6 +125,15 @@ export default function LiveShootPublic({ token }) {
   return (
     <div className="ls">
       <header className="ls-head">
+        {/* The studio's mark, not the platform's. A guest at a wedding has
+            never heard of iwopo; they were handed this by a photographer. */}
+        {info.studio?.logo && (
+          <img className="ls-logo" alt={info.studio.name || ''}
+            src={`/api/me/logo/${info.studio.logo}`} />
+        )}
+        {!info.studio?.logo && info.studio?.name && (
+          <div className="ls-studio">{info.studio.name}</div>
+        )}
         <h1>{info.album?.title}</h1>
         {photos ? (
           <p className="ls-sub">
@@ -139,12 +148,14 @@ export default function LiveShootPublic({ token }) {
 
       {!photos ? (
         <div className="ls-gate">
-          <div className="ls-face">📸</div>
+          <div className="ls-rule"><span>✦</span></div>
           <h2>Find your photos</h2>
           <p>
-            Take a photo of yourself and we will show you every picture you are
-            in. Your photo is used to compare and then deleted — it is never
-            saved.
+            Take a photo of yourself and we&rsquo;ll show you every picture
+            you&rsquo;re in.
+          </p>
+          <p className="ls-fine">
+            Your photo is only used to compare, then deleted. It is never saved.
           </p>
 
           {/* Two inputs rather than one, because capture="user" is not a
@@ -158,10 +169,10 @@ export default function LiveShootPublic({ token }) {
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
 
           <button className="ls-b" disabled={busy} onClick={() => camRef.current?.click()}>
-            {busy ? 'Looking…' : '📷 Take a selfie'}
+            {busy ? 'Looking…' : 'Take a selfie'}
           </button>
           <button className="ls-b is-ghost" disabled={busy} onClick={() => fileRef.current?.click()}>
-            🖼️ Choose a photo
+            Choose a photo
           </button>
 
           {info.still_indexing && (
@@ -209,6 +220,11 @@ export default function LiveShootPublic({ token }) {
           <button className="pg-lb-nav next" aria-label="Next"
             onClick={e => { e.stopPropagation(); step(1); }}>›</button>
         </div>
+      )}
+      {info.studio?.name && (
+        <footer className="ls-foot-brand">
+          Photography by <strong>{info.studio.name}</strong>
+        </footer>
       )}
     </div>
   );

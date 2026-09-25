@@ -116,6 +116,16 @@ router.get('/:token', async (req, res) => {
     });
     if (!a) return res.status(404).json({ error: 'Not found' });
 
+    /* 🎨 The photographer's own name and mark, not iwopo's. A guest at a
+       wedding has never heard of the platform — they know the studio, and the
+       page they are handed should look like it came from them. Read from the
+       vendor rather than hardcoded, so this is right for whoever owns the
+       album rather than right for one of them. */
+    const v = await prisma.vendors.findUnique({
+      where: { id: a.vendor_id },
+      select: { business_name: true, logo_path: true },
+    });
+
     const clusters = await prisma.face_clusters.count({ where: { album_id: a.id } });
     const photos = await prisma.photos.count({ where: { album_id: a.id } });
 
@@ -126,6 +136,7 @@ router.get('/:token', async (req, res) => {
     res.json({
       already_matched: !!pass,
       album: { title: a.title, cover_photo: a.cover_photo },
+      studio: { name: v?.business_name || null, logo: v?.logo_path || null },
       photos, people: clusters,
       /* Said plainly, because "no photographs found" during the indexing lag
          would read as "you are in none of them". */
