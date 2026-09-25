@@ -19,7 +19,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import http from 'node:http';
-import { spawn, exec } from 'node:child_process';
+import { spawn, exec, execFile } from 'node:child_process';
 
 const SELF = new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const HERE = path.dirname(SELF);
@@ -309,16 +309,43 @@ let child = null;                 // the running watcher
 function pickFolder() {
   return new Promise((resolve) => {
     if (process.platform !== 'win32') return resolve(null);
-    const ps = `
-      Add-Type -AssemblyName System.Windows.Forms
-      $d = New-Object System.Windows.Forms.FolderBrowserDialog
-      $d.Description = 'Choose the folder your photos are exported to'
-      $d.ShowNewFolderButton = $true
-      if ($d.ShowDialog() -eq 'OK') { Write-Output $d.SelectedPath }
-    `;
-    exec(`powershell -NoProfile -STA -Command "${ps.replace(/\n\s*/g, ' ').replace(/"/g, '\\"')}"`,
-      { timeout: 120000 },
-      (err, stdout) => resolve(err ? null : (stdout || '').trim() || null));
+
+    /* ⚠️ Written to a file and run, rather than passed with -Command.
+       Escaping a multi-line PowerShell script through cmd.exe means quoting it
+       for cmd AND for PowerShell at once, and my first attempt escaped quotes
+       the way a shell would rather than the way cmd does. The dialog then
+       either never appeared or appeared and returned nothing, with exit code
+       0 — a silent failure that looked like the button doing nothing. */
+    const script = path.join(os.tmpdir(), 'iwopo-pick.ps1');
+
+    /* TopMost is the other half. A dialog opened by a background process goes
+       BEHIND the browser window, so it is genuinely open and completely
+       invisible, which is indistinguishable from a broken button. The owner
+       form is a zero-size always-on-top window purely so the dialog has
+       something to sit in front of. */
+    fs.writeFileSync(script, [
+      'Add-Type -AssemblyName System.Windows.Forms',
+      '$owner = New-Object System.Windows.Forms.Form',
+      '$owner.TopMost = $true',
+      '$owner.ShowInTaskbar = $false',
+      '$owner.Size = New-Object System.Drawing.Size(1,1)',
+      '$owner.StartPosition = "CenterScreen"',
+      '$owner.Show()',
+      '$owner.Activate()',
+      '$d = New-Object System.Windows.Forms.FolderBrowserDialog',
+      '$d.Description = "Choose the folder your photos are exported to"',
+      '$d.ShowNewFolderButton = $true',
+      'if ($d.ShowDialog($owner) -eq "OK") { [Console]::Out.Write($d.SelectedPath) }',
+      '$owner.Close()',
+    ].join('\r\n'), 'utf8');
+
+    execFile('powershell',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', script],
+      { timeout: 180000, windowsHide: true },
+      (err, stdout) => {
+        fs.unlink(script, () => {});
+        resolve(err ? null : (stdout || '').trim() || null);
+      });
   });
 }
 
@@ -441,7 +468,9 @@ async function load() {
   const sel = document.getElementById('album');
   sel.innerHTML = d.albums.length
     ? d.albums.map(a => '<option value="' + a.id + '"' + (a.id == cfg.albumId ? ' selected' : '') + '>' + a.title + '</option>').join('')
-    : '<option value="">No live shoots found — create one in the panel</option>';
+    /* Points at the button six inches away rather than at the panel, which
+       is where this used to send somebody and is no longer necessary. */
+    : '<option value="">No live shoots yet — press + New shoot</option>';
   paint(d.status);
 }
 function paint(s) {
