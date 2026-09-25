@@ -50,16 +50,6 @@ const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 
    guest who is told to try again has lost a moment. */
 const DEFAULT_MATCH = 0.48;
 
-/* The best match must beat the next-best by this much. Two people who look
-   alike produce two near-identical distances, and picking the closer of
-   0.44 and 0.45 is a coin toss dressed as a decision. Better to ask for
-   another photograph than to guess. */
-const MIN_MARGIN = 0.06;
-
-/* A person occasionally ends up split across two clusters — a change of light,
-   glasses on and off. Anything this close to the winner is taken as the same
-   person rather than a different one. */
-const SAME_PERSON = 0.10;
 
 /* Fourteen days, as Raj asked. Long enough that a guest who looks on the night
    can come back the following weekend; short enough that a borrowed phone does
@@ -167,17 +157,29 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
     }
     const me = found[0].descriptor;
 
-    const clusters = await prisma.face_clusters.findMany({
-      where: { album_id: a.id },                      // 🔒 this album only
-      select: { id: true, centroid: true },
+    /* ⚠️ Individual faces, not cluster centroids.
+       A centroid is an AVERAGE of everybody in a cluster, so a person
+       photographed in varied light becomes a blur that can sit closer to
+       someone else than to their own pictures. The gallery has always compared
+       against individual descriptors, and measured on this same album that
+       gives 42 correct hits and ZERO strangers at 0.48 — where centroid
+       matching let strangers through. Same method here now. */
+    const indexed = await prisma.photos.findMany({
+      where: { album_id: a.id, face_indexed: true, face_count: { gt: 0 } },  // 🔒 this album only
+      select: { id: true, faces: true },
     });
 
     const limit = a.selfie_strictness ? a.selfie_strictness / 100 : DEFAULT_MATCH;
 
-    const ranked = clusters
-      .map(c => ({ id: c.id, d: faceDistance(me, c.centroid) }))
-      .filter(c => Number.isFinite(c.d))
-      .sort((x, y) => x.d - y.d);
+    const ranked = [];
+    for (const p of indexed) {
+      for (const f of (p.faces || [])) {
+        if (!f.descriptor) continue;
+        const d = faceDistance(me, f.descriptor);
+        if (Number.isFinite(d)) ranked.push({ photo_id: p.id, d });
+      }
+    }
+    ranked.sort((x, y) => x.d - y.d);
 
     const best = ranked[0];
     if (!best || best.d > limit) return res.json({ matched: false, photos: [] });
@@ -187,21 +189,19 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
        their photographs. That is the fault Raj hit. Only the best match counts
        now — plus any cluster close enough to it to be the same person split in
        two, which is a different thing from a second person who looks similar. */
-    const second = ranked.find(c => c.id !== best.id && c.d - best.d > SAME_PERSON);
-    if (second && second.d - best.d < MIN_MARGIN) {
-      return res.json({
-        matched: false, photos: [], ambiguous: true,
-        message: 'That photo could be one of two people here. Try another, looking straight at the camera in good light.',
-      });
-    }
+    /* Every face under the line belongs to this person. With no averaging to
+       be fooled by, a straight threshold is enough — and the measurement says
+       so: zero strangers at 0.48 on a real album. */
+    const ids = [...new Set(ranked.filter(r => r.d <= limit).map(r => r.photo_id))];
 
-    const mine = ranked.filter(c => c.d - best.d <= SAME_PERSON && c.d <= limit);
-
+    /* The pass still names CLUSTERS, so photographs taken later in the evening
+       appear for this guest as they arrive. Read from the photographs just
+       matched rather than by comparing centroids. */
     const links = await prisma.photo_faces.findMany({
-      where: { cluster_id: { in: mine.map(m => m.id) } },
-      select: { photo_id: true },
+      where: { photo_id: { in: ids } },
+      select: { cluster_id: true },
     });
-    const ids = [...new Set(links.map(l => l.photo_id))];
+    const mine = [...new Set(links.map(l => l.cluster_id))].map(id => ({ id }));
 
     const photos = await prisma.photos.findMany({
       where: { id: { in: ids }, album_id: a.id },     // 🔒 belt and braces

@@ -30,6 +30,32 @@ export default function LiveShootPublic({ token }) {
     setOpen(i => (i === null || !photos?.length) ? i : (i + d + photos.length) % photos.length);
   }, [photos]);
 
+  /* 👆 Swipe, because almost everybody opening this is on a phone and arrows
+     drawn for a mouse are not what a thumb reaches for. Left and right move,
+     a pull down closes. Same gesture and same thresholds as the gallery. */
+  const touch = useRef(null);
+  const SWIPE_MIN = 45;                        // px before it counts as a swipe
+
+  const onTouchStart = (e) => {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e) => {
+    if (!touch.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
+    touch.current = null;
+    /* Whichever axis moved more wins, so a slightly diagonal swipe still does
+       the obvious thing rather than nothing. */
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (Math.abs(dx) < SWIPE_MIN) return;
+      step(dx < 0 ? 1 : -1);                   // swipe left = next
+    } else if (dy > SWIPE_MIN * 1.6) {         // pull down → close
+      setOpen(null);
+    }
+  };
+
   /* Arrow keys and Escape, as anybody expects of a photo viewer. */
   useEffect(() => {
     if (open === null) return;
@@ -143,7 +169,8 @@ export default function LiveShootPublic({ token }) {
       )}
 
       {current && (
-        <div className="pg-lb" onClick={() => setOpen(null)}>
+        <div className="pg-lb" onClick={() => setOpen(null)}
+          onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           <div className="pg-lb-bar" onClick={e => e.stopPropagation()}>
             <span className="pg-lb-name">{(current.filename || '').replace(/\.[^.]+$/, '')}</span>
             <div className="pg-lb-acts">
