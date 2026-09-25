@@ -421,6 +421,18 @@ const PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <p class="sub">Photos in the chosen folder upload themselves.</p>
 
 <div class="card">
+  <div style="margin-bottom:16px">
+    <label>iwopo address</label>
+    <select id="server">
+      <option value="https://iwopo.com">iwopo.com — live</option>
+      <option value="https://alphabetaone.com">alphabetaone.com — staging</option>
+    </select>
+    <div class="muted" style="margin-top:6px">
+      A device token only works on the site it was made on. These are separate
+      systems with separate logins.
+    </div>
+  </div>
+
   <div id="tokrow" style="display:none; margin-bottom:16px">
     <label>Device token</label>
     <input id="token" placeholder="iwd_… from Settings → Devices in your panel">
@@ -464,7 +476,13 @@ async function load() {
   document.getElementById('folder').value = cfg.folder || '';
   /* Asked for only when missing. Somebody who has already set it up should not
      be shown an empty box that looks like something went wrong. */
-  document.getElementById('tokrow').style.display = d.hasToken ? 'none' : 'block';
+  document.getElementById('server').value = cfg.server || 'https://iwopo.com';
+  /* A token that exists but is refused looks identical to no token at all
+     from here, so the box comes back with the reason rather than staying
+     hidden and leaving somebody pressing a button that cannot work. */
+  const refused = d.hasToken && d.tokenBad;
+  document.getElementById('tokrow').style.display = (!d.hasToken || refused) ? 'block' : 'none';
+  if (refused) say('That token is not valid on ' + (cfg.server || '') + ' — it may be from the other site.', true);
   const sel = document.getElementById('album');
   sel.innerHTML = d.albums.length
     ? d.albums.map(a => '<option value="' + a.id + '"' + (a.id == cfg.albumId ? ' selected' : '') + '>' + a.title + '</option>').join('')
@@ -515,6 +533,7 @@ async function save() {
   };
   const t = document.getElementById('token').value.trim();
   if (t) body.token = t;
+  body.server = document.getElementById('server').value;
   const r = await fetch('/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const d = await r.json();
   say(d.error || 'Saved — press Start', !!d.error);
@@ -551,7 +570,16 @@ const server = http.createServer(async (req, res) => {
        history, an extension, or a screen shared over a call. */
     const { token, ...safe } = cfg;
     /* Whether one exists, never what it is. */
-    return json(res, 200, { config: safe, hasToken: !!token, albums: await albums(cfg), status: status() });
+    /* Asked of the server rather than assumed. A token in the file proves
+       nothing — it may be from the other site, or revoked an hour ago. */
+    let tokenBad = false;
+    if (token) {
+      try {
+        const r = await fetch(`${cfg.server}/api/devices/albums`, { headers: { Authorization: `Bearer ${token}` } });
+        tokenBad = r.status === 401 || r.status === 403;
+      } catch { /* unreachable is not the same as refused */ }
+    }
+    return json(res, 200, { config: safe, hasToken: !!token, tokenBad, albums: await albums(cfg), status: status() });
   }
 
   if (url === '/browse' && req.method === 'POST') {
@@ -574,6 +602,8 @@ const server = http.createServer(async (req, res) => {
       }
       writeCfg({ ...cfgNow, token: String(want.token).trim() });
     }
+
+    if (want.server) writeCfg({ ...readCfg(), server: String(want.server) });
 
     if (!want.folder) return json(res, 400, { error: 'Choose a folder first.' });
     /* Checked here rather than left for the watcher to discover, because a
@@ -603,8 +633,17 @@ const server = http.createServer(async (req, res) => {
         headers: { Authorization: `Bearer ${cfg.token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: want.title }),
       });
-      const d = await r.json();
-      if (!r.ok) return json(res, 400, { error: d.error || 'Could not create it.' });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        /* The status matters: 401 means the token is wrong for this site, which
+           is a different problem from a bad name, and saying "could not create
+           it" for both sends somebody hunting in the wrong place. */
+        return json(res, 400, {
+          error: r.status === 401 || r.status === 403
+            ? `That device token is not valid on ${cfg.server}. Make one there, or switch the address above.`
+            : (d.error || `Could not create it (${r.status}).`),
+        });
+      }
       return json(res, 200, d);
     } catch (e) { return json(res, 400, { error: 'Could not reach iwopo — ' + e.message }); }
   }
