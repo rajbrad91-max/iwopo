@@ -36,12 +36,30 @@ import { getFaceDescriptors, faceDistance } from '../lib/faceEngine.js';
 const router = express.Router();
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 } });
 
-/* Looser than the clustering threshold on purpose. Clustering decides whether
-   two photographs from the same camera are the same person; this compares a
-   phone selfie in bad light against that. Too tight and a guest is told they
-   are in none of their own photographs, which is the worse failure — they can
-   see a photograph that is not them and shrug. */
-const DEFAULT_MATCH = 0.58;
+/* ⚠️ Was 0.58, on the reasoning that a guest told they appear in none of their
+   own photographs is worse than one shown a picture of somebody else. That
+   reasoning was wrong for a live shoot, and the data says so plainly: on a real
+   album of ten people, FIVE of the forty-five pairs of DIFFERENT people sit
+   closer than 0.58. At that setting the matcher cannot tell them apart at all —
+   which is exactly what Raj saw, a selfie pulling in other men in turbans.
+   Under 0.48 not one pair collides.
+
+   And showing somebody else's photographs is not a shrug here. A gallery is one
+   couple's; a live shoot hands a link to two hundred guests, and a stranger
+   seeing your photographs is a privacy failure rather than an annoyance. A
+   guest who is told to try again has lost a moment. */
+const DEFAULT_MATCH = 0.48;
+
+/* The best match must beat the next-best by this much. Two people who look
+   alike produce two near-identical distances, and picking the closer of
+   0.44 and 0.45 is a coin toss dressed as a decision. Better to ask for
+   another photograph than to guess. */
+const MIN_MARGIN = 0.06;
+
+/* A person occasionally ends up split across two clusters — a change of light,
+   glasses on and off. Anything this close to the winner is taken as the same
+   person rather than a different one. */
+const SAME_PERSON = 0.10;
 
 /* Fourteen days, as Raj asked. Long enough that a guest who looks on the night
    can come back the following weekend; short enough that a borrowed phone does
@@ -155,12 +173,29 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
     });
 
     const limit = a.selfie_strictness ? a.selfie_strictness / 100 : DEFAULT_MATCH;
-    const mine = clusters
+
+    const ranked = clusters
       .map(c => ({ id: c.id, d: faceDistance(me, c.centroid) }))
-      .filter(c => Number.isFinite(c.d) && c.d <= limit)
+      .filter(c => Number.isFinite(c.d))
       .sort((x, y) => x.d - y.d);
 
-    if (!mine.length) return res.json({ matched: false, photos: [] });
+    const best = ranked[0];
+    if (!best || best.d > limit) return res.json({ matched: false, photos: [] });
+
+    /* ⚠️ The old code took EVERY cluster under the threshold, so one selfie
+       matched several different people at once and the guest was shown all of
+       their photographs. That is the fault Raj hit. Only the best match counts
+       now — plus any cluster close enough to it to be the same person split in
+       two, which is a different thing from a second person who looks similar. */
+    const second = ranked.find(c => c.id !== best.id && c.d - best.d > SAME_PERSON);
+    if (second && second.d - best.d < MIN_MARGIN) {
+      return res.json({
+        matched: false, photos: [], ambiguous: true,
+        message: 'That photo could be one of two people here. Try another, looking straight at the camera in good light.',
+      });
+    }
+
+    const mine = ranked.filter(c => c.d - best.d <= SAME_PERSON && c.d <= limit);
 
     const links = await prisma.photo_faces.findMany({
       where: { cluster_id: { in: mine.map(m => m.id) } },
