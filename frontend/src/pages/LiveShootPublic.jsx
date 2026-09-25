@@ -69,6 +69,7 @@ export default function LiveShootPublic({ token }) {
   }, [open, step]);
   const fileRef = useRef(null);
   const camRef = useRef(null);
+  const backRef = useRef(null);
 
   const base = `/api/live/${token}`;
 
@@ -125,61 +126,67 @@ export default function LiveShootPublic({ token }) {
   return (
     <div className="ls">
       <header className="ls-head">
-        {/* The studio's mark, not the platform's. A guest at a wedding has
-            never heard of iwopo; they were handed this by a photographer. */}
+        {/* The studio's wordmark, small and quiet — the couple's name is the
+            headline, not the business. */}
+        <div className="ls-brand">
+          <span className="ls-brand-ic">◎</span>
+          <span className="ls-brand-name">{info.studio?.name}</span>
+        </div>
+        {info.studio?.tagline && <div className="ls-tagline">{info.studio.tagline}</div>}
+
+        {/* The mark itself, large. This is the thing a guest recognises. */}
         {info.studio?.logo && (
           <img className="ls-logo" alt={info.studio.name || ''}
             src={`/api/me/logo/${info.studio.logo}`} />
-        )}
-        {!info.studio?.logo && info.studio?.name && (
-          <div className="ls-studio">{info.studio.name}</div>
-        )}
-        <h1>{info.album?.title}</h1>
-        {photos ? (
-          <p className="ls-sub">
-            {photos.length} {photos.length === 1 ? 'photo' : 'photos'} of you
-            {' · '}
-            <button className="ls-out" onClick={signOut}>Not you?</button>
-          </p>
-        ) : (
-          <p className="ls-sub">{info.photos} photos · {info.people} people</p>
         )}
       </header>
 
       {!photos ? (
         <div className="ls-gate">
-          <div className="ls-rule"><span>✦</span></div>
-          <h2>Find your photos</h2>
-          <p>
-            Take a photo of yourself and we&rsquo;ll show you every picture
-            you&rsquo;re in.
-          </p>
-          <p className="ls-fine">
-            Your photo is only used to compare, then deleted. It is never saved.
+          {/* One word in italic gold carries the whole page. A headline set
+              entirely in one weight reads as a form label. */}
+          <h1 className="ls-h1">
+            Find your <em>photos</em>
+            <span>from {info.album?.title || 'the event'}</span>
+          </h1>
+          <p className="ls-lead">
+            Take a quick selfie and we&rsquo;ll search the whole event for
+            pictures of you.
           </p>
 
-          {/* Two inputs rather than one, because capture="user" is not a
-              suggestion — a phone honours it and goes straight to the camera,
-              with no way to reach the camera roll. Somebody who already has a
-              good photograph of themselves should not have to take a worse one
-              standing in a dark venue. */}
+          {/* Three ways in, not two. Someone standing alone takes a selfie;
+              someone with a friend hands them the phone and uses the back
+              camera, which is a better photograph and a common way to do it.
+              capture= sends a phone straight to that camera. */}
           <input ref={camRef} type="file" accept="image/*" capture="user" hidden
+            onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
+          <input ref={backRef} type="file" accept="image/*" capture="environment" hidden
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
           <input ref={fileRef} type="file" accept="image/*" hidden
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
 
           <button className="ls-b" disabled={busy} onClick={() => camRef.current?.click()}>
-            {busy ? 'Looking…' : 'Take a selfie'}
-          </button>
-          <button className="ls-b is-ghost" disabled={busy} onClick={() => fileRef.current?.click()}>
-            Choose a photo
+            <span className="ls-b-ic">☺</span>
+            {busy ? 'Looking…' : 'Take a Selfie'}
           </button>
 
+          <div className="ls-or"><span>or</span></div>
+
+          <button className="ls-b is-ghost" disabled={busy} onClick={() => backRef.current?.click()}>
+            <span className="ls-b-ic">⊙</span> Use Back Camera
+          </button>
+          <button className="ls-b is-ghost" disabled={busy} onClick={() => fileRef.current?.click()}>
+            <span className="ls-b-ic">▤</span> Upload from Gallery
+          </button>
+
+          <p className="ls-fine">
+            Your photo is only used to find you, then deleted. It is never saved.
+          </p>
+
           {info.still_indexing && (
-            /* Otherwise "no photos found" reads as "you are in none of them". */
             <p className="ls-note">
-              The photographer is still uploading — if you are not found yet, try
-              again shortly.
+              The photographer is still uploading — if you are not found yet,
+              try again shortly.
             </p>
           )}
           {err && <p className="ls-err">{err}</p>}
@@ -188,6 +195,16 @@ export default function LiveShootPublic({ token }) {
         <p className="ls-quiet">Nothing found yet. Try again once more photos are up.</p>
       ) : (
         <>
+          {/* ⚠️ The count and the sign-out lived in the header, which I replaced
+              wholesale — and took them with it. They belong here anyway: they
+              only mean anything once somebody is looking at their own
+              photographs. */}
+          <p className="ls-sub">
+            {photos.length} {photos.length === 1 ? 'photo' : 'photos'} of you
+            {' · '}
+            <button className="ls-out" onClick={signOut}>Not you?</button>
+          </p>
+
           {/* The gallery's own grid classes. Portraits span two rows and the
               holes they leave get backfilled, which is what stops the dead
               space at the end of a row. */}
@@ -221,11 +238,19 @@ export default function LiveShootPublic({ token }) {
             onClick={e => { e.stopPropagation(); step(1); }}>›</button>
         </div>
       )}
-      {info.studio?.name && (
-        <footer className="ls-foot-brand">
-          Photography by <strong>{info.studio.name}</strong>
-        </footer>
-      )}
+      {/* A guest who likes their photographs should be one tap from the
+          photographer. Each link is shown only if the studio actually set it,
+          so nobody gets a row of dead circles. */}
+      <footer className="ls-foot-brand">
+        <div className="ls-social">
+          {info.studio?.site && <a href={info.studio.site} title="Website">⌘</a>}
+          {info.studio?.instagram && <a href={`https://instagram.com/${String(info.studio.instagram).replace(/^@/, "")}`} title="Instagram">◱</a>}
+          {info.studio?.facebook && <a href={`https://facebook.com/${info.studio.facebook}`} title="Facebook">f</a>}
+          {info.studio?.email && <a href={`mailto:${info.studio.email}`} title="Email">✉</a>}
+          {info.studio?.phone && <a href={`tel:${info.studio.phone}`} title="Phone">✆</a>}
+        </div>
+        {info.studio?.name && <div className="ls-by">Photography by <strong>{info.studio.name}</strong></div>}
+      </footer>
     </div>
   );
 }

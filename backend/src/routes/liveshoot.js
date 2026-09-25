@@ -123,11 +123,32 @@ router.get('/:token', async (req, res) => {
        album rather than right for one of them. */
     const v = await prisma.vendors.findUnique({
       where: { id: a.vendor_id },
-      select: { business_name: true, logo_path: true },
+      select: { business_name: true, logo_path: true, phone: true, email: true },
+    });
+
+    /* The studio's own tagline and links, from the website they already built
+       here. A guest who likes their photographs should be one tap from finding
+       the photographer — that is the whole commercial point of handing out
+       this link. */
+    const site = await prisma.vendor_sites.findFirst({
+      where: { vendor_id: a.vendor_id },
+      select: { tagline: true, instagram: true, facebook: true, slug: true,
+                contact_email: true, contact_phone: true },
     });
 
     const clusters = await prisma.face_clusters.count({ where: { album_id: a.id } });
     const photos = await prisma.photos.count({ where: { album_id: a.id } });
+
+    /* ⏱️ When the most recent photograph landed.
+       The page wants to say how fast this is, and a real "added four minutes
+       ago" is worth more than any slogan: a guest can check it against the
+       moment they were photographed. A boast nobody can verify is just
+       marketing; this is evidence. */
+    const newest = await prisma.photos.findFirst({
+      where: { album_id: a.id },
+      orderBy: { created_at: 'desc' },
+      select: { created_at: true },
+    });
 
     /* Somebody who proved themselves last week should land straight on their
        photographs, not on a camera prompt they have already satisfied. */
@@ -136,8 +157,18 @@ router.get('/:token', async (req, res) => {
     res.json({
       already_matched: !!pass,
       album: { title: a.title, cover_photo: a.cover_photo },
-      studio: { name: v?.business_name || null, logo: v?.logo_path || null },
+      studio: {
+        name: v?.business_name || null,
+        logo: v?.logo_path || null,
+        tagline: site?.tagline || null,
+        instagram: site?.instagram || null,
+        facebook: site?.facebook || null,
+        site: site?.slug ? `/site/${site.slug}` : null,
+        email: site?.contact_email || v?.email || null,
+        phone: site?.contact_phone || v?.phone || null,
+      },
       photos, people: clusters,
+      latest_at: newest?.created_at || null,
       /* Said plainly, because "no photographs found" during the indexing lag
          would read as "you are in none of them". */
       still_indexing: !a.faces_clustered,

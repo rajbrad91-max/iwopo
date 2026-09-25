@@ -1,110 +1,113 @@
 /* 🎥 Live shoot — what a guest at a wedding sees on their phone.
  *
- * ⚠️ This page does NOT inherit the panel's dark theme. A guest is standing at
- * a reception, not administering software: the page should feel like it came
- * from the photographer rather than from a piece of SaaS. Warm, light, and
- * quiet, with the studio's own name on it.
- *
- * Its own colours, deliberately — var(--panel) and friends are the vendor
- * panel's and would drag the dark theme in with them.
+ * ⚠️ Deliberately NOT the panel's theme. A guest is standing at a reception
+ * with a phone somebody handed them; the page should feel like it came from
+ * the photographer, not from a piece of software. Its own colours, because
+ * var(--panel) and friends drag the dark theme in with them.
  */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Jost:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap');
 
 .ls {
-  --ink: #2e2622;           /* warm near-black, never pure */
-  --ink-soft: #7d6f66;
-  --cream: #faf6f1;
-  --card: #ffffff;
-  --line: #e8ded4;
-  --gold: #b08d57;
-  --gold-soft: #f3ece2;
+  --ink: #2b2420;
+  --ink-soft: #8a7a6e;
+  --cream: #faf7f3;
+  --line: #ece2d6;
+  --gold: #b3935f;
 
   min-height: 100vh;
   margin: 0;
-  padding: 44px 18px 60px;
+  padding: 40px 20px 48px;
   background:
-    radial-gradient(1100px 520px at 50% -10%, #fffdfb 0%, transparent 70%),
+    radial-gradient(900px 480px at 50% -8%, #fffdfa 0%, transparent 72%),
     var(--cream);
   color: var(--ink);
   font-family: 'Jost', system-ui, sans-serif;
   font-weight: 300;
+  text-align: center;
 }
 
-.ls-head { text-align: center; margin-bottom: 34px; }
+/* ── the studio ───────────────────────────────────────────────────────── */
 
-.ls-logo { max-height: 58px; max-width: 190px; object-fit: contain; margin-bottom: 20px; }
-.ls-studio {
-  font-family: 'Jost', sans-serif;
-  font-size: 11px; font-weight: 500;
-  letter-spacing: .28em; text-transform: uppercase;
-  color: var(--ink-soft); margin-bottom: 18px;
+.ls-head { margin-bottom: 26px; }
+
+.ls-brand { display: inline-flex; align-items: center; gap: 10px; }
+.ls-brand-ic {
+  width: 34px; height: 34px; flex: none;
+  display: grid; place-items: center;
+  border: 1px solid var(--line); border-radius: 50%;
+  color: var(--gold); font-size: 15px;
 }
-
-/* The couple's name, which is the whole point of the page looking like this */
-.ls-head h1 {
-  margin: 0 0 8px;
+.ls-brand-name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-weight: 300;
-  font-size: clamp(34px, 8vw, 54px);
-  line-height: 1.08;
-  letter-spacing: .01em;
-  color: var(--ink);
+  font-size: 22px; font-weight: 400; letter-spacing: .01em;
 }
-.ls-sub {
-  margin: 0;
-  font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+.ls-tagline {
+  margin-top: 7px;
+  font-size: 10.5px; letter-spacing: .3em; text-transform: uppercase;
   color: var(--ink-soft);
 }
 
+/* the mark, large — the thing a guest recognises */
+.ls-logo { display: block; margin: 26px auto 0; max-height: 104px; max-width: 220px; object-fit: contain; }
+
 /* ── the gate ─────────────────────────────────────────────────────────── */
 
-.ls-gate {
-  max-width: 380px; margin: 0 auto; text-align: center;
-  padding: 34px 28px 30px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 3px;                 /* barely rounded — a card, not an app */
-  box-shadow: 0 1px 2px rgba(46,38,34,.04), 0 12px 36px -16px rgba(46,38,34,.14);
-}
+/* No card. A box around it made this a form; on the cream it is a page. */
+.ls-gate { max-width: 380px; margin: 0 auto; }
 
-/* a small ornament instead of an emoji, which reads as software */
-.ls-rule { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-.ls-rule::before, .ls-rule::after {
-  content: ''; flex: 1; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--line), transparent);
-}
-.ls-rule span { color: var(--gold); font-size: 12px; }
-
-.ls-gate h2 {
-  margin: 0 0 12px;
+.ls-h1 {
+  margin: 0 0 14px;
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-weight: 400; font-size: 25px; letter-spacing: .01em;
+  font-weight: 300;
+  font-size: clamp(30px, 7.5vw, 40px);
+  line-height: 1.22;
+  letter-spacing: .005em;
 }
-.ls-gate p { margin: 0 0 8px; font-size: 14px; line-height: 1.65; color: var(--ink-soft); }
-.ls-fine { font-size: 12px; margin-bottom: 24px; opacity: .85; }
+/* one word in italic gold — a headline in a single weight reads as a label */
+.ls-h1 em { font-style: italic; color: var(--gold); }
+.ls-h1 span { display: block; }
+
+.ls-lead {
+  margin: 0 0 30px;
+  font-size: 14px; line-height: 1.7; color: var(--ink-soft);
+}
 
 .ls-b {
-  width: 100%; padding: 13px 18px;
-  border: 1px solid var(--gold); border-radius: 2px;
-  background: var(--gold); color: #fff;
+  width: 100%;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 15px 20px;
+  border: 1px solid var(--ink); border-radius: 999px;
+  background: var(--ink); color: #fdfbf8;
   font-family: 'Jost', sans-serif;
-  font-size: 12px; font-weight: 500;
-  letter-spacing: .14em; text-transform: uppercase;
-  cursor: pointer; transition: background .18s ease, color .18s ease;
+  font-size: 14px; font-weight: 400; letter-spacing: .01em;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
 }
-.ls-b:hover:not(:disabled) { background: #9a7a48; border-color: #9a7a48; }
-.ls-b:disabled { opacity: .55; cursor: default; }
+.ls-b:hover:not(:disabled) { background: #1c1714; border-color: #1c1714; }
+.ls-b:disabled { opacity: .5; cursor: default; }
+
 .ls-b.is-ghost {
-  margin-top: 9px;
-  background: transparent; color: var(--gold);
+  margin-top: 10px;
+  background: transparent; color: var(--ink-soft);
+  border-color: var(--line);
+  font-size: 13.5px;
 }
-.ls-b.is-ghost:hover:not(:disabled) { background: var(--gold-soft); color: #9a7a48; }
+.ls-b.is-ghost:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.ls-b-ic { font-size: 14px; opacity: .85; }
 
-.ls-note { margin: 18px 0 0; font-size: 12px; color: var(--gold); line-height: 1.55; }
+/* the "or" rule between the two ways in */
+.ls-or { display: flex; align-items: center; gap: 14px; margin: 18px 0 2px; }
+.ls-or::before, .ls-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.ls-or span { font-size: 12px; color: var(--ink-soft); }
+
+.ls-fine { margin: 24px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-soft); opacity: .9; }
+.ls-note { margin: 16px 0 0; font-size: 12px; color: var(--gold); line-height: 1.55; }
 .ls-err { margin: 16px 0 0; font-size: 13px; color: #b4453a; line-height: 1.55; }
-.ls-quiet { text-align: center; color: var(--ink-soft); font-size: 14px; padding: 48px 0; }
+.ls-quiet { color: var(--ink-soft); font-size: 14px; padding: 48px 0; }
 
-/* "Not you?" beside the count */
+/* ── once they are in ─────────────────────────────────────────────────── */
+
+.ls-sub { margin: 0 0 22px; font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); }
 .ls-out {
   border: 0; background: none; padding: 0; cursor: pointer;
   font: inherit; color: var(--ink-soft);
@@ -112,17 +115,22 @@
 }
 .ls-out:hover { color: var(--gold); }
 
-.ls-foot-brand {
-  margin-top: 54px; text-align: center;
-  font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--ink-soft);
+/* ── the studio, again, at the foot ───────────────────────────────────── */
+
+.ls-foot-brand { margin-top: 46px; }
+.ls-social { display: flex; justify-content: center; gap: 10px; margin-bottom: 18px; }
+.ls-social a {
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line); border-radius: 50%;
+  color: var(--ink-soft); font-size: 14px; text-decoration: none;
+  transition: border-color .18s ease, color .18s ease;
 }
-.ls-foot-brand strong { font-weight: 500; color: var(--ink); }
+.ls-social a:hover { border-color: var(--gold); color: var(--gold); }
+.ls-by { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-soft); }
+.ls-by strong { font-weight: 500; color: var(--ink); }
 
-/* ── the photographs ──────────────────────────────────────────────────── */
-
-/* The grid and lightbox come from gallery.css. These few lines lift the grid
-   out of the dark theme it was built for; everything else is inherited so the
-   two stay in step. */
+/* The grid and lightbox come from gallery.css so they stay in step with the
+   gallery; these two lines only lift them out of its dark theme. */
 .ls .pg-grid { gap: 8px; }
 .ls .pg-tile { background: #efe7dd; border-radius: 2px; }
