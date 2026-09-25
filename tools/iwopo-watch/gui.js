@@ -143,7 +143,10 @@ const PAGE = `<!doctype html><html><head><meta charset="utf-8">
   </div>
 
   <label>Upload into</label>
-  <select id="album"><option value="">Loading…</option></select>
+  <div class="row" style="margin-bottom:0">
+    <div><select id="album"><option value="">Loading…</option></select></div>
+    <button onclick="newShoot()">+ New shoot</button>
+  </div>
 
   <div class="acts">
     <button class="go" onclick="save()">Save</button>
@@ -193,6 +196,21 @@ function say(t, bad) {
   m.textContent = t; m.className = 'msg' + (bad ? ' err' : '');
   setTimeout(() => { m.textContent = ''; }, 5000);
 }
+/* Creating the shoot here rather than sending somebody back to the panel —
+   which is the one thing this window could not do, and the thing you need
+   first, at the worst possible moment. */
+async function newShoot() {
+  const title = prompt('Name this live shoot (e.g. "Sharma Wedding")');
+  if (!title || !title.trim()) return;
+  const r = await fetch('/new-shoot', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ title: title.trim() }) });
+  const d = await r.json();
+  if (d.error) return say(d.error, true);
+  await load();
+  document.getElementById('album').value = d.album.id;
+  say('Created — press Save');
+}
+
 async function save() {
   const body = {
     folder: document.getElementById('folder').value.trim(),
@@ -273,6 +291,25 @@ const server = http.createServer(async (req, res) => {
        wrong thing. Restarting it is the honest response to a Save. */
     if (child && child.exitCode === null) { stop(); setTimeout(start, 400); }
     return json(res, 200, { ok: true });
+  }
+
+  if (url === '/new-shoot' && req.method === 'POST') {
+    let body = '';
+    for await (const c of req) body += c;
+    let want;
+    try { want = JSON.parse(body); } catch { return json(res, 400, { error: 'Bad request' }); }
+    const cfg = readCfg();
+    if (!cfg.token) return json(res, 400, { error: 'Add your device token first.' });
+    try {
+      const r = await fetch(`${cfg.server}/api/devices/albums`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cfg.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: want.title }),
+      });
+      const d = await r.json();
+      if (!r.ok) return json(res, 400, { error: d.error || 'Could not create it.' });
+      return json(res, 200, d);
+    } catch (e) { return json(res, 400, { error: 'Could not reach iwopo — ' + e.message }); }
   }
 
   if (url === '/start' && req.method === 'POST') {

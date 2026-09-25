@@ -9,6 +9,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { mintToken, deviceOrAuth } from '../lib/deviceAuth.js';
+import crypto from 'node:crypto';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -35,6 +36,37 @@ router.get('/albums', deviceOrAuth, async (req, res) => {
       take: 50,
     });
     res.json({ albums });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * 🎥 POST /api/devices/albums → start a live shoot from the watcher.
+ *
+ * The setup window can otherwise do everything except the one thing you need
+ * before a shoot, which sends somebody back to the panel at the worst moment.
+ *
+ * 🔒 Narrow on purpose: it makes a live shoot and nothing else. The kind is
+ * forced rather than taken from the request, so a device cannot quietly create
+ * an ordinary gallery — one shows everybody everything, and that is not a
+ * decision a token on a laptop should be able to make.
+ */
+router.post('/albums', deviceOrAuth, async (req, res) => {
+  const v = Number(req.user?.vendor_id);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  try {
+    const title = String(req.body?.title || '').trim().slice(0, 160);
+    if (!title) return res.status(400).json({ error: 'Give the shoot a name.' });
+
+    const album = await prisma.albums.create({
+      data: {
+        vendor_id: v, title,
+        kind: 'liveshoot',                                  // 🔒 never from the body
+        public_token: crypto.randomBytes(16).toString('hex'),
+        face_ai: true,                                      // a live shoot is pointless without it
+      },
+      select: { id: true, title: true, public_token: true },
+    });
+    res.status(201).json({ album });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
