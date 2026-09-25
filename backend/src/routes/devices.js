@@ -8,10 +8,35 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { mintToken } from '../lib/deviceAuth.js';
+import { mintToken, deviceOrAuth } from '../lib/deviceAuth.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
+
+/**
+ * 🎥 GET /api/devices/albums → the live shoots this device may upload into.
+ *
+ * The watcher's own setup window needs to offer a list to choose from, and a
+ * device token cannot reach /api/albums — it is upload-only, deliberately.
+ *
+ * 🔒 So this is a narrow window rather than opening that route: ids and titles
+ * of live shoots belonging to this vendor, and nothing else. No passwords, no
+ * client emails, no expiry, no galleries. A token on a laptop learns the names
+ * of the events it is already uploading to, which it could infer anyway.
+ */
+router.get('/albums', deviceOrAuth, async (req, res) => {
+  const v = Number(req.user?.vendor_id);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  try {
+    const albums = await prisma.albums.findMany({
+      where: { vendor_id: v, kind: 'liveshoot' },       // 🔒 tenancy
+      select: { id: true, title: true },
+      orderBy: { created_at: 'desc' },
+      take: 50,
+    });
+    res.json({ albums });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 /** GET /api/devices — what is connected, and whether it is alive. */
 router.get('/', requireAuth, async (req, res) => {
