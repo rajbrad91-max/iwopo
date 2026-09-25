@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
@@ -4867,6 +4867,113 @@ function PkgCard({ pkg, onSaved, onDelete }) {
   );
 }
 
+/**
+ * 🔑 Devices — the machines allowed to upload on this vendor's behalf.
+ *
+ * The live-shoot watcher needs credentials that do not expire, and a login
+ * token lasts seven days. This is where those are made and, more importantly,
+ * KILLED: a laptop that goes missing at a wedding should be switched off by
+ * the person who lost it, not by waiting for somebody else to do it.
+ */
+function DevicesSetup() {
+  /* SettingsView declares its own box style inside itself, so a sibling
+     component cannot see it. Declared here rather than lifted out: moving a
+     shared style out of a two-hundred-line component to serve one new section
+     is a bigger change than it looks. */
+  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)',
+    borderRadius: 8, color: 'var(--text)', padding: 10, width: '100%', marginTop: 6 };
+  const dialog = useDialog();
+  const [rows, setRows] = useState([]);
+  const [name, setName] = useState('');
+  const [fresh, setFresh] = useState(null);      // the token, shown once
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    api.devices().then(d => setRows(d.devices || [])).catch(() => {});
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function add() {
+    if (!name.trim()) return dialog.alert('Give it a name, so you know which machine it is.', { error: true });
+    setBusy(true);
+    try {
+      const d = await api.addDevice(name.trim());
+      /* Held in state rather than refetched, because it cannot be fetched —
+         only the hash is stored. This is the one moment it exists in readable
+         form anywhere. */
+      setFresh(d.token);
+      setName('');
+      load();
+    } catch (e) { dialog.alert(e.message, { error: true }); }
+    finally { setBusy(false); }
+  }
+
+  async function revoke(d) {
+    if (!await dialog.confirm(
+      `"${d.name}" will stop being able to upload immediately. This cannot be undone — you would make a new one.`,
+      { title: 'Switch off this device?', okLabel: 'Switch off' })) return;
+    try { await api.deleteDevice(d.id); load(); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
+  }
+
+  return (
+    <div className="table-wrap" style={{ padding: 22 }}>
+      <h2 style={{ marginTop: 0 }}>🔑 Devices</h2>
+      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginTop: 0 }}>
+        A device is a computer allowed to upload photos on its own — the live
+        shoot watcher on your editing machine. A device can only upload: it
+        cannot read your leads, delete a gallery, or change anything.
+      </p>
+
+      <div style={{ display: 'flex', gap: 8, margin: '18px 0' }}>
+        <input style={{ ...box, margin: 0 }} placeholder="Editing desktop"
+          value={name} onChange={e => setName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && add()} />
+        <button className="refresh" disabled={busy} onClick={add} style={{ whiteSpace: 'nowrap' }}>
+          {busy ? 'Making…' : '+ Add device'}
+        </button>
+      </div>
+
+      {/* Shown once and never again — there is no route that can reveal it,
+          because a list that can show its own credentials is a list of keys. */}
+      {fresh && (
+        <div style={{ padding: 16, borderRadius: 10, background: 'var(--teal-soft)',
+          border: '1px solid var(--teal)', marginBottom: 18 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+            Copy this now — it cannot be shown again
+          </div>
+          <code style={{ display: 'block', padding: '9px 11px', borderRadius: 7,
+            background: 'var(--panel)', fontSize: 12.5, wordBreak: 'break-all' }}>{fresh}</code>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button className="refresh" style={{ fontSize: 12 }}
+              onClick={() => { navigator.clipboard?.writeText(fresh); }}>📋 Copy</button>
+            <button className="refresh" style={{ fontSize: 12 }} onClick={() => setFresh(null)}>Done</button>
+          </div>
+        </div>
+      )}
+
+      {rows.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>No devices yet.</p>
+      ) : (
+        <table className="tbl"><thead><tr>
+          <th>Name</th><th>Last used</th><th>Added</th><th></th>
+        </tr></thead><tbody>
+          {rows.map(d => (
+            <tr key={d.id}>
+              <td>{d.name}</td>
+              <td style={{ color: 'var(--muted)' }}>
+                {d.last_used ? fmtDateTime(d.last_used) : 'never'}
+              </td>
+              <td style={{ color: 'var(--muted)' }}>{fmtDateTime(d.created_at)}</td>
+              <td><button className="refresh" style={{ fontSize: 12 }} onClick={() => revoke(d)}>Switch off</button></td>
+            </tr>
+          ))}
+        </tbody></table>
+      )}
+    </div>
+  );
+}
+
 function SettingsView({ user, onProfileChange }) {
   const [s, setS] = useState(null);
   const [sub, setSub] = useState('prefs'); // prefs | account | email
@@ -4941,7 +5048,7 @@ function SettingsView({ user, onProfileChange }) {
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email']].map(([k, label]) => (
+        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices']].map(([k, label]) => (
           <button key={k} className="refresh" onClick={() => setSub(k)}
             style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
         ))}
@@ -5052,6 +5159,7 @@ function SettingsView({ user, onProfileChange }) {
       )}
 
       {sub === 'email' && <EmailSetup />}
+      {sub === 'devices' && <DevicesSetup />}
     </div>
   );
 }

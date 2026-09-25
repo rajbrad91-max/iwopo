@@ -774,6 +774,10 @@ export const api = {
   myPlans: () => request('/me/plans'),
   // 📊 private to the platform owner
   analytics: (days) => request('/analytics?days=' + (days || 30)),
+  // 🔑 machines allowed to upload — the live shoot watcher
+  devices: () => request('/devices'),
+  addDevice: (name) => request('/devices', { method: 'POST', body: JSON.stringify({ name }) }),
+  deleteDevice: (id) => request('/devices/' + id, { method: 'DELETE' }),
   // 📞 the timeline; 'since' is what keeps the open page live
   comms: ({ kind, q, since } = {}) => {
     const p = new URLSearchParams();
