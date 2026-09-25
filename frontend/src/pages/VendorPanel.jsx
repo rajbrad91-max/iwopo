@@ -1034,8 +1034,16 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
 
           <div className="gal-form-foot">
             <button className="refresh gal-save" onClick={create}>{edit ? '💾 Save changes' : '✅ Create album'}</button>
-            {edit && <button className="refresh gal-mini-send" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
-            {edit?.public_token && <button className="refresh gal-copy-url" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
+            {/* ⚠️ Both of these are GALLERY buttons and neither makes sense for a
+                live shoot. Copy Gallery Link copies /g/<token> — the
+                password-protected gallery page, which a live shoot does not
+                have; there is nothing at that address to protect or unlock.
+                Send Instructions mails the guest password and the same link.
+                A live shoot has one address, /live/<token>, and it is already
+                on this panel with its own Copy. Three buttons offering two
+                wrong answers and one right one is worse than one button. */}
+            {edit && kind !== 'liveshoot' && <button className="refresh gal-mini-send" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
+            {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-copy-url" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
             {msg && <span className="gal-err">{msg}</span>}
           </div>
         </div>
