@@ -2117,3 +2117,39 @@ tr:hover .bk-del { opacity: .8; }
   font-size: 11.5px; font-weight: 600; border: 1px solid rgba(45,212,191,.4);
   background: rgba(45,212,191,.12); color: var(--brand, #2dd4bf); transition: background .2s ease; }
 .vp-storage-up:hover { background: rgba(45,212,191,.2); }
+
+/* 🎥 The live-shoot editor, opened by Manage on an album card.
+   ⚠️ These live here rather than in gallery.css deliberately: galleries are
+   locked, and .gal-inline-edit is a gallery rule. Overriding from a file the
+   panel already imports changes the live shoot without touching theirs. */
+
+/* A live shoot has one section, not three, so the three-column grid the
+   gallery form uses leaves it stranded in a third of the width. */
+.gal-inline-edit.is-live .gal-form-cards {
+  grid-template-columns: 1fr;
+  max-width: 520px;
+  gap: 10px;
+}
+/* Narrower than the full-width gallery editor: it belongs to one card, and a
+   panel that spans the whole row reads as belonging to the page instead. */
+.gal-inline-edit.is-live .gal-form { max-width: 560px; }
+
+/* The album's own name as the heading, so there is no doubt which card this
+   opened from. */
+.gal-inline-edit.is-live .gal-form-h {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+.gal-inline-edit.is-live .gal-card-sec { padding: 12px 14px; }
+.gal-inline-edit.is-live .gal-sec-h { font-size: 12px; margin-bottom: 10px; }
+
+/* the guest link, the one thing anybody opens this for */
+.ls-link-row { display: flex; gap: 8px; align-items: center; }
+.ls-link {
+  flex: 1; min-width: 0;
+  padding: 7px 10px; border-radius: 7px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  font-size: 11.5px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

@@ -918,7 +918,11 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
      a panel floating above everything. */
   const albumForm = (
         <div className="table-wrap gal-form">
-          <div className="gal-form-h">{edit ? '✏️ Edit Album' : '➕ New Album'}</div>
+          <div className="gal-form-h">
+            {!edit ? '➕ New Album'
+              : kind === 'liveshoot' ? `⚙️ ${edit.title}`
+              : '✏️ Edit Album'}
+          </div>
 
           {/* three grouped cards that share the panel width evenly */}
           <div className="gal-form-cards">
@@ -933,7 +937,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                   </select>
                 </div>
               )}
-              <div><label className="lbl">Gallery Name *</label>
+              <div><label className="lbl">{kind === 'liveshoot' ? 'Shoot name *' : 'Gallery Name *'}</label>
                 <input className="gal-input" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="Susan &amp; Mike Wedding" />
               </div>
               <div><label className="lbl">Category</label>
@@ -1009,6 +1013,22 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
               </label>
             </section>
             </>)}
+
+            {/* 🎥 The guest link. Shown rather than hidden behind Send
+                Instructions, because it is the only thing anybody opens this
+                panel to fetch. */}
+            {kind === 'liveshoot' && edit?.public_token && (
+              <section className="gal-card-sec">
+                <h4 className="gal-sec-h">🔗 Guest link</h4>
+                <div className="ls-link-row">
+                  <code className="ls-link">{`${window.location.origin}/live/${edit.public_token}`}</code>
+                  <button type="button" className="gal-mini"
+                    onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/live/${edit.public_token}`)}>
+                    📋 Copy
+                  </button>
+                </div>
+              </section>
+            )}
 
           </div>
 
@@ -1176,7 +1196,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
             {/* 🎯 Underneath THIS card, spanning the row, so it reads as this
                 album's settings rather than a panel that appeared above
                 everything with no connection to what was clicked. */}
-            {kind === 'liveshoot' && edit?.id === a.id && <div className="gal-inline-edit">{albumForm}</div>}
+            {kind === 'liveshoot' && edit?.id === a.id && <div className="gal-inline-edit is-live">{albumForm}</div>}
             </Fragment>
           ))}
         </div>
