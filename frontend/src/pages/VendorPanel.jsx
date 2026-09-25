@@ -1193,7 +1193,16 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 {!selectMode && (
                   <div className="gal-card-actions">
                     <button className="gal-mini gal-mini-gear"
-                      onClick={e => { e.stopPropagation(); if (kind === 'liveshoot' && edit?.id === a.id) setEdit(null); else startEdit(a); }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        /* ⚠️ Both, not just edit. startEdit sets showNew too, so
+                           clearing edit alone left showNew true — and the
+                           page-width "New Album" form appeared, prefilled with
+                           the album that had just been closed. Closing a panel
+                           must undo everything opening it did. */
+                        if (kind === 'liveshoot' && edit?.id === a.id) { setEdit(null); setShowNew(false); resetForm(); }
+                        else startEdit(a);
+                      }}
                       title="Edit album">
                       ⚙️ Manage{kind === 'liveshoot' && edit?.id === a.id ? ' ▲' : kind === 'liveshoot' ? ' ▼' : ''}
                     </button>
