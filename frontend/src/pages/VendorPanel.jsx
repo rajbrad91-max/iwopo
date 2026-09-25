@@ -956,6 +956,12 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
               </div>
             </section>
 
+            {/* 🎥 A live shoot has neither. Guests prove who they are with a
+                selfie rather than a shared password, and there is no cover
+                because nobody lands on a front page — they land on their own
+                photographs. Hidden rather than removed: the same component
+                serves galleries, where both matter. */}
+            {kind !== 'liveshoot' && (<>
             <section className="gal-card-sec">
               <h4 className="gal-sec-h">🔑 Access</h4>
               <div className="gal-sec-note gal-pw-hint">
@@ -1014,6 +1020,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
               </label>
             </section>
+            </>)}
 
           </div>
 

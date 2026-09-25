@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import './gallery.css';
 import './liveshoot.css';
 
 /**
@@ -17,7 +18,29 @@ export default function LiveShootPublic({ token }) {
   const [photos, setPhotos] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [open, setOpen] = useState(null);           // the photo being viewed large
+  /* An INDEX rather than the photo, so the arrows and the keyboard can move
+     through the set. Holding the object would mean searching for it again to
+     find its neighbours. */
+  const [open, setOpen] = useState(null);
+  const current = open !== null && photos ? photos[open] : null;
+
+  /* Wrapping, deliberately: a guest with four photographs should not hit a
+     wall at either end. */
+  const step = useCallback((d) => {
+    setOpen(i => (i === null || !photos?.length) ? i : (i + d + photos.length) % photos.length);
+  }, [photos]);
+
+  /* Arrow keys and Escape, as anybody expects of a photo viewer. */
+  useEffect(() => {
+    if (open === null) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(null);
+      else if (e.key === 'ArrowRight') step(1);
+      else if (e.key === 'ArrowLeft') step(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, step]);
   const fileRef = useRef(null);
 
   const base = `/api/live/${token}`;
@@ -106,24 +129,36 @@ export default function LiveShootPublic({ token }) {
         <p className="ls-quiet">Nothing found yet. Try again once more photos are up.</p>
       ) : (
         <>
-          <div className="ls-grid">
-            {photos.map(p => (
-              <button key={p.id} className="ls-cell" onClick={() => setOpen(p)}>
+          {/* The gallery's own grid classes. Portraits span two rows and the
+              holes they leave get backfilled, which is what stops the dead
+              space at the end of a row. */}
+          <div className="pg-grid">
+            {photos.map((p, i) => (
+              <div key={p.id} className="pg-tile" onClick={() => setOpen(i)}>
                 <img loading="lazy" alt={p.filename} src={`${base}/photo/${p.id}/thumb`} />
-              </button>
+              </div>
             ))}
           </div>
         </>
       )}
 
-      {open && (
-        <div className="ls-lightbox" onClick={() => setOpen(null)}>
-          <img alt={open.filename} src={`${base}/photo/${open.id}/preview`} />
-          <div className="ls-lb-bar" onClick={e => e.stopPropagation()}>
-            <span>{open.filename}</span>
-            <a className="ls-dl" href={`${base}/photo/${open.id}/orig`}>Download</a>
-            <button className="ls-x" onClick={() => setOpen(null)}>✕</button>
+      {current && (
+        <div className="pg-lb" onClick={() => setOpen(null)}>
+          <div className="pg-lb-bar" onClick={e => e.stopPropagation()}>
+            <span className="pg-lb-name">{(current.filename || '').replace(/\.[^.]+$/, '')}</span>
+            <div className="pg-lb-acts">
+              <a className="pg-lb-btn" href={`${base}/photo/${current.id}/orig`} title="Download photo">⤓</a>
+              <button className="pg-lb-btn" onClick={() => setOpen(null)} title="Close">✕</button>
+            </div>
           </div>
+          <button className="pg-lb-nav prev" aria-label="Previous"
+            onClick={e => { e.stopPropagation(); step(-1); }}>‹</button>
+          <div className="pg-lb-stage" onClick={e => e.stopPropagation()}>
+            <img className="pg-lb-img" alt={current.filename}
+              src={`${base}/photo/${current.id}/preview`} />
+          </div>
+          <button className="pg-lb-nav next" aria-label="Next"
+            onClick={e => { e.stopPropagation(); step(1); }}>›</button>
         </div>
       )}
     </div>
