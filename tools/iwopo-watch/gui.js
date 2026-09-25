@@ -126,6 +126,14 @@ const PAGE = `<!doctype html><html><head><meta charset="utf-8">
 <p class="sub">Photos in the chosen folder upload themselves.</p>
 
 <div class="card">
+  <div id="tokrow" style="display:none; margin-bottom:16px">
+    <label>Device token</label>
+    <input id="token" placeholder="iwd_… from Settings → Devices in your panel">
+    <div class="muted" style="margin-top:6px">
+      Panel → Settings → 🔑 Devices → Add device, then paste it here.
+    </div>
+  </div>
+
   <div class="row">
     <div>
       <label>Folder with your photos</label>
@@ -156,6 +164,9 @@ async function load() {
   const d = await (await fetch('/state')).json();
   cfg = d.config || {};
   document.getElementById('folder').value = cfg.folder || '';
+  /* Asked for only when missing. Somebody who has already set it up should not
+     be shown an empty box that looks like something went wrong. */
+  document.getElementById('tokrow').style.display = d.hasToken ? 'none' : 'block';
   const sel = document.getElementById('album');
   sel.innerHTML = d.albums.length
     ? d.albums.map(a => '<option value="' + a.id + '"' + (a.id == cfg.albumId ? ' selected' : '') + '>' + a.title + '</option>').join('')
@@ -187,6 +198,8 @@ async function save() {
     folder: document.getElementById('folder').value.trim(),
     albumId: Number(document.getElementById('album').value) || 0,
   };
+  const t = document.getElementById('token').value.trim();
+  if (t) body.token = t;
   const r = await fetch('/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const d = await r.json();
   say(d.error || 'Saved — press Start', !!d.error);
@@ -211,15 +224,19 @@ function json(res, code, body) {
 const server = http.createServer(async (req, res) => {
   const url = req.url.split('?')[0];
 
-  if (url === '/' ) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(PAGE); }
+  /* ⚠️ charset declared. Without it a browser guesses, and on a Windows
+     machine it guessed wrong — every emoji came out as mojibake. The meta tag
+     inside the page is not enough once a header is present. */
+  if (url === '/') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(PAGE); }
 
   if (url === '/state') {
     const cfg = readCfg();
     /* The token is never sent to the page. It is on this machine either way,
        but a credential that does not travel cannot be read out of a browser
        history, an extension, or a screen shared over a call. */
-    const { token, ...safe } = cfg;                      // eslint-disable-line no-unused-vars
-    return json(res, 200, { config: safe, albums: await albums(cfg), status: status() });
+    const { token, ...safe } = cfg;
+    /* Whether one exists, never what it is. */
+    return json(res, 200, { config: safe, hasToken: !!token, albums: await albums(cfg), status: status() });
   }
 
   if (url === '/browse' && req.method === 'POST') {
@@ -232,13 +249,24 @@ const server = http.createServer(async (req, res) => {
     let want;
     try { want = JSON.parse(body); } catch { return json(res, 400, { error: 'Bad request' }); }
 
+    const cfgNow = readCfg();
+    /* A token pasted here goes straight into the file, so nobody opens it in
+       Notepad — where the last attempt replaced the field NAME with the token
+       and produced a config that was valid JSON and completely wrong. */
+    if (want.token) {
+      if (!String(want.token).startsWith('iwd_')) {
+        return json(res, 400, { error: 'That does not look like a device token — they start with iwd_' });
+      }
+      writeCfg({ ...cfgNow, token: String(want.token).trim() });
+    }
+
     if (!want.folder) return json(res, 400, { error: 'Choose a folder first.' });
     /* Checked here rather than left for the watcher to discover, because a
        typo in a path should say so now, not at a wedding. */
     if (!fs.existsSync(want.folder)) return json(res, 400, { error: 'That folder does not exist.' });
     if (!want.albumId) return json(res, 400, { error: 'Choose which live shoot to upload into.' });
 
-    const cfg = readCfg();
+    const cfg = readCfg();                               // re-read: the token may have just been written
     writeCfg({ ...cfg, folder: want.folder, albumId: want.albumId });
 
     /* A change of folder or album means the running watcher is watching the
