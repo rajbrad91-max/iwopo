@@ -1188,15 +1188,24 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 </div>
                 {!selectMode && (
                   <div className="gal-card-actions">
-                    <button className="gal-mini gal-mini-gear" onClick={e => { e.stopPropagation(); startEdit(a); }} title="Edit album">⚙️ Manage</button>
+                    <button className="gal-mini gal-mini-gear"
+                      onClick={e => { e.stopPropagation(); if (kind === 'liveshoot' && edit?.id === a.id) setEdit(null); else startEdit(a); }}
+                      title="Edit album">
+                      ⚙️ Manage{kind === 'liveshoot' && edit?.id === a.id ? ' ▲' : kind === 'liveshoot' ? ' ▼' : ''}
+                    </button>
                   </div>
+                )}
+
+                {/* 🎯 Inside the card, not across the row. Spanning the grid
+                    made it a panel the width of the page that happened to be
+                    near the thing you clicked; dropping out of the tile makes
+                    it plainly that tile's settings. The card grows and the
+                    grid reflows around it. */}
+                {kind === 'liveshoot' && edit?.id === a.id && (
+                  <div className="gal-drop">{albumForm}</div>
                 )}
               </div>
             </div>
-            {/* 🎯 Underneath THIS card, spanning the row, so it reads as this
-                album's settings rather than a panel that appeared above
-                everything with no connection to what was clicked. */}
-            {kind === 'liveshoot' && edit?.id === a.id && <div className="gal-inline-edit is-live">{albumForm}</div>}
             </Fragment>
           ))}
         </div>

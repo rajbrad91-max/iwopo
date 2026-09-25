@@ -815,42 +815,11 @@
   pointer-events: none;
 }
 
-/* ✏️ Editing an album, inline beneath its own card.
-   It used to open above the whole grid, which made a large panel appear with
-   no visible connection to the card that was clicked. */
-.gal-inline-edit {
-  /* the grid is auto-fill columns; this has to break out and take the row */
-  grid-column: 1 / -1;
-  animation: gal-slide .18s ease;
-}
-@keyframes gal-slide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
-
-/* smaller than the standalone form: it is a detail of a card, not a page */
-.gal-inline-edit .gal-form { margin: 0 0 14px; border-radius: 12px; }
-.gal-inline-edit .gal-form-h { font-size: 13.5px; padding: 12px 16px; }
-.gal-inline-edit .gal-form-cards { gap: 10px; padding: 14px 16px 16px; }
-.gal-inline-edit .gal-sec-h { font-size: 12.5px; }
-.gal-inline-edit .lbl { font-size: 11.5px; }
-.gal-inline-edit .gal-input { padding: 7px 10px; font-size: 12.5px; }
-
 /* the card being edited, so the pairing is unmistakable */
 .gal-card.is-editing {
   outline: 2px solid var(--teal, #0d9488);
   outline-offset: -2px;
 }
 
-/* The sections sit side by side here rather than stacking. Stacked, a two-field
-   form became four hundred pixels tall and pushed every other album off the
-   screen — the opposite of feeling like a detail of one card. */
-.gal-inline-edit .gal-form-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  align-items: start;
-}
-.gal-inline-edit .gal-card-sec { padding: 12px 14px; }
 /* and a live shoot has only one section, so it should not stretch across the
    whole row looking lost */
-/* The panel itself is capped, not just its contents. Stretched across the
-   whole row it reads as a page that happened to appear below, rather than as
-   the settings belonging to the card directly above it. */
-.gal-inline-edit .gal-form { max-width: 640px; }
