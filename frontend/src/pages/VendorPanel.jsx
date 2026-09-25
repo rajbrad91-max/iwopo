@@ -1215,7 +1215,13 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                     it plainly that tile's settings. The card grows and the
                     grid reflows around it. */}
                 {kind === 'liveshoot' && edit?.id === a.id && (
-                  <div className="gal-drop">{albumForm}</div>
+                  /* ⚠️ The card opens the album on click, and this panel lives
+                     INSIDE it — so every field, dropdown and button bubbled up
+                     and threw you into the photographs instead. Stopped at the
+                     panel's edge rather than on each control, because the next
+                     button added here would otherwise arrive with the same bug
+                     and nobody would think to look. */
+                  <div className="gal-drop" onClick={e => e.stopPropagation()}>{albumForm}</div>
                 )}
               </div>
             </div>
