@@ -2122,22 +2122,21 @@ tr:hover .bk-del { opacity: .8; }
 /* 🎥 Live shoot: Manage drops a panel out of the tile it belongs to.
    ⚠️ Here rather than in gallery.css because galleries are locked, and this
    only ever applies inside a live-shoot card. */
-/* ⚠️ The open card takes TWO columns. At one it was 235 pixels wide and the
-   form inside was unusable — the fields had nowhere to go and the panel read
-   as broken rather than compact. Two columns gives roughly 550, which fits
-   the fields side by side, and the grid closes up again the moment it shuts.
-   Only on wide screens: on a phone the grid is one column and there is no
-   second one to take. */
-@media (min-width: 900px) {
-  .gal-card.is-editing { grid-column: span 2; }
-}
+/* ⚠️ The open card keeps its WIDTH and grows downward.
+   It spanned two columns before, which solved the cramped fields but turned a
+   square tile into a wide box — the shape changed under your hand and the row
+   re-flowed around it. A tile that simply gets taller stays recognisably the
+   same tile. The fields stack instead, which is what a narrow column wants
+   anyway. */
 
 /* ⚠️ And the cover shrinks while editing. The card is twice as wide, so a
    cover with a fixed aspect ratio became four hundred pixels tall and pushed
    the form off the bottom of the screen — you press Manage and appear to get
    nothing but a bigger picture. You are editing; you do not need the
    photograph large. */
-.gal-card.is-editing .gal-card-cover { height: 110px; min-height: 0; aspect-ratio: auto; }
+/* Still capped while editing — at full height the form starts below the fold
+   and pressing Manage looks like it only enlarged a picture. */
+.gal-card.is-editing .gal-card-cover { height: 96px; min-height: 0; aspect-ratio: auto; }
 
 .gal-drop {
   margin-top: 10px;
@@ -2154,15 +2153,22 @@ tr:hover .bk-del { opacity: .8; }
    of its own, because the card already provides it */
 .gal-drop .gal-form { margin: 0; border: 0; background: none; border-radius: 0; }
 .gal-drop .gal-form-h { display: none; }
-.gal-drop .gal-form-cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding: 0; }
-.gal-drop .gal-card-sec { padding: 0; border: 0; background: none; }
+.gal-drop .gal-form-cards { grid-template-columns: 1fr; gap: 10px; padding: 0; }
+/* ⚠️ min-width: 0 on the grid children, and it is not optional.
+   A grid item defaults to min-width: auto, which means it refuses to shrink
+   below its widest content — so the guest-link URL and the booking select
+   forced the track to 440 pixels inside a 235 pixel card and the fields ran
+   off the right edge. Measured before and after rather than eyeballed. */
+.gal-drop .gal-form-cards > * { min-width: 0; }
+.gal-drop .gal-card-sec { padding: 0; border: 0; background: none; min-width: 0; }
+.gal-drop .gal-input, .gal-drop select { max-width: 100%; }
 .gal-drop .gal-sec-h { font-size: 11px; margin: 0 0 7px; color: var(--muted); }
 .gal-drop .lbl { font-size: 11px; }
 .gal-drop .gal-input { padding: 6px 9px; font-size: 12.5px; }
 /* gal-form-foot, not gal-form-actions — I guessed the name and the rule
    silently did nothing, which is exactly what a dead-class check is for. */
 .gal-drop .gal-form-foot { padding: 10px 0 0; gap: 7px; flex-wrap: wrap; }
-.gal-drop .gal-form-foot button { font-size: 12px; padding: 6px 12px; }
+.gal-drop .gal-form-foot button { font-size: 11.5px; padding: 6px 10px; flex: 1 1 auto; justify-content: center; }
 
 /* the guest link — the one thing this panel exists to hand over */
 .ls-link-row { display: flex; gap: 6px; align-items: center; }
