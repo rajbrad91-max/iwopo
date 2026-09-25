@@ -38,7 +38,7 @@ Four things buy that, and the last matters most:
 3. **Try it by hand first**, so you see it working:
 
    ```
-   node watch.js
+   node iwopo-watch.js
    ```
 
    Drop a photograph in the folder. It should appear in the log within seconds.
@@ -47,7 +47,7 @@ Four things buy that, and the last matters most:
 
    - **General**: "Run whether user is logged on or not"
    - **Triggers**: New → *At startup*
-   - **Actions**: Start a program → `node` → arguments `watch.js` → start in the
+   - **Actions**: Start a program → `node` → arguments `iwopo-watch.js` → start in the
      folder holding this file
    - **Settings**: tick *If the task fails, restart every 1 minute*
 
