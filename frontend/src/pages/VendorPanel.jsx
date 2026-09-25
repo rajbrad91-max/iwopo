@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
@@ -912,23 +912,11 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
   if (open) return <AlbumDetail albumId={open} onBack={() => { setOpen(null); load(); }} />;
   if (loading) return <div className="loading">Loading…</div>;
 
-  return (
-    <>
-      <div className="gal-head">
-        <h2 className="gal-title">{kind === 'liveshoot' ? '🎥 Live shoots' : '📸 Galleries'}</h2>
-        <div className="gal-head-btns">
-          <button className="lead-ic-btn" onClick={() => { if (showNew) resetForm(); setShowNew(s => !s); }} title={showNew ? 'Cancel' : 'New album'}>{showNew ? '✕' : '➕'}</button>
-          <button className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); setSearch(''); }} title="Search albums">🔍</button>
-          <button className={`lead-ic-btn lead-ic-del ${selectMode ? 'is-on' : ''}`} onClick={onBinClick} title={selectMode ? (checked.length ? `Delete ${checked.length}` : 'Cancel select') : 'Select to delete'}>{selectMode && checked.length ? `🗑️ ${checked.length}` : '🗑️'}</button>
-          <button className="lead-ic-btn" onClick={() => setShowSettings(true)} title="Settings">⚙️</button>
-        </div>
-      </div>
-
-      {showSearch && (
-        <input className="lead-search" autoFocus placeholder="🔍 Search albums by name or category…" value={search} onChange={e => setSearch(e.target.value)} />
-      )}
-
-      {showNew && (
+  /* 🎯 One definition, rendered in two places: at the top for a NEW album,
+     which has no card to belong to, and INLINE underneath the card being
+     edited — which is what makes it read as that album's settings rather than
+     a panel floating above everything. */
+  const albumForm = (
         <div className="table-wrap gal-form">
           <div className="gal-form-h">{edit ? '✏️ Edit Album' : '➕ New Album'}</div>
 
@@ -1031,7 +1019,31 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
             {msg && <span className="gal-err">{msg}</span>}
           </div>
         </div>
+  );
+
+  return (
+    <>
+      <div className="gal-head">
+        <h2 className="gal-title">{kind === 'liveshoot' ? '🎥 Live shoots' : '📸 Galleries'}</h2>
+        <div className="gal-head-btns">
+          <button className="lead-ic-btn" onClick={() => { if (showNew) resetForm(); setShowNew(s => !s); }} title={showNew ? 'Cancel' : 'New album'}>{showNew ? '✕' : '➕'}</button>
+          <button className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); setSearch(''); }} title="Search albums">🔍</button>
+          <button className={`lead-ic-btn lead-ic-del ${selectMode ? 'is-on' : ''}`} onClick={onBinClick} title={selectMode ? (checked.length ? `Delete ${checked.length}` : 'Cancel select') : 'Select to delete'}>{selectMode && checked.length ? `🗑️ ${checked.length}` : '🗑️'}</button>
+          <button className="lead-ic-btn" onClick={() => setShowSettings(true)} title="Settings">⚙️</button>
+        </div>
+      </div>
+
+      {showSearch && (
+        <input className="lead-search" autoFocus placeholder="🔍 Search albums by name or category…" value={search} onChange={e => setSearch(e.target.value)} />
       )}
+
+
+
+      {/* A new album has no card to belong to, so it opens here.
+          ⚠️ And a GALLERY still opens its edit form here too: galleries are
+          locked, and the inline form below is a live-shoot change. The same
+          component serves both, so the difference has to be explicit. */}
+      {(showNew || (edit && kind !== 'liveshoot')) && albumForm}
 
       {showSettings && (
         <div className="al-overlay" onClick={() => setShowSettings(false)}>
@@ -1135,7 +1147,8 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
         return (
         <div className="gal-cards">
           {shown.map(a => (
-            <div key={a.id} className={`table-wrap gal-card ${selectMode && checked.includes(a.id) ? 'gal-card-sel' : ''}`} onClick={() => { if (selectMode) toggleCheck(a.id, { stopPropagation() {} }); else setOpen(a.id); }}>
+            <Fragment key={a.id}>
+            <div className={`table-wrap gal-card ${selectMode && checked.includes(a.id) ? 'gal-card-sel' : ''} ${kind === 'liveshoot' && edit?.id === a.id ? 'is-editing' : ''}`} onClick={() => { if (selectMode) toggleCheck(a.id, { stopPropagation() {} }); else setOpen(a.id); }}>
               {selectMode && (
                 <div className="gal-card-check" onClick={e => toggleCheck(a.id, e)}>
                   <input type="checkbox" readOnly checked={checked.includes(a.id)} />
@@ -1160,6 +1173,11 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 )}
               </div>
             </div>
+            {/* 🎯 Underneath THIS card, spanning the row, so it reads as this
+                album's settings rather than a panel that appeared above
+                everything with no connection to what was clicked. */}
+            {kind === 'liveshoot' && edit?.id === a.id && <div className="gal-inline-edit">{albumForm}</div>}
+            </Fragment>
           ))}
         </div>
         );
