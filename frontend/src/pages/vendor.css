@@ -2122,6 +2122,23 @@ tr:hover .bk-del { opacity: .8; }
 /* 🎥 Live shoot: Manage drops a panel out of the tile it belongs to.
    ⚠️ Here rather than in gallery.css because galleries are locked, and this
    only ever applies inside a live-shoot card. */
+/* ⚠️ The open card takes TWO columns. At one it was 235 pixels wide and the
+   form inside was unusable — the fields had nowhere to go and the panel read
+   as broken rather than compact. Two columns gives roughly 550, which fits
+   the fields side by side, and the grid closes up again the moment it shuts.
+   Only on wide screens: on a phone the grid is one column and there is no
+   second one to take. */
+@media (min-width: 900px) {
+  .gal-card.is-editing { grid-column: span 2; }
+}
+
+/* ⚠️ And the cover shrinks while editing. The card is twice as wide, so a
+   cover with a fixed aspect ratio became four hundred pixels tall and pushed
+   the form off the bottom of the screen — you press Manage and appear to get
+   nothing but a bigger picture. You are editing; you do not need the
+   photograph large. */
+.gal-card.is-editing .gal-card-cover { height: 110px; min-height: 0; aspect-ratio: auto; }
+
 .gal-drop {
   margin-top: 10px;
   border-top: 1px solid var(--line);
@@ -2137,7 +2154,7 @@ tr:hover .bk-del { opacity: .8; }
    of its own, because the card already provides it */
 .gal-drop .gal-form { margin: 0; border: 0; background: none; border-radius: 0; }
 .gal-drop .gal-form-h { display: none; }
-.gal-drop .gal-form-cards { grid-template-columns: 1fr; gap: 8px; padding: 0; }
+.gal-drop .gal-form-cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding: 0; }
 .gal-drop .gal-card-sec { padding: 0; border: 0; background: none; }
 .gal-drop .gal-sec-h { font-size: 11px; margin: 0 0 7px; color: var(--muted); }
 .gal-drop .lbl { font-size: 11px; }

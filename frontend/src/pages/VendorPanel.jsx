@@ -1063,7 +1063,11 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
           ⚠️ And a GALLERY still opens its edit form here too: galleries are
           locked, and the inline form below is a live-shoot change. The same
           component serves both, so the difference has to be explicit. */}
-      {(showNew || (edit && kind !== 'liveshoot')) && albumForm}
+      {/* ⚠️ Not just showNew. startEdit sets showNew as well as edit, so a
+          live shoot was rendering this page-width form AND the one inside its
+          card — two editors for the same album. This is the form for a NEW
+          album, or for editing a gallery; a live shoot edits in its tile. */}
+      {((showNew && !edit) || (edit && kind !== 'liveshoot')) && albumForm}
 
       {showSettings && (
         <div className="al-overlay" onClick={() => setShowSettings(false)}>
