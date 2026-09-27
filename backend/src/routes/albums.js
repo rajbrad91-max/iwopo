@@ -24,6 +24,7 @@ import bcrypt from 'bcryptjs';
 import { hashSharePassword } from '../lib/sharePassword.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { deviceOrAuth } from '../lib/deviceAuth.js';
+import { getFeatures } from '../lib/entitlements.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -125,13 +126,31 @@ router.post('/', requireAuth, async (req, res) => {
     // that guessing gallery links was worth someone's time, and a gallery is
     // the most private thing here. Existing links keep working.
     const token = crypto.randomBytes(16).toString('hex');
+    /* 🔒 kind comes from the BODY, so it has to be checked against what this
+       vendor actually holds. Without this, any vendor could post
+       kind:"liveshoot" and get a selfie-gated album — the delivery half of a
+       private feature — even though gate() keeps them out of every route that
+       reads one. The audit caught exactly that: a vendor without the feature
+       created one and got 201. */
+    const wantsLive = req.body?.kind === 'liveshoot';
+    if (wantsLive) {
+      const feats = await getFeatures(v);
+      /* getFeatures returns a SET, not an array — gate() uses .has() and so
+         must this. My .includes() threw, which happened to refuse the request
+         and so LOOKED like the guard working. A test that passes for the wrong
+         reason is worse than one that fails. */
+      if (!feats.has('liveshoot')) {
+        return res.status(402).json({ error: 'Live Shoot is not enabled on this account.' });
+      }
+    }
+
     const album = await prisma.albums.create({
       data: {
         vendor_id: v, title,
         category: category || null,
         /* 🎥 gallery unless asked otherwise — an unknown value must never
            silently create something with different rules about who sees it */
-        kind: req.body?.kind === 'liveshoot' ? 'liveshoot' : 'gallery',
+        kind: wantsLive ? 'liveshoot' : 'gallery',
         guest_username: guest_username || null,
         guest_password: await hashSharePassword(guest_password),
         admin_username: admin_username || null,

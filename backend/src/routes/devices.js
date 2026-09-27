@@ -10,6 +10,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { mintToken, deviceOrAuth } from '../lib/deviceAuth.js';
 import crypto from 'node:crypto';
+import { getFeatures } from '../lib/entitlements.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -56,6 +57,15 @@ router.post('/albums', deviceOrAuth, async (req, res) => {
   try {
     const title = String(req.body?.title || '').trim().slice(0, 160);
     if (!title) return res.status(400).json({ error: 'Give the shoot a name.' });
+
+    /* 🔒 The same check as the panel's own create route. Forcing the kind here
+       stops a device making an ordinary gallery, but it did NOT stop a device
+       whose vendor has lost the feature from making a live shoot — the token
+       does not expire when the feature is revoked. Checked per request. */
+    const feats = await getFeatures(v);
+    if (!feats.has('liveshoot')) {
+      return res.status(402).json({ error: 'Live Shoot is not enabled on this account.' });
+    }
 
     const album = await prisma.albums.create({
       data: {
