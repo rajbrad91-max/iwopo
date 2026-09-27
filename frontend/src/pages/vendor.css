@@ -2179,3 +2179,7 @@ tr:hover .bk-del { opacity: .8; }
   font-size: 11px; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* Shown while a lazily-loaded page is fetched. Brief on any normal
+   connection, and the alternative is a blank panel that looks broken. */
+.tab-loading { padding: 40px 0; text-align: center; color: var(--muted); font-size: 13px; }

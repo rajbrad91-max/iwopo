@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
@@ -11,8 +11,15 @@ import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
 import PlansView from './PlansView.jsx';
-import AnalyticsView from './AnalyticsView.jsx';
-import CommsView from './CommsView.jsx';
+/* 🔒 Loaded on demand, not bundled with everything else.
+   These are private features. In one bundle their code is downloaded by every
+   vendor who opens the panel — they cannot USE them, the data is behind
+   gate(), but they can read the screens. Split out, the file is only fetched
+   when somebody opens the page, which only a vendor holding the feature can
+   do. It is not hidden from anybody; it is never sent to them.
+   The rest of the panel loads faster as a side effect. */
+const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
+const CommsView = lazy(() => import('./CommsView.jsx'));
 import './vendor.css';
 
 // 🗝️ tab → required feature (one map controls everything)
@@ -282,9 +289,9 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'liveshoot' ? (
           <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
         ) : tab === 'comms' ? (
-          <CommsView />
+          <Suspense fallback={<div className="tab-loading">Loading…</div>}><CommsView /></Suspense>
         ) : tab === 'analytics' ? (
-          <AnalyticsView />
+          <Suspense fallback={<div className="tab-loading">Loading…</div>}><AnalyticsView /></Suspense>
         ) : tab === 'fileflyer' ? (
           <FileFlyerView />
         ) : tab === 'galleries' ? (

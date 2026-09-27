@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import Selling from './pages/Selling';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -6,7 +6,10 @@ import VendorPanel from './pages/VendorPanel';
 import InquiryForm from './pages/InquiryForm';
 import SignContract from './pages/SignContract';
 import FileFlyerPublic from './pages/FileFlyerPublic';
-import LiveShootPublic from './pages/LiveShootPublic';
+/* 🔒 On demand. The guest page is a private feature's front door and carries
+   its own fonts and stylesheet; bundling it meant every visitor to every
+   vendor's site downloaded it. Now only somebody opening a /live/ link does. */
+const LiveShootPublic = lazy(() => import('./pages/LiveShootPublic'));
 import ContractPreview from './pages/ContractPreview';
 import InvoiceView from './pages/InvoiceView';
 import Certificate from './pages/Certificate';
@@ -89,7 +92,7 @@ export default function App() {
   // 🎥 Live shoot: /live/:token — one link for a whole wedding, and each guest
   // sees only themselves after showing their face once
   const lv = window.location.pathname.match(/^\/live\/([A-Za-z0-9]+)/);
-  if (lv) return <LiveShootPublic token={lv[1]} />;
+  if (lv) return <Suspense fallback={null}><LiveShootPublic token={lv[1]} /></Suspense>;
 
   // 📄 Public contract signing: /sign/:token
   const s = window.location.pathname.match(/^\/sign\/([a-f0-9]+)/);
