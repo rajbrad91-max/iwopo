@@ -165,7 +165,14 @@ function checkViewToken(vt, albumId) {
 setInterval(() => { const now = Date.now(); for (const [k, v] of viewTokens) if (v.exp < now) viewTokens.delete(k); }, 3600 * 1000);
 
 async function findAlbum(token) {
-  return prisma.albums.findFirst({ where: { public_token: token } });
+  /* ⚠️ kind: gallery, and this one line is load-bearing.
+     Every public gallery route resolves its album through here, and without
+     the filter a LIVE SHOOT token opened as an ordinary gallery: the whole
+     shoot, every guest, behind nothing but the gallery password — which a
+     live shoot does not set. The selfie gate was bypassable by pasting the
+     link into /g/ instead of /live/. A live shoot is reached only by its own
+     route, which proves who you are before showing you anything. */
+  return prisma.albums.findFirst({ where: { public_token: token, kind: 'gallery' } });
 }
 
 // 🌐 whole-gallery index: list all albums for a vendor (covers + names + album tokens)
@@ -177,7 +184,12 @@ router.get('/vendor/:token', async (req, res) => {
     });
     if (!v) return res.status(404).json({ error: 'Gallery not found' });
     const albums = await prisma.albums.findMany({
-      where: { vendor_id: v.id },                 // 🔒 only this vendor's galleries
+      /* ⚠️ Galleries only. This is the page a client opens — the index of
+         everything a studio has published — and it listed LIVE SHOOTS too,
+         because it never filtered by kind. A live shoot is reached by its own
+         link and shows each guest only themselves; putting it on a public
+         index hands strangers the door to it. */
+      where: { vendor_id: v.id, kind: 'gallery' },   // 🔒 this vendor, galleries only
       orderBy: [{ created_at: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
       select: {
         public_token: true, title: true, category: true, cover_photo: true,
