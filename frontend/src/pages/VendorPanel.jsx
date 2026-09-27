@@ -188,6 +188,10 @@ export default function VendorPanel({ onLogout }) {
   function openNotification(n) {
     if (n.link_type === 'lead' && n.link_id) navigate({ tab: 'leads', lead: String(n.link_id) });
     else if (n.link_type === 'aichat') navigate({ tab: 'aichat' });
+    /* 🖼️ A selection notification opens the gallery it is about. Without this
+       the row renders but does nothing when pressed, which is worse than not
+       being clickable — it reads as broken rather than as plain text. */
+    else if (n.link_type === 'album' && n.link_id) navigate({ tab: 'galleries', album: String(n.link_id) });
   }
 
   function handleLogout() { logout(); onLogout(); }

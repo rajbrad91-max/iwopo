@@ -19,6 +19,7 @@ import { withLocalFile, galleryKeyFromRel } from '../lib/localFile.js';
 import { naturalSort } from '../lib/naturalSort.js';
 import { checkSharePassword } from '../lib/sharePassword.js';
 import { recordEvent } from '../lib/siteEvents.js';
+import { notify } from './notifications.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -689,6 +690,22 @@ router.post('/:token/selection', async (req, res) => {
       update: { note, updated_at: new Date() },
       create: { album_id: a.id, note, updated_at: new Date() },
     });
+    /* 🔔 Tell the studio. A client finishing their selection is the moment
+       work can start, and until now it landed silently — the only way to know
+       was to open the gallery and look. Raised AFTER the selection is saved,
+       so a notification never promises something that did not store.
+
+       Not awaited, and notify() swallows its own errors: a client who pressed
+       Send must not see a failure because a notification row would not
+       insert. */
+    notify(
+      a.vendor_id,
+      `🖼️ ${keep.length} photo${keep.length === 1 ? '' : 's'} selected — ${a.title}`,
+      note ? `"${note.slice(0, 140)}"` : 'The client sent their selection.',
+      'selection',
+      { type: 'album', id: a.id },
+    );
+
     res.json({ ok: true, count: keep.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
