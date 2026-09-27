@@ -1120,7 +1120,14 @@ async function checkGalleryPasswords(vendorId, values) {
     if (!u.password_hash) continue;
     for (const v of given) {
       if (await bcrypt.compare(String(v), u.password_hash)) {
-        return 'A gallery password cannot be your own account password — it is shared with clients';
+        /* ⚠️ Deliberately does NOT say WHY.
+           Saying 'that is your account password' turns this form into a
+           password oracle: anybody at the keyboard — a borrowed laptop, a
+           session left open, somebody looking over a shoulder — could guess
+           strings here and watch for that exact sentence to confirm the
+           login. The refusal has to be indistinguishable from any other
+           rejected password. */
+        return 'Please choose a different password for this gallery';
       }
     }
   }
