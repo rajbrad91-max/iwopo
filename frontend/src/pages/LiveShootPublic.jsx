@@ -125,20 +125,30 @@ export default function LiveShootPublic({ token }) {
 
   return (
     <div className="ls">
+      {/* 🖼️ One photograph from the evening, behind everything and mostly
+          faded out. Type on cream is a form however nicely it is set; a
+          picture from the shoot is what tells a guest they are in the right
+          place. Rendered as a real <img> rather than a CSS background so it
+          can be lazy and can fail quietly to just the cream. */}
+      {info.hero && (
+        <div className="ls-hero" aria-hidden="true">
+          <img alt="" src={`${base}/hero/${info.hero}`} />
+        </div>
+      )}
+
       <header className="ls-head">
-        {/* The studio's wordmark, small and quiet — the couple's name is the
-            headline, not the business. */}
+        {/* One brand lockup, not two. The logo sits IN the mark rather than
+            floating above the page as a separate block — which is what made a
+            placeholder read as a grey slab. */}
         <div className="ls-brand">
-          <span className="ls-brand-ic">◎</span>
+          <span className="ls-brand-ic">
+            {info.studio?.logo
+              ? <img alt="" src={`/api/me/logo/${info.studio.logo}`} />
+              : '◎'}
+          </span>
           <span className="ls-brand-name">{info.studio?.name}</span>
         </div>
         {info.studio?.tagline && <div className="ls-tagline">{info.studio.tagline}</div>}
-
-        {/* The mark itself, large. This is the thing a guest recognises. */}
-        {info.studio?.logo && (
-          <img className="ls-logo" alt={info.studio.name || ''}
-            src={`/api/me/logo/${info.studio.logo}`} />
-        )}
       </header>
 
       {!photos ? (

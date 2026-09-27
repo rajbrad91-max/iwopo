@@ -139,6 +139,17 @@ router.get('/:token', async (req, res) => {
     const clusters = await prisma.face_clusters.count({ where: { album_id: a.id } });
     const photos = await prisma.photos.count({ where: { album_id: a.id } });
 
+    /* 🖼️ One photograph from the shoot, for the backdrop.
+       A page of type on cream is a form however nicely it is set. A picture
+       from the evening behind it is what makes a guest feel they are in the
+       right place — and the album already has hundreds. The cover if there is
+       one, otherwise simply the first. */
+    const heroRow = await prisma.photos.findFirst({
+      where: { album_id: a.id, thumb_path: { not: null } },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+
     /* ⏱️ When the most recent photograph landed.
        The page wants to say how fast this is, and a real "added four minutes
        ago" is worth more than any slogan: a guest can check it against the
@@ -157,6 +168,9 @@ router.get('/:token', async (req, res) => {
     res.json({
       already_matched: !!pass,
       album: { title: a.title, cover_photo: a.cover_photo },
+      /* 🔒 An id, not a path. The image is fetched through the route below,
+         which is public for previews but still scoped to this album. */
+      hero: heroRow?.id || null,
       studio: {
         name: v?.business_name || null,
         logo: v?.logo_path || null,
@@ -271,6 +285,40 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
     /* Always, on every path. The selfie does not outlive the request. */
     if (tmp) await fs.unlink(tmp).catch(() => {});
   }
+});
+
+/**
+ * GET /api/live/:token/hero/:id → the backdrop photograph.
+ *
+ * 🔒 Public, and narrowly so: thumbnails only, and only a photograph in THIS
+ * album. A guest has not proved who they are yet, so this must not be a way to
+ * read the shoot — one small image is the whole grant. The id comes from the
+ * landing payload, and anything not in this album is a 404.
+ */
+router.get('/:token/hero/:id', async (req, res) => {
+  try {
+    const a = await prisma.albums.findFirst({
+      where: { public_token: String(req.params.token), kind: 'liveshoot' },
+      select: { id: true, vendor_id: true },
+    });
+    if (!a) return res.status(404).end();
+
+    const p = await prisma.photos.findFirst({
+      where: { id: Number(req.params.id), album_id: a.id },     // 🔒 this album only
+      select: { thumb_path: true },
+    });
+    if (!p?.thumb_path) return res.status(404).end();
+
+    const seg = String(p.thumb_path).split('/').filter(Boolean);
+    const key = `vendor/${a.vendor_id}/galleries/${seg[1]}/${seg[2]}`;
+    const obj = await objects.getStream(objects.PRIVATE, key);
+    if (!obj?.stream) return res.status(404).end();
+
+    const ext = String(p.thumb_path).split('.').pop().toLowerCase();
+    res.setHeader('Content-Type', ext === 'webp' ? 'image/webp' : ext === 'png' ? 'image/png' : 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    obj.stream.pipe(res);
+  } catch { res.status(404).end(); }
 });
 
 /**
