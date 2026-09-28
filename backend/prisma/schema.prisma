@@ -348,60 +348,62 @@ model lead_crew {
 }
 
 model leads {
-  id                      Int                @id @default(autoincrement())
+  id                      Int                  @id @default(autoincrement())
   vendor_id               Int?
-  name                    String?            @db.VarChar(200)
-  email                   String?            @db.VarChar(200)
-  phone                   String?            @db.VarChar(50)
-  event_type              String?            @db.VarChar(100)
-  event_date              DateTime?          @db.Date
-  timing_from             String?            @db.VarChar(20)
-  timing_to               String?            @db.VarChar(20)
-  location                String?            @db.VarChar(300)
+  name                    String?              @db.VarChar(200)
+  email                   String?              @db.VarChar(200)
+  phone                   String?              @db.VarChar(50)
+  event_type              String?              @db.VarChar(100)
+  event_date              DateTime?            @db.Date
+  timing_from             String?              @db.VarChar(20)
+  timing_to               String?              @db.VarChar(20)
+  location                String?              @db.VarChar(300)
   hours                   Int?
   guests                  Int?
-  gr_bride                Boolean?           @default(false)
-  gr_bride_venue          String?            @db.VarChar(300)
-  gr_groom                Boolean?           @default(false)
-  gr_groom_venue          String?            @db.VarChar(300)
+  gr_bride                Boolean?             @default(false)
+  gr_bride_venue          String?              @db.VarChar(300)
+  gr_groom                Boolean?             @default(false)
+  gr_groom_venue          String?              @db.VarChar(300)
   notes                   String?
   internal_notes          String?
-  status                  String?            @default("new") @db.VarChar(50)
-  created_at              DateTime?          @default(now()) @db.Timestamp(6)
-  updated_at              DateTime?          @default(now()) @db.Timestamp(6)
+  status                  String?              @default("new") @db.VarChar(50)
+  created_at              DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?            @default(now()) @db.Timestamp(6)
   package_id              Int?
   package_snapshot        Json?
-  deposit_percent         Int?               @default(30)
-  discount_percent        Decimal?           @default(0) @db.Decimal(5, 2)
-  price_override          Decimal?           @db.Decimal(10, 2)
-  archived_at             DateTime?          @db.Timestamp(6)
-  billed                  Boolean?           @default(false)
-  delivered               Boolean?           @default(false)
+  deposit_percent         Int?                 @default(30)
+  discount_percent        Decimal?             @default(0) @db.Decimal(5, 2)
+  price_override          Decimal?             @db.Decimal(10, 2)
+  archived_at             DateTime?            @db.Timestamp(6)
+  billed                  Boolean?             @default(false)
+  delivered               Boolean?             @default(false)
   booking_notes           String?
   ceremony                String?
-  client_token            String?            @unique @db.VarChar(64)
-  custom_data             Json?              @default("{}")
-  role                    String?            @db.VarChar(50)
-  instagram               String?            @db.VarChar(120)
-  heard                   String?            @db.VarChar(120)
-  gateway_enabled         Boolean?           @default(false)
-  web_payment_enabled     Boolean?           @default(true)
-  timer_enabled           Boolean?           @default(false)
-  timer_hours             Int?               @default(72)
-  timer_started_at        DateTime?          @db.Timestamptz(6)
-  seen_at                 DateTime?          @db.Timestamp(6)
+  client_token            String?              @unique @db.VarChar(64)
+  custom_data             Json?                @default("{}")
+  role                    String?              @db.VarChar(50)
+  instagram               String?              @db.VarChar(120)
+  heard                   String?              @db.VarChar(120)
+  gateway_enabled         Boolean?             @default(false)
+  web_payment_enabled     Boolean?             @default(true)
+  timer_enabled           Boolean?             @default(false)
+  timer_hours             Int?                 @default(72)
+  timer_started_at        DateTime?            @db.Timestamptz(6)
+  seen_at                 DateTime?            @db.Timestamp(6)
   form_snapshot           Json?
   package_template_id     Int?
-  packages_sent_at        DateTime?          @db.Timestamp(6)
-  payment_claimed_at      DateTime?          @db.Timestamp(6)
-  deposit_amount_override Decimal?           @db.Decimal(10, 2)
+  packages_sent_at        DateTime?            @db.Timestamp(6)
+  payment_claimed_at      DateTime?            @db.Timestamp(6)
+  deposit_amount_override Decimal?             @db.Decimal(10, 2)
+  client_birthday         DateTime?            @db.Date
   contracts               contracts[]
   invoices                invoices[]
   lead_crew               lead_crew[]
   lead_packages           lead_packages[]
-  vendor_packages         vendor_packages?   @relation(fields: [package_id], references: [id], onUpdate: NoAction)
-  package_templates       package_templates? @relation(fields: [package_template_id], references: [id], onUpdate: NoAction)
-  vendors                 vendors?           @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendor_packages         vendor_packages?     @relation(fields: [package_id], references: [id], onUpdate: NoAction)
+  package_templates       package_templates?   @relation(fields: [package_template_id], references: [id], onUpdate: NoAction)
+  vendors                 vendors?             @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  occasion_greetings      occasion_greetings[]
   payments                payments[]
 
   @@index([vendor_id], map: "idx_leads_vendor")
@@ -786,6 +788,7 @@ model vendors {
   invoices                 invoices[]
   leads                    leads[]
   notifications            notifications[]
+  occasion_greetings       occasion_greetings[]
   package_templates        package_templates[]
   payments                 payments[]
   pending_uploads          pending_uploads[]
@@ -1069,4 +1072,20 @@ model device_tokens {
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_device_vendor")
+}
+
+model occasion_greetings {
+  id          Int      @id @default(autoincrement())
+  vendor_id   Int
+  lead_id     Int
+  kind        String   @db.VarChar(16)
+  occasion_on DateTime @db.Date
+  subject     String?  @db.VarChar(300)
+  body        String?
+  sent_at     DateTime @default(now()) @db.Timestamp(6)
+  leads       leads    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors     vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([lead_id, kind, occasion_on], map: "idx_occ_once")
+  @@index([vendor_id, sent_at(sort: Desc)], map: "idx_occ_vendor")
 }

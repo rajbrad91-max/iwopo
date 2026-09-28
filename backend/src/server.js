@@ -45,6 +45,8 @@ import { pollComms } from './lib/commsPoll.js';
 import commsRoutes from './routes/comms.js';
 import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
+import occasionRoutes from './routes/occasions.js';
+import { sweepOccasions } from './lib/occasionSweep.js';
 
 dotenv.config();
 
@@ -153,6 +155,8 @@ app.use('/api/analytics', gate('analytics'), analyticsRoutes);
 app.use('/api/comms', gate('comms'), commsRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
 app.use('/api/devices', deviceRoutes);
+// 🎉 anniversaries and birthdays — reminders and the greetings themselves
+app.use('/api/occasions', occasionRoutes);
 /* 🎥 Live shoot — public, and deliberately so: a guest has no account. The
    selfie and the signed pass are what stand in for one. */
 app.use('/api/live', liveshootRoutes);
@@ -215,6 +219,11 @@ sweepExpiredSubscriptions().catch(() => {});
    last, and no longer — a table that only grows is a bill nobody decided to
    pay, and old visitor data is a liability rather than an asset. */
 setInterval(() => { sweepOldEvents().catch(() => {}); }, 24 * 60 * 60_000).unref();
+
+/* 🎉 Once a day. The reminder IS the feature — without it Raj has to
+   remember to look, which is the thing he said he cannot do. */
+setInterval(() => { sweepOccasions().catch(() => {}); }, 24 * 60 * 60_000).unref();
+setTimeout(() => { sweepOccasions().catch(() => {}); }, 30_000).unref();
 
 /* 📞 The net behind the webhook. Every minute, in-process — Perfect Poses used
    a fifteen-minute cron in a hosting panel that nobody could see running, and
