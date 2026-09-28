@@ -12,7 +12,7 @@ import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
 import PlansView from './PlansView.jsx';
 import RequestsView from './RequestsView.jsx';
-import OccasionsView from './OccasionsView.jsx';
+
 /* 🔒 Loaded on demand, not bundled with everything else.
    These are private features. In one bundle their code is downloaded by every
    vendor who opens the panel — they cannot USE them, the data is behind
@@ -22,6 +22,7 @@ import OccasionsView from './OccasionsView.jsx';
    The rest of the panel loads faster as a side effect. */
 const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 const CommsView = lazy(() => import('./CommsView.jsx'));
+const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
 
 // 🗝️ tab → required feature (one map controls everything)
@@ -34,9 +35,9 @@ const TAB_FEATURE = {
      it to a feature nobody sells locked it behind a plan that will never
      include it. */
   requests: 'galleries',
-  /* 🎉 Rides on leads: an occasion is a past booking coming round again, and
-     bookings are leads. Anybody with leads should have it. */
-  occasions: 'leads',
+  /* 🔒 Private to the platform owner — services.is_private keeps it out of
+     every catalogue and plan, and only a super admin can grant it. */
+  occasions: 'occasions',
 };
 
 function FeatureLocked({ goServices }) {
@@ -252,7 +253,7 @@ export default function VendorPanel({ onLogout }) {
         {has('leads') && <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => go('bookings')}><span className="nav-ic">📅</span><span className="nav-txt">Bookings</span></div>}
         {/* 🎉 Directly under Bookings — an occasion is a past booking coming
             round again, so this is where somebody would look for it. */}
-        {has('leads') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
+        {has('occasions') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
         {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => go('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></div>}
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">Crew Management</span></div>}
         {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
@@ -310,7 +311,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'plans' ? (
           <PlansView />
         ) : tab === 'occasions' ? (
-          <OccasionsView />
+          <Suspense fallback={<div className="tab-loading">Loading…</div>}><OccasionsView /></Suspense>
         ) : tab === 'requests' ? (
           <RequestsView />
         ) : tab === 'liveshoot' ? (

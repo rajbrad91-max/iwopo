@@ -156,7 +156,7 @@ app.use('/api/comms', gate('comms'), commsRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
 app.use('/api/devices', deviceRoutes);
 // 🎉 anniversaries and birthdays — reminders and the greetings themselves
-app.use('/api/occasions', occasionRoutes);
+app.use('/api/occasions', gate('occasions'), occasionRoutes);
 /* 🎥 Live shoot — public, and deliberately so: a guest has no account. The
    selfie and the signed pass are what stand in for one. */
 app.use('/api/live', liveshootRoutes);
