@@ -678,6 +678,9 @@ export const api = {
   addCrew: (data) => request('/crew', { method: 'POST', body: JSON.stringify(data) }),
   // 📸 galleries
   albums: (kind) => request('/albums' + (kind ? '?kind=' + kind : '')),
+  // 🖨️ what clients have sent in, grouped per gallery
+  requests: () => request('/albums/requests'),
+  setRequestDone: (albumId, done) => request('/albums/requests/' + albumId, { method: 'PUT', body: JSON.stringify({ done }) }),
   createAlbum: (data) => request('/albums', { method: 'POST', body: JSON.stringify(data) }),
   updateAlbum: (id, data) => request(`/albums/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   albumBookingOptions: () => request('/albums/booking-options'),

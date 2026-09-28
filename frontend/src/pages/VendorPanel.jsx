@@ -11,6 +11,7 @@ import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
 import PlansView from './PlansView.jsx';
+import RequestsView from './RequestsView.jsx';
 /* 🔒 Loaded on demand, not bundled with everything else.
    These are private features. In one bundle their code is downloaded by every
    vendor who opens the panel — they cannot USE them, the data is behind
@@ -27,6 +28,11 @@ const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
   contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
   website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms', liveshoot: 'liveshoot',
+  /* 🖨️ Rides on galleries, not its own key. It is a view of what clients sent
+     from their galleries, so anybody with galleries should have it — mapping
+     it to a feature nobody sells locked it behind a plan that will never
+     include it. */
+  requests: 'galleries',
 };
 
 function FeatureLocked({ goServices }) {
@@ -240,6 +246,9 @@ export default function VendorPanel({ onLogout }) {
         {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => go('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></div>}
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">Crew Management</span></div>}
         {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
+        {/* 🖨️ Sits under Galleries because that is where the requests come
+            from — a client picks photographs in their gallery and sends them. */}
+        {has('galleries') && <div className={`nav-item ${tab==='requests'?'active':''}`} onClick={() => go('requests')}><span className="nav-ic">🖨️</span><span className="nav-txt">Print / Edit Requests</span></div>}
         {has('fileflyer') && <div className={`nav-item ${tab==='fileflyer'?'active':''}`} onClick={() => go('fileflyer')}><span className="nav-ic">📤</span><span className="nav-txt">File Flyer</span></div>}
         {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
@@ -265,7 +274,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Print / Edit Requests' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -290,6 +299,8 @@ export default function VendorPanel({ onLogout }) {
           <CrewView />
         ) : tab === 'plans' ? (
           <PlansView />
+        ) : tab === 'requests' ? (
+          <RequestsView />
         ) : tab === 'liveshoot' ? (
           <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
         ) : tab === 'comms' ? (
