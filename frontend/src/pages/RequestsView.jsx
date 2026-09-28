@@ -3,7 +3,12 @@ import { api, fmtDateTime, getAuthToken } from '../lib/api';
 import './requests.css';
 
 /**
- * 🖨️ Print / edit requests — what clients have asked for, per gallery.
+ * 🖼️ Photo Selection — what clients have sent in, per gallery.
+ *
+ * ⚠️ There used to be three ways to reach this: a dashboard tile that opened
+ * the album LIST, this page, and the per-album view. The tile now comes
+ * straight here, which is what somebody pressing a tile labelled Photo
+ * Selection expects.
  *
  * Kept SEPARATE by gallery rather than pooled. One pile of everybody's
  * photographs mixed together is unusable: the whole point is knowing which
@@ -36,7 +41,7 @@ export default function RequestsView() {
     return (
       <div className="rq-quiet">
         Nothing yet. When a client picks photos in their gallery and presses
-        Send to Studio, the request appears here.
+        Send to Studio, their selection appears here.
       </div>
     );
   }
@@ -47,7 +52,7 @@ export default function RequestsView() {
     <div className="rq">
       <p className="rq-count">
         {waiting > 0
-          ? `${waiting} ${waiting === 1 ? 'request' : 'requests'} waiting`
+          ? `${waiting} ${waiting === 1 ? 'selection' : 'selections'} waiting`
           : 'Everything is done'}
       </p>
 

@@ -258,7 +258,7 @@ export default function VendorPanel({ onLogout }) {
         {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
         {/* 🖨️ Sits under Galleries because that is where the requests come
             from — a client picks photographs in their gallery and sends them. */}
-        {has('galleries') && <div className={`nav-item ${tab==='requests'?'active':''}`} onClick={() => go('requests')}><span className="nav-ic">🖨️</span><span className="nav-txt">Print / Edit Requests</span></div>}
+        {has('galleries') && <div className={`nav-item ${tab==='requests'?'active':''}`} onClick={() => go('requests')}><span className="nav-ic">🖼️</span><span className="nav-txt">Photo Selection</span></div>}
         {has('fileflyer') && <div className={`nav-item ${tab==='fileflyer'?'active':''}`} onClick={() => go('fileflyer')}><span className="nav-ic">📤</span><span className="nav-txt">File Flyer</span></div>}
         {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
@@ -284,7 +284,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Print / Edit Requests' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -2629,7 +2629,11 @@ function DashHome({ goTab }) {
             <StatTile icon="📋" value={leads.length} label="Total Leads" onOpen={() => goTab('leads')} />
             <StatTile icon="✨" value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
             <StatTile icon="✅" value={booked} label="Booked" onOpen={() => goTab('bookings')} />
-            <StatTile icon="🖼️" value={photoSel} label="Photo Selection" onOpen={() => goTab('galleries')} />
+            {/* 🖼️ Straight to the page that lists them, not to Galleries.
+                It sent you to a list of albums to go and find the selections
+                yourself — one more step than the tile implied, and the reason
+                there appeared to be several places to look. */}
+            <StatTile icon="🖼️" value={photoSel} label="Photo Selection" onOpen={() => goTab('requests')} />
           </div>
 
           {/* 🟡 Recent Leads */}
