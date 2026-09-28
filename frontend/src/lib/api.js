@@ -680,6 +680,10 @@ export const api = {
   albums: (kind) => request('/albums' + (kind ? '?kind=' + kind : '')),
   // 🖨️ what clients have sent in, grouped per gallery
   requests: () => request('/albums/requests'),
+  // 🎉 anniversaries and birthdays
+  occasions: () => request('/occasions'),
+  occasionDraft: (leadId, kind) => request('/occasions/draft?lead_id=' + leadId + '&kind=' + kind),
+  occasionSend: (d) => request('/occasions/send', { method: 'POST', body: JSON.stringify(d) }),
   setRequestDone: (albumId, done) => request('/albums/requests/' + albumId, { method: 'PUT', body: JSON.stringify({ done }) }),
   createAlbum: (data) => request('/albums', { method: 'POST', body: JSON.stringify(data) }),
   updateAlbum: (id, data) => request(`/albums/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

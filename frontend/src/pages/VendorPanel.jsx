@@ -12,6 +12,7 @@ import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
 import PlansView from './PlansView.jsx';
 import RequestsView from './RequestsView.jsx';
+import OccasionsView from './OccasionsView.jsx';
 /* 🔒 Loaded on demand, not bundled with everything else.
    These are private features. In one bundle their code is downloaded by every
    vendor who opens the panel — they cannot USE them, the data is behind
@@ -33,6 +34,9 @@ const TAB_FEATURE = {
      it to a feature nobody sells locked it behind a plan that will never
      include it. */
   requests: 'galleries',
+  /* 🎉 Rides on leads: an occasion is a past booking coming round again, and
+     bookings are leads. Anybody with leads should have it. */
+  occasions: 'leads',
 };
 
 function FeatureLocked({ goServices }) {
@@ -198,6 +202,9 @@ export default function VendorPanel({ onLogout }) {
        the row renders but does nothing when pressed, which is worse than not
        being clickable — it reads as broken rather than as plain text. */
     else if (n.link_type === 'album' && n.link_id) navigate({ tab: 'galleries', album: String(n.link_id) });
+    /* 🎉 An anniversary reminder opens the page that can act on it. A reminder
+       that does not take you to the thing is half a reminder. */
+    else if (n.link_type === 'occasion') navigate({ tab: 'occasions' });
   }
 
   function handleLogout() { logout(); onLogout(); }
@@ -243,6 +250,9 @@ export default function VendorPanel({ onLogout }) {
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => go('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></div>
         {has('leads') && <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => go('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span>{newLeadCount > 0 && <span className="nav-badge" title={`${newLeadCount} new lead${newLeadCount === 1 ? '' : 's'}`}>{newLeadCount > 99 ? '99+' : newLeadCount}</span>}</div>}
         {has('leads') && <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => go('bookings')}><span className="nav-ic">📅</span><span className="nav-txt">Bookings</span></div>}
+        {/* 🎉 Directly under Bookings — an occasion is a past booking coming
+            round again, so this is where somebody would look for it. */}
+        {has('leads') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
         {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => go('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></div>}
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">Crew Management</span></div>}
         {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
@@ -274,7 +284,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Print / Edit Requests' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Print / Edit Requests' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -299,6 +309,8 @@ export default function VendorPanel({ onLogout }) {
           <CrewView />
         ) : tab === 'plans' ? (
           <PlansView />
+        ) : tab === 'occasions' ? (
+          <OccasionsView />
         ) : tab === 'requests' ? (
           <RequestsView />
         ) : tab === 'liveshoot' ? (
