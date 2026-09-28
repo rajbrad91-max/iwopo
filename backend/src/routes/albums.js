@@ -1296,7 +1296,22 @@ router.get('/file/:photoId/:type', async (req, res) => {
         try {
           const o = await objects.getStream(objects.PRIVATE,
             objects.keyFor(v, 'galleries', parts[1], parts[2]), req.headers.range);
-          if (o.contentType) res.setHeader('Content-Type', o.contentType);
+          /* ⚠️ Not R2's answer when it is a generic one. It reports
+             application/octet-stream for these objects, and a browser will not
+             decode an <img> that claims to be a binary download — the request
+             succeeds, the bytes are a perfectly good photograph, and the tile
+             stays blank. Inferred from the extension instead, which is the
+             thing that is actually true. Same fault as the live-shoot
+             thumbnails had. */
+          const ext = String(rel).split('.').pop().toLowerCase();
+          const guess = ext === 'webp' ? 'image/webp'
+            : ext === 'png' ? 'image/png'
+            : ext === 'gif' ? 'image/gif'
+            : ext === 'mp4' ? 'video/mp4'
+            : ext === 'mov' ? 'video/quicktime'
+            : 'image/jpeg';
+          res.setHeader('Content-Type',
+            o.contentType && o.contentType !== 'application/octet-stream' ? o.contentType : guess);
           res.setHeader('Accept-Ranges', 'bytes');
           if (o.contentRange) { res.status(206); res.setHeader('Content-Range', o.contentRange); }
           if (o.size) res.setHeader('Content-Length', o.size);
