@@ -685,6 +685,7 @@ export const api = {
   occasionDraft: (leadId, kind) => request('/occasions/draft?lead_id=' + leadId + '&kind=' + kind),
   occasionSend: (d) => request('/occasions/send', { method: 'POST', body: JSON.stringify(d) }),
   setRequestDone: (albumId, done) => request('/albums/requests/' + albumId, { method: 'PUT', body: JSON.stringify({ done }) }),
+  deleteRequest: (albumId) => request('/albums/requests/' + albumId, { method: 'DELETE' }),
   createAlbum: (data) => request('/albums', { method: 'POST', body: JSON.stringify(data) }),
   updateAlbum: (id, data) => request(`/albums/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   albumBookingOptions: () => request('/albums/booking-options'),

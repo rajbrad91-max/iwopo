@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, fmtDateTime, getAuthToken } from '../lib/api';
+import { useDialog } from '../lib/dialog.jsx';
 import './requests.css';
 
 /**
@@ -18,6 +19,8 @@ import './requests.css';
 export default function RequestsView() {
   const [rows, setRows] = useState(null);
   const [open, setOpen] = useState(null);      // which gallery is expanded
+  const [copied, setCopied] = useState(null);  // brief "copied" on one card
+  const dialog = useDialog();
   const [err, setErr] = useState('');
 
   const load = useCallback(() => {
@@ -26,6 +29,38 @@ export default function RequestsView() {
       .catch(e => { setErr(e.message); setRows([]); });
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  /**
+   * 📋 The filenames, space separated, WITHOUT extensions.
+   *
+   * This is pasted into a print lab's order form or a search box on the
+   * editing machine, and both want the bare name — "Simar's Jaggo (1 of 108)"
+   * rather than the same thing with .jpg hanging off it.
+   */
+  async function copyNames(r) {
+    const names = (r.photos || [])
+      .map(p => (p.filename || '').replace(/\.[^.]+$/, ''))
+      .filter(Boolean);
+    if (!names.length) return setErr('No filenames to copy.');
+    try {
+      await navigator.clipboard.writeText(names.join(' '));
+      setCopied(r.album_id);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      /* Clipboard access can be refused — an insecure origin, or a browser
+         that wants a fresher gesture. Saying so beats a button that looks
+         like it worked. */
+      setErr('Could not reach the clipboard — copy them from the list instead.');
+    }
+  }
+
+  async function removeOrder(r) {
+    if (!await dialog.confirm(
+      `This removes the whole selection ${r.title} sent — ${r.count} photo${r.count === 1 ? '' : 's'} and their note. Their gallery and photographs are untouched.`,
+      { title: 'Delete this order?', okLabel: 'Delete order' })) return;
+    try { await api.deleteRequest(r.album_id); load(); }
+    catch (e) { setErr(e.message); }
+  }
 
   async function toggleDone(r) {
     try {
@@ -74,6 +109,12 @@ export default function RequestsView() {
           <div className="rq-acts">
             <button className="refresh" onClick={() => toggleDone(r)}>
               {r.completed_at ? '↩︎ Not done' : '✅ Mark done'}
+            </button>
+            <button className="refresh" onClick={() => copyNames(r)}>
+              {copied === r.album_id ? '✅ Copied' : '📋 Copy file names'}
+            </button>
+            <button className="refresh rq-del" onClick={() => removeOrder(r)}>
+              🗑️ Delete order
             </button>
             {r.completed_at && (
               <span className="rq-done-at">Done {fmtDateTime(r.completed_at)}</span>

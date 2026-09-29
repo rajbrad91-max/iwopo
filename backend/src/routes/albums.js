@@ -131,6 +131,31 @@ router.get('/requests', requireAuth, async (req, res) => {
 });
 
 /**
+ * 🗑️ DELETE /api/albums/requests/:albumId → throw the whole order away.
+ *
+ * The client's selection, and the note that came with it. Used when an order
+ * has been fulfilled and printed, or when a client sends a second selection
+ * replacing the first.
+ *
+ * ⚠️ The PHOTOGRAPHS are untouched. Only the selection rows go — deleting a
+ * client's choices must never delete their gallery, and those two live one
+ * foreign key apart.
+ */
+router.delete('/requests/:albumId', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.albumId);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });  // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Not found' });
+
+    const { count } = await prisma.selections.deleteMany({ where: { album_id: id } });
+    await prisma.selection_notes.deleteMany({ where: { album_id: id } });
+
+    res.json({ ok: true, removed: count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
  * 🖨️ PUT /api/albums/requests/:albumId → mark done, or put it back.
  */
 router.put('/requests/:albumId', requireAuth, async (req, res) => {

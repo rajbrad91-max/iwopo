@@ -54,3 +54,8 @@
 @media (max-width: 560px) {
   .rq-files { grid-template-columns: repeat(3, 1fr); gap: 7px; }
 }
+
+/* Deleting an order is the one irreversible action on this page, so it reads
+   differently from the other two — not alarming, but not identical either. */
+.rq-del { color: var(--red); }
+.rq-del:hover { border-color: var(--red); }
