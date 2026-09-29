@@ -1655,6 +1655,18 @@ function FaceEngineSettings() {
   const [aiTesting, setAiTesting] = useState(false);
   const [aiMsg, setAiMsg] = useState(null);
 
+  /** Removing a credential is its own act — see the comment on the button. */
+  async function clearAiKey() {
+    if (!await dialog.confirm(
+      'The AI chat and creating leads from calls will both stop working until a new key is added.',
+      { title: 'Remove the Claude key?', okLabel: 'Remove' })) return;
+    try {
+      await api.clearPlatformKeys(['anthropic_api_key']);
+      setS(v => ({ ...v, anthropic_api_key: '' }));
+      setAiMsg({ ok: true, text: 'Key removed.' });
+    } catch (e) { setAiMsg({ ok: false, text: '⚠️ ' + e.message }); }
+  }
+
   /** One token back is the cheapest proof a key works. */
   async function testAi() {
     setAiTesting(true); setAiMsg(null);
@@ -2038,6 +2050,17 @@ function FaceEngineSettings() {
                 disabled={aiTesting} onClick={testAi}>
                 {aiTesting ? 'Checking…' : 'Say hello to Claude'}
               </button>
+              {/* 🗑️ Emptying the box and saving deliberately does NOT remove a
+                  key — the form sends every field on every save, so that would
+                  wipe working credentials by accident. Removing one is its own
+                  act, which is also the only way to revoke a key that leaked. */}
+              {s.anthropic_api_key && (
+                <button style={{ padding: '7px 14px', fontSize: 12.5, background: 'var(--panel-2)',
+                  border: '1px solid var(--line)', borderRadius: 7, color: 'var(--red)', cursor: 'pointer' }}
+                  onClick={clearAiKey}>
+                  🗑️ Remove key
+                </button>
+              )}
             </div>
             {aiMsg && (
               <div style={{ marginTop: 10, fontSize: 12.5, color: aiMsg.ok ? '#4ade80' : '#f87171' }}>

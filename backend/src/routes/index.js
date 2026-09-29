@@ -268,10 +268,7 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
       'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name',
       /* 📞 Quo (OpenPhone) — calls and messages. Private to the platform owner,
          so quo_vendor_id says whose timeline the mirrored events land in. */
-      'quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id',
-      /* 🤖 Claude. Reads call summaries into leads, and powers the AI chat —
-         which has never run, because this key has never existed anywhere. */
-      'anthropic_api_key'];
+      'quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id'];
 
     /* 🔒 One bucket for both classes would silently un-gate every client gallery
        and every File Flyer link at once: the album password and the share token
@@ -291,7 +288,20 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
         await setSetting(k, req.body[k]);
       }
     }
-    res.json({ ok: true });
+
+    /* 🗑️ Removing a credential is a SEPARATE, explicit act.
+       Saving skips empty values on purpose — the form sends every field on
+       every save, and a masked or blank one must never wipe a working key by
+       accident. But that left no way to remove one AT ALL: a leaked key could
+       be replaced and never revoked, which is the case where you most want to
+       empty the box and press save. Naming the keys makes clearing impossible
+       to do by accident and possible to do at all. */
+    const clear = Array.isArray(req.body.clear) ? req.body.clear : [];
+    for (const k of clear) {
+      if (allowed.includes(k)) await setSetting(k, '');
+    }
+
+    res.json({ ok: true, cleared: clear.filter(k => allowed.includes(k)) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

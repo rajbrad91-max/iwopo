@@ -575,6 +575,8 @@ export const api = {
   testQuo: () => request('/settings/platform/test-quo', { method: 'POST' }),
   // 🤖 does the Claude key work? one token back is the cheapest proof
   testAi: () => request('/settings/platform/test-ai', { method: 'POST' }),
+  // 🗑️ removing a credential is explicit — saving an empty box does not
+  clearPlatformKeys: (keys) => request('/settings/platform', { method: 'PUT', body: JSON.stringify({ clear: keys }) }),
   setPlanStorage: (planId, gb) =>
     request(`/vendors/plans/${planId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_gb: gb }) }),
   setVendorPlan: (vendorId, planId) =>
