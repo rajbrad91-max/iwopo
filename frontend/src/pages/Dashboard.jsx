@@ -1651,6 +1651,21 @@ function FaceEngineSettings() {
      at again. Folded away by default, like the AWS credentials above it. */
   const [r2Open, setR2Open] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
+  const [aiMsg, setAiMsg] = useState(null);
+
+  /** One token back is the cheapest proof a key works. */
+  async function testAi() {
+    setAiTesting(true); setAiMsg(null);
+    try {
+      const r = await api.testAi();
+      setAiMsg({ ok: true, text: `✅ Claude replied "${r.said}" using ${r.model || 'the default model'}` });
+    } catch (e) {
+      setAiMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach Claude') });
+    } finally { setAiTesting(false); }
+  }
+
   const [quoOpen, setQuoOpen] = useState(false);
   const [quoTesting, setQuoTesting] = useState(false);
   const [quoMsg, setQuoMsg] = useState(null);
@@ -1977,6 +1992,56 @@ function FaceEngineSettings() {
             {testMsg && (
               <div style={{ marginTop: 10, fontSize: 12.5, color: testMsg.ok ? '#4ade80' : '#f87171' }}>
                 {testMsg.text}
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+
+        {/* 🤖 Claude. Reads call summaries into leads, and powers the AI chat —
+            which has never run, because this key has never existed anywhere. */}
+        <div className="fr-cred">
+          <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
+            onClick={() => setAiOpen(o => !o)} aria-expanded={aiOpen}>
+            <span>🤖 AI assistant (Claude)</span>
+            <span className="fr-cred-chev">{aiOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {aiOpen && (
+          <div className="fr-cred-body">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+              {!editing ? (
+                <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                </div>
+              )}
+            </div>
+
+            <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+              Powers the AI chat and turning a call summary into a lead. Get a
+              key at console.anthropic.com — it is charged per use, a fraction
+              of a penny per call.
+            </p>
+
+            <div><label className="lbl">API key</label>
+              <input type="password" style={editing ? box : roBox} readOnly={!editing}
+                placeholder="sk-ant-…"
+                value={s.anthropic_api_key || ''}
+                onChange={e => setS({ ...s, anthropic_api_key: e.target.value })} /></div>
+
+            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Check the key</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+              <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5 }}
+                disabled={aiTesting} onClick={testAi}>
+                {aiTesting ? 'Checking…' : 'Say hello to Claude'}
+              </button>
+            </div>
+            {aiMsg && (
+              <div style={{ marginTop: 10, fontSize: 12.5, color: aiMsg.ok ? '#4ade80' : '#f87171' }}>
+                {aiMsg.text}
               </div>
             )}
           </div>

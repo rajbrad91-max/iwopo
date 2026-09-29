@@ -12,6 +12,7 @@ import { deleteCollection } from '../lib/faceAWS.js';
 import { platformMail } from './email.js';
 import nodemailer from 'nodemailer';
 import { quoConfig, listPhoneNumbers } from '../lib/quo.js';
+import { getSetting } from '../lib/settings.js';
 
 const router = express.Router();
 
@@ -39,7 +40,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
        access key ID there is nothing useful to recognise it by, so the whole
        thing is replaced rather than clipped. */
     if (s.smtp_pass) s.smtp_pass = '••••••••';
-    for (const k of ['quo_api_key', 'quo_webhook_secret']) {
+    for (const k of ['quo_api_key', 'quo_webhook_secret', 'anthropic_api_key']) {
       if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
     }
     res.json({ settings: s });
@@ -176,6 +177,44 @@ router.post('/settings/platform/test-email', requireAuth, requireSuperAdmin, asy
  * need anyway. A saved key that turns out to be wrong looks exactly like a
  * saved key that is right, until a week of calls has quietly not arrived.
  */
+/**
+ * 🤖 POST /api/settings/platform/test-ai → does the Claude key work?
+ *
+ * The cheapest possible call: one token back. A saved key that turns out to
+ * be wrong looks exactly like a working one until somebody presses "create
+ * lead from this call" in front of a client and nothing happens.
+ */
+router.post('/settings/platform/test-ai', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const key = await getSetting('anthropic_api_key', '');
+    if (!key) return res.status(400).json({ error: 'Add the Claude API key first.' });
+
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 4,
+        messages: [{ role: 'user', content: 'Reply with the word: ok' }],
+      }),
+    });
+    if (!r.ok) {
+      const b = await r.text().catch(() => '');
+      /* 401 means the key; anything else is worth quoting, because "it failed"
+         sends somebody to check their firewall for an hour. */
+      return res.status(400).json({
+        error: r.status === 401 ? 'Claude rejected that key.'
+          : `Claude returned ${r.status}. ${b.slice(0, 140)}`,
+      });
+    }
+    const d = await r.json();
+    const said = (d?.content || []).map(c => c.text || '').join('').trim();
+    res.json({ ok: true, model: d?.model || null, said });
+  } catch (e) {
+    res.status(400).json({ error: 'Could not reach Claude — ' + e.message });
+  }
+});
+
 router.post('/settings/platform/test-quo', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const cfg = await quoConfig();
@@ -229,7 +268,10 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
       'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name',
       /* 📞 Quo (OpenPhone) — calls and messages. Private to the platform owner,
          so quo_vendor_id says whose timeline the mirrored events land in. */
-      'quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id'];
+      'quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id',
+      /* 🤖 Claude. Reads call summaries into leads, and powers the AI chat —
+         which has never run, because this key has never existed anywhere. */
+      'anthropic_api_key'];
 
     /* 🔒 One bucket for both classes would silently un-gate every client gallery
        and every File Flyer link at once: the album password and the share token

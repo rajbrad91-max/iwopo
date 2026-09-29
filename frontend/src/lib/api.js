@@ -573,6 +573,8 @@ export const api = {
   testPlatformEmail: (to) => request('/settings/platform/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
   // 📞 does the Quo key work? listing the numbers is the cheapest proof
   testQuo: () => request('/settings/platform/test-quo', { method: 'POST' }),
+  // 🤖 does the Claude key work? one token back is the cheapest proof
+  testAi: () => request('/settings/platform/test-ai', { method: 'POST' }),
   setPlanStorage: (planId, gb) =>
     request(`/vendors/plans/${planId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_gb: gb }) }),
   setVendorPlan: (vendorId, planId) =>
