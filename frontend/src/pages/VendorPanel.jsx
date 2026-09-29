@@ -251,9 +251,6 @@ export default function VendorPanel({ onLogout }) {
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => go('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></div>
         {has('leads') && <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => go('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span>{newLeadCount > 0 && <span className="nav-badge" title={`${newLeadCount} new lead${newLeadCount === 1 ? '' : 's'}`}>{newLeadCount > 99 ? '99+' : newLeadCount}</span>}</div>}
         {has('leads') && <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => go('bookings')}><span className="nav-ic">📅</span><span className="nav-txt">Bookings</span></div>}
-        {/* 🎉 Directly under Bookings — an occasion is a past booking coming
-            round again, so this is where somebody would look for it. */}
-        {has('occasions') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
         {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => go('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></div>}
         {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">Crew Management</span></div>}
         {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
@@ -262,10 +259,14 @@ export default function VendorPanel({ onLogout }) {
         {has('galleries') && <div className={`nav-item ${tab==='requests'?'active':''}`} onClick={() => go('requests')}><span className="nav-ic">🖼️</span><span className="nav-txt">Photo Selection</span></div>}
         {has('fileflyer') && <div className={`nav-item ${tab==='fileflyer'?'active':''}`} onClick={() => go('fileflyer')}><span className="nav-ic">📤</span><span className="nav-txt">File Flyer</span></div>}
         {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
-        {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
-        {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
+        {/* 🔒 The four features private to the platform owner, kept
+            together and in a deliberate order rather than scattered down
+            the list. Each still appears only for somebody granted it. */}
         {has('comms') && <div className={`nav-item ${tab==='comms'?'active':''}`} onClick={() => go('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></div>}
+        {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
+        {has('occasions') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
         {has('liveshoot') && <div className={`nav-item ${tab==='liveshoot'?'active':''}`} onClick={() => go('liveshoot')}><span className="nav-ic">🎥</span><span className="nav-txt">Live Shoot</span></div>}
+        {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
         <div className="nav-group">SETUP</div>
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
         {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => go('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></div>}
