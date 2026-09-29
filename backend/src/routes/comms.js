@@ -9,6 +9,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { pollComms } from '../lib/commsPoll.js';
+import { extractLead } from '../lib/callToLead.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -87,6 +88,81 @@ router.post('/sync', requireAuth, async (req, res) => {
     if (r.skipped) return res.status(400).json({ error: 'Quo is not configured yet.' });
     if (r.error) return res.status(400).json({ error: r.error });
     res.json({ ok: true, added: r.added || 0 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * 📞→📋 POST /api/comms/:id/extract → read the call, propose a lead.
+ *
+ * Proposes only. Nothing is written here: Raj sees the fields, corrects what
+ * the model got wrong, and presses create. A date extracted from a summary is
+ * usually right and occasionally on the wrong Saturday, and the second case is
+ * why this does not save.
+ */
+router.post('/:id/extract', requireAuth, async (req, res) => {
+  const v = vid(req);
+  try {
+    const ev = await prisma.comms_events.findFirst({
+      where: { id: BigInt(req.params.id), vendor_id: v },      // 🔒 tenancy
+      select: { body: true, transcript: true, from_number: true, to_number: true, direction: true, contact_name: true },
+    });
+    if (!ev) return res.status(404).json({ error: 'Not found' });
+
+    /* The summary first; the transcript is the fallback when Quo has not
+       written one yet, and it says the same things at greater length. */
+    const text = (ev.body || '').trim() || (ev.transcript || '').trim();
+    const known = {
+      phone: ev.direction === 'incoming' ? ev.from_number : ev.to_number,
+      contact_name: ev.contact_name || null,
+    };
+
+    const out = await extractLead(v, text, known);
+    if (out.error) return res.status(400).json({ error: out.error });
+    res.json({ lead: out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * 📋 POST /api/comms/:id/lead → create it, from what Raj approved.
+ *
+ * 🔒 The fields come from the REQUEST because he has just edited them, but the
+ * vendor comes from the token and the call is re-read to prove it is his.
+ */
+router.post('/:id/lead', requireAuth, async (req, res) => {
+  const v = vid(req);
+  try {
+    const ev = await prisma.comms_events.findFirst({
+      where: { id: BigInt(req.params.id), vendor_id: v },      // 🔒 tenancy
+      select: { id: true, occurred_at: true },
+    });
+    if (!ev) return res.status(404).json({ error: 'Not found' });
+
+    const b = req.body || {};
+    const name = String(b.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'A lead needs a name.' });
+
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.event_date || '') ? new Date(b.event_date) : null;
+
+    const lead = await prisma.leads.create({
+      data: {
+        vendor_id: v,
+        name,
+        email: String(b.email || '').trim() || null,
+        phone: String(b.phone || '').trim() || null,
+        event_type: String(b.event_type || '').trim() || null,
+        event_date: date,
+        location: String(b.location || '').trim() || null,
+        /* Where it came from is worth keeping: months later "how did we get
+           this booking" is a real question, and "a phone call on the 14th" is
+           a better answer than silence. */
+        notes: [String(b.notes || '').trim(), `— from a call on ${new Date(ev.occurred_at).toLocaleDateString()}`]
+          .filter(Boolean).join('\n\n'),
+        status: 'new',
+      },
+      select: { id: true, name: true },
+    });
+
+    res.status(201).json({ lead });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

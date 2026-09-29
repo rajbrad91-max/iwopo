@@ -795,6 +795,9 @@ export const api = {
     return request('/comms' + (p.toString() ? '?' + p : ''));
   },
   commsSync: () => request('/comms/sync', { method: 'POST' }),
+  // 📞→📋 read a call summary into a proposed lead, then create it
+  commsExtract: (id) => request('/comms/' + id + '/extract', { method: 'POST' }),
+  commsCreateLead: (id, lead) => request('/comms/' + id + '/lead', { method: 'POST', body: JSON.stringify(lead) }),
   myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

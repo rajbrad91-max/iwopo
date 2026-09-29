@@ -48,6 +48,10 @@ export default function CommsView() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [fresh, setFresh] = useState(0);          // how many arrived while watching
+  const [lead, setLead] = useState(null);         // the proposed lead, before it is saved
+  const [busyId, setBusyId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [made, setMade] = useState(null);
   const newest = useRef(null);
 
   const load = useCallback(async () => {
@@ -101,6 +105,33 @@ export default function CommsView() {
     };
   }, [kind, q]);
 
+  /**
+   * 📞→📋 Read the call, propose a lead.
+   *
+   * Proposes only. Raj sees the fields, fixes whatever the model misheard,
+   * and presses create — a date pulled from a summary is usually right and
+   * occasionally on the wrong Saturday, which is why nothing saves here.
+   */
+  async function extract(ev) {
+    setBusyId(ev.external_id); setErr('');
+    try {
+      const d = await api.commsExtract(ev.id);
+      setLead({ ...d.lead, _eventId: ev.id, _from: ev.contact_name || ev.from_number });
+    } catch (e) { setErr(e.message); }
+    finally { setBusyId(null); }
+  }
+
+  async function createLead() {
+    setSaving(true); setErr('');
+    try {
+      const d = await api.commsCreateLead(lead._eventId, lead);
+      setLead(null);
+      setMade(d.lead.name);
+      setTimeout(() => setMade(null), 5000);
+    } catch (e) { setErr(e.message); }
+    finally { setSaving(false); }
+  }
+
   async function syncNow() {
     setSyncing(true);
     try { await api.commsSync(); await load(); }
@@ -127,6 +158,45 @@ export default function CommsView() {
       )}
 
       {err && <div className="cm-err">⚠️ {err}</div>}
+      {made && <div className="cm-new">✅ Lead created for {made}</div>}
+
+      {lead && (
+        <div className="cm-modal" onClick={() => setLead(null)}>
+          <div className="cm-sheet" onClick={ev => ev.stopPropagation()}>
+            <div className="cm-sheet-h">
+              From the call with {lead._from}
+              {lead.confidence !== 'high' && (
+                /* Said plainly. A summary that was vague produces a lead that
+                   is a guess, and Raj should know which kind he is looking at
+                   before he presses create. */
+                <span className="cm-conf"> · {lead.confidence} confidence — check the details</span>
+              )}
+            </div>
+
+            <div className="cm-grid">
+              {[['name', 'Name'], ['phone', 'Phone'], ['email', 'Email'],
+                ['event_type', 'Event'], ['event_date', 'Date'], ['location', 'Location']].map(([k, label]) => (
+                <div key={k}>
+                  <label className="lbl">{label}</label>
+                  <input className="cm-input" type={k === 'event_date' ? 'date' : 'text'}
+                    value={lead[k] || ''} onChange={ev => setLead({ ...lead, [k]: ev.target.value })} />
+                </div>
+              ))}
+            </div>
+
+            <label className="lbl">Notes</label>
+            <textarea className="cm-area" rows={7} value={lead.notes || ''}
+              onChange={ev => setLead({ ...lead, notes: ev.target.value })} />
+
+            <div className="cm-sheet-f">
+              <button className="cm-f" onClick={() => setLead(null)}>Cancel</button>
+              <button className="cm-f is-on" disabled={saving} onClick={createLead}>
+                {saving ? 'Creating…' : '📋 Create lead'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? <p className="cm-quiet">Loading…</p>
        : events.length === 0 ? (
@@ -173,6 +243,15 @@ export default function CommsView() {
                 )}
                 {e.recording_url && (
                   <audio className="cm-audio" controls preload="none" src={e.recording_url} />
+                )}
+                {/* Only on calls that actually said something. A missed call
+                    has nothing to read, and offering the button anyway would
+                    promise work it cannot do. */}
+                {e.kind === 'call' && (e.body || e.transcript) && (
+                  <button className="cm-f cm-lead" disabled={busyId === e.external_id}
+                    onClick={() => extract(e)}>
+                    {busyId === e.external_id ? 'Reading…' : '📋 Create lead from this call'}
+                  </button>
                 )}
               </div>
             ))}

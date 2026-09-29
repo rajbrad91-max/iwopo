@@ -63,3 +63,42 @@
   .cm-hd { display: none; }
   .cm-thread { flex: none; min-width: 130px; }
 }
+
+/* 📞→📋 Turning a call into a lead. */
+
+/* Sits under the summary it will read, so it plainly belongs to that call. */
+.cm-lead { margin-top: 10px; }
+
+.cm-modal {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(8,12,14,.6);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.cm-sheet {
+  width: 100%; max-width: 620px; max-height: 88vh; overflow: auto;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 20px;
+}
+.cm-sheet-h { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+/* A low-confidence extraction is still worth showing — but Raj should know
+   which kind he is looking at before he presses create. */
+.cm-conf { color: var(--amber); }
+
+.cm-grid {
+  display: grid; gap: 10px 12px; margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.cm-input, .cm-area {
+  width: 100%; box-sizing: border-box;
+  padding: 8px 10px; margin-top: 5px;
+  border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--text);
+  font-size: 13.5px; font-family: inherit;
+}
+.cm-area { line-height: 1.6; resize: vertical; margin-bottom: 16px; }
+
+.cm-sheet-f { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 560px) {
+  .cm-grid { grid-template-columns: 1fr; }
+}
