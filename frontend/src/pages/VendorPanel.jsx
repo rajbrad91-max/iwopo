@@ -258,7 +258,6 @@ export default function VendorPanel({ onLogout }) {
             from — a client picks photographs in their gallery and sends them. */}
         {has('galleries') && <div className={`nav-item ${tab==='requests'?'active':''}`} onClick={() => go('requests')}><span className="nav-ic">🖼️</span><span className="nav-txt">Photo Selection</span></div>}
         {has('fileflyer') && <div className={`nav-item ${tab==='fileflyer'?'active':''}`} onClick={() => go('fileflyer')}><span className="nav-ic">📤</span><span className="nav-txt">File Flyer</span></div>}
-        {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
         {/* 🔒 The four features private to the platform owner, kept
             together and in a deliberate order rather than scattered down
             the list. Each still appears only for somebody granted it. */}
@@ -268,6 +267,7 @@ export default function VendorPanel({ onLogout }) {
         {has('liveshoot') && <div className={`nav-item ${tab==='liveshoot'?'active':''}`} onClick={() => go('liveshoot')}><span className="nav-ic">🎥</span><span className="nav-txt">Live Shoot</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
         <div className="nav-group">SETUP</div>
+        {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
         {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
         {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => go('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></div>}
         <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => go('services')}><span className="nav-ic">🧩</span><span className="nav-txt">My Services</span></div>
