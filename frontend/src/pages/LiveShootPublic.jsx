@@ -69,7 +69,6 @@ export default function LiveShootPublic({ token }) {
   }, [open, step]);
   const fileRef = useRef(null);
   const camRef = useRef(null);
-  const backRef = useRef(null);
 
   const base = `/api/live/${token}`;
 
@@ -170,8 +169,6 @@ export default function LiveShootPublic({ token }) {
               capture= sends a phone straight to that camera. */}
           <input ref={camRef} type="file" accept="image/*" capture="user" hidden
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
-          <input ref={backRef} type="file" accept="image/*" capture="environment" hidden
-            onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
           <input ref={fileRef} type="file" accept="image/*" hidden
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; send(f); }} />
 
@@ -180,11 +177,11 @@ export default function LiveShootPublic({ token }) {
             {busy ? 'Looking…' : 'Take a Selfie'}
           </button>
 
-          <div className="ls-or"><span>or</span></div>
-
-          <button className="ls-b is-ghost" disabled={busy} onClick={() => backRef.current?.click()}>
-            <span className="ls-b-ic">⊙</span> Use Back Camera
-          </button>
+          {/* One alternative, not two. The back camera was a third way to do
+              the same thing, and three buttons for one action reads as
+              indecision rather than choice — a guest wants to be told what to
+              press. Anybody who wants a photograph somebody else took can
+              still choose it from their camera roll. */}
           <button className="ls-b is-ghost" disabled={busy} onClick={() => fileRef.current?.click()}>
             <span className="ls-b-ic">▤</span> Upload from Gallery
           </button>
