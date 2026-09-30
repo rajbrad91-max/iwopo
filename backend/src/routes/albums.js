@@ -802,7 +802,7 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
       /* The extension has to match what is inside. A live shoot's full tier is
          a JPEG; naming it .webp would hand a guest a file their phone refuses
          to open for a reason nobody could ever diagnose. */
-      const fullName = `${base}_full.${twoTier ? 'jpg' : 'webp'}`;
+      const fullName = `${base}_full.webp`;
 
       /* 🎥 A LIVE SHOOT keeps two tiers, not three.
          ⚠️ Galleries are untouched by this branch and keep all three — a
@@ -815,24 +815,22 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
          So no original is kept. The 2500px webp IS the download, which is
          about 2 MB and larger than anything Instagram will accept anyway. */
       if (twoTier) {
-        /* ⚠️ JPEG, not webp, and this one tier is BOTH the full-screen view
-           and the download. A guest saves the picture to print it, to send to
-           a relative, to put on a phone — and .webp still trips up print
-           shops, older phones and half the apps people actually use. A file
-           they cannot open is worth nothing however small it is.
+        /* 🖼️ The uploaded JPEG IS the download — kept exactly as it arrives.
+           Raj's editing machine exports it at the size he wants, with
+           Lightroom's own output sharpening, which is better than anything
+           done here. The server only makes the two webp tiers it needs for
+           the screen.
 
-           It costs about half again: 666 KB against 438 at the same quality,
-           on a real 7008x4672 photograph. At 739 KB for q86 that is a tenth
-           of a second on 4G, which is not a trade worth having an argument
-           about.
+           Measured: reading a 1.4 MB export instead of an 8 MB original and
+           making two tiers instead of three took ten photographs from 26
+           seconds to 6.9 — 74% less work — and the upload from the venue
+           drops from 81 MB per ten to 13.
 
-           q86 with 4:4:4 chroma because these get printed. Standard 4:2:0
-           subsampling throws away colour detail that survives a screen and
-           shows up on paper, in exactly the reds and golds a wedding is
-           full of. */
-        await sharp(f.path).rotate().resize(2500, 2500, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 86, mozjpeg: true, chromaSubsampling: '4:4:4' })
-          .toFile(path.join(dir, fullName));
+           ⚠️ withoutEnlargement on both, so a small export is never blown up
+           into something softer than what arrived. */
+        fs.copyFileSync(f.path, path.join(dir, origName));
+        await sharp(f.path).rotate().resize(1800, 1800, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 84 }).toFile(path.join(dir, fullName));
       } else {
         // original (as-is, for download + pinch-zoom 1:1)
         fs.copyFileSync(f.path, path.join(dir, origName));
@@ -842,7 +840,10 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
       // thumb 800px webp (grid) — the same for both
       await sharp(f.path).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
 
-      const tiers = twoTier ? [fullName, thumbName] : [origName, fullName, thumbName];
+      /* The uploaded JPEG is kept in both cases now — for a gallery it is the
+         camera original, for a live shoot it is Raj's export, and in both it
+         is what a download serves. */
+      const tiers = [origName, fullName, thumbName];
 
       // what this photograph actually costs
       const costBytes = tiers.reduce((n, x) => {
@@ -877,10 +878,7 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
         data: {
           album_id: id, vendor_id: v,             // 🔒 tenancy stamped on every row
           filename: f.originalname,
-          /* ⚠️ A live shoot has no original, so storage_path points at the
-             2500px webp — which IS the download there. Without this it would
-             name a file that was never written and every download 404. */
-          storage_path: rel(twoTier ? fullName : origName),
+          storage_path: rel(origName),
           thumb_path: rel(thumbName),
           preview_path: rel(fullName),
           size_bytes: BigInt(costBytes),
