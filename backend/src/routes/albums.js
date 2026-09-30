@@ -789,12 +789,20 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
     const dir = path.join(ROOT, String(v), String(id));
     fs.mkdirSync(dir, { recursive: true });
 
+    /* 🎥 A property of the ALBUM, so decided once rather than per file — and
+       above the loop, because the filename is built inside it and needs to
+       know. */
+    const twoTier = own.kind === 'liveshoot';
+
     const saved = [];
     for (const f of req.files || []) {
       const base = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       const origName = `${base}_orig${path.extname(f.originalname) || '.jpg'}`;
       const thumbName = `${base}_thumb.webp`;
-      const fullName = `${base}_full.webp`;
+      /* The extension has to match what is inside. A live shoot's full tier is
+         a JPEG; naming it .webp would hand a guest a file their phone refuses
+         to open for a reason nobody could ever diagnose. */
+      const fullName = `${base}_full.${twoTier ? 'jpg' : 'webp'}`;
 
       /* 🎥 A LIVE SHOOT keeps two tiers, not three.
          ⚠️ Galleries are untouched by this branch and keep all three — a
@@ -806,11 +814,25 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
 
          So no original is kept. The 2500px webp IS the download, which is
          about 2 MB and larger than anything Instagram will accept anyway. */
-      const twoTier = own.kind === 'liveshoot';
-
       if (twoTier) {
+        /* ⚠️ JPEG, not webp, and this one tier is BOTH the full-screen view
+           and the download. A guest saves the picture to print it, to send to
+           a relative, to put on a phone — and .webp still trips up print
+           shops, older phones and half the apps people actually use. A file
+           they cannot open is worth nothing however small it is.
+
+           It costs about half again: 666 KB against 438 at the same quality,
+           on a real 7008x4672 photograph. At 739 KB for q86 that is a tenth
+           of a second on 4G, which is not a trade worth having an argument
+           about.
+
+           q86 with 4:4:4 chroma because these get printed. Standard 4:2:0
+           subsampling throws away colour detail that survives a screen and
+           shows up on paper, in exactly the reds and golds a wedding is
+           full of. */
         await sharp(f.path).rotate().resize(2500, 2500, { fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 84 }).toFile(path.join(dir, fullName));
+          .jpeg({ quality: 86, mozjpeg: true, chromaSubsampling: '4:4:4' })
+          .toFile(path.join(dir, fullName));
       } else {
         // original (as-is, for download + pinch-zoom 1:1)
         fs.copyFileSync(f.path, path.join(dir, origName));

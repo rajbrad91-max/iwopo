@@ -414,7 +414,15 @@ router.get('/:token/photo/:id/:size', async (req, res) => {
 
     if (size === 'orig') {
       recordEvent(req, a.vendor_id, 'photo_download', { targetId: id, label: p.filename });
-      res.setHeader('Content-Disposition', `attachment; filename="${p.filename}"`);
+      /* ⚠️ The download NAME must match what is actually in the file.
+         A live shoot serves a JPEG whatever was uploaded, so a guest who
+         sent a .heic or a .png would otherwise be handed JPEG bytes under
+         a name their phone believes is something else — which fails in a
+         way nobody could ever diagnose. */
+      const stored = String(rel).split('.').pop().toLowerCase();
+      const ending = stored === 'webp' ? 'webp' : stored === 'png' ? 'png' : 'jpg';
+      const nice = String(p.filename || 'photo').replace(/\.[^.]+$/, '') + '.' + ending;
+      res.setHeader('Content-Disposition', `attachment; filename="${nice}"`);
     }
     /* getStream, not getObject — the latter does not exist, which lint could
        not catch because objects is a namespace import. */
