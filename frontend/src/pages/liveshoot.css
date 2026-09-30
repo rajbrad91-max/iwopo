@@ -14,11 +14,21 @@
   --line: #ece2d6;
   --gold: #b3935f;
 
-  min-height: 100vh;
+  /* ⚠️ A column that FILLS the height, rather than fixed paddings tuned until
+     the page happened to equal one laptop's 666 pixels. That was right on
+     that screen and wrong on every other: taller left a gap under the
+     footer, shorter went back to scrolling.
+
+     svh, not vh: on a phone vh counts the space behind the browser's own
+     toolbars, so 100vh is taller than what you can see and the footer hides
+     under the address bar. */
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
   margin: 0;
-  /* Trimmed to fit a laptop viewport without scrolling: the social links
-     are the last thing on the page and were below the fold. */
-  padding: 44px 20px 38px;
+  /* clamped, so the breathing room scales with the screen instead of being a
+     number that suits one machine */
+  padding: clamp(24px, 5vh, 52px) 20px clamp(20px, 4vh, 40px);
   background:
     radial-gradient(900px 480px at 50% -8%, #fffdfa 0%, transparent 72%),
     var(--cream);
@@ -39,6 +49,7 @@
    the evening, not as a photograph. */
 .ls-hero {
   position: absolute; inset: 0 0 auto;
+  flex: none;
   height: min(52vh, 420px);
   z-index: -1;
   pointer-events: none;
@@ -61,7 +72,7 @@
 
 /* ── the studio ───────────────────────────────────────────────────────── */
 
-.ls-head { margin-bottom: 30px; }
+.ls-head { margin-bottom: 30px; flex: none; }
 
 .ls-brand { display: inline-flex; align-items: center; gap: 10px; }
 /* The mark holds the studio's logo, cropped to the circle. A separate logo
@@ -89,7 +100,18 @@
 /* ── the gate ─────────────────────────────────────────────────────────── */
 
 /* No card. A box around it made this a form; on the cream it is a page. */
-.ls-gate { max-width: 380px; margin: 0 auto; }
+/* Takes whatever is left between the studio name and the footer, and centres
+   itself in it. On a tall screen that is generous space; on a short one it
+   collapses and the page scrolls, which is the right way to fail. */
+.ls-gate {
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 
 .ls-h1 {
   margin: 0 0 14px;
@@ -149,7 +171,9 @@
 
 /* ── the studio, again, at the foot ───────────────────────────────────── */
 
-.ls-foot-brand { margin-top: 38px; }
+/* margin-top: auto puts this at the FOOT of the column whatever the height,
+   rather than a fixed distance below whatever happens to be above it. */
+.ls-foot-brand { margin-top: auto; padding-top: clamp(22px, 4vh, 44px); }
 .ls-social { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; }
 .ls-social a {
   width: 38px; height: 38px;
