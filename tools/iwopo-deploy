@@ -13,6 +13,43 @@ set -e
 S=/var/www/iwopo-staging
 L=/var/www/iwopo
 
+# ─────────────────────────────────────────────────────────────────────────
+# 🔒 GALLERIES ARE LOCKED.
+#
+# Raj's instruction, made into a rule rather than something either of us has
+# to remember. The gallery code is years old, carries every wedding already
+# delivered, and is the one part of the product where a regression is not
+# recoverable — a couple's photographs are not something you restore from a
+# backup and apologise for.
+#
+# Live shoot shares a lot of it: the same upload route, the same stylesheet,
+# the same public album lookup. So a live shoot change CAN touch these files
+# by accident, and has: the two-tier change edited albums.js, correctly, but
+# one careless line there would have changed how galleries store originals.
+#
+# This refuses the deploy unless the change says out loud that it means to.
+# Set GALLERY_OK=1 for a deliberate gallery change.
+GALLERY_FILES="frontend/src/pages/PublicGallery.jsx frontend/src/pages/VendorGallery.jsx frontend/src/pages/gallery.css backend/src/routes/galleryPublic.js"
+
+TOUCHED=""
+for f in $GALLERY_FILES; do
+  if ! git -C $S diff --quiet -- "$f" 2>/dev/null; then TOUCHED="$TOUCHED $f"; fi
+done
+
+if [ -n "$TOUCHED" ] && [ "$GALLERY_OK" != "1" ]; then
+  echo "🔒 GALLERY CODE CHANGED — refusing to deploy"
+  echo
+  for f in $TOUCHED; do
+    echo "   $f"
+    git -C $S diff --stat -- "$f" | head -1 | sed 's/^/     /'
+  done
+  echo
+  echo "   Galleries are locked. If this is deliberate:  GALLERY_OK=1 iwopo-deploy <msg>"
+  echo "   If it is not, undo it:                        git checkout --$TOUCHED"
+  exit 1
+fi
+[ -n "$TOUCHED" ] && echo "🔓 gallery change allowed by GALLERY_OK=1:$TOUCHED"
+
 echo "═══ VERIFY ═══"
 cd $S/frontend
 BUILD=$(npm run build 2>&1)
