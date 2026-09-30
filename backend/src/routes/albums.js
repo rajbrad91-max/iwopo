@@ -769,7 +769,9 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
   const v = vid(req);
   const id = Number(req.params.id);
   try {
-    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
+    /* kind comes back too: a live shoot keeps two tiers rather than three,
+       and asking for it here is cheaper than a second query. */
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true, kind: true } });  // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Album not found' });
 
     /* 📏 Asked before a single byte is written. A photograph accepted and then
@@ -794,15 +796,34 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
       const thumbName = `${base}_thumb.webp`;
       const fullName = `${base}_full.webp`;
 
-      // original (as-is, for download + pinch-zoom 1:1)
-      fs.copyFileSync(f.path, path.join(dir, origName));
-      // full-screen 2200px long-edge webp (the single display tier)
-      await sharp(f.path).rotate().resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
-      // thumb 800px webp (grid)
+      /* 🎥 A LIVE SHOOT keeps two tiers, not three.
+         ⚠️ Galleries are untouched by this branch and keep all three — a
+         gallery is a deliverable and a couple may want the full-resolution
+         file years later. A live shoot is different: guests want a picture
+         for a phone and for social the same evening, nobody asks a wedding
+         guest for a 40-megapixel original, and storing hundreds of them per
+         event costs real money and makes every read slower.
+
+         So no original is kept. The 2500px webp IS the download, which is
+         about 2 MB and larger than anything Instagram will accept anyway. */
+      const twoTier = own.kind === 'liveshoot';
+
+      if (twoTier) {
+        await sharp(f.path).rotate().resize(2500, 2500, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 84 }).toFile(path.join(dir, fullName));
+      } else {
+        // original (as-is, for download + pinch-zoom 1:1)
+        fs.copyFileSync(f.path, path.join(dir, origName));
+        // full-screen 2200px long-edge webp (the single display tier)
+        await sharp(f.path).rotate().resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
+      }
+      // thumb 800px webp (grid) — the same for both
       await sharp(f.path).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
 
-      // what this photograph actually costs: the original and both tiers
-      const costBytes = [origName, fullName, thumbName].reduce((n, x) => {
+      const tiers = twoTier ? [fullName, thumbName] : [origName, fullName, thumbName];
+
+      // what this photograph actually costs
+      const costBytes = tiers.reduce((n, x) => {
         try { return n + fs.statSync(path.join(dir, x)).size; } catch { return n; }
       }, 0);
 
@@ -818,7 +839,7 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
         // all three tiers at once rather than in turn — they are independent,
         // and waiting for each in sequence tripled the time a batch of
         // photographs spent in the request
-        await Promise.all([origName, fullName, thumbName].map(async (n) => {
+        await Promise.all(tiers.map(async (n) => {
           try {
             await objects.putObject(objects.PRIVATE, galleryKey(v, id, n),
               fs.createReadStream(path.join(dir, n)));
@@ -834,7 +855,10 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
         data: {
           album_id: id, vendor_id: v,             // 🔒 tenancy stamped on every row
           filename: f.originalname,
-          storage_path: rel(origName),
+          /* ⚠️ A live shoot has no original, so storage_path points at the
+             2500px webp — which IS the download there. Without this it would
+             name a file that was never written and every download 404. */
+          storage_path: rel(twoTier ? fullName : origName),
           thumb_path: rel(thumbName),
           preview_path: rel(fullName),
           size_bytes: BigInt(costBytes),
