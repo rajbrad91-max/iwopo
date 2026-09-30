@@ -160,6 +160,7 @@
   color: var(--ink-soft); font-size: 14px; text-decoration: none;
   transition: border-color .18s ease, color .18s ease;
 }
+.ls-social a svg { width: 17px; height: 17px; stroke-linecap: round; stroke-linejoin: round; }
 .ls-social a:hover { border-color: var(--gold); color: var(--gold); }
 .ls-by { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-soft); }
 .ls-by strong { font-weight: 500; color: var(--ink); }

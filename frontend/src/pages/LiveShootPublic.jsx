@@ -252,12 +252,52 @@ export default function LiveShootPublic({ token }) {
           photographer. Each link is shown only if the studio actually set it,
           so nobody gets a row of dead circles. */}
       <footer className="ls-foot-brand">
+        {/* ⚠️ Real icons, not characters standing in for them.
+            These were ⌘ for a website and ◱ for Instagram — symbols that mean
+            something else entirely, so nobody could tell what any of them was
+            for. Drawn as SVG so they are the actual marks, scale cleanly, and
+            take the page's own colour. */}
         <div className="ls-social">
-          {info.studio?.site && <a href={info.studio.site} title="Website">⌘</a>}
-          {info.studio?.instagram && <a href={`https://instagram.com/${String(info.studio.instagram).replace(/^@/, "")}`} title="Instagram">◱</a>}
-          {info.studio?.facebook && <a href={`https://facebook.com/${info.studio.facebook}`} title="Facebook">f</a>}
-          {info.studio?.email && <a href={`mailto:${info.studio.email}`} title="Email">✉</a>}
-          {info.studio?.phone && <a href={`tel:${info.studio.phone}`} title="Phone">✆</a>}
+          {info.studio?.site && (
+            <a href={info.studio.site} title="Website" aria-label="Website">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" />
+              </svg>
+            </a>
+          )}
+          {info.studio?.instagram && (
+            <a href={`https://instagram.com/${String(info.studio.instagram).replace(/^@/, '')}`}
+              title="Instagram" aria-label="Instagram">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" />
+              </svg>
+            </a>
+          )}
+          {info.studio?.facebook && (
+            <a href={`https://facebook.com/${info.studio.facebook}`} title="Facebook" aria-label="Facebook">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13.5 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.5-1.5h1.7V3.9c-.3 0-1.3-.1-2.4-.1-2.4 0-4.1 1.5-4.1 4.2V10H7.5v3h2.7v8z" />
+              </svg>
+            </a>
+          )}
+          {info.studio?.email && (
+            <a href={`mailto:${info.studio.email}`} title="Email" aria-label="Email">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                <path d="m3.5 7 8.5 6 8.5-6" />
+              </svg>
+            </a>
+          )}
+          {info.studio?.phone && (
+            <a href={`tel:${info.studio.phone}`} title="Phone" aria-label="Phone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M6.5 3.5h2.2l1.6 4-1.9 1.4a12 12 0 0 0 5.7 5.7l1.4-1.9 4 1.6v2.2a2 2 0 0 1-2.2 2A16.8 16.8 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2Z" />
+              </svg>
+            </a>
+          )}
         </div>
         {info.studio?.name && <div className="ls-by">Photography by <strong>{info.studio.name}</strong></div>}
       </footer>
