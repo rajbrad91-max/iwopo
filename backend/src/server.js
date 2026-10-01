@@ -48,6 +48,7 @@ import liveshootRoutes from './routes/liveshoot.js';
 import occasionRoutes from './routes/occasions.js';
 import { sweepOccasions } from './lib/occasionSweep.js';
 import seoRoutes from './routes/seo.js';
+import { seoMiddleware } from './lib/seoRender.js';
 
 dotenv.config();
 
@@ -162,13 +163,21 @@ app.use('/api/occasions', gate('occasions'), occasionRoutes);
 /* 🔎 robots.txt and sitemap.xml — BEFORE the SPA fallback, or they return
    the app's HTML and Google records a crawl error. */
 app.use('/', seoRoutes);
+
+/* 🔎 Marketing pages with their words already in the HTML, mounted after every
+   API route so it can never shadow one. Falls through untouched for anything
+   it does not recognise. */
+app.use(seoMiddleware());
 /* 🎥 Live shoot — public, and deliberately so: a guest has no account. The
    selfie and the signed pass are what stand in for one. */
 app.use('/api/live', liveshootRoutes);
 app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
 
-app.get('/', (req, res) => {
+/* ⚠️ Only answers the health check when nothing wants HTML. A browser or a
+   crawler asking for / wants the marketing page; a monitor wants JSON. */
+app.get('/', (req, res, next) => {
+  if (String(req.headers.accept || '').includes('text/html')) return next();
   res.json({ status: 'ok', service: 'iwopo API', version: '2.0.0' });
 });
 
