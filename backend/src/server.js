@@ -47,6 +47,7 @@ import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
 import occasionRoutes from './routes/occasions.js';
 import { sweepOccasions } from './lib/occasionSweep.js';
+import seoRoutes from './routes/seo.js';
 
 dotenv.config();
 
@@ -157,6 +158,10 @@ app.use('/api/comms', gate('comms'), commsRoutes);
 app.use('/api/devices', deviceRoutes);
 // 🎉 anniversaries and birthdays — reminders and the greetings themselves
 app.use('/api/occasions', gate('occasions'), occasionRoutes);
+
+/* 🔎 robots.txt and sitemap.xml — BEFORE the SPA fallback, or they return
+   the app's HTML and Google records a crawl error. */
+app.use('/', seoRoutes);
 /* 🎥 Live shoot — public, and deliberately so: a guest has no account. The
    selfie and the signed pass are what stand in for one. */
 app.use('/api/live', liveshootRoutes);
