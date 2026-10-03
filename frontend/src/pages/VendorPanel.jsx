@@ -37,7 +37,7 @@ const TAB_FEATURE = {
   requests: 'galleries',
   /* 🔒 Private to the platform owner — services.is_private keeps it out of
      every catalogue and plan, and only a super admin can grant it. */
-  occasions: 'occasions',
+  occasions: 'occasions', ppsite: 'ppsite',
 };
 
 function FeatureLocked({ goServices }) {
@@ -265,6 +265,19 @@ export default function VendorPanel({ onLogout }) {
         {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
         {has('occasions') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
         {has('liveshoot') && <div className={`nav-item ${tab==='liveshoot'?'active':''}`} onClick={() => go('liveshoot')}><span className="nav-ic">🎥</span><span className="nav-txt">Live Shoot</span></div>}
+        {/* 🚪 Raj's own website admin — a separate system on its own
+            database. This asks for a one-time proof and follows it; nothing
+            of that site renders inside this panel. */}
+        {has('ppsite') && <div className="nav-item" onClick={async () => {
+          try {
+            const { url } = await api.ppsiteEnter();
+            window.location.href = url;
+          } catch {
+            /* ⚠️ Say so rather than doing nothing — a sidebar item that
+               silently fails reads as a broken panel. */
+            alert('Could not open the Perfect Poses site just now.');
+          }
+        }}><span className="nav-ic">🌐</span><span className="nav-txt">Perfect Poses Site</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
         <div className="nav-group">SETUP</div>
         {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}

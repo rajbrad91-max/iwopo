@@ -9,6 +9,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import apiRoutes from './routes/index.js';
+import ppsiteRoutes from './routes/ppsite.js';
 import authRoutes from './routes/auth.js';
 import vendorRoutes from './routes/vendors.js';
 import leadRoutes from './routes/leads.js';
@@ -161,6 +162,7 @@ app.use('/api/analytics', gate('analytics'), analyticsRoutes);
 // 📞 also private to the platform owner
 app.use('/api/comms', gate('comms'), commsRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
+app.use('/api/ppsite', gate('ppsite'), ppsiteRoutes);
 app.use('/api/devices', deviceRoutes);
 // 🎉 anniversaries and birthdays — reminders and the greetings themselves
 app.use('/api/occasions', gate('occasions'), occasionRoutes);

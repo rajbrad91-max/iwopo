@@ -807,4 +807,7 @@ export const api = {
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {
       method: 'POST', body: JSON.stringify({ enabled }),
     }),
+
+  /* 🚪 A one-time proof for the Perfect Poses admin. */
+  ppsiteEnter: () => request('/ppsite/enter'),
 };
