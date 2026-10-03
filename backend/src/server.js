@@ -74,6 +74,11 @@ const PORT = process.env.PORT || 3001;
  * CORS is a browser rule and those are not browsers.
  */
 const PLATFORM_ORIGINS = new Set([
+  // Raj's own site. Not a vendor row, so the custom-domain lookup below
+  // never matches it — it has to be named here or the chat bubble on
+  // perfectposes.ca is blocked by the browser.
+  'https://perfectposes.ca',
+  'https://www.perfectposes.ca',
   'https://iwopo.com', 'https://www.iwopo.com',
   'https://alphabetaone.com', 'https://www.alphabetaone.com',
 ]);
