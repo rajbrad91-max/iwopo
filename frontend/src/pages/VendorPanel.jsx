@@ -1022,7 +1022,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 </div>
               )}
               <div><label className="lbl">{kind === 'liveshoot' ? 'Shoot name *' : 'Gallery Name *'}</label>
-                <input className="gal-input" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} placeholder="Susan &amp; Mike Wedding" />
+                <input className="gal-input" value={f.title} onChange={e => setF(autoFillPasswords({ ...f, title: e.target.value }))} placeholder="Susan &amp; Mike Wedding" />
               </div>
               <div><label className="lbl">Category</label>
                 <input className="gal-input" list="gal-cat-list" value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="Wedding" />
