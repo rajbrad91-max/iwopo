@@ -2183,3 +2183,24 @@ tr:hover .bk-del { opacity: .8; }
 /* Shown while a lazily-loaded page is fetched. Brief on any normal
    connection, and the alternative is a blank panel that looks broken. */
 .tab-loading { padding: 40px 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ⚠️ The gallery form's message was always .gal-err — red, whatever it said.
+   A confirmation in the error colour reads as a failure, which is worse than
+   showing nothing. Styled by its content now. */
+.gal-msg { font-size: 13px; font-weight: 600; }
+.gal-msg.is-err { color: #fb7185; }
+.gal-msg.is-ok  { color: #4ade80; }
+
+/* ⚠️ The save confirmation lives OUTSIDE the gallery form, because a
+   successful save closes that form — a message rendered inside it is set and
+   hidden in the same tick, which is why pressing Save looked like nothing
+   happened at all. */
+.gal-toast {
+  display: inline-block; margin-left: 14px;
+  background: rgba(74,222,128,.12); border: 1px solid rgba(74,222,128,.4);
+  color: #4ade80; font-size: 13px; font-weight: 600;
+  padding: 5px 12px; border-radius: 999px;
+  animation: gal-toast-in .25s ease-out;
+}
+@keyframes gal-toast-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .gal-toast { animation: none; } }

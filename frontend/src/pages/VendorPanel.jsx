@@ -947,7 +947,14 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
         try { await api.saveCoverFocus(album.id, coverFocus); }
         catch (e) { dialog.alert('The gallery was saved, but the focal point was not: ' + e.message, { error: true }); }
       }
+      /* ⚠️ The order matters: resetForm() ends with setMsg(''), so the
+         confirmation has to be set AFTER it or it is wiped by the very call
+         that is meant to tidy up. That is how this went unnoticed. */
+      const wasEdit = !!edit;
       resetForm(); setShowNew(false); load();
+      setMsg(wasEdit ? '✅ Gallery saved' : '✅ Gallery created');
+      /* clear it after a few seconds so it does not sit there for ever */
+      setTimeout(() => setMsg(m => (m && m[0] === '✅' ? '' : m)), 4000);
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
   function startEdit(a) {
@@ -1128,7 +1135,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 wrong answers and one right one is worse than one button. */}
             {edit && kind !== 'liveshoot' && <button className="refresh gal-mini-send" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
             {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-copy-url" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
-            {msg && <span className="gal-err">{msg}</span>}
+            {msg && <span className={`gal-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
           </div>
         </div>
   );
@@ -1136,6 +1143,9 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
   return (
     <>
       <div className="gal-head">
+          {/* ⚠️ OUTSIDE the form on purpose: a save closes the form, and a
+              confirmation rendered inside it would vanish in the same tick. */}
+          {msg && msg[0] === '✅' && <span className="gal-toast">{msg}</span>}
         <h2 className="gal-title">{kind === 'liveshoot' ? '🎥 Live shoots' : '📸 Galleries'}</h2>
         <div className="gal-head-btns">
           <button className="lead-ic-btn" onClick={() => { if (showNew) resetForm(); setShowNew(s => !s); }} title={showNew ? 'Cancel' : 'New album'}>{showNew ? '✕' : '➕'}</button>
