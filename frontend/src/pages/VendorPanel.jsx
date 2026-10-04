@@ -868,19 +868,54 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
       ...s,
       title: b.name,
       client_email: b.email || '',
-      guest_password: pwPrefix + tail,
-      admin_password: spwPrefix + tail,
+      /* ⚠️ only where nothing has been typed — picking a booking must not
+         wipe a password already set for this gallery */
+      guest_password: isAutoShape(s.guest_password, pwPrefix) ? pwPrefix + tail : s.guest_password,
+      admin_password: isAutoShape(s.admin_password, spwPrefix) ? spwPrefix + tail : s.admin_password,
     }));
   }
-  // 🔄 changing a prefix re-applies to the existing last-4 tail (PerfectPoses behaviour)
+  /* ⚠️ Is this value still the one WE generated — a prefix followed by four
+     digits and nothing else? Only then may a prefix change rewrite it.
+     Anything a person typed is theirs and must survive. */
+  function isAutoShape(value, prefix) {
+    const v = String(value || '');
+    if (!v) return true;                       // empty is ours to fill
+    if (prefix && !v.startsWith(prefix)) return false;
+    return /^\d{1,4}$/.test(v.slice((prefix || '').length));
+  }
+
+  // 🔄 changing a prefix re-applies to the last-4 tail — but NEVER over a
+  //    password somebody typed by hand.
   function applyPrefix(which, val) {
+    const oldPrefix = which === 'guest' ? pwPrefix : spwPrefix;
     if (which === 'guest') setPwPrefix(val); else setSpwPrefix(val);
     setF(s => {
       const src = which === 'guest' ? s.guest_password : s.admin_password;
-      const tail = last4(src);
+      /* 🚨 the fix: leave a hand-typed password alone */
+      if (!isAutoShape(src, oldPrefix)) return s;
+      const tail = last4(src) || last4(phoneForAlbum(s));
       if (!tail) return s;
       return which === 'guest' ? { ...s, guest_password: val + tail } : { ...s, admin_password: val + tail };
     });
+  }
+
+  /* ⚠️ The default was only ever filled by picking a booking from the
+     dropdown. A gallery typed by hand got NO password at all, which is the
+     other half of what Raj saw. This finds the phone wherever it is. */
+  /* Fill the two passwords from the client's phone — but only where the box
+     is empty or still holds a value we generated. */
+  function autoFillPasswords(state) {
+    const tail = last4(phoneForAlbum(state));
+    if (!tail) return state;
+    const next = { ...state };
+    if (isAutoShape(next.guest_password, pwPrefix)) next.guest_password = pwPrefix + tail;
+    if (isAutoShape(next.admin_password, spwPrefix)) next.admin_password = spwPrefix + tail;
+    return next;
+  }
+
+  function phoneForAlbum(state) {
+    const b = bookings.find(x => x.name && state.title && x.name === state.title);
+    return b?.phone || '';
   }
 
   function resetForm() { setF(emptyAlbum()); setCoverFile(null); setCoverFocus('50% 50%'); setFocusView('desktop'); setEdit(null); setMsg(''); }
