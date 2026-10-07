@@ -3885,8 +3885,18 @@ const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{event_type}}'
 const CT_KNOWN = new Set([...CT_PLACEHOLDERS, ...CT_BLOCKS].map(p => p.slice(2, -2)));
 
 export function unknownPlaceholders(text) {
-  const found = String(text || '').match(/\{\{(\w+)\}\}/g) || [];
-  return [...new Set(found.map(f => f.slice(2, -2)).filter(k => !CT_KNOWN.has(k)))];
+  const t = String(text || '');
+  const found = t.match(/\{\{(\w+)\}\}/g) || [];
+  const bad = found.map(f => f.slice(2, -2)).filter(k => !CT_KNOWN.has(k));
+
+  /* ⚠️ An UNCLOSED one — {{client_name with no closing braces — matches
+     nothing above and reaches the client as raw text just as a typo does.
+     Counting braces finds it: more {{ than }} means one was left open. */
+  const opens = (t.match(/\{\{/g) || []).length;
+  const closes = (t.match(/\}\}/g) || []).length;
+  if (opens > closes) bad.push('… one is missing its closing }}');
+
+  return [...new Set(bad)];
 }
 
 const CT_SAMPLE = {
@@ -4034,6 +4044,17 @@ function ContractSetup() {
   /* the id of a template created this session and not yet saved */
   const [justCreated, setJustCreated] = useState(null);
   const csDirty = sel && selClean && JSON.stringify(sel) !== selClean;
+
+  /* ⚠️ The sidebar does not ask — the tester clicked Bookings mid-edit and
+     lost the draft. This is the browser's own guard, which covers closing
+     the tab, Back, and a reload. It cannot carry a custom message any more;
+     every browser shows its own wording. */
+  useEffect(() => {
+    if (!csDirty) return undefined;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [csDirty]);
   const [msg, setMsg] = useState('');
   const [showRaw, setShowRaw] = useState(false);   // preview: placeholders vs sample values
   // which section the cursor was last in, so the shared palette knows where to
@@ -4088,12 +4109,12 @@ function ContractSetup() {
     /* ⚠️ 3 · A misspelt placeholder saved silently and reached the CLIENT as
        raw braces. Warned, not blocked — a vendor may have a reason, and
        refusing the save outright would be worse than telling them. */
-    const text = [sel.header, sel.legal_terms, ...(sel.sections || []).flatMap(x => [x.title, x.body])].join('\n');
+    const text = [sel.header, sel.legal_terms, ...(sel.sections || []).flatMap(x => [x.title, x.text])].join('\n');
     const unknown = unknownPlaceholders(text);
     if (unknown.length) {
       const ok = window.confirm(
         'These do not match anything the system fills:\n\n' +
-        unknown.map(u => '  {{' + u + '}}').join('\n') +
+        unknown.map(u => u.startsWith('…') ? '  ' + u : '  {{' + u + '}}').join('\n') +
         '\n\nThey will appear in the client\'s contract exactly as written. Save anyway?');
       if (!ok) return;
     }
