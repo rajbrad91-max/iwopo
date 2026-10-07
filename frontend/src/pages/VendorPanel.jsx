@@ -3876,6 +3876,19 @@ const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{event_type}}'
 // 👁️ Stand-in values so a template can be previewed before any client exists.
 // Deliberately obvious rather than realistic, so nothing here is mistaken for a
 // real booking, while still showing the shape and length of a filled contract.
+/**
+ * ⚠️ Every placeholder the system knows. Anything else a vendor types is a
+ * typo — {{clinet_name}} saves happily and reaches the client as raw text.
+ * Checked at save time, not blocked: a vendor may have a reason, and
+ * refusing the save would be worse than warning about it.
+ */
+const CT_KNOWN = new Set([...CT_PLACEHOLDERS, ...CT_BLOCKS].map(p => p.slice(2, -2)));
+
+export function unknownPlaceholders(text) {
+  const found = String(text || '').match(/\{\{(\w+)\}\}/g) || [];
+  return [...new Set(found.map(f => f.slice(2, -2)).filter(k => !CT_KNOWN.has(k)))];
+}
+
 const CT_SAMPLE = {
   client_name: 'Priya & Arjun', client_email: 'priya@example.com',
   event_type: 'Wedding', event_date: '29 October 2028',
@@ -4014,6 +4027,13 @@ function ContractSetup() {
   const dialog = useDialog();
   const [tpls, setTpls] = useState([]);
   const [sel, setSel] = useState(null);
+  /* ⚠️ A snapshot taken when a template opens, so "has this changed" is a
+     comparison rather than a flag somebody has to remember to set. */
+  const [selClean, setSelClean] = useState(null);
+  const [saving, setSaving] = useState(false);
+  /* the id of a template created this session and not yet saved */
+  const [justCreated, setJustCreated] = useState(null);
+  const csDirty = sel && selClean && JSON.stringify(sel) !== selClean;
   const [msg, setMsg] = useState('');
   const [showRaw, setShowRaw] = useState(false);   // preview: placeholders vs sample values
   // which section the cursor was last in, so the shared palette knows where to
@@ -4042,14 +4062,56 @@ function ContractSetup() {
   async function add() {
     try {
       const d = await api.addCtTemplate({ name: 'New Contract', sections: DEFAULT_SECTIONS() });
-      setSel(d.template); load();
+      setSel(d.template);
+      setSelClean(JSON.stringify(d.template));
+      /* ⚠️ Remembered so that leaving it untouched can remove it again. An
+         empty record the vendor never asked to keep is clutter, and the list
+         was filling with identical "New Contract" cards. */
+      setJustCreated(d.template.id);
+      load();
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function save() {
     if (!sel) return;
+    /* ⚠️ 2 · A second click while the first is in flight sent two saves. They
+       were harmless, but a button that stays live during its own work is one
+       people press twice. */
+    if (saving) return;
+
+    /* ⚠️ 4 · An unnamed template saved happily and left a card with no title,
+       which is indistinguishable from a bug in the list. */
+    if (!String(sel.name || '').trim()) {
+      setMsg('⚠️ Give the template a name first');
+      return;
+    }
+
+    /* ⚠️ 3 · A misspelt placeholder saved silently and reached the CLIENT as
+       raw braces. Warned, not blocked — a vendor may have a reason, and
+       refusing the save outright would be worse than telling them. */
+    const text = [sel.header, sel.legal_terms, ...(sel.sections || []).flatMap(x => [x.title, x.body])].join('\n');
+    const unknown = unknownPlaceholders(text);
+    if (unknown.length) {
+      const ok = window.confirm(
+        'These do not match anything the system fills:\n\n' +
+        unknown.map(u => '  {{' + u + '}}').join('\n') +
+        '\n\nThey will appear in the client\'s contract exactly as written. Save anyway?');
+      if (!ok) return;
+    }
+
+    setSaving(true);
     setMsg('');
-    try { await api.updateCtTemplate(sel.id, sel); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1800); load(); }
+    try {
+      await api.updateCtTemplate(sel.id, sel);
+      /* ⚠️ The tick lasted 1.8s and a tester missed it entirely. Four seconds
+         is long enough to notice without becoming furniture. */
+      setMsg('✅ Saved');
+      setSelClean(JSON.stringify(sel));
+      setJustCreated(null);
+      setTimeout(() => setMsg(m => (m === '✅ Saved' ? '' : m)), 4000);
+      load();
+    }
     catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setSaving(false); }
   }
   async function del(id) {
     if (!await dialog.confirm('This contract template will be deleted.', { title: 'Delete template?', okLabel: 'Delete' })) return;
@@ -4089,7 +4151,18 @@ function ContractSetup() {
   if (sel) return (
     <div className="cs-wide">
       <div className="cs-bar">
-        <button className="refresh" onClick={() => setSel(null)}>← All templates</button>
+        <button className="refresh" onClick={async () => {
+          /* ⚠️ Only asks when something actually changed — a confirm on every
+             exit is one people learn to dismiss without reading. */
+          if (csDirty && !window.confirm('You have changes that are not saved. Leave them?')) return;
+          /* ⚠️ A brand-new template the vendor never touched is removed rather
+             than left as a blank card. Only when it is BOTH newly created and
+             unchanged — never one that already existed. */
+          if (justCreated && justCreated === sel?.id && !csDirty) {
+            await api.deleteCtTemplate(justCreated).catch(() => {});
+          }
+          setSel(null); setSelClean(null); setJustCreated(null); load();
+        }}>← All templates</button>
         <div className="cs-bar-right">
           {msg && <span className={`cs-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
           {/* 🔓 Account-wide, not per template: it answers "do I want to read my
@@ -4100,7 +4173,9 @@ function ContractSetup() {
             🔓 Auto Release
           </label>
           <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
-          <button className="refresh cs-save-top" onClick={save}>💾 Save contract</button>
+          <button className="refresh cs-save-top" onClick={save} disabled={saving}>
+            {saving ? '⏳ Saving…' : '💾 Save contract'}
+          </button>
         </div>
       </div>
 
@@ -4240,7 +4315,7 @@ function ContractSetup() {
           const n = (t.sections || []).filter(x => x.initial).length
             || (t.body?.match(/\[INITIAL\]/g) || []).length;
           return (
-            <div key={t.id} className="table-wrap cs-card" onClick={() => setSel(t)}>
+            <div key={t.id} className="table-wrap cs-card" onClick={() => { setSel(t); setSelClean(JSON.stringify(t)); }}>
               <div className="cs-card-ic">📑</div>
               <div className="cs-card-name">{t.name}</div>
               <div className="cs-card-meta">
