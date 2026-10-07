@@ -3884,6 +3884,15 @@ const CT_SAMPLE = {
   deposit: '$1,260', balance: '$2,940',
   today_date: new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }),
   company_name: 'Your Studio',
+  /* ⚠️ The five BLOCKS. Built from the real booking when a contract is sent,
+     so there is nothing to show here — but showing the raw placeholder makes
+     the preview look broken. A plain description of what will appear is
+     honest and does not pretend to be data. */
+  booking_details: '[ the booking table — filled from their booking ]',
+  coverage_schedule: '[ the running order of the day — filled from the booking ]',
+  deliverables: '[ what they receive — filled from the package ]',
+  services_summary: '[ what the package includes — filled from the package ]',
+  crew: '[ the crew assigned — filled from the booking ]',
 };
 
 function fillSample(text) {
@@ -4102,7 +4111,7 @@ function ContractSetup() {
             <div className="cs-row3">
               <div>
                 <label className="cs-label" htmlFor="cs-name">Template name</label>
-                <input id="cs-name" className="cs-input" value={sel.name || ''}
+                <input id="cs-name" className="cs-input" maxLength={120} value={sel.name || ''}
                   onChange={e => setSel({ ...sel, name: e.target.value })} />
               </div>
               <div>
@@ -4171,7 +4180,7 @@ function ContractSetup() {
                   </label>
                   {/* 🎯 Printing a drone policy to a client who never booked a
                       drone is worse than noise — it invites them to expect one. */}
-                  <input className="cs-sec-if" maxLength={120}
+                  <input className="cs-sec-if"
                     placeholder="Only show if the package mentions… (blank = always)"
                     value={sc.show_if || ''}
                     onFocus={() => setFocused(i)}

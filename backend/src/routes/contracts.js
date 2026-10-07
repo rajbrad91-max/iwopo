@@ -393,6 +393,12 @@ router.post('/templates', requireAuth, async (req, res) => {
 });
 
 router.put('/templates/:id', requireAuth, async (req, res) => {
+  /* ⚠️ name is varchar(120). Without this the driver throws and its raw
+     message — column names and types — reaches the vendor. Refused here,
+     in words a person can act on. */
+  if (String(req.body?.name || '').length > 120) {
+    return res.status(400).json({ error: 'That name is too long — 120 characters at most.' });
+  }
   try {
     const v = vid(req);
     const id = Number(req.params.id);
