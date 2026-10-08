@@ -4,6 +4,9 @@ import { normalizeDomain } from '../lib/customDomain.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+/** A #rgb or #rrggbb value, and nothing else. */
+const looksLikeColour = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v || ''));
+
 const DEFAULTS = {
   brand_name: null, brand_color: '#2dd4bf', intro_text: 'Tell us about your event', intro_link: '',
   theme: 'classic', font: 'Inter', details_heading: 'Event Details',
@@ -115,7 +118,9 @@ router.put('/', requireAuth, async (req, res) => {
   try {
     const data = {
       brand_name: b.brand_name || null,
-      brand_color: b.brand_color || '#2dd4bf',
+      /* ⚠️ A hex colour or the default. Anything else used to be stored as
+         typed and quietly became a colour nobody picked. */
+      brand_color: looksLikeColour(b.brand_color) ? b.brand_color : '#2dd4bf',
       intro_text: b.intro_text || DEFAULTS.intro_text,
       intro_link: b.intro_link || '',
       theme: b.theme || 'classic',

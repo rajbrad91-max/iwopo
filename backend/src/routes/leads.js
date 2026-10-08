@@ -225,11 +225,11 @@ function coerceLeadField(field, val) {
  * in custom_data.
  */
 const MAPPABLE_COLUMNS = {
-  event_type:     { label: 'Event Type',        types: ['dropdown', 'text'] },
+  event_type: { label: 'Event Type',        types: ['dropdown', 'text'] },
   event_date:     { label: 'Event Date',        types: ['date'] },
   timing_from:    { label: 'Timing From',       types: ['time'] },
   timing_to:      { label: 'Timing To',         types: ['time'] },
-  location:       { label: 'Location',          types: ['location', 'text'] },
+  location: { label: 'Location',          types: ['location', 'text'] },
   hours:          { label: 'Hours',             types: ['hours', 'dropdown', 'text'] },
   guests:         { label: 'Est. Guests',       types: ['text', 'dropdown'] },
   gr_bride:       { label: 'Getting Ready — Bride (yes/no)',  types: ['checkbox'] },
@@ -337,6 +337,14 @@ async function snapshotFormFields(vendorId, customData) {
 // POST /api/leads → create (public inquiry OR logged-in vendor panel).
 // Public form sends vendor_id in the body; the vendor panel is authenticated,
 // so we take vendor_id from the token instead of trusting the body.
+/* The column widths, so a long answer is trimmed rather than throwing. */
+const LEAD_LIMITS = { name: 200, email: 200, phone: 50, event_type: 100, location: 300 };
+const fitColumn = (key, value) => {
+  const max = LEAD_LIMITS[key];
+  const v = value == null ? value : String(value);
+  return max && v && v.length > max ? v.slice(0, max) : v;
+};
+
 router.post('/', async (req, res) => {
   const b = req.body;
 
@@ -366,8 +374,12 @@ router.post('/', async (req, res) => {
   // This route is PUBLIC, so the body is untrusted. Without these checks an empty
   // POST created a blank lead row, a bad email was stored as-is, and an unknown
   // vendor_id surfaced a raw Prisma foreign-key error to the caller.
-  const name = String(b.name || '').trim();
-  const email = String(b.email || '').trim();
+  /* 🚨 Trimmed to the column widths. A couple typing a 300-character name
+     got a 500 and "Could not save your inquiry" — the enquiry simply lost,
+     with nothing telling them what to shorten. Truncating keeps the lead;
+     rejecting would lose it just as surely. */
+  const name = fitColumn('name', String(b.name || '').trim());
+  const email = fitColumn('email', String(b.email || '').trim());
   if (!name) return res.status(400).json({ error: 'Name is required' });
   if (!email) return res.status(400).json({ error: 'Email is required' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -395,7 +407,9 @@ router.post('/', async (req, res) => {
   };
   for (const f of FIELDS) {
     if (mapped[f] === undefined) continue;
-    data[f] = coerceLeadField(f, mapped[f]);
+    /* 🚨 Trimmed to the column width — a long answer used to 500 the
+       public form and lose the enquiry with no clue why. */
+    data[f] = fitColumn(f, coerceLeadField(f, mapped[f]));
   }
   data.name = name;     // use the trimmed/validated values
   data.email = email;
@@ -437,7 +451,9 @@ router.put('/:id', requireAuth, async (req, res) => {
     const data = {};
     for (const f of FIELDS) {
       if (mapped[f] === undefined) continue;
-      data[f] = coerceLeadField(f, mapped[f]);
+      /* 🚨 Trimmed to the column width — a long answer used to 500 the
+         public form and lose the enquiry with no clue why. */
+      data[f] = fitColumn(f, coerceLeadField(f, mapped[f]));
     }
     if (!Object.keys(data).length) return res.json({ ok: true });
     data.updated_at = new Date();
