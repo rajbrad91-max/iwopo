@@ -7,6 +7,24 @@ const router = express.Router();
 /** A #rgb or #rrggbb value, and nothing else. */
 const looksLikeColour = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v || ''));
 
+/**
+ * Discard fields a couple could not answer sensibly.
+ * ⚠️ An unlabelled box is unanswerable, and a repeated label asks the same
+ * question twice while the answers collide on one column.
+ */
+function cleanCustomFields(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  return list.filter((f) => {
+    const label = String(f?.label || '').trim();
+    if (!label) return false;
+    const key = label.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 const DEFAULTS = {
   brand_name: null, brand_color: '#2dd4bf', intro_text: 'Tell us about your event', intro_link: '',
   theme: 'classic', font: 'Inter', details_heading: 'Event Details',
@@ -126,7 +144,7 @@ router.put('/', requireAuth, async (req, res) => {
       theme: b.theme || 'classic',
       font: b.font || 'Inter',
       details_heading: b.details_heading || 'Event Details',
-      custom_fields: b.custom_fields || [],   // Json column — Prisma serializes it
+      custom_fields: cleanCustomFields(b.custom_fields || []),   // Json column — Prisma serializes it
       background: b.background || 'none',
       updated_at: new Date(),
     };

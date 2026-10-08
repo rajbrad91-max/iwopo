@@ -91,6 +91,11 @@ export function buildTheme(brandColor, themeName = 'Modern', fontFamily) {
   const brandL = toOklch(brand).L;
   const isLight = brandL > 0.62;
   const onBrand = isLight ? fromOklch(0.24, Math.min(c * 0.5, 0.06), h) : '#ffffff';
+  /* ⚠️ The quieter companion to onBrand — the SAME hue family, just weaker.
+     Dark-on-light and light-on-dark, rather than white in both cases. */
+  const onBrandSoft = isLight
+    ? rgba(fromOklch(0.24, Math.min(c * 0.5, 0.06), h), 0.78)
+    : rgba('#ffffff', 0.92);
   const flat = themeName === 'Minimal';
 
   const shape = { ...(SHAPES[themeName] || SHAPES.Modern) };
@@ -108,7 +113,10 @@ export function buildTheme(brandColor, themeName = 'Modern', fontFamily) {
     '--brand-border': fromOklch(0.9, c * 0.35, h),
     '--brand-ring': rgba(brand, 0.22),                            // focus ring
     '--on-brand': onBrand,
-    '--on-brand-soft': isLight ? rgba('#ffffff', 0.7) : rgba('#ffffff', 0.92),
+    /* ⚠️ Soft means a step down from --on-brand, not "white". On a LIGHT
+       brand that has to be a dark tone at reduced strength; white at 70%
+       disappeared entirely, taking the first line a couple reads with it. */
+    '--on-brand-soft': onBrandSoft,
 
     // surfaces + text (hue-tinted neutrals, never flat gray)
     '--page-bg': fromOklch(0.975, c * 0.14, h),

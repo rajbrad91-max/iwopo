@@ -4,11 +4,15 @@
 .iq-theme-classic { border-radius: 20px; }
 .iq-theme-modern { border-radius: 8px; }
 
-.iq-theme-modern .iq-brand, .iq-theme-modern .iq-sub { color: #F5F0EA; }
+/* ⚠️ --on-brand / --on-brand-soft flip with the brand's lightness. The old
+   fixed #F5F0EA vanished on any light brand colour. */
+.iq-theme-modern .iq-brand { color: var(--on-brand, #F5F0EA); }
+.iq-theme-modern .iq-sub { color: var(--on-brand-soft, #F5F0EA); }
 .iq-theme-elegant { border-radius: 26px; }
 .iq-theme-elegant .iq-section-title { font-style: italic; letter-spacing: 1px; }
 
-.iq-theme-bold .iq-brand, .iq-theme-bold .iq-sub { color: #fff; }
+.iq-theme-bold .iq-brand { color: var(--on-brand, #fff); }
+.iq-theme-bold .iq-sub { color: var(--on-brand-soft, #fff); }
 .iq-theme-bold .iq-section-title { text-transform: uppercase; font-size: 17px; }
 .iq-theme-minimal { border-radius: 4px; box-shadow: none; border: 1px solid #E8E0D5; }
 
@@ -49,6 +53,12 @@
 .iq-hd-text { flex: 1; text-align: center; }
 .iq-brand { font-size: 24px; font-weight: 800; color: inherit; display:flex; align-items:center; gap:8px; }
 .iq-sub { color: var(--muted); font-size: 14px; margin: 5px 0 0; }
+
+/* ⚠️ The header sits ON the brand colour in every theme, so its text must use
+   the on-brand pair — which flips dark or light with the brand's lightness.
+   --muted is a mid-tone and disappeared on neon yellow and on pale grey. */
+.iq-hd-text .iq-brand { color: var(--on-brand, #F5F0EA); }
+.iq-hd-text .iq-sub { color: var(--on-brand-soft, #F5F0EA); }
 .iq-sub-link { display: inline-block; text-decoration: underline; cursor: pointer; }
 .iq-sub-link:hover { color: var(--brand, #C9A86A); }
 
