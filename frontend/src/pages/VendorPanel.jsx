@@ -3918,9 +3918,13 @@ const CT_SAMPLE = {
   crew: '[ the crew assigned — filled from the booking ]',
 };
 
-function fillSample(text) {
+function fillSample(text, overrides) {
+  /* ⚠️ The template's OWN settings win over the sample. CT_SAMPLE stands in
+     for a client's details — it must not contradict what this template says
+     it is for, which is how a Reception template previewed as a Wedding. */
+  const values = { ...CT_SAMPLE, ...(overrides || {}) };
   return String(text || '').replace(/\{\{(\w+)\}\}/g, (m, k) =>
-    CT_SAMPLE[k] !== undefined ? CT_SAMPLE[k] : m);
+    values[k] !== undefined && values[k] !== '' ? values[k] : m);
 }
 
 /**
@@ -4166,7 +4170,7 @@ function ContractSetup() {
   };
 
   const assembled = sel ? templateAssembled(sel) : '';
-  const previewHtml = showRaw ? paintPlaceholdersHtml(assembled) : fillSample(assembled);
+  const previewHtml = showRaw ? paintPlaceholdersHtml(assembled) : fillSample(assembled, { event_type: sel?.event_type });
   const initialCount = (sel?.sections || []).filter(x => x.initial).length;
 
   if (sel) return (
