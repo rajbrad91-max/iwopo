@@ -111,6 +111,15 @@ function StorageBar({ onUpgrade }) {
   );
 }
 
+/**
+ * ⚠️ Set by the contract editor while it holds unsaved work, and read by the
+ * sidebar before it navigates away. The two live in different components and
+ * the parent cannot reach the child's state; this is the narrowest bridge
+ * that solves it.
+ * Returns true to allow the navigation, false to stay put.
+ */
+let csLeaveGuard = null;
+
 export default function VendorPanel({ onLogout }) {
   const [services, setServices] = useState([]);
   // seeded from the last session so the sidebar and tab render immediately;
@@ -160,6 +169,8 @@ export default function VendorPanel({ onLogout }) {
   // wiping it just for landing on the list made it meaningless — you'd never see
   // which lead was actually new. Opening a lead clears that lead (see LeadsView).
   const go = (t) => {
+    /* ⚠️ Ask the contract editor first — it may be holding unsaved work. */
+    if (csLeaveGuard && !csLeaveGuard()) return;
     setTab(t);
     if (window.innerWidth <= 820) setCollapsed(true);
     if (has('leads')) refreshLeadCount();
@@ -4059,6 +4070,21 @@ function ContractSetup() {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [csDirty]);
+
+  /* ⚠️ Registered for the SIDEBAR, which navigates in-app and so never
+     triggers beforeunload. Cleared on unmount, or a stale editor would keep
+     blocking navigation after it has gone. */
+  useEffect(() => {
+    csLeaveGuard = () => {
+      if (csDirty && !window.confirm('You have changes that are not saved. Leave them?')) return false;
+      /* an untouched new template is removed rather than left as a blank card */
+      if (justCreated && justCreated === sel?.id && !csDirty) {
+        api.deleteCtTemplate(justCreated).catch(() => {});
+      }
+      return true;
+    };
+    return () => { csLeaveGuard = null; };
+  }, [csDirty, justCreated, sel]);
   const [msg, setMsg] = useState('');
   const [showRaw, setShowRaw] = useState(false);   // preview: placeholders vs sample values
   // which section the cursor was last in, so the shared palette knows where to
@@ -4212,7 +4238,11 @@ function ContractSetup() {
               <div>
                 <label className="cs-label" htmlFor="cs-name">Template name</label>
                 <input id="cs-name" className="cs-input" maxLength={120} value={sel.name || ''}
-                  onChange={e => setSel({ ...sel, name: e.target.value })} />
+                  onChange={e => {
+                    setSel({ ...sel, name: e.target.value });
+                    /* ⚠️ clear the complaint as soon as it stops being true */
+                    if (e.target.value.trim()) setMsg(m => (m === '⚠️ Give the template a name first' ? '' : m));
+                  }} />
               </div>
               <div>
                 <label className="cs-label" htmlFor="cs-ev">Event type</label>
