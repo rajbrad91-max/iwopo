@@ -3916,7 +3916,10 @@ const CT_SAMPLE = {
   location: 'Abbotsford, BC', hours: '8', guests: '150',
   package_name: 'Standard Package', total_cost: '$4,200',
   deposit: '$1,260', balance: '$2,940',
-  today_date: new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }),
+  /* ⚠️ en-GB, to match the event_date sample above. Leaving this to the
+     browser's locale meant a contract showed "29 October 2028" and
+     "October 7, 2026" in the same breath. */
+  today_date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
   company_name: 'Your Studio',
   /* ⚠️ The five BLOCKS. Built from the real booking when a contract is sent,
      so there is nothing to show here — but showing the raw placeholder makes
@@ -3999,7 +4002,7 @@ function templateAssembled(t) {
 function DEFAULT_SECTIONS() {
   return [
     { id: 's1', title: 'WHAT IS BEING BOOKED', initial: true,
-      text: '{{company_name}} ("the Provider") agrees to provide the {{package_name}} package for {{client_name}} on {{event_date}} at {{location}}.\n\nThe inclusions listed in that package form part of this Agreement. The Provider will arrive at the agreed time and carry out the work with reasonable skill and care.' },
+      text: '{{company_name}} ("the Provider") agrees to provide {{package_name}} for {{client_name}} on {{event_date}} at {{location}}.\n\nThe inclusions listed in that package form part of this Agreement. The Provider will arrive at the agreed time and carry out the work with reasonable skill and care.' },
     { id: 's2', title: 'COST AND PAYMENT', initial: true,
       text: 'The total cost of the services is {{total_cost}}.\n\nA non-refundable deposit of {{deposit}} confirms the booking. The remaining balance of {{balance}} is due on or before the event day unless agreed otherwise in writing.\n\nThe date is not held until the deposit is received.' },
     { id: 's3', title: 'CHANGES AND EXTRA TIME', initial: true,
@@ -4051,6 +4054,9 @@ function paintPlaceholdersHtml(html) {
 function ContractSetup() {
   const dialog = useDialog();
   const [tpls, setTpls] = useState([]);
+  /* ⚠️ TRUE to begin with: "No templates yet" must not appear before the
+     first fetch has even been attempted, which is what caused the flash. */
+  const [loading, setLoading] = useState(true);
   const [sel, setSel] = useState(null);
   /* ⚠️ A snapshot taken when a template opens, so "has this changed" is a
      comparison rather than a flag somebody has to remember to set. */
@@ -4097,6 +4103,7 @@ function ContractSetup() {
   async function load() {
     try { const d = await api.ctTemplates(); setTpls(d.templates || []); } catch { /* list stays */ }
     try { const s = await api.mySettings(); setAutoRelease(!!s?.settings?.auto_release_contract); } catch { /* leave off */ }
+    setLoading(false);
   }
   async function saveAutoRelease(on) {
     setAutoRelease(on);                                  // optimistic: the box responds at once
@@ -4192,7 +4199,11 @@ function ContractSetup() {
   const insertPlaceholder = (p) => {
     const i = Math.min(focused, sections.length - 1);
     if (i < 0) return;
-    setSection(i, { text: ((sections[i].text || '') + ' ' + p).trim() });
+    /* ⚠️ Only add a space where there is not one already — appending ' ' to
+       text that already ends in a space is what produced "Crew:  {{crew}}". */
+    const cur = sections[i].text || '';
+    const joiner = (!cur || /\s$/.test(cur)) ? '' : ' ';
+    setSection(i, { text: cur + joiner + p });
   };
 
   const assembled = sel ? templateAssembled(sel) : '';
@@ -4365,7 +4376,8 @@ function ContractSetup() {
       </div>
       {msg && <div className="err-banner">{msg}</div>}
       <div className="cs-grid">
-        {tpls.length === 0 && <div className="cs-empty">No templates yet — create one 👆</div>}
+        {loading && <div className="cs-empty">Loading…</div>}
+        {!loading && tpls.length === 0 && <div className="cs-empty">No templates yet — create one 👆</div>}
         {tpls.map(t => {
           const n = (t.sections || []).filter(x => x.initial).length
             || (t.body?.match(/\[INITIAL\]/g) || []).length;
