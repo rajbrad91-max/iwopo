@@ -28,3 +28,24 @@
 .cp-doc .iq-wrap { padding-top: 20px; min-height: 0; }
 
 @media (max-width: 700px) { .cp-top { padding: 12px 16px; } }
+
+/* ── building the contract ──
+   ⚠️ This step had no interface at all. The API existed, nothing called it,
+   so a vendor hit "no contract has been built" with no way to build one. */
+.cp-build {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 14px 0 18px; padding: 16px 18px;
+  background: #fff; border: 1px solid #e6ddd0; border-radius: 10px;
+}
+.cp-build label { font-size: 13px; font-weight: 600; color: #5a5048; }
+.cp-build select {
+  flex: 1; min-width: 200px; padding: 9px 12px;
+  border: 1px solid #e6ddd0; border-radius: 7px; font: inherit; background: #fff;
+}
+.cp-build-btn {
+  padding: 9px 18px; border: 0; border-radius: 7px;
+  background: #1a1411; color: #fff; font-weight: 600; cursor: pointer;
+}
+.cp-build-btn:disabled { opacity: .5; cursor: default; }
+.cp-build-btn:hover:not(:disabled) { background: #b08a4f; }
+@media (max-width: 560px) { .cp-build { flex-direction: column; align-items: stretch; } }

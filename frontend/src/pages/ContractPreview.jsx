@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import SignContract from './SignContract';
 import './contractpreview.css';
@@ -19,6 +19,38 @@ export default function ContractPreview({ leadId }) {
   const [released, setReleased] = useState(false);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  /* the vendor's templates, so they can choose which agreement to send */
+  const [templates, setTemplates] = useState([]);
+  const [chosen, setChosen] = useState('');
+  const [needsBuilding, setNeedsBuilding] = useState(false);
+
+  useEffect(() => {
+    api.ctTemplates().then(d => {
+      const list = d.templates || [];
+      setTemplates(list);
+      /* ⚠️ Pre-selected, because one template is the common case and a
+         vendor should not have to choose from a list of one. */
+      if (list.length) setChosen(String(list[0].id));
+    }).catch(() => {});
+  }, []);
+
+  /**
+   * Build the contract for this lead from a template.
+   * ⚠️ This is the step that was missing entirely — everything after it
+   * worked, and nothing could reach it.
+   */
+  async function buildFromTemplate() {
+    if (!chosen) { setMsg('⚠️ Choose a template first'); return; }
+    setBusy(true); setMsg('');
+    try {
+      await api.createContractFromTemplate(leadId, Number(chosen));
+      setMsg('✅ Contract built — review it below, then release it.');
+      setNeedsBuilding(false);
+      /* reload so the preview shows the document that was just built */
+      window.location.reload();
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
 
   async function release(contractId) {
     if (!contractId) {

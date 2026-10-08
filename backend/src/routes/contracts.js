@@ -684,6 +684,16 @@ router.post('/sign/:token', async (req, res) => {
     const docHash = crypto.createHash('sha256')
       .update(c.body + '|' + signed_name.trim() + '|' + signature_data + '|' + stamp)
       .digest('hex');
+    /* ⚠️ signed_at: null in the WHERE — the second request matches no row
+       and is told so, rather than quietly replacing the first signature. */
+    const claimed = await prisma.contracts.updateMany({
+      where: { id: c.id, signed_at: null },
+      data: { signed_at: new Date() },
+    });
+    if (claimed.count === 0) {
+      return res.status(409).json({ error: 'This contract has already been signed.' });
+    }
+
     const updated = await prisma.contracts.update({
       where: { id: c.id },
       data: {
