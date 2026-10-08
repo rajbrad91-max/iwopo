@@ -2204,3 +2204,17 @@ tr:hover .bk-del { opacity: .8; }
 }
 @keyframes gal-toast-in { from { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .gal-toast { animation: none; } }
+
+/* ── the booking essentials on a lead ──
+   ⚠️ Always shown in the panel, whatever the public form asks. A contract
+   needs the day and the place; those are not optional questions. */
+.ld-core { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
+.ld-core h3 { margin: 0 0 4px; font-size: 15px; }
+.ld-core-note { margin: 0 0 14px; font-size: 12.5px; opacity: .7; }
+.ld-core-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.ld-core-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; }
+.ld-core-grid input {
+  padding: 9px 12px; border-radius: 7px; font: inherit; font-weight: 400;
+  border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: inherit;
+}
+.ld-core-grid input:focus { outline: 2px solid var(--brand, #2dd4bf); outline-offset: -1px; }

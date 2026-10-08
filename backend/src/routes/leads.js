@@ -340,9 +340,11 @@ async function snapshotFormFields(vendorId, customData) {
 /* The column widths, so a long answer is trimmed rather than throwing. */
 const LEAD_LIMITS = { name: 200, email: 200, phone: 50, event_type: 100, location: 300 };
 const fitColumn = (key, value) => {
+  /* ⚠️ Strings only. A Date or a number has no length to trim, and
+     stringifying one to measure it turns a date into prose. */
+  if (typeof value !== 'string') return value;
   const max = LEAD_LIMITS[key];
-  const v = value == null ? value : String(value);
-  return max && v && v.length > max ? v.slice(0, max) : v;
+  return max && value.length > max ? value.slice(0, max) : value;
 };
 
 router.post('/', async (req, res) => {
@@ -450,6 +452,13 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     const data = {};
     for (const f of FIELDS) {
+      /* ⚠️ An explicit field wins over the mapped one. The bag fills what the
+         vendor did not set; it must not overrule what they did. Before this,
+         typing a date and a venue saved nothing and said "Saved". */
+      if (b[f] !== undefined) {
+        data[f] = fitColumn(f, coerceLeadField(f, b[f]));
+        continue;
+      }
       if (mapped[f] === undefined) continue;
       /* 🚨 Trimmed to the column width — a long answer used to 500 the
          public form and lose the enquiry with no clue why. */

@@ -3238,6 +3238,36 @@ function LeadDetail({ lead, onBack }) {
       {!cfg ? <div className="loading">Loading…</div> : (
         <>
           <LeadFormBody cfg={cfg} p={ep} setPI={setEpi} answers={eAnswers} setAns={setEAns} notes={eNotes} setNotes={setENotes} />
+
+              {/* ⚠️ The booking essentials, always shown here whatever the
+                  public form asks. A contract without a date or a venue is
+                  not an agreement about anything. */}
+              <div className="ld-core">
+                <h3>📅 The booking</h3>
+                <p className="ld-core-note">Used on the contract. Fill these in once the couple confirms.</p>
+                <div className="ld-core-grid">
+                  <label>Event date
+                    <input type="date" value={(ep.event_date || '').slice(0, 10)}
+                      onChange={e => setEpi('event_date', e.target.value)} />
+                  </label>
+                  <label>Venue or location
+                    <input type="text" maxLength={300} placeholder="Where it happens"
+                      value={ep.location || ''} onChange={e => setEpi('location', e.target.value)} />
+                  </label>
+                  <label>Start time
+                    <input type="time" value={ep.timing_from || ''}
+                      onChange={e => setEpi('timing_from', e.target.value)} />
+                  </label>
+                  <label>End time
+                    <input type="time" value={ep.timing_to || ''}
+                      onChange={e => setEpi('timing_to', e.target.value)} />
+                  </label>
+                  <label>Guests (approx.)
+                    <input type="number" min="0" placeholder="150"
+                      value={ep.guests ?? ''} onChange={e => setEpi('guests', e.target.value)} />
+                  </label>
+                </div>
+              </div>
           <button className="refresh ld-save" onClick={save} disabled={busy}>
             {busy ? 'Saving…' : '💾 Save changes'}
           </button>
