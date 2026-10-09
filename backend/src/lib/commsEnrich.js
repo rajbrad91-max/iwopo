@@ -16,7 +16,7 @@
  *                 so the actual audio is fetched fresh when somebody plays it
  *                 (GET /api/comms/:id/recording).
  */
-import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { getCall, getCallSummary, getCallTranscript, getCallRecordings, listContacts, ownNumbers, lastTen, otherParticipant } from './quo.js';
 
 /** What enrichCall needs to know about a stored call. */
@@ -85,14 +85,14 @@ export async function enrichCall(key, ev) {
     data[ev.direction === 'outgoing' ? 'to_number' : 'from_number'] = otherNum.slice(0, 32);
     data[ev.direction === 'outgoing' ? 'from_number' : 'to_number'] = null;   // never our own number as "the other side"
   }
-  await prisma.comms_events.update({ where: { id: ev.id }, data });
+  await privateDb.comms_events.update({ where: { id: ev.id }, data });
   return !!(body || tr || rec);
 }
 
 /** Every finished call that has never been looked at, or is still missing a part within the hour. */
 export async function enrichPending(cfg) {
   const now = Date.now();
-  const calls = await prisma.comms_events.findMany({
+  const calls = await privateDb.comms_events.findMany({
     where: {
       vendor_id: cfg.vendorId, kind: 'call',
       OR: [
@@ -137,7 +137,7 @@ export async function fillContactNames(cfg) {
   const map = await contactsByNumber(cfg.key);
   if (!map.size) return 0;
   const ours = await ownNumbers(cfg.key);
-  const rows = await prisma.comms_events.findMany({
+  const rows = await privateDb.comms_events.findMany({
     where: { vendor_id: cfg.vendorId, contact_name: null },
     select: { id: true, direction: true, from_number: true, to_number: true },
     take: 500,
@@ -148,7 +148,7 @@ export async function fillContactNames(cfg) {
     if (!other || ours.has(other)) continue;        // our own line is never "the other person"
     const name = map.get(other)?.name;
     if (!name) continue;
-    await prisma.comms_events.update({ where: { id: r.id }, data: { contact_name: name } });
+    await privateDb.comms_events.update({ where: { id: r.id }, data: { contact_name: name } });
     named++;
   }
   return named;

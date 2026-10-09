@@ -7,7 +7,7 @@
  */
 import express from 'express';
 import { Readable } from 'node:stream';
-import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { requireAuth } from '../middleware/auth.js';
 import { pollComms } from '../lib/commsPoll.js';
 import { quoConfig, getCallRecordings, ownNumbers, saveContact, sendMessage } from '../lib/quo.js';
@@ -68,7 +68,7 @@ router.get('/', requireAuth, async (req, res) => {
     const cfg = await quoConfig();
     const line = cfg.phoneNumberId && cfg.vendorId === v ? cfg.phoneNumberId : null;
 
-    const events = await prisma.comms_events.findMany({
+    const events = await privateDb.comms_events.findMany({
       where: {
         vendor_id: v,                                        // 🔒 tenancy
         ...(line ? { line_id: line } : {}),
@@ -133,7 +133,7 @@ router.post('/contact', requireAuth, async (req, res) => {
 
     /* 🔒 Only a number this vendor has actually spoken with — the endpoint
        must not become a way to write anything at all into Quo. */
-    const known = await prisma.$queryRawUnsafe(
+    const known = await privateDb.$queryRawUnsafe(
       `SELECT 1 FROM comms_events WHERE vendor_id = $1
           AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
             OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2) LIMIT 1`, v, key10);
@@ -147,7 +147,7 @@ router.post('/contact', requireAuth, async (req, res) => {
     forgetContacts();
 
     const name = [firstName, lastName].filter(Boolean).join(' ');
-    await prisma.$executeRawUnsafe(
+    await privateDb.$executeRawUnsafe(
       `UPDATE comms_events SET contact_name = $3 WHERE vendor_id = $1
           AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
             OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)`, v, key10, name);
@@ -189,7 +189,7 @@ router.post('/message', requireAuth,
       /* Which of our lines to send from: the one chosen in Super Admin, or —
          with "every number" — the line this person last spoke to, so the
          reply lands in the same thread on their phone. */
-      const last = await prisma.$queryRawUnsafe(
+      const last = await privateDb.$queryRawUnsafe(
         `SELECT line_id FROM comms_events WHERE vendor_id = $1 AND line_id IS NOT NULL
             AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
               OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)
@@ -205,7 +205,7 @@ router.post('/message', requireAuth,
         row.line_id = row.line_id || from;
         await upsertEvent(v, row);
       }
-      const ev = row && await prisma.comms_events.findUnique({ where: { external_id: row.external_id } });
+      const ev = row && await privateDb.comms_events.findUnique({ where: { external_id: row.external_id } });
       res.json({ ok: true, event: ev });
     } catch (e) {
       res.status(e.status && e.status < 500 ? 400 : 500).json({ error: `Quo did not send the text: ${e.message}` });
@@ -252,7 +252,7 @@ router.post('/sync', requireAuth, async (req, res) => {
 router.get('/:id/recording', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const ev = await prisma.comms_events.findFirst({
+    const ev = await privateDb.comms_events.findFirst({
       where: { id: BigInt(req.params.id), vendor_id: v, kind: 'call' },      // 🔒 tenancy
       select: { external_id: true, recording_url: true },
     });
@@ -291,12 +291,12 @@ router.post('/lead-request', requireAuth, async (req, res) => {
     const b = req.body || {};
     let ev = null;
     if (b.event_id) {
-      ev = await prisma.comms_events.findFirst({ where: { id: BigInt(b.event_id), vendor_id: v, kind: 'call' }, select: { id: true } });
+      ev = await privateDb.comms_events.findFirst({ where: { id: BigInt(b.event_id), vendor_id: v, kind: 'call' }, select: { id: true } });
     } else if (b.call_id) {
-      ev = await prisma.comms_events.findFirst({ where: { external_id: String(b.call_id), vendor_id: v, kind: 'call' }, select: { id: true } });
+      ev = await privateDb.comms_events.findFirst({ where: { external_id: String(b.call_id), vendor_id: v, kind: 'call' }, select: { id: true } });
     } else if (b.number) {
       const ten = tenDigits(b.number);
-      const rows = await prisma.$queryRawUnsafe(
+      const rows = await privateDb.$queryRawUnsafe(
         `SELECT id FROM comms_events WHERE vendor_id = $1 AND kind = 'call' AND status = 'completed'
             AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
               OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)

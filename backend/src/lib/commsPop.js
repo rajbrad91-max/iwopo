@@ -13,7 +13,7 @@
  * no other vendor, on the web or in a mobile app, ever sees one.
  */
 import { EventEmitter } from 'node:events';
-import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { badgesFor, tenDigits } from './commsBadges.js';
 
 export const commsBus = new EventEmitter();
@@ -39,19 +39,19 @@ export async function buildPop(vendorId, number, { skipExternalId } = {}) {
   if (ten.length !== 10) return { number, name: null };
   const [badges, lastCall, texts, named, counts] = await Promise.all([
     badgesFor(v, [ten]),
-    prisma.$queryRawUnsafe(
+    privateDb.$queryRawUnsafe(
       `SELECT id, occurred_at, duration_sec, status, body, transcript FROM comms_events
         WHERE vendor_id = $1 AND kind = 'call' AND ${sameNumber} AND external_id <> $3
           AND (body IS NOT NULL OR transcript IS NOT NULL)
         ORDER BY occurred_at DESC LIMIT 1`, v, ten, String(skipExternalId || '')),
-    prisma.$queryRawUnsafe(
+    privateDb.$queryRawUnsafe(
       `SELECT direction, body, occurred_at FROM comms_events
         WHERE vendor_id = $1 AND kind = 'message' AND ${sameNumber}
         ORDER BY occurred_at DESC LIMIT 3`, v, ten),
-    prisma.$queryRawUnsafe(
+    privateDb.$queryRawUnsafe(
       `SELECT contact_name FROM comms_events WHERE vendor_id = $1 AND contact_name IS NOT NULL AND ${sameNumber}
         ORDER BY occurred_at DESC LIMIT 1`, v, ten),
-    prisma.$queryRawUnsafe(
+    privateDb.$queryRawUnsafe(
       `SELECT count(*) FILTER (WHERE kind = 'call')::int AS calls, count(*) FILTER (WHERE kind = 'message')::int AS texts
          FROM comms_events WHERE vendor_id = $1 AND ${sameNumber}`, v, ten),
   ]);

@@ -14,7 +14,8 @@
  * a month of history must not arrive as a hundred notifications.
  */
 import prisma from '../config/prisma.js';
-import { notify } from '../routes/notifications.js';
+import privateDb from '../config/privateDb.js';
+import { notifyPrivate } from './privateNotify.js';
 
 const FRESH_MS = 15 * 60_000;
 const MISSED = ['missed', 'no-answer', 'busy', 'failed', 'canceled'];
@@ -47,15 +48,15 @@ export async function announce(vendorId, row, onlyLine = null) {
     const isMissed = row.kind === 'call' && MISSED.includes(row.status);
     if (!isText && !isMissed) return;
 
-    const ev = await prisma.comms_events.findUnique({ where: { external_id: row.external_id }, select: { id: true, contact_name: true } });
+    const ev = await privateDb.comms_events.findUnique({ where: { external_id: row.external_id }, select: { id: true, contact_name: true } });
     if (!ev) return;
-    const already = await prisma.notifications.findFirst({
+    const already = await privateDb.comms_notices.findFirst({
       where: { vendor_id: Number(vendorId), link_type: 'comms', link_id: Number(ev.id) }, select: { id: true },
     });
     if (already) return;
     const who = ev.contact_name || await whoIs(vendorId, row.from_number);
     const title = isText ? `💬 New text from ${who}` : `📞 Missed call from ${who}`;
     const body = isText ? String(row.body || '').slice(0, 140) : null;
-    await notify(vendorId, title, body, 'comms', { type: 'comms', id: Number(ev.id) });
+    await notifyPrivate(vendorId, title, body, 'comms', { type: 'comms', id: Number(ev.id) });
   } catch { /* a notification must never break storing the call */ }
 }

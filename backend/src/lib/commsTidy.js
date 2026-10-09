@@ -20,7 +20,7 @@
  * and the bell notifications pointing at it. A lead made from a call keeps
  * its own notes. Quo's own copy is untouched (its API cannot delete).
  */
-import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { quoConfig, getCall, getMessage } from './quo.js';
 import { badgesFor, tenDigits } from './commsBadges.js';
 
@@ -30,14 +30,14 @@ const RECHECK_DAYS = 7;                        // each row is re-asked about rou
 
 async function removeEvents(ids) {
   if (!ids.length) return 0;
-  await prisma.notifications.deleteMany({ where: { link_type: 'comms', link_id: { in: ids.map(Number) } } });
-  const r = await prisma.comms_events.deleteMany({ where: { id: { in: ids } } });
+  await privateDb.comms_notices.deleteMany({ where: { link_type: 'comms', link_id: { in: ids.map(Number) } } });
+  const r = await privateDb.comms_events.deleteMany({ where: { id: { in: ids } } });
   return r.count;
 }
 
 /** 1 — anything Quo no longer has is removed here too. */
 export async function mirrorQuoDeletions(cfg) {
-  const rows = await prisma.comms_events.findMany({
+  const rows = await privateDb.comms_events.findMany({
     where: {
       vendor_id: cfg.vendorId,
       OR: [{ checked_at: null }, { checked_at: { lt: new Date(Date.now() - RECHECK_DAYS * 864e5) } }],
@@ -54,7 +54,7 @@ export async function mirrorQuoDeletions(cfg) {
       (found ? seen : gone).push(r.id);
     } catch { /* not a definite "not found" — leave it, ask again another night */ }
   }
-  if (seen.length) await prisma.comms_events.updateMany({ where: { id: { in: seen } }, data: { checked_at: new Date() } });
+  if (seen.length) await privateDb.comms_events.updateMany({ where: { id: { in: seen } }, data: { checked_at: new Date() } });
   return { checked: rows.length, removed: await removeEvents(gone) };
 }
 
@@ -62,7 +62,7 @@ export async function mirrorQuoDeletions(cfg) {
 export async function forgetOld(cfg) {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - RETAIN_MONTHS);
-  const old = await prisma.comms_events.findMany({
+  const old = await privateDb.comms_events.findMany({
     where: { vendor_id: cfg.vendorId, occurred_at: { lt: cutoff } },
     select: { id: true, direction: true, from_number: true, to_number: true },
     take: 5000,

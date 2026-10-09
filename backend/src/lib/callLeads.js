@@ -22,9 +22,10 @@
  * every query is scoped to the vendor.
  */
 import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { extractLead } from './callToLead.js';
 import { badgesFor, tenDigits } from './commsBadges.js';
-import { notify } from '../routes/notifications.js';
+import { notifyPrivate } from './privateNotify.js';
 import { getSetting } from './settings.js';
 
 const GIVE_UP_MS = 2 * 60 * 60_000;     // Quo writes transcripts within minutes; two hours means it never will
@@ -48,18 +49,18 @@ export function transcriptText(raw) {
 /** Raj pressed "Create lead" on this call. Marks it, then tries straight away. */
 export async function requestLead(vendorId, eventId) {
   const v = Number(vendorId);
-  const ev = await prisma.comms_events.findFirst({
+  const ev = await privateDb.comms_events.findFirst({
     where: { id: BigInt(eventId), vendor_id: v, kind: 'call' },        // 🔒 tenancy
     select: { id: true, lead_state: true, lead_id: true },
   });
   if (!ev) return { error: 'Call not found' };
   if (ev.lead_state === 'created') return { state: 'created', lead_id: ev.lead_id };
-  await prisma.comms_events.update({
+  await privateDb.comms_events.update({
     where: { id: ev.id },
     data: { lead_state: 'waiting', lead_asked_at: new Date() },
   });
   await processLeadRequests(v);
-  const now = await prisma.comms_events.findUnique({ where: { id: ev.id }, select: { lead_state: true, lead_id: true } });
+  const now = await privateDb.comms_events.findUnique({ where: { id: ev.id }, select: { lead_state: true, lead_id: true } });
   return { state: now.lead_state, lead_id: now.lead_id };
 }
 
@@ -68,37 +69,37 @@ export async function processLeadRequests(vendorId) {
   const v = Number(vendorId);
   // a key has been saved since — the requests parked for want of one go back in the queue
   if (await getSetting('anthropic_api_key', '')) {
-    await prisma.comms_events.updateMany({ where: { vendor_id: v, lead_state: 'no_ai' }, data: { lead_state: 'waiting' } });
+    await privateDb.comms_events.updateMany({ where: { vendor_id: v, lead_state: 'no_ai' }, data: { lead_state: 'waiting' } });
   }
-  const waiting = await prisma.comms_events.findMany({
+  const waiting = await privateDb.comms_events.findMany({
     where: { vendor_id: v, kind: 'call', lead_state: 'waiting' },
     select: { id: true },
     take: 20,
   });
   for (const { id } of waiting) {
     // claim it — only one of webhook / sync / button gets to make the lead
-    const claimed = await prisma.comms_events.updateMany({ where: { id, lead_state: 'waiting' }, data: { lead_state: 'working' } });
+    const claimed = await privateDb.comms_events.updateMany({ where: { id, lead_state: 'waiting' }, data: { lead_state: 'working' } });
     if (!claimed.count) continue;
     try { await makeLead(v, id); }
     catch (e) {
       console.error('[comms] lead from call:', e.message);
-      await prisma.comms_events.update({ where: { id }, data: { lead_state: 'waiting' } });   // try again next sweep
+      await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'waiting' } });   // try again next sweep
     }
   }
 }
 
 async function makeLead(v, id) {
-  const ev = await prisma.comms_events.findUnique({ where: { id } });
+  const ev = await privateDb.comms_events.findUnique({ where: { id } });
   const number = otherOf(ev);
   const text = (ev.body || '').trim() || transcriptText(ev.transcript);
 
   if (!text) {
     if (Date.now() - new Date(ev.occurred_at).getTime() < GIVE_UP_MS) {
-      await prisma.comms_events.update({ where: { id }, data: { lead_state: 'waiting' } });   // not yet — keep waiting
+      await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'waiting' } });   // not yet — keep waiting
       return;
     }
-    await prisma.comms_events.update({ where: { id }, data: { lead_state: 'no_text' } });
-    await notify(v, `⚠️ No transcript came for the call with ${ev.contact_name || pretty(number)}`,
+    await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'no_text' } });
+    await notifyPrivate(v, `⚠️ No transcript came for the call with ${ev.contact_name || pretty(number)}`,
       'Quo never wrote one, so the lead could not be filled in — add it in Leads by hand.', 'comms', { type: 'comms', id: Number(id) });
     return;
   }
@@ -111,19 +112,19 @@ async function makeLead(v, id) {
        sweep, for two hours after the call, then reported. The first version
        retried a missing key silently, forever. */
     if (out.permanent) {
-      await prisma.comms_events.update({ where: { id }, data: { lead_state: 'no_ai' } });
+      await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'no_ai' } });
       const title = '🤖 Leads from calls need the AI key';
       // one reminder, not one per waiting call
-      const told = await prisma.notifications.findFirst({ where: { vendor_id: v, title, created_at: { gt: new Date(Date.now() - 6 * 60 * 60_000) } }, select: { id: true } });
+      const told = await privateDb.comms_notices.findFirst({ where: { vendor_id: v, title, created_at: { gt: new Date(Date.now() - 6 * 60 * 60_000) } }, select: { id: true } });
       if (!told) {
-        await notify(v, title, `${out.error} Add it in Super Admin → Settings → AI — the waiting lead is then made by itself.`,
+        await notifyPrivate(v, title, `${out.error} Add it in Super Admin → Settings → AI — the waiting lead is then made by itself.`,
           'comms', { type: 'comms', id: Number(id) });
       }
       return;
     }
     if (Date.now() - new Date(ev.occurred_at).getTime() > GIVE_UP_MS) {
-      await prisma.comms_events.update({ where: { id }, data: { lead_state: 'failed' } });
-      await notify(v, `⚠️ Could not read the call with ${ev.contact_name || pretty(number)}`, `${out.error} — add the lead in Leads.`,
+      await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'failed' } });
+      await notifyPrivate(v, `⚠️ Could not read the call with ${ev.contact_name || pretty(number)}`, `${out.error} — add the lead in Leads.`,
         'comms', { type: 'comms', id: Number(id) });
       return;
     }
@@ -133,8 +134,8 @@ async function makeLead(v, id) {
   const when = new Date(ev.occurred_at).toLocaleDateString();
 
   if (!out.is_inquiry) {
-    await prisma.comms_events.update({ where: { id }, data: { lead_state: 'none' } });
-    await notify(v, `🤷 The call with ${who} didn't sound like an inquiry`, 'No lead was made. You can still add one in Leads.', 'comms', { type: 'comms', id: Number(id) });
+    await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'none' } });
+    await notifyPrivate(v, `🤷 The call with ${who} didn't sound like an inquiry`, 'No lead was made. You can still add one in Leads.', 'comms', { type: 'comms', id: Number(id) });
     return;
   }
 
@@ -149,7 +150,7 @@ async function makeLead(v, id) {
       data: { notes: [lead.notes, `📞 Call on ${when}:\n${out.notes || text.slice(0, 1500)}`].filter(Boolean).join('\n\n'), updated_at: new Date() },
     });
     leadId = lead.id;
-    await notify(v, `📋 Call added to ${existing.name || who}'s lead`, null, 'comms', { type: 'lead', id: leadId });
+    await notifyPrivate(v, `📋 Call added to ${existing.name || who}'s lead`, null, 'comms', { type: 'lead', id: leadId });
   } else {
     const lead = await prisma.leads.create({
       data: {
@@ -167,10 +168,10 @@ async function makeLead(v, id) {
       select: { id: true },
     });
     leadId = lead.id;
-    await notify(v, `📋 New lead from your call with ${who}`, out.event_date ? `Event: ${out.event_date}` : null, 'comms', { type: 'lead', id: leadId });
+    await notifyPrivate(v, `📋 New lead from your call with ${who}`, out.event_date ? `Event: ${out.event_date}` : null, 'comms', { type: 'lead', id: leadId });
   }
 
-  await prisma.comms_events.update({
+  await privateDb.comms_events.update({
     where: { id },
     data: {
       lead_state: 'created', lead_id: leadId,
@@ -179,7 +180,7 @@ async function makeLead(v, id) {
     },
   });
   if (out.booked) {
-    await notify(v, `🟢 ${who} sounds booked — approve?`, out.booking_evidence || null, 'comms', { type: 'comms', id: Number(id) });
+    await notifyPrivate(v, `🟢 ${who} sounds booked — approve?`, out.booking_evidence || null, 'comms', { type: 'comms', id: Number(id) });
   }
 }
 
@@ -189,7 +190,7 @@ async function makeLead(v, id) {
  */
 export async function answerBooking(vendorId, eventId, approve) {
   const v = Number(vendorId);
-  const ev = await prisma.comms_events.findFirst({
+  const ev = await privateDb.comms_events.findFirst({
     where: { id: BigInt(eventId), vendor_id: v, booking_state: 'suggested' },   // 🔒 tenancy
     select: { id: true, lead_id: true },
   });
@@ -201,6 +202,6 @@ export async function answerBooking(vendorId, eventId, approve) {
     });
     if (!done.count) return { error: 'That lead no longer exists.' };
   }
-  await prisma.comms_events.update({ where: { id: ev.id }, data: { booking_state: approve ? 'approved' : 'dismissed' } });
+  await privateDb.comms_events.update({ where: { id: ev.id }, data: { booking_state: approve ? 'approved' : 'dismissed' } });
   return { ok: true, lead_id: ev.lead_id, booked: !!approve };
 }

@@ -1,0 +1,71 @@
+// 🔒 Perfect Poses' PRIVATE data — lives in the `perfectposes` database
+// (`perfectposes_staging` on staging), NOT in iwopo's shared, sellable one.
+//
+// Raj, 2026-10-09: his calls, texts, summaries and transcripts must not sit in
+// the database every subscriber's data lives in. One codebase, two databases
+// (the locked decision of 2026-10-03): iwopo's code reads and writes these
+// tables through a second client (src/config/privateDb.js).
+//
+// ⚠️ This database ALSO holds the perfectposes.ca website's own tables (the
+// media admin, perfectposes-api). They are NOT modelled here, so tables are
+// created from this file with `prisma migrate diff --from-empty` → psql,
+// NEVER `prisma db push` — db push would try to drop the website's tables.
+//
+// Generate: npx prisma generate --config prisma.private.config.ts
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../src/generated/private"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// 📞 Calls and texts mirrored from Quo — see lib/commsPoll.js, routes/commsWebhook.js
+model comms_events {
+  id            BigInt    @id @default(autoincrement())
+  vendor_id     Int
+  external_id   String    @unique(map: "idx_comms_external") @db.VarChar(80)
+  line_id       String?   @db.VarChar(40)
+  kind          String    @db.VarChar(12)
+  direction     String    @db.VarChar(10)
+  status        String?   @db.VarChar(24)
+  from_number   String?   @db.VarChar(32)
+  to_number     String?   @db.VarChar(32)
+  contact_name  String?   @db.VarChar(160)
+  body          String?
+  transcript    String?
+  recording_url String?   @db.VarChar(500)
+  duration_sec  Int?
+  occurred_at   DateTime  @db.Timestamp(6)
+  created_at    DateTime  @default(now()) @db.Timestamp(6)
+  enriched_at   DateTime? @db.Timestamp(6)
+  lead_state    String?   @db.VarChar(12)
+  lead_asked_at DateTime? @db.Timestamp(6)
+  lead_id       Int?
+  booking_state String?   @db.VarChar(12)
+  booking_hint  String?   @db.VarChar(300)
+  checked_at    DateTime? @db.Timestamp(6)
+
+  @@index([vendor_id, from_number, to_number], map: "idx_comms_party")
+  @@index([vendor_id, occurred_at(sort: Desc)], map: "idx_comms_vendor")
+  @@index([vendor_id, line_id, occurred_at(sort: Desc)], map: "idx_comms_line")
+}
+
+/// 🔔 The bell notifications ABOUT calls and texts ("New text from …" carries
+/// a snippet of the text) — kept beside them, not in iwopo's shared
+/// notifications table. The bell shows both (routes/notifications.js).
+model comms_notices {
+  id         Int       @id @default(autoincrement())
+  vendor_id  Int
+  type       String?   @default("comms") @db.VarChar(40)
+  title      String    @db.VarChar(200)
+  body       String?   @db.VarChar(400)
+  seen_at    DateTime? @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  link_type  String?   @db.VarChar(20)
+  link_id    Int?
+
+  @@index([vendor_id, seen_at], map: "idx_cnotice_vendor")
+}

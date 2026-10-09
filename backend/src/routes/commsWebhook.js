@@ -12,7 +12,7 @@
  * reasons that look like a wrong secret.
  */
 import express from 'express';
-import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { quoConfig, verifyWebhook, ownNumbers, otherParticipant } from '../lib/quo.js';
 import { enrichCall, CALL_FIELDS } from '../lib/commsEnrich.js';
 import { announce } from '../lib/commsNotify.js';
@@ -76,8 +76,8 @@ export function normalise(type, data, ours = new Set()) {
 export async function upsertEvent(vendorId, row) {
   if (!row?.external_id) return false;
   try {
-    const had = await prisma.comms_events.findUnique({ where: { external_id: row.external_id }, select: { id: true } });
-    await prisma.comms_events.upsert({
+    const had = await privateDb.comms_events.findUnique({ where: { external_id: row.external_id }, select: { id: true } });
+    await privateDb.comms_events.upsert({
       where: { external_id: row.external_id },
       /* Only fills gaps. A transcript or recording arriving later must not wipe
          a summary that came with the call. */
@@ -122,7 +122,7 @@ router.post('/', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) =>
        event made rows with no id or the wrong one. Fill the call instead. */
     if (/^call\.(summary|transcript|recording)\./.test(type)) {
       const callId = obj?.callId || obj?.id;
-      const ev = callId && await prisma.comms_events.findFirst({
+      const ev = callId && await privateDb.comms_events.findFirst({
         where: { external_id: String(callId), vendor_id: cfg.vendorId },
         select: CALL_FIELDS,
       });

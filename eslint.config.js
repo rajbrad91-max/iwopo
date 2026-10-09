@@ -21,6 +21,7 @@ export default [
       '**/dist/**',
       'backend/models/**',      // downloaded face-api model weights
       'backend/prisma/**',      // generated from the database
+      'backend/src/generated/**', // the private database's Prisma client, generated per machine
     ],
   },
 

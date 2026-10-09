@@ -15,7 +15,7 @@
  * number — "which conversations moved since last time?" — which is almost
  * always none; only a conversation that moved costs two more.
  */
-import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { quoConfig, listPhoneNumbers, listConversations, listCalls, listMessages, ownNumbers } from './quo.js';
 import { normalise, upsertEvent } from '../routes/commsWebhook.js';
 import { enrichPending, fillContactNames } from './commsEnrich.js';
@@ -49,7 +49,7 @@ export async function pollComms() {
          the old line's latest message and its own history was never fetched.
          A line seen for the first time gets a month. The upsert makes
          re-seeing an event free. */
-      const newest = await prisma.comms_events.findFirst({
+      const newest = await privateDb.comms_events.findFirst({
         where: { vendor_id: cfg.vendorId, line_id: phoneNumberId },
         orderBy: { occurred_at: 'desc' },
         select: { occurred_at: true },
