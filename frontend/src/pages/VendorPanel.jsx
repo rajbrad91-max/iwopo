@@ -4412,7 +4412,20 @@ function ContractSetup() {
           const n = (t.sections || []).filter(x => x.initial).length
             || (t.body?.match(/\[INITIAL\]/g) || []).length;
           return (
-            <div key={t.id} className="table-wrap cs-card" onClick={() => { setSel(t); setSelClean(JSON.stringify(t)); }}>
+            <div key={t.id} className={`table-wrap cs-card ${t.is_default ? 'is-default' : ''}`}
+              onClick={() => { setSel(t); setSelClean(JSON.stringify(t)); }}>
+              {/* ⚠️ One per vendor. Without it the system used whichever
+                  template had the lowest id — a guess on a legal document. */}
+              <button type="button" className={t.is_default ? 'cs-default is-on' : 'cs-default'}
+                title={t.is_default ? 'This is your default contract' : 'Use this one by default'}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (t.is_default) return;
+                  try { await api.setDefaultCtTemplate(t.id); load(); }
+                  catch (err) { setMsg('⚠️ ' + err.message); }
+                }}>
+                {t.is_default ? '📌 Default' : 'Make default'}
+              </button>
               <div className="cs-card-ic">📑</div>
               <div className="cs-card-name">{t.name}</div>
               <div className="cs-card-meta">

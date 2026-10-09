@@ -171,6 +171,10 @@ model contract_templates {
   vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_cttpl_vendor")
+  /* ⚠️ One per vendor, enforced by a partial unique index in the database.
+     Without a marked default the system picked whichever template had the
+     lowest id, which on a legal document is a guess. */
+  is_default        Boolean            @default(false)
 }
 
 model contracts {

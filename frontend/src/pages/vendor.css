@@ -2218,3 +2218,17 @@ tr:hover .bk-del { opacity: .8; }
   border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: inherit;
 }
 .ld-core-grid input:focus { outline: 2px solid var(--brand, #2dd4bf); outline-offset: -1px; }
+
+/* ── the default contract template ──
+   ⚠️ One per vendor. Without a marked default the system used whichever
+   template had the lowest id, which on a legal document is a guess. */
+.cs-card.is-default { border-color: #b08a4f; }
+.cs-default {
+  position: absolute; top: 12px; right: 12px;
+  padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  font-size: 11.5px; font-weight: 600;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); color: inherit;
+}
+.cs-default:hover { border-color: #b08a4f; }
+.cs-default.is-on { background: #b08a4f; border-color: #b08a4f; color: #fff; cursor: default; }
+.cs-card { position: relative; }

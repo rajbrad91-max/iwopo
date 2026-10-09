@@ -30,7 +30,10 @@ export default function ContractPreview({ leadId }) {
       setTemplates(list);
       /* ⚠️ Pre-selected, because one template is the common case and a
          vendor should not have to choose from a list of one. */
-      if (list.length) setChosen(String(list[0].id));
+      /* ⚠️ The vendor MARKED one as default — honour it rather than
+         offering whichever happens to be first. */
+      const pick = list.find(t => t.is_default) || list[0];
+      if (pick) setChosen(String(pick.id));
     }).catch(() => {});
   }, []);
 
@@ -78,6 +81,25 @@ export default function ContractPreview({ leadId }) {
 
       {busy && <div className="cp-msg">Releasing…</div>}
       {msg && <div className={`cp-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
+
+          {/* ⚠️ The step that did not exist. api.createContractFromTemplate
+              worked; nothing called it, so a vendor was told no contract had
+              been built and had no way to build one. Shown exactly when
+              there is nothing to preview. */}
+          {needsBuilding && (
+            <div className="cp-build">
+              <label htmlFor="cp-tpl">Build this contract from</label>
+              <select id="cp-tpl" value={chosen} onChange={e => setChosen(e.target.value)}>
+                {templates.length === 0 && <option value="">No templates yet — make one in Contract setup</option>}
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}{t.is_default ? ' (default)' : ''}</option>
+                ))}
+              </select>
+              <button className="cp-build-btn" onClick={buildFromTemplate} disabled={busy || !chosen}>
+                {busy ? '⏳ Building…' : '📄 Build contract'}
+              </button>
+            </div>
+          )}
 
       <div className="cp-doc">
         <SignContract previewLeadId={leadId} onRelease={release} />

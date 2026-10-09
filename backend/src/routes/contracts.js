@@ -37,8 +37,19 @@ export async function templateForLead(lead, templateId = null) {
     orderBy: { id: 'asc' },
   });
   if (!tpls.length) return null;
-  return tpls.find(x => x.event_type && lead.event_type
-    && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase()) || tpls[0];
+
+  /* 1 · a template written for this kind of event */
+  const byType = tpls.find(x => x.event_type && lead.event_type
+    && x.event_type.toLowerCase() === String(lead.event_type).toLowerCase());
+  if (byType) return byType;
+
+  /* 2 · ⚠️ the vendor's chosen default — the point of marking one. Before
+         this it fell straight to tpls[0], whichever had the lowest id. */
+  const marked = tpls.find(x => x.is_default);
+  if (marked) return marked;
+
+  /* 3 · the oldest, as a last resort */
+  return tpls[0];
 }
 
 /** Only what a section may hold, each trimmed to what the page can show. */
@@ -432,6 +443,32 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
 
 /* ───────── 📄 CONTRACTS (vendor side) ───────── */
 // all my contracts (for sidebar tab)
+/**
+ * 📌 Mark one template as this vendor's default.
+ * ⚠️ A vendor does one kind of work, so one agreement is the normal case.
+ * Without a default, every screen needing "the contract" has to guess.
+ */
+router.put('/templates/:id/default', requireAuth, async (req, res) => {
+  const vid = req.user.vendor_id;   // 🔒 from the token, never the body
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.contract_templates.findUnique({
+      where: { id }, select: { vendor_id: true },
+    });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (own.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+
+    /* ⚠️ Both writes or neither. A gap with two defaults is the bug. */
+    await prisma.$transaction([
+      prisma.contract_templates.updateMany({
+        where: { vendor_id: vid, is_default: true }, data: { is_default: false },
+      }),
+      prisma.contract_templates.update({ where: { id }, data: { is_default: true } }),
+    ]);
+    res.json({ ok: true, default_id: id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     const v = vid(req);

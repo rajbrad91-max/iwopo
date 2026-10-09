@@ -661,6 +661,8 @@ export const api = {
   signContract: (token, signed_name, signature_data, initials) => request(`/contracts/sign/${token}`, { method: 'POST', body: JSON.stringify({ signed_name, signature_data, initials }) }),
   allContracts: () => request('/contracts'),
   ctTemplates: () => request('/contracts/templates'),
+  /* 📌 Mark one template as the vendor's default. */
+  setDefaultCtTemplate: (id) => request(`/contracts/templates/${id}/default`, { method: 'PUT' }),
   addCtTemplate: (data) => request('/contracts/templates', { method: 'POST', body: JSON.stringify(data) }),
   updateCtTemplate: (id, data) => request(`/contracts/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCtTemplate: (id) => request(`/contracts/templates/${id}`, { method: 'DELETE' }),
