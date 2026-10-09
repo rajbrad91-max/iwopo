@@ -153,23 +153,39 @@ async function groupAlbum(albumId) {
 }
 
 /**
+ * 📤 A gallery batch has landed — but more may be coming.
+ *
+ * Face detection used to start after EVERY upload batch, sharing the box's
+ * four cores with the resizing of the photographs still arriving. Now it waits
+ * for the upload to finish: the panel says so (uploadsFinished), or — for a
+ * tab closed half way — two quiet minutes with no further batch.
+ * A live shoot does not come here: its guests are waiting, so it indexes at once.
+ */
+const UPLOAD_QUIET_MS = 2 * 60_000;
+const uploadQuiet = new Map();
+
+export function noteUpload(albumId) {
+  const id = String(albumId);
+  clearTimeout(uploadQuiet.get(id));
+  uploadQuiet.set(id, setTimeout(() => { uploadQuiet.delete(id); enqueueAlbum(id); }, UPLOAD_QUIET_MS));
+}
+
+/**
  * The uploader says it has finished.
  *
- * The debounce below cannot know which batch is the last, so it guesses by
- * waiting for quiet. The browser running the loop DOES know, so when it tells
- * us, group straight away instead of sitting out the remaining wait.
- *
- * If photographs are still being indexed the timer is simply reset — grouping
- * would otherwise run over a half-indexed album. It fires when that finishes.
+ * Detection, held back during the upload, starts now. Grouping runs the moment
+ * that drains (uploadsDone), with the quiet-window timer as the backstop.
  */
 export async function uploadsFinished(albumId) {
   const id = String(albumId);
+  clearTimeout(uploadQuiet.get(id)); uploadQuiet.delete(id);
   const pending = await prisma.photos.count({
     where: { album_id: Number(albumId), face_indexed: false, kind: 'photo' },
   });
   if (pending > 0) {
     uploadsDone.add(id);              // remembered — indexing will group on the way out
     scheduleClustering(albumId);      // and the timer stays as the backstop
+    enqueueAlbum(albumId);            // detection starts NOW — it was held back during the upload
     return { grouped: false, pending };
   }
   uploadsDone.delete(id);

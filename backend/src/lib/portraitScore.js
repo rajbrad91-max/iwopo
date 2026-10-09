@@ -91,3 +91,73 @@ export function poseFromLandmarks(landmarks) {
     return { yaw: 0, pitch: 0 };
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   👤 Is this detection really a face we can recognise?
+
+   On the back of a head, or a sharp profile, the detector still reports a
+   "face" and the landmark model INVENTS eyes and a nose for it. The 128-number
+   fingerprint of that crop is really the hairstyle and jewellery, so a bride's
+   back-of-head shots matched EACH OTHER and formed a circle of their own
+   (album 18, 2026-10-09: 7 photos, 4 of them the back of her head).
+
+   Two measurements from the 68 landmarks, both relative so face size does
+   not matter:
+     eyeSep        eye-to-eye distance ÷ face-box width.
+                   Front ≈ 0.35–0.50 · three-quarter ≈ 0.25–0.35 ·
+                   profile/back ≈ 0.09–0.20.
+     noseBetween   where the nose sits between the eyes (0 = over the left
+                   eye, 1 = over the right). A real face keeps it between them;
+                   on profiles and backs it lands outside (1.1–2.5 measured).
+
+   Cut-offs set from all 107 faces of album 18, checked by eye against a
+   contact sheet: every back-of-head and profile falls outside, every
+   three-quarter view of the bride (noseBetween up to 0.98) stays in. The
+   nose range is 0–1 on purpose — symmetric — so a head turned left is judged
+   exactly like one turned right.
+   ⚠️ Change them only after re-measuring on a real album.
+   ════════════════════════════════════════════════════════════════════════ */
+export const MIN_EYE_SEP = 0.20;
+export const NOSE_BETWEEN_MIN = 0.0;
+export const NOSE_BETWEEN_MAX = 1.0;
+/* Faces whose short side is under this many pixels (on the 2200px preview)
+   are background heads; their fingerprint is too noisy to trust. */
+export const MIN_FACE_PX = 55;
+
+/** eyeSep and noseBetween for one detection — stored with the face at index time. */
+export function faceShape(landmarks, box) {
+  try {
+    const L = landmarks?.positions || landmarks;
+    if (!L || L.length < 68 || !box?.width) return {};
+    const mean = (pts) => pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, y: a.y + p.y / pts.length }), { x: 0, y: 0 });
+    const le = mean(L.slice(36, 42)), re = mean(L.slice(42, 48));
+    return {
+      eyeSep: Math.hypot(re.x - le.x, re.y - le.y) / box.width,
+      noseBetween: (L[30].x - le.x) / ((re.x - le.x) || 1e-6),
+    };
+  } catch { return {}; }
+}
+
+/** Box width/height whichever shape it was saved in (face-api stores _width). */
+export function boxSize(b) {
+  if (!b) return { w: 0, h: 0 };
+  return { w: b.width ?? b._width ?? b.w ?? 0, h: b.height ?? b._height ?? b.h ?? 0 };
+}
+
+/**
+ * Should this stored LOCAL face be used for circles and for matching a selfie?
+ * A face indexed before the shape was measured has no eyeSep and passes the
+ * shape test (it cannot be judged) — a re-index measures it.
+ */
+export function isUsableFace(f) {
+  const { w, h } = boxSize(f?.box);
+  if (w > 0 && h > 0) {
+    const normalized = w <= 1 && h <= 1;          // a fraction of the image, not pixels
+    if (!normalized && Math.min(w, h) < MIN_FACE_PX) return false;
+  }
+  if (typeof f?.eyeSep === 'number') {
+    if (f.eyeSep < MIN_EYE_SEP) return false;
+    if (f.noseBetween < NOSE_BETWEEN_MIN || f.noseBetween > NOSE_BETWEEN_MAX) return false;
+  }
+  return true;
+}

@@ -133,7 +133,13 @@ export function keyFor(vendorId, ...parts) {
   return `vendor/${v}/${tail}`;
 }
 
-export async function putObject(cls, key, body, contentType) {
+/**
+ * @param {number} [knownSize] the object's size when the caller already has it.
+ *   The ledger then records it directly instead of asking R2 with a second
+ *   round trip — on an upload of hundreds of photographs (three objects each)
+ *   that was one extra request per file for a number already in hand.
+ */
+export async function putObject(cls, key, body, contentType, knownSize) {
   const { client, bucket } = await clientFor(cls);
   await client.send(new PutObjectCommand({
     Bucket: bucket, Key: key, Body: body,
@@ -147,8 +153,9 @@ export async function putObject(cls, key, body, contentType) {
      and the ledger swallows its own errors: a photograph must not fail because
      an accounting row would not insert. */
   try {
-    const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-    await recordObject(cls, key, Number(head?.ContentLength || 0));
+    const size = Number.isFinite(knownSize) ? knownSize
+      : Number((await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key })))?.ContentLength || 0);
+    await recordObject(cls, key, size);
   } catch { /* reconcile() rebuilds the ledger from the bucket */ }
 
   return key;
@@ -214,7 +221,7 @@ export async function listAll(cls, prefix) {
     const out = await client.send(new ListObjectsV2Command({
       Bucket: bucket, Prefix: prefix, ContinuationToken: token,
     }));
-    for (const o of out.Contents || []) keys.push({ key: o.Key, size: o.Size });
+    for (const o of out.Contents || []) keys.push({ key: o.Key, size: o.Size, at: o.LastModified });
     token = out.IsTruncated ? out.NextContinuationToken : undefined;
   } while (token);
   return keys;

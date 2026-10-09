@@ -5,7 +5,7 @@ import canvas from 'canvas';
 import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { poseFromLandmarks } from './portraitScore.js';
+import { poseFromLandmarks, faceShape } from './portraitScore.js';
 
 const { Canvas, Image, ImageData } = canvas;
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
@@ -59,11 +59,14 @@ export async function getFaceDescriptors(imagePath) {
     // face for the circle instead of whichever scored highest.
     const { yaw, pitch } = poseFromLandmarks(r.landmarks);
     const b = r.detection.box;
+    // 👤 is it really a face? measured here, judged by isUsableFace()
+    const { eyeSep, noseBetween } = faceShape(r.landmarks, b);
     return {
       descriptor: Array.from(r.descriptor),   // 128 floats → JSON-safe
       box: b,
       score: r.detection.score,
       yaw, pitch,
+      eyeSep, noseBetween,
       areaFrac: (b.width * b.height) / imgArea,
     };
   });

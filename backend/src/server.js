@@ -35,6 +35,7 @@ import siteRoutes from './routes/sites.js';
 import { gate } from './lib/entitlements.js';
 import { sweepRevoked } from './lib/tokenRevocation.js';
 import { sweepAbandonedUploads } from './lib/uploadSweep.js';
+import { sweepGalleryOrphans } from './lib/orphanSweep.js';
 import contactRoutes from './routes/contacts.js';
 import { reconcile } from './lib/storageLedger.js';
 import * as objects from './lib/objectStore.js';
@@ -224,6 +225,12 @@ sweepRevoked().catch(() => {});
    a row nobody will ever finish, and parts still costing storage. */
 setInterval(() => { sweepAbandonedUploads().catch(() => {}); }, 60 * 60_000).unref();
 sweepAbandonedUploads().catch(() => {});
+
+/* 🧹 Gallery files no photo row names any more — an upload stopped half way,
+   a restart mid-batch. Hourly, and once shortly after boot; it never touches
+   anything younger than an hour, so an upload in progress is safe. */
+setInterval(() => { sweepGalleryOrphans().catch(() => {}); }, 60 * 60_000).unref();
+setTimeout(() => { sweepGalleryOrphans().catch(() => {}); }, 2 * 60_000).unref();
 
 /* 📒 Rebuild the storage ledger from the buckets, nightly.
    The ledger is written best-effort inside putObject — it must never break an

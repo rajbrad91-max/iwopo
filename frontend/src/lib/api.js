@@ -694,6 +694,8 @@ export const api = {
   deleteRequest: (albumId) => request('/albums/requests/' + albumId, { method: 'DELETE' }),
   createAlbum: (data) => request('/albums', { method: 'POST', body: JSON.stringify(data) }),
   updateAlbum: (id, data) => request(`/albums/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  // 👁️ the gallery's current passwords, readable — for the eye button and the instructions email
+  albumPasswords: (id) => request(`/albums/${id}/passwords`),
   albumBookingOptions: () => request('/albums/booking-options'),
   albumSettings: () => request('/albums/settings'),
   saveAlbumSettings: (data) => request('/albums/settings', { method: 'PUT', body: JSON.stringify(data) }),

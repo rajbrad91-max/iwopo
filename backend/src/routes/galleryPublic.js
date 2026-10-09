@@ -11,8 +11,9 @@ import sharp from 'sharp';
 import { createRequire } from 'module';
 import prisma from '../config/prisma.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
+import { isUsableFace } from '../lib/portraitScore.js';
 import { searchBySelfie } from '../lib/faceAWS.js';
-import { albumPeopleAWS, photoIdsForPersonAWS } from '../lib/faceAWSIndex.js';
+import { albumPeopleAWS, photoIdsForPersonAWS, forgetPhotoFacesAWS } from '../lib/faceAWSIndex.js';
 import { getSetting } from '../lib/settings.js';
 import { albumClusters, clusterPhotoIds } from '../lib/faceCluster.js';
 import { withLocalFile, galleryKeyFromRel } from '../lib/localFile.js';
@@ -487,7 +488,9 @@ router.post('/:token/selfie', limit({ name: 'selfie', max: 20, windowMs: 15 * 60
       fs.unlink(req.file.path, () => {});
       if (!q.length) return res.status(400).json({ error: 'No face detected in your selfie — try another photo' });
       const candidates = [];
-      for (const p of photos) for (const f of (p.faces || [])) if (f.descriptor) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
+      // 👤 the same "is it really a face" rule the circles use — a back-of-head
+      // fingerprint must not be what a guest's selfie matches
+      for (const p of photos) for (const f of (p.faces || [])) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
       const matches = findMatches(q[0].descriptor, candidates, 0.5);
       const seen = new Set();
       for (const m of matches) if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); }
@@ -722,10 +725,22 @@ router.delete('/:token/photo/:photoId', async (req, res) => {
       select: { storage_path: true, preview_path: true, thumb_path: true },
     });
     if (!p) return res.status(404).json({ error: 'Not found' });
+    // its faces leave the album's Rekognition collection first — that needs the
+    // rows that deleting the photo would cascade away
+    try { await forgetPhotoFacesAWS(a.id, Number(req.params.photoId)); } catch { /* best effort */ }
     await prisma.photos.deleteMany({ where });
+    /* Every tier from BOTH places. This route only removed the local copy, so
+       a photo a couple's admin deleted stayed in R2 for ever — invisible, and
+       still counted against the vendor's storage. */
+    const r2on = await objects.enabled(objects.PRIVATE);
     for (const rel of [p.storage_path, p.preview_path, p.thumb_path]) {
       if (!rel) continue;
       try { fs.unlinkSync(path.join(ROOT, rel)); } catch { /* already gone — fine */ }
+      const parts = String(rel).split('/').filter(Boolean);
+      if (r2on && parts.length >= 3) {
+        try { await objects.deleteObject(objects.PRIVATE, objects.keyFor(a.vendor_id, 'galleries', parts[1], parts[2])); }
+        catch (e) { console.error('[gallery] R2 delete failed for', rel, e.message); }
+      }
     }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

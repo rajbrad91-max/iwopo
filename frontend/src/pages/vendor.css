@@ -977,8 +977,6 @@
   margin-top: auto;
 }
 .gal-cover-btn:hover { border-color: #2dd4bf; color: #2dd4bf; background: #2dd4bf0d; }
-.gal-prefix { width: 132px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 6px 9px; font-size: 12px; }
-.gal-prefix:focus { outline: none; border-color: #2dd4bf; }
 .gal-gen { background: #2dd4bf22; border: 1px solid #2dd4bf55; color: #2dd4bf; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
 .gal-gen:hover { background: #2dd4bf33; }
 .gal-form-foot { display: flex; gap: 14px; align-items: center; margin-top: 20px; }
@@ -1260,7 +1258,6 @@
   background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
   padding: 1px 5px; font-size: 11px; color: var(--text);
 }
-.gal-prefix-full { width: 100%; margin-top: 6px; }
 .gal-cover-empty {
   border: 1.5px dashed var(--line); border-radius: 10px;
   padding: 34px 18px; text-align: center; color: var(--muted); font-size: 12.5px;

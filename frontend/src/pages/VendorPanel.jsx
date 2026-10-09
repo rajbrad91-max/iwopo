@@ -768,10 +768,9 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
   const [showSettings, setShowSettings] = useState(false);
   const [tpl, setTpl] = useState('');
   const [showPw, setShowPw] = useState({ guest: false, admin: false });
-  /* What the vendor typed, by album id, for this browser session only. Never
-     stored, never sent back from the server — it exists so the share email can
-     be filled in the sitting where the password was set. */
-  const [pwMemory, setPwMemory] = useState({});
+  /* true where a password exists but was set before readable copies were kept,
+     so the box is blank for a reason the vendor should be told */
+  const [pwHidden, setPwHidden] = useState({ guest: false, admin: false });
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [galleryToken, setGalleryToken] = useState('');
   const [copiedGallery, setCopiedGallery] = useState(false);
@@ -884,47 +883,36 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
       client_email: b.email || '',
       /* ⚠️ only where nothing has been typed — picking a booking must not
          wipe a password already set for this gallery */
-      guest_password: isAutoShape(s.guest_password, pwPrefix) ? pwPrefix + tail : s.guest_password,
-      admin_password: isAutoShape(s.admin_password, spwPrefix) ? spwPrefix + tail : s.admin_password,
+      guest_password: s.guest_password ? s.guest_password : (tail ? defaultPw('guest', tail) : ''),
+      admin_password: s.admin_password ? s.admin_password : (tail ? defaultPw('admin', tail) : ''),
     }));
   }
-  /* ⚠️ Is this value still the one WE generated — a prefix followed by four
-     digits and nothing else? Only then may a prefix change rewrite it.
-     Anything a person typed is theirs and must survive. */
-  function isAutoShape(value, prefix) {
-    const v = String(value || '');
-    if (!v) return true;                       // empty is ours to fill
-    if (prefix && !v.startsWith(prefix)) return false;
-    return /^\d{1,4}$/.test(v.slice((prefix || '').length));
+
+  /* The default password for one role. ⚠️ If the two default prefixes are the
+     same — including both blank — guest and admin would get the SAME password,
+     and the gallery login checks admin first, so every guest would be an admin
+     who can delete photographs. The admin side then falls back to "admin". */
+  function defaultPw(which, tail) {
+    if (which === 'guest') return pwPrefix + tail;
+    return (spwPrefix && spwPrefix !== pwPrefix ? spwPrefix : 'admin') + tail;
   }
 
-  // 🔄 changing a prefix re-applies to the last-4 tail — but NEVER over a
-  //    password somebody typed by hand.
-  function applyPrefix(which, val) {
-    const oldPrefix = which === 'guest' ? pwPrefix : spwPrefix;
-    if (which === 'guest') setPwPrefix(val); else setSpwPrefix(val);
-    setF(s => {
-      const src = which === 'guest' ? s.guest_password : s.admin_password;
-      /* 🚨 the fix: leave a hand-typed password alone */
-      if (!isAutoShape(src, oldPrefix)) return s;
-      const tail = last4(src) || last4(phoneForAlbum(s));
-      if (!tail) return s;
-      return which === 'guest' ? { ...s, guest_password: val + tail } : { ...s, admin_password: val + tail };
-    });
-  }
-
-  /* ⚠️ The default was only ever filled by picking a booking from the
-     dropdown. A gallery typed by hand got NO password at all, which is the
-     other half of what Raj saw. This finds the phone wherever it is. */
-  /* Fill the two passwords from the client's phone — but only where the box
-     is empty or still holds a value we generated. */
+  /* 🔑 Two levels, on purpose:
+       DEFAULT  — ⚙️ Gallery Settings: prefix + last 4 of the client's phone.
+                  Filled into a NEW album's boxes automatically.
+       OVERRIDE — the album's own boxes. Whatever is typed there is that
+                  album's password and the default no longer applies to it.
+     Only empty boxes on a NEW album are filled — while editing, an empty box
+     means "keep the current password", never "replace it". */
   function autoFillPasswords(state) {
+    if (edit) return state;
     const tail = last4(phoneForAlbum(state));
     if (!tail) return state;
-    const next = { ...state };
-    if (isAutoShape(next.guest_password, pwPrefix)) next.guest_password = pwPrefix + tail;
-    if (isAutoShape(next.admin_password, spwPrefix)) next.admin_password = spwPrefix + tail;
-    return next;
+    return {
+      ...state,
+      guest_password: state.guest_password || defaultPw('guest', tail),
+      admin_password: state.admin_password || defaultPw('admin', tail),
+    };
   }
 
   function phoneForAlbum(state) {
@@ -932,23 +920,27 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
     return b?.phone || '';
   }
 
-  function resetForm() { setF(emptyAlbum()); setCoverFile(null); setCoverFocus('50% 50%'); setFocusView('desktop'); setEdit(null); setMsg(''); }
+  function resetForm() {
+    setF(emptyAlbum()); setCoverFile(null); setCoverFocus('50% 50%'); setFocusView('desktop'); setEdit(null); setMsg('');
+    setPwHidden({ guest: false, admin: false });
+    setShowPw({ guest: false, admin: false });
+  }
   async function create() {
     if (!f.title) return setMsg('⚠️ Gallery name required');
+    /* A gallery with no guest password can never be opened by anybody. The
+       default fills it from the client's phone; with no phone on file there is
+       nothing to build it from, so it has to be typed. */
+    if (!edit && kind !== 'liveshoot' && !String(f.guest_password || '').trim()) {
+      return setMsg('⚠️ Type a guest password — no client phone was found to build the default from');
+    }
+    if (f.guest_password && f.guest_password.trim() === String(f.admin_password || '').trim()) {
+      return setMsg('⚠️ Guest and admin passwords must be different — otherwise every guest can delete photos');
+    }
+    setMsg('💾 Saving…');                              // the click is answered at once, never silence
     try {
-      // persist prefixes for next time
-      api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix, instructions_template: tpl }).catch(() => {});
       let album;
       if (edit) { const d = await api.updateAlbum(edit.id, f); album = d.album; }
       else { const d = await api.createAlbum({ ...f, kind }); album = d.album; }
-      /* Keep what was typed for this session, so the share email can be filled
-         in the same sitting. The server hashes it and never sends it back. */
-      if (album && (f.guest_password || f.admin_password)) {
-        setPwMemory(m => ({ ...m, [album.id]: {
-          guest: f.guest_password || m[album.id]?.guest,
-          admin: f.admin_password || m[album.id]?.admin,
-        } }));
-      }
       /* The gallery itself is already saved by now, so a failed cover must not
          look like a failed save — but it must not look like a success either. A
          vendor who picked a cover and got none would blame the picture. */
@@ -971,35 +963,42 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
       setTimeout(() => setMsg(m => (m && m[0] === '✅' ? '' : m)), 4000);
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
-  function startEdit(a) {
+  async function startEdit(a) {
     setEdit(a);
-    /* Blank, because the stored value is a hash and there is nothing to show.
-       An empty field on save means "leave the password as it is". */
     setF({
       title: a.title || '', category: a.category || '', client_email: a.client_email || '',
       guest_password: '', admin_password: '',
     });
+    setPwHidden({ guest: false, admin: false });
+    setShowPw({ guest: false, admin: false });
     setCoverFile(null); setCoverFocus(a.cover_focus || '50% 50%'); setFocusView('desktop'); setShowNew(true); setMsg('');
+    /* 👁️ This album's current passwords, readable, so the eye button shows
+       them. Typing over one is the override; leaving it is "keep". */
+    try {
+      const p = await api.albumPasswords(a.id);
+      setF(s => ({ ...s, guest_password: p.guest || '', admin_password: p.admin || '' }));
+      setPwHidden({ guest: p.guest_set && !p.guest, admin: p.admin_set && !p.admin });
+    } catch { /* the boxes stay blank, which still means "keep" */ }
   }
 
-  // 📧 fill instructions template with this album's values
-  /* Passwords are hashed on the server and never come back, so the only place
-     the real one exists is here — the value the vendor typed while setting it,
-     kept for this browser session. Set a password and send the email in the
-     same sitting and it fills itself; come back tomorrow and the placeholder
-     stays visible, because a blank line in a client's email is worse than an
-     obvious gap. */
-  function fillTpl(a, raw) {
+  // 📧 fill instructions template with this album's real passwords
+  function fillTpl(a, pw, raw) {
     const base = raw || tpl || DEFAULT_GALLERY_TPL;
-    const typed = pwMemory[a.id] || {};
     return base
       .replaceAll('{client_name}', a.title || 'Client')
-      .replaceAll('{guest_password}', typed.guest || '(type the password here)')
-      .replaceAll('{admin_password}', typed.admin || '(type the password here)');
+      .replaceAll('{guest_password}', pw.guest || '(type the password here)')
+      .replaceAll('{admin_password}', pw.admin || '(type the password here)');
   }
-  function openSend(a) {
+  async function openSend(a) {
     setSendMsg('');
-    setSendModal({ album: a, email: a.client_email || '', body: fillTpl(a), editing: false });
+    /* What is in the form wins — it may hold a password typed but not saved
+       yet; otherwise the stored readable copy. */
+    let pw = edit?.id === a.id ? { guest: f.guest_password, admin: f.admin_password } : {};
+    if (!pw.guest || !pw.admin) {
+      try { const p = await api.albumPasswords(a.id); pw = { guest: pw.guest || p.guest, admin: pw.admin || p.admin }; }
+      catch { /* placeholders stay visible */ }
+    }
+    setSendModal({ album: a, email: (edit?.id === a.id && f.client_email) || a.client_email || '', body: fillTpl(a, pw), editing: false });
   }
   async function doSend() {
     if (!sendModal?.email) { setSendMsg('⚠️ Email required'); return; }
@@ -1062,30 +1061,24 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
             <section className="gal-card-sec">
               <h4 className="gal-sec-h">🔑 Access</h4>
               <div className="gal-sec-note gal-pw-hint">
-                A prefix is added in front of the last 4 characters of the password —
-                e.g. prefix <code>susan</code> + <code>4821</code> = <code>susan4821</code>.
+                {edit
+                  ? <>These are this album's own passwords. Type over one to change it for this album only.</>
+                  : <>Filled from your defaults in ⚙️ Settings — prefix + last 4 digits of the client's phone,
+                     e.g. <code>susan</code> + <code>4821</code> = <code>susan4821</code>. Type here to override for this album.</>}
               </div>
-              {/* Said plainly, because it changes what a vendor can rely on: once
-                  saved, a password cannot be looked up again by anyone. */}
-              {edit && (
-                <div className="gal-sec-note gal-pw-hint">
-                  🔒 Passwords are stored encrypted and can't be shown again.
-                  Leave these blank to keep the current ones, or type a new one to replace it.
-                </div>
-              )}
               <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
                 <div className="gal-pw-wrap">
                   <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
                 </div>
-                <input className="gal-prefix gal-prefix-full" value={pwPrefix} onChange={e => applyPrefix('guest', e.target.value)} placeholder="guest prefix (optional)" title="Added in front of the last 4 characters" />
+                {pwHidden.guest && !f.guest_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
               </div>
               <div><label className="lbl">🔐 Admin password</label>
                 <div className="gal-pw-wrap">
                   <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
                 </div>
-                <input className="gal-prefix gal-prefix-full" value={spwPrefix} onChange={e => applyPrefix('admin', e.target.value)} placeholder="admin prefix (optional)" title="Added in front of the last 4 characters" />
+                {pwHidden.admin && !f.admin_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
               </div>
               <div className="gal-sec-note">Guests can view, download and favorite. The admin password also unlocks selecting, sending a selection, and deleting.</div>
             </section>
@@ -1162,7 +1155,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
           {msg && msg[0] === '✅' && <span className="gal-toast">{msg}</span>}
         <h2 className="gal-title">{kind === 'liveshoot' ? '🎥 Live shoots' : '📸 Galleries'}</h2>
         <div className="gal-head-btns">
-          <button className="lead-ic-btn" onClick={() => { if (showNew) resetForm(); setShowNew(s => !s); }} title={showNew ? 'Cancel' : 'New album'}>{showNew ? '✕' : '➕'}</button>
+          <button className="lead-ic-btn" onClick={() => { resetForm(); setShowNew(s => !s); }} title={showNew ? 'Cancel' : 'New album'}>{showNew ? '✕' : '➕'}</button>
           <button className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); setSearch(''); }} title="Search albums">🔍</button>
           <button className={`lead-ic-btn lead-ic-del ${selectMode ? 'is-on' : ''}`} onClick={onBinClick} title={selectMode ? (checked.length ? `Delete ${checked.length}` : 'Cancel select') : 'Select to delete'}>{selectMode && checked.length ? `🗑️ ${checked.length}` : '🗑️'}</button>
           <button className="lead-ic-btn" onClick={() => setShowSettings(true)} title="Settings">⚙️</button>
@@ -1202,6 +1195,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 </div>
 
                 <label className="lbl gal-set-lbl">🔑 Default password prefixes</label>
+                <div className="gal-set-hint">Every new album gets prefix + last 4 digits of the client's phone. Any album can override its own in 🔑 Access.</div>
                 <div className="gal-set-prefixes">
                   <input className="gal-input" value={pwPrefix} onChange={e => setPwPrefix(e.target.value)} placeholder="Guest prefix" />
                   <input className="gal-input" value={spwPrefix} onChange={e => setSpwPrefix(e.target.value)} placeholder="Admin prefix" />
@@ -1833,7 +1827,7 @@ function AlbumDetail({ albumId, onBack }) {
         worker.terminate(); workerRef.current = null;
       }
     };
-    worker.postMessage({ albumId, files, eventId, token, maxCount: 20 });
+    worker.postMessage({ albumId, files, eventId, token, maxCount: 2 });   // 2 per request, 4 requests in flight — see uploadWorker.js
   }
   async function delPhoto(pid) {
     if (!await dialog.confirm('This photo will be removed from the album.', { title: 'Delete photo?', okLabel: 'Delete' })) return;

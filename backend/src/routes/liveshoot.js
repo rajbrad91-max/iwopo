@@ -32,6 +32,7 @@ import crypto from 'node:crypto';
 import multer from 'multer';
 import prisma from '../config/prisma.js';
 import { getFaceDescriptors, faceDistance } from '../lib/faceEngine.js';
+import { isUsableFace } from '../lib/portraitScore.js';
 
 const router = express.Router();
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 } });
@@ -229,11 +230,12 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
 
     const ranked = [];
     for (const p of indexed) {
-      for (const f of (p.faces || [])) {
-        if (!f.descriptor) continue;
+      (p.faces || []).forEach((f, k) => {
+        // 👤 same rule as the circles: a back-of-head fingerprint is not a face
+        if (!f.descriptor || !isUsableFace(f)) return;
         const d = faceDistance(me, f.descriptor);
-        if (Number.isFinite(d)) ranked.push({ photo_id: p.id, d });
-      }
+        if (Number.isFinite(d)) ranked.push({ photo_id: p.id, k, d });
+      });
     }
     ranked.sort((x, y) => x.d - y.d);
 
@@ -248,22 +250,32 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
     /* Every face under the line belongs to this person. With no averaging to
        be fooled by, a straight threshold is enough — and the measurement says
        so: zero strangers at 0.48 on a real album. */
-    const ids = [...new Set(ranked.filter(r => r.d <= limit).map(r => r.photo_id))];
+    const hits = ranked.filter(r => r.d <= limit);
+    const ids = [...new Set(hits.map(r => r.photo_id))];
 
     /* The pass still names CLUSTERS, so photographs taken later in the evening
-       appear for this guest as they arrive. Read from the photographs just
-       matched rather than by comparing centroids. */
+       appear for this guest as they arrive.
+       🚨 Only the circles of the FACES that matched — not every circle linked to
+       the matched photographs. A guest in one group shot with the bride used to
+       get the bride's circle too, and with it every photograph of the bride. */
     const links = await prisma.photo_faces.findMany({
-      where: { photo_id: { in: ids } },
+      where: { OR: hits.map(h => ({ photo_id: h.photo_id, face_index: h.k })) },
       select: { cluster_id: true },
     });
     const mine = [...new Set(links.map(l => l.cluster_id))].map(id => ({ id }));
 
+    /* What is shown is exactly what the pass can open afterwards — the photos
+       of those circles. Listing a matched photo the pass cannot reach drew a
+       blank tile the guest could never fill. */
+    const reach = mine.length ? await prisma.photo_faces.findMany({
+      where: { cluster_id: { in: mine.map(m => m.id) } }, select: { photo_id: true },
+    }) : [];
     const photos = await prisma.photos.findMany({
-      where: { id: { in: ids }, album_id: a.id },     // 🔒 belt and braces
+      where: { id: { in: [...new Set(reach.map(r => r.photo_id))] }, album_id: a.id },     // 🔒 belt and braces
       select: { id: true, filename: true, thumb_path: true, preview_path: true },
       orderBy: { filename: 'asc' },
     });
+    if (!photos.length) return res.json({ matched: false, photos: [], still_indexing: ids.length > 0 });
 
     const pass = mintPass(a.id, mine.map(m => m.id));
     /* httpOnly so no script on the page can read it, sameSite lax so following

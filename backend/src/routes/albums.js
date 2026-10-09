@@ -14,14 +14,15 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
+import { isUsableFace } from '../lib/portraitScore.js';
 import { searchBySelfie, deleteCollection } from '../lib/faceAWS.js';
 import { forgetPhotoFacesAWS } from '../lib/faceAWSIndex.js';
-import { enqueueAlbum, indexAlbumNow, uploadsFinished } from '../lib/faceQueue.js';
+import { enqueueAlbum, indexAlbumNow, uploadsFinished, noteUpload } from '../lib/faceQueue.js';
 import { getSetting } from '../lib/settings.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { naturalSort, byFilename } from '../lib/naturalSort.js';
 import bcrypt from 'bcryptjs';
-import { hashSharePassword } from '../lib/sharePassword.js';
+import { hashSharePassword, sealPassword, openPassword } from '../lib/sharePassword.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { deviceOrAuth } from '../lib/deviceAuth.js';
 import { getFeatures } from '../lib/entitlements.js';
@@ -230,8 +231,13 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   const v = vid(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
-  const { title, category, guest_username, guest_password, admin_username, admin_password,
+  const { title, category, guest_username, admin_username,
     client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai } = req.body;
+  /* ⚠️ Trimmed BEFORE hashing. The client's login trims what they type, so a
+     password saved with a stray space — easy when a prefix ends in one — could
+     never be matched however correctly it was typed. */
+  const guest_password = cleanPw(req.body.guest_password);
+  const admin_password = cleanPw(req.body.admin_password);
   if (!title) return res.status(400).json({ error: 'Title required' });
   const pwErr = await checkGalleryPasswords(vid(req), [guest_password, admin_password]);
   if (pwErr) return res.status(400).json({ error: pwErr });
@@ -267,8 +273,10 @@ router.post('/', requireAuth, async (req, res) => {
         kind: wantsLive ? 'liveshoot' : 'gallery',
         guest_username: guest_username || null,
         guest_password: await hashSharePassword(guest_password),
+        guest_password_enc: sealPassword(guest_password),
         admin_username: admin_username || null,
         admin_password: await hashSharePassword(admin_password),
+        admin_password_enc: sealPassword(admin_password),
         client_email: client_email || null,
         exp_enabled: !!exp_enabled,
         exp_from_date: exp_from_date ? new Date(exp_from_date) : null,
@@ -372,35 +380,67 @@ router.put('/theme', requireAuth, async (req, res) => {
 router.put('/:id', requireAuth, async (req, res) => {
   const v = vid(req);
   const id = Number(req.params.id);
-  const { title, category, guest_username, guest_password, admin_username, admin_password,
-    client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai } = req.body;
+  const b = req.body || {};
+  const guest_password = cleanPw(b.guest_password);
+  const admin_password = cleanPw(b.admin_password);
   try {
     const pwErr = await checkGalleryPasswords(v, [guest_password, admin_password]);
     if (pwErr) return res.status(400).json({ error: pwErr });
-    // 🔒 tenancy: scope the update itself by vendor, so it can't touch another vendor's album
-    const data = {
-      category: category || null,
-      guest_username: guest_username || null,
-      admin_username: admin_username || null,
-      client_email: client_email || null,
-      exp_enabled: !!exp_enabled,
-      exp_from_date: exp_from_date ? new Date(exp_from_date) : null,
-      exp_date: exp_date ? new Date(exp_date) : null,
-      exp_notes: exp_notes || null,
-      face_ai: !!face_ai,
-    };
-    if (title) data.title = title;              // COALESCE($1,title): keep existing when blank
+    /* ⚠️ Only what was SENT is written. This used to write every column on
+       every save — so the panel, which sends title, category, email and the
+       passwords, silently switched face_ai off and wiped the expiry dates of
+       any album it saved. */
+    const data = {};
+    const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+    if (b.title) data.title = String(b.title).slice(0, 160);   // blank keeps the existing title
+    if (has('category')) data.category = b.category || null;
+    if (has('client_email')) data.client_email = b.client_email || null;
+    if (has('guest_username')) data.guest_username = b.guest_username || null;
+    if (has('admin_username')) data.admin_username = b.admin_username || null;
+    if (has('exp_enabled')) data.exp_enabled = !!b.exp_enabled;
+    if (has('exp_from_date')) data.exp_from_date = b.exp_from_date ? new Date(b.exp_from_date) : null;
+    if (has('exp_date')) data.exp_date = b.exp_date ? new Date(b.exp_date) : null;
+    if (has('exp_notes')) data.exp_notes = b.exp_notes || null;
+    if (has('face_ai')) data.face_ai = !!b.face_ai;
 
-    /* A blank password field means "leave it as it is", not "remove it".
-       The panel cannot show the current password any more — it is a hash — so it
-       sends an empty field unless the vendor deliberately types a new one, and
-       treating that as a removal would silently unlock the gallery. */
-    if (guest_password) data.guest_password = await hashSharePassword(guest_password);
-    if (admin_password) data.admin_password = await hashSharePassword(admin_password);
+    /* A blank password field means "leave it as it is", not "remove it" —
+       treating it as a removal would silently unlock the gallery. */
+    if (guest_password) {
+      data.guest_password = await hashSharePassword(guest_password);
+      data.guest_password_enc = sealPassword(guest_password);
+    }
+    if (admin_password) {
+      data.admin_password = await hashSharePassword(admin_password);
+      data.admin_password_enc = sealPassword(admin_password);
+    }
+    // 🔒 tenancy: scope the update itself by vendor, so it can't touch another vendor's album
     const { count } = await prisma.albums.updateMany({ where: { id, vendor_id: v }, data });
     if (!count) return res.status(404).json({ error: 'Not found' });
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album: publicAlbum(album) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * 👁️ GET /api/albums/:id/passwords → the gallery's passwords, readable.
+ *
+ * For the eye button and the Send Instructions email. 🔒 The album must be
+ * this vendor's. An album whose passwords were set before readable copies
+ * existed comes back null with *_set: true — the vendor types a new one.
+ */
+router.get('/:id/passwords', requireAuth, async (req, res) => {
+  const v = vid(req);
+  try {
+    const a = await prisma.albums.findFirst({
+      where: { id: Number(req.params.id), vendor_id: v },        // 🔒 tenancy
+      select: { guest_password: true, admin_password: true, guest_password_enc: true, admin_password_enc: true },
+    });
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      guest: openPassword(a.guest_password_enc), guest_set: !!a.guest_password,
+      admin: openPassword(a.admin_password_enc), admin_set: !!a.admin_password,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -423,16 +463,13 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
         where: { vendor_id: v },                // 🔒 tenancy
         select: { instructions_template: true },
       });
-      /* The stored passwords are hashes now, so they cannot be put in an email
-         — dropping them in would send a client a line of bcrypt. The panel
-         fills the template while the vendor still has the typed value in front
-         of them and sends the finished body; this fallback runs only when no
-         body arrived, and leaves the placeholder visible so whoever sends it
-         can see what is missing rather than a blank line. */
+      /* The readable copies fill the passwords in. An album set before those
+         existed has none, so its placeholder stays visible — a blank line in a
+         client's email is worse than an obvious gap. */
       body = (st?.instructions_template || DEFAULT_INSTRUCTIONS)
         .replaceAll('{client_name}', a.title || 'Client')
-        .replaceAll('{admin_password}', '(type the password here)')
-        .replaceAll('{guest_password}', '(type the password here)');
+        .replaceAll('{admin_password}', openPassword(a.admin_password_enc) || '(type the password here)')
+        .replaceAll('{guest_password}', openPassword(a.guest_password_enc) || '(type the password here)');
     }
 
     // remember the entered email on the album for next time
@@ -793,83 +830,63 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
        above the loop, because the filename is built inside it and needs to
        know. */
     const twoTier = own.kind === 'liveshoot';
+    const r2on = await objects.enabled(objects.PRIVATE);
+
+    /* 📐 The two screen sizes. FIXED — this is about speed, not resolution:
+       galleries 2200px preview + 800px thumb, live shoots 1800px + 800px,
+       exactly as before. A live shoot's uploaded JPEG is already Raj's export
+       at the size he wants, so its screen tier is a little smaller. */
+    const FULL_EDGE = twoTier ? 1800 : 2200;
+    const FULL_Q = twoTier ? 84 : 82;
+    const THUMB_EDGE = 800;
+    const THUMB_Q = 78;
+
+    /** One file to R2 — the size is already known, so no second round trip to ask. */
+    const toR2 = (name, size) => objects.putObject(objects.PRIVATE, galleryKey(v, id, name),
+      fs.createReadStream(path.join(dir, name)), undefined, size)
+      .then(() => { dropLocal(path.join(dir, name)); return true; })   // R2 has it; the VPS need not
+      .catch((e) => { console.error('[gallery] R2 upload failed for', name, e.message); return false; });
 
     const saved = [];
     for (const f of req.files || []) {
       const base = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       const origName = `${base}_orig${path.extname(f.originalname) || '.jpg'}`;
       const thumbName = `${base}_thumb.webp`;
-      /* The extension has to match what is inside. A live shoot's full tier is
-         a JPEG; naming it .webp would hand a guest a file their phone refuses
-         to open for a reason nobody could ever diagnose. */
       const fullName = `${base}_full.webp`;
 
-      /* 🎥 A LIVE SHOOT keeps two tiers, not three.
-         ⚠️ Galleries are untouched by this branch and keep all three — a
-         gallery is a deliverable and a couple may want the full-resolution
-         file years later. A live shoot is different: guests want a picture
-         for a phone and for social the same evening, nobody asks a wedding
-         guest for a 40-megapixel original, and storing hundreds of them per
-         event costs real money and makes every read slower.
+      /* The uploaded file is kept exactly as it arrives — for a gallery the
+         camera original, for a live shoot Raj's export — and it is what a
+         download serves. It starts on its way to R2 at once, while the screen
+         sizes are being made, rather than waiting for them. */
+      fs.copyFileSync(f.path, path.join(dir, origName));
+      const origSent = r2on ? toR2(origName, f.size) : null;
 
-         So no original is kept. The 2500px webp IS the download, which is
-         about 2 MB and larger than anything Instagram will accept anyway. */
-      if (twoTier) {
-        /* 🖼️ The uploaded JPEG IS the download — kept exactly as it arrives.
-           Raj's editing machine exports it at the size he wants, with
-           Lightroom's own output sharpening, which is better than anything
-           done here. The server only makes the two webp tiers it needs for
-           the screen.
-
-           Measured: reading a 1.4 MB export instead of an 8 MB original and
-           making two tiers instead of three took ten photographs from 26
-           seconds to 6.9 — 74% less work — and the upload from the venue
-           drops from 81 MB per ten to 13.
-
-           ⚠️ withoutEnlargement on both, so a small export is never blown up
-           into something softer than what arrived. */
-        fs.copyFileSync(f.path, path.join(dir, origName));
-        await sharp(f.path).rotate().resize(1800, 1800, { fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 84 }).toFile(path.join(dir, fullName));
-      } else {
-        // original (as-is, for download + pinch-zoom 1:1)
-        fs.copyFileSync(f.path, path.join(dir, origName));
-        // full-screen 2200px long-edge webp (the single display tier)
-        await sharp(f.path).rotate().resize(2200, 2200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toFile(path.join(dir, fullName));
-      }
-      // thumb 800px webp (grid) — the same for both
-      await sharp(f.path).rotate().resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toFile(path.join(dir, thumbName));
-
-      /* The uploaded JPEG is kept in both cases now — for a gallery it is the
-         camera original, for a live shoot it is Raj's export, and in both it
-         is what a download serves. */
-      const tiers = [origName, fullName, thumbName];
+      /* 🚀 ONE decode, not two. The camera file was opened and decoded twice —
+         once for the preview, once more for the thumb. Now it is decoded once
+         to the preview size, and the thumb is shrunk from that. Same sizes,
+         same quality settings; the thumb is cut from an image that still has
+         nearly three times the pixels it needs. rotate() first, as before, so
+         the camera's orientation flag is honoured. */
+      const { data, info } = await sharp(f.path).rotate()
+        .resize(FULL_EDGE, FULL_EDGE, { fit: 'inside', withoutEnlargement: true })
+        .raw().toBuffer({ resolveWithObject: true });
+      const fromRaw = () => sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } });
+      await Promise.all([
+        fromRaw().webp({ quality: FULL_Q }).toFile(path.join(dir, fullName)),
+        fromRaw().resize(THUMB_EDGE, THUMB_EDGE, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: THUMB_Q }).toFile(path.join(dir, thumbName)),
+      ]);
 
       // what this photograph actually costs
-      const costBytes = tiers.reduce((n, x) => {
-        try { return n + fs.statSync(path.join(dir, x)).size; } catch { return n; }
-      }, 0);
+      const fullSize = fs.statSync(path.join(dir, fullName)).size;
+      const thumbSize = fs.statSync(path.join(dir, thumbName)).size;
+      const costBytes = f.size + fullSize + thumbSize;
 
-      /* ☁️ And to R2, into the PRIVATE bucket. A gallery is opened with an
-         album password or a view token, so its objects must never sit beside
-         the public website images — a single bucket would let anyone holding a
-         file's URL walk past that gate.
-
-         Written after the disk, and failure is logged rather than fatal: the
-         photographs are already saved locally and every reader falls back
-         there, so an unreachable R2 costs a slower read, not a lost wedding. */
-      if (await objects.enabled(objects.PRIVATE)) {
-        // all three tiers at once rather than in turn — they are independent,
-        // and waiting for each in sequence tripled the time a batch of
-        // photographs spent in the request
-        await Promise.all(tiers.map(async (n) => {
-          try {
-            await objects.putObject(objects.PRIVATE, galleryKey(v, id, n),
-              fs.createReadStream(path.join(dir, n)));
-            dropLocal(path.join(dir, n));      // R2 has it; the VPS need not
-          } catch (e) { console.error('[gallery] R2 upload failed for', n, e.message); }
-        }));
-      }
+      /* ☁️ The two screen sizes to R2, alongside the original already in
+         flight. Failure is logged rather than fatal: the files are on disk and
+         every reader falls back there, so an unreachable R2 costs a slower read,
+         not a lost wedding. */
+      if (r2on) await Promise.all([origSent, toR2(fullName, fullSize), toR2(thumbName, thumbSize)]);
       fs.unlinkSync(f.path);
 
       const rel = (n) => `${v}/${id}/${n}`;
@@ -890,9 +907,18 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
       saved.push({ ...photo, size_bytes: photo.size_bytes == null ? null : Number(photo.size_bytes) });
     }
     res.status(201).json({ uploaded: saved.length, photos: saved });
-    // 🤳 queue face indexing (throttled single worker — never blocks the API)
-    enqueueAlbum(id);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    /* 🤳 Faces. A live shoot is indexed at once — guests are standing there
+       waiting. A gallery waits until the uploading has stopped (the panel's
+       "uploads done", or a quiet spell for a closed tab), so face detection
+       never competes with the photographs still coming in. */
+    if (twoTier) enqueueAlbum(id); else noteUpload(id);
+  } catch (e) {
+    /* A file that fails half way (a corrupt JPEG, a dropped connection) used to
+       leave every remaining upload of the batch sitting in /tmp. The sweep in
+       lib/orphanSweep.js catches anything else that slips through. */
+    for (const f of req.files || []) { try { fs.unlinkSync(f.path); } catch { /* moved or gone */ } }
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /**
@@ -1221,36 +1247,30 @@ router.post('/:id/uploads-done', requireAuth, async (req, res) => {
 });
 
 /**
- * 🔑 Gallery passwords are deliberately readable.
+ * 🔑 Two rules for gallery passwords, because one is shared by design and its
+ * readable copy is kept for the vendor (see sealPassword):
  *
- * They are not account credentials — a vendor emails one to a couple, and being
- * able to answer "what was our password again?" without resetting it for
- * everyone else is worth more here than storing a hash nobody can read back.
- * Guessing is already throttled at twelve attempts per fifteen minutes.
- *
- * What that choice DOES require is that they never overlap with something that
- * matters. Two rules:
- *
- *   1. A gallery password may not be the vendor's own account password. It is
- *      shared by design and stored readable, so reuse would hand out account
- *      access with a wedding link.
- *   2. Four characters minimum. There was no floor at all, and albums exist
- *      today whose password is the single character "1" — which twelve attempts
- *      is plenty to find.
+ *   1. A gallery password may not be the vendor's own account password —
+ *      reuse would hand out account access with a wedding link.
+ *   2. Four characters minimum. There was no floor at all, and albums existed
+ *      whose password was the single character "1".
  */
 const MIN_GALLERY_PW = 4;
 
+/** A typed password, trimmed; empty stays empty ("leave it as it is"). */
+function cleanPw(v) {
+  return v == null ? '' : String(v).trim();
+}
+
 /**
- * An album as the panel should see it: everything except the password hashes.
- *
- * A hash is no use to the browser — it cannot be shown to the vendor and cannot
- * be typed back — so sending it is pure exposure. The panel tells whether a
- * password EXISTS from has_guest_password / has_admin_password, which is all it
- * needs to label the field.
+ * An album as the panel should see it: no hashes and no sealed copies.
+ * Readable passwords come only from GET /:id/passwords, on purpose — a list
+ * of every album should not carry every password with it.
  */
 function publicAlbum(a) {
   if (!a) return a;
-  const { guest_password, admin_password, ...rest } = a;
+  const { guest_password, admin_password, guest_password_enc, admin_password_enc, ...rest } = a;
+  void guest_password_enc; void admin_password_enc;
   return {
     ...rest,
     has_guest_password: !!guest_password,
@@ -1261,6 +1281,12 @@ function publicAlbum(a) {
 async function checkGalleryPasswords(vendorId, values) {
   const given = values.filter(v => v != null && v !== '');
   if (!given.length) return null;
+
+  /* ⚠️ Guest and admin must differ. The login tries admin first, so a shared
+     password makes every guest an admin who can delete photographs. */
+  if (given.length === 2 && String(given[0]).trim() === String(given[1]).trim()) {
+    return 'Guest and admin passwords must be different';
+  }
 
   for (const v of given) {
     if (String(v).trim().length < MIN_GALLERY_PW) {
@@ -1442,7 +1468,7 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
       if (!q.length) return res.status(400).json({ error: 'No face found in selfie' });
       const candidates = [];
       for (const p of photos) {
-        for (const f of (p.faces || [])) if (f.descriptor) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
+        for (const f of (p.faces || [])) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
       }
       const matches = findMatches(q[0].descriptor, candidates, 0.5);
       const seen = new Set();

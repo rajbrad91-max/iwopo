@@ -35,6 +35,8 @@ model albums {
   guest_password    String?          @db.VarChar(120)
   admin_username    String?          @db.VarChar(80)
   admin_password    String?          @db.VarChar(120)
+  guest_password_enc String?
+  admin_password_enc String?
   created_at        DateTime?        @default(now()) @db.Timestamp(6)
   exp_enabled       Boolean?         @default(false)
   exp_from_date     DateTime?        @db.Date
@@ -525,6 +527,7 @@ model payments {
 model photo_faces {
   cluster_id    Int
   photo_id      Int
+  face_index    Int?
   face_clusters face_clusters @relation(fields: [cluster_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos        photos        @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 

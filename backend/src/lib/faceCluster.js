@@ -11,7 +11,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../config/prisma.js';
-import { portraitScore } from './portraitScore.js';
+import { portraitScore, isUsableFace, boxSize } from './portraitScore.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -25,23 +25,59 @@ const ROOT = GALLERIES_ROOT;
 // at this stage. Measured on a real wedding set, 0.87 gave 4 people where AWS
 // gave 6; 0.40 gives 6, matching AWS exactly.
 //
-// Junk is filtered by MIN_FACE_FRAC (size) and MIN_PHOTOS (must appear twice)
-// rather than by confidence alone, so lowering this does not create noise
-// circles — a one-off false positive still can't reach the bar.
+// Junk is filtered by isUsableFace() — size, plus whether the eyes and nose
+// are those of a real face — and by the evidence a circle needs (clearSingle /
+// pairHolds below), rather than by confidence alone.
 const MIN_SCORE = 0.40;
 // Two local descriptors within this euclidean distance are the same person.
 // 0.48 balances two failure modes: too high (0.52+) merges different people; too
-// low (0.45) splits one person's varied angles/lighting into fragments that then
-// fall below MIN_PHOTOS and vanish. Nearest-member matching (below) is what keeps
+// low (0.45) splits one person's varied angles/lighting into fragments.
+// Nearest-member matching (below) is what keeps
 // this safe from drift, so we can afford a slightly looser distance here.
 const MATCH_DIST = 0.48;
-// A face box must cover at least this fraction of the image's smaller side to be
-// clustered. 0.03 skips only very distant background heads — medium-distance faces
-// (a guest across a room) still count, so people don't lose photos they're clearly in.
-const MIN_FACE_FRAC = 0.03;
-// Ignore anyone who only shows up in a single photo — usually a stranger in the
-// background, not a guest worth putting on the bar.
-const MIN_PHOTOS = 2;
+/* 👤 Somebody seen in only ONE photograph still gets a circle — Raj,
+   2026-10-09: "one person who just quickly came in the event should not be
+   missed". With no second photo to confirm it, that one face has to be clear
+   on its own: big enough, a confident detection, and looking at the camera.
+   Measured on album 18's eight one-photo faces: this keeps the three real
+   people (man in black, girls in green and pink) and leaves out a back of a
+   head with jewellery (eyeSep 0.32), a hand with mehndi (59px, score 0.57)
+   and two three-quarter shots of the bride who already has her own circle. */
+const SINGLE_MIN_PX = 70;
+const SINGLE_MIN_SCORE = 0.55;
+const SINGLE_MIN_EYE_SEP = 0.40;
+const SINGLE_NOSE = [0.30, 0.70];
+
+/** Is one face alone clear enough to be shown as a person? */
+function clearSingle(f) {
+  const { w, h } = boxSize(f.box);
+  return Math.min(w, h) >= SINGLE_MIN_PX
+    && (f.score ?? 0) >= SINGLE_MIN_SCORE
+    && typeof f.eyeSep === 'number' && f.eyeSep >= SINGLE_MIN_EYE_SEP
+    && f.noseBetween >= SINGLE_NOSE[0] && f.noseBetween <= SINGLE_NOSE[1];
+}
+/* 👯 A circle of only TWO photos is the weakest evidence there is: one match.
+   It stands if the two faces are clearly close (≤ PAIR_TIGHT), or if both are
+   confident detections. Measured 2026-10-09 across every 2–3 photo circle on
+   staging: real pairs sat at 0.14–0.34, or at 0.46 with both faces ≥ 0.93;
+   the one wrong pair — the bride and a cardboard photo-booth cut-out — was
+   0.457 apart with the cut-out scoring 0.54. A loose match to a weak
+   detection is exactly what a painted face looks like. */
+const PAIR_TIGHT = 0.40;
+const PAIR_CONF = 0.80;
+
+/** Does a two-photo circle have enough evidence to be shown? */
+function pairHolds(faces) {
+  const [a, b] = [...new Set(faces.map(f => f.photo_id))];
+  let best = null;
+  for (const x of faces.filter(f => f.photo_id === a)) {
+    for (const y of faces.filter(f => f.photo_id === b)) {
+      const d = distance(x.descriptor, y.descriptor);
+      if (!best || d < best.d) best = { d, minScore: Math.min(x.score, y.score) };
+    }
+  }
+  return !!best && (best.d <= PAIR_TIGHT || best.minScore >= PAIR_CONF);
+}
 
 function distance(a, b) {
   let sum = 0;
@@ -69,34 +105,28 @@ async function collectFaces(albumId) {
 
   const faces = [];
   for (const p of rows) {
-    for (const f of (p.faces || [])) {
-      if ((f.score ?? 1) < MIN_SCORE) continue;
-      // skip tiny faces — a box whose smaller side is under MIN_FACE_FRAC of the
-      // image is a distant background head; its descriptor is too noisy to trust.
-      const b = f.box || null;
-      if (b) {
-        const w = b.width ?? b.w ?? 0;
-        const h = b.height ?? b.h ?? 0;
-        if (w > 0 && h > 0) {
-          const looksNormalized = w <= 1 && h <= 1;
-          if (looksNormalized) {
-            if (Math.min(w, h) < MIN_FACE_FRAC) continue;
-          } else {
-            // pixel boxes: require the face to be at least ~55px on its short side
-            if (Math.min(w, h) < 55) continue;
-          }
-        }
-      }
+    (p.faces || []).forEach((f, k) => {
+      if ((f.score ?? 1) < MIN_SCORE) return;
+      /* 👤 Size AND "is it really a face" in one place — isUsableFace().
+         ⚠️ The size check that used to sit here read box.width, but face-api
+         saves its box as _width, so it never ran: 32-pixel background heads
+         were clustered (album 18's 6th circle had two). */
+      if (!isUsableFace(f)) return;
       faces.push({
         photo_id: p.id,
+        // which face in that photo — kept so a circle names FACES, not whole
+        // photographs (a live-shoot pass must not include everyone stood
+        // beside a guest in a group shot)
+        face_index: k,
         engine: p.face_engine || 'vladmandic',
         descriptor: f.descriptor || null,
         box: f.box || null,
         score: f.score ?? 1,
+        eyeSep: f.eyeSep, noseBetween: f.noseBetween,
         // pose + size, used to pick the best portrait for the circle
         yaw: f.yaw, pitch: f.pitch, areaFrac: f.areaFrac, detScore: f.score,
       });
-    }
+    });
   }
   return faces;
 }
@@ -160,6 +190,19 @@ export async function clusterAlbum(albumId) {
   const engine = 'vladmandic';
   const groups = clusterLocal(faces);
 
+  /* 🔁 Keep each person's circle id across rebuilds.
+     Grouping wipes and rebuilds every circle, and a fresh row means a fresh id.
+     A Live Shoot guest's pass names circle ids — so every upload batch during
+     an event used to retire every pass and a guest's photographs vanished.
+     Each new group takes the old id that most of its faces had, when that id
+     is still free. Only first-time faces get a new id. */
+  const old = await prisma.photo_faces.findMany({
+    where: { face_clusters: { album_id: Number(albumId) }, NOT: { face_index: null } },
+    select: { cluster_id: true, photo_id: true, face_index: true },
+  });
+  const oldIdOf = new Map(old.map(o => [`${o.photo_id}:${o.face_index}`, o.cluster_id]));
+  const usedIds = new Set();
+
   // start clean so re-running never duplicates people
   await prisma.face_clusters.deleteMany({ where: { album_id: Number(albumId) } });
 
@@ -167,7 +210,8 @@ export async function clusterAlbum(albumId) {
   for (const g of groups) {
     // one person can appear once per photo — collapse duplicates
     const photoIds = [...new Set(g.faces.map(f => f.photo_id))];
-    if (photoIds.length < MIN_PHOTOS) continue;
+    if (photoIds.length === 1 && !clearSingle(g.faces[0])) continue;   // 👤 see SINGLE_MIN_*
+    if (photoIds.length === 2 && !pairHolds(g.faces)) continue;        // 👯 see PAIR_TIGHT
 
     // 🖼️ the circle uses the most PORTRAIT-LIKE face of this person, not simply
     // the highest detection score. Detection score answers "is this a face?",
@@ -175,8 +219,16 @@ export async function clusterAlbum(albumId) {
     const cover = g.faces.reduce((best, f) =>
       portraitScore(f) > portraitScore(best) ? f : best, g.faces[0]);
 
+    const votes = new Map();
+    for (const f of g.faces) {
+      const id = oldIdOf.get(`${f.photo_id}:${f.face_index}`);
+      if (id && !usedIds.has(id)) votes.set(id, (votes.get(id) || 0) + 1);
+    }
+    const keepId = [...votes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+
     const created = await prisma.face_clusters.create({
       data: {
+        ...(keepId ? { id: keepId } : {}),
         album_id: Number(albumId), vendor_id: vendorId, engine,
         centroid: g.centroid ?? null,        // Json columns — no manual stringify
         cover_photo_id: cover.photo_id,
@@ -185,9 +237,13 @@ export async function clusterAlbum(albumId) {
       },
       select: { id: true },
     });
+    usedIds.add(created.id);
 
+    // one link per photo, naming WHICH face in it is this person
+    const firstFace = new Map();
+    for (const f of g.faces) if (!firstFace.has(f.photo_id)) firstFace.set(f.photo_id, f.face_index);
     await prisma.photo_faces.createMany({
-      data: photoIds.map(pid => ({ cluster_id: created.id, photo_id: pid })),
+      data: photoIds.map(pid => ({ cluster_id: created.id, photo_id: pid, face_index: firstFace.get(pid) })),
       skipDuplicates: true,                  // ON CONFLICT DO NOTHING
     });
     saved++;
