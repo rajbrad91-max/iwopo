@@ -11,7 +11,7 @@ import { queueStatus, enqueueAlbum } from '../lib/faceQueue.js';
 import { deleteCollection } from '../lib/faceAWS.js';
 import { platformMail } from './email.js';
 import nodemailer from 'nodemailer';
-import { quoConfig, listPhoneNumbers } from '../lib/quo.js';
+import { quoConfig, listPhoneNumbers, isQuoNumberId } from '../lib/quo.js';
 import { getSetting } from '../lib/settings.js';
 
 const router = express.Router();
@@ -218,7 +218,8 @@ router.post('/settings/platform/test-ai', requireAuth, requireSuperAdmin, async 
 router.post('/settings/platform/test-quo', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const cfg = await quoConfig();
-    if (!cfg.ready) return res.status(400).json({ error: 'Add the Quo API key first.' });
+    // listing numbers needs only the key — the vendor is chosen afterwards, from this list's page
+    if (!cfg.key) return res.status(400).json({ error: 'Add the Quo API key first.' });
 
     const numbers = await listPhoneNumbers(cfg.key);
     if (!numbers.length) {
@@ -281,6 +282,27 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
         error: 'same_bucket',
         message: 'The private and public buckets must be different. Sharing one would make every gallery password and share link meaningless.',
       });
+    }
+
+    /* 📞 Quo values are checked, not just stored. A phone number typed where
+       Quo's own number id belongs ("+1778…" instead of "PN…") saved happily
+       and then made every sync ask Quo for a number that does not exist; a
+       vendor id for nobody silently sent calls to no timeline.
+       Only a CHANGED value is judged: the form sends every field on every
+       save, and an old bad value must not block saving the mail settings —
+       quoConfig() reports it instead, where the sync button shows it. */
+    const stored = await getAllSettings();
+    const qNum = String(req.body.quo_phone_number_id ?? '').trim();
+    if (qNum && qNum !== stored.quo_phone_number_id && !qNum.includes('••••') && !isQuoNumberId(qNum)) {
+      return res.status(400).json({
+        error: 'quo_number_id',
+        message: 'That is a phone number, not Quo\'s number id. Press "List my numbers" and pick one — or choose "Every number".',
+      });
+    }
+    const qVendor = String(req.body.quo_vendor_id ?? '').trim();
+    if (qVendor && qVendor !== String(stored.quo_vendor_id ?? '')) {
+      const exists = /^\d+$/.test(qVendor) && await prisma.vendors.findUnique({ where: { id: Number(qVendor) }, select: { id: true } });
+      if (!exists) return res.status(400).json({ error: 'quo_vendor', message: 'Choose the vendor whose timeline the calls go to.' });
     }
 
     for (const k of allowed) {

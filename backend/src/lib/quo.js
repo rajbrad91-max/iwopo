@@ -23,13 +23,30 @@ const BASE = 'https://api.openphone.com/v1';
 /** The credentials, or a clear reason there are none. */
 export async function quoConfig() {
   const s = await getAllSettings().catch(() => ({}));
+  const key = s.quo_api_key || '';
+  const vendorId = Number(s.quo_vendor_id || 0);
+  /* Which piece is missing, in words a super admin can act on. "Not
+     configured" alone sent Raj looking at a key that was fine — the vendor
+     box was the empty one. */
+  const missing = [];
+  if (!key) missing.push('the API key');
+  if (!vendorId) missing.push('whose timeline (the vendor)');
+  const phoneNumberId = s.quo_phone_number_id || '';
+  // a phone number saved before the picker existed — Quo answers it with "not found"
+  if (phoneNumberId && !isQuoNumberId(phoneNumberId)) missing.push('a number picked from "List my numbers"');
   return {
-    key: s.quo_api_key || '',
+    key,
     webhookSecret: s.quo_webhook_secret || '',
-    phoneNumberId: s.quo_phone_number_id || '',
-    vendorId: Number(s.quo_vendor_id || 0),     // whose timeline these land in
-    ready: !!s.quo_api_key,
+    phoneNumberId,
+    vendorId,                                   // whose timeline these land in
+    ready: missing.length === 0,
+    missing,
   };
+}
+
+/** Quo's own id for a number looks like "PN…"; a phone number in its place is refused by Quo. */
+export function isQuoNumberId(v) {
+  return /^PN[A-Za-z0-9]+$/.test(String(v || ''));
 }
 
 /**

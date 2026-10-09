@@ -1681,14 +1681,23 @@ function FaceEngineSettings() {
   const [quoOpen, setQuoOpen] = useState(false);
   const [quoTesting, setQuoTesting] = useState(false);
   const [quoMsg, setQuoMsg] = useState(null);
+  /* 📞 Picked, never typed. The vendor and the number used to be free-text
+     boxes, and live ended up with no vendor and a phone number where Quo's
+     own number id belongs — so every sync said "not configured". */
+  const [quoNumbers, setQuoNumbers] = useState([]);
+  const [vendorList, setVendorList] = useState([]);
+  useEffect(() => {
+    if (!quoOpen || vendorList.length) return;
+    api.vendors().then(d => setVendorList(d.vendors || [])).catch(() => {});
+  }, [quoOpen, vendorList.length]);
 
-  /** Listing the numbers proves the key works and hands back the ids. */
+  /** Listing the numbers proves the key works and fills the number picker. */
   async function testQuo() {
     setQuoTesting(true); setQuoMsg(null);
     try {
       const r = await api.testQuo();
-      const list = (r.numbers || []).map(n => `${n.name} (${n.number}) — id ${n.id}`).join(' · ');
-      setQuoMsg({ ok: true, text: '✅ ' + list });
+      setQuoNumbers(r.numbers || []);
+      setQuoMsg({ ok: true, text: `✅ The key works — ${(r.numbers || []).length} number(s) found. Pick one below, or every number.` });
     } catch (e) {
       setQuoMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach Quo') });
     } finally { setQuoTesting(false); }
@@ -1722,7 +1731,10 @@ function FaceEngineSettings() {
 
   async function save(next) {
     setS(next);
-    try { await api.savePlatformSettings(next); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
+    /* "Every number" is an empty number id, and the server skips empty values
+       so a blank box never wipes a key — so emptying it is asked for by name. */
+    const payload = { ...next, clear: next.quo_phone_number_id ? [] : ['quo_phone_number_id'] };
+    try { await api.savePlatformSettings(payload); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function startEdit() {
@@ -2109,17 +2121,37 @@ function FaceEngineSettings() {
                 value={s.quo_webhook_secret || ''}
                 onChange={e => setS({ ...s, quo_webhook_secret: e.target.value })} /></div>
 
-            <div><label className="lbl">Phone number ID <span style={{ opacity: .6 }}>optional</span></label>
-              <input style={editing ? box : roBox} readOnly={!editing}
-                placeholder="leave empty for every number on the account"
-                value={s.quo_phone_number_id || ''}
-                onChange={e => setS({ ...s, quo_phone_number_id: e.target.value })} /></div>
+            <div><label className="lbl">Phone number</label>
+              {editing ? (
+                <select style={box} value={s.quo_phone_number_id || ''}
+                  onChange={e => setS({ ...s, quo_phone_number_id: e.target.value })}>
+                  <option value="">Every number on the account</option>
+                  {quoNumbers.map(n => <option key={n.id} value={n.id}>{n.name} · {n.number}</option>)}
+                  {/* the saved one, until the list is loaded to name it */}
+                  {s.quo_phone_number_id && !quoNumbers.some(n => n.id === s.quo_phone_number_id) && (
+                    <option value={s.quo_phone_number_id}>{s.quo_phone_number_id} (press "List my numbers" to name it)</option>
+                  )}
+                </select>
+              ) : (
+                <input style={roBox} readOnly
+                  value={s.quo_phone_number_id
+                    ? (quoNumbers.find(n => n.id === s.quo_phone_number_id)?.number || s.quo_phone_number_id)
+                    : 'Every number on the account'} />
+              )}</div>
 
-            <div><label className="lbl">Whose timeline (vendor id)</label>
-              <input style={editing ? box : roBox} readOnly={!editing}
-                placeholder="1"
-                value={s.quo_vendor_id || ''}
-                onChange={e => setS({ ...s, quo_vendor_id: e.target.value })} /></div>
+            <div><label className="lbl">Whose timeline</label>
+              {editing ? (
+                <select style={box} value={s.quo_vendor_id || ''}
+                  onChange={e => setS({ ...s, quo_vendor_id: e.target.value })}>
+                  <option value="" disabled>Choose the vendor the calls belong to…</option>
+                  {vendorList.map(v => <option key={v.id} value={String(v.id)}>{v.business_name || `Vendor ${v.id}`} (#{v.id})</option>)}
+                </select>
+              ) : (
+                <input style={roBox} readOnly
+                  value={s.quo_vendor_id
+                    ? (vendorList.find(v => String(v.id) === String(s.quo_vendor_id))?.business_name || `Vendor #${s.quo_vendor_id}`)
+                    : '⚠️ Not chosen — calls cannot sync until a vendor is picked'} />
+              )}</div>
 
             {/* The URL to paste into Quo. Shown rather than described, because
                 a webhook pointed at the wrong path fails silently forever. */}

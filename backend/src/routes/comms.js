@@ -9,6 +9,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { pollComms } from '../lib/commsPoll.js';
+import { quoConfig } from '../lib/quo.js';
 import { extractLead } from '../lib/callToLead.js';
 
 const router = express.Router();
@@ -84,8 +85,20 @@ router.get('/', requireAuth, async (req, res) => {
  */
 router.post('/sync', requireAuth, async (req, res) => {
   try {
+    /* Each refusal says what to do. "Not configured" was returned for every
+       case — including a sync that was simply already running — and sent Raj
+       to a key that was fine while the vendor box sat empty. */
+    const cfg = await quoConfig();
+    if (!cfg.ready) {
+      return res.status(400).json({ error: `Quo is missing ${cfg.missing.join(' and ')} — set it in Super Admin → Settings → Calls & messages.` });
+    }
+    // 🔒 the mirrored calls belong to ONE vendor; anybody else would sync into a timeline they cannot see
+    if (cfg.vendorId !== vid(req)) {
+      return res.status(403).json({ error: 'Quo is connected to a different account.' });
+    }
     const r = await pollComms();
-    if (r.skipped) return res.status(400).json({ error: 'Quo is not configured yet.' });
+    if (r.skipped === 'already running') return res.json({ ok: true, added: 0, note: 'A sync is already running — new calls will appear in a moment.' });
+    if (r.skipped) return res.status(400).json({ error: `Quo is missing ${(r.missing || []).join(' and ')}.` });
     if (r.error) return res.status(400).json({ error: r.error });
     res.json({ ok: true, added: r.added || 0 });
   } catch (e) { res.status(500).json({ error: e.message }); }

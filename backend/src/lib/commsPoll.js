@@ -28,7 +28,7 @@ export async function pollComms() {
   running = true;
   try {
     const cfg = await quoConfig();
-    if (!cfg.ready || !cfg.vendorId) return { skipped: 'not configured' };
+    if (!cfg.ready) return { skipped: 'not configured', missing: cfg.missing };
 
     /* From the newest thing already held, minus a small overlap. Asking from
        exactly the last timestamp loses anything that landed in the same
