@@ -50,7 +50,7 @@ const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 
    seeing your photographs is a privacy failure rather than an annoyance. A
    guest who is told to try again has lost a moment. */
 /* 2026-10-09: on AuraFace the same caution is DIST.match; a saved
-   "selfie strictness" (set on the parked engine's 0.48 scale) is mapped
+   "selfie strictness" (set on the old, removed engine's 0.48 scale) is mapped
    onto it by selfieLimit() so it keeps its meaning. */
 
 

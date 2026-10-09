@@ -62,7 +62,7 @@ function clearSingle(f) {
 }
 /* 👯 A circle of only TWO photos is the weakest evidence there is: one match.
    It stands if the two faces are clearly close (≤ PAIR_TIGHT), or if both are
-   confident detections. Measured 2026-10-09 on the parked engine: real pairs
+   confident detections. Measured 2026-10-09 on the old (removed) engine: real pairs
    sat close, or loosely close with both faces scoring ≥ 0.93; the one wrong
    pair — the bride and a cardboard photo-booth cut-out — was loose with the
    cut-out scoring 0.54. A loose match to a weak detection is exactly what a
@@ -124,7 +124,7 @@ async function collectFaces(albumId) {
         face_index: k,
         event_id: p.event_id ?? null,      // which tab — circles never cross tabs
         engine: p.face_engine || 'vladmandic',
-        // only the current engine's fingerprints — a parked one cannot be compared
+        // only the current engine's fingerprints — one from the removed engine cannot be compared
         descriptor: f.descriptor?.length === DESCRIPTOR_LENGTH ? f.descriptor : null,
         box: f.box || null,
         score: f.score ?? 1,
@@ -155,7 +155,7 @@ async function collectFaces(albumId) {
  *   2. a poor face may only JOIN a circle, and only when it is within
  *      JOIN_DIST of one of that person's clear faces — otherwise it is left
  *      out rather than allowed to bridge two people.
- * Measured on GreatTest (3,035 faces) with the parked engine: circles whose
+ * Measured on GreatTest (3,035 faces) with the old (removed) engine: circles whose
  * members spread like a mix of people went from 17 to none, checked against
  * contact sheets. The rule is kept with AuraFace's own distances. A live shoot keeps the single pass — no circles are shown
  * there, and a guest's photo must stay reachable even from a poor face.
