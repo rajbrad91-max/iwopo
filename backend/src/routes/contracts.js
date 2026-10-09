@@ -325,16 +325,45 @@ function headbandHtml(headerText, logoPath) {
 /**
  * One template section → one ct-sec block, or nothing if it has nothing to say.
  *
- * A section is either pure prose, or its entire text is a single block token
- * like {{booking_details}} — the two are never mixed, so there is one clear
- * rule for which path a section takes rather than a guess.
+ * A section may be one block token on its own ({{booking_details}}), ordinary
+ * wording, or wording with a block token in the middle of it. The token is
+ * filled wherever it sits. Wording is still escaped. A block with nothing to
+ * show is left out, and so is a short label that only introduced it, so a raw
+ * {{crew}} never reaches the client.
  */
+function sectionBodyHtml(rawText, values, blocks) {
+  const text = String(rawText || '').trim();
+  const only = text.match(/^\{\{(\w+)\}\}$/);
+  if (only && Object.prototype.hasOwnProperty.call(blocks, only[1])) return blocks[only[1]] || '';
+
+  const re = /\{\{(booking_details|coverage_schedule|deliverables|services_summary|crew)\}\}/g;
+  if (!re.test(text)) return proseHtml(substitute(text, values));
+
+  let html = '';
+  let last = 0;
+  re.lastIndex = 0;
+  let m;
+  while ((m = re.exec(text))) {
+    const prose = text.slice(last, m.index);
+    const block = blocks[m[1]] || '';
+    if (!block) {
+      const kept = prose.replace(/\n?[^\n]{0,80}:\s*$/, '');
+      if (kept.trim()) html += proseHtml(substitute(kept, values));
+    } else if (prose.trim()) {
+      html += proseHtml(substitute(prose, values));
+      html += block;
+    } else {
+      html += block;
+    }
+    last = m.index + m[0].length;
+  }
+  const tail = text.slice(last);
+  if (tail.trim()) html += proseHtml(substitute(tail, values));
+  return html;
+}
+
 function sectionHtml(section, values, blocks, initCounter) {
-  const rawText = (section.text || '').trim();
-  const blockMatch = rawText.match(/^\{\{(\w+)\}\}$/);
-  const bodyHtml = blockMatch && blocks[blockMatch[1]] !== undefined
-    ? blocks[blockMatch[1]]
-    : proseHtml(substitute(rawText, values));
+  const bodyHtml = sectionBodyHtml(section.text, values, blocks);
   if (!bodyHtml.trim()) return '';                 // nothing to show — the whole section goes
 
   let initHtml = '';
@@ -345,6 +374,21 @@ function sectionHtml(section, values, blocks, initCounter) {
   }
   const title = (section.title || '').trim();
   return `<div class="ct-sec">${title ? `<h2>${escapeHtml(title)}</h2>` : ''}${bodyHtml}${initHtml}</div>`;
+}
+
+/** True when this template already asks for that block, inline or on its own. */
+function templateHasBlock(template, name) {
+  const token = `{{${name}}}`;
+  const sections = Array.isArray(template.sections) ? template.sections : [];
+  if (sections.some(s => String(s && s.text || '').includes(token))) return true;
+  return String(template.body || '').includes(token) || String(template.legal_terms || '').includes(token);
+}
+
+function templateMentionsDrone(template) {
+  const sections = Array.isArray(template.sections) ? template.sections : [];
+  const blob = sections.map(s => `${(s && s.title) || ''}\n${(s && s.text) || ''}`).join('\n')
+    + '\n' + (template.body || '') + '\n' + (template.legal_terms || '');
+  return /drone|aerial/i.test(blob);
 }
 
 function substitute(text, values) {
@@ -454,10 +498,34 @@ export async function buildContractBody(template, lead, businessName) {
   const sections = (Array.isArray(template.sections) ? template.sections : [])
     .filter(x => sectionApplies(x, inclusions));
   const initCounter = { n: 0 };
-  const secHtml = sections.map(x => sectionHtml(x, values, blocks, initCounter)).filter(Boolean).join('');
+  const rendered = [];
+  // A template that never asked for the booking table was dropping the inquiry
+  // answers. Add it once, without a new initial box, so the signature count stays.
+  if (!templateHasBlock(template, 'booking_details')) {
+    rendered.push(sectionHtml(
+      { title: 'BOOKING DETAILS', text: '{{booking_details}}', initial: false },
+      values, blocks, initCounter,
+    ));
+  }
+  if (!templateHasBlock(template, 'coverage_schedule')) {
+    rendered.push(sectionHtml(
+      { title: 'EVENT COVERAGE SCHEDULE', text: '{{coverage_schedule}}', initial: false },
+      values, blocks, initCounter,
+    ));
+  }
+  for (const x of sections) rendered.push(sectionHtml(x, values, blocks, initCounter));
+  // The drone sentence stays as the vendor wrote it. The summary says which
+  // package it actually belongs to, and only when that sentence is already there.
+  if (!templateHasBlock(template, 'services_summary') && templateMentionsDrone(template)) {
+    rendered.push(sectionHtml(
+      { title: 'SERVICES SUMMARY', text: '{{services_summary}}', initial: false },
+      values, blocks, initCounter,
+    ));
+  }
+  const secHtml = rendered.filter(Boolean).join('');
   const legal = (template.legal_terms || '').replace(/^\s*terms\s*(&|and)\s*conditions\s*\n+/i, '');
   const legalHtml = legal.trim()
-    ? `<div class="ct-sec"><h2>Terms &amp; Conditions</h2>${proseHtml(substitute(legal, values))}</div>` : '';
+    ? `<div class="ct-sec"><h2>Terms &amp; Conditions</h2>${sectionBodyHtml(legal, values, blocks)}</div>` : '';
 
   return [
     headbandHtml(substitute(template.header || '', values), vrow?.logo_path),

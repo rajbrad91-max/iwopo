@@ -10,3 +10,4 @@ storage/
 _patch/
 *-new.jsx
 backend/src/generated/
+backend/models/auraface/

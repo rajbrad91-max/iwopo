@@ -31,7 +31,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import multer from 'multer';
 import prisma from '../config/prisma.js';
-import { getFaceDescriptors, faceDistance } from '../lib/faceEngine.js';
+import { getFaceDescriptors, faceDistance, selfieLimit } from '../lib/faceEngine.js';
 import { isUsableFace } from '../lib/portraitScore.js';
 
 const router = express.Router();
@@ -49,7 +49,9 @@ const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 
    couple's; a live shoot hands a link to two hundred guests, and a stranger
    seeing your photographs is a privacy failure rather than an annoyance. A
    guest who is told to try again has lost a moment. */
-const DEFAULT_MATCH = 0.48;
+/* 2026-10-09: on AuraFace the same caution is DIST.match; a saved
+   "selfie strictness" (set on the parked engine's 0.48 scale) is mapped
+   onto it by selfieLimit() so it keeps its meaning. */
 
 
 /* Fourteen days, as Raj asked. Long enough that a guest who looks on the night
@@ -226,7 +228,7 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
       select: { id: true, faces: true },
     });
 
-    const limit = a.selfie_strictness ? a.selfie_strictness / 100 : DEFAULT_MATCH;
+    const limit = selfieLimit(a.selfie_strictness);
 
     const ranked = [];
     for (const p of indexed) {

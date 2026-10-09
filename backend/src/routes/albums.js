@@ -1583,7 +1583,7 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
       for (const p of photos) {
         for (const f of (p.faces || [])) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
       }
-      const matches = findMatches(q[0].descriptor, candidates, 0.5);
+      const matches = findMatches(q[0].descriptor, candidates)   // the engine's own "same person" limit;
       const seen = new Set();
       for (const m of matches) { if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); } }
     }
