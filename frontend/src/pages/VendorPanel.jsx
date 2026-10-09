@@ -3,8 +3,9 @@ import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import PublicSite from './PublicSite';
-import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
+import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, formatPhone, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
+import { chime } from '../lib/chime';
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
@@ -22,6 +23,7 @@ import RequestsView from './RequestsView.jsx';
    The rest of the panel loads faster as a side effect. */
 const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 const CommsView = lazy(() => import('./CommsView.jsx'));
+const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private — part of Calls & messages
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
 
@@ -232,6 +234,14 @@ export default function VendorPanel({ onLogout }) {
     }
   }
 
+  /* 📞 From the screen pop: open Calls & messages on the caller, by number —
+     a first-time caller has no stored call to point at yet. */
+  function openCaller(number) {
+    sessionStorage.setItem('cm-open-number', String(number || ''));
+    window.dispatchEvent(new CustomEvent('cm-open'));
+    navigate({ tab: 'comms' });
+  }
+
   function handleLogout() { logout(); onLogout(); }
 
   // the vendor's brand hue, tinting the panel's own tokens
@@ -330,6 +340,8 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {has('calendar') && <button className={`hdr-icon ${tab==='calendar'?'active':''}`} onClick={() => setTab(tab === 'calendar' ? 'dashboard' : 'calendar')} title="Quick Calendar">🗓️</button>}
             <NotifBell onOpen={openNotification} />
+            {/* 📞 who is calling, while it rings — only an account holding Calls & messages ever loads this */}
+            {has('comms') && <Suspense fallback={null}><ScreenPop onOpen={openCaller} /></Suspense>}
           </div>
         </div>
 
@@ -417,26 +429,6 @@ function sinceLabel(ts) {
   const days = Math.floor(hrs / 24);
   if (days <= 7) return `${days}d ago`;
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-}
-
-/** A short two-note chime, made in the browser — no sound file to load or host.
- *  Browsers stay silent until the page has been clicked once; that is their rule. */
-function chime() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    [[880, 0], [1320, 0.16]].forEach(([hz, at]) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o.frequency.value = hz;
-      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
-      g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + at + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.28);
-      o.connect(g).connect(ctx.destination);
-      o.start(ctx.currentTime + at); o.stop(ctx.currentTime + at + 0.3);
-    });
-    setTimeout(() => ctx.close().catch(() => {}), 800);
-  } catch { /* no audio — the bell count still shows it */ }
 }
 
 function NotifBell({ onOpen }) {
@@ -3004,7 +2996,7 @@ function LeadsView({ routeLead, onOpenLead }) {
             {TILES.map(([key, icon, label]) => (
               <button key={key} className={`lead-stat ${filter === key ? 'is-on' : ''}`} onClick={() => setFilter(key)}>
                 <span className="lead-stat-ic">{icon}</span>
-                <span className="lead-stat-val">{counts[key]}</span>
+                <span className="lead-stat-val">{loading ? '…' : counts[key]}</span>
                 <span className="lead-stat-lbl">{label}</span>
               </button>
             ))}
@@ -3356,7 +3348,7 @@ function LeadDetail({ lead, onBack }) {
         <div className="ld-client-name"><span className="ld-client-lbl">Name:</span> {lead.name || '—'}</div>
         {row('🙋 Role', lead.role)}
         {row('📧 Email', lead.email)}
-        {row('📞 Phone', lead.phone)}
+        {row('📞 Phone', formatPhone(lead.phone))}
         {row('📷 Instagram', lead.instagram)}
         {row('🔎 Heard via', lead.heard)}
       </div>
@@ -3385,6 +3377,12 @@ function LeadDetail({ lead, onBack }) {
           // the form stores a time answer as plain "HH:MM", so it reads back in
           // whichever clock the vendor set in their preferences
           if (f.type === 'time') return fmtTime(v);
+          // hours are stored as a whole number ("9 hrs" becomes 9) so the
+          // lead card can do maths. Put the unit back for reading.
+          if ((f.type === 'hours' || f.maps_to === 'hours') && v !== true) {
+            const n = Number(v);
+            if (Number.isFinite(n) && !/[a-z]/i.test(String(v))) return `${n} hr${n === 1 ? '' : 's'}`;
+          }
           return String(v);
         };
 
@@ -4804,7 +4802,21 @@ function FieldBuilder({ fields, setFields }) {
   // 🎉 Add the whole event group at once. A column already claimed by an
   // existing field is left claimed — the new field still appears, just
   // unmapped, so adding this twice can't quietly steal a mapping.
-  const addEventGroup = () => {
+  const addEventGroup = async () => {
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const already = EVENT_PRESET.filter(p =>
+      fields.some(f => f.type === p.type && norm(f.label) === norm(p.label))
+    );
+    if (already.length) {
+      const all = already.length === EVENT_PRESET.length;
+      const ok = await dialog.confirm(
+        all
+          ? 'Type of Event, Date, Starting Time, Ending Time, Hours and Location are already on this form. Adding them again makes a second copy, and that copy cannot fill the lead columns because those are already taken.'
+          : `${already.length} of these questions are already on the form. A new copy cannot fill a lead column that another question already uses.`,
+        { title: 'These event questions are already on the form', okLabel: 'Add them anyway', danger: true }
+      );
+      if (!ok) return;
+    }
     const taken = new Set(fields.map(f => f.maps_to).filter(Boolean));
     const added = EVENT_PRESET.map(p => {
       const free = p.maps_to && !taken.has(p.maps_to);
@@ -4854,6 +4866,13 @@ function FieldBuilder({ fields, setFields }) {
     const j = i + dir; if (j < 0 || j >= fields.length) return;
     const copy = [...fields]; [copy[i], copy[j]] = [copy[j], copy[i]]; setFields(copy);
   };
+  // Two time fields can share a label ("Starting Time" twice). The hours
+  // dropdown has to tell them apart or the vendor links the wrong pair.
+  const timeChoiceLabel = (t, list) => {
+    const same = list.filter(x => (x.label || '') === (t.label || ''));
+    if (same.length < 2) return t.label;
+    return `${t.label} (${same.findIndex(x => x.id === t.id) + 1})`;
+  };
 
   return (
     <div>
@@ -4900,6 +4919,9 @@ function FieldBuilder({ fields, setFields }) {
           </div>
 
           <input style={box} placeholder="Field label (e.g. Event Type)" value={f.label} onChange={e => upd(i, { label: e.target.value })} />
+          {/^\s*how did you hear about us\??\s*$/i.test(f.label || '') && (
+            <p className="fb-hint">Contact Details already asks “How did you hear about us?”. This will show up a second time on the form.</p>
+          )}
 
           {/* dropdown options */}
           {f.type === 'dropdown' && (
@@ -4930,7 +4952,7 @@ function FieldBuilder({ fields, setFields }) {
                   <select className="fb-select" value={f.from_field || ''}
                     onChange={e => upd(i, { from_field: e.target.value })}>
                     <option value="">Client types it</option>
-                    {times.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    {times.map(t => <option key={t.id} value={t.id}>{timeChoiceLabel(t, times)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -4938,7 +4960,7 @@ function FieldBuilder({ fields, setFields }) {
                   <select className="fb-select" value={f.to_field || ''}
                     onChange={e => upd(i, { to_field: e.target.value })}>
                     <option value="">Client types it</option>
-                    {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{timeChoiceLabel(t, times)}</option>)}
                   </select>
                 </div>
               </div>
@@ -5051,7 +5073,7 @@ function InqFormSettings() {
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub inq-link-row">
-          Your link: <b className="inq-link">iwopo.com/inquiry/{handle || '…'}</b> 🔗
+          Your link: <b className="inq-link">{handle ? `${window.location.host}/inquiry/${handle}` : '…'}</b> 🔗
           {' · '}
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they

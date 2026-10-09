@@ -193,6 +193,7 @@ async function optional(key, path) {
 }
 export const getCallSummary = (key, callId) => optional(key, `/call-summaries/${encodeURIComponent(callId)}`);
 export const getCall = (key, callId) => optional(key, `/calls/${encodeURIComponent(callId)}`);
+export const getMessage = (key, messageId) => optional(key, `/messages/${encodeURIComponent(messageId)}`);
 export const getCallTranscript = (key, callId) => optional(key, `/call-transcripts/${encodeURIComponent(callId)}`);
 export async function getCallRecordings(key, callId) {
   return (await optional(key, `/call-recordings/${encodeURIComponent(callId)}`)) || [];

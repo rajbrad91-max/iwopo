@@ -16,6 +16,8 @@ import prisma from '../config/prisma.js';
 import { quoConfig, verifyWebhook, ownNumbers, otherParticipant } from '../lib/quo.js';
 import { enrichCall, CALL_FIELDS } from '../lib/commsEnrich.js';
 import { announce } from '../lib/commsNotify.js';
+import { ringScreens } from '../lib/commsPop.js';
+import { processLeadRequests } from '../lib/callLeads.js';
 
 const router = express.Router();
 
@@ -124,7 +126,10 @@ router.post('/', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) =>
         where: { external_id: String(callId), vendor_id: cfg.vendorId },
         select: CALL_FIELDS,
       });
-      if (ev) await enrichCall(cfg.key, ev).catch(() => {});
+      if (ev) {
+        await enrichCall(cfg.key, ev).catch(() => {});
+        await processLeadRequests(cfg.vendorId).catch(() => {});   // 📋 a lead Raj asked for can be made now
+      }
       return res.json({ ok: true });
     }
 
@@ -132,7 +137,10 @@ router.post('/', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) =>
     const row = normalise(type, obj, ours);
     // a genuine delivery we cannot read is worth knowing about — its field names only, never its content
     if (!row) console.error(`[comms] webhook "${type}" not understood — fields: ${Object.keys(obj || {}).join(',')}`);
-    if (row && await upsertEvent(cfg.vendorId, row)) await announce(cfg.vendorId, row, cfg.phoneNumberId || null);   // 🔔 a text in, or a missed call
+    if (row && await upsertEvent(cfg.vendorId, row)) {
+      await ringScreens(cfg.vendorId, row, cfg.phoneNumberId || null);   // 📞 screen pop while it rings
+      await announce(cfg.vendorId, row, cfg.phoneNumberId || null);      // 🔔 a text in, or a missed call
+    }
 
     /* 200 whatever happens after the signature passes. Quo retries on an
        error, and retrying an event that was simply unrecognised achieves

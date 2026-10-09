@@ -13,6 +13,7 @@ import { platformMail } from './email.js';
 import nodemailer from 'nodemailer';
 import { quoConfig, listPhoneNumbers, isQuoNumberId } from '../lib/quo.js';
 import { getSetting } from '../lib/settings.js';
+import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
 
 const router = express.Router();
 
@@ -193,7 +194,8 @@ router.post('/settings/platform/test-ai', requireAuth, requireSuperAdmin, async 
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
+        // the model actually in use — testing a different one could pass while the real one fails
+        model: (await getSetting('anthropic_model', '')) || DEFAULT_MODEL,
         max_tokens: 4,
         messages: [{ role: 'user', content: 'Reply with the word: ok' }],
       }),

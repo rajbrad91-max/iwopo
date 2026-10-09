@@ -20,6 +20,7 @@ import { quoConfig, listPhoneNumbers, listConversations, listCalls, listMessages
 import { normalise, upsertEvent } from '../routes/commsWebhook.js';
 import { enrichPending, fillContactNames } from './commsEnrich.js';
 import { announce } from './commsNotify.js';
+import { processLeadRequests } from './callLeads.js';
 
 let running = false;
 
@@ -89,6 +90,8 @@ export async function pollComms() {
     let filled = 0;
     try { filled = await enrichPending(cfg); } catch (e) { console.error('[comms] filling calls:', e.message); }
     try { await fillContactNames(cfg); } catch (e) { console.error('[comms] contact names:', e.message); }
+    // 📋 leads Raj asked for whose transcript has now arrived
+    try { await processLeadRequests(cfg.vendorId); } catch (e) { console.error('[comms] leads from calls:', e.message); }
     return { added, filled, failed: failures.length };
   } catch (e) {
     console.error('[comms] poll error:', e.message);

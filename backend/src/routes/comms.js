@@ -14,20 +14,38 @@ import { quoConfig, getCallRecordings, ownNumbers, saveContact, sendMessage } fr
 import { contactsByNumber, forgetContacts } from '../lib/commsEnrich.js';
 import { normalise, upsertEvent } from './commsWebhook.js';
 import { limit } from '../middleware/rateLimit.js';
-import { extractLead } from '../lib/callToLead.js';
+import { badgesFor, leadBadges, tenDigits } from '../lib/commsBadges.js';
+import { commsBus } from '../lib/commsPop.js';
+import { requestLead, answerBooking } from '../lib/callLeads.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
 
-/** A stored transcript as a plain conversation ("Caller: … / Us: …"). */
-function transcriptText(raw) {
-  if (!raw) return '';
-  try {
-    const t = JSON.parse(raw);
-    if (Array.isArray(t?.lines)) return t.lines.map(l => `${l.us ? 'Us' : 'Caller'}: ${l.text}`).join('\n');
-  } catch { /* an older plain-text transcript */ }
-  return String(raw).trim();
-}
+/**
+ * 📞 GET /api/comms/live — an open line from the server to the panel.
+ *
+ * Server-Sent Events: the panel keeps this request open and the server writes
+ * a line the moment a call starts ringing (see lib/commsPop.js). The bell's
+ * fifteen-second check is far too slow for a phone that rings for twenty.
+ * 🔒 A panel hears only its own vendor, and only the vendor Quo is connected
+ * to has anything to hear.
+ */
+router.get('/live', requireAuth, (req, res) => {
+  const v = vid(req);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',            // nginx must pass each line on at once, not hold it in a buffer
+  });
+  res.write('retry: 3000\n\n');
+  const send = (msg) => res.write(`event: pop\ndata: ${JSON.stringify(msg)}\n\n`);
+  commsBus.on(`v${v}`, send);
+  // a comment every 25 s keeps proxies from closing a quiet connection
+  const beat = setInterval(() => res.write(': ok\n\n'), 25_000);
+  req.on('close', () => { clearInterval(beat); commsBus.off(`v${v}`, send); });
+});
 
 /**
  * GET /api/comms?since=<iso> → the timeline.
@@ -74,50 +92,6 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/**
- * 🏷️ Is the person on the other end one of this vendor's leads — or booked?
- *
- * Raj, 2026-10-09: "if the client who's texting or calling has ever sent an
- * inquiry or has ever booked us, past or future, detect his number in the
- * leads or bookings and give it the badge." Numbers are compared on their
- * last ten digits, so "+1 (778) 910-8094", "778-910-8094" and "7789108094"
- * are the same person. Booked (or completed) wins over any open lead.
- * 🔒 Only this vendor's leads are ever read.
- */
-const BOOKED = ['booked', 'completed'];
-const tenDigits = (n) => String(n || '').replace(/\D/g, '').slice(-10);
-function leadBadges(vendorId, events) {
-  return badgesFor(vendorId, events.map(e => tenDigits(e.direction === 'incoming' ? e.from_number : e.to_number)));
-}
-async function badgesFor(vendorId, rawKeys) {
-  const keys = [...new Set(rawKeys.map(tenDigits).filter(k => k.length === 10))].slice(0, 500);
-  if (!keys.length) return {};
-  const rows = await prisma.$queryRawUnsafe(
-    `SELECT id, name, email, status, event_date, created_at,
-            right(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), 10) AS k
-       FROM leads
-      WHERE vendor_id = $1
-        AND right(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), 10) = ANY($2::text[])`,
-    vendorId, keys);
-  const out = {};
-  for (const r of rows) {
-    const booked = BOOKED.includes(r.status);
-    const cur = out[r.k];
-    // booked beats a lead; between two of the same kind, the latest event (or newest inquiry) wins
-    const better = !cur
-      || (booked && cur.kind !== 'booked')
-      || (booked === (cur.kind === 'booked') && new Date(r.event_date || r.created_at) > new Date(cur.sort));
-    if (better) {
-      out[r.k] = {
-        kind: booked ? 'booked' : 'lead',
-        lead_id: r.id, name: r.name || null, email: r.email || null, status: r.status,
-        event_date: r.event_date, sort: r.event_date || r.created_at,
-      };
-    }
-  }
-  for (const b of Object.values(out)) delete b.sort;
-  return out;
-}
 
 /**
  * POST /api/comms/badges { numbers: [...] } → the badges for numbers already
@@ -303,79 +277,49 @@ router.get('/:id/recording', requireAuth, async (req, res) => {
 });
 
 /**
- * 📞→📋 POST /api/comms/:id/extract → read the call, propose a lead.
+ * 📋 POST /api/comms/lead-request { event_id? | call_id? | number? }
  *
- * Proposes only. Nothing is written here: Raj sees the fields, corrects what
- * the model got wrong, and presses create. A date extracted from a summary is
- * usually right and occasionally on the wrong Saturday, and the second case is
- * why this does not save.
+ * Raj: "create a lead from this call". Asked from the end-of-call card (the
+ * call's id), from a call card (its row id) or from a person's thread (their
+ * number → their latest answered call). If Quo has not written the transcript
+ * yet the request waits, and the lead is made the moment it arrives
+ * (lib/callLeads.js). A booking heard on the call is only ever SUGGESTED.
  */
-router.post('/:id/extract', requireAuth, async (req, res) => {
+router.post('/lead-request', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const ev = await prisma.comms_events.findFirst({
-      where: { id: BigInt(req.params.id), vendor_id: v },      // 🔒 tenancy
-      select: { body: true, transcript: true, from_number: true, to_number: true, direction: true, contact_name: true },
-    });
-    if (!ev) return res.status(404).json({ error: 'Not found' });
-
-    /* The summary first; the transcript is the fallback when Quo has not
-       written one yet, and it says the same things at greater length. The
-       transcript is stored as dialogue lines (see commsEnrich.js) and is read
-       to the assistant as a plain conversation. */
-    const text = (ev.body || '').trim() || transcriptText(ev.transcript);
-    const known = {
-      phone: ev.direction === 'incoming' ? ev.from_number : ev.to_number,
-      contact_name: ev.contact_name || null,
-    };
-
-    const out = await extractLead(v, text, known);
-    if (out.error) return res.status(400).json({ error: out.error });
-    res.json({ lead: out });
+    const b = req.body || {};
+    let ev = null;
+    if (b.event_id) {
+      ev = await prisma.comms_events.findFirst({ where: { id: BigInt(b.event_id), vendor_id: v, kind: 'call' }, select: { id: true } });
+    } else if (b.call_id) {
+      ev = await prisma.comms_events.findFirst({ where: { external_id: String(b.call_id), vendor_id: v, kind: 'call' }, select: { id: true } });
+    } else if (b.number) {
+      const ten = tenDigits(b.number);
+      const rows = await prisma.$queryRawUnsafe(
+        `SELECT id FROM comms_events WHERE vendor_id = $1 AND kind = 'call' AND status = 'completed'
+            AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
+              OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)
+          ORDER BY occurred_at DESC LIMIT 1`, v, ten);           // 🔒 this vendor's calls only
+      ev = rows[0] || null;
+    }
+    if (!ev) return res.status(404).json({ error: 'No answered call with this person to make a lead from.' });
+    const r = await requestLead(v, ev.id);
+    if (r.error) return res.status(404).json(r);
+    res.json({ ...r, event_id: Number(ev.id) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /**
- * 📋 POST /api/comms/:id/lead → create it, from what Raj approved.
- *
- * 🔒 The fields come from the REQUEST because he has just edited them, but the
- * vendor comes from the token and the call is re-read to prove it is his.
+ * 🟢 POST /api/comms/:id/booking { approve: true | false }
+ * Raj's answer to "sounds booked — approve?". Approved, the lead becomes a
+ * booking — it moves to Bookings and its date shows on the calendar.
  */
-router.post('/:id/lead', requireAuth, async (req, res) => {
-  const v = vid(req);
+router.post('/:id/booking', requireAuth, async (req, res) => {
   try {
-    const ev = await prisma.comms_events.findFirst({
-      where: { id: BigInt(req.params.id), vendor_id: v },      // 🔒 tenancy
-      select: { id: true, occurred_at: true },
-    });
-    if (!ev) return res.status(404).json({ error: 'Not found' });
-
-    const b = req.body || {};
-    const name = String(b.name || '').trim();
-    if (!name) return res.status(400).json({ error: 'A lead needs a name.' });
-
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.event_date || '') ? new Date(b.event_date) : null;
-
-    const lead = await prisma.leads.create({
-      data: {
-        vendor_id: v,
-        name,
-        email: String(b.email || '').trim() || null,
-        phone: String(b.phone || '').trim() || null,
-        event_type: String(b.event_type || '').trim() || null,
-        event_date: date,
-        location: String(b.location || '').trim() || null,
-        /* Where it came from is worth keeping: months later "how did we get
-           this booking" is a real question, and "a phone call on the 14th" is
-           a better answer than silence. */
-        notes: [String(b.notes || '').trim(), `— from a call on ${new Date(ev.occurred_at).toLocaleDateString()}`]
-          .filter(Boolean).join('\n\n'),
-        status: 'new',
-      },
-      select: { id: true, name: true },
-    });
-
-    res.status(201).json({ lead });
+    const r = await answerBooking(vid(req), req.params.id, req.body?.approve === true);   // 🔒 vendor from the token
+    if (r.error) return res.status(400).json(r);
+    res.json(r);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

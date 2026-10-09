@@ -1,0 +1,57 @@
+/* 📞 Screen pop — panel tokens only (--teal, --teal-soft, --panel, --panel-2,
+   --line, --text, --muted, --red). Bottom-right on a computer, top on a phone,
+   above everything else in the panel. */
+.sp-stack { position: fixed; right: 18px; bottom: 18px; z-index: 900;
+  display: flex; flex-direction: column; gap: 10px; width: min(370px, calc(100vw - 24px)); }
+
+.sp-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px 14px 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .28);
+  animation: sp-in .22s ease-out; }
+.sp-card.is-ringing { border-color: var(--teal); }
+.sp-card.is-missed { border-color: var(--red); }
+@keyframes sp-in { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sp-card { animation: none; } }
+
+.sp-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sp-state { font-size: 12px; font-weight: 700; color: var(--teal); }
+.sp-card.is-ringing .sp-state { animation: sp-pulse 1.2s ease-in-out infinite; }
+.sp-card.is-missed .sp-state { color: var(--red); }
+.sp-card.is-ended .sp-state { color: var(--muted); }
+@keyframes sp-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .sp-card.is-ringing .sp-state { animation: none; } }
+.sp-x { border: 0; background: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 2px 4px; }
+.sp-x:hover { color: var(--text); }
+
+.sp-who { display: flex; flex-direction: column; gap: 2px; }
+.sp-name { font-size: 17px; font-weight: 700; color: var(--text); }
+.sp-num { font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.sp-badge { align-self: flex-start; margin-top: 4px; padding: 2px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; background: var(--teal-soft); color: var(--teal); }
+.sp-badge.is-booked { background: color-mix(in srgb, #16a34a 16%, transparent); color: #15803d; }
+.sp-count { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+.sp-sec { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+.sp-h { font-size: 11.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.sp-sec ul { margin: 0; padding-left: 17px; }
+.sp-sec li { font-size: 12.5px; color: var(--text); line-height: 1.5; }
+.sp-text { font-size: 12.5px; color: var(--text); line-height: 1.45; margin: 2px 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-tw { color: var(--muted); margin-right: 6px; font-weight: 600; }
+.sp-text.is-out .sp-tw { color: var(--teal); }
+
+.sp-open { margin-top: 12px; width: 100%; padding: 9px; border-radius: 10px; border: 0; cursor: pointer;
+  background: var(--teal); color: #fff; font-size: 13px; font-weight: 700; }
+.sp-open:focus-visible, .sp-x:focus-visible, .sp-no:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+/* 📋 "Create a lead from this call?" — asked when an answered call ends */
+.sp-ask { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+.sp-ask-acts { display: flex; gap: 8px; }
+.sp-ask-acts .sp-open { margin-top: 6px; flex: 1; }
+.sp-no { margin-top: 6px; padding: 9px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: none; color: var(--muted); font-size: 13px; font-weight: 600; }
+.sp-no:hover { color: var(--text); }
+.sp-note { margin-top: 10px; font-size: 12.5px; color: var(--text); line-height: 1.45; }
+
+@media (max-width: 560px) {
+  .sp-stack { right: 12px; left: 12px; bottom: auto; top: 12px; width: auto; }
+}

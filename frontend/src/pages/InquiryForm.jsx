@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { themeStyleObject } from '../lib/brandTheme.js';
 import { api } from '../lib/api';
 import ChatWidget from './ChatWidget';
@@ -22,6 +22,10 @@ export default function InquiryForm({ handle, byHost = false }) {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const errRef = useRef(null);
+  useEffect(() => {
+    if (err) errRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [err]);
   useDocumentTitle(cfg?.brand_name);
 
   const [p, setP] = useState({ role: '', name: '', email: '', phone: '', instagram: '', heard: '' });
@@ -40,8 +44,13 @@ export default function InquiryForm({ handle, byHost = false }) {
 
   async function submit() {
     setErr('');
+    // Role and phone are marked required on the form. Name and email already
+    // were; leaving the other two starred-but-optional meant a blank form
+    // could look like the button did nothing when the message was missed.
+    if (!p.role) { setErr('Please choose your role'); return; }
     if (!p.name.trim()) { setErr('Please enter your name'); return; }
     if (!p.email.trim()) { setErr('Please enter your email'); return; }
+    if (!p.phone.trim()) { setErr('Please enter your phone number'); return; }
     // same rule the server enforces, so a typo is caught before the round-trip
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) {
       setErr('That email address does not look right'); return;
@@ -96,7 +105,7 @@ export default function InquiryForm({ handle, byHost = false }) {
       <div className={`iq-card iq-theme-${c.theme || 'classic'}`}>
         {/* header: logo left, brand + intro centered */}
         <div className="iq-hd">
-          {c.logo_path && <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="logo" />}
+          {c.logo_path && <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={e => { e.currentTarget.style.display = 'none'; }} />}
           <div className="iq-hd-text">
             <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
             {c.intro_link
@@ -108,7 +117,7 @@ export default function InquiryForm({ handle, byHost = false }) {
         <div className="iq-body">
           <LeadFormBody cfg={c} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes} />
 
-          {err && <div className="iq-err">⚠️ {err}</div>}
+          {err && <div className="iq-err" role="alert" ref={errRef}>⚠️ {err}</div>}
           <button className="iq-btn" onClick={submit} disabled={busy}>
             {busy ? 'Sending…' : '📨 Send Inquiry'}
           </button>

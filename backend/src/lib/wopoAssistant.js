@@ -8,7 +8,7 @@ import { getSetting } from './settings.js';
 import { notify } from '../routes/notifications.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
-const DEFAULT_MODEL = 'claude-sonnet-4-6';
+export const DEFAULT_MODEL = 'claude-sonnet-4-6';
 
 // Sonnet pricing (USD per token) — used for per-vendor cost tracking
 const PRICE_IN = 3 / 1_000_000;    // $3 / 1M input tokens

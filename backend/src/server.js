@@ -38,6 +38,7 @@ import { sweepAbandonedUploads } from './lib/uploadSweep.js';
 import { sweepGalleryOrphans } from './lib/orphanSweep.js';
 import { resumePending } from './lib/photoProcessor.js';
 import { resumeFaces } from './lib/faceQueue.js';
+import { tidyComms } from './lib/commsTidy.js';
 import contactRoutes from './routes/contacts.js';
 import { reconcile } from './lib/storageLedger.js';
 import * as objects from './lib/objectStore.js';
@@ -268,6 +269,11 @@ setTimeout(() => { sweepOccasions().catch(() => {}); }, 30_000).unref();
    the result was calls that "hardly get updated". */
 setInterval(() => { pollComms().catch(() => {}); }, 60_000).unref();
 pollComms().catch(() => {});
+/* 🧹 Once a day: drop what Quo has deleted, and calls & texts older than a
+   year that are not leads or bookings (lib/commsTidy.js). First run a quarter
+   of an hour after boot, so a restart never starts with it. */
+setInterval(() => { tidyComms().catch(() => {}); }, 24 * 60 * 60_000).unref();
+setTimeout(() => { tidyComms().catch(() => {}); }, 15 * 60_000).unref();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);

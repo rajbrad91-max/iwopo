@@ -121,11 +121,98 @@ function kvTable(cls, rows) {
   return body ? `<table class="${cls}"><tbody>${body}</tbody></table>` : '';
 }
 
+/** Same display rule as the panel: 10 digits become (604) 555-0199. Stored value stays digits. */
+function formatPhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  if (digits.length === 11 && digits[0] === '1') {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return String(raw || '');
+}
+
+function hoursLabel(n) {
+  if (n == null || n === '') return '';
+  const num = Number(n);
+  if (!Number.isFinite(num)) return String(n);
+  return `${num} hour${num === 1 ? '' : 's'}`;
+}
+
+function snapshotOf(lead) {
+  const raw = lead?.package_snapshot;
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+/**
+ * Money words for a contract whose packages are on offer but none is chosen.
+ * Saying CA$0 there reads as an agreed price. A chosen package, including a
+ * genuinely free one, still goes through the normal currency figures.
+ */
+function priceTokens(lead, money, cash, pendingChoice) {
+  if (!pendingChoice) {
+    return {
+      '{{total_cost}}': cash(money.final_total),
+      '{{deposit}}': cash(money.deposit_amount),
+      '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
+    };
+  }
+  const pct = Number(lead.deposit_percent) || 0;
+  return {
+    '{{total_cost}}': 'the price of the package the client chooses',
+    '{{deposit}}': pct > 0 ? `${pct}% of that price` : 'set once a package is chosen',
+    '{{balance}}': 'the package price minus that deposit',
+  };
+}
+
+/** Answers that are not already a row in the booking table. */
+function inquiryAnswerRows(lead) {
+  const rows = [];
+  const push = (k, v) => {
+    if (v == null || v === false) return;
+    const s = String(v).trim();
+    if (!s) return;
+    rows.push([k, s]);
+  };
+  push('Role', lead.role);
+  push('Instagram', lead.instagram);
+  push('Heard via', lead.heard);
+  const defs = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
+  const cd = (lead.custom_data && typeof lead.custom_data === 'object' && !Array.isArray(lead.custom_data))
+    ? lead.custom_data : {};
+  const shownByColumn = new Set([
+    'event_type', 'event_date', 'timing_from', 'timing_to', 'location', 'hours', 'guests',
+    'gr_bride', 'gr_bride_venue', 'gr_groom', 'gr_groom_venue',
+  ]);
+  for (const f of defs) {
+    if (!f || typeof f !== 'object') continue;
+    if (f.maps_to && shownByColumn.has(f.maps_to)) continue;
+    const raw = cd[f.id];
+    if (raw === true) push(f.label || 'Answer', 'Yes');
+    else push(f.label || 'Answer', raw);
+  }
+  push('Notes', lead.notes);
+  return rows;
+}
+
+function offeredPackagesHtml(packages, cash) {
+  if (!packages.length) return '';
+  const rows = packages.map(p => {
+    const inc = Array.isArray(p.inclusions) ? p.inclusions.map(String).filter(Boolean) : [];
+    const bits = [cash(p.price)];
+    if (inc.length) bits.push(inc.join(', '));
+    return [p.name || 'Package', bits.join(' — ')];
+  });
+  return `<h3>Packages offered</h3>${kvTable('ct-kv', rows)}`
+    + '<p>No package is chosen yet, so the price in this agreement is not final.</p>';
+}
+
 /** What was booked, at a glance. */
-function bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime) {
-  return kvTable('ct-details', [
+function bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime, extras = {}) {
+  const table = kvTable('ct-details', [
     ['Client Name', lead.name],
-    ['Phone', lead.phone],
+    ['Phone', formatPhone(lead.phone)],
     ['Email', lead.email],
     ['Event Type', lead.event_type],
     ['Package', pkgName === '—' ? '' : pkgName],
@@ -133,8 +220,10 @@ function bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime) {
     ['Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : ''],
     ['Location', lead.location],
     ['Guests', lead.guests],
-    ['Total', cash(money.final_total)],
+    ['Total', extras.pendingChoice ? 'Not chosen yet' : cash(money.final_total)],
+    ...inquiryAnswerRows(lead),
   ]);
+  return table + (extras.offeredHtml || '');
 }
 
 /**
@@ -148,7 +237,7 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   const main = kvTable('ct-kv', [
     ['Date', fmtDate(lead.event_date)],
     ['Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : ''],
-    ['Hours', lead.hours ? `${lead.hours} hours` : ''],
+    ['Hours', hoursLabel(lead.hours)],
     ['Location', lead.location],
     ['Guests', lead.guests],
   ]);
@@ -182,12 +271,35 @@ const OPTIONAL_SERVICES = [
   ['Album', ['album']],
   ['Second Shooter', ['second shooter', '2nd shooter']],
 ];
-function servicesSummaryHtml(inclusions) {
-  const hay = inclusions.join(' ').toLowerCase();
+function serviceHits(inclusions, keys) {
+  const hay = (inclusions || []).join(' ').toLowerCase();
+  return keys.some(k => hay.includes(k));
+}
+
+/**
+ * Once a package is chosen, each row is Included or Not Included for that
+ * package. Before a choice, "Not Included" would be wrong for something that
+ * only the premium package contains — say which package has it instead.
+ */
+function servicesSummaryHtml(inclusions, { decided = true, offered = [] } = {}) {
   const rows = OPTIONAL_SERVICES.map(([label, keys]) => {
-    const has = keys.some(k => hay.includes(k));
-    const badge = has ? '<span class="ct-inc">Included</span>' : '<span class="ct-notinc">Not Included</span>';
-    return `<tr><th>${escapeHtml(label)}</th><td>${badge}</td></tr>`;
+    let cell;
+    if (decided) {
+      cell = serviceHits(inclusions, keys)
+        ? '<span class="ct-inc">Included</span>'
+        : '<span class="ct-notinc">Not Included</span>';
+    } else if (offered.length) {
+      const names = offered
+        .filter(p => serviceHits(Array.isArray(p.inclusions) ? p.inclusions.map(String) : [], keys))
+        .map(p => p.name)
+        .filter(Boolean);
+      cell = names.length
+        ? `<span class="ct-inc">In ${escapeHtml(names.join(', '))}</span>`
+        : '<span class="ct-notinc">Not Included</span>';
+    } else {
+      cell = '<span class="ct-notinc">Not Included</span>';
+    }
+    return `<tr><th>${escapeHtml(label)}</th><td>${cell}</td></tr>`;
   }).join('');
   return `<table class="ct-svc"><tbody>${rows}</tbody></table>`;
 }
@@ -236,8 +348,27 @@ function sectionHtml(section, values, blocks, initCounter) {
 }
 
 function substitute(text, values) {
-  let t = text;
-  for (const [k, v] of Object.entries(values)) t = t.split(k).join(v);
+  const filled = { ...values };
+  // A template in the wild spells the client tag "clinet". Fill it anyway.
+  if (filled['{{client_name}}'] != null && filled['{{clinet_name}}'] == null) {
+    filled['{{clinet_name}}'] = filled['{{client_name}}'];
+  }
+  let t = String(text ?? '');
+  for (const [k, v] of Object.entries(filled)) t = t.split(k).join(v ?? '');
+  // A tag left open, "{{client_name" with no closing braces. Only names we
+  // fill. A complete {{client_name}} was already replaced above, so this
+  // skips any occurrence that is already followed by "}".
+  for (const [k, v] of Object.entries(filled)) {
+    const name = k.slice(2, -2);
+    if (!/^\w+$/.test(name)) continue;
+    const open = '{{' + name;
+    let i = 0;
+    while ((i = t.indexOf(open, i)) !== -1) {
+      if (t[i + open.length] === '}') { i += open.length; continue; }
+      t = t.slice(0, i) + (v ?? '') + t.slice(i + open.length);
+      i += String(v ?? '').length;
+    }
+  }
   return t;
 }
 
@@ -251,10 +382,11 @@ function substitute(text, values) {
  * They all call this instead.
  */
 export async function buildContractBody(template, lead, businessName) {
-  const [chosen, crew, money, vset, vrow] = await Promise.all([
-    prisma.lead_packages.findFirst({
-      where: { lead_id: lead.id, is_selected: true },      // 🔒 tenancy via the lead
-      select: { name: true, inclusions: true },
+  const [offered, crew, money, vset, vrow] = await Promise.all([
+    prisma.lead_packages.findMany({
+      where: { lead_id: lead.id },                         // 🔒 tenancy via the lead
+      select: { name: true, price: true, inclusions: true, is_selected: true },
+      orderBy: { id: 'asc' },
     }),
     prisma.lead_crew.findMany({
       where: { lead_id: lead.id },
@@ -269,8 +401,13 @@ export async function buildContractBody(template, lead, businessName) {
       where: { id: lead.vendor_id }, select: { country: true, logo_path: true },
     }),
   ]);
-  const inclusions = Array.isArray(chosen?.inclusions) ? chosen.inclusions.map(String).filter(Boolean) : [];
-  const pkgName = chosen?.name || '—';
+  const selected = offered.find(p => p.is_selected) || null;
+  const snap = snapshotOf(lead);
+  let inclusions = Array.isArray(selected?.inclusions) ? selected.inclusions.map(String).filter(Boolean) : [];
+  if (!selected && Array.isArray(snap?.inclusions)) inclusions = snap.inclusions.map(String).filter(Boolean);
+  const pkgName = selected?.name || snap?.name || '—';
+  const decided = !!selected || !!snap;
+  const pendingChoice = !decided && offered.some(p => Number(p.price) > 0);
 
   const fmtDate = (d) => d
     ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -298,19 +435,19 @@ export async function buildContractBody(template, lead, businessName) {
     '{{hours}}': lead.hours ?? '—',
     '{{guests}}': lead.guests ?? '—',
     '{{package_name}}': pkgName,
-    '{{total_cost}}': cash(money.final_total),
-    '{{deposit}}': cash(money.deposit_amount),
-    // on a contract this means what's left AFTER the deposit, not what's
-    // outstanding today — see the note on the earlier fix for why
-    '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
+    // balance here is what's left AFTER the deposit, not what's outstanding today
+    ...priceTokens(lead, money, cash, pendingChoice),
     '{{today_date}}': fmtDate(new Date()),
     '{{company_name}}': businessName || '—',
   };
   const blocks = {
-    booking_details: bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime),
+    booking_details: bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime, {
+      pendingChoice,
+      offeredHtml: pendingChoice ? offeredPackagesHtml(offered, cash) : '',
+    }),
     coverage_schedule: coverageScheduleHtml(lead, fmtTime, fmtDate),
     deliverables: deliverablesHtml(inclusions),
-    services_summary: servicesSummaryHtml(inclusions),
+    services_summary: servicesSummaryHtml(inclusions, { decided, offered }),
     crew: crewHtml(crew, fmtTime),
   };
 
@@ -337,21 +474,27 @@ export async function buildContractBody(template, lead, businessName) {
  * plain paragraphs — the templated path above is what carries the real layout.
  */
 export async function fillPlaceholders(text, lead, businessName) {
-  const money = await moneySummary(lead);
-  const vset = await prisma.vendor_settings.findUnique({ where: { vendor_id: lead.vendor_id }, select: { currency: true } });
-  const vrow = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { country: true } });
+  const [money, vset, vrow, offered] = await Promise.all([
+    moneySummary(lead),
+    prisma.vendor_settings.findUnique({ where: { vendor_id: lead.vendor_id }, select: { currency: true } }),
+    prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { country: true } }),
+    prisma.lead_packages.findMany({
+      where: { lead_id: lead.id },
+      select: { price: true, is_selected: true },
+    }),
+  ]);
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const code = currencyFor(vset?.currency, vrow?.country);
   const cash = (v) => {
     try { return Number(v || 0).toLocaleString('en', { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
     catch { return `${Number(v || 0)} ${code}`; }
   };
+  const pendingChoice = !snapshotOf(lead) && !offered.some(p => p.is_selected) && offered.some(p => Number(p.price) > 0);
   const values = {
     '{{client_name}}': lead.name || '—', '{{client_email}}': lead.email || '—',
     '{{event_type}}': lead.event_type || '—', '{{event_date}}': fmtDate(lead.event_date) || '—',
     '{{location}}': lead.location || '—', '{{hours}}': lead.hours ?? '—', '{{guests}}': lead.guests ?? '—',
-    '{{total_cost}}': cash(money.final_total), '{{deposit}}': cash(money.deposit_amount),
-    '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
+    ...priceTokens(lead, money, cash, pendingChoice),
     '{{today_date}}': fmtDate(new Date()), '{{company_name}}': businessName || '—',
   };
   return proseHtml(substitute(text, values));

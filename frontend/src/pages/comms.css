@@ -128,6 +128,17 @@ a.cm-badge:hover { text-decoration: underline; }
 
 /* Sits under the summary it will read, so it plainly belongs to that call. */
 .cm-lead { margin-top: 12px; }
+/* 📋 where the lead from this call stands */
+.cm-leadnote { display: block; margin-top: 12px; font-size: 12.5px; color: var(--muted); text-decoration: none; }
+a.cm-leadnote.is-done, .cm-leadnote.is-done { color: var(--teal); font-weight: 600; }
+a.cm-leadnote:hover { text-decoration: underline; }
+/* 🟢 a booking heard on the call — never set by the model, only offered to Raj */
+.cm-booked { margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #16a34a 45%, var(--line));
+  background: color-mix(in srgb, #16a34a 8%, transparent); }
+.cm-booked-h { font-size: 13px; font-weight: 700; color: #15803d; }
+.cm-booked-q { margin-top: 4px; font-size: 12.5px; color: var(--text); font-style: italic; }
+.cm-booked-acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
 /* ── phone: the list and the conversation take turns ─────────────────── */
 @media (max-width: 760px) {
@@ -140,7 +151,7 @@ a.cm-badge:hover { text-decoration: underline; }
   .cm-line { grid-template-columns: 1fr; gap: 0; }
 }
 
-/* ── 📞→📋 turning a call into a lead ─────────────────────────────────── */
+/* ── ✍️ the Save-contact sheet ───────────────────────────────────────── */
 .cm-modal {
   position: fixed; inset: 0; z-index: 400;
   background: rgba(8,12,14,.6);
@@ -152,21 +163,17 @@ a.cm-badge:hover { text-decoration: underline; }
   border-radius: 14px; padding: 20px;
 }
 .cm-sheet-h { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
-/* A low-confidence extraction is still worth showing — but Raj should know
-   which kind he is looking at before he presses create. */
-.cm-conf { color: var(--amber); }
 .cm-grid {
   display: grid; gap: 10px 12px; margin-bottom: 12px;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
-.cm-input, .cm-area {
+.cm-input {
   width: 100%; box-sizing: border-box;
   padding: 8px 10px; margin-top: 5px;
   border-radius: 8px; border: 1px solid var(--line);
   background: var(--panel-2); color: var(--text);
   font-size: 13.5px; font-family: inherit;
 }
-.cm-area { line-height: 1.6; resize: vertical; margin-bottom: 16px; }
 .cm-sheet-f { display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 560px) {
   .cm-grid { grid-template-columns: 1fr; }

@@ -18,6 +18,16 @@ export function fmtTime(t) {
   return `${h}:${min} ${ap}`;
 }
 
+/** Display only. A 10-digit number reads as a phone; anything else is left as typed. */
+export function formatPhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  if (digits.length === 11 && digits[0] === '1') {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return String(raw || '');
+}
+
 // 🌍 A stored timestamp is a real moment in time, so it's shown in the vendor's
 // own timezone and clock format rather than the browser's. A vendor in Vancouver
 // checking their panel while travelling should still read times the way their
@@ -803,14 +813,15 @@ export const api = {
     return request('/comms' + (p.toString() ? '?' + p : ''));
   },
   commsSync: () => request('/comms/sync', { method: 'POST' }),
-  // 📞→📋 read a call summary into a proposed lead, then create it
-  commsExtract: (id) => request('/comms/' + id + '/extract', { method: 'POST' }),
   commsBadges: (numbers) => request('/comms/badges', { method: 'POST', body: JSON.stringify({ numbers }) }),
   // ✍️ save the person in Quo — shows in the Quo phone app too
   commsSaveContact: (c) => request('/comms/contact', { method: 'POST', body: JSON.stringify(c) }),
   // 💬 send a text through Quo, from the business number
   commsSendText: (number, text) => request('/comms/message', { method: 'POST', body: JSON.stringify({ number, text }) }),
-  commsCreateLead: (id, lead) => request('/comms/' + id + '/lead', { method: 'POST', body: JSON.stringify(lead) }),
+  // 📋 make a lead from a call — waits for the transcript if it is not ready yet
+  commsLeadRequest: (which) => request('/comms/lead-request', { method: 'POST', body: JSON.stringify(which) }),
+  // 🟢 answer "sounds booked — approve?"
+  commsBooking: (id, approve) => request('/comms/' + id + '/booking', { method: 'POST', body: JSON.stringify({ approve }) }),
   myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>
     request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {

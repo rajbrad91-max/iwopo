@@ -102,7 +102,7 @@ function Recording({ id }) {
   );
 }
 
-function CallCard({ e, onLead, busy }) {
+function CallCard({ e, onLead, onBooking, busy }) {
   const [open, setOpen] = useState(false);
   const { points, next } = summaryParts(e.body);
   const lines = transcriptLines(e.transcript);
@@ -153,13 +153,45 @@ function CallCard({ e, onLead, busy }) {
         <div className="cm-pending">Summary and transcript appear a few minutes after the call ends.</div>
       )}
 
-      {/* Only on calls that actually said something — a missed call has nothing to read. */}
-      {(points.length > 0 || lines.length > 0) && (
+      {/* 📋 The lead from this call — asked for once; made when the transcript exists. */}
+      {!isMissed && e.status === 'completed' && <LeadState e={e} onLead={onLead} onBooking={onBooking} busy={busy} />}
+    </div>
+  );
+}
+
+/** Where a call's lead stands, and the booking waiting for Raj's yes. */
+function LeadState({ e, onLead, onBooking, busy }) {
+  const s = e.lead_state;
+  return (
+    <>
+      {!s && (
         <button className="cm-f cm-lead" disabled={busy} onClick={() => onLead(e)}>
-          {busy ? 'Reading the call…' : '📋 Create lead from this call'}
+          {busy ? 'Asking…' : '📋 Create lead from this call'}
         </button>
       )}
-    </div>
+      {(s === 'waiting' || s === 'working') && (
+        <div className="cm-leadnote">⏳ The lead will be created as soon as Quo's transcript is ready.</div>
+      )}
+      {s === 'created' && e.lead_id && (
+        <a className="cm-leadnote is-done" href={`/panel/leads/${e.lead_id}`}>📋 Lead created — open it</a>
+      )}
+      {s === 'none' && <div className="cm-leadnote">🤷 This call didn't sound like an inquiry, so no lead was made.</div>}
+      {s === 'no_text' && <div className="cm-leadnote">⚠️ Quo never wrote a transcript for this call — add the lead in Leads.</div>}
+      {s === 'no_ai' && <div className="cm-leadnote">🤖 The AI isn't set up yet — add its key in Super Admin → Settings → AI, and this lead is made by itself.</div>}
+      {s === 'failed' && <div className="cm-leadnote">⚠️ The AI could not read this call — add the lead in Leads.</div>}
+
+      {e.booking_state === 'suggested' && (
+        <div className="cm-booked">
+          <div className="cm-booked-h">🟢 This sounds like a booking</div>
+          {e.booking_hint && <div className="cm-booked-q">“{e.booking_hint}”</div>}
+          <div className="cm-booked-acts">
+            <button className="cm-f is-on" disabled={busy} onClick={() => onBooking(e, true)}>Approve booking</button>
+            <button className="cm-f" disabled={busy} onClick={() => onBooking(e, false)}>Not yet</button>
+          </div>
+        </div>
+      )}
+      {e.booking_state === 'approved' && <div className="cm-leadnote is-done">✅ Booked — it's in Bookings and on your calendar.</div>}
+    </>
   );
 }
 
@@ -183,10 +215,8 @@ export default function CommsView() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [synced, setSynced] = useState('');
-  const [lead, setLead] = useState(null);         // the proposed lead, before it is saved
   const [busyId, setBusyId] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [made, setMade] = useState(null);
   const newest = useRef(null);
   const streamRef = useRef(null);
 
@@ -202,6 +232,19 @@ export default function CommsView() {
   }, [kind, q]);
 
   useEffect(() => { load(); }, [load]);
+
+  /* 📋 While a call is waiting for its lead (or a summary is still coming),
+     re-read the timeline quietly every 15 s — the live tick only brings NEW
+     rows, and "lead created" is a change to an old one. */
+  const pending = events.some(e => e.lead_state === 'waiting' || e.lead_state === 'working');
+  useEffect(() => {
+    if (!pending) return undefined;
+    const t = setInterval(() => {
+      if (document.hidden) return;
+      api.comms({ kind, q }).then(d => { setEvents(d.events || []); setBadges(d.badges || {}); }).catch(() => {});
+    }, 15_000);
+    return () => clearInterval(t);
+  }, [pending, kind, q]);
 
   /* The live tick: only what is newer than the newest thing held. Rows that
      changed (a summary arriving after the call) come in on the next full load
@@ -267,8 +310,18 @@ export default function CommsView() {
   const [openEvent, setOpenEvent] = useState(() => sessionStorage.getItem('cm-open'));
   useEffect(() => {
     const on = () => setOpenEvent(sessionStorage.getItem('cm-open'));
+    /* From the call screen pop: the caller's number. Opened straight away — a
+       first-time caller's ringing call joins the list on the next live tick. */
+    const byNumber = () => {
+      const n = sessionStorage.getItem('cm-open-number');
+      if (!n) return;
+      sessionStorage.removeItem('cm-open-number');
+      setParty(personKey(n));
+    };
+    byNumber();
     window.addEventListener('cm-open', on);
-    return () => window.removeEventListener('cm-open', on);
+    window.addEventListener('cm-open', byNumber);
+    return () => { window.removeEventListener('cm-open', on); window.removeEventListener('cm-open', byNumber); };
   }, []);
   useEffect(() => {
     if (!openEvent || !events.length) return;
@@ -290,26 +343,44 @@ export default function CommsView() {
   // newest at the bottom, like any chat — scrolled inside the conversation, never the whole page
   useEffect(() => { const s = streamRef.current; if (s) s.scrollTop = s.scrollHeight; }, [party, thread.length]);
 
-  async function extract(ev) {
-    setBusyId(ev.external_id); setErr('');
+  /** Write a call's new lead / booking state into the list without a reload. */
+  function patchEvent(id, data) {
+    setEvents(prev => prev.map(e => (String(e.id) === String(id) ? { ...e, ...data } : e)));
+  }
+  const refreshBadges = () => api.commsBadges(people.map(p => p.key)).then(r => setBadges(r.badges || {})).catch(() => {});
+
+  /* 📋 "Create lead" — on a call card (that call) or in a person's header
+     (their latest answered call). If the transcript is not ready, the server
+     waits and makes the lead the moment it is. */
+  async function requestLead(which, key) {
+    setBusyId(key); setErr('');
     try {
-      const d = await api.commsExtract(ev.id);
-      setLead({ ...d.lead, _eventId: ev.id, _from: ev.contact_name || pretty(other(ev)) });
+      const r = await api.commsLeadRequest(which);
+      patchEvent(r.event_id, { lead_state: r.state, lead_id: r.lead_id ?? null });
+      if (r.state === 'created') {
+        setSynced('📋 Lead created — it is in Leads');
+        refreshBadges();
+      } else if (r.state === 'waiting') {
+        setSynced('⏳ The lead will be created as soon as the transcript is ready — you will get a notification');
+      } else if (r.state === 'none') {
+        setSynced('🤷 That call did not sound like an inquiry, so no lead was made');
+      } else if (r.state === 'no_ai') {
+        setSynced('🤖 Add the AI key in Super Admin → Settings → AI — the lead is then made by itself');
+      }
+      setTimeout(() => setSynced(''), 6000);
     } catch (e) { setErr(e.message); }
     finally { setBusyId(null); }
   }
 
-  async function createLead() {
-    setSaving(true); setErr('');
+  /* 🟢 "Sounds booked — approve?" Approved → Bookings and the calendar. */
+  async function answerBooking(ev, approve) {
+    setBusyId(ev.external_id); setErr('');
     try {
-      const d = await api.commsCreateLead(lead._eventId, lead);
-      setLead(null);
-      setMade(d.lead.name);
-      setTimeout(() => setMade(null), 5000);
-      // the person just became a lead — their badge appears now, not in half a minute
-      api.commsBadges(people.map(p => p.key)).then(r => setBadges(r.badges || {})).catch(() => {});
+      await api.commsBooking(ev.id, approve);
+      patchEvent(ev.id, { booking_state: approve ? 'approved' : 'dismissed' });
+      if (approve) { setSynced('✅ Booked — it is in Bookings and on your calendar'); refreshBadges(); setTimeout(() => setSynced(''), 6000); }
     } catch (e) { setErr(e.message); }
-    finally { setSaving(false); }
+    finally { setBusyId(null); }
   }
 
   /* ✍️ Save the person as a Quo contact — it shows in the Quo app on the phone
@@ -388,7 +459,6 @@ export default function CommsView() {
 
       {err && <div className="cm-err">⚠️ {err}</div>}
       {synced && <div className="cm-new">{synced}</div>}
-      {made && <div className="cm-new">✅ Lead created for {made}</div>}
 
       {loading ? <p className="cm-quiet">Loading…</p>
        : events.length === 0 ? (
@@ -433,6 +503,11 @@ export default function CommsView() {
                 </span>
                 {active.number && (
                   <span className="cm-cacts">
+                    {/* 📋 not a lead yet, and there is an answered call to make one from */}
+                    {!badges[active.key] && thread.some(e => e.kind === 'call' && e.status === 'completed') && (
+                      <button className="cm-f" disabled={busyId === `p:${active.key}`}
+                        onClick={() => requestLead({ number: active.number }, `p:${active.key}`)}>📋 Create lead</button>
+                    )}
                     <button className="cm-f" onClick={() => openContact(active)}>{active.saved ? 'Edit contact' : 'Save contact'}</button>
                     <a className="cm-f" href={`tel:${active.number}`}>Call</a>
                   </span>
@@ -447,7 +522,9 @@ export default function CommsView() {
                     <div key={e.external_id}>
                       {sep && <div className="cm-day">{sep}</div>}
                       {e.kind === 'call'
-                        ? <CallCard e={e} onLead={extract} busy={busyId === e.external_id} />
+                        ? <CallCard e={e} busy={busyId === e.external_id}
+                            onLead={ev => requestLead({ event_id: ev.id }, ev.external_id)}
+                            onBooking={answerBooking} />
                         : (
                           <div className={`cm-msg ${e.direction === 'outgoing' ? 'is-out' : 'is-in'}`}>
                             <div className="cm-bubble">{e.body || <em>(no text)</em>}</div>
@@ -501,37 +578,6 @@ export default function CommsView() {
         </div>
       )}
 
-      {lead && (
-        <div className="cm-modal" onClick={() => setLead(null)}>
-          <div className="cm-sheet" onClick={ev => ev.stopPropagation()}>
-            <div className="cm-sheet-h">
-              From the call with {lead._from}
-              {lead.confidence !== 'high' && (
-                <span className="cm-conf"> — {lead.confidence} confidence, check the details</span>
-              )}
-            </div>
-            <div className="cm-grid">
-              {[['name', 'Name'], ['phone', 'Phone'], ['email', 'Email'],
-                ['event_type', 'Event'], ['event_date', 'Date'], ['location', 'Location']].map(([k, label]) => (
-                <div key={k}>
-                  <label className="lbl">{label}</label>
-                  <input className="cm-input" type={k === 'event_date' ? 'date' : 'text'}
-                    value={lead[k] || ''} onChange={ev => setLead({ ...lead, [k]: ev.target.value })} />
-                </div>
-              ))}
-            </div>
-            <label className="lbl">Notes</label>
-            <textarea className="cm-area" rows={7} value={lead.notes || ''}
-              onChange={ev => setLead({ ...lead, notes: ev.target.value })} />
-            <div className="cm-sheet-f">
-              <button className="cm-f" onClick={() => setLead(null)}>Cancel</button>
-              <button className="cm-f is-on" disabled={saving} onClick={createLead}>
-                {saving ? 'Creating…' : '📋 Create lead'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

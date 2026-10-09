@@ -6,11 +6,14 @@
  * Retyping it is both slow and where mistakes come from — a date typed from
  * memory ten minutes later is a date that can be wrong.
  *
- * ⚠️ The model fills in what it can and NOTHING is saved without Raj seeing
- * it. An extraction that silently created a booking on the wrong Saturday
- * would be far worse than no extraction at all.
+ * ⚠️ Nothing is created unless Raj asked for it — he presses "Create lead" on
+ * the call (lib/callLeads.js does the rest once the transcript is ready) — and
+ * a booking is never set by the model: it is only SUGGESTED, and becomes a
+ * booking when Raj approves it. A silently booked wrong Saturday would be far
+ * worse than no extraction at all.
  */
 import { getSetting } from './settings.js';
+import { DEFAULT_MODEL } from './wopoAssistant.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -28,13 +31,17 @@ Reply with ONLY a JSON object, no prose and no code fence:
   "event_date": "YYYY-MM-DD if a specific date was agreed, else null",
   "location": "venue or city, or null",
   "notes": "everything else worth keeping: the time, guest count, which services (photo, video, live streaming), budget, and anything they asked for. Write it as short plain lines, not JSON.",
+  "is_inquiry": true or false — was this a client asking about, or arranging, an event we would photograph or film?,
+  "booked": true or false — did the client clearly COMMIT on this call (said they want to go ahead, confirmed the date with us, agreed to pay a deposit or sign)?,
+  "booking_evidence": "if booked, the words that show it, in one short sentence; else null",
   "confidence": "high | medium | low"
 }
 
 Rules:
 - Never invent a date. If they said "sometime in August" put that in notes and leave event_date null.
 - A year is only included if it was actually said or is unambiguous from context.
-- If the call was not about booking an event at all, return every field null and confidence "low".
+- If the call was not about booking an event at all (a supplier, a friend, a wrong number), set is_inquiry false, every other field null and confidence "low".
+- booked is false unless the client themselves clearly agreed. Asking for a price, "we'll think about it" or "send me a quote" is NOT booked.
 - notes must never be empty when the summary has any detail in it.`;
 
 /**
@@ -43,7 +50,8 @@ Rules:
  */
 export async function extractLead(vendorId, text, known = {}) {
   const apiKey = await getSetting('anthropic_api_key', '');
-  if (!apiKey) return { error: 'The AI assistant is not configured yet.' };
+  // `permanent`: retrying will not help until somebody fixes the setting
+  if (!apiKey) return { error: 'The AI assistant is not configured yet.', permanent: true };
   if (!String(text || '').trim()) return { error: 'This call has no summary to read.' };
 
   let data;
@@ -56,7 +64,8 @@ export async function extractLead(vendorId, text, known = {}) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250929',
+        // the model chosen in Super Admin, like every other AI feature — not one pinned here to age
+        model: (await getSetting('anthropic_model', '')) || DEFAULT_MODEL,
         max_tokens: 900,
         system: SYSTEM,
         messages: [{ role: 'user', content: String(text).slice(0, 12000) }],
@@ -64,7 +73,9 @@ export async function extractLead(vendorId, text, known = {}) {
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      return { error: res.status === 401 ? 'The AI key was rejected.' : `The assistant returned ${res.status}. ${body.slice(0, 120)}` };
+      return res.status === 401
+        ? { error: 'The AI key was rejected.', permanent: true }
+        : { error: `The assistant returned ${res.status}. ${body.slice(0, 120)}` };
     }
     data = await res.json();
   } catch (e) {
@@ -92,6 +103,10 @@ export async function extractLead(vendorId, text, known = {}) {
     event_date: /^\d{4}-\d{2}-\d{2}$/.test(out.event_date || '') ? out.event_date : null,
     location: out.location || null,
     notes: out.notes || '',
+    is_inquiry: out.is_inquiry !== false,
+    // a booking is only ever SUGGESTED — Raj approves it (see lib/callLeads.js)
+    booked: out.booked === true,
+    booking_evidence: out.booked === true && out.booking_evidence ? String(out.booking_evidence).slice(0, 280) : null,
     confidence: ['high', 'medium', 'low'].includes(out.confidence) ? out.confidence : 'medium',
   };
 }
