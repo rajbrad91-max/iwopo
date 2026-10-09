@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { poseFromLandmarks, faceShape } from './portraitScore.js';
+import { faceBlur } from './faceBlur.js';
 
 const { Canvas, Image, ImageData } = canvas;
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
@@ -52,24 +53,26 @@ export async function getFaceDescriptors(imagePath) {
     .withFaceDescriptors();
 
   const imgArea = (img.width || 1) * (img.height || 1);
+  const size = { width: img.width, height: img.height };
 
-  return results.map(r => {
+  return Promise.all(results.map(async r => {
     // landmarks are computed anyway for the descriptor — use them to work out
     // which way the head is turned, so the gallery can pick a front-facing
     // face for the circle instead of whichever scored highest.
     const { yaw, pitch } = poseFromLandmarks(r.landmarks);
     const b = r.detection.box;
-    // 👤 is it really a face? measured here, judged by isUsableFace()
+    // 👤 is it really a face, and is it sharp? measured here, judged by isUsableFace()
     const { eyeSep, noseBetween } = faceShape(r.landmarks, b);
+    const blur = await faceBlur(jpegBuf, b, size);
     return {
       descriptor: Array.from(r.descriptor),   // 128 floats → JSON-safe
       box: b,
       score: r.detection.score,
       yaw, pitch,
-      eyeSep, noseBetween,
+      eyeSep, noseBetween, blur,
       areaFrac: (b.width * b.height) / imgArea,
     };
-  });
+  }));
 }
 
 // Compare two descriptors → distance (lower = more similar). <0.5 ≈ match

@@ -35,14 +35,17 @@ const MIN_SCORE = 0.40;
 // Nearest-member matching (below) is what keeps
 // this safe from drift, so we can afford a slightly looser distance here.
 const MATCH_DIST = 0.48;
-/* 👤 Somebody seen in only ONE photograph still gets a circle — Raj,
-   2026-10-09: "one person who just quickly came in the event should not be
-   missed". With no second photo to confirm it, that one face has to be clear
-   on its own: big enough, a confident detection, and looking at the camera.
-   Measured on album 18's eight one-photo faces: this keeps the three real
-   people (man in black, girls in green and pink) and leaves out a back of a
-   head with jewellery (eyeSep 0.32), a hand with mehndi (59px, score 0.57)
-   and two three-quarter shots of the bride who already has her own circle. */
+/* 👤 One-photo people — LIVE SHOOT ONLY.
+   Tried for galleries on 2026-10-09 and reverted the same day at Raj's call
+   ("I need quality"): on a 782-photo wedding it added 33 circles of one, most
+   of them blurred, half-hidden behind a hand, cut off at the frame edge, or a
+   second circle for someone who already had one. In a gallery a circle is a
+   promise of "this person's photos"; one stray frame does not keep it, and
+   Find me still finds anyone who appears once.
+   A live shoot is different: no circles are shown there, but a guest's pass
+   is made of circle ids, so a guest seen once still needs one to open their
+   photo. With no second photo to confirm it, that face must be clear on its
+   own: big enough, a confident detection, and looking at the camera. */
 const SINGLE_MIN_PX = 70;
 const SINGLE_MIN_SCORE = 0.55;
 const SINGLE_MIN_EYE_SEP = 0.40;
@@ -65,6 +68,7 @@ function clearSingle(f) {
    detection is exactly what a painted face looks like. */
 const PAIR_TIGHT = 0.40;
 const PAIR_CONF = 0.80;
+const THREE_MIN_BEST = 0.60;          // see the 🧱 rule in clusterAlbum
 
 /** Does a two-photo circle have enough evidence to be shown? */
 function pairHolds(faces) {
@@ -175,7 +179,7 @@ function clusterLocal(faces) {
 export async function clusterAlbum(albumId) {
   const alb = await prisma.albums.findUnique({
     where: { id: Number(albumId) },
-    select: { id: true, vendor_id: true },
+    select: { id: true, vendor_id: true, kind: true },
   });
   if (!alb) return { clusters: 0 };
   const vendorId = alb.vendor_id;
@@ -210,8 +214,15 @@ export async function clusterAlbum(albumId) {
   for (const g of groups) {
     // one person can appear once per photo — collapse duplicates
     const photoIds = [...new Set(g.faces.map(f => f.photo_id))];
-    if (photoIds.length === 1 && !clearSingle(g.faces[0])) continue;   // 👤 see SINGLE_MIN_*
+    if (photoIds.length === 1 && !(alb.kind === 'liveshoot' && clearSingle(g.faces[0]))) continue;   // 👤 see SINGLE_MIN_*
     if (photoIds.length === 2 && !pairHolds(g.faces)) continue;        // 👯 see PAIR_TIGHT
+    /* 🧱 Three photos and not one decent face among them is junk that found
+       itself: album 18 grouped a mehndi hand, a gold ribbon and the back of a
+       jewelled head (best score 0.57). Measured across all 27 three-photo
+       circles on staging: the 26 real ones have a best face of 0.68–1.00
+       (only one under 0.82, a real man in album 43). The margin is thin, so
+       this only catches junk that is weak in every one of its photos. */
+    if (photoIds.length === 3 && Math.max(...g.faces.map(f => f.score ?? 0)) < THREE_MIN_BEST) continue;
 
     // 🖼️ the circle uses the most PORTRAIT-LIKE face of this person, not simply
     // the highest detection score. Detection score answers "is this a face?",

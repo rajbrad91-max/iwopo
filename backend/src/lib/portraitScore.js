@@ -101,28 +101,33 @@ export function poseFromLandmarks(landmarks) {
    back-of-head shots matched EACH OTHER and formed a circle of their own
    (album 18, 2026-10-09: 7 photos, 4 of them the back of her head).
 
-   Two measurements from the 68 landmarks, both relative so face size does
-   not matter:
+   One measurement from the 68 landmarks, relative so face size does not
+   matter:
      eyeSep        eye-to-eye distance ÷ face-box width.
                    Front ≈ 0.35–0.50 · three-quarter ≈ 0.25–0.35 ·
-                   profile/back ≈ 0.09–0.20.
-     noseBetween   where the nose sits between the eyes (0 = over the left
-                   eye, 1 = over the right). A real face keeps it between them;
-                   on profiles and backs it lands outside (1.1–2.5 measured).
+                   profile/back ≈ 0.05–0.20.
 
-   Cut-offs set from all 107 faces of album 18, checked by eye against a
-   contact sheet: every back-of-head and profile falls outside, every
-   three-quarter view of the bride (noseBetween up to 0.98) stays in. The
-   nose range is 0–1 on purpose — symmetric — so a head turned left is judged
-   exactly like one turned right.
-   ⚠️ Change them only after re-measuring on a real album.
+   ⚠️ 2026-10-09, re-measured on a 782-photo wedding (album 56, 3,472 faces)
+   after the first version made circles WORSE. That version also rejected a
+   nose outside the eyes and anything under 55px, tuned on one 107-face album.
+   On the big album it threw away 1,123 faces — and contact sheets showed the
+   nose rule's 229 rejects were ALL real people in three-quarter view, and most
+   of the 761 small ones were clear faces in group shots. People lost photos
+   from their own circles. Both are gone: the nose position is still stored
+   (the Live Shoot one-photo rule uses it) but no longer judged here, and the
+   size floor is 30px, below which the sheet showed mostly blur.
+   ⚠️ Change these only after re-measuring on a LARGE real album, with sheets.
    ════════════════════════════════════════════════════════════════════════ */
 export const MIN_EYE_SEP = 0.20;
-export const NOSE_BETWEEN_MIN = 0.0;
-export const NOSE_BETWEEN_MAX = 1.0;
 /* Faces whose short side is under this many pixels (on the 2200px preview)
-   are background heads; their fingerprint is too noisy to trust. */
-export const MIN_FACE_PX = 55;
+   are background blur; their fingerprint is too noisy to trust. */
+export const MIN_FACE_PX = 30;
+/* 🌫️ Faces blurrier than this are left out (faceBlur.js: 0 crisp … 1 soft).
+   Raj, 2026-10-09: "avoid extremely blurry faces". Set from a contact sheet of
+   3,290 faces across four staging albums, one row per band: up to 0.55 crisp,
+   0.55–0.65 soft but recognisable, 0.65 and above plainly blurred — 75 faces
+   (2%), the ones a fingerprint cannot be trusted on. */
+export const MAX_BLUR = 0.65;
 
 /** eyeSep and noseBetween for one detection — stored with the face at index time. */
 export function faceShape(landmarks, box) {
@@ -155,9 +160,7 @@ export function isUsableFace(f) {
     const normalized = w <= 1 && h <= 1;          // a fraction of the image, not pixels
     if (!normalized && Math.min(w, h) < MIN_FACE_PX) return false;
   }
-  if (typeof f?.eyeSep === 'number') {
-    if (f.eyeSep < MIN_EYE_SEP) return false;
-    if (f.noseBetween < NOSE_BETWEEN_MIN || f.noseBetween > NOSE_BETWEEN_MAX) return false;
-  }
+  if (typeof f?.eyeSep === 'number' && f.eyeSep < MIN_EYE_SEP) return false;
+  if (typeof f?.blur === 'number' && f.blur >= MAX_BLUR) return false;       // 🌫️ see MAX_BLUR
   return true;
 }

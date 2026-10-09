@@ -171,6 +171,7 @@
   scroll-padding-left: 2px;
   padding-bottom: 2px;
   scrollbar-width: none;
+  overflow-anchor: none;           /* the browser must not "keep its place" when the faces change */
   flex: 1 1 auto;
 }
 /* keep the scrollbar out of the way — the strip is obviously swipeable */

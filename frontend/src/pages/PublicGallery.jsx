@@ -97,6 +97,13 @@ export default function PublicGallery({ token, embedded, onBack }) {
     document.addEventListener('visibilitychange', measure);
     return () => { ro.disconnect(); document.removeEventListener('visibilitychange', measure); };
   }, [faces, allFacesOpen]);
+  /* ⬅️ A new set of faces starts at the BEGINNING — the most-photographed
+     people. Switching event left the strip scrolled wherever the browser kept
+     it (measured: 4132 px in on "Marco JAggo"), so a client saw a row of 1s and
+     only found the sorted order by pressing More and Fewer. */
+  useEffect(() => {
+    facesRef.current?.scrollTo({ left: 0, top: 0 });
+  }, [faces]);
   // The face strip scrolls horizontally with snap points rather than trying to
   // fit an exact number of circles. Measuring "how many fit" was off by a few
   // pixels on narrow screens, so the last circle rendered half-clipped.
