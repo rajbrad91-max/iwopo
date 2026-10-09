@@ -686,6 +686,13 @@ router.post('/sign/:token', async (req, res) => {
     const c = await prisma.contracts.findFirst({ where: { token: req.params.token } });   // full row: released_at is read below
     if (!c) return res.status(404).json({ error: 'Contract not found' });
     if (c.status === 'signed') return res.status(400).json({ error: 'Already signed ✅' });
+    /* 🚨 A VOIDED contract is not signable. It was replaced — by a package
+       change, or a reopened portal — and only its replacement describes the
+       booking. This route checked "signed" and nothing else, so the old token
+       still took a signature and flipped a dead contract back to life. */
+    if (c.status === 'voided' || c.voided_at) {
+      return res.status(409).json({ error: 'voided', message: 'This contract has been replaced. Please use the latest link from your photographer.' });
+    }
 
     /**
      * 🔒 An unreleased contract cannot be signed.
@@ -709,8 +716,13 @@ router.post('/sign/:token', async (req, res) => {
       });
     }
 
-    // require all [INITIAL] markers initialed
-    const needed = (c.body.match(/\[INITIAL\]/g) || []).length;
+    /* 🔒 Every initial box must be ticked — checked HERE, not just on the page.
+       The count used to look for the literal "[INITIAL]" marker of the old
+       plain-text bodies; contracts are HTML now and carry tap boxes instead,
+       so the count was always 0 and the server accepted a signature with no
+       initials at all. Both forms are counted, so an old contract still works. */
+    const needed = (c.body.match(/data-init-idx="\d+"/g) || []).length
+      + (c.body.match(/\[INITIAL\]/g) || []).length;
     const given = Array.isArray(initials) ? initials.filter(Boolean).length : 0;
     if (needed > 0 && given < needed)
       return res.status(400).json({ error: `Please tap all ${needed} initial boxes ✍️` });
@@ -724,7 +736,7 @@ router.post('/sign/:token', async (req, res) => {
     /* ⚠️ signed_at: null in the WHERE — the second request matches no row
        and is told so, rather than quietly replacing the first signature. */
     const claimed = await prisma.contracts.updateMany({
-      where: { id: c.id, signed_at: null },
+      where: { id: c.id, signed_at: null, voided_at: null },
       data: { signed_at: new Date() },
     });
     if (claimed.count === 0) {

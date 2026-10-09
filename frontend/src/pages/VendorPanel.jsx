@@ -136,6 +136,7 @@ export default function VendorPanel({ onLogout }) {
   const [collapsed, setCollapsed] = useState(() => window.innerWidth <= 820);
   const [profile, setProfile] = useState(null);
   const user = getUser();
+  const dialog = useDialog();
 
   useEffect(() => { api.myProfile().then(d => setProfile(d.profile)).catch(() => {}); }, []);
 
@@ -168,9 +169,11 @@ export default function VendorPanel({ onLogout }) {
   // The badge is NOT cleared here: it counts leads the vendor hasn't opened, and
   // wiping it just for landing on the list made it meaningless — you'd never see
   // which lead was actually new. Opening a lead clears that lead (see LeadsView).
-  const go = (t) => {
-    /* ⚠️ Ask the contract editor first — it may be holding unsaved work. */
-    if (csLeaveGuard && !csLeaveGuard()) return;
+  const go = async (t) => {
+    /* ⚠️ Ask the contract editor first — it may be holding unsaved work.
+       Awaited: the guard asks through the in-app dialog, which is async, and
+       an un-awaited Promise is truthy — Cancel would have read as Leave. */
+    if (csLeaveGuard && !(await csLeaveGuard())) return;
     setTab(t);
     if (window.innerWidth <= 820) setCollapsed(true);
     if (has('leads')) refreshLeadCount();
@@ -286,7 +289,7 @@ export default function VendorPanel({ onLogout }) {
           } catch {
             /* ⚠️ Say so rather than doing nothing — a sidebar item that
                silently fails reads as a broken panel. */
-            alert('Could not open the Perfect Poses site just now.');
+            dialog.alert('Could not open the Perfect Poses site just now.', { error: true });
           }
         }}><span className="nav-ic">🌐</span><span className="nav-txt">Perfect Poses Site</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
@@ -4111,8 +4114,9 @@ function ContractSetup() {
      triggers beforeunload. Cleared on unmount, or a stale editor would keep
      blocking navigation after it has gone. */
   useEffect(() => {
-    csLeaveGuard = () => {
-      if (csDirty && !window.confirm('You have changes that are not saved. Leave them?')) return false;
+    csLeaveGuard = async () => {
+      if (csDirty && !(await dialog.confirm('You have changes that are not saved. Leave them?',
+        { title: 'Unsaved changes', okLabel: 'Leave' }))) return false;
       /* an untouched new template is removed rather than left as a blank card */
       if (justCreated && justCreated === sel?.id && !csDirty) {
         api.deleteCtTemplate(justCreated).catch(() => {});
@@ -4120,7 +4124,7 @@ function ContractSetup() {
       return true;
     };
     return () => { csLeaveGuard = null; };
-  }, [csDirty, justCreated, sel]);
+  }, [csDirty, justCreated, sel, dialog]);
   const [msg, setMsg] = useState('');
   const [showRaw, setShowRaw] = useState(false);   // preview: placeholders vs sample values
   // which section the cursor was last in, so the shared palette knows where to
@@ -4179,10 +4183,11 @@ function ContractSetup() {
     const text = [sel.header, sel.legal_terms, ...(sel.sections || []).flatMap(x => [x.title, x.text])].join('\n');
     const unknown = unknownPlaceholders(text);
     if (unknown.length) {
-      const ok = window.confirm(
+      const ok = await dialog.confirm(
         'These do not match anything the system fills:\n\n' +
         unknown.map(u => u.startsWith('…') ? '  ' + u : '  {{' + u + '}}').join('\n') +
-        '\n\nThey will appear in the client\'s contract exactly as written. Save anyway?');
+        '\n\nThey will appear in the client\'s contract exactly as written. Save anyway?',
+        { title: 'Unknown placeholders', okLabel: 'Save anyway', danger: false });
       if (!ok) return;
     }
 
@@ -4246,7 +4251,8 @@ function ContractSetup() {
         <button className="refresh" onClick={async () => {
           /* ⚠️ Only asks when something actually changed — a confirm on every
              exit is one people learn to dismiss without reading. */
-          if (csDirty && !window.confirm('You have changes that are not saved. Leave them?')) return;
+          if (csDirty && !(await dialog.confirm('You have changes that are not saved. Leave them?',
+            { title: 'Unsaved changes', okLabel: 'Leave' }))) return;
           /* ⚠️ A brand-new template the vendor never touched is removed rather
              than left as a blank card. Only when it is BOTH newly created and
              unchanged — never one that already existed. */

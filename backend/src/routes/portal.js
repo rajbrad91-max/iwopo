@@ -5,6 +5,8 @@ import { moneySummary } from './payments.js';
 import { notify } from './notifications.js';
 import { audit, templateForLead, buildContractBody } from './contracts.js';
 import { currencyFor } from '../lib/currencies.js';
+import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
+import { limit } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
@@ -13,11 +15,14 @@ async function leadByToken(token) {
   return prisma.leads.findFirst({ where: { client_token: token } });
 }
 
-/** Read one cookie by name without pulling in cookie-parser for it. */
-function cookieOf(req, name) {
-  const raw = req.headers.cookie || '';
-  const m = raw.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
-  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+/* 🔒 Has this caller passed the lead's Secure Login (email check)?
+   An HMAC tied to the lead and the email on file — the old plain "1" could be
+   typed into devtools, and lead ids are small sequential numbers. A lead with
+   the gate switched off is always open. */
+function gateOpen(req, lead) {
+  if (!lead.gateway_enabled) return true;
+  return gatePassed(cookieOf(req, 'pkg_verified_' + lead.id), 'pkg', lead.id,
+    String(lead.email || '').trim().toLowerCase());
 }
 
 function ipOf(req) {
@@ -114,39 +119,71 @@ router.get('/:token', async (req, res) => {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
 
-    /**
-     * 🔄 A reopened or shared link before payment starts the flow over.
-     *
-     * Choosing a package, signing and paying is meant to be one sitting, not
-     * three separate visits that might belong to three different people. The
-     * frontend sends ?fresh=1 exactly once per browser session — the first
-     * load after a tab opens, never after an action taken within it — so a
-     * page refresh mid-signature does not lose anything, but a closed and
-     * reopened browser, or a link opened somewhere else, does.
-     *
-     * A booking that has already been paid for is never touched here: this
-     * only resets what is still in progress.
-     */
-    if (req.query.fresh === '1' && !lead.payment_claimed_at) {
-      const active = await prisma.contracts.findFirst({
-        where: { lead_id: lead.id, status: { not: 'voided' } },  // 🔒 tenancy via the lead
-      });
-      if (active) {
-        await prisma.contracts.update({
-          where: { id: active.id },
-          data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
-        });
-        await audit(active.id, 'voided', ipOf(req), { reason: 'portal_reopened_before_payment' });
-      }
-      await prisma.lead_packages.updateMany({
-        where: { lead_id: lead.id },                             // 🔒 tenancy via the lead
-        data: { is_selected: false },
-      });
-    }
     const vendor = await prisma.vendors.findUnique({
       where: { id: lead.vendor_id },
       select: { business_name: true, logo_path: true },
     });
+    // 🎨 the vendor's branding, so the portal looks like the inquiry form the
+    // client already filled in rather than a different company's page
+    const brand = await prisma.inquiry_settings.findUnique({
+      where: { vendor_id: lead.vendor_id },                     // 🔒 tenancy
+      select: { brand_color: true, theme: true, font: true },
+    });
+
+    /**
+     * 🔒 Secure Login — an email check before anything on the booking shows.
+     *
+     * ⚠️ FIRST, before anything below reads or CHANGES the booking. The
+     * ?fresh=1 reset used to run above this check, so somebody who had the
+     * link but had not passed the email check could still void the contract
+     * just by opening it.
+     */
+    if (!gateOpen(req, lead)) {
+      return res.json({
+        gated: true,
+        business_name: vendor?.business_name,
+        lead: { name: lead.name },
+        branding: {
+          brand_color: brand?.brand_color || '#C9A86A',
+          theme: brand?.theme || 'classic', font: brand?.font || 'Inter',
+          logo_path: vendor?.logo_path || null,
+        },
+      });
+    }
+
+    /**
+     * 🔄 A reopened or shared link before payment starts the flow over.
+     *
+     * The frontend sends ?fresh=1 exactly once per browser session, so a
+     * refresh mid-signature loses nothing, but a reopened browser does.
+     *
+     * ⚠️ A SIGNED contract is never voided here. It is an executed agreement;
+     * throwing one away because the client closed their browser before paying
+     * destroyed the signature with nothing to show why. Only work still in
+     * progress — an unsigned contract and an unconfirmed package choice — is
+     * reset. Changing package after signing is still handled, deliberately,
+     * by reconcileContract when the client actually picks a different one.
+     */
+    if (req.query.fresh === '1' && !lead.payment_claimed_at) {
+      const active = await prisma.contracts.findFirst({
+        where: { lead_id: lead.id, status: { not: 'voided' } },  // 🔒 tenancy via the lead
+        orderBy: { id: 'desc' },
+        select: { id: true, signed_at: true },
+      });
+      if (!active?.signed_at) {
+        if (active) {
+          await prisma.contracts.update({
+            where: { id: active.id },
+            data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
+          });
+          await audit(active.id, 'voided', ipOf(req), { reason: 'portal_reopened_before_payment' });
+        }
+        await prisma.lead_packages.updateMany({
+          where: { lead_id: lead.id },                           // 🔒 tenancy via the lead
+          data: { is_selected: false },
+        });
+      }
+    }
     // The packages this client was actually offered — their own copy, taken
     // when the vendor loaded the folder. Reading the lead's set rather than the
     // vendor's master list means the offer stays exactly as sent even if the
@@ -208,36 +245,6 @@ router.get('/:token', async (req, res) => {
       ? null
       : contractRow;
 
-    // 🎨 the vendor's branding, so the portal looks like the inquiry form the
-    // client already filled in rather than a different company's page
-    const brand = await prisma.inquiry_settings.findUnique({
-      where: { vendor_id: lead.vendor_id },                     // 🔒 tenancy
-      select: { brand_color: true, theme: true, font: true },
-    });
-
-    /**
-     * 🔒 Secure Login — an email check before anything on the booking shows.
-     *
-     * A portal link is the only thing standing between whoever has it and
-     * this client's packages, prices and contract. Most vendors never need
-     * more than the link itself; this is for the ones who do. One fact only
-     * the actual client is likely to have on hand, checked once per browser
-     * rather than on every visit — the cookie set on success is what makes
-     * that "once", not "every request".
-     */
-    if (lead.gateway_enabled && cookieOf(req, 'pkg_verified_' + lead.id) !== '1') {
-      return res.json({
-        gated: true,
-        business_name: vendor?.business_name,
-        lead: { name: lead.name },
-        branding: {
-          brand_color: brand?.brand_color || '#C9A86A',
-          theme: brand?.theme || 'classic', font: brand?.font || 'Inter',
-          logo_path: vendor?.logo_path || null,
-        },
-      });
-    }
-
     // 💱 resolved the same way the panel resolves it — their choice, else their
     // country — so the figure a client sees matches the one the vendor sees
     const vset = await prisma.vendor_settings.findUnique({
@@ -272,7 +279,6 @@ router.get('/:token', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package */
 /**
  * 🔓 PUBLIC: POST /api/portal/:token/verify — the email check itself.
  *
@@ -280,7 +286,10 @@ router.get('/:token', async (req, res) => {
  * this booking. Not a password — the client never set one — just the one
  * fact tying "whoever has this link" to "the person this booking is for".
  */
-router.post('/:token/verify', async (req, res) => {
+router.post('/:token/verify',
+  // an email is guessable in a way a password is not — throttle the guessing
+  limit({ name: 'portal-verify', max: 12, windowMs: 15 * 60_000, key: r => r.params.token }),
+  async (req, res) => {
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
@@ -290,18 +299,24 @@ router.post('/:token/verify', async (req, res) => {
     if (!onFile || given !== onFile) {
       return res.status(403).json({ error: "That email doesn't match our records" });
     }
-    res.cookie('pkg_verified_' + lead.id, '1', {
-      maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax', httpOnly: false,
+    /* signed, and httpOnly — nothing on the page reads it, and a value a
+       script can see is a value a script can copy */
+    res.cookie('pkg_verified_' + lead.id, gateValue('pkg', lead.id, onFile), {
+      maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax', httpOnly: true, secure: true,
     });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package */
 router.post('/:token/pick', async (req, res) => {
   const { package_id } = req.body;
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
+    /* 🔒 the Secure Login applies to changing the booking, not only to
+       reading it — this route is public and can be posted to directly */
+    if (!gateOpen(req, lead)) return res.status(403).json({ error: 'Please confirm your email first' });
     // The id refers to one of the lead's OWN packages when it has them, and to
     // a vendor master only for old leads that predate per-lead packages.
     const own = await prisma.lead_packages.findFirst({
@@ -366,6 +381,7 @@ router.post('/:token/pay-direct', async (req, res) => {
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
+    if (!gateOpen(req, lead)) return res.status(403).json({ error: 'Please confirm your email first' });   // 🔒
 
     const chosen = await prisma.lead_packages.findFirst({
       where: { lead_id: lead.id, is_selected: true },           // 🔒 tenancy via the lead

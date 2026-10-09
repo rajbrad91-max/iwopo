@@ -1,11 +1,18 @@
 import express from 'express';
-import { limit } from '../middleware/rateLimit.js';
+import { limit, forgive } from '../middleware/rateLimit.js';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { generateReply, isActiveSubscriber } from '../lib/wopoAssistant.js';
 
 const router = express.Router();
+
+/** The fill-in access code, compared in constant time rather than with !==. */
+function codeMatches(given, stored) {
+  const a = crypto.createHash('sha256').update(String(given || '')).digest();
+  const b = crypto.createHash('sha256').update(String(stored || '')).digest();
+  return crypto.timingSafeEqual(a, b);
+}
 
 // 🚦 simple in-memory rate limit: 30 messages / hour / (ip+session)
 const hits = new Map();
@@ -192,25 +199,31 @@ router.post('/fill/:token/unlock', limit({ name: 'fill-unlock', max: 12, windowM
       select: { vendor_id: true, access_code: true },
     });
     if (!s) return res.status(404).json({ error: 'Link not found' });
-    if (s.access_code && (req.body.code || '') !== s.access_code) {
+    if (s.access_code && !codeMatches(req.body.code, s.access_code)) {
       return res.status(401).json({ error: 'Wrong access code' });
     }
+    // a right answer clears the count, so only wrong guesses use the budget
+    forgive('fill-unlock', req, req.params.token);
     const k = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: s.vendor_id } });
     res.json({ knowledge: k || emptyKnowledge(s.vendor_id), fields: KNOWLEDGE_FIELDS });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // vendor submits their filled knowledge
-router.post('/fill/:token', async (req, res) => {
+/* 🔒 Same budget as /unlock, under the same name, so the two share one
+   counter. This route checks the access code too, and it had no limit at all —
+   a guesser simply posted here instead of to the throttled door. */
+router.post('/fill/:token', limit({ name: 'fill-unlock', max: 12, windowMs: 15 * 60_000, key: r => r.params.token }), async (req, res) => {
   try {
     const s = await prisma.chatbot_subscribers.findFirst({
       where: { share_token: req.params.token },
       select: { vendor_id: true, access_code: true },
     });
     if (!s) return res.status(404).json({ error: 'Link not found' });
-    if (s.access_code && (req.body.code || '') !== s.access_code) {
+    if (s.access_code && !codeMatches(req.body.code, s.access_code)) {
       return res.status(401).json({ error: 'Wrong access code' });
     }
+    forgive('fill-unlock', req, req.params.token);
     await saveKnowledge(s.vendor_id, req.body);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

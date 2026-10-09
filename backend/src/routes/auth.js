@@ -203,6 +203,11 @@ router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), 
       prisma.users.update({ where: { id: row.user_id }, data: { password_hash: newHash } }),
       prisma.password_reset_tokens.update({ where: { id: row.id }, data: { used_at: new Date() } }),
     ]);
+    /* 🎟️ Every session issued before now ends. A reset is usually "I lost
+       access" or "someone else has it" — leaving their logged-in browser
+       working for another seven days defeats the point. PUT /me/password
+       already did this; the reset path did not. */
+    await revokeAllForUser(row.user_id);
     res.json({ ok: true, message: 'Password updated — you can log in now. ✅' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

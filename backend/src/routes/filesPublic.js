@@ -11,6 +11,7 @@ import { storageFor, vendorDir, fileStream } from './files.js';
 import { checkSharePassword } from '../lib/sharePassword.js';
 import * as objects from '../lib/objectStore.js';
 import { recordEvent } from '../lib/siteEvents.js';
+import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -57,10 +58,12 @@ async function shareByToken(token) {
   return { share, expired: false };
 }
 
-function cookieOf(req, name) {
-  const raw = req.headers.cookie || '';
-  const m = raw.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
-  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+/* 🔒 Is this share's password gate still shut for this caller?
+   The cookie is an HMAC tied to the share AND its current password hash —
+   a plain "1" used to be accepted, which anyone could type into devtools. */
+function locked(req, share) {
+  if (!share.password) return false;
+  return !gatePassed(cookieOf(req, 'ff_' + share.id), 'ff', share.id, share.password);
 }
 
 /** The public shape of a share — never the password, never the vendor id. */
@@ -87,7 +90,7 @@ router.get('/:token', async (req, res) => {
     });
 
     // password gate: nothing about the contents leaves until it's passed
-    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+    if (locked(req, share)) {
       return res.json({ gated: true, title: share.title, business_name: vendor?.business_name || null,
         logo_path: vendor?.logo_path || null });
     }
@@ -119,7 +122,7 @@ router.get('/:token/browse', async (req, res) => {
     if (!found) return res.status(404).json({ error: 'This link is not valid' });
     const { share, expired } = found;
     if (expired) return res.status(410).json({ error: 'expired', message: 'This link has expired.' });
-    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+    if (locked(req, share)) {
       return res.status(403).json({ error: 'Locked' });
     }
 
@@ -211,7 +214,7 @@ router.get('/:token/zip', async (req, res) => {
     if (!found) return res.status(404).json({ error: 'This link is not valid' });
     const { share, expired } = found;
     if (expired) return res.status(410).json({ error: 'expired' });
-    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+    if (locked(req, share)) {
       return res.status(403).json({ error: 'Locked' });
     }
 
@@ -246,7 +249,7 @@ router.get('/:token/thumb/:itemId', async (req, res) => {
     if (!found) return res.status(404).end();
     const { share, expired } = found;
     if (expired) return res.status(410).end();
-    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') return res.status(403).end();
+    if (locked(req, share)) return res.status(403).end();
 
     const it = await prisma.file_share_items.findUnique({ where: { id: Number(req.params.itemId) } });
     // 🔒 the item must belong to THIS share — an id alone proves nothing
@@ -272,7 +275,9 @@ router.post('/:token/unlock', limit({ name: 'share-unlock', max: 12, windowMs: 1
     if (!await checkSharePassword(req.body?.password, share.password)) {
       return res.status(403).json({ error: "That password doesn't match" });
     }
-    res.cookie('ff_' + share.id, '1', { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+    res.cookie('ff_' + share.id, gateValue('ff', share.id, share.password), {
+      maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax', httpOnly: true, secure: true,
+    });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -284,7 +289,7 @@ router.get('/:token/download/:itemId', async (req, res) => {
     if (!found) return res.status(404).json({ error: 'This link is not valid' });
     const { share, expired } = found;
     if (expired) return res.status(410).json({ error: 'expired' });
-    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+    if (locked(req, share)) {
       return res.status(403).json({ error: 'Locked' });
     }
     // the item must belong to THIS share — an id from another share is not
@@ -346,7 +351,7 @@ async function shareForUpload(req, res) {
   if (!found) { res.status(404).json({ error: 'This link is not valid' }); return null; }
   const { share, expired } = found;
   if (expired) { res.status(410).json({ error: 'expired' }); return null; }
-  if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+  if (locked(req, share)) {
     res.status(403).json({ error: 'Locked' }); return null;
   }
   if (!share.allow_upload) {
@@ -478,7 +483,7 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
     if (!found) { cleanup(); return res.status(404).json({ error: 'This link is not valid' }); }
     const { share, expired } = found;
     if (expired) { cleanup(); return res.status(410).json({ error: 'expired' }); }
-    if (share.password && cookieOf(req, 'ff_' + share.id) !== '1') {
+    if (locked(req, share)) {
       cleanup(); return res.status(403).json({ error: 'Locked' });
     }
     if (!share.allow_upload) {

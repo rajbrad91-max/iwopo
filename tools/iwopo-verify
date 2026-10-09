@@ -135,7 +135,11 @@ for(const f of walk(S)){
   if(f.endsWith('lib/dialog.jsx')) continue;             // the replacement itself
   fs.readFileSync(f,'utf8').split('\n').forEach((line,i)=>{
     const code=line.split('//')[0];                      // ignore comments
-    if(/(^|[^.\w])(confirm|alert|prompt)\s*\(/.test(code) && !/dialog\./.test(code)){
+    // ⚠️ "window." is matched too. The old pattern excluded any call with a dot
+    // in front of it — meant to skip dialog.confirm() — which also skipped
+    // window.confirm(), so three of them sat in the contract editor unflagged.
+    const bare=code.replace(/\bdialog\.(confirm|alert|prompt)\s*\(/g,'');   // the in-app ones are fine
+    if(/(^|[^.\w]|\bwindow\.)(confirm|alert|prompt)\s*\(/.test(bare)){
       console.log('  ⚠️  '+f.replace(S+'/','')+':'+(i+1)+'  '+code.trim().slice(0,60));
       found++;
     }
