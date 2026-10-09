@@ -24,7 +24,10 @@ export function readRoute(defaultTab = 'dashboard') {
   const s = segs();
   if (s[0] !== BASE) return { tab: defaultTab, album: null, lead: null, booking: null };
   const tab = s[1] || defaultTab;
-  const album = tab === 'galleries' && s[2] ? s[2] : null;
+  /* ⚠️ Live shoots open albums too. Only "galleries" was read back from the
+     URL, so refreshing inside a live shoot dropped you back to the list. */
+  const albumTab = tab === 'galleries' || tab === 'liveshoot';
+  const album = albumTab && s[2] ? s[2] : null;
   // a lead id in the URL opens that lead — this is what lets a notification,
   // or a link someone pasted to themselves, land on the right record
   const lead = tab === 'leads' && s[2] ? s[2] : null;
@@ -37,7 +40,7 @@ export function readRoute(defaultTab = 'dashboard') {
 function toPath({ tab, album, lead, booking }) {
   let p = '/' + BASE;
   if (tab && tab !== 'dashboard') p += '/' + tab;
-  if (tab === 'galleries' && album) p += '/' + album;
+  if ((tab === 'galleries' || tab === 'liveshoot') && album) p += '/' + album;   // a live-shoot album is written to the URL too, or a refresh loses it
   if (tab === 'leads' && lead) p += '/' + lead;
   if (tab === 'bookings' && booking) p += '/' + booking;
   return p;

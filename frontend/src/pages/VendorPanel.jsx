@@ -1042,10 +1042,14 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 </div>
               )}
               <div><label className="lbl">{kind === 'liveshoot' ? 'Shoot name *' : 'Gallery Name *'}</label>
-                <input className="gal-input" value={f.title} onChange={e => setF(autoFillPasswords({ ...f, title: e.target.value }))} placeholder="Susan &amp; Mike Wedding" />
+                <input className="gal-input" autoComplete="off" value={f.title} onChange={e => setF(autoFillPasswords({ ...f, title: e.target.value }))} placeholder="Susan &amp; Mike Wedding" />
               </div>
+              {/* ⚠️ autoComplete off: this form has password boxes, so the browser
+                  took the text box above them for a LOGIN and filled it with the
+                  vendor's saved email — which then showed under the album name
+                  on the client's gallery page. */}
               <div><label className="lbl">Category</label>
-                <input className="gal-input" list="gal-cat-list" value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="Wedding" />
+                <input className="gal-input" autoComplete="off" list="gal-cat-list" value={f.category} onChange={e => setF({ ...f, category: e.target.value })} placeholder="Wedding" />
                 <datalist id="gal-cat-list">
                   {['Wedding', 'Engagement', 'Pre-Wedding', 'Reception', 'Birthday', 'Portrait', 'Event', 'Other'].map(c => <option key={c} value={c} />)}
                 </datalist>
@@ -1068,14 +1072,16 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
               </div>
               <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
                 <div className="gal-pw-wrap">
-                  <input className="gal-input" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
+                  {/* new-password: tells the browser this is NOT a login, so it
+                      stops pasting the vendor's own saved password in here */}
+                  <input className="gal-input" autoComplete="new-password" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
                 </div>
                 {pwHidden.guest && !f.guest_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
               </div>
               <div><label className="lbl">🔐 Admin password</label>
                 <div className="gal-pw-wrap">
-                  <input className="gal-input" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
+                  <input className="gal-input" autoComplete="new-password" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
                 </div>
                 {pwHidden.admin && !f.admin_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
@@ -1463,6 +1469,14 @@ function AlbumDetail({ albumId, onBack }) {
 
   // refresh only the photo list (used mid-upload so new photos appear without resetting the view)
   function reloadPhotos() { return api.album(albumId).then(d => { setPhotos(d.photos || []); }).catch(() => {}); }
+  /* ⏳ Photos sent straight to R2 get their thumbnails a moment later. While
+     any are still being prepared, re-read the album every few seconds so each
+     spinner turns into its photo without the vendor reloading. */
+  useEffect(() => {
+    if (!photos.some(p => p.ready === false)) return undefined;
+    const t = setTimeout(() => { api.album(albumId).then(d => setPhotos(d.photos || [])).catch(() => {}); }, 4000);
+    return () => clearTimeout(t);
+  }, [photos, albumId]);
 
   // ⭐ open the client-favorites panel and load favorites grouped by email
   function openFavorites() {
@@ -1827,7 +1841,7 @@ function AlbumDetail({ albumId, onBack }) {
         worker.terminate(); workerRef.current = null;
       }
     };
-    worker.postMessage({ albumId, files, eventId, token, maxCount: 2 });   // 2 per request, 4 requests in flight — see uploadWorker.js
+    worker.postMessage({ albumId, files, eventId, token });   // straight to R2, 6 at a time — see uploadWorker.js
   }
   async function delPhoto(pid) {
     if (!await dialog.confirm('This photo will be removed from the album.', { title: 'Delete photo?', okLabel: 'Delete' })) return;
@@ -2157,7 +2171,15 @@ function AlbumDetail({ albumId, onBack }) {
         )
       ) : (
         <div className="ad-grid">
-          {visible.map((p, idx) => (
+          {visible.map((p, idx) => p.ready === false ? (
+            /* ⏳ Safe in R2, screen sizes still being made in the background —
+               a spinner tile rather than a broken image. The grid re-reads
+               itself every few seconds until none are left. */
+            <div key={p.id} className="ad-photo is-uploading" title={`${p.filename} — preparing`}>
+              <span className="ad-photo-spin" />
+              <span className="ad-photo-name">{(p.filename || '').replace(/\.[^.]+$/, '')}</span>
+            </div>
+          ) : (
             <div key={p.id} className={`ad-photo ${p.kind === 'video' ? 'is-video' : ''}`} title={p.filename}>
               {/* A film with no poster has no thumbnail to fetch, so asking for
                   one gives a broken tile. Hide the image and let the play badge

@@ -537,6 +537,7 @@ model photo_faces {
 
 model photos {
   id           Int           @id @default(autoincrement())
+  ready        Boolean       @default(true)
   album_id     Int
   vendor_id    Int
   filename     String?       @db.VarChar(200)

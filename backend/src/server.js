@@ -36,6 +36,8 @@ import { gate } from './lib/entitlements.js';
 import { sweepRevoked } from './lib/tokenRevocation.js';
 import { sweepAbandonedUploads } from './lib/uploadSweep.js';
 import { sweepGalleryOrphans } from './lib/orphanSweep.js';
+import { resumePending } from './lib/photoProcessor.js';
+import { resumeFaces } from './lib/faceQueue.js';
 import contactRoutes from './routes/contacts.js';
 import { reconcile } from './lib/storageLedger.js';
 import * as objects from './lib/objectStore.js';
@@ -231,6 +233,14 @@ sweepAbandonedUploads().catch(() => {});
    anything younger than an hour, so an upload in progress is safe. */
 setInterval(() => { sweepGalleryOrphans().catch(() => {}); }, 60 * 60_000).unref();
 setTimeout(() => { sweepGalleryOrphans().catch(() => {}); }, 2 * 60_000).unref();
+
+/* 🖼️ Photos that reached R2 but whose screen sizes were not made yet — a
+   restart mid-upload — and face work that only lived in memory. Picked up
+   again a few seconds after boot. */
+setTimeout(() => {
+  resumePending().catch(() => {});
+  resumeFaces().catch(() => {});
+}, 5_000).unref();
 
 /* 📒 Rebuild the storage ledger from the buckets, nightly.
    The ledger is written best-effort inside putObject — it must never break an

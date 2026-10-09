@@ -26,6 +26,9 @@ import { hashSharePassword, sealPassword, openPassword } from '../lib/sharePassw
 import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { deviceOrAuth } from '../lib/deviceAuth.js';
 import { getFeatures } from '../lib/entitlements.js';
+import { renderTiers } from '../lib/photoSizes.js';
+import { enqueuePhotos } from '../lib/photoProcessor.js';
+import { recordObject } from '../lib/storageLedger.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -267,7 +270,7 @@ router.post('/', requireAuth, async (req, res) => {
     const album = await prisma.albums.create({
       data: {
         vendor_id: v, title,
-        category: category || null,
+        category: cleanCategory(category),
         /* 🎥 gallery unless asked otherwise — an unknown value must never
            silently create something with different rules about who sees it */
         kind: wantsLive ? 'liveshoot' : 'gallery',
@@ -393,7 +396,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     const data = {};
     const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
     if (b.title) data.title = String(b.title).slice(0, 160);   // blank keeps the existing title
-    if (has('category')) data.category = b.category || null;
+    if (has('category')) data.category = cleanCategory(b.category);
     if (has('client_email')) data.client_email = b.client_email || null;
     if (has('guest_username')) data.guest_username = b.guest_username || null;
     if (has('admin_username')) data.admin_username = b.admin_username || null;
@@ -652,8 +655,14 @@ router.get('/:id', requireAuth, async (req, res) => {
        control the order the browser hands the files over, so upload time is
        whatever the machine happened to do — and the client's page sorts by
        filename, so the two disagreed about the same album. */
+    /* 📦 Without `faces`. That column holds 128 numbers per face — about 1.7 MB
+       on a 500-photo album — and the panel never reads it. It was fetched and
+       re-sent every few seconds during an upload, for every vendor uploading.
+       The face data itself is untouched: circles, Find me and Live Shoot read
+       it from the database on the server. */
     const photos = naturalSort(await prisma.photos.findMany({
       where: { album_id: id, vendor_id: v },        // 🔒 tenancy
+      omit: { faces: true },
       orderBy: { id: 'asc' },
     }));
     const events = await prisma.album_events.findMany({
@@ -832,15 +841,6 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
     const twoTier = own.kind === 'liveshoot';
     const r2on = await objects.enabled(objects.PRIVATE);
 
-    /* 📐 The two screen sizes. FIXED — this is about speed, not resolution:
-       galleries 2200px preview + 800px thumb, live shoots 1800px + 800px,
-       exactly as before. A live shoot's uploaded JPEG is already Raj's export
-       at the size he wants, so its screen tier is a little smaller. */
-    const FULL_EDGE = twoTier ? 1800 : 2200;
-    const FULL_Q = twoTier ? 84 : 82;
-    const THUMB_EDGE = 800;
-    const THUMB_Q = 78;
-
     /** One file to R2 — the size is already known, so no second round trip to ask. */
     const toR2 = (name, size) => objects.putObject(objects.PRIVATE, galleryKey(v, id, name),
       fs.createReadStream(path.join(dir, name)), undefined, size)
@@ -861,25 +861,8 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
       fs.copyFileSync(f.path, path.join(dir, origName));
       const origSent = r2on ? toR2(origName, f.size) : null;
 
-      /* 🚀 ONE decode, not two. The camera file was opened and decoded twice —
-         once for the preview, once more for the thumb. Now it is decoded once
-         to the preview size, and the thumb is shrunk from that. Same sizes,
-         same quality settings; the thumb is cut from an image that still has
-         nearly three times the pixels it needs. rotate() first, as before, so
-         the camera's orientation flag is honoured. */
-      const { data, info } = await sharp(f.path).rotate()
-        .resize(FULL_EDGE, FULL_EDGE, { fit: 'inside', withoutEnlargement: true })
-        .raw().toBuffer({ resolveWithObject: true });
-      const fromRaw = () => sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } });
-      await Promise.all([
-        fromRaw().webp({ quality: FULL_Q }).toFile(path.join(dir, fullName)),
-        fromRaw().resize(THUMB_EDGE, THUMB_EDGE, { fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: THUMB_Q }).toFile(path.join(dir, thumbName)),
-      ]);
-
-      // what this photograph actually costs
-      const fullSize = fs.statSync(path.join(dir, fullName)).size;
-      const thumbSize = fs.statSync(path.join(dir, thumbName)).size;
+      // 📐 the two screen sizes — one shared definition, see lib/photoSizes.js
+      const { fullSize, thumbSize } = await renderTiers(f.path, dir, { full: fullName, thumb: thumbName }, own.kind);
       const costBytes = f.size + fullSize + thumbSize;
 
       /* ☁️ The two screen sizes to R2, alongside the original already in
@@ -919,6 +902,124 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
     for (const f of req.files || []) { try { fs.unlinkSync(f.path); } catch { /* moved or gone */ } }
     res.status(500).json({ error: e.message });
   }
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+   🚀 Photos straight to R2 — the panel's upload path (Raj, 2026-10-09).
+
+   "Uploading should happen first: the photo goes to R2, then the system makes
+   the thumbnails after, so our VPS is not blocking the upload speed."
+
+     1. begin    — this server checks the album and the space, and hands back
+                   one signed URL per photo. Nothing large touches the VPS.
+     2. (browser PUTs each original to Cloudflare directly)
+     3. complete — the object is checked to really be there, the row is made
+                   (ready:false), and photoProcessor makes the two screen
+                   sizes in the background, a couple at a time.
+
+   🔒 Tenancy: every key is built HERE from the token's vendor and an album
+   already checked against it. A key sent back by the browser is rebuilt and
+   compared before it is believed, exactly as the film upload does.
+   The Live Shoot watcher still posts through POST /:id/photos above.
+   ══════════════════════════════════════════════════════════════════════ */
+const DIRECT_MAX_FILES = 20;
+const DIRECT_MAX_BYTES = 200 * 1024 * 1024;        // same per-photo limit as the posted path
+
+/** An event id from the request is only believed if it is THIS album's. */
+async function eventInAlbum(eventId, albumId, vendorId) {
+  const n = parseInt(eventId, 10);
+  if (!n) return null;
+  const ev = await prisma.album_events.findFirst({ where: { id: n, album_id: albumId, vendor_id: vendorId }, select: { id: true } });
+  return ev ? ev.id : null;
+}
+
+router.post('/:id/photos/begin', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });   // 🔒 tenancy
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+    if (!await objects.enabled(objects.PRIVATE)) {
+      return res.status(409).json({ error: 'direct_unavailable' });   // the panel falls back to posting
+    }
+    const files = Array.isArray(req.body?.files) ? req.body.files.slice(0, DIRECT_MAX_FILES) : [];
+    if (!files.length) return res.status(400).json({ error: 'No files' });
+    for (const f of files) {
+      const size = Number(f?.size);
+      if (!Number.isFinite(size) || size <= 0) return res.status(400).json({ error: 'Every file needs its size' });
+      if (size > DIRECT_MAX_BYTES) return res.status(413).json({ error: `${String(f.name || 'A file').slice(0, 80)} is over 200 MB` });
+    }
+    // 📏 asked before a single byte moves — and again on completion, against what really landed
+    const over = await wouldExceed(v, files.reduce((n, f) => n + Number(f.size), 0));
+    if (over) return res.status(413).json(over);
+
+    const items = [];
+    for (const f of files) {
+      const base = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      const ext = (path.extname(String(f.name || '')).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.jpg').slice(0, 8);
+      const key = galleryKey(v, id, `${base}_orig${ext}`);            // 🔒 vendor from the token
+      items.push({ key, url: await objects.signPut(objects.PRIVATE, key, Number(f.size)) });
+    }
+    res.json({ items });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/:id/photos/complete', requireAuth, async (req, res) => {
+  const v = vid(req);
+  const id = Number(req.params.id);
+  try {
+    const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true, kind: true } });  // 🔒
+    if (!own) return res.status(404).json({ error: 'Album not found' });
+    const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, DIRECT_MAX_FILES) : [];
+    const eventId = await eventInAlbum(req.body?.event_id, id, v);
+
+    const created = [], errors = [];
+    for (const it of items) {
+      const name = path.basename(String(it?.key || ''));
+      /* 🔒 rebuilt from the token's vendor and this album — a key for anybody
+         else's prefix, or anything but an original, is refused */
+      if (!/_orig\.[a-z0-9]{1,6}$/.test(name) || it.key !== galleryKey(v, id, name)) { errors.push('Not your file'); continue; }
+
+      const rel = `${v}/${id}/${name}`;
+      // a retried completion must not make the same photo twice
+      const dup = await prisma.photos.findFirst({ where: { album_id: id, storage_path: rel }, select: { id: true } });
+      if (dup) { created.push(dup.id); continue; }
+
+      const head = await objects.headObject(objects.PRIVATE, it.key);
+      if (!head) { errors.push(`${String(it.filename || name).slice(0, 80)} did not arrive`); continue; }
+      const size = Number(head.size || 0);
+      const over = await wouldExceed(v, size);                         // measured, not claimed
+      if (over) {
+        await objects.deleteObject(objects.PRIVATE, it.key).catch(() => {});
+        errors.push('over_quota'); continue;
+      }
+      /* 📒 the storage ledger only hears about objects this server writes —
+         a direct upload has to be entered by hand, or the quota under-counts it */
+      await recordObject(objects.PRIVATE, it.key, size).catch(() => {});
+      const base = name.replace(/_orig\.[^.]+$/, '');
+      const row = await prisma.photos.create({
+        data: {
+          album_id: id, vendor_id: v,                                  // 🔒 tenancy stamped on the row
+          filename: String(it.filename || name).slice(0, 200),
+          storage_path: rel,
+          preview_path: `${v}/${id}/${base}_full.webp`,                 // made next, by photoProcessor
+          thumb_path: `${v}/${id}/${base}_thumb.webp`,
+          size_bytes: BigInt(size),                                    // the screen sizes are added when made
+          event_id: eventId,
+          ready: false,
+        },
+        select: { id: true },
+      });
+      created.push(row.id);
+    }
+
+    enqueuePhotos(created);
+    /* 🤳 faces wait for the upload to end — the processor starts them for a
+       live shoot as soon as its photos are ready */
+    if (own.kind !== 'liveshoot') noteUpload(id);
+    if (errors.includes('over_quota')) return res.status(413).json({ error: 'over_quota', message: 'That would go over your storage limit.', created: created.length });
+    res.status(created.length ? 201 : 400).json({ created: created.length, errors });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /**
@@ -1260,6 +1361,18 @@ const MIN_GALLERY_PW = 4;
 /** A typed password, trimmed; empty stays empty ("leave it as it is"). */
 function cleanPw(v) {
   return v == null ? '' : String(v).trim();
+}
+
+/**
+ * 🏷️ An album's category — shown to CLIENTS under the album name.
+ * ⚠️ The browser auto-filled this box with the vendor's saved login email
+ * (it took the box above the password fields for a username), and that email
+ * then showed on the client's gallery index. Anything containing "@" is not a
+ * category, so it is dropped rather than published.
+ */
+function cleanCategory(v) {
+  const s = String(v ?? '').trim().slice(0, 80);
+  return s && !s.includes('@') ? s : null;
 }
 
 /**

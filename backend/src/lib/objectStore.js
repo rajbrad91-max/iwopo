@@ -271,6 +271,20 @@ export async function signPart(cls, key, uploadId, partNumber) {
   }), { expiresIn: PART_URL_TTL });
 }
 
+/**
+ * A signed URL the browser may PUT ONE whole file to — a photograph going
+ * straight to R2 instead of through this server.
+ *
+ * 🔒 Scoped to one key, and the size is signed in: the browser cannot write a
+ * bigger file than it declared (and was charged for), nor to any other key.
+ */
+export async function signPut(cls, key, size) {
+  const { client, bucket } = await clientFor(cls);
+  return getSignedUrl(client, new PutObjectCommand({
+    Bucket: bucket, Key: key, ContentLength: Number(size),
+  }), { expiresIn: PART_URL_TTL, signableHeaders: new Set(['content-length']) });
+}
+
 /** Which parts R2 already holds — this is what makes a resume possible. */
 export async function listParts(cls, key, uploadId) {
   const { client, bucket } = await clientFor(cls);

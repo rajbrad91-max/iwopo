@@ -92,14 +92,17 @@ async function photosInAlbum(albumId) {
      so the public gallery drew a film as a still image and offered no way to
      play it — the panel had the same list with the same defect and it was
      only noticed there first. */
+  /* ⏳ "AND ready": a photo sent straight to R2 has no preview or thumb for
+     the few seconds before photoProcessor makes them — a couple would see a
+     broken tile. It appears as soon as it is ready. */
   return prisma.$queryRawUnsafe(
-    `SELECT id, filename, event_id, face_count, kind, duration_s FROM photos WHERE album_id = $1 ${NAT_SORT}`,
+    `SELECT id, filename, event_id, face_count, kind, duration_s FROM photos WHERE album_id = $1 AND ready ${NAT_SORT}`,
     albumId
   ).then(naturalSort);
 }
 async function photosInEvent(albumId, eventId) {
   return prisma.$queryRawUnsafe(
-    `SELECT * FROM photos WHERE album_id = $1 AND event_id = $2 ${NAT_SORT}`,
+    `SELECT * FROM photos WHERE album_id = $1 AND event_id = $2 AND ready ${NAT_SORT}`,
     albumId, eventId
   ).then(naturalSort);
 }

@@ -170,6 +170,11 @@ export function noteUpload(albumId) {
   uploadQuiet.set(id, setTimeout(() => { uploadQuiet.delete(id); enqueueAlbum(id); }, UPLOAD_QUIET_MS));
 }
 
+/** Is a vendor still uploading into this album? (photoProcessor asks before starting faces) */
+export function uploadActive(albumId) {
+  return uploadQuiet.has(String(albumId));
+}
+
 /**
  * The uploader says it has finished.
  *
@@ -313,7 +318,9 @@ async function indexOneAlbum(albumId) {
       // 🎬 photos only. A video row has a poster in preview_path, and handing
       // that to the face engine would index the same frame as if it were the
       // whole film — a face found once at second zero, and never again.
-      where: { album_id: Number(albumId), face_indexed: false, kind: 'photo' },
+      // ⏳ ready only: a photo sent straight to R2 has no preview until
+      // photoProcessor has made it, and the engine reads the preview
+      where: { album_id: Number(albumId), face_indexed: false, kind: 'photo', ready: true },
       select: { id: true, preview_path: true },
       orderBy: { id: 'asc' },
     });
@@ -336,16 +343,52 @@ async function indexOneAlbum(albumId) {
   }));
 
   /* 🧑‍🤝‍🧑 Grouping is deferred, not skipped. If the uploader has already said
-     it is finished, this was the last of the work and grouping runs now.
-     Otherwise the timer waits for quiet, which is the only way to tell on an
-     upload that simply stops. */
-  if (uploadsDone.has(String(albumId))) {
+     it is finished AND every photo has its screen sizes, this was the last of
+     the work and grouping runs now. Photos still being processed keep the
+     "finished" note alive — photoProcessor queues the album again when the last
+     one is ready, and grouping happens then, once, over everything. */
+  /* 🏷️ New faces were found, so the circles are out of date until grouping
+     runs. Recorded in the database — not only in a timer — so a restart in
+     between still knows this album has to be grouped (see resumeFaces). */
+  if (photos.length) {
+    await prisma.albums.update({ where: { id: Number(albumId) }, data: { faces_clustered: false } }).catch(() => {});
+  }
+  const notReady = await prisma.photos.count({ where: { album_id: Number(albumId), ready: false } }).catch(() => 0);
+  if (uploadsDone.has(String(albumId)) && !notReady) {
     uploadsDone.delete(String(albumId));
     try { await clusterNow(albumId); }
     catch (e) { console.error('face clustering failed:', e.message); }
   } else {
     scheduleClustering(albumId);
   }
+}
+
+/**
+ * 🔁 After a restart: face work that was waiting only in memory.
+ *
+ * "Uploads done", the quiet-window timers and the queue all live in this
+ * process. A restart in the middle of an upload lost them, and an album with
+ * 782 photos indexed sat with NO circles, because nothing remembered it still
+ * had to be grouped. At boot:
+ *   • albums with ready photos not yet indexed → indexed again
+ *   • albums whose circles are out of date (faces_clustered = false) →
+ *     grouped after the usual quiet window, in case the upload is still going
+ */
+export async function resumeFaces() {
+  try {
+    const unindexed = await prisma.photos.groupBy({
+      by: ['album_id'], where: { face_indexed: false, kind: 'photo', ready: true }, _count: { _all: true },
+    });
+    for (const g of unindexed) enqueueAlbum(g.album_id);
+    const stale = await prisma.albums.findMany({
+      where: { faces_clustered: false, photos: { some: { face_indexed: true, kind: 'photo' } } },
+      select: { id: true },
+    });
+    for (const a of stale) if (!unindexed.some(g => g.album_id === a.id)) scheduleClustering(a.id);
+    if (unindexed.length || stale.length) {
+      console.log(`[faces] resuming: ${unindexed.length} album(s) to index, ${stale.length} to group`);
+    }
+  } catch (e) { console.error('[faces] resume failed:', e.message); }
 }
 
 // manual full re-index (vendor/admin button) — still adaptive + throttled
