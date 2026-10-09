@@ -1,0 +1,40 @@
+[
+  {
+    "name": "GreatTest — a man whose one clear photo (DSC07467) belongs with his 7 group/side photos, and is the cover",
+    "album": 56,
+    "file": "07467",
+    "with": [
+      "07257",
+      "07538",
+      "07539",
+      "07541",
+      "07548",
+      "07549",
+      "07565"
+    ],
+    "coverIsKey": true
+  },
+  {
+    "name": "GreatTest — the orange-turban man: his sharpest photo (DSC07304, one blind eye, slight bow) is the cover, not a softer turned one",
+    "album": 56,
+    "file": "07304",
+    "with": [
+      "07281",
+      "07283",
+      "07284",
+      "07286"
+    ],
+    "coverIsKey": true
+  },
+  {
+    "name": "GreatTest — the lady seen drinking from a glass in DSC07256: that photo is never her cover",
+    "album": 56,
+    "file": "07255",
+    "with": [
+      "07256",
+      "07543",
+      "07544"
+    ],
+    "coverNot": "07256"
+  }
+]

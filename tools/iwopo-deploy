@@ -114,6 +114,24 @@ git pull -q origin main
 # Before the restart, deliberately: the running process loads the client at
 # boot, so regenerating after it would take effect on the NEXT deploy.
 cd $L/backend
+# 🧠 Face models — too big for git, so fetched once per machine and checked by
+# their SHA-256 before use: a half-downloaded or tampered model never runs.
+#   AuraFace (fal.ai, Apache-2.0)        — who is who
+#   YuNet (OpenCV Zoo, MIT)               — finds faces and their 5 points
+#   Face Mesh (Google MediaPipe, Apache-2.0) — eyes open / head angle, for covers
+fetch_model() {
+  local dest=$1 url=$2 sum=$3
+  if [ -s "$dest" ] && [ "$(sha256sum "$dest" | cut -c1-64)" = "$sum" ]; then return; fi
+  mkdir -p "$(dirname "$dest")"
+  curl -sL -o "$dest.part" "$url"
+  if [ "$(sha256sum "$dest.part" | cut -c1-64)" = "$sum" ]; then mv "$dest.part" "$dest"; echo "  model fetched: $dest"
+  else rm -f "$dest.part"; echo "  ❌ $dest: download did not match its checksum — faces will not index until this is fixed"; fi
+}
+fetch_model models/auraface/glintr100.onnx https://huggingface.co/fal/AuraFace-v1/resolve/main/glintr100.onnx a7933ea5330113b01c9b60351d8f4c33003f145d8470ac5f0e52ee2effe25c60
+fetch_model models/yunet/face_detection_yunet_2023mar.onnx https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx 8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4
+fetch_model models/facemesh/face_landmarks_detector.onnx https://huggingface.co/senty-au/face_landmarks_detector-ONNX/resolve/main/onnx/model.onnx 7d6e82dee82a1dca5fbddb282b3cc74571833a530de317fc22ae325c3358beeb
+# packages follow package-lock.json exactly (a removed library really goes)
+npm ci --no-audit --no-fund 2>&1 | tail -1 | sed 's/^/  npm: /'
 # 🗄️ Database changes come from Prisma's migration history (prisma/migrations
 # and prisma/private/migrations), not from hand-written ALTERs that depend on
 # somebody remembering them. `migrate deploy` applies only migrations live has

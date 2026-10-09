@@ -11,3 +11,5 @@ _patch/
 *-new.jsx
 backend/src/generated/
 backend/models/auraface/
+backend/models/yunet/
+backend/models/facemesh/

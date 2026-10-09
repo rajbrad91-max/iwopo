@@ -168,8 +168,8 @@
   scroll-snap-type: x proximity;   /* settles on a circle, but never fights a flick */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;  /* swiping the strip won't navigate back */
-  scroll-padding-left: 2px;
-  padding-bottom: 2px;
+  scroll-padding-left: 8px;
+  padding: 8px 8px 2px;            /* room for the selected face's ring (6px), which the strip would clip */
   scrollbar-width: none;
   overflow-anchor: none;           /* the browser must not "keep its place" when the faces change */
   flex: 1 1 auto;
@@ -199,7 +199,7 @@
 .pg-face {
   flex: 0 0 auto;
   scroll-snap-align: start;      /* a flick lands on a circle, never mid-face */
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;   /* clear of the selected ring */
   background: none; border: none;
   padding: 0;
   cursor: pointer;
@@ -210,10 +210,15 @@
   object-fit: cover;
   border: 2px solid transparent;
   background: color-mix(in srgb, var(--pg-head) 6%, transparent);
-  transition: border-color .16s, transform .16s;
+  transition: box-shadow .16s, transform .16s;
 }
 .pg-face:hover img { transform: scale(1.05); }
-.pg-face.is-on img { border-color: var(--pg-accent); }
+/* 🎯 the chosen person must be found at a glance (Raj, 2026-10-09): a thin
+   white ring around the face, then the accent ring outside it — drawn with
+   shadows so the circle itself keeps its size and nothing in the strip moves. */
+.pg-face.is-on img {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4.5px var(--pg-accent);
+}
 .pg-face-n {
   font-family: var(--pg-bfont);
   font-size: 11px;

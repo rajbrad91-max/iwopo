@@ -590,7 +590,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // favorites are per-event: count only the stars within the currently selected event
   // event tabs stay visible during favorites view too, so the client can switch
   // between each event's own favorites (Jaggo vs Wedding are independent lists).
-  const showScenes = session.events.length > 0 && matchIds === null && !pickedOnly;
+  /* 🗂️ …and while a person (or a selfie match) is showing. Hiding the tabs
+     then left a client unsure which folder they were in, and with no way to
+     another one but Back (Raj, 2026-10-09). The selected tab stays underlined;
+     choosing another one shows that folder and its own people — a person's
+     circle belongs to one tab, so the filter is cleared on the way. */
+  const showScenes = session.events.length > 0 && !pickedOnly;
 
   const nVids = allPhotos.filter(p => p.kind === 'video').length;
   const nPics = allPhotos.length - nVids;

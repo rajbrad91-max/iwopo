@@ -494,7 +494,7 @@ router.post('/:token/selfie', limit({ name: 'selfie', max: 20, windowMs: 15 * 60
       // 👤 the same "is it really a face" rule the circles use — a back-of-head
       // fingerprint must not be what a guest's selfie matches
       for (const p of photos) for (const f of (p.faces || [])) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
-      const matches = findMatches(q[0].descriptor, candidates, 0.5);
+      const matches = findMatches(q[0].descriptor, candidates)   // the engine's own "same person" limit;
       const seen = new Set();
       for (const m of matches) if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); }
     }
@@ -517,24 +517,11 @@ router.get('/:token/faces', async (req, res) => {
       return res.json({ faces: await albumPeopleAWS(a.id, eventId) });
     }
 
-    if (eventId) {
-      // event-scoped: count each person's photos WITHIN this event only, hide anyone with none
-      const grouped = await prisma.photo_faces.groupBy({
-        by: ['cluster_id'],
-        where: {
-          face_clusters: { album_id: a.id },      // 🔒 clusters of THIS album
-          photos: { event_id: eventId },
-        },
-        _count: { photo_id: true },
-      });
-      const faces = grouped
-        .filter(g => g.cluster_id != null && g._count.photo_id > 0)   // HAVING COUNT > 0
-        .map(g => ({ id: g.cluster_id, count: g._count.photo_id }))
-        .sort((x, y) => y.count - x.count || x.id - y.id);
-      return res.json({ faces });
-    }
-
-    const clusters = await albumClusters(a.id);
+    /* 🗂️ A tab shows only the circles built FROM that tab (faceCluster.js
+       groups tab by tab) — their faces, counts and covers all come from its
+       own photos. Counting album-wide circles inside a tab mixed tabs: a
+       cover from Jaggo-2 on the Marco JAggo tab, and rows of "1". */
+    const clusters = await albumClusters(a.id, eventId);   // 🔒 clusters of THIS album
     res.json({
       faces: clusters.map(c => ({ id: c.id, count: c.photo_count })),
     });
@@ -610,17 +597,20 @@ router.get('/:token/face/:clusterId', async (req, res) => {
     // photo, three faces:
     //   AWS   box aspect h/w ≈ 1.32, avg max side 154 px
     //   local box aspect h/w ≈ 1.57, avg max side 198 px  (~29% taller)
-    // face-api includes noticeably more forehead and jaw, so applying AWS's
-    // 0.18 to it produced a visibly wider crop with a smaller-looking face.
-    const PAD = isAws ? 0.18 : 0.03;
+    // The local finder then included noticeably more forehead and jaw, and
+    // 0.03 gave the look Raj chose. YuNet (since 2026-10-09) draws its box
+    // 13.5% smaller than that finder did (median over 345 faces found by both,
+    // centres within 1%), so the same circle needs 1.06 × 1.155 = 1 + 2 × 0.11.
+    const PAD = isAws ? 0.18 : 0.11;
     const faceSize = Math.max(box.w, box.h);
     const size = Math.round(faceSize * (1 + PAD * 2));
 
     // Centre the crop on the face, and nudge it up slightly: a box centred on
     // the detected face puts the chin mid-circle and crops the forehead, so
-    // biasing upward keeps the whole head in view.
+    // biasing upward keeps the whole head in view. (Local: 0.06 of the old,
+    // 13.5% larger box is 0.07 of YuNet's — the same lift.)
     const cx = box.x + box.w / 2;
-    const cy = box.y + box.h / 2 - faceSize * 0.06;
+    const cy = box.y + box.h / 2 - faceSize * (isAws ? 0.06 : 0.07);
 
     let left = Math.round(cx - size / 2);
     let top = Math.round(cy - size / 2);

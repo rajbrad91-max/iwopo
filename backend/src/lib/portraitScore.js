@@ -10,8 +10,8 @@
 
 /**
  * @param {object} f
- *   yaw        degrees, 0 = facing camera        (AWS Pose.Yaw / local landmarks)
- *   pitch      degrees, 0 = level                (AWS Pose.Pitch / local landmarks)
+ *   yaw        degrees, 0 = facing camera        (AWS Pose.Yaw / local faceShape)
+ *   pitch      degrees, 0 = level                (AWS Pose.Pitch / local faceShape)
  *   sharpness  0-100, higher = crisper           (AWS Quality.Sharpness)
  *   brightness 0-100                             (AWS Quality.Brightness)
  *   eyesOpen   boolean                           (AWS EyesOpen)
@@ -25,71 +25,148 @@ export function portraitScore(f = {}) {
   const yaw = Math.abs(f.yaw ?? 0);
   const yawScore = clamp01(1 - yaw / 45);
 
-  // Looking up/down is less jarring than turning away, so it's weighted lower.
-  const pitch = Math.abs(f.pitch ?? 0);
-  const pitchScore = clamp01(1 - pitch / 40);
+  // ⤵️ Looking DOWN reads as eyes-closed in a small circle, so it costs more
+  // than looking up (faceMesh.js: + is down).
+  const pitch = f.pitch ?? 0;
+  const pitchScore = clamp01(1 - (pitch > 0 ? pitch / 25 : -pitch / 40));
 
   // 🔍 A bigger face crops to a cleaner circle. 8% of the frame is already
   // generous for a wedding group shot, so that's treated as full marks.
   const areaScore = clamp01((f.areaFrac ?? 0) / 0.08);
 
-  // ✨ Sharpness/brightness only when the engine reports them (AWS).
-  const sharp = f.sharpness == null ? 0.6 : clamp01(f.sharpness / 80);
+  // ✨ Sharpness. The local engine measures blur (faceBlur.js: 0 crisp … 1
+  // soft); AWS reports sharpness. Before blur existed the local engine fell
+  // back to a fixed 0.6 — so a soft background face and a crisp portrait
+  // scored the same here, and blurry covers were picked (GreatTest, 2026-10-09).
+  const sharp = typeof f.blur === 'number' ? clamp01(1 - (f.blur - 0.30) / 0.35)
+    : f.sharpness == null ? 0.6 : clamp01(f.sharpness / 80);
   const bright = f.brightness == null ? 0.6
     : clamp01(1 - Math.abs((f.brightness ?? 50) - 60) / 60);   // ~60 is ideal
 
-  // 👀 Closed eyes ruin a portrait, so this is a multiplier rather than a term.
-  const eyes = f.eyesOpen === false ? 0.55 : 1;
+  /* 👀 Looking at the camera: eye spacing is ~0.45 of the face box head-on and
+     falls towards 0.2 in profile. Yaw from landmarks alone can read "straight"
+     on a back of a head; eye spacing does not. */
+  const frontal = typeof f.eyeSep === 'number' ? clamp01((f.eyeSep - 0.25) / 0.20) : 0.6;
+
+  // Closed eyes ruin a portrait, so this is a multiplier rather than a term.
+  // AWS says eyesOpen; the local engine measures eyeOpen (faceMesh.js).
+  const eyes = f.eyesOpen === false || (typeof f.eyeOpen === 'number' && f.eyeOpen < COVER.minEyeOpen) ? 0.55 : 1;
+
+  // ↪️ a tilted head (eye line off level) — measured by faceMesh.js
+  const rollScore = typeof f.roll === 'number' ? clamp01(1 - Math.abs(f.roll) / 25) : 1;
 
   const detScore = clamp01(f.detScore ?? 1);
 
   const base =
-    yawScore   * 0.38 +
-    areaScore  * 0.22 +
-    sharp      * 0.16 +
-    pitchScore * 0.14 +
-    bright     * 0.06 +
-    detScore   * 0.04;
+    yawScore   * 0.20 +
+    frontal    * 0.12 +
+    areaScore  * 0.16 +
+    sharp      * 0.18 +
+    pitchScore * 0.16 +
+    rollScore  * 0.08 +
+    bright     * 0.04 +
+    detScore   * 0.06;
 
   return clamp01(base * eyes);
 }
 
 /**
- * Estimate yaw/pitch from face-api's 68 landmarks, which the local engine
- * already computes for its descriptors and previously discarded.
+ * 🖼️ Is this face good enough to stand for a person in the highlights?
+ * A circle is only shown if at least ONE of its faces is (faceCluster.js).
+ * Raj, 2026-10-09: "blurry, side, tilted faces from the back, from the
+ * background — we don't want that in the highlights." On GreatTest the
+ * circles that had no such face were background guests seen small, soft or
+ * turned away in every photo they were in.
+ * Cut-offs read off a contact sheet of all 154 covers there: covers under
+ * 60px were background heads, blur above 0.55 visibly soft, eye spacing under
+ * 0.33 profiles and backs of heads, and beyond 30° the face is turned away.
+ * Carried onto YuNet's scale (same share of faces): 60px → 52, 0.33 → 0.36.
  *
- * yaw:   compare the eye-centre to the nose horizontally — a turned head pushes
- *        the nose toward one eye.
- * pitch: compare the nose to the eye/mouth midpoints vertically.
- * Both are rough (±10°) but plenty to rank "facing camera" against "profile".
+ * 🥛 minScore — YuNet must be SURE it is a face. Raj, 2026-10-09: circles of a
+ * water glass, a candle, fabric, crossed arms. Every one of them came from
+ * detections YuNet was unsure of: across all 132 circles of GreatTest, the
+ * junk circles' best face scored 0.72–0.87, while every real person had at
+ * least one face at 0.91 or more. A circle needs one presentable face, so
+ * a person never seen clearly and surely gets no circle — and the cover is
+ * always a face the finder was sure of.
  */
-export function poseFromLandmarks(landmarks) {
+/**
+ * 👁️ What a COVER also needs, on top of being presentable (Raj, 2026-10-09:
+ * "some are looking down, some have eyes closed, some are tilted").
+ *
+ * Only CLEAR failures rule a face out — read off a sheet of 409 candidates
+ * measured by faceMesh.js:
+ *   • eyes shut: the less-open eye under 0.12 (every one was closed);
+ *   • head bowed into the lap: looking down more than 25°;
+ *   • eyes low BECAUSE the head is down: under 0.18 and down more than 15°;
+ *   • head tilted more than 12°.
+ * The first version rejected any face under 0.18 OR down more than 18°, and
+ * so threw out the sharpest, biggest photo of a man with one blind eye and a
+ * slight bow (0.185, 20°) for a softer, more turned one. A blind eye or a
+ * slight bow alone is not a bad portrait; portraitScore still prefers wider
+ * eyes and a level head among the faces that pass.
+ * A circle never loses its person over this — when nobody's photo passes,
+ * the best presentable face still stands.
+ */
+export const COVER = { minEyeOpen: 0.18, shutEye: 0.12, maxPitchDown: 25, lowEyesPitch: 15, maxRoll: 12 };
+export function coverReady(f = {}) {
+  if (!presentable(f)) return false;
+  const eye = typeof f.eyeOpen === 'number' ? f.eyeOpen : null;
+  const down = typeof f.pitch === 'number' && eye !== null ? f.pitch : null;   // mesh pitch only where the mesh ran
+  if (eye !== null && eye < COVER.shutEye) return false;
+  if (down !== null && down > COVER.maxPitchDown) return false;
+  if (eye !== null && down !== null && eye < COVER.minEyeOpen && down > COVER.lowEyesPitch) return false;
+  if (typeof f.roll === 'number' && Math.abs(f.roll) > COVER.maxRoll) return false;
+  return true;
+}
+
+export const PRESENTABLE = { minPx: 52, maxBlur: 0.55, minEyeSep: 0.36, maxYaw: 30, minScore: 0.90 };
+export function presentable(f = {}) {
+  const { w, h } = boxSize(f.box);
+  if ((f.score ?? 1) < PRESENTABLE.minScore) return false;
+  if (w > 0 && h > 0 && !(w <= 1 && h <= 1) && Math.min(w, h) < PRESENTABLE.minPx) return false;
+  if (typeof f.blur === 'number' && f.blur > PRESENTABLE.maxBlur) return false;
+  if (typeof f.eyeSep === 'number' && f.eyeSep < PRESENTABLE.minEyeSep) return false;
+  if (Math.abs(f.yaw ?? 0) > PRESENTABLE.maxYaw) return false;
+  return true;
+}
+
+/**
+ * 📐 How a face sits, from YuNet's five points (left eye, right eye, nose tip,
+ * mouth corners — in picture order). Stored with the face at index time.
+ *
+ *   eyeSep       eye-to-eye distance ÷ face-box width. Front ≈ 0.40–0.50,
+ *                three-quarter ≈ 0.30–0.40, profile / back of head below 0.21.
+ *   noseBetween  where the nose tip sits along the line from one eye to the
+ *                other: 0.5 straight on, towards 0 or 1 as the head turns.
+ *                Measured ALONG the eye line, so a tilted head is not mistaken
+ *                for a turned one.
+ *   yaw          the same turn as degrees: 100 × how far the nose is off
+ *                centre. Calibrated 2026-10-09 against the old 68-point
+ *                measure on 531 matched faces: the share of faces past 30°
+ *                was the same at a nose offset of 0.30.
+ *   pitch        nose height between the eye line and the mouth, as degrees.
+ *
+ * Replaced face-api's 68-point estimates when YuNet took over finding faces.
+ */
+export function faceShape(points, box) {
   try {
-    const L = landmarks?.positions || landmarks;
-    if (!L || L.length < 68) return { yaw: 0, pitch: 0 };
-    const mean = (pts) => pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, y: a.y + p.y / pts.length }), { x: 0, y: 0 });
-
-    const leftEye  = mean(L.slice(36, 42));
-    const rightEye = mean(L.slice(42, 48));
-    const nose     = L[30];
-    const mouth    = mean(L.slice(48, 68));
-
-    const eyeMid = { x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2 };
-    const eyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y) || 1;
-
-    // horizontal offset of the nose from the eye midpoint, in eye-widths
-    const yaw = ((nose.x - eyeMid.x) / eyeDist) * 90;
-    // vertical position of the nose between the eyes and the mouth
-    const span = (mouth.y - eyeMid.y) || 1;
-    const pitch = (((nose.y - eyeMid.y) / span) - 0.5) * 90;
-
+    if (!Array.isArray(points) || points.length < 5 || !box?.width) return {};
+    const [l, r, n, ml, mr] = points;
+    const iod = Math.hypot(r[0] - l[0], r[1] - l[1]) || 1e-6;
+    const ax = (r[0] - l[0]) / iod, ay = (r[1] - l[1]) / iod;            // along the eyes
+    const noseBetween = ((n[0] - l[0]) * ax + (n[1] - l[1]) * ay) / iod;
+    const eyeMid = [(l[0] + r[0]) / 2, (l[1] + r[1]) / 2];
+    const mouthMid = [(ml[0] + mr[0]) / 2, (ml[1] + mr[1]) / 2];
+    const down = Math.hypot(mouthMid[0] - eyeMid[0], mouthMid[1] - eyeMid[1]) || 1e-6;
+    const along = ((n[0] - eyeMid[0]) * -ay + (n[1] - eyeMid[1]) * ax) / down;   // across the eye line, towards the mouth
     return {
-      yaw: Math.max(-90, Math.min(90, yaw)),
-      pitch: Math.max(-90, Math.min(90, pitch)),
+      eyeSep: iod / box.width,
+      noseBetween,
+      yaw: Math.max(-90, Math.min(90, (noseBetween - 0.5) * 100)),
+      pitch: Math.max(-90, Math.min(90, (along - 0.55) * 90)),
     };
-  } catch {
-    return { yaw: 0, pitch: 0 };
-  }
+  } catch { return {}; }
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -101,7 +178,7 @@ export function poseFromLandmarks(landmarks) {
    back-of-head shots matched EACH OTHER and formed a circle of their own
    (album 18, 2026-10-09: 7 photos, 4 of them the back of her head).
 
-   One measurement from the 68 landmarks, relative so face size does not
+   One measurement from the face's points, relative so face size does not
    matter:
      eyeSep        eye-to-eye distance ÷ face-box width.
                    Front ≈ 0.35–0.50 · three-quarter ≈ 0.25–0.35 ·
@@ -118,10 +195,14 @@ export function poseFromLandmarks(landmarks) {
    size floor is 30px, below which the sheet showed mostly blur.
    ⚠️ Change these only after re-measuring on a LARGE real album, with sheets.
    ════════════════════════════════════════════════════════════════════════ */
-export const MIN_EYE_SEP = 0.20;
+/* 📐 On YuNet's points (2026-10-09) these keep the SAME strictness as the
+   old 68-point ones: calibrated on 531 faces found by both, the share of faces
+   under each cut-off is unchanged (old 0.20 → 0.21; boxes are 13.5% smaller,
+   so 30px → 26px). */
+export const MIN_EYE_SEP = 0.21;
 /* Faces whose short side is under this many pixels (on the 2200px preview)
    are background blur; their fingerprint is too noisy to trust. */
-export const MIN_FACE_PX = 30;
+export const MIN_FACE_PX = 26;
 /* 🌫️ Faces blurrier than this are left out (faceBlur.js: 0 crisp … 1 soft).
    Raj, 2026-10-09: "avoid extremely blurry faces". Set from a contact sheet of
    3,290 faces across four staging albums, one row per band: up to 0.55 crisp,
@@ -129,21 +210,8 @@ export const MIN_FACE_PX = 30;
    (2%), the ones a fingerprint cannot be trusted on. */
 export const MAX_BLUR = 0.65;
 
-/** eyeSep and noseBetween for one detection — stored with the face at index time. */
-export function faceShape(landmarks, box) {
-  try {
-    const L = landmarks?.positions || landmarks;
-    if (!L || L.length < 68 || !box?.width) return {};
-    const mean = (pts) => pts.reduce((a, p) => ({ x: a.x + p.x / pts.length, y: a.y + p.y / pts.length }), { x: 0, y: 0 });
-    const le = mean(L.slice(36, 42)), re = mean(L.slice(42, 48));
-    return {
-      eyeSep: Math.hypot(re.x - le.x, re.y - le.y) / box.width,
-      noseBetween: (L[30].x - le.x) / ((re.x - le.x) || 1e-6),
-    };
-  } catch { return {}; }
-}
 
-/** Box width/height whichever shape it was saved in (face-api stores _width). */
+/** Box width/height whichever shape it was saved in (stored faces use _width). */
 export function boxSize(b) {
   if (!b) return { w: 0, h: 0 };
   return { w: b.width ?? b._width ?? b.w ?? 0, h: b.height ?? b._height ?? b.h ?? 0 };

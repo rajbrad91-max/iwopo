@@ -1,35 +1,40 @@
-// 🧠 Face engine — LOCAL, runs on our own server.
+// 🧠 Face engine — LOCAL, runs on our own server. Two models, nothing else:
 //
-// 2026-10-09: who-is-who is decided by AuraFace (fal.ai, Apache-2.0 — a
-// commercially usable ArcFace-type ResNet-100, 512-number fingerprints).
-// @vladmandic/face-api is kept only to FIND faces and their 68 points; its
-// own 128-number fingerprint is parked. Measured on Raj's example (a man whose
-// one clear photo had been left out of his own circle): the old fingerprint put
-// him 0.44–0.52 from himself and other people from 0.51 — they overlapped, so no
-// rule could separate them; AuraFace puts him 0.47–0.62 similar to himself and
-// every other person at 0.31 or less.
+//   🔍 YuNet (OpenCV Zoo, MIT, 228 KB) finds each face and its five points —
+//      eyes, nose tip, mouth corners (yunet.js).
+//   🧬 AuraFace (fal.ai, Apache-2.0, ArcFace-type ResNet-100) straightens each
+//      face on those five points and fingerprints it: 512 numbers.
 //
-// The model file is not in git (249 MB): backend/models/auraface/glintr100.onnx,
-// from https://huggingface.co/fal/AuraFace-v1 — tools/iwopo-deploy fetches it.
-import * as faceapi from '@vladmandic/face-api';
-import '@tensorflow/tfjs-node';
-import canvas from 'canvas';
+// 2026-10-09: AuraFace replaced @vladmandic/face-api's 128-number fingerprint
+// — on Raj's example (a man whose one clear photo was left out of his own
+// circle) the old fingerprint put him as far from himself as from strangers;
+// AuraFace separated him cleanly. Then YuNet replaced face-api's finder as
+// well, and the old library was removed: its 68 points drift on tilted faces,
+// and a badly straightened face gives AuraFace a weaker fingerprint.
+//
+// 👁️ MediaPipe Face Mesh (Google, Apache-2.0) then looks closely at faces that
+// could be a circle's cover — eyes open, looking down, tilted (faceMesh.js).
+//
+// Model files are not in git: backend/models/yunet/face_detection_yunet_2023mar.onnx,
+// backend/models/auraface/glintr100.onnx and
+// backend/models/facemesh/face_landmarks_detector.onnx — tools/iwopo-deploy fetches them.
 import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import ort from 'onnxruntime-node';
-import { poseFromLandmarks, faceShape } from './portraitScore.js';
+import { faceShape, MIN_FACE_PX, presentable } from './portraitScore.js';
 import { faceBlur } from './faceBlur.js';
-
-const { Canvas, Image, ImageData } = canvas;
-faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
+import { loadYunet, findFaces } from './yunet.js';
+import { loadFaceMesh, faceLooks } from './faceMesh.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODELS = path.join(__dirname, '..', '..', 'models');
+const YUNET = path.join(MODELS, 'yunet', 'face_detection_yunet_2023mar.onnx');
 const AURAFACE = path.join(MODELS, 'auraface', 'glintr100.onnx');
+const FACEMESH = path.join(MODELS, 'facemesh', 'face_landmarks_detector.onnx');
 
 /** A fingerprint from this engine has this many numbers; anything else is from
- *  the parked engine and must be re-indexed before it is compared. */
+ *  the removed engine and must be re-indexed before it is compared. */
 export const DESCRIPTOR_LENGTH = 512;
 
 /* 📏 Distances. Fingerprints are unit length, so the straight-line distance d
@@ -46,7 +51,7 @@ export const DIST = {
   typicalNone: fromSimilarity(0.25),   // too unlike the person to stand for them
 };
 
-/** A live shoot's "selfie strictness" was set on the parked engine's scale
+/** A live shoot's "selfie strictness" was set on the old engine's scale
  *  (48 = 0.48). Mapped onto this one so a saved setting keeps its meaning:
  *  the default 48 → similarity 0.40; stricter 40 → 0.50. */
 export function selfieLimit(strictness) {
@@ -54,36 +59,26 @@ export function selfieLimit(strictness) {
   return DIST.match + (old - 0.48) * ((fromSimilarity(0.50) - DIST.match) / (0.40 - 0.48));
 }
 
-// Detector confidence floor — see the measurement that set it: below 0.4 found
-// nothing more, and above it real faces turned slightly away were lost. A
-// missed face can be the only link between two photos of the same person.
-const MIN_CONFIDENCE = 0.4;
-const MAX_RESULTS = 100;   // a big group shot can legitimately have many faces
+/* YuNet's confidence floor. Measured 2026-10-09 on 79 GreatTest photos: 0.5
+   found only one more real face than 0.6 but 107 more scraps (hands, 9–16px
+   blobs), so 0.6. */
+const MIN_SCORE = 0.6;
 
 let ready = null;
 let aura = null;
 function init() {
   ready ??= (async () => {
-    await faceapi.nets.ssdMobilenetv1.loadFromDisk(MODELS);
-    await faceapi.nets.faceLandmark68Net.loadFromDisk(MODELS);
+    await loadYunet(YUNET);
+    await loadFaceMesh(FACEMESH);
     aura = await ort.InferenceSession.create(AURAFACE, { intraOpNumThreads: 2 });
   })();
   return ready;
-}
-
-function detectorOptions() {
-  return new faceapi.SsdMobilenetv1Options({ minConfidence: MIN_CONFIDENCE, maxResults: MAX_RESULTS });
 }
 
 /* 📐 ArcFace models expect a face STRAIGHTENED onto a fixed 112×112 layout:
    eyes, nose tip and mouth corners at these points. A tilted head is rotated
    level before the fingerprint is taken — much of why it copes with angles. */
 const TEMPLATE = [[38.2946, 51.6963], [73.5318, 51.5014], [56.0252, 71.7366], [41.5493, 92.3655], [70.7299, 92.2041]];
-function fivePoints(landmarks) {
-  const L = landmarks.positions;
-  const avg = (i, j) => { let x = 0, y = 0; for (let k = i; k <= j; k++) { x += L[k].x; y += L[k].y; } return [x / (j - i + 1), y / (j - i + 1)]; };
-  return [avg(36, 41), avg(42, 47), [L[30].x, L[30].y], [L[48].x, L[48].y], [L[54].x, L[54].y]];
-}
 /** Least-squares similarity transform (rotation + scale + shift) src → dst. */
 function similarity(src, dst) {
   const n = src.length, mean = (a, k) => a.reduce((s, p) => s + p[k], 0) / n;
@@ -124,35 +119,56 @@ async function auraFingerprint(raw, points) {
 // Every face in an image: where it is, how it looks, and its fingerprint.
 export async function getFaceDescriptors(imagePath) {
   await init();
-  // canvas can't read webp → decode to JPEG first; the same pixels feed AuraFace
-  const jpegBuf = await sharp(imagePath).jpeg().toBuffer();
-  const img = await canvas.loadImage(jpegBuf);
+  /* .rotate() turns the picture upright from its EXIF orientation. Gallery
+     previews are already upright, but a SELFIE comes straight off a phone,
+     usually stored sideways with an orientation tag — read as stored, the
+     face lies on its side and is missed. */
+  const jpegBuf = await sharp(imagePath).rotate().jpeg().toBuffer();
   const raw = await sharp(jpegBuf).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-  const results = await faceapi.detectAllFaces(img, detectorOptions()).withFaceLandmarks();
+  const size = { width: raw.info.width, height: raw.info.height };
+  const imgArea = (size.width || 1) * (size.height || 1);
+  const found = await findFaces(jpegBuf, { minScore: MIN_SCORE });
 
-  const imgArea = (img.width || 1) * (img.height || 1);
-  const size = { width: img.width, height: img.height };
   const faces = [];
-  for (const r of results) {            // one at a time — the model is the heavy part
-    const { yaw, pitch } = poseFromLandmarks(r.landmarks);
-    const b = r.detection.box;
-    // 👤 is it really a face, and is it sharp? measured here, judged by isUsableFace()
-    const { eyeSep, noseBetween } = faceShape(r.landmarks, b);
+  for (const d of found) {               // one at a time — AuraFace is the heavy part
+    const b = d.box;
+    const box = { _x: b.x, _y: b.y, _width: b.width, _height: b.height };   // the shape stored faces have always used
+    /* ⚡ YuNet also reports specks — faces 9–25px across at the back of a hall.
+       isUsableFace() throws every one of them away, so measuring and
+       fingerprinting them was pure waste: on GreatTest they were ~40% of all
+       detections. Kept as a bare box (counted, never compared). */
+    if (Math.min(b.width, b.height) < MIN_FACE_PX) {
+      faces.push({ descriptor: null, box, score: d.score, areaFrac: (b.width * b.height) / imgArea });
+      continue;
+    }
+    // 👤 is it really a face, which way is it turned, is it sharp? judged by isUsableFace()
+    const { eyeSep, noseBetween, yaw, pitch } = faceShape(d.points, b);
     const blur = await faceBlur(jpegBuf, b, size);
-    faces.push({
-      descriptor: await auraFingerprint(raw, fivePoints(r.landmarks)),
-      box: b,
-      score: r.detection.score,
+    const face = {
+      descriptor: await auraFingerprint(raw, d.points),
+      box,
+      points: d.points.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]),
+      score: d.score,
       yaw, pitch,
       eyeSep, noseBetween, blur,
       areaFrac: (b.width * b.height) / imgArea,
-    });
+    };
+    /* 👁️ A face that could be a circle's cover also gets looked at closely —
+       eyes open, looking down, tilted (faceMesh.js). Its pitch replaces the
+       rough one from five points. Only these faces: ~35 ms each. */
+    if (presentable(face)) {
+      const looks = await faceLooks(raw, b);
+      face.eyeOpen = looks.eyeOpen;
+      face.pitch = looks.pitch;
+      face.roll = looks.roll;
+    }
+    faces.push(face);
   }
   return faces;
 }
 
 /** Distance between two fingerprints (lower = more alike). Different lengths
- *  mean one is from the parked engine — never treated as a match. */
+ *  mean one is from the removed engine — never treated as a match. */
 export function faceDistance(a, b) {
   if (!a || !b || a.length !== b.length) return Infinity;
   let s = 0;
