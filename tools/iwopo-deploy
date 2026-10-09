@@ -114,17 +114,28 @@ git pull -q origin main
 # Before the restart, deliberately: the running process loads the client at
 # boot, so regenerating after it would take effect on the NEXT deploy.
 cd $L/backend
+# 🗄️ Database changes come from Prisma's migration history (prisma/migrations
+# and prisma/private/migrations), not from hand-written ALTERs that depend on
+# somebody remembering them. `migrate deploy` applies only migrations live has
+# not had yet, in order, and does nothing else — it never drops, resets or
+# guesses. Before the restart, so the new code never meets an old table.
+npx prisma migrate deploy 2>&1 | grep -E 'applied|No pending|Error' | sed 's/^/  iwopo db: /'
+npx prisma migrate deploy --config prisma.private.config.ts 2>&1 | grep -E 'applied|No pending|Error' | sed 's/^/  private db: /'
 npx prisma generate 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma: /'
+npx prisma generate --config prisma.private.config.ts 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma (private): /'
 cd $L/frontend && npm run build 2>&1 | grep -oE '✓ built in [0-9.]+s' | sed 's/^/  build: /'
 systemctl reload nginx
-pm2 restart iwopo-api >/dev/null 2>&1
+# --cwd: without it pm2 can keep the process rooted in a stale directory
+pm2 restart iwopo-api --cwd $L/backend --update-env >/dev/null 2>&1
 sleep 4
 
 echo
 echo "═══ PARITY ═══"
 for d in $L $S; do cd $d; echo "  $(basename $d) @ $(git rev-parse --short HEAD) uncommitted=$(git status --porcelain|wc -l)"; done
 diff -rq $L/frontend/src $S/frontend/src >/dev/null && echo "  frontend/src identical" || echo "  ⚠️  frontend/src DIFFERS"
-diff -rq $L/backend/src $S/backend/src >/dev/null && echo "  backend/src identical" || echo "  ⚠️  backend/src DIFFERS"
+# src/generated is built per machine from the schema — not part of the comparison
+diff -rq -x generated $L/backend/src $S/backend/src >/dev/null && echo "  backend/src identical" || echo "  ⚠️  backend/src DIFFERS"
+for d in $L $S; do cd $d/backend; echo "  $(basename $d) migrations: $(npx prisma migrate status 2>&1 | grep -oE 'Database schema is up to date|have not yet been applied|drift' | head -1) · private: $(npx prisma migrate status --config prisma.private.config.ts 2>&1 | grep -oE 'Database schema is up to date|have not yet been applied|drift' | head -1)"; done
 a=$(grep -o 'assets/[^"]*\.js' $L/frontend/dist/index.html|head -1); b=$(grep -o 'assets/[^"]*\.js' $S/frontend/dist/index.html|head -1)
 [ "$a" = "$b" ] && echo "  bundle identical" || echo "  ⚠️  bundle DIFFERS"
 echo "  iwopo.com $(curl -s -o /dev/null -w '%{http_code}' https://iwopo.com/)  alphabetaone.com $(curl -s -o /dev/null -w '%{http_code}' https://alphabetaone.com/)"

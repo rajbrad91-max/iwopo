@@ -7,9 +7,10 @@
 // tables through a second client (src/config/privateDb.js).
 //
 // ⚠️ This database ALSO holds the perfectposes.ca website's own tables (the
-// media admin, perfectposes-api). They are NOT modelled here, so tables are
-// created from this file with `prisma migrate diff --from-empty` → psql,
-// NEVER `prisma db push` — db push would try to drop the website's tables.
+// media admin, perfectposes-api). They are NOT modelled here, so changes reach
+// it ONLY through `prisma migrate deploy --config prisma.private.config.ts`
+// (migrations in ./migrations). NEVER `db push`, `migrate dev` or `reset` —
+// they would try to drop the website's tables.
 //
 // Generate: npx prisma generate --config prisma.private.config.ts
 
