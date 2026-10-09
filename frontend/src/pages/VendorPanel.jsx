@@ -220,6 +220,16 @@ export default function VendorPanel({ onLogout }) {
     /* 🎉 An anniversary reminder opens the page that can act on it. A reminder
        that does not take you to the thing is half a reminder. */
     else if (n.link_type === 'occasion') navigate({ tab: 'occasions' });
+    /* 📞 A text or missed call opens Calls & messages ON that person. The
+       event id is handed over through sessionStorage (if the page is about
+       to load) and an event (if it is already open). */
+    else if (n.link_type === 'comms') {
+      if (n.link_id) {
+        sessionStorage.setItem('cm-open', String(n.link_id));
+        window.dispatchEvent(new CustomEvent('cm-open'));
+      }
+      navigate({ tab: 'comms' });
+    }
   }
 
   function handleLogout() { logout(); onLogout(); }
@@ -409,13 +419,46 @@ function sinceLabel(ts) {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 
+/** A short two-note chime, made in the browser — no sound file to load or host.
+ *  Browsers stay silent until the page has been clicked once; that is their rule. */
+function chime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    [[880, 0], [1320, 0.16]].forEach(([hz, at]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = hz;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.28);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + at); o.stop(ctx.currentTime + at + 0.3);
+    });
+    setTimeout(() => ctx.close().catch(() => {}), 800);
+  } catch { /* no audio — the bell count still shows it */ }
+}
+
 function NotifBell({ onOpen }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ notifications: [], unseen: 0 });
   const boxRef = useRef(null);
+  const lastSeenId = useRef(null);
 
-  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
-  function load() { api.notifications().then(setData).catch(() => {}); }
+  /* 🔔 Every 15 seconds, not every minute: a text or a missed call should
+     reach the vendor while it still matters. The request is small. A new
+     text or missed call also plays a short chime, so it is noticed without
+     watching the bell. */
+  useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, []);
+  function load() {
+    api.notifications().then(d => {
+      const top = d.notifications?.[0];
+      if (top && lastSeenId.current != null && top.id !== lastSeenId.current && top.type === 'comms') chime();
+      if (top) lastSeenId.current = top.id;
+      else if (lastSeenId.current == null) lastSeenId.current = 0;
+      setData(d);
+    }).catch(() => {});
+  }
 
   // Close on a click anywhere else, or on Escape. Without this the panel stayed
   // open over whatever the vendor clicked next, which reads as a stuck menu.

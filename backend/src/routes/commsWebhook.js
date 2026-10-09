@@ -13,30 +13,49 @@
  */
 import express from 'express';
 import prisma from '../config/prisma.js';
-import { quoConfig, verifyWebhook } from '../lib/quo.js';
+import { quoConfig, verifyWebhook, ownNumbers, otherParticipant } from '../lib/quo.js';
+import { enrichCall, CALL_FIELDS } from '../lib/commsEnrich.js';
+import { announce } from '../lib/commsNotify.js';
 
 const router = express.Router();
 
-/** Quo's shapes differ between calls and messages; this flattens both. */
-export function normalise(type, data) {
+/**
+ * Quo's shapes differ between calls and messages; this flattens both.
+ * @param {Set<string>} ours  the vendor's own numbers (last ten digits) — see ownNumbers()
+ */
+export function normalise(type, data, ours = new Set()) {
   const isCall = String(type || '').startsWith('call');
   const id = data?.id;
   if (!id) return null;
 
   const occurred = data?.createdAt || data?.completedAt || data?.answeredAt || new Date().toISOString();
+  /* A CALL has no from/to — Quo gives `participants` and a direction. And
+     `participants` lists OUR line too, beside the caller: the first entry was
+     sometimes us, which filed the call under our own number. */
+  const other = otherParticipant(data?.participants, ours);
+  const outgoing = data?.direction === 'outgoing';
+  const fromNum = data?.from?.phoneNumber || (typeof data?.from === 'string' ? data.from : null) || (!outgoing ? other : null);
+  const toNum = (Array.isArray(data?.to) ? (data.to[0]?.phoneNumber || data.to[0]) : (data?.to?.phoneNumber || (typeof data?.to === 'string' ? data.to : null))) || (outgoing ? other : null);
   return {
     external_id: String(id).slice(0, 80),
+    /* 📞 WHICH of the vendor's Quo numbers this happened on. Without it,
+       switching the number in Super Admin could not hide the old line's
+       calls — and the new line's history was never fetched, because "newest
+       event held" was taken across every line. */
+    line_id: data?.phoneNumberId ? String(data.phoneNumberId).slice(0, 40) : null,
     kind: isCall ? 'call' : 'message',
-    direction: data?.direction === 'outgoing' ? 'outgoing' : 'incoming',
+    direction: outgoing ? 'outgoing' : 'incoming',
     status: data?.status ? String(data.status).slice(0, 24) : null,
-    from_number: data?.from?.phoneNumber || data?.from || null,
-    to_number: Array.isArray(data?.to) ? (data.to[0]?.phoneNumber || data.to[0]) : (data?.to?.phoneNumber || data?.to || null),
+    from_number: fromNum ? String(fromNum).slice(0, 32) : null,
+    to_number: toNum ? String(toNum).slice(0, 32) : null,
     contact_name: null,
     body: isCall ? (data?.summary || null) : (data?.text || data?.body || null),
     /* Quo delivers a transcript in a LATER event than the call itself, so this
        is usually null here and filled in by the update below. */
     transcript: null,
-    recording_url: data?.media?.[0]?.url || data?.recordingUrl || null,
+    /* A call's own recording link EXPIRES, so it is never stored — enrichCall
+       marks it as available and the audio is fetched fresh on play. */
+    recording_url: isCall ? null : (data?.media?.[0]?.url || null),
     duration_sec: Number.isFinite(Number(data?.duration)) ? Math.round(Number(data.duration)) : null,
     occurred_at: new Date(occurred),
   };
@@ -48,15 +67,22 @@ export function normalise(type, data) {
  * Both the webhook and the poller deliver the same events, so this must be
  * safe to run twice — a duplicate in a timeline reads as the client having
  * rung twice, which is worse than a gap.
+ *
+ * @returns {'created'|'updated'|false} — which of the two happened. A plain
+ *   `true` for both made every Sync report the same messages as "new" again.
  */
 export async function upsertEvent(vendorId, row) {
   if (!row?.external_id) return false;
   try {
+    const had = await prisma.comms_events.findUnique({ where: { external_id: row.external_id }, select: { id: true } });
     await prisma.comms_events.upsert({
       where: { external_id: row.external_id },
       /* Only fills gaps. A transcript or recording arriving later must not wipe
          a summary that came with the call. */
       update: {
+        line_id: row.line_id ?? undefined,     // stamps events stored before the line was recorded
+        from_number: row.from_number ?? undefined,   // calls stored before their number was read
+        to_number: row.to_number ?? undefined,
         status: row.status ?? undefined,
         body: row.body ?? undefined,
         transcript: row.transcript ?? undefined,
@@ -65,7 +91,7 @@ export async function upsertEvent(vendorId, row) {
       },
       create: { ...row, vendor_id: Number(vendorId) },
     });
-    return true;
+    return had ? 'updated' : 'created';
   } catch { return false; }
 }
 
@@ -74,16 +100,39 @@ router.post('/', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) =>
     const cfg = await quoConfig();
     const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');
 
-    if (!verifyWebhook(raw, req.headers['openphone-signature'], cfg.webhookSecret)) {
-      /* Deliberately terse. A detailed rejection tells somebody probing the
-         endpoint exactly which part of their forgery to fix. */
+    const check = verifyWebhook(raw, req.headers, cfg.webhookSecrets);
+    if (!check.ok) {
+      /* Terse to the caller — a detailed rejection tells somebody probing the
+         endpoint which part of their forgery to fix — but the REASON goes to
+         the log, because a silent 401 is exactly how a wrong parser hid for a
+         day behind a sync that kept the texts arriving anyway. */
+      console.error(`[comms] webhook refused (${check.scheme}): ${check.why}`);
       return res.status(401).json({ error: 'bad signature' });
     }
     if (!cfg.vendorId) return res.status(200).json({ ok: true, skipped: 'no vendor configured' });
 
     const payload = JSON.parse(raw);
-    const row = normalise(payload?.type, payload?.data?.object || payload?.data);
-    if (row) await upsertEvent(cfg.vendorId, row);
+    const type = String(payload?.type || '');
+    const obj = payload?.data?.object || payload?.data;
+
+    /* 🎧 "The summary / transcript / recording for call X is ready." These
+       carry the CALL's id, not an event of their own — treating them as a new
+       event made rows with no id or the wrong one. Fill the call instead. */
+    if (/^call\.(summary|transcript|recording)\./.test(type)) {
+      const callId = obj?.callId || obj?.id;
+      const ev = callId && await prisma.comms_events.findFirst({
+        where: { external_id: String(callId), vendor_id: cfg.vendorId },
+        select: CALL_FIELDS,
+      });
+      if (ev) await enrichCall(cfg.key, ev).catch(() => {});
+      return res.json({ ok: true });
+    }
+
+    const ours = await ownNumbers(cfg.key).catch(() => new Set());
+    const row = normalise(type, obj, ours);
+    // a genuine delivery we cannot read is worth knowing about — its field names only, never its content
+    if (!row) console.error(`[comms] webhook "${type}" not understood — fields: ${Object.keys(obj || {}).join(',')}`);
+    if (row && await upsertEvent(cfg.vendorId, row)) await announce(cfg.vendorId, row, cfg.phoneNumberId || null);   // 🔔 a text in, or a missed call
 
     /* 200 whatever happens after the signature passes. Quo retries on an
        error, and retrying an event that was simply unrecognised achieves

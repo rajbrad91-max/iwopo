@@ -1,18 +1,21 @@
-/* 📞 Calls & Messages — private to the platform owner.
-   Panel tokens only: --teal, --panel, --panel-2, --line, --text, --muted. */
-.cm { max-width: 1100px; }
+/* 📞 Calls & texts — private to the platform owner.
+   Panel tokens only: --teal, --teal-soft, --panel, --panel-2, --line, --text,
+   --muted, --red, --amber, --v-navhover. Like a phone's own call log: people
+   on the left, the whole conversation with one of them on the right. */
+.cm { max-width: 1180px; }
 
+/* ── toolbar ─────────────────────────────────────────────────────────── */
 .cm-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
-.cm-search { flex: 1 1 220px; min-width: 180px; padding: 8px 12px; border-radius: 8px;
+.cm-search { flex: 1 1 240px; min-width: 180px; padding: 8px 12px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 13.5px; }
 .cm-search:focus { outline: none; border-color: var(--teal); }
-.cm-f { padding: 7px 13px; border-radius: 20px; cursor: pointer; font-size: 12.5px; font-weight: 600;
+.cm-f { display: inline-flex; align-items: center; padding: 7px 13px; border-radius: 20px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; text-decoration: none;
   border: 1px solid var(--line); background: var(--panel); color: var(--muted); white-space: nowrap; }
 .cm-f:hover:not(:disabled) { color: var(--text); }
 .cm-f:disabled { opacity: .55; cursor: not-allowed; }
 .cm-f.is-on { background: var(--teal); border-color: var(--teal); color: #fff; }
-
-/* the quiet reassurance that it is watching, so nobody hunts for a refresh */
+.cm-f:focus-visible, .cm-person:focus-visible, .cm-link:focus-visible, .cm-play:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .cm-live { font-size: 11.5px; color: var(--teal); white-space: nowrap; }
 
 .cm-new { margin-bottom: 12px; padding: 7px 12px; border-radius: 8px; font-size: 12.5px;
@@ -20,55 +23,124 @@
 .cm-err { margin-bottom: 12px; font-size: 12.5px; color: var(--red); }
 .cm-quiet { color: var(--muted); font-size: 13px; padding: 24px 0; line-height: 1.55; }
 
-.cm-wrap { display: grid; gap: 14px; grid-template-columns: 240px minmax(0, 1fr); align-items: start; }
+/* ── the two panes ───────────────────────────────────────────────────── */
+.cm-wrap { display: grid; grid-template-columns: 300px minmax(0, 1fr);
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+  height: calc(100vh - 210px); min-height: 460px; overflow: hidden; }
 
-.cm-threads { display: flex; flex-direction: column; gap: 3px; padding: 12px;
-  border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
-.cm-hd { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .06em;
-  text-transform: uppercase; padding: 2px 6px 8px; }
-.cm-thread { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 8px 10px;
-  border: 0; border-radius: 8px; background: none; cursor: pointer; }
-.cm-thread:hover { background: var(--v-navhover); }
-.cm-thread.is-on { background: var(--teal-soft); }
-.cm-tname { font-size: 13px; font-weight: 600; color: var(--text);
+.cm-people { overflow-y: auto; border-right: 1px solid var(--line); padding: 6px; }
+.cm-person { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  width: 100%; text-align: left; padding: 9px 10px; border: 0; border-radius: 10px;
+  background: none; cursor: pointer; color: inherit; }
+.cm-person:hover { background: var(--v-navhover); }
+.cm-person.is-on { background: var(--teal-soft); }
+
+.cm-av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+  font-size: 13px; font-weight: 700; }
+.cm-av.is-big { width: 44px; height: 44px; font-size: 15px; }
+.cm-pmain { display: flex; flex-direction: column; min-width: 0; }
+.cm-pname { font-size: 13.5px; font-weight: 600; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cm-tmeta { font-size: 11.5px; color: var(--muted); }
+.cm-plast { font-size: 12px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-pside { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.cm-pwhen { font-size: 11px; color: var(--muted); }
+.cm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
 
-.cm-feed { display: flex; flex-direction: column; gap: 8px; }
-.cm-item { padding: 12px 14px; border-radius: 11px; border: 1px solid var(--line);
-  background: var(--panel); border-left: 3px solid var(--line); }
-.cm-item.is-incoming { border-left-color: var(--teal); }
-.cm-item.is-outgoing { border-left-color: var(--muted); }
+/* 🏷️ Lead / Booked — who this person is to the business, at a glance. */
+.cm-badge { align-self: flex-start; display: inline-block; margin: 2px 0 1px; padding: 1px 8px;
+  border-radius: 20px; font-size: 10.5px; font-weight: 700; text-decoration: none; white-space: nowrap;
+  background: var(--teal-soft); color: var(--teal); }
+.cm-badge.is-booked { background: color-mix(in srgb, #16a34a 16%, transparent); color: #15803d; }
+a.cm-badge:hover { text-decoration: underline; }
 
-.cm-top { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
-.cm-kind { flex: none; }
-.cm-who { font-size: 13.5px; font-weight: 600; color: var(--text); }
-.cm-dir { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-.cm-status { font-size: 11px; padding: 1px 8px; border-radius: 20px;
-  background: var(--panel-2); color: var(--muted); }
-.cm-status.is-missed, .cm-status.is-no-answer { background: #fee2e2; color: #b91c1c; }
-.cm-dur { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.cm-when { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.cm-convo { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.cm-pick { padding: 40px 24px; text-align: center; }
 
-.cm-body { margin: 8px 0 0; font-size: 13px; color: var(--text); line-height: 1.55; }
-.cm-tr { margin-top: 8px; font-size: 12.5px; }
-.cm-tr summary { cursor: pointer; color: var(--teal); font-weight: 600; }
-.cm-tr p { margin: 8px 0 0; color: var(--muted); line-height: 1.6; }
-.cm-audio { margin-top: 10px; width: 100%; max-width: 380px; height: 34px; }
+.cm-chead { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--line); }
+.cm-back { display: none; border: 0; background: none; color: var(--teal); font-size: 26px;
+  line-height: 1; cursor: pointer; padding: 0 4px; }
+.cm-cwho { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cm-cname { font-size: 15px; font-weight: 700; color: var(--text); }
+.cm-cnum { font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+.cm-ccount { font-size: 11.5px; color: var(--muted); }
+.cm-cacts { display: flex; gap: 6px; }
 
-/* a phone has no room for a sidebar of people beside the feed */
-@media (max-width: 760px) {
-  .cm-wrap { grid-template-columns: 1fr; }
-  .cm-threads { flex-direction: row; overflow-x: auto; }
-  .cm-hd { display: none; }
-  .cm-thread { flex: none; min-width: 130px; }
-}
+.cm-stream { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+.cm-day { text-align: center; font-size: 11.5px; color: var(--muted); margin: 14px 0 10px; }
 
-/* 📞→📋 Turning a call into a lead. */
+/* 💬 the reply box, pinned under the conversation like any chat */
+.cm-compose { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap;
+  padding: 10px 12px; border-top: 1px solid var(--line); }
+.cm-draft { flex: 1 1 200px; min-height: 38px; max-height: 140px; resize: vertical;
+  padding: 9px 12px; border-radius: 18px; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--text); font: inherit; font-size: 13.5px; line-height: 1.4; }
+.cm-draft:focus { outline: none; border-color: var(--teal); }
+.cm-send { padding: 9px 18px; }
+.cm-count { width: 100%; text-align: right; font-size: 11px; color: var(--muted); }
+
+/* ── texts: bubbles, theirs left and yours right ─────────────────────── */
+.cm-msg { display: flex; flex-direction: column; max-width: 72%; margin: 4px 0; }
+.cm-msg.is-in { align-items: flex-start; }
+.cm-msg.is-out { align-items: flex-end; margin-left: auto; }
+.cm-bubble { padding: 8px 12px; border-radius: 16px; font-size: 13.5px; line-height: 1.45;
+  white-space: pre-wrap; overflow-wrap: anywhere; }
+.cm-msg.is-in .cm-bubble { background: var(--panel-2); color: var(--text); border-bottom-left-radius: 4px; }
+.cm-msg.is-out .cm-bubble { background: var(--teal); color: #fff; border-bottom-right-radius: 4px; }
+.cm-mtime { font-size: 10.5px; color: var(--muted); margin: 3px 6px 0; }
+
+/* ── calls: a card across the conversation ───────────────────────────── */
+.cm-call { margin: 10px auto; max-width: 620px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel-2); }
+.cm-call.is-missed { border-color: color-mix(in srgb, var(--red) 45%, var(--line)); }
+.cm-call-top { display: flex; align-items: center; gap: 9px; }
+.cm-call-ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--teal-soft); color: var(--teal); font-weight: 700; font-size: 13px; }
+.cm-call.is-missed .cm-call-ic { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red); }
+.cm-call-what { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.cm-call-len { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cm-time { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+.cm-play { margin-top: 10px; padding: 7px 14px; border-radius: 20px; border: 1px solid var(--teal);
+  background: none; color: var(--teal); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.cm-play:disabled { opacity: .6; cursor: wait; }
+.cm-audio { display: block; margin-top: 10px; width: 100%; height: 36px; }
+.cm-callerr { margin-top: 10px; font-size: 12px; color: var(--red); }
+
+.cm-sum { margin-top: 12px; }
+.cm-sub { font-size: 12px; font-weight: 700; color: var(--text); margin: 8px 0 4px; }
+.cm-sum ul { margin: 0; padding-left: 18px; }
+.cm-sum li { font-size: 13px; color: var(--text); line-height: 1.55; margin: 2px 0; }
+
+.cm-trx { margin-top: 10px; }
+.cm-link { border: 0; background: none; padding: 0; color: var(--teal); font-size: 12.5px;
+  font-weight: 600; cursor: pointer; }
+.cm-dialogue { margin-top: 8px; max-height: 360px; overflow-y: auto; padding: 8px 10px;
+  border-radius: 8px; background: var(--panel); border: 1px solid var(--line); }
+.cm-line { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 8px; padding: 4px 0;
+  font-size: 12.5px; line-height: 1.5; }
+.cm-spk { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cm-line.is-us .cm-spk { color: var(--teal); }
+.cm-said { color: var(--text); }
+.cm-pending { margin-top: 10px; font-size: 12px; color: var(--muted); }
 
 /* Sits under the summary it will read, so it plainly belongs to that call. */
-.cm-lead { margin-top: 10px; }
+.cm-lead { margin-top: 12px; }
 
+/* ── phone: the list and the conversation take turns ─────────────────── */
+@media (max-width: 760px) {
+  .cm-wrap { grid-template-columns: 1fr; height: calc(100vh - 190px); }
+  .cm-convo { display: none; }
+  .cm.has-open .cm-people { display: none; }
+  .cm.has-open .cm-convo { display: flex; }
+  .cm-back { display: block; }
+  .cm-msg { max-width: 86%; }
+  .cm-line { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* ── 📞→📋 turning a call into a lead ─────────────────────────────────── */
 .cm-modal {
   position: fixed; inset: 0; z-index: 400;
   background: rgba(8,12,14,.6);
@@ -83,7 +155,6 @@
 /* A low-confidence extraction is still worth showing — but Raj should know
    which kind he is looking at before he presses create. */
 .cm-conf { color: var(--amber); }
-
 .cm-grid {
   display: grid; gap: 10px 12px; margin-bottom: 12px;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -96,9 +167,7 @@
   font-size: 13.5px; font-family: inherit;
 }
 .cm-area { line-height: 1.6; resize: vertical; margin-bottom: 16px; }
-
 .cm-sheet-f { display: flex; justify-content: flex-end; gap: 8px; }
-
 @media (max-width: 560px) {
   .cm-grid { grid-template-columns: 1fr; }
 }

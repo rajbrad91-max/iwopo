@@ -1690,6 +1690,15 @@ function FaceEngineSettings() {
     if (!quoOpen || vendorList.length) return;
     api.vendors().then(d => setVendorList(d.vendors || [])).catch(() => {});
   }, [quoOpen, vendorList.length]);
+  /* The saved number is Quo's id ("PN91M3…"), which means nothing to a
+     person. Opening the section fetches the numbers once, quietly, so the box
+     reads "Perfect Poses · +1 778…" without pressing anything first. */
+  const hasQuoKey = !!s?.quo_api_key;
+  useEffect(() => {
+    if (!quoOpen || !hasQuoKey || quoNumbers.length) return;
+    api.testQuo().then(r => setQuoNumbers(r.numbers || []))
+      .catch(e => setQuoMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach Quo') }));
+  }, [quoOpen, hasQuoKey, quoNumbers.length]);
 
   /** Listing the numbers proves the key works and fills the number picker. */
   async function testQuo() {
@@ -2116,10 +2125,17 @@ function FaceEngineSettings() {
                 value={s.quo_api_key || ''}
                 onChange={e => setS({ ...s, quo_api_key: e.target.value })} /></div>
 
-            <div><label className="lbl">Webhook signing secret</label>
-              <input type="password" style={editing ? box : roBox} readOnly={!editing}
-                value={s.quo_webhook_secret || ''}
-                onChange={e => setS({ ...s, quo_webhook_secret: e.target.value })} /></div>
+            {/* Quo can give every webhook its own signing secret (messages, calls,
+                summaries, transcripts); one box holding one secret rejected
+                the rest as forgeries. One per line — any of them may sign. */}
+            <div><label className="lbl">Webhook signing secrets <span className="sa-hint">one per line — Quo may give each webhook its own</span></label>
+              {editing ? (
+                <textarea style={box} rows={4} spellCheck={false} autoComplete="off"
+                  value={s.quo_webhook_secret || ''}
+                  onChange={e => setS({ ...s, quo_webhook_secret: e.target.value })} />
+              ) : (
+                <input type="password" style={roBox} readOnly value={s.quo_webhook_secret || ''} />
+              )}</div>
 
             <div><label className="lbl">Phone number</label>
               {editing ? (
@@ -2135,7 +2151,7 @@ function FaceEngineSettings() {
               ) : (
                 <input style={roBox} readOnly
                   value={s.quo_phone_number_id
-                    ? (quoNumbers.find(n => n.id === s.quo_phone_number_id)?.number || s.quo_phone_number_id)
+                    ? (() => { const n = quoNumbers.find(x => x.id === s.quo_phone_number_id); return n ? `${n.name} · ${n.number}` : (quoMsg && !quoMsg.ok ? s.quo_phone_number_id : 'Loading the number…'); })()
                     : 'Every number on the account'} />
               )}</div>
 

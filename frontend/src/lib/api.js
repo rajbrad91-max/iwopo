@@ -805,6 +805,11 @@ export const api = {
   commsSync: () => request('/comms/sync', { method: 'POST' }),
   // 📞→📋 read a call summary into a proposed lead, then create it
   commsExtract: (id) => request('/comms/' + id + '/extract', { method: 'POST' }),
+  commsBadges: (numbers) => request('/comms/badges', { method: 'POST', body: JSON.stringify({ numbers }) }),
+  // ✍️ save the person in Quo — shows in the Quo phone app too
+  commsSaveContact: (c) => request('/comms/contact', { method: 'POST', body: JSON.stringify(c) }),
+  // 💬 send a text through Quo, from the business number
+  commsSendText: (number, text) => request('/comms/message', { method: 'POST', body: JSON.stringify({ number, text }) }),
   commsCreateLead: (id, lead) => request('/comms/' + id + '/lead', { method: 'POST', body: JSON.stringify(lead) }),
   myFeatures: () => request('/me/features'),
   toggleService: (vendorId, serviceId, enabled) =>
