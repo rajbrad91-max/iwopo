@@ -170,7 +170,8 @@ export default function InquiryForm({ handle, byHost = false }) {
           <p className="iq-req-note">Fields marked * are required</p>
         </div>
       </div>
-      <ChatWidget handle={who} businessName={c.brand_name} botName={c.bot_name} />
+      {/* 🤖 only for vendors subscribed to the chatbot */}
+      {c.chat && <ChatWidget handle={who} businessName={c.brand_name} botName={c.bot_name} />}
     </div>
   );
 }

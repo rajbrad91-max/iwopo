@@ -4,6 +4,14 @@ import { normalizeDomain } from '../lib/customDomain.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+
+/** 🤖 Is the Wopo Assistant chatbot on for this vendor — an ACTIVE subscriber?
+ *  The public form shows the chat bubble only then (the chat endpoint already
+ *  refuses everyone else; the bubble used to show for every vendor anyway). */
+async function chatOn(vendorId) {
+  const sub = await prisma.chatbot_subscribers.findUnique({ where: { vendor_id: Number(vendorId) }, select: { active: true } }).catch(() => null);
+  return !!sub?.active;
+}
 /** A #rgb or #rrggbb value, and nothing else. */
 const looksLikeColour = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v || ''));
 
@@ -60,7 +68,7 @@ router.get('/by-host', async (req, res) => {
         ...DEFAULTS, ...s,
         brand_name: s.brand_name || vendor?.business_name,
         logo_path: vendor?.logo_path || '',
-        bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant',
+        bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(site.vendor_id),
       },
       slug: vendor?.slug || '',
     });
@@ -124,7 +132,7 @@ router.get('/:handle', async (req, res) => {
       where: { vendor_id: vendorId }, select: { bot_name: true },
     });
 
-    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant' } });
+    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(vendorId) } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

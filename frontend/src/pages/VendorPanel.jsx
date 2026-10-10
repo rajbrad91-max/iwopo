@@ -5607,9 +5607,9 @@ function SettingsView({ user, onProfileChange }) {
             {zones.map(z => <option key={z.tz} value={z.tz}>{z.city}</option>)}
           </select>
         ) : (
-          <div style={{ ...box, marginTop: 6 }}>{zones[0]?.city || s.timezone || 'Set your country under Account'}</div>
+          <div className="pref-static">{zones[0]?.city || s.timezone || 'Set your country under Account'}</div>
         )}
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+        <div className="pref-hint">
           🌍 The largest city in your timezone, from the country on your profile.
         </div>
 
