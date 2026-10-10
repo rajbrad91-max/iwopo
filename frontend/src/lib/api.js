@@ -877,7 +877,10 @@ export const api = {
   rawselOverview: () => request('/rawsel/overview'),
   // 🤖 AI Agent (private)
   agentUsage: () => request('/agent/usage'),
-  agentChat: (messages) => request('/agent/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+  agentChat: (messages, voice = false) => request('/agent/chat', { method: 'POST', body: JSON.stringify({ messages, voice }) }),
+  agentPushKey: () => request('/agent/push/key'),
+  agentPushSubscribe: (sub) => request('/agent/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
+  agentPushUnsubscribe: (endpoint) => request('/agent/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) }),
   agentConfirm: (id) => request('/agent/confirm', { method: 'POST', body: JSON.stringify({ id }) }),
   agentCancel: (id) => request('/agent/cancel', { method: 'POST', body: JSON.stringify({ id }) }),
   rawselEditors: () => request('/rawsel/editors'),

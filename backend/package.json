@@ -26,7 +26,8 @@
     "nodemailer": "^10.0.10",
     "onnxruntime-node": "^1.20.1",
     "pg": "^8.12.0",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "prisma": "^7.9.0"

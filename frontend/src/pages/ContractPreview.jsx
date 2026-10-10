@@ -23,19 +23,25 @@ export default function ContractPreview({ leadId }) {
   const [templates, setTemplates] = useState([]);
   const [chosen, setChosen] = useState('');
   const [needsBuilding, setNeedsBuilding] = useState(false);
+  const [previewName, setPreviewName] = useState('');
 
   useEffect(() => {
-    api.ctTemplates().then(d => {
-      const list = d.templates || [];
-      setTemplates(list);
-      /* ⚠️ Pre-selected, because one template is the common case and a
-         vendor should not have to choose from a list of one. */
-      /* ⚠️ The vendor MARKED one as default — honour it rather than
-         offering whichever happens to be first. */
-      const pick = list.find(t => t.is_default) || list[0];
-      if (pick) setChosen(String(pick.id));
-    }).catch(() => {});
+    api.ctTemplates().then(d => setTemplates(d.templates || [])).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!templates.length) return;
+    /* The agreement on screen, else the vendor's default, else the first. */
+    const pick = (previewName && templates.find(t => t.name === previewName))
+      || templates.find(t => t.is_default)
+      || templates[0];
+    if (pick) setChosen(String(pick.id));
+  }, [templates, previewName]);
+
+  function onLoaded(ct) {
+    setNeedsBuilding(!ct?.id);
+    if (ct?.template_name) setPreviewName(ct.template_name);
+  }
 
   /**
    * Build the contract for this lead from a template.
@@ -102,7 +108,7 @@ export default function ContractPreview({ leadId }) {
           )}
 
       <div className="cp-doc">
-        <SignContract previewLeadId={leadId} onRelease={release} />
+        <SignContract previewLeadId={leadId} onRelease={release} onLoaded={onLoaded} />
       </div>
     </div>
   );

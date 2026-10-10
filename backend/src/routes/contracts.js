@@ -2,9 +2,9 @@ import express from 'express';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { moneySummary } from './payments.js';
+import { moneySummary, pickedOffer } from './payments.js';
 import { currencyFor } from '../lib/currencies.js';
-import { formatWallTime } from '../lib/wallClock.js';
+import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
 
 const router = express.Router();
@@ -103,6 +103,28 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
+function fmtContractDate(d) {
+  const ymd = calendarYmd(d);
+  if (!ymd) return '';
+  const [y, mo, da] = ymd.split('-').map(Number);
+  const utc = new Date(Date.UTC(y, mo - 1, da));
+  return utc.toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+  });
+}
+
+/** "6 hrs" from the inquiry when the client typed that; otherwise the column. */
+function hoursLabel(lead) {
+  const snap = Array.isArray(lead?.form_snapshot) ? lead.form_snapshot : [];
+  const cd = lead?.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
+  const f = snap.find(x => x.maps_to === 'hours' || x.type === 'hours');
+  const raw = f ? cd[f.id] : null;
+  if (raw != null && String(raw).trim() !== '') return String(raw).trim();
+  const n = Number(lead?.hours);
+  if (!n) return '';
+  return `${n} hour${n === 1 ? '' : 's'}`;
+}
+
 /** Vendor-typed wording, already placeholder-filled → paragraphs. */
 function proseHtml(text) {
   return escapeHtml(text)
@@ -140,25 +162,44 @@ function bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime) {
 }
 
 /**
- * The day, in order — a title for the event, then when and where. Getting
- * Ready is stated explicitly as Yes or No rather than left out when it's No:
- * an earlier version of this hid the row instead, on the assumption that a
- * "No" reads as something declined. That assumption was never checked against
- * a real contract; a real one states it plainly, so this does too.
+ * Getting-ready rows for what this inquiry asked.
+ * A "Getting-ready coverage" tick is the answer — bride and groom rows
+ * are not printed under it. No snapshot still prints both rows. A snapshot
+ * that never asked, with a Yes already stored, prints both rows too.
  */
+function gettingReadyRows(lead) {
+  const snap = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
+  const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
+  const yesNo = (on) => (on ? 'Yes' : 'No');
+  const both = () => [
+    ['Bride Getting Ready', yesNo(lead.gr_bride)],
+    ['Groom Getting Ready', yesNo(lead.gr_groom)],
+  ];
+  if (!snap.length) return both();
+  const rows = [];
+  if (snap.some(f => f.maps_to === 'gr_bride')) rows.push(['Bride Getting Ready', yesNo(lead.gr_bride)]);
+  if (snap.some(f => f.maps_to === 'gr_groom')) rows.push(['Groom Getting Ready', yesNo(lead.gr_groom)]);
+  for (const f of snap) {
+    if (f.type !== 'checkbox') continue;
+    if (f.maps_to === 'gr_bride' || f.maps_to === 'gr_groom') continue;
+    if (!/getting[- ]?ready/i.test(f.label || '')) continue;
+    rows.push([f.label, yesNo(cd[f.id] === true)]);
+  }
+  if (rows.length) return rows;
+  if (lead.gr_bride || lead.gr_groom) return both();
+  return [];
+}
+
 function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   const main = kvTable('ct-kv', [
     ['Date', fmtDate(lead.event_date)],
     ['Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : ''],
-    ['Hours', lead.hours ? `${lead.hours} hours` : ''],
+    ['Hours', hoursLabel(lead)],
     ['Location', lead.location],
     ['Guests', lead.guests],
   ]);
   if (!main) return '';
-  const getting = kvTable('ct-kv', [
-    ['Bride Getting Ready', lead.gr_bride ? 'Yes' : 'No'],
-    ['Groom Getting Ready', lead.gr_groom ? 'Yes' : 'No'],
-  ]);
+  const getting = kvTable('ct-kv', gettingReadyRows(lead));
   return `<h3>Main Event — ${escapeHtml(lead.event_type || 'Event')}</h3>${main}`
     + (getting ? `<h3>Getting Ready Coverage</h3>${getting}` : '');
 }
@@ -215,16 +256,29 @@ function headbandHtml(headerText, logoPath) {
 /**
  * One template section → one ct-sec block, or nothing if it has nothing to say.
  *
- * A section is either pure prose, or its entire text is a single block token
- * like {{booking_details}} — the two are never mixed, so there is one clear
- * rule for which path a section takes rather than a guess.
+ * Prose is escaped. A block token (alone or inside a sentence) is HTML this
+ * server built, so it is not escaped. An empty block drops out.
  */
+const BLOCK_TOKEN = /\{\{(booking_details|coverage_schedule|deliverables|services_summary|crew)\}\}/;
+
+function renderSectionBody(rawText, values, blocks) {
+  if (!BLOCK_TOKEN.test(rawText)) return proseHtml(substitute(rawText, values));
+  const re = new RegExp(BLOCK_TOKEN.source, 'g');
+  let out = '';
+  let last = 0;
+  let m;
+  while ((m = re.exec(rawText))) {
+    out += proseHtml(substitute(rawText.slice(last, m.index), values));
+    out += blocks[m[1]] || '';
+    last = m.index + m[0].length;
+  }
+  out += proseHtml(substitute(rawText.slice(last), values));
+  return out;
+}
+
 function sectionHtml(section, values, blocks, initCounter) {
   const rawText = (section.text || '').trim();
-  const blockMatch = rawText.match(/^\{\{(\w+)\}\}$/);
-  const bodyHtml = blockMatch && blocks[blockMatch[1]] !== undefined
-    ? blocks[blockMatch[1]]
-    : proseHtml(substitute(rawText, values));
+  const bodyHtml = renderSectionBody(rawText, values, blocks);
   if (!bodyHtml.trim()) return '';                 // nothing to show — the whole section goes
 
   let initHtml = '';
@@ -253,10 +307,11 @@ function substitute(text, values) {
  * They all call this instead.
  */
 export async function buildContractBody(template, lead, businessName) {
-  const [chosen, crew, money, vset, vrow] = await Promise.all([
-    prisma.lead_packages.findFirst({
-      where: { lead_id: lead.id, is_selected: true },      // 🔒 tenancy via the lead
-      select: { name: true, inclusions: true },
+  const [offeredPkgs, crew, money, vset, vrow] = await Promise.all([
+    prisma.lead_packages.findMany({
+      where: { lead_id: lead.id },                         // 🔒 tenancy via the lead
+      select: { name: true, inclusions: true, is_selected: true },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     }),
     prisma.lead_crew.findMany({
       where: { lead_id: lead.id },
@@ -271,18 +326,11 @@ export async function buildContractBody(template, lead, businessName) {
       where: { id: lead.vendor_id }, select: { country: true, logo_path: true },
     }),
   ]);
+  const chosen = pickedOffer(offeredPkgs);
   const inclusions = Array.isArray(chosen?.inclusions) ? chosen.inclusions.map(String).filter(Boolean) : [];
   const pkgName = chosen?.name || '—';
 
-  // Event dates are calendar days the vendor typed. Reading the Y-M-D off the
-  // string keeps the wedding on the day they entered, even when the value
-  // arrives as UTC midnight.
-  const fmtDate = (d) => {
-    const m = String(d || '').match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return '';
-    const utc = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-    return utc.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-  };
+  const fmtDate = fmtContractDate;
   const pref = vset?.time_format === '24h' ? '24h' : '12h';
   const fmtTime = (t) => formatWallTime(t, pref);
   const zone = resolveTimezone(vset?.timezone, vrow?.country);
@@ -350,12 +398,7 @@ export async function fillPlaceholders(text, lead, businessName) {
     where: { vendor_id: lead.vendor_id }, select: { currency: true, timezone: true },
   });
   const vrow = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { country: true } });
-  const fmtDate = (d) => {
-    const m = String(d || '').match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (!m) return '';
-    const utc = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-    return utc.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-  };
+  const fmtDate = fmtContractDate;
   const zone = resolveTimezone(vset?.timezone, vrow?.country);
   const today = new Date().toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: zone.tz || 'UTC',

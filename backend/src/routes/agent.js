@@ -16,6 +16,7 @@ import { getSetting } from '../lib/settings.js';
 import { limit } from '../middleware/rateLimit.js';
 import { TOOLS, runTool } from '../lib/agentTools.js';
 import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction } from '../lib/agentActions.js';
+import { vapid } from '../lib/agentPush.js';
 
 const ALL_TOOLS = [...TOOLS, ...ACTION_TOOLS];
 const ACTIONS = new Set(ACTION_TOOLS.map(t => t.name));
@@ -61,7 +62,7 @@ async function record(v, inTok, outTok, cfg) {
   });
 }
 
-function systemPrompt(studio, today) {
+function systemPrompt(studio, today, voice = false) {
   return `You are the private assistant of ${studio || 'a wedding vendor'}, working inside their iwopo vendor panel. Today is ${today}.
 The person talking to you runs the business. English may be their second language and their messages may come from speech-to-text — read for what they MEAN, forgive spelling and grammar, and never comment on it.
 Use the tools to look things up; never invent a client, date, amount or status. If something is not in the panel, say so plainly.
@@ -72,7 +73,9 @@ When asked to CHECK a contract (or "is it right / any mistakes"), do not summari
 You can draft, inspect and check contracts with preview_contract — in the chat only. You can NEVER send, release or save a contract: the vendor does that themselves in Contracts & Invoices. Say so plainly if asked.
 You may PROPOSE an email (answers, instructions, reminders) or sending packages; the vendor gets a Yes/No card and nothing goes out until they press Yes. After proposing, say in one line what is waiting for their Yes. Never claim something was sent.
 Packages can only be proposed for a contract the vendor has already released.
-For anything else that would change data (bookings, payments, deleting), say it is not something you can do yet.`;
+For anything else that would change data (bookings, payments, deleting), say it is not something you can do yet.${voice ? `
+
+SPOKEN: this question was spoken and your answer will be read aloud. Reply like a person talking — one or two short sentences, the key fact first, no lists, no bold, no headings, no emojis, numbers in words people say ("three new leads"). If there is more, end with a short offer such as "Want the details?".` : ''}`;
 }
 
 router.get('/usage', requireAuth, async (req, res) => {
@@ -112,7 +115,7 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
       const r = await fetch(API_URL, {
         method: 'POST',
         headers: { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: systemPrompt(vendor?.business_name, today), tools: ALL_TOOLS, messages }),
+        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: systemPrompt(vendor?.business_name, today, req.body?.voice === true), tools: ALL_TOOLS, messages }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -146,6 +149,25 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
     await record(v, inTok, outTok, cfg);
     res.json({ proposals, reply: 'That needed more looking up than I can do in one go — could you ask it in smaller parts?', looked, usage: { inTok, outTok } });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── 🔔 pop-ups on the vendor's devices (lib/agentPush.js) ── */
+router.get('/push/key', requireAuth, async (req, res) => {
+  try { res.json({ key: await vapid() }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/push/subscribe', requireAuth, async (req, res) => {
+  try {
+    const s = req.body || {};
+    const endpoint = String(s.endpoint || ''), p256dh = String(s.keys?.p256dh || ''), auth = String(s.keys?.auth || '');
+    if (!/^https:\/\//.test(endpoint) || !p256dh || !auth) return res.status(400).json({ error: 'Not a push subscription' });
+    // 🔒 the device is this vendor's — a browser re-subscribing moves to whoever is signed in
+    await prisma.push_subscriptions.upsert({ where: { endpoint }, create: { vendor_id: vid(req), endpoint, p256dh, auth }, update: { vendor_id: vid(req), p256dh, auth } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/push/unsubscribe', requireAuth, async (req, res) => {
+  try { await prisma.push_subscriptions.deleteMany({ where: { endpoint: String(req.body?.endpoint || ''), vendor_id: vid(req) } }); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /** ✅ The vendor pressed Yes on a proposed action. */

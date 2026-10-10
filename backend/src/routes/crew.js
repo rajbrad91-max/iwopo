@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { sendAsVendor } from './email.js';
-import { formatWallTime } from '../lib/wallClock.js';
+import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
 
 const router = express.Router();
@@ -12,13 +12,49 @@ function vid(req) {
   return req.user.vendor_id;
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+/** Calendar day in a zone, YYYY-MM-DD. Real instants only — not event dates. */
+function calendarKey(timeZone, when = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || 'UTC',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(when);
+  } catch {
+    return when.toISOString().slice(0, 10);
+  }
 }
 
-function eventKey(d) {
+function shiftCalendarKey(ymd, days) {
+  const [y, m, d] = String(ymd || '').split('-').map(Number);
+  if (!y || !m || !d) return ymd;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+/** Event date as YYYY-MM-DD, or null. The stored day, not a timezone shift. */
+function dateOnlyKey(d) {
+  return calendarYmd(d) || null;
+}
+
+/** Clock-in / clock-out are real moments, so the day is the vendor's day. */
+function instantKey(d, timeZone) {
   if (!d) return null;
-  return String(d).slice(0, 10);
+  const dt = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(dt.getTime())) return null;
+  return calendarKey(timeZone, dt);
+}
+
+async function vendorZone(vendorId) {
+  if (!vendorId) return 'UTC';
+  const [vs, vendor] = await Promise.all([
+    prisma.vendor_settings.findUnique({
+      where: { vendor_id: Number(vendorId) },
+      select: { timezone: true },
+    }),
+    prisma.vendors.findUnique({ where: { id: Number(vendorId) }, select: { country: true } }),
+  ]);
+  return resolveTimezone(vs?.timezone, vendor?.country).tz || 'UTC';
 }
 
 /** Parse "HH:MM" or "H:MM" into minutes from midnight; null if unusable. */
@@ -47,15 +83,6 @@ function hoursWorked(a) {
   let diff = end - start;
   if (diff < 0) diff += 24 * 60;
   return Math.round((diff / 60) * 100) / 100;
-}
-
-function periodStart(period) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  if (period === 'biweek') d.setDate(d.getDate() - 13);
-  else if (period === 'month') d.setDate(d.getDate() - 29);
-  else d.setDate(d.getDate() - 6); // week
-  return d.toISOString().slice(0, 10);
 }
 
 function shapeRow(a) {
@@ -110,7 +137,8 @@ router.get('/schedule', requireAuth, async (req, res) => {
     const view = req.query.view === 'past' ? 'past' : 'upcoming';
     const memberId = req.query.member_id ? Number(req.query.member_id) : null;
     const period = ['week', 'biweek', 'month'].includes(req.query.period) ? req.query.period : 'week';
-    const today = todayKey();
+    const zone = await vendorZone(v);
+    const today = calendarKey(zone);
 
     const rows = await prisma.lead_crew.findMany({
       where: {
@@ -135,7 +163,7 @@ router.get('/schedule', requireAuth, async (req, res) => {
     const upcoming = [];
     const past = [];
     for (const r of owned) {
-      const key = eventKey(r.leads.event_date);
+      const key = dateOnlyKey(r.leads.event_date);
       const item = shapeRow(r);
       // Done (checked out) always belongs in Past — even if the event date is
       // still in the future. Otherwise date-only past; undated stays Upcoming.
@@ -151,12 +179,13 @@ router.get('/schedule', requireAuth, async (req, res) => {
 
     // Hours roll-up for the past view (and always returned so the UI can show
     // period chips without a second round-trip).
-    const from = periodStart(period);
+    const back = period === 'biweek' ? 13 : period === 'month' ? 29 : 6;
+    const from = shiftCalendarKey(today, -back);
     const totalsMap = new Map();
     for (const item of past) {
       // Prefer checkout day for Done jobs so future-dated completed work still
       // lands in this week's / month's hours roll-up.
-      const k = eventKey(item.checked_out_at) || eventKey(item.event_date);
+      const k = instantKey(item.checked_out_at, zone) || dateOnlyKey(item.event_date);
       if (!k || k < from || k > today) continue;
       if (item.hours == null) continue;
       const cur = totalsMap.get(item.member_id) || {
@@ -263,13 +292,25 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       select: { id: true },
     });
     if (!member) return res.status(400).json({ error: 'Crew member not found' });
-    const assignment = await prisma.lead_crew.create({
-      data: {
-        lead_id: lead.id, crew_member_id: member.id,
-        duty: duty || null, arrive_time: arrive_time || null, leave_time: leave_time || null,
-        checkin_token: crypto.randomBytes(16).toString('hex'),
-      },
+    // One person, one row. The lock makes the check and the insert one step.
+    const assignment = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lead.id}::integer, ${member.id}::integer)`;
+      const existing = await tx.lead_crew.findFirst({
+        where: { lead_id: lead.id, crew_member_id: member.id },
+        select: { id: true },
+      });
+      if (existing) return null;
+      return tx.lead_crew.create({
+        data: {
+          lead_id: lead.id, crew_member_id: member.id,
+          duty: duty || null, arrive_time: arrive_time || null, leave_time: leave_time || null,
+          checkin_token: crypto.randomBytes(16).toString('hex'),
+        },
+      });
     });
+    if (!assignment) {
+      return res.status(409).json({ error: 'This person is already assigned to this booking' });
+    }
     res.status(201).json({ assignment });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

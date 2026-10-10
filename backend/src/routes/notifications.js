@@ -21,6 +21,8 @@ function vid(req) {
  * Left null the row still renders, it just isn't clickable — which is what
  * every notification raised before this column existed will do.
  */
+import { pushToVendor } from '../lib/agentPush.js';
+
 export async function notify(vendorId, title, body, type = 'info', link = null) {
   try {
     await prisma.notifications.create({
@@ -34,6 +36,8 @@ export async function notify(vendorId, title, body, type = 'info', link = null) 
       },
     });
   } catch { /* never break main flow */ }
+  // 🔔 also as a pop-up on the vendor's devices (AI Agent, private feature)
+  pushToVendor(vendorId, title, body).catch(() => {});
 }
 
 /* 🔒 The private notifications (calls and texts) live in Perfect Poses' own

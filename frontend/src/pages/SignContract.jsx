@@ -20,7 +20,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle';
  * second effect keeps each box's own text and colour in sync with state,
  * since nothing else will touch that HTML once it's on the page.
  */
-export default function SignContract({ token, previewLeadId, onRelease }) {
+export default function SignContract({ token, previewLeadId, onRelease, onLoaded }) {
   const preview = !!previewLeadId;
   const [c, setC] = useState(null);
   const [err, setErr] = useState('');
@@ -39,6 +39,7 @@ export default function SignContract({ token, previewLeadId, onRelease }) {
       const ct = d.contract || d;
       setC(ct);
       setInitialed(Array(countInitBoxes(ct.body)).fill(false));
+      if (onLoaded) onLoaded(ct);
     }).catch(e => setErr(e.message));
   }, [token, previewLeadId, preview]);
 

@@ -1428,6 +1428,8 @@
 }
 .bd-input:focus { outline: none; border-color: var(--teal); }
 .bd-input-time { flex: 0 0 110px; }
+.bd-time { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+.bd-time .bd-input-time { width: 124px; }
 
 .bd-list { list-style: none; margin: 8px 0 0; padding: 0; }
 .bd-list li {

@@ -20,6 +20,15 @@ async function leadFor(req, res, leadId) {
   return lead;
 }
 
+/**
+ * The package the client picked, or the only one still on the offer.
+ * Several packages and no pick means the client has not chosen.
+ */
+export function pickedOffer(pkgs) {
+  const list = Array.isArray(pkgs) ? pkgs : [];
+  return list.find(p => p.is_selected) || (list.length === 1 ? list[0] : null);
+}
+
 // 💰 Money summary for a lead: total, discount, deposit, paid, balance
 export async function moneySummary(lead) {
   let total = lead.price_override != null ? Number(lead.price_override) : null;
@@ -31,6 +40,14 @@ export async function moneySummary(lead) {
     const hrs = Number(lead.hours) || 0;
     const extra = hrs > inclHrs ? (hrs - inclHrs) * perHr : 0;
     total = base + extra;
+  }
+  if (total == null) {
+    const pkgs = await prisma.lead_packages.findMany({
+      where: { lead_id: lead.id },
+      select: { price: true, is_selected: true },
+    });
+    const picked = pickedOffer(pkgs);
+    if (picked) total = Number(picked.price) || 0;
   }
   if (total == null) total = 0;
 

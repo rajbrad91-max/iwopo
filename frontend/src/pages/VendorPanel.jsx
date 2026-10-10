@@ -2326,6 +2326,8 @@ function CrewView() {
   const [busyId, setBusyId] = useState(null);
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const saving = useRef(false);
 
   useEffect(() => { api.crew().then(d => setCrew(d.crew || [])).catch(() => {}); }, []);
 
@@ -2346,20 +2348,43 @@ function CrewView() {
 
   function flash(m) { setNote(m); setTimeout(() => setNote(''), 2500); }
 
-  async function add() {
-    if (!f.name) return setMsg('⚠️ Name required');
+  function startEdit(c) {
+    setEditId(c.id);
+    setF({ name: c.name || '', role: c.role || '', phone: c.phone || '', email: c.email || '' });
+    setAdding(true);
     setMsg('');
+  }
+
+  async function add() {
+    // Set before any await. A second click otherwise fires another save
+    // before React disables the button.
+    if (saving.current) return;
+    const name = f.name.trim();
+    if (!name) return setMsg('⚠️ Name required');
+    saving.current = true;
+    setMsg('');
+    const wasEdit = editId;
     try {
-      await api.addCrew(f);
+      const body = {
+        name,
+        role: f.role.trim() || null,
+        phone: f.phone.trim() || null,
+        email: f.email.trim() || null,
+      };
+      if (wasEdit) await api.updateCrew(wasEdit, body);
+      else await api.addCrew(body);
       setF({ name: '', role: '', phone: '', email: '' });
       setAdding(false);
-      setMsg('✅ Added'); setTimeout(() => setMsg(''), 1500);
+      setEditId(null);
+      setMsg(wasEdit ? '✅ Saved' : '✅ Added'); setTimeout(() => setMsg(''), 1500);
       const d = await api.crew(); setCrew(d.crew || []);
     } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { saving.current = false; }
   }
 
   function cancelAdd() {
     setAdding(false);
+    setEditId(null);
     setF({ name: '', role: '', phone: '', email: '' });
     setMsg('');
   }
@@ -2383,10 +2408,16 @@ function CrewView() {
       const token = (d.link && d.link.split('/').pop()) || a.checkin_token;
       const link = checkinUrl(token);
       if (!link) throw new Error('No check-in link');
-      await navigator.clipboard.writeText(link);
-      flash('🔗 Check-in link copied');
       if (token && !a.checkin_token) {
         setRows(rs => rs.map(r => r.id === a.id ? { ...r, checkin_token: token } : r));
+      }
+      try {
+        await navigator.clipboard.writeText(link);
+        flash('🔗 Check-in link copied');
+      } catch {
+        await dialog.prompt('Clipboard was blocked. Copy this check-in link:', link, {
+          title: 'Check-in link', okLabel: 'Done', readOnly: true,
+        });
       }
     } catch (e) { flash('⚠️ ' + (e.message || 'Could not copy')); }
     finally { setBusyId(null); }
@@ -2495,7 +2526,7 @@ function CrewView() {
             </div>
           ) : (
             <div className="cr-card">
-              <div className="cr-card-h">➕ Add crew member {msg && <span className={`cr-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}</div>
+              <div className="cr-card-h">{editId ? '✏️ Edit crew member' : '➕ Add crew member'} {msg && <span className={`cr-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}</div>
               <div className="cr-add-grid">
                 <input className="cr-input" placeholder="Name *" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} autoFocus />
                 <input className="cr-input" placeholder="Role (e.g. 2nd shooter)" value={f.role} onChange={e => setF({ ...f, role: e.target.value })} />
@@ -2503,7 +2534,7 @@ function CrewView() {
                 <input className="cr-input" placeholder="Email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} />
               </div>
               <div className="cr-add-acts">
-                <button type="button" className="refresh cr-add-btn" onClick={add} title="Save this person to your team">+ Add to team</button>
+                <button type="button" className="refresh cr-add-btn" onClick={add} title={editId ? 'Save changes to this person' : 'Save this person to your team'}>{editId ? 'Save' : '+ Add to team'}</button>
                 <button type="button" className="refresh cr-cancel-btn" onClick={cancelAdd} title="Close without saving">Cancel</button>
               </div>
             </div>
@@ -2521,6 +2552,7 @@ function CrewView() {
                     <td>{c.phone || '—'}</td>
                     <td>{c.email || '—'}</td>
                     <td>
+                      <button type="button" className="cr-icon-btn" onClick={() => startEdit(c)} title="Edit this person">✏️</button>
                       <button type="button" className="cr-icon-btn" onClick={() => del(c.id)} title="Remove from your team">🗑️</button>
                     </td>
                   </tr>
@@ -2555,7 +2587,7 @@ function CrewView() {
               <div className="cr-person-jobs">
                 {g.jobs.map(a => {
                   const att = attendLabel(a);
-                  const date = a.event_date ? String(a.event_date).slice(0, 10) : 'Date TBC';
+                  const date = a.event_date ? fmtEventDate(a.event_date) : 'Date TBC';
                   const joinTimes = (from, to) => [from, to].filter(Boolean).map(fmtTime).filter(Boolean).join(' – ');
                   const slot = joinTimes(a.arrive_time, a.leave_time)
                     || joinTimes(a.timing_from, a.timing_to)
@@ -2987,7 +3019,14 @@ function LeadsView({ routeLead, onOpenLead }) {
     setSendFor(l);
   }
 
-  if (sel) return <LeadDetail lead={sel} onBack={() => { onOpenLead(null); load(); }} />;
+  if (sel) return (
+    <LeadDetail
+      key={sel.id}
+      lead={sel}
+      onBack={() => { onOpenLead(null); load(); }}
+      onSaved={(row) => setLeads(ls => ls.map(x => x.id === row.id ? { ...x, ...row } : x))}
+    />
+  );
 
   // 📊 stat tiles + filtering
   const counts = {
@@ -3178,15 +3217,46 @@ function PackageEditor({ pkg, onSave, onCancel }) {
   );
 }
 
-function LeadDetail({ lead, onBack }) {
+function LeadDetail({ lead, onBack, onSaved }) {
   const dialog = useDialog();
   const [edit, setEdit] = useState(false);
   const [cfg, setCfg] = useState(null);
-  const [ep, setEp] = useState({ role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '', instagram: lead.instagram || '', heard: lead.heard || '' });
+  const [ep, setEp] = useState({
+    role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '',
+    instagram: lead.instagram || '', heard: lead.heard || '',
+    event_date: lead.event_date ? String(lead.event_date).slice(0, 10) : '',
+    location: lead.location || '',
+    timing_from: lead.timing_from ? String(lead.timing_from).slice(0, 5) : '',
+    timing_to: lead.timing_to ? String(lead.timing_to).slice(0, 5) : '',
+    guests: lead.guests ?? '',
+  });
   const [eAnswers, setEAnswers] = useState(lead.custom_data || {});
   const [eNotes, setENotes] = useState(lead.notes || '');
-  const setEpi = (k, v) => setEp(s => ({ ...s, [k]: v }));
-  const setEAns = (id, v) => setEAnswers(s => ({ ...s, [id]: v }));
+  const BOOKING_KEYS = ['event_date', 'location', 'timing_from', 'timing_to', 'guests'];
+  // Snapshot fields and the vendor's current form can use different ids for the same answer.
+  const answerFields = () => [
+    ...(Array.isArray(lead.form_snapshot) ? lead.form_snapshot : []),
+    ...(cfg?.custom_fields || []),
+  ];
+  const setEpi = (k, v) => {
+    setEp(s => ({ ...s, [k]: v }));
+    if (!BOOKING_KEYS.includes(k)) return;
+    setEAnswers(s => {
+      const next = { ...s };
+      let changed = false;
+      for (const f of answerFields()) {
+        if (f.maps_to === k && next[f.id] !== v) { next[f.id] = v; changed = true; }
+      }
+      return changed ? next : s;
+    });
+  };
+  const setEAns = (id, v) => {
+    setEAnswers(s => ({ ...s, [id]: v }));
+    const fld = answerFields().find(f => f.id === id);
+    if (fld?.maps_to && BOOKING_KEYS.includes(fld.maps_to)) {
+      setEp(s => (s[fld.maps_to] === v ? s : { ...s, [fld.maps_to]: v }));
+    }
+  };
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   // 📦 The vendor loads a FOLDER; its packages are copied onto this lead so they
@@ -3303,11 +3373,17 @@ function LeadDetail({ lead, onBack }) {
   async function save() {
     setBusy(true); setMsg('');
     try {
-      await api.updateLead(lead.id, {
+      const d = await api.updateLead(lead.id, {
         name: ep.name, email: ep.email, phone: ep.phone,
         role: ep.role, instagram: ep.instagram, heard: ep.heard,
         notes: eNotes, custom_data: eAnswers,
+        event_date: ep.event_date || null,
+        location: ep.location || null,
+        timing_from: ep.timing_from || null,
+        timing_to: ep.timing_to || null,
+        guests: ep.guests === '' || ep.guests == null ? null : ep.guests,
       });
+      if (onSaved && d?.lead) onSaved(d.lead);
       setMsg('✅ Saved'); setEdit(false);
     } catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
@@ -4600,7 +4676,7 @@ function BookingsView({ routeBooking, onOpenBooking }) {
 
   // a booking opens as its own page, not the lead editor — the sale is done, so
   // the details are shown rather than offered up for editing
-  if (routeBooking) return <BookingDetail id={routeBooking} onBack={() => onOpenBooking(null)} />;
+  if (routeBooking) return <BookingDetail key={routeBooking} id={routeBooking} onBack={() => onOpenBooking(null)} />;
 
   const now = new Date();
   const inMonth = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
@@ -5844,6 +5920,7 @@ function BookingDetail({ id, onBack }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [assign, setAssign] = useState({ crew_member_id: '', duty: '', arrive_time: '', leave_time: '' });
+  const assignLock = useRef(false);
   const [gateway, setGateway] = useState(false);
   const [timer, setTimer] = useState({ enabled: false, hours: 72, started_at: null });
 
@@ -5878,14 +5955,16 @@ function BookingDetail({ id, onBack }) {
   function flash(m) { setMsg(m); setTimeout(() => setMsg(''), 2000); }
 
   async function addCrew() {
+    if (assignLock.current) return;
     if (!assign.crew_member_id) return flash('⚠️ Pick a team member');
+    assignLock.current = true;
     setBusy(true);
     try {
       await api.assignCrew(id, { ...assign, crew_member_id: Number(assign.crew_member_id) });
       setAssign({ crew_member_id: '', duty: '', arrive_time: '', leave_time: '' });
       await load(); flash('✅ Assigned');
     } catch (e) { flash('⚠️ ' + e.message); }
-    finally { setBusy(false); }
+    finally { assignLock.current = false; setBusy(false); }
   }
   async function removeCrew(aid) {
     setBusy(true);
@@ -6063,10 +6142,16 @@ function BookingDetail({ id, onBack }) {
               </select>
               <input className="bd-input" placeholder="Duty (e.g. Lead photographer)"
                 value={assign.duty} onChange={e => setAssign(a => ({ ...a, duty: e.target.value }))} />
-              <input className="bd-input bd-input-time" type="time" value={assign.arrive_time}
-                onChange={e => setAssign(a => ({ ...a, arrive_time: e.target.value }))} />
-              <input className="bd-input bd-input-time" type="time" value={assign.leave_time}
-                onChange={e => setAssign(a => ({ ...a, leave_time: e.target.value }))} />
+              <label className="bd-time">
+                <span>Arrive</span>
+                <input className="bd-input bd-input-time" type="time" aria-label="Arrive" value={assign.arrive_time}
+                  onChange={e => setAssign(a => ({ ...a, arrive_time: e.target.value }))} />
+              </label>
+              <label className="bd-time">
+                <span>Leave</span>
+                <input className="bd-input bd-input-time" type="time" aria-label="Leave" value={assign.leave_time}
+                  onChange={e => setAssign(a => ({ ...a, leave_time: e.target.value }))} />
+              </label>
               <button className="refresh" onClick={addCrew} disabled={busy} title="Assign this team member to the booking">Assign</button>
             </div>
             {d.roster.length === 0 && <p className="bd-fine">No team members yet — add them under Crew.</p>}

@@ -6,6 +6,7 @@
  * Same shape and meaning as notify() in routes/notifications.js.
  */
 import privateDb from '../config/privateDb.js';
+import { pushToVendor } from './agentPush.js';
 
 export async function notifyPrivate(vendorId, title, body, type = 'comms', link = null) {
   try {
@@ -20,4 +21,6 @@ export async function notifyPrivate(vendorId, title, body, type = 'comms', link 
       },
     });
   } catch (e) { console.error('[comms] notice not saved:', e.message); }   // never break the main flow
+  // 🔔 a missed call or a text, as a pop-up on the vendor's devices (AI Agent)
+  pushToVendor(vendorId, title, body).catch(() => {});
 }

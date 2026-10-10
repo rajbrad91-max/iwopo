@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { api } from '../lib/api';
+import { api, fmtEventDate } from '../lib/api';
 import './inquiry.css';
 import './crewCheckin.css';
 
@@ -268,7 +268,7 @@ export default function CrewCheckin({ token }) {
   const alreadyIn = !!a.checked_in_at;
   const alreadyOut = !!a.checked_out_at;
   const pref = a.time_format || '12h';
-  const date = a.event_date ? String(a.event_date).slice(0, 10) : 'To be confirmed';
+  const date = a.event_date ? fmtEventDate(a.event_date) : 'To be confirmed';
   const start = a.arrive_time || a.timing_from;
   const end = a.leave_time || a.timing_to;
   const slot = [formatWallTime(start, pref), formatWallTime(end, pref)].filter(Boolean).join(' – ')
