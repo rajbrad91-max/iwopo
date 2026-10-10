@@ -3373,7 +3373,14 @@ function LeadDetail({ lead, onBack }) {
           const v = has(col) ? col : raw;
           if (!has(v)) return null;
           if (v === true) return '✅ Yes';
-          if (f.type === 'date') return String(v).slice(0, 10);
+          // a date reads as a person would say it — "Sat, 17 Jul 2027", not
+          // "2027-07-17". Built from the date's own parts, so no time zone can
+          // move it a day.
+          if (f.type === 'date') {
+            const [y, m, d] = String(v).slice(0, 10).split('-').map(Number);
+            if (!y || !m || !d) return String(v).slice(0, 10);
+            return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+          }
           // the form stores a time answer as plain "HH:MM", so it reads back in
           // whichever clock the vendor set in their preferences
           if (f.type === 'time') return fmtTime(v);
@@ -4832,15 +4839,28 @@ function FieldBuilder({ fields, setFields }) {
       { title: `Load the ${preset.label} questions?`, okLabel: 'Load them', danger: false }
     )) return;
     const taken = new Set();
-    setFields(preset.fields.map(p => {
+    const loaded = preset.fields.map(p => {
       const free = p.maps_to && !taken.has(p.maps_to);
       if (free) taken.add(p.maps_to);
       return {
-        id: uid(), type: p.type, label: p.label, required: false,
+        id: uid(), type: p.type, label: p.label,
+        /* 📅 the event date is the one answer every vendor needs to quote at
+           all — a preset that left it optional let inquiries arrive dateless
+           (QA run over all 11 presets, 2026-10-10) */
+        required: p.required ?? (free && p.maps_to === 'event_date'),
         maps_to: free ? p.maps_to : '',
         options: p.options ? [...p.options] : [],
       };
-    }));
+    });
+    /* ⏱️ an Hours question works itself out from the start and end times —
+       but only if it is LINKED to them. Every preset left it on "Client types
+       it", so the hours never calculated and clients typed anything there. */
+    const fromId = loaded.find(f => f.maps_to === 'timing_from')?.id;
+    const toId = loaded.find(f => f.maps_to === 'timing_to')?.id;
+    for (const f of loaded) {
+      if (f.type === 'hours' && fromId && toId) { f.from_field = fromId; f.to_field = toId; }
+    }
+    setFields(loaded);
   };
 
   const del = (i) => setFields(fields.filter((_, idx) => idx !== i));

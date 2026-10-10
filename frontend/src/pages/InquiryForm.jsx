@@ -311,6 +311,8 @@ export function checkAnswers(fields, answers) {
     if (empty) continue;
     if (f.type === 'date' && isEventDate(f, fields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
     if (f.type === 'number' && !/^\d+$/.test(String(v).trim())) return { id: f.id, message: `"${f.label}" needs a number` };
+    // hours typed by hand must say how many — words alone reached the lead as an empty Hours
+    if (f.type === 'hours' && !/\d/.test(String(v))) return { id: f.id, message: `"${f.label}" needs a number of hours, e.g. 6 or 6 hrs 30 min` };
     if (toF && f.id === toF.id && fromF && answers[fromF.id]) {
       const span = hoursBetween(answers[fromF.id], v);
       if (span !== null && span > 16) return { id: f.id, message: 'The ending time is before the starting time — please check both' };
