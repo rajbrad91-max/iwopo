@@ -1,29 +1,37 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import Selling from './pages/Selling';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import VendorPanel from './pages/VendorPanel';
-import InquiryForm from './pages/InquiryForm';
-import SignContract from './pages/SignContract';
-import FileFlyerPublic from './pages/FileFlyerPublic';
+const Selling = lazy(() => import('./pages/Selling'));
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const VendorPanel = lazy(() => import('./pages/VendorPanel'));
+const InquiryForm = lazy(() => import('./pages/InquiryForm'));
+const SignContract = lazy(() => import('./pages/SignContract'));
+const FileFlyerPublic = lazy(() => import('./pages/FileFlyerPublic'));
 /* 🔒 On demand. The guest page is a private feature's front door and carries
    its own fonts and stylesheet; bundling it meant every visitor to every
    vendor's site downloaded it. Now only somebody opening a /live/ link does. */
 const LiveShootPublic = lazy(() => import('./pages/LiveShootPublic'));
-import ContractPreview from './pages/ContractPreview';
-import InvoiceView from './pages/InvoiceView';
-import Certificate from './pages/Certificate';
-import ClientPortal from './pages/ClientPortal';
-import CrewCheckin from './pages/CrewCheckin';
-import PublicGallery from './pages/PublicGallery';
-import PublicSite from './pages/PublicSite';
-import VendorGallery from './pages/VendorGallery';
-import Vote from './pages/Vote';
-import KnowledgeFill from './pages/KnowledgeFill';
-import ResetPassword from './pages/ResetPassword';
+const ContractPreview = lazy(() => import('./pages/ContractPreview'));
+const InvoiceView = lazy(() => import('./pages/InvoiceView'));
+const Certificate = lazy(() => import('./pages/Certificate'));
+const ClientPortal = lazy(() => import('./pages/ClientPortal'));
+const CrewCheckin = lazy(() => import('./pages/CrewCheckin'));
+const PublicGallery = lazy(() => import('./pages/PublicGallery'));
+const PublicSite = lazy(() => import('./pages/PublicSite'));
+const VendorGallery = lazy(() => import('./pages/VendorGallery'));
+const Vote = lazy(() => import('./pages/Vote'));
+const KnowledgeFill = lazy(() => import('./pages/KnowledgeFill'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 import { getUser, sessionMismatch, clearSession, clearTabSession } from './lib/api';
 
-export default function App() {
+/* ⚡ Every page loads only when it is visited (2026-10-10). Before, the
+   whole app — the vendor panel, Super Admin and all — was one 1.27 MB bundle,
+   so a client opening a gallery or an inquiry form downloaded the panel too.
+   Now a client gets the client page they opened and nothing else. */
+export default function App(props) {
+  return <Suspense fallback={null}><AppRoutes {...props} /></Suspense>;
+}
+
+function AppRoutes() {
   // 🔑 If the stored user and the actual token disagree (e.g. logging into the
   // vendor panel overwrote a super-admin token in the same browser), the saved
   // user is stale — drop it so we show the login screen rather than admin

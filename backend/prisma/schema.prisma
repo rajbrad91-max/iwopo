@@ -60,6 +60,7 @@ model albums {
   selection_notes   selection_notes?
   selections        selections[]
 
+  raw_files        raw_files[]
   @@index([vendor_id], map: "idx_albums_vendor")
   @@index([vendor_id, kind], map: "idx_albums_kind")
 }
@@ -569,6 +570,7 @@ model photos {
   album_events album_events? @relation(fields: [event_id], references: [id], onUpdate: NoAction)
   selections   selections[]
 
+  raw_files    raw_files[]
   @@index([album_id], map: "idx_photos_album")
   @@index([vendor_id], map: "idx_photos_vendor")
   @@index([album_id, kind], map: "idx_photos_kind")
@@ -817,6 +819,7 @@ model vendors {
   vendor_settings          vendor_settings?
   vendor_sites             vendor_sites?
   vendor_subscriptions     vendor_subscriptions[]
+  raw_files               raw_files[]
 }
 
 model album_faces {
@@ -1081,4 +1084,34 @@ model occasion_greetings {
 
   @@unique([lead_id, kind, occasion_on], map: "idx_occ_once")
   @@index([vendor_id, sent_at(sort: Desc)], map: "idx_occ_vendor")
+}
+
+/// 🎞️ Raw Selector (private feature 'rawsel'): the camera RAW behind a gallery
+/// JPEG — .ARW, .CR3, .NEF, .RAF, .DNG — kept in the PRIVATE bucket under
+/// vendor/<id>/raws/<album>/. Never shown to a client; paired to its JPEG by
+/// file name (DSC07467.ARW ↔ DSC07467.jpg) whichever arrives first. A photo
+/// deleted (by the client or the vendor) takes its row with it; the sweep in
+/// lib/rawFiles.js then removes the file itself.
+model raw_files {
+  id           Int       @id @default(autoincrement())
+  vendor_id    Int
+  album_id     Int
+  /// the JPEG it belongs to — null until that JPEG is in the album
+  photo_id     Int?
+  filename     String    @db.VarChar(200)
+  /// the name without its extension, lower-cased: what pairs RAW and JPEG
+  stem         String    @db.VarChar(200)
+  object_key   String    @db.VarChar(400)
+  size_bytes   BigInt?
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  /// when the edited photos reached the client; RAWs go 30 days after
+  delivered_at DateTime? @db.Timestamp(6)
+  delete_after DateTime? @db.Timestamp(6)
+  vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  albums       albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  photos       photos?   @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([album_id, stem], map: "raw_files_album_stem")
+  @@index([vendor_id], map: "idx_raw_files_vendor")
+  @@index([photo_id], map: "idx_raw_files_photo")
 }

@@ -2086,6 +2086,11 @@ tr:hover .bk-del { opacity: .8; }
 
 /* the second upload button, so films are visibly a separate act from photos */
 .ad-upload-vid { margin-left: 6px; }
+/* 🎞️ Raw Selector: how many of the album's JPEGs have their RAW */
+.ad-raw { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; padding: 6px 10px; border-radius: 999px; background: rgba(45, 212, 191, .12); color: var(--text, #e6edf3); font-size: 13px; white-space: nowrap; }
+.ad-raw-warn { color: #f5b74e; }
+.ad-raw-del { background: none; border: none; padding: 0 2px; cursor: pointer; font-size: 13px; opacity: .7; }
+.ad-raw-del:hover { opacity: 1; }
 
 /* 🎬 a film in the panel grid — a play badge over its poster, or over a plain
    card when the browser could not draw one */

@@ -48,6 +48,8 @@ import analyticsRoutes from './routes/analytics.js';
 import commsWebhookRoutes from './routes/commsWebhook.js';
 import { pollComms } from './lib/commsPoll.js';
 import commsRoutes from './routes/comms.js';
+import rawselRoutes from './routes/rawsel.js';
+import { sweepRaws } from './lib/rawFiles.js';
 import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
 import occasionRoutes from './routes/occasions.js';
@@ -165,6 +167,8 @@ app.use('/api/files', gate('fileflyer'), fileRoutes);
 app.use('/api/analytics', gate('analytics'), analyticsRoutes);
 // 📞 also private to the platform owner
 app.use('/api/comms', gate('comms'), commsRoutes);
+// 🎞️ Raw Selector — private like comms: off for every vendor unless Super Admin switches it on
+app.use('/api/rawsel', gate('rawsel'), rawselRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
 app.use('/api/ppsite', gate('ppsite'), ppsiteRoutes);
 app.use('/api/devices', deviceRoutes);
@@ -274,6 +278,9 @@ pollComms().catch(() => {});
    of an hour after boot, so a restart never starts with it. */
 setInterval(() => { tidyComms().catch(() => {}); }, 24 * 60 * 60_000).unref();
 setTimeout(() => { tidyComms().catch(() => {}); }, 15 * 60_000).unref();
+// 🎞️ Raw Selector: RAWs whose photo was deleted, and RAWs 30 days past delivery
+setInterval(() => { sweepRaws().catch(() => {}); }, 10 * 60_000).unref();
+setTimeout(() => { sweepRaws().catch(() => {}); }, 2 * 60_000).unref();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);

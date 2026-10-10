@@ -1427,6 +1427,10 @@ Admin Password: {admin_password}
 
 Thank you for choosing us! 💛`;
 
+/* 🎞️ camera RAW files — same list as backend lib/rawFiles.js */
+const RAW_FILE = /\.(arw|cr3|cr2|nef|raf|dng|rw2|orf)$/i;
+const RAW_ACCEPT = '.arw,.cr3,.cr2,.nef,.raf,.dng,.rw2,.orf';
+
 function AlbumDetail({ albumId, onBack }) {
   const dialog = useDialog();
   const [album, setAlbum] = useState(null);
@@ -1444,6 +1448,11 @@ function AlbumDetail({ albumId, onBack }) {
   const [favModal, setFavModal] = useState(false);      // ⭐ show the client-favorites panel
   const [favData, setFavData] = useState(null);         // { total, lists:[{email,count,photos}] }
   const [favBusy, setFavBusy] = useState(false);
+  /* 🎞️ Raw Selector (private feature): null when it is off for this vendor —
+     then RAW files are simply not offered, exactly as before */
+  const [raw, setRaw] = useState(null);
+  const loadRaw = () => api.rawselStatus(albumId).then(setRaw).catch(() => setRaw(null));
+  useEffect(() => { api.rawselStatus(albumId).then(setRaw).catch(() => setRaw(null)); }, [albumId]);
   const [selModal, setSelModal] = useState(false);      // 📩 show the client's sent selection
   const [selData, setSelData] = useState(null);
   const [selBusy, setSelBusy] = useState(false);
@@ -1818,7 +1827,11 @@ function AlbumDetail({ albumId, onBack }) {
   function onDragOver(e) { e.preventDefault(); if (!dragOver) setDragOver(true); }
   function onDragLeave(e) { e.preventDefault(); setDragOver(false); }
   function startUpload(fileArr) {
-    const files = [...fileArr].filter(f => f.type.startsWith('image/'));
+    /* JPEGs as always; with the Raw Selector, camera RAWs too — after the
+       photos, so the instant previews (JPEGs only) line up with the progress */
+    const images = [...fileArr].filter(f => f.type.startsWith('image/') && !RAW_FILE.test(f.name));
+    const raws = raw ? [...fileArr].filter(f => RAW_FILE.test(f.name)) : [];
+    const files = [...images, ...raws];
     if (!files.length) return;
     // in per-client mode uploads go into the active event (must pick one first)
     const eventId = isPerClient && activeEvent !== 'all' ? activeEvent : null;
@@ -1828,7 +1841,7 @@ function AlbumDetail({ albumId, onBack }) {
     // 📸 instant previews: show the first 50 picked photos right away (dimmed + spinner).
     // Capped at 50 so huge batches (1000s of photos) don't fill browser memory with previews.
     const PREVIEW_CAP = 50;
-    const previews = files.slice(0, PREVIEW_CAP).map((f, idx) => ({
+    const previews = images.slice(0, PREVIEW_CAP).map((f, idx) => ({
       uid: `${Date.now()}_${idx}_${f.name}`,
       url: URL.createObjectURL(f),
       eventId: eventId ? String(eventId) : null,
@@ -1868,6 +1881,7 @@ function AlbumDetail({ albumId, onBack }) {
       } else if (m.type === 'done') {
         setProg(`✅ ${m.count} uploaded`);
         finish();
+        if (raws.length) loadRaw();
         setTimeout(() => setProg(''), 2500);
         worker.terminate(); workerRef.current = null;
       } else if (m.type === 'error') {
@@ -1980,7 +1994,7 @@ function AlbumDetail({ albumId, onBack }) {
           <label className={`refresh ad-upload ${(isPerClient && activeEvent === 'all') || inVideos ? 'ad-upload-off' : ''}`}
             title={onlyPhotos || undefined}>
             {uploadLabel}
-            <input type="file" accept="image/*" multiple hidden onChange={onFiles} disabled={uploading || inVideos || (isPerClient && activeEvent === 'all')} />
+            <input type="file" accept={raw ? `image/*,${RAW_ACCEPT}` : 'image/*'} multiple hidden onChange={onFiles} disabled={uploading || inVideos || (isPerClient && activeEvent === 'all')} />
           </label>
           {/* Films go to their own Videos folder wherever you are, so unlike
               photographs this is never disabled by which tab is open. */}
@@ -1988,6 +2002,19 @@ function AlbumDetail({ albumId, onBack }) {
             {vidLabel}
             <input type="file" accept="video/*" multiple hidden onChange={onVideos} disabled={uploading || !!vidBusy} />
           </label>
+          {/* 🎞️ RAWs behind this album's JPEGs — only with the Raw Selector */}
+          {raw && raw.raws > 0 && (
+            <span className="ad-raw" title={raw.rawsWithoutJpeg.length ? `Waiting for their JPEG: ${raw.rawsWithoutJpeg.slice(0, 8).map(r => r.filename).join(', ')}` : 'Every RAW has its JPEG'}>
+              🎞️ RAW {raw.paired} / {raw.jpegs}
+              {raw.rawsWithoutJpeg.length > 0 && <span className="ad-raw-warn"> · {raw.rawsWithoutJpeg.length} without JPEG</span>}
+              <button type="button" className="ad-raw-del" aria-label="Delete this album's RAW files"
+                onClick={async () => {
+                  if (!await dialog.confirm(`Delete all ${raw.raws} RAW files of this album? The JPEGs stay. This cannot be undone.`, { title: 'Delete RAW files?', okLabel: 'Delete RAWs', danger: true })) return;
+                  await api.rawselDeleteAll(albumId).catch(() => {});
+                  loadRaw();
+                }}>🗑️</button>
+            </span>
+          )}
         </div>
       </div>
 

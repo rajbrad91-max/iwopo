@@ -14,6 +14,11 @@
 // down on our CPU.
 // If direct upload is not available (R2 not configured) it falls back to
 // posting the files to the server, four requests at a time.
+//
+// 🎞️ Camera RAW files in the same batch (.ARW, .CR3, …) go their own way:
+// straight to the private bucket through /api/rawsel (the Raw Selector, a
+// private feature), never into the gallery, never thumbnailed. There is no
+// posted fallback for them — a RAW is 25–60 MB and our server is no place for it.
 
 const PARALLEL = 6;                    // photos in flight at once — they no longer touch our CPU
 const RELOAD_EVERY_MS = 3000;          // don't refetch the whole album for every photo
@@ -23,6 +28,7 @@ const RELOAD_EVERY_MS = 3000;          // don't refetch the whole album for ever
    restart or a short network drop is invisible; a refusal (quota, no access)
    still stops at once. */
 const BACKOFF_MS = [2000, 4000, 8000, 15000, 20000, 30000];
+const RAW_EXT = /\.(arw|cr3|cr2|nef|raf|dng|rw2|orf)$/i;   // same list as backend lib/rawFiles.js
 
 self.onmessage = async (e) => {
   const { albumId, files, eventId, token } = e.data;
@@ -71,6 +77,26 @@ self.onmessage = async (e) => {
     });
   }
 
+  /** 🎞️ One RAW: permission → Cloudflare (private) → recorded and paired with its JPEG. */
+  async function sendRaw(file) {
+    const b = await retrying(async () => {
+      const r = await json(`/api/rawsel/albums/${albumId}/begin`, { files: [{ name: file.name, size: file.size }] });
+      if (r.status >= 500) throw new Error(r.data.error || `Upload failed (${r.status})`);
+      if (r.status === 403) throw fail('RAW files need the Raw Selector feature');
+      if (r.status >= 400) throw fail(r.data.message || r.data.error || `Upload failed (${r.status})`);
+      return r.data.items[0];
+    });
+    await retrying(async () => {
+      const r = await fetch(b.url, { method: 'PUT', body: file.slice(0, file.size) });
+      if (!r.ok) throw new Error(`Cloudflare refused ${file.name} (${r.status})`);
+    });
+    await retrying(async () => {
+      const r = await json(`/api/rawsel/albums/${albumId}/complete`, { items: [{ key: b.key, name: file.name }] });
+      if (r.status >= 500) throw new Error(r.data.error || `Upload failed (${r.status})`);
+      if (r.status >= 400 || r.data.errors?.length) throw fail(r.data.errors?.[0] || r.data.error || `Upload failed (${r.status})`);
+    });
+  }
+
   /** The old way: the file goes to our server, which resizes and sends it on. */
   async function sendPosted(file) {
     await retrying(async () => {
@@ -89,7 +115,9 @@ self.onmessage = async (e) => {
     while (!failed && next < total) {
       const file = list[next++];
       try {
-        if (direct) {
+        if (RAW_EXT.test(file.name)) {
+          await sendRaw(file);
+        } else if (direct) {
           try { await sendDirect(file); }
           catch (err) {
             /* Falls back to posting through our server when direct upload is not
