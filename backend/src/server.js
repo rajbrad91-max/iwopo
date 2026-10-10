@@ -51,6 +51,7 @@ import commsRoutes from './routes/comms.js';
 import rawselRoutes from './routes/rawsel.js';
 import editorRoutes from './routes/editor.js';
 import { sweepRaws } from './lib/rawFiles.js';
+import { writeAltTexts } from './lib/rawDelivery.js';
 import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
 import occasionRoutes from './routes/occasions.js';
@@ -135,6 +136,9 @@ app.use(cors({
    fail for reasons that look exactly like a wrong secret. */
 app.use('/api/comms/webhook', commsWebhookRoutes);
 
+// 🎞️ the Raw Selector logo arrives as a data URL (up to 3 MB) — this one route
+// may send a bigger body; everything else keeps the 100 KB default below
+app.use('/api/rawsel/settings/logo', express.json({ limit: '5mb' }));
 app.use(express.json());
 
 app.use('/api', apiRoutes);
@@ -284,6 +288,8 @@ setTimeout(() => { tidyComms().catch(() => {}); }, 15 * 60_000).unref();
 // 🎞️ Raw Selector: RAWs whose photo was deleted, and RAWs 30 days past delivery
 setInterval(() => { sweepRaws().catch(() => {}); }, 10 * 60_000).unref();
 setTimeout(() => { sweepRaws().catch(() => {}); }, 2 * 60_000).unref();
+// 🤖 alt text for delivered photos — catches up by itself once an AI key is saved
+setInterval(() => { writeAltTexts().catch(() => {}); }, 60 * 60_000).unref();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);

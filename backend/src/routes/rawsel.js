@@ -14,6 +14,8 @@ import * as objects from '../lib/objectStore.js';
 import { wouldExceed } from '../lib/storageQuota.js';
 import { recordObject } from '../lib/storageLedger.js';
 import { isRaw, stemOf, rawKey, pairAlbum, albumStatus, deleteRaws } from '../lib/rawFiles.js';
+import sharp from 'sharp';
+import { withLogo, LOGO_DEFAULTS } from '../lib/rawDelivery.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -173,6 +175,75 @@ router.get('/overview', requireAuth, async (req, res) => {
       });
     }
     res.json({ clients: out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── ®️ the logo printed on delivered photos ────────────────────────── */
+const POSITIONS = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
+const clampInt = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+const settingsOf = async (v) => (await prisma.rawsel_settings.findUnique({ where: { vendor_id: v } })) || { vendor_id: v, logo_key: null, ...LOGO_DEFAULTS };
+const readAll = async (key) => { const { stream } = await objects.getStream(objects.PRIVATE, key); const parts = []; for await (const c of stream) parts.push(c); return Buffer.concat(parts); };
+
+router.get('/settings', requireAuth, async (req, res) => {
+  try {
+    const s = await settingsOf(vid(req));
+    let logo = null;
+    if (s.logo_key) logo = `data:image/png;base64,${(await sharp(await readAll(s.logo_key)).resize({ width: 240, withoutEnlargement: true }).png().toBuffer()).toString('base64')}`;
+    res.json({ pos: s.logo_pos, size: s.logo_size, opacity: s.logo_opacity, margin: s.logo_margin, logo });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/settings', requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const data = {
+      logo_pos: POSITIONS.includes(b.pos) ? b.pos : 'br',
+      logo_size: clampInt(b.size, 3, 60, 14),
+      logo_opacity: clampInt(b.opacity, 5, 100, 85),
+      logo_margin: clampInt(b.margin, 0, 20, 3),
+      updated_at: new Date(),
+    };
+    await prisma.rawsel_settings.upsert({ where: { vendor_id: vid(req) }, create: { vendor_id: vid(req), ...data }, update: data });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** The logo itself — sent as a data URL (PNG, JPEG or WebP, up to 3 MB), kept as a PNG. */
+router.post('/settings/logo', requireAuth, async (req, res) => {
+  try {
+    const m = String(req.body?.dataUrl || '').match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
+    if (!m) return res.status(400).json({ error: 'Choose a PNG, JPEG or WebP image' });
+    const raw = Buffer.from(m[2], 'base64');
+    if (raw.length > 3 * 1024 * 1024) return res.status(413).json({ error: 'The logo must be under 3 MB' });
+    const png = await sharp(raw).resize({ width: 2000, withoutEnlargement: true }).png().toBuffer();
+    const key = objects.keyFor(vid(req), 'rawsel', `logo-${Date.now()}.png`);
+    await objects.putObject(objects.PRIVATE, key, png, 'image/png', png.length);
+    const old = await prisma.rawsel_settings.findUnique({ where: { vendor_id: vid(req) } });
+    await prisma.rawsel_settings.upsert({ where: { vendor_id: vid(req) }, create: { vendor_id: vid(req), logo_key: key, ...LOGO_DEFAULTS }, update: { logo_key: key, updated_at: new Date() } });
+    if (old?.logo_key && old.logo_key !== key) await objects.deleteObject(objects.PRIVATE, old.logo_key).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** How a delivered photo will look: the vendor's own latest photo with the logo as set (or as being tried). */
+router.post('/settings/preview', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    const s = await settingsOf(v);
+    if (!s.logo_key) return res.status(400).json({ error: 'Upload a logo first' });
+    const b = req.body || {};
+    const trial = {
+      logo_pos: POSITIONS.includes(b.pos) ? b.pos : s.logo_pos,
+      logo_size: clampInt(b.size, 3, 60, s.logo_size),
+      logo_opacity: clampInt(b.opacity, 5, 100, s.logo_opacity),
+      logo_margin: clampInt(b.margin, 0, 20, s.logo_margin),
+    };
+    const sample = await prisma.photos.findFirst({ where: { vendor_id: v, ready: true, kind: 'photo' }, select: { preview_path: true }, orderBy: { id: 'desc' } });
+    let base;
+    try { base = sample ? await readAll(objects.keyFor(v, 'galleries', ...sample.preview_path.split('/').slice(1))) : null; } catch { base = null; }
+    if (!base) base = await sharp({ create: { width: 1800, height: 1200, channels: 3, background: '#b8b2a8' } }).jpeg().toBuffer();
+    const out = await sharp(await withLogo(base, await readAll(s.logo_key), trial)).resize({ width: 900 }).jpeg({ quality: 80 }).toBuffer();
+    res.json({ image: `data:image/jpeg;base64,${out.toString('base64')}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, getAuthToken } from '../lib/api';
+import { api, getAuthToken, fmtDateTime } from '../lib/api';
 import { chime } from '../lib/chime';
 import './screenpop.css';
 
@@ -26,7 +26,7 @@ function pretty(n) {
   if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
   return n || 'Unknown number';
 }
-const day = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const day = (iso) => fmtDateTime(iso, { dateOnly: true });
 function badgeText(b) {
   if (!b) return null;
   if (b.kind === 'booked') return b.event_date

@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { sendAsVendor } from './email.js';
+import { formatWallTime } from '../lib/wallClock.js';
+import { resolveTimezone } from '../lib/timezones.js';
 
 const router = express.Router();
 function vid(req) {
@@ -324,8 +326,14 @@ router.post('/assignment/:id/remind', requireAuth, async (req, res) => {
     const when = row.leads?.event_date ? String(row.leads.event_date).slice(0, 10) : 'TBC';
     const where = row.leads?.location || 'TBC';
     const duty = row.duty || row.crew_members?.name || 'Crew';
-    const times = [row.arrive_time, row.leave_time].filter(Boolean).join(' – ')
-      || [row.leads?.timing_from, row.leads?.timing_to].filter(Boolean).join(' – ')
+    const ownerId = row.leads?.vendor_id ?? row.crew_members?.vendor_id;
+    const clock = ownerId
+      ? await prisma.vendor_settings.findUnique({ where: { vendor_id: ownerId }, select: { time_format: true } })
+      : null;
+    const pref = clock?.time_format === '24h' ? '24h' : '12h';
+    const joinTimes = (a, b) => [a, b].filter(Boolean).map(t => formatWallTime(t, pref)).filter(Boolean).join(' – ');
+    const times = joinTimes(row.arrive_time, row.leave_time)
+      || joinTimes(row.leads?.timing_from, row.leads?.timing_to)
       || 'See vendor';
 
     // copy-link callers pass { send_email: false }; email button leaves it true/omitted
@@ -471,12 +479,17 @@ router.get('/checkin/:token', async (req, res) => {
     const { crew_members, leads, ...rest } = a;
     // Crew page is public — pull the vendor's clock preference so hours match the panel
     let timeFormat = '12h';
+    let timezone = '';
     if (leads?.vendor_id) {
-      const vs = await prisma.vendor_settings.findUnique({
-        where: { vendor_id: leads.vendor_id },
-        select: { time_format: true },
-      });
+      const [vs, vendor] = await Promise.all([
+        prisma.vendor_settings.findUnique({
+          where: { vendor_id: leads.vendor_id },
+          select: { time_format: true, timezone: true },
+        }),
+        prisma.vendors.findUnique({ where: { id: leads.vendor_id }, select: { country: true } }),
+      ]);
       if (vs?.time_format) timeFormat = vs.time_format;
+      timezone = resolveTimezone(vs?.timezone, vendor?.country).tz || '';
     }
     const venue = await geocodeLocation(leads?.location);
     res.json({
@@ -487,6 +500,7 @@ router.get('/checkin/:token', async (req, res) => {
         location: leads?.location ?? null, client_name: leads?.name ?? null,
         timing_from: leads?.timing_from ?? null, timing_to: leads?.timing_to ?? null,
         time_format: timeFormat,
+        timezone,
       },
       venue: venue.lat != null
         ? { lat: venue.lat, lng: venue.lng, precise: !!venue.precise }

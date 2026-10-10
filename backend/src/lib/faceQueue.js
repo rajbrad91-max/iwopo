@@ -52,9 +52,15 @@ const queued = new Set();
 let running = false;
 
 // how many photos are still un-indexed system-wide (backlog depth)
+/** Photos the face engine reads: real photos, never a Raw Selector delivery
+ *  tab (edited photos the editor delivered — Raj, 2026-10-10: "we don't even
+ *  want face recognition" there). One rule, used by every query below, so a
+ *  full re-index cannot pick them up either. */
+const FACE_PHOTOS = { kind: 'photo', NOT: { album_events: { is: { delivery: true } } } };
+
 export async function backlogDepth() {
   try {
-    return await prisma.photos.count({ where: { face_indexed: false, kind: 'photo' } });
+    return await prisma.photos.count({ where: { face_indexed: false, ...FACE_PHOTOS } });
   } catch { return 0; }
 }
 
@@ -185,7 +191,7 @@ export async function uploadsFinished(albumId) {
   const id = String(albumId);
   clearTimeout(uploadQuiet.get(id)); uploadQuiet.delete(id);
   const pending = await prisma.photos.count({
-    where: { album_id: Number(albumId), face_indexed: false, kind: 'photo' },
+    where: { album_id: Number(albumId), face_indexed: false, ...FACE_PHOTOS },
   });
   if (pending > 0) {
     uploadsDone.add(id);              // remembered — indexing will group on the way out
@@ -320,7 +326,7 @@ async function indexOneAlbum(albumId) {
       // whole film — a face found once at second zero, and never again.
       // ⏳ ready only: a photo sent straight to R2 has no preview until
       // photoProcessor has made it, and the engine reads the preview
-      where: { album_id: Number(albumId), face_indexed: false, kind: 'photo', ready: true },
+      where: { album_id: Number(albumId), face_indexed: false, ...FACE_PHOTOS, ready: true },
       select: { id: true, preview_path: true },
       orderBy: { id: 'asc' },
     });
@@ -377,11 +383,11 @@ async function indexOneAlbum(albumId) {
 export async function resumeFaces() {
   try {
     const unindexed = await prisma.photos.groupBy({
-      by: ['album_id'], where: { face_indexed: false, kind: 'photo', ready: true }, _count: { _all: true },
+      by: ['album_id'], where: { face_indexed: false, ...FACE_PHOTOS, ready: true }, _count: { _all: true },
     });
     for (const g of unindexed) enqueueAlbum(g.album_id);
     const stale = await prisma.albums.findMany({
-      where: { faces_clustered: false, photos: { some: { face_indexed: true, kind: 'photo' } } },
+      where: { faces_clustered: false, photos: { some: { face_indexed: true, ...FACE_PHOTOS } } },
       select: { id: true },
     });
     for (const a of stale) if (!unindexed.some(g => g.album_id === a.id)) scheduleClustering(a.id);
@@ -393,7 +399,7 @@ export async function resumeFaces() {
 
 // manual full re-index (vendor/admin button) — still adaptive + throttled
 export async function indexAlbumNow(albumId) {
-  const where = { album_id: Number(albumId), face_indexed: false };
+  const where = { album_id: Number(albumId), face_indexed: false, ...FACE_PHOTOS };
   const before = await prisma.photos.count({ where });
   await indexOneAlbum(albumId);
   // pressed by hand, with nothing following it — group straight away rather

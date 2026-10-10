@@ -7,6 +7,10 @@
  * "Download all" saves them one by one into a folder the editor chooses
  * (Chrome / Edge); elsewhere it falls back to ordinary downloads, one by one.
  *
+ * Finished photos go back the same way: into named folders ("Photos",
+ * "Instagram", "Stories") — each becomes a tab in the client's gallery, with
+ * the studio's logo printed on every photo, and the studio and client are told.
+ *
  * Its login is not a vendor login: it is kept under its own key here, sent
  * only to /api/editor, and opens nothing else on the site.
  */
@@ -15,7 +19,20 @@ import './rawsel.css';
 
 const KEY = 'iwopo_editor_token';
 const mb = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
-const day = (d) => new Date(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+function day(d, tz, pref) {
+  const when = new Date(d);
+  if (Number.isNaN(when.getTime())) return '';
+  const hour12 = pref !== '24h';
+  try {
+    return when.toLocaleString(undefined, {
+      weekday: 'short', day: 'numeric', month: 'short',
+      hour: hour12 ? 'numeric' : '2-digit', minute: '2-digit', hour12,
+      timeZone: tz || undefined,
+    });
+  } catch {
+    return when.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+}
 
 async function call(path, { method = 'GET', body } = {}) {
   const token = localStorage.getItem(KEY);
@@ -39,6 +56,9 @@ export default function EditorPortal() {
   const [clients, setClients] = useState(null);
   const [open, setOpen] = useState(null);           // { id, name, files }
   const [progress, setProgress] = useState('');
+  const [tabs, setTabs] = useState([]);              // delivery tabs already in the client's gallery
+  const [tab, setTab] = useState('Photos');
+  const [sending, setSending] = useState('');
 
   const loadAll = () => Promise.all([call('/me'), call('/clients')])
     .then(([m, c]) => { setMe(m); setClients(c.clients); })
@@ -58,7 +78,10 @@ export default function EditorPortal() {
 
   async function openClient(c) {
     setProgress('');
-    try { const d = await call(`/clients/${c.id}`); setOpen(d); } catch (x) { setErr(x.message); }
+    try {
+      const [d, t] = await Promise.all([call(`/clients/${c.id}`), call(`/clients/${c.id}/tabs`)]);
+      setOpen(d); setTabs(t.tabs); setSending('');
+    } catch (x) { setErr(x.message); }
   }
 
   /** One file: a fresh 15-minute link, then the browser downloads it under its own name. */
@@ -104,6 +127,30 @@ export default function EditorPortal() {
     setProgress(`✅ ${files.length} downloads started — they land in your Downloads folder`);
   }
 
+  /** ⬆️ Edited photos → storage directly → into the chosen tab (logo printed there). */
+  async function deliver(e) {
+    const files = [...(e.target.files || [])].filter(f => /\.(jpe?g|png)$/i.test(f.name));
+    e.target.value = '';
+    const folder = tab.trim();
+    if (!files.length || !folder) return;
+    let done = 0; const failed = [];
+    for (const f of files) {
+      setSending(`Uploading ${done + 1} of ${files.length}: ${f.name}`);
+      try {
+        const b = await call(`/clients/${open.id}/deliver/begin`, { method: 'POST', body: { files: [{ name: f.name, size: f.size }] } });
+        const it = b.items[0];
+        const put = await fetch(it.url, { method: 'PUT', body: f });
+        if (!put.ok) throw new Error(`storage refused it (${put.status})`);
+        const c = await call(`/clients/${open.id}/deliver/complete`, { method: 'POST', body: { tab: folder, items: [{ key: it.key, name: f.name }] } });
+        if (!c.created) throw new Error(c.errors?.[0] || 'not saved');
+        done++;
+      } catch (x) { failed.push(`${f.name}: ${x.message}`); }
+    }
+    if (done) await call(`/clients/${open.id}/deliver/finish`, { method: 'POST', body: { tab: folder, count: done } }).catch(() => {});
+    setSending(failed.length ? `⚠️ ${done} delivered, ${failed.length} failed — ${failed.slice(0, 3).join(' · ')}` : `✅ ${done} photo${done === 1 ? '' : 's'} delivered to "${folder}" — the studio and the client have been told`);
+    call(`/clients/${open.id}/tabs`).then(t => setTabs(t.tabs)).catch(() => {});
+  }
+
   if (!me) {
     return (
       <div className="ep">
@@ -136,6 +183,20 @@ export default function EditorPortal() {
           <p className="rs-sub">{open.files.length} RAW file{open.files.length === 1 ? '' : 's'} of the {open.selected} photo{open.selected === 1 ? '' : 's'} the client picked · {mb(open.files.reduce((t, f) => t + f.size, 0))}</p>
           {open.files.length > 0 && <button className="rs-btn" type="button" onClick={downloadAll}>⬇️ Download all{window.showDirectoryPicker ? ' to a folder' : ''}</button>}
           {progress && <div className="ep-progress">{progress}</div>}
+          <div className="ep-deliver">
+            <h3 className="rs-h">⬆️ Deliver edited photos</h3>
+            <p className="rs-sub">Each folder becomes a tab in {open.name}'s gallery. The studio's logo is added to every photo.</p>
+            <div className="rs-add">
+              <input list="ep-tabs" value={tab} onChange={e => setTab(e.target.value)} placeholder="Folder name, e.g. Photos" aria-label="Folder name" maxLength={60} />
+              <datalist id="ep-tabs">{[...new Set(['Photos', 'Instagram', 'Stories', ...tabs.map(t => t.name)])].map(n => <option key={n} value={n} />)}</datalist>
+              <label className={`rs-btn rs-file ${tab.trim() ? '' : 'is-off'}`}>Choose edited photos
+                <input type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple hidden disabled={!tab.trim()} onChange={deliver} />
+              </label>
+            </div>
+            {sending && <div className="ep-progress">{sending}</div>}
+            {tabs.length > 0 && <div className="rs-muted">Already delivered: {tabs.map(t => `${t.name} (${t.photos})`).join(' · ')}</div>}
+          </div>
+          <h3 className="rs-h ep-gap">🎞️ RAW files to edit</h3>
           <ul className="rs-list">
             {open.files.map(f => (
               <li key={f.id} className="rs-row">
@@ -158,7 +219,7 @@ export default function EditorPortal() {
                     <li key={c.id} className="rs-row ep-client">
                       <button className="ep-open" type="button" onClick={() => openClient(c)}>
                         <span className="rs-strong">{c.name}{c.isNew && <span className="rs-pill is-on ep-new">New</span>}</span>
-                        <span className="rs-muted">Sent {day(c.sentAt)} · {c.ready} RAW{c.ready === 1 ? '' : 's'} · {mb(c.bytes)}{c.missing ? ` · ${c.missing} picked photo${c.missing === 1 ? '' : 's'} without a RAW` : ''}</span>
+                        <span className="rs-muted">Sent {day(c.sentAt, me?.timezone, me?.time_format)} · {c.ready} RAW{c.ready === 1 ? '' : 's'} · {mb(c.bytes)}{c.missing ? ` · ${c.missing} picked photo${c.missing === 1 ? '' : 's'} without a RAW` : ''}</span>
                       </button>
                     </li>
                   ))}

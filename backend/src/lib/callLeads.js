@@ -27,6 +27,7 @@ import { extractLead } from './callToLead.js';
 import { badgesFor, tenDigits } from './commsBadges.js';
 import { notifyPrivate } from './privateNotify.js';
 import { getSetting } from './settings.js';
+import { resolveTimezone } from './timezones.js';
 
 const GIVE_UP_MS = 2 * 60 * 60_000;     // Quo writes transcripts within minutes; two hours means it never will
 
@@ -88,6 +89,24 @@ export async function processLeadRequests(vendorId) {
   }
 }
 
+async function callWhen(vendorId, iso) {
+  const [settings, vendor] = await Promise.all([
+    prisma.vendor_settings.findUnique({ where: { vendor_id: vendorId }, select: { timezone: true, time_format: true } }),
+    prisma.vendors.findUnique({ where: { id: vendorId }, select: { country: true } }),
+  ]);
+  const zone = resolveTimezone(settings?.timezone, vendor?.country);
+  const hour12 = settings?.time_format !== '24h';
+  try {
+    return new Date(iso).toLocaleString('en-US', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: hour12 ? 'numeric' : '2-digit', minute: '2-digit', hour12,
+      timeZone: zone.tz || 'UTC',
+    });
+  } catch {
+    return new Date(iso).toISOString().slice(0, 16).replace('T', ' ');
+  }
+}
+
 async function makeLead(v, id) {
   const ev = await privateDb.comms_events.findUnique({ where: { id } });
   const number = otherOf(ev);
@@ -131,7 +150,7 @@ async function makeLead(v, id) {
     throw new Error(out.error);                                    // retried on the next sweep
   }
   const who = out.name || ev.contact_name || pretty(number);
-  const when = new Date(ev.occurred_at).toLocaleDateString();
+  const when = await callWhen(v, ev.occurred_at);
 
   if (!out.is_inquiry) {
     await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'none' } });

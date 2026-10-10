@@ -2,6 +2,22 @@ import { useState, useEffect } from 'react';
 import { api, fmtMoney } from '../lib/api';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
+function issuedOn(iso, tz, pref) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
+  const hour12 = pref !== '24h';
+  try {
+    return d.toLocaleString('en-US', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: hour12 ? 'numeric' : '2-digit', minute: '2-digit', hour12,
+      timeZone: tz || 'UTC',
+    });
+  } catch {
+    return String(iso).slice(0, 10);
+  }
+}
+
 export default function InvoiceView({ token }) {
   const [inv, setInv] = useState(null);
   const [err, setErr] = useState('');
@@ -35,7 +51,7 @@ export default function InvoiceView({ token }) {
                 style={{ height: 44, maxWidth: 140, objectFit: 'contain', display: 'block', marginLeft: 'auto', marginBottom: 6 }} />
             )}
             <b>{inv.business_name}</b><br />
-            {String(inv.created_at).slice(0, 10)}
+            {issuedOn(inv.created_at, inv.timezone, inv.time_format)}
           </div>
         </div>
 

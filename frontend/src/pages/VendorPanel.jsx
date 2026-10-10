@@ -3,7 +3,7 @@ import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import PublicSite from './PublicSite';
-import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
+import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue, applyVendorClock, vendorDayKey } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
 import { COUNTRIES } from '../lib/countries';
@@ -195,15 +195,12 @@ export default function VendorPanel({ onLogout }) {
       // seed the next load, so the tab renders without waiting for the network
       try { localStorage.setItem('vf_features', JSON.stringify(list)); } catch { /* private mode */ }
       // 🌗 apply this vendor's saved theme
-      const th = st?.settings?.theme || 'dark';
+      const settings = await applyVendorClock(st || {});
+      const th = settings.theme || 'dark';
       if (th === 'light') document.documentElement.setAttribute('data-theme', 'light');
       else document.documentElement.removeAttribute('data-theme');
       localStorage.setItem('vf_theme', th);
-      localStorage.setItem('vf_time_format', st?.settings?.time_format || '12h');
-      localStorage.setItem('vf_timezone', st?.settings?.timezone || '');
-      // the server resolves this from their choice or their country, so every
-      // screen shows one answer rather than each guessing
-      localStorage.setItem('vf_currency', st?.settings?.currency || 'USD');
+      if (!localStorage.getItem('vf_currency')) localStorage.setItem('vf_currency', 'USD');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -432,7 +429,7 @@ function sinceLabel(ts) {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days <= 7) return `${days}d ago`;
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return fmtDateTime(ts, { dateOnly: true });
 }
 
 function NotifBell({ onOpen }) {
@@ -2555,8 +2552,9 @@ function CrewView() {
                 {g.jobs.map(a => {
                   const att = attendLabel(a);
                   const date = a.event_date ? String(a.event_date).slice(0, 10) : 'Date TBC';
-                  const slot = [a.arrive_time, a.leave_time].filter(Boolean).join(' – ')
-                    || [a.timing_from, a.timing_to].filter(Boolean).join(' – ')
+                  const joinTimes = (from, to) => [from, to].filter(Boolean).map(fmtTime).filter(Boolean).join(' – ');
+                  const slot = joinTimes(a.arrive_time, a.leave_time)
+                    || joinTimes(a.timing_from, a.timing_to)
                     || 'Time TBC';
                   return (
                     <div key={a.id} className="cr-job">
@@ -2607,7 +2605,11 @@ function CrewView() {
 
 function CalendarView({ onOpen, filter }) {
   const [bookings, setBookings] = useState([]);
-  const [cur, setCur] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
+  const [cur, setCur] = useState(() => {
+    const key = vendorDayKey(new Date());
+    const m = key.match(/^(\d{4})-(\d{2})/);
+    return m ? { y: Number(m[1]), m: Number(m[2]) - 1 } : { y: new Date().getFullYear(), m: new Date().getMonth() };
+  });
   const [selDay, setSelDay] = useState(null);
   const [dir, setDir] = useState('left');
 
@@ -2633,7 +2635,7 @@ function CalendarView({ onOpen, filter }) {
   const days = new Date(cur.y, cur.m + 1, 0).getDate();
   const cells = [...Array(startPad).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
   const monthName = first.toLocaleString('default', { month: 'long', year: 'numeric' });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = vendorDayKey(new Date());
   const key = (d) => `${cur.y}-${String(cur.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const move = (n) => { setDir(n > 0 ? 'left' : 'right'); setSelDay(null); setCur(c => { const d = new Date(c.y, c.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; }); };
 
@@ -3398,16 +3400,12 @@ function LeadDetail({ lead, onBack }) {
 
         // The calendar day and the clock the client typed. The date column
         // arrives as "2027-03-14T00:00:00.000Z" and a time column as "16:00"
-        // or "16:00:00" — reading the parts off the string keeps 2027-03-14
-        // and 16:00, with the leading zeros, and no timezone can move the day.
+        // or "16:00:00". The day is read off the string so no timezone can
+        // move it. The time follows this vendor's 12h/24h preference and is
+        // not shifted either.
         const ymd = (v) => {
           const m = String(v).match(/(\d{4})-(\d{2})-(\d{2})/);
           return m ? `${m[1]}-${m[2]}-${m[3]}` : String(v);
-        };
-        const clock = (v) => {
-          const m = String(v).match(/(\d{1,2}):(\d{2})/);
-          if (!m) return String(v);
-          return `${String(Number(m[1])).padStart(2, '0')}:${m[2]}`;
         };
 
         const valueFor = (f) => {
@@ -3436,7 +3434,7 @@ function LeadDetail({ lead, onBack }) {
           if (!has(v)) return null;
           if (v === true) return '✅ Yes';
           if (f.type === 'date') return ymd(v);
-          if (f.type === 'time') return clock(v);
+          if (f.type === 'time') return fmtTime(v);
           return String(v);
         };
 
@@ -5502,19 +5500,30 @@ function SettingsView({ user, onProfileChange }) {
   // one place; `chosen` being null means they're following their country
   const [currencies, setCurrencies] = useState([]);
   const [chosenCurrency, setChosenCurrency] = useState(null);
+  const [zones, setZones] = useState([]);
 
   useEffect(() => {
-    api.mySettings().then(d => {
-      setS(d.settings || { time_format: '12h', theme: 'dark', timezone: guessTz() });
+    api.mySettings().then(async d => {
+      const settings = await applyVendorClock(d);
+      setS(settings || { time_format: '12h', theme: 'dark', timezone: '' });
+      setZones(d.zones || []);
       setChosenCurrency(d.chosen_currency || '');
-    }).catch(() => setS({ time_format: '12h', theme: 'dark', timezone: guessTz() }));
+    }).catch(() => setS({ time_format: '12h', theme: 'dark', timezone: '' }));
     api.myCurrencies().then(d => setCurrencies(d.currencies || [])).catch(() => {});
     api.myProfile().then(d => setProf(d.profile || {})).catch(() => setProf({}));
   }, []);
 
   async function saveProfile() {
     setProfMsg('⏳ Saving…');
-    try { await api.saveProfile(prof); setProfMsg('✅ Saved'); setTimeout(() => setProfMsg(''), 2000); }
+    try {
+      await api.saveProfile(prof);
+      const d = await api.mySettings();
+      const settings = await applyVendorClock(d);
+      setS(settings);
+      setZones(d.zones || []);
+      setProfMsg('✅ Saved');
+      setTimeout(() => setProfMsg(''), 2000);
+    }
     catch (e) { setProfMsg('⚠️ ' + e.message); }
   }
   async function onLogoPick(e) {
@@ -5532,8 +5541,6 @@ function SettingsView({ user, onProfileChange }) {
     }
     catch (err) { setProfMsg('⚠️ ' + err.message); }
   }
-  function guessTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/Vancouver'; } }
-
   async function savePrefs(next) {
     setS(next); setSaved('');
     // 🌗 apply theme live + persist
@@ -5595,9 +5602,16 @@ function SettingsView({ user, onProfileChange }) {
         </div>
 
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }}>Timezone</label>
-        <input style={box} value={s.timezone || ''} onChange={e => setS({ ...s, timezone: e.target.value })}
-          onBlur={() => savePrefs(s)} />
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>🌍 Auto-detected from your location</div>
+        {zones.length > 1 ? (
+          <select style={box} value={s.timezone || ''} onChange={e => savePrefs({ ...s, timezone: e.target.value })}>
+            {zones.map(z => <option key={z.tz} value={z.tz}>{z.city}</option>)}
+          </select>
+        ) : (
+          <div style={{ ...box, marginTop: 6 }}>{zones[0]?.city || s.timezone || 'Set your country under Account'}</div>
+        )}
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+          🌍 The largest city in your timezone, from the country on your profile.
+        </div>
 
         {/* 💱 What this vendor charges in. iwopo is used in more than one
             country, so a bare number on an invoice tells a client in London the

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { api, authFetch } from '../lib/api';
+import { api, authFetch, fmtDateTime, vendorDayKey } from '../lib/api';
 import './comms.css';
 
 /* How often the open page asks for anything new. Five seconds: the request is
@@ -34,15 +34,22 @@ function ago(iso) {
   if (mins < 1) return 'now';
   if (mins < 60) return mins + 'm';
   if (mins < 1440) return Math.round(mins / 60) + 'h';
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return fmtDateTime(iso, { dateOnly: true });
 }
-function clock(iso) { return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
+function clock(iso) { return fmtDateTime(iso, { timeOnly: true }); }
 function dayLabel(iso) {
-  const d = new Date(iso), today = new Date();
-  const y = new Date(); y.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return 'Today';
-  if (d.toDateString() === y.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const key = vendorDayKey(iso);
+  const today = vendorDayKey(new Date());
+  const y = today.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  let yesterday = '';
+  if (y) {
+    const dt = new Date(Date.UTC(Number(y[1]), Number(y[2]) - 1, Number(y[3])));
+    dt.setUTCDate(dt.getUTCDate() - 1);
+    yesterday = dt.toISOString().slice(0, 10);
+  }
+  if (key && key === today) return 'Today';
+  if (key && key === yesterday) return 'Yesterday';
+  return fmtDateTime(iso, { dateOnly: true });
 }
 const other = (e) => (e.direction === 'incoming' ? e.from_number : e.to_number);
 const missed = (e) => e.kind === 'call' && ['missed', 'no-answer', 'canceled', 'busy', 'failed'].includes(e.status);

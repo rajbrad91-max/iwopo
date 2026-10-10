@@ -4,6 +4,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
 import { currencyFor } from '../lib/currencies.js';
+import { resolveTimezone } from '../lib/timezones.js';
 
 const router = express.Router();
 
@@ -110,12 +111,13 @@ router.get('/view/:token', async (req, res) => {
 
     // the vendor's currency, resolved the same way everywhere else does it
     const vset = await prisma.vendor_settings.findUnique({
-      where: { vendor_id: inv.vendor_id }, select: { currency: true },
+      where: { vendor_id: inv.vendor_id }, select: { currency: true, timezone: true, time_format: true },
     });
     const vrow = await prisma.vendors.findUnique({
       where: { id: inv.vendor_id }, select: { country: true },
     });
     const invCurrency = currencyFor(vset?.currency, vrow?.country);
+    const zone = resolveTimezone(vset?.timezone, vrow?.country);
 
     const { leads, vendors, ...rest } = inv;
     res.json({
@@ -127,6 +129,8 @@ router.get('/view/:token', async (req, res) => {
         event_date: leads?.event_date ?? null,
         business_name: vendors?.business_name ?? null,
         currency: invCurrency,
+        timezone: zone.tz || '',
+        time_format: vset?.time_format === '24h' ? '24h' : '12h',
         // the vendor's own mark, so the client sees one business across the
         // portal, the contract and this invoice rather than three anonymous pages
         logo_path: vendors?.logo_path ?? null,

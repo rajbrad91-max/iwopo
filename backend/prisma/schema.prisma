@@ -14,6 +14,9 @@ model album_events {
   name       String    @db.VarChar(120)
   sort_order Int?      @default(0)
   created_at DateTime? @default(now()) @db.Timestamp(6)
+  /// 🎞️ Raw Selector: a tab of EDITED photos the editor delivered. Shown to the
+  /// client like any tab, but never face-scanned (lib/faceQueue.js FACE_PHOTOS).
+  delivery   Boolean?  @default(false)
   albums     albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos     photos[]
 }
@@ -558,6 +561,8 @@ model photos {
   faces        Json?
   face_indexed Boolean?      @default(false)
   face_count   Int?          @default(0)
+  /// 🎞️ Raw Selector: a description of an edited photo, written by Claude
+  alt_text     String?   @db.VarChar(400)
   event_id     Int?
   face_engine  String?       @db.VarChar(20)
   kind         String        @default("photo") @db.VarChar(10)
@@ -821,6 +826,7 @@ model vendors {
   vendor_subscriptions     vendor_subscriptions[]
   raw_files               raw_files[]
   raw_editors             raw_editors[]
+  rawsel_settings         rawsel_settings?
 }
 
 model album_faces {
@@ -1138,4 +1144,22 @@ model raw_editors {
 
   @@unique([vendor_id, email], map: "raw_editors_vendor_email")
   @@index([email], map: "idx_raw_editors_email")
+}
+
+/// 🎞️ Raw Selector: how the vendor's logo is printed on edited photos.
+/// Only photos an editor delivers get it — never the regular galleries.
+model rawsel_settings {
+  vendor_id    Int       @id
+  /// the logo file in the private bucket (a transparent PNG works best)
+  logo_key     String?   @db.VarChar(400)
+  /// tl, tc, tr, ml, mc, mr, bl, bc, br — bottom-right by default
+  logo_pos     String    @default("br") @db.VarChar(2)
+  /// logo width as a percentage of the photo's width
+  logo_size    Int       @default(14)
+  /// 0–100
+  logo_opacity Int       @default(85)
+  /// distance from the edge, percentage of the photo's shorter side
+  logo_margin  Int       @default(3)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+  vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }

@@ -21,20 +21,82 @@ export function fmtTime(t) {
 // 🌍 A stored timestamp is a real moment in time, so it's shown in the vendor's
 // own timezone and clock format rather than the browser's. A vendor in Vancouver
 // checking their panel while travelling should still read times the way their
-// business runs, not the way the airport does.
-export function fmtDateTime(ts, { dateOnly = false } = {}) {
+// business runs, not the way the airport does. timeOnly is the clock on a
+// message or a notification; dateOnly is the calendar day of that same moment.
+export function fmtDateTime(ts, { dateOnly = false, timeOnly = false, timeZone, timeFormat } = {}) {
   if (!ts) return '';
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return String(ts);
-  const tz = localStorage.getItem('vf_timezone') || undefined;
-  const opts = { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz };
+  const tz = timeZone || localStorage.getItem('vf_timezone') || undefined;
+  const pref = timeFormat || localStorage.getItem('vf_time_format') || '12h';
+  const hour12 = pref !== '24h';
+  const opts = { timeZone: tz };
+  if (!timeOnly) {
+    opts.year = 'numeric';
+    opts.month = 'short';
+    opts.day = 'numeric';
+  }
   if (!dateOnly) {
-    opts.hour = 'numeric';
+    opts.hour = hour12 ? 'numeric' : '2-digit';
     opts.minute = '2-digit';
-    opts.hour12 = (localStorage.getItem('vf_time_format') || '12h') !== '24h';
+    opts.hour12 = hour12;
   }
   try { return d.toLocaleString(undefined, opts); }
   catch { return d.toLocaleString(); }   // a bad saved timezone shouldn't blank the row
+}
+
+/** Calendar day of a real moment, in the vendor's timezone (YYYY-MM-DD). */
+export function vendorDayKey(ts = new Date()) {
+  const d = ts instanceof Date ? ts : new Date(ts);
+  if (Number.isNaN(d.getTime())) return '';
+  const tz = localStorage.getItem('vf_timezone') || undefined;
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(d);
+  } catch {
+    return d.toISOString().slice(0, 10);
+  }
+}
+
+function browserTimeZone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+  catch { return ''; }
+}
+
+/**
+ * Remember this vendor's clock, and if their saved zone was missing or from
+ * the wrong country, keep the largest city in the zone their computer is
+ * actually in — only when that zone belongs to their country.
+ */
+export async function applyVendorClock(st) {
+  const settings = st?.settings || {};
+  const zones = st?.zones || [];
+  let tz = settings.timezone || '';
+  if (st?.refine) {
+    const browser = browserTimeZone();
+    const hit = zones.find(z => z.tz === browser);
+    if (hit) tz = hit.tz;
+    else if (!zones.length) tz = browser || '';
+    if (tz) {
+      try {
+        await request('/me/settings', {
+          method: 'PUT',
+          body: JSON.stringify({
+            time_format: settings.time_format || '12h',
+            timezone: tz,
+            theme: settings.theme || 'dark',
+          }),
+        });
+      } catch { /* the panel still shows the city even if the save didn't land */ }
+    }
+  }
+  try {
+    localStorage.setItem('vf_time_format', settings.time_format || '12h');
+    localStorage.setItem('vf_timezone', tz || '');
+    if (settings.currency) localStorage.setItem('vf_currency', settings.currency);
+  } catch { /* private mode */ }
+  return { ...settings, timezone: tz };
 }
 
 // 📅 An event date is a CALENDAR DAY, not a moment. Postgres stores it as a
@@ -816,6 +878,10 @@ export const api = {
   rawselEditors: () => request('/rawsel/editors'),
   rawselAddEditor: (email, name) => request('/rawsel/editors', { method: 'POST', body: JSON.stringify({ email, name }) }),
   rawselRemoveEditor: (id) => request(`/rawsel/editors/${id}`, { method: 'DELETE' }),
+  rawselSettings: () => request('/rawsel/settings'),
+  rawselSaveSettings: (s) => request('/rawsel/settings', { method: 'PUT', body: JSON.stringify(s) }),
+  rawselUploadLogo: (dataUrl) => request('/rawsel/settings/logo', { method: 'POST', body: JSON.stringify({ dataUrl }) }),
+  rawselPreview: (s) => request('/rawsel/settings/preview', { method: 'POST', body: JSON.stringify(s) }),
   commsBadges: (numbers) => request('/comms/badges', { method: 'POST', body: JSON.stringify({ numbers }) }),
   // ✍️ save the person in Quo — shows in the Quo phone app too
   commsSaveContact: (c) => request('/comms/contact', { method: 'POST', body: JSON.stringify(c) }),

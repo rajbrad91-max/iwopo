@@ -24,11 +24,21 @@ function formatWallTime(t, pref = '12h') {
   return `${h}:${min} ${ap}`;
 }
 
-function formatStampTime(v, pref = '12h') {
+function formatStampTime(v, pref = '12h', tz) {
   if (!v) return '';
-  const s = String(v);
-  const raw = s.includes('T') ? s.slice(11, 16) : s;
-  return formatWallTime(raw, pref);
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return formatWallTime(v, pref);
+  const hour12 = pref !== '24h';
+  try {
+    return d.toLocaleTimeString('en-US', {
+      timeZone: tz || 'UTC',
+      hour: hour12 ? 'numeric' : '2-digit',
+      minute: '2-digit',
+      hour12,
+    });
+  } catch {
+    return formatWallTime(String(v).includes('T') ? String(v).slice(11, 16) : v, pref);
+  }
 }
 
 function resetHint() {
@@ -386,7 +396,7 @@ export default function CrewCheckin({ token }) {
 
           {alreadyIn && (
             <div className="ck-status is-ok">
-              Clocked in at {formatStampTime(a.checked_in_at, pref)}
+              Clocked in at {formatStampTime(a.checked_in_at, pref, a.timezone)}
             </div>
           )}
 
@@ -398,7 +408,7 @@ export default function CrewCheckin({ token }) {
 
           {alreadyOut && (
             <div className="ck-status is-ok">
-              Clocked out at {formatStampTime(a.checked_out_at, pref)}
+              Clocked out at {formatStampTime(a.checked_out_at, pref, a.timezone)}
             </div>
           )}
         </div>

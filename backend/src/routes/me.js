@@ -10,6 +10,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { CURRENCIES, CURRENCY_CODES, currencyFor } from '../lib/currencies.js';
+import { resolveTimezone, timezoneToStore } from '../lib/timezones.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { revokeAllForUser } from '../lib/tokenRevocation.js';
 
@@ -144,8 +145,18 @@ router.get('/settings', requireAuth, async (req, res) => {
     const vendor = await prisma.vendors.findUnique({
       where: { id: vid }, select: { country: true },
     });
+    // A blank zone, or the old "everyone is Vancouver" default, follows the
+    // country. The panel may still narrow that to the city matching the
+    // computer, but only among this country's own zones.
+    const zone = resolveTimezone(settings.timezone, vendor?.country);
     res.json({
-      settings: { ...settings, currency: currencyFor(settings.currency, vendor?.country) },
+      settings: {
+        ...settings,
+        timezone: zone.tz || (zone.refine ? '' : (settings.timezone || '')),
+        currency: currencyFor(settings.currency, vendor?.country),
+      },
+      zones: zone.zones,
+      refine: zone.refine,
       chosen_currency: settings.currency,     // null = following the country
       country: vendor?.country || null,
     });
@@ -158,9 +169,13 @@ router.put('/settings', requireAuth, async (req, res) => {
   if (!vid) return res.status(400).json({ error: 'No vendor' });
   const { time_format, timezone, theme, currency, auto_release_contract } = req.body;
   try {
+    const [existing, vendor] = await Promise.all([
+      prisma.vendor_settings.findUnique({ where: { vendor_id: vid }, select: { timezone: true } }),
+      prisma.vendors.findUnique({ where: { id: vid }, select: { country: true } }),
+    ]);
     const data = {
       time_format: time_format || '12h',
-      timezone: timezone || 'America/Vancouver',
+      timezone: timezoneToStore(timezone, existing?.timezone, vendor?.country),
       theme: theme || 'dark',
     };
     // only write a currency we actually support; an empty string means "go back
