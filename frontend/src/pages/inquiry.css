@@ -1,3 +1,5 @@
+/* the serif Ivory's studio name is set in */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@400;600;800&family=Playfair+Display:wght@400;600;800&family=Montserrat:wght@400;600;800&family=Lora:wght@400;600;700&display=swap');
 
 /* 🎨 THEMES — change card look */
@@ -48,7 +50,7 @@
 }
 .iq-logo { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
 .iq-hd-text { flex: 1; text-align: center; }
-.iq-brand { font-size: 24px; font-weight: 800; color: inherit; display:flex; align-items:center; gap:8px; }
+.iq-brand { font-size: 24px; font-weight: 800; color: inherit; display:flex; align-items:center; justify-content:center; gap:8px; }
 .iq-sub { color: var(--muted); font-size: 14px; margin: 5px 0 0; }
 
 /* ⚠️ The header sits ON the brand colour in every theme, so its text must use
@@ -57,13 +59,23 @@
 .iq-hd-text .iq-brand { color: var(--on-brand, #F5F0EA); }
 .iq-hd-text .iq-sub { color: var(--on-brand-soft, #F5F0EA); }
 .iq-sub-link { display: inline-block; text-decoration: underline; cursor: pointer; }
-.iq-sub-link:hover { color: var(--brand, #C9A86A); }
+/* hovering used to turn it the header's own colour, so it vanished; it now
+   only loses its underline, staying readable on the brand colour */
+.iq-sub-link:hover { color: var(--on-brand-soft, #F5F0EA); text-decoration-color: transparent; }
 
 .iq-body { position: relative; z-index: 2; padding: 24px 32px 32px; }
 
-/* profession watermark — tiled across whole page background */
-.iq-watermark { position: fixed; inset: 0; z-index: 0; display: flex; flex-wrap: wrap; gap: 46px; padding: 40px; opacity: 0.08; font-size: 40px; pointer-events: none; user-select: none; overflow: hidden; align-content: flex-start; }
-.iq-watermark span { flex: 0 0 auto; }
+/* 🖼️ the trade's drawing (ProfessionArt.jsx): ONE big line drawing low on the
+   right, its smaller companion high on the left, both in the brand colour and
+   faint enough to read as a watermark. It replaced rows of small emoji across
+   the whole page (Raj, 2026-10-09: "one big watermark, stylish"). */
+.iq-art { position: fixed; z-index: 0; right: -4vw; bottom: -6vh; width: min(58vw, 560px); height: auto; color: var(--brand); opacity: .10; transform: rotate(-9deg); pointer-events: none; }
+.iq-art-2 { right: auto; bottom: auto; left: -3vw; top: 8vh; width: min(28vw, 260px); opacity: .07; transform: rotate(11deg); }
+.iq-card { z-index: 1; }
+@media (max-width: 620px) {
+  .iq-art { width: 78vw; right: -18vw; bottom: -4vh; opacity: .08; }
+  .iq-art-2 { width: 40vw; left: -12vw; top: 4vh; }
+}
 
 /* sections */
 .iq-section { padding: 20px 0; border-top: 1px solid #ECE4D8; }
@@ -101,12 +113,17 @@
 .iq-auto-reset:hover { color: #4A3E3D; }
 
 .iq-err { background: #fbeaea; color: #b4433a; padding: 11px; border-radius: 9px; margin-top: 14px; font-size: 13px; }
+/* 🎯 the field an error is about: outlined, with its message right under it */
+.iq-card .iq-field-err input, .iq-card .iq-field-err select, .iq-card .iq-field-err textarea { border-color: #b4433a; box-shadow: 0 0 0 3px #b4433a22; }
+.iq-field-msg { color: #b4433a; font-size: 12.5px; margin-top: 6px; }
 .iq-btn { width: 100%; margin-top: 20px; padding: 14px; background: var(--brand); color: var(--on-brand); border: none; border-radius: 11px; font-weight: 800; font-size: 15px; cursor: pointer; }
 .iq-btn:hover { background: var(--brand-strong); }
 .iq-btn:disabled { opacity: 0.6; }
 
 .iq-done { text-align: center; padding: 40px 32px; }
-.iq-check { width: 64px; height: 64px; background: #E7DFCF; color: #4A3E3D; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 34px; margin: 0 auto 16px; }
+/* the vendor's own colour where the page carries one (the thank-you does now);
+   the old beige only where it does not, e.g. a dead-link card */
+.iq-check { width: 64px; height: 64px; background: var(--brand-soft, #E7DFCF); color: var(--brand-ink, #4A3E3D); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 34px; margin: 0 auto 16px; }
 
 @media (max-width: 620px) {
   .iq-grid { grid-template-columns: 1fr; }
@@ -267,3 +284,34 @@ body:has(.cp-page) { background: #EFE9E0; }
 /* the document is table-based and needs real width to breathe — the
    680px form-card cap is right for an inquiry form, wrong for this */
 .ct-contract-card { max-width: 900px; }
+
+
+/* ── 🤍 Ivory ───────────────────────────────────────────────────────────
+   Raj's pick (2026-10-09) of four designs: white card on a soft page tinted
+   from the brand colour, monogram or logo in a circle, serif name with space
+   (not a line) below it, small-caps section titles in the brand colour, plain
+   boxed fields, and the brand colour on the button. The brand colour setting
+   shifts the button, the accents and the page shade together. */
+.iq-mono { display: none; }
+.iq-req-note { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+.iq-card.iq-theme-ivory { max-width: 640px; border-radius: 4px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(40, 32, 24, 0.05); }
+.iq-theme-ivory .iq-hd { flex-direction: column; gap: 14px; padding: 38px 28px 6px; background: transparent; border-bottom: none; color: var(--text); }
+.iq-theme-ivory .iq-logo { width: 72px; height: 72px; border-radius: 50%; }
+.iq-theme-ivory .iq-mono { display: flex; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--brand); color: var(--brand); align-items: center; justify-content: center; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; letter-spacing: 1px; }
+.iq-theme-ivory .iq-hd-text .iq-brand { color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 34px; letter-spacing: .5px; line-height: 1.15; }
+.iq-theme-ivory .iq-hd-text .iq-sub { margin-top: 16px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.iq-theme-ivory .iq-sub-link:hover { color: var(--text); }
+.iq-theme-ivory .iq-body { padding: 10px 28px 32px; }
+.iq-theme-ivory .iq-section { border-top: none; padding: 20px 0 4px; }
+.iq-theme-ivory .iq-section-title { font-size: 12px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--brand); margin-bottom: 14px; }
+.iq-theme-ivory .iq-emoji { display: none; }
+.iq-card.iq-theme-ivory label { font-size: 13px; font-weight: 500; color: var(--label); margin-bottom: 6px; }
+.iq-card.iq-theme-ivory input, .iq-card.iq-theme-ivory select, .iq-card.iq-theme-ivory textarea { min-height: 46px; border: 1px solid var(--field-line); border-radius: 4px; background: #fffdfa; font-size: 15px; }
+.iq-card.iq-theme-ivory textarea { min-height: 90px; }
+.iq-card.iq-theme-ivory .iq-check-row input { min-height: 0; }
+.iq-theme-ivory .iq-btn { height: 52px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500; box-shadow: none; }
+@media (max-width: 620px) {
+  .iq-theme-ivory .iq-hd { padding: 30px 20px 4px; }
+  .iq-theme-ivory .iq-body { padding: 6px 20px 26px; }
+  .iq-theme-ivory .iq-hd-text .iq-brand { font-size: 30px; }
+}

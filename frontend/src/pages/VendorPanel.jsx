@@ -3,7 +3,7 @@ import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import PublicSite from './PublicSite';
-import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, formatPhone, eventDateParts, eventDateValue } from '../lib/api';
+import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
 import { COUNTRIES } from '../lib/countries';
@@ -2996,7 +2996,7 @@ function LeadsView({ routeLead, onOpenLead }) {
             {TILES.map(([key, icon, label]) => (
               <button key={key} className={`lead-stat ${filter === key ? 'is-on' : ''}`} onClick={() => setFilter(key)}>
                 <span className="lead-stat-ic">{icon}</span>
-                <span className="lead-stat-val">{loading ? '…' : counts[key]}</span>
+                <span className="lead-stat-val">{counts[key]}</span>
                 <span className="lead-stat-lbl">{label}</span>
               </button>
             ))}
@@ -3348,7 +3348,7 @@ function LeadDetail({ lead, onBack }) {
         <div className="ld-client-name"><span className="ld-client-lbl">Name:</span> {lead.name || '—'}</div>
         {row('🙋 Role', lead.role)}
         {row('📧 Email', lead.email)}
-        {row('📞 Phone', formatPhone(lead.phone))}
+        {row('📞 Phone', lead.phone)}
         {row('📷 Instagram', lead.instagram)}
         {row('🔎 Heard via', lead.heard)}
       </div>
@@ -3377,12 +3377,6 @@ function LeadDetail({ lead, onBack }) {
           // the form stores a time answer as plain "HH:MM", so it reads back in
           // whichever clock the vendor set in their preferences
           if (f.type === 'time') return fmtTime(v);
-          // hours are stored as a whole number ("9 hrs" becomes 9) so the
-          // lead card can do maths. Put the unit back for reading.
-          if ((f.type === 'hours' || f.maps_to === 'hours') && v !== true) {
-            const n = Number(v);
-            if (Number.isFinite(n) && !/[a-z]/i.test(String(v))) return `${n} hr${n === 1 ? '' : 's'}`;
-          }
           return String(v);
         };
 
@@ -4625,6 +4619,8 @@ function BookingsView({ routeBooking, onOpenBooking }) {
 const FIELD_TYPES = [
   { t: 'dropdown', label: '📋 Dropdown' },
   { t: 'text', label: '✏️ Text' },
+  // a count — guests, people, servings: digits only, the number pad on a phone
+  { t: 'number', label: '🔢 Number' },
   { t: 'date', label: '📅 Date' },
   { t: 'time', label: '🕐 Time' },
   { t: 'hours', label: '⏱️ Hours' },
@@ -4686,7 +4682,7 @@ const FORM_PRESETS = {
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
     { type: 'dropdown', label: 'Coverage needed', options: ['Ceremony only', 'Ceremony + Reception', 'Full day', 'Multiple days'] },
     { type: 'checkbox', label: 'Getting-ready coverage' },
-    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'text', label: 'Any must-have shots?' },
   ] },
   videographer: { label: '🎥 Videographer', fields: [
@@ -4702,12 +4698,12 @@ const FORM_PRESETS = {
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
     { type: 'dropdown', label: 'What do you need?', options: ['Photo only', 'Video only', 'Photo & Video'] },
     { type: 'checkbox', label: 'Drone footage' },
-    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
   ] },
   dj: { label: '🎧 DJ', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Play', maps_to: 'hours' },
-    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'dropdown', label: 'Indoor or outdoor?', options: ['Indoor', 'Outdoor', 'Both'] },
     { type: 'checkbox', label: 'Venue has a sound limit' },
     { type: 'checkbox', label: 'Microphone needed for speeches' },
@@ -4716,7 +4712,7 @@ const FORM_PRESETS = {
   ] },
   makeup: { label: '💄 Make-Up Artist', fields: [
     ...CORE_EVENT,
-    { type: 'text', label: 'How many people need makeup?' },
+    { type: 'number', label: 'How many people need makeup?' },
     { type: 'time', label: 'Time you need to be ready by' },
     { type: 'dropdown', label: 'Look', options: ['Natural', 'Soft glam', 'Full glam', 'Not sure yet'] },
     { type: 'checkbox', label: 'Hair styling as well' },
@@ -4725,7 +4721,7 @@ const FORM_PRESETS = {
   ] },
   cake: { label: '🎂 Cake Maker', fields: [
     ...CORE_EVENT,
-    { type: 'text', label: 'Number of servings' },
+    { type: 'number', label: 'Number of servings' },
     { type: 'dropdown', label: 'Tiers', options: ['1', '2', '3', '4+', 'Not sure yet'] },
     { type: 'text', label: 'Flavours you would like' },
     { type: 'text', label: 'Dietary requirements (nut-free, gluten-free…)' },
@@ -4734,8 +4730,8 @@ const FORM_PRESETS = {
   florist: { label: '💐 Florist', fields: [
     ...CORE_EVENT,
     { type: 'text', label: 'Colour palette' },
-    { type: 'text', label: 'Bouquets needed (how many?)' },
-    { type: 'text', label: 'Buttonholes needed (how many?)' },
+    { type: 'number', label: 'Bouquets needed (how many?)' },
+    { type: 'number', label: 'Buttonholes needed (how many?)' },
     { type: 'checkbox', label: 'Ceremony arrangements' },
     { type: 'checkbox', label: 'Table centrepieces' },
     { type: 'checkbox', label: 'Setup and takedown' },
@@ -4743,14 +4739,14 @@ const FORM_PRESETS = {
   bartender: { label: '🍸 Bartender', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Service', maps_to: 'hours' },
-    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'dropdown', label: 'Bar type', options: ['Open bar', 'Cash bar', 'Limited (beer & wine)', 'Cocktails only'] },
     { type: 'checkbox', label: 'You are supplying the alcohol' },
     { type: 'checkbox', label: 'Glassware needed' },
   ] },
   caterer: { label: '🍽️ Caterer', fields: [
     ...CORE_EVENT,
-    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'dropdown', label: 'Service style', options: ['Plated', 'Buffet', 'Family style', 'Canapés / stations'] },
     { type: 'text', label: 'Dietary requirements' },
     { type: 'checkbox', label: 'Kids meals needed' },
@@ -4759,7 +4755,7 @@ const FORM_PRESETS = {
   ] },
   planner: { label: '📋 Wedding Planner', fields: [
     ...CORE_EVENT,
-    { type: 'text', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'dropdown', label: 'What do you need?', options: ['Full planning', 'Partial planning', 'Day-of coordination'] },
     { type: 'text', label: 'Vendors already booked' },
     { type: 'text', label: 'Rough budget' },
@@ -4802,21 +4798,7 @@ function FieldBuilder({ fields, setFields }) {
   // 🎉 Add the whole event group at once. A column already claimed by an
   // existing field is left claimed — the new field still appears, just
   // unmapped, so adding this twice can't quietly steal a mapping.
-  const addEventGroup = async () => {
-    const norm = (s) => String(s || '').trim().toLowerCase();
-    const already = EVENT_PRESET.filter(p =>
-      fields.some(f => f.type === p.type && norm(f.label) === norm(p.label))
-    );
-    if (already.length) {
-      const all = already.length === EVENT_PRESET.length;
-      const ok = await dialog.confirm(
-        all
-          ? 'Type of Event, Date, Starting Time, Ending Time, Hours and Location are already on this form. Adding them again makes a second copy, and that copy cannot fill the lead columns because those are already taken.'
-          : `${already.length} of these questions are already on the form. A new copy cannot fill a lead column that another question already uses.`,
-        { title: 'These event questions are already on the form', okLabel: 'Add them anyway', danger: true }
-      );
-      if (!ok) return;
-    }
+  const addEventGroup = () => {
     const taken = new Set(fields.map(f => f.maps_to).filter(Boolean));
     const added = EVENT_PRESET.map(p => {
       const free = p.maps_to && !taken.has(p.maps_to);
@@ -4866,13 +4848,6 @@ function FieldBuilder({ fields, setFields }) {
     const j = i + dir; if (j < 0 || j >= fields.length) return;
     const copy = [...fields]; [copy[i], copy[j]] = [copy[j], copy[i]]; setFields(copy);
   };
-  // Two time fields can share a label ("Starting Time" twice). The hours
-  // dropdown has to tell them apart or the vendor links the wrong pair.
-  const timeChoiceLabel = (t, list) => {
-    const same = list.filter(x => (x.label || '') === (t.label || ''));
-    if (same.length < 2) return t.label;
-    return `${t.label} (${same.findIndex(x => x.id === t.id) + 1})`;
-  };
 
   return (
     <div>
@@ -4919,9 +4894,6 @@ function FieldBuilder({ fields, setFields }) {
           </div>
 
           <input style={box} placeholder="Field label (e.g. Event Type)" value={f.label} onChange={e => upd(i, { label: e.target.value })} />
-          {/^\s*how did you hear about us\??\s*$/i.test(f.label || '') && (
-            <p className="fb-hint">Contact Details already asks “How did you hear about us?”. This will show up a second time on the form.</p>
-          )}
 
           {/* dropdown options */}
           {f.type === 'dropdown' && (
@@ -4952,7 +4924,7 @@ function FieldBuilder({ fields, setFields }) {
                   <select className="fb-select" value={f.from_field || ''}
                     onChange={e => upd(i, { from_field: e.target.value })}>
                     <option value="">Client types it</option>
-                    {times.map(t => <option key={t.id} value={t.id}>{timeChoiceLabel(t, times)}</option>)}
+                    {times.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
@@ -4960,7 +4932,7 @@ function FieldBuilder({ fields, setFields }) {
                   <select className="fb-select" value={f.to_field || ''}
                     onChange={e => upd(i, { to_field: e.target.value })}>
                     <option value="">Client types it</option>
-                    {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{timeChoiceLabel(t, times)}</option>)}
+                    {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -5073,7 +5045,7 @@ function InqFormSettings() {
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub inq-link-row">
-          Your link: <b className="inq-link">{handle ? `${window.location.host}/inquiry/${handle}` : '…'}</b> 🔗
+          Your link: <b className="inq-link">iwopo.com/inquiry/{handle || '…'}</b> 🔗
           {' · '}
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they
@@ -5114,7 +5086,8 @@ function InqFormSettings() {
         <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
           <div style={{ flex: 1 }}>
             <label style={{ fontSize: 12, color: 'var(--muted)' }}>Theme</label>
-            <select style={box} value={s.theme || 'classic'} onChange={e => setS({ ...s, theme: e.target.value })}>
+            <select style={box} value={s.theme || 'ivory'} onChange={e => setS({ ...s, theme: e.target.value })}>
+              <option value="ivory">Ivory (calm, classic)</option>
               <option value="classic">Classic</option>
               <option value="modern">Modern</option>
               <option value="elegant">Elegant</option>

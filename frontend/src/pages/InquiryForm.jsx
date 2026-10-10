@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { themeStyleObject } from '../lib/brandTheme.js';
 import { api } from '../lib/api';
 import ChatWidget from './ChatWidget';
@@ -9,6 +9,19 @@ import { useDocumentTitle } from '../lib/useDocumentTitle';
 // need the same one. Re-exported so existing imports keep working.
 export { PROFESSIONS } from '../lib/professions';
 import { PROFESSIONS } from '../lib/professions';
+import ProfessionArt from '../components/ProfessionArt.jsx';
+
+/* 🤍 Ivory (2026-10-09, Raj's pick of four designs): a white card on a soft
+   page tinted from the brand colour, a monogram or logo in a circle, the name
+   in a serif (space alone sets it apart — no rule under it), small-caps section titles, plain boxes — calm and classic, so it
+   sits with any vendor's own website. The default for every form that has not
+   chosen another style. */
+export const DEFAULT_THEME = 'ivory';
+/** Up to two initials for the monogram: "Perfect Poses Media" → "PP". */
+function initials(name) {
+  const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+  return (w.slice(0, 2).map(x => x[0]).join('') || '·').toUpperCase();
+}
 
 export default function InquiryForm({ handle, byHost = false }) {
   /* On a vendor's own domain there is no handle in the URL — the Host header
@@ -21,18 +34,19 @@ export default function InquiryForm({ handle, byHost = false }) {
   const [gone, setGone] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
+  // 🎯 the field an error is about — it is outlined, scrolled to and focused,
+  // because a message beside the Send button about a box at the top of the
+  // form left clients hunting for it (QA, 2026-10-09)
+  const [errField, setErrField] = useState('');
   const [busy, setBusy] = useState(false);
-  const errRef = useRef(null);
-  useEffect(() => {
-    if (err) errRef.current?.scrollIntoView({ block: 'nearest' });
-  }, [err]);
+  const [logoOk, setLogoOk] = useState(true);
   useDocumentTitle(cfg?.brand_name);
 
   const [p, setP] = useState({ role: '', name: '', email: '', phone: '', instagram: '', heard: '' });
-  const setPI = (k, v) => setP(s => ({ ...s, [k]: v }));
+  const setPI = (k, v) => { setP(s => ({ ...s, [k]: v })); if (errField === k) { setErrField(''); setErr(''); } };
 
   const [answers, setAnswers] = useState({});
-  const setAns = (id, v) => setAnswers(s => ({ ...s, [id]: v }));
+  const setAns = (id, v) => { setAnswers(s => ({ ...s, [id]: v })); if (errField === `f:${id}`) { setErrField(''); setErr(''); } };
 
   const [notes, setNotes] = useState('');
 
@@ -42,22 +56,30 @@ export default function InquiryForm({ handle, byHost = false }) {
         .catch(() => { setGone(true); setCfg({}); });
   }, [handle, byHost]);
 
+  /** Point at the field: outline it, bring it into view, put the cursor in it. */
+  function fail(field, message) {
+    setErr(message);
+    setErrField(field);
+    requestAnimationFrame(() => {
+      const box = document.querySelector(`[data-field="${field}"]`);
+      if (!box) return;
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      box.querySelector('input, select, textarea')?.focus({ preventScroll: true });
+    });
+  }
+
   async function submit() {
-    setErr('');
-    // Role and phone are marked required on the form. Name and email already
-    // were; leaving the other two starred-but-optional meant a blank form
-    // could look like the button did nothing when the message was missed.
-    if (!p.role) { setErr('Please choose your role'); return; }
-    if (!p.name.trim()) { setErr('Please enter your name'); return; }
-    if (!p.email.trim()) { setErr('Please enter your email'); return; }
-    if (!p.phone.trim()) { setErr('Please enter your phone number'); return; }
+    setErr(''); setErrField('');
+    // top to bottom, in the order the client sees the boxes
+    if (!p.role) return fail('role', 'Please choose your role');
+    if (!p.name.trim()) return fail('name', 'Please enter your name');
+    if (!p.email.trim()) return fail('email', 'Please enter your email');
     // same rule the server enforces, so a typo is caught before the round-trip
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) {
-      setErr('That email address does not look right'); return;
-    }
-    for (const fld of (cfg.custom_fields || [])) {
-      if (fld.required && !answers[fld.id]) { setErr(`"${fld.label}" is required`); return; }
-    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) return fail('email', 'That email address does not look right');
+    if (!p.phone.trim()) return fail('phone', 'Please enter your phone number');
+    if (p.phone.replace(/\D/g, '').length < 7) return fail('phone', 'That phone number looks too short');
+    const problem = checkAnswers(cfg.custom_fields || [], answers);
+    if (problem) return fail(`f:${problem.id}`, problem.message);
     setBusy(true);
     try {
       await api.createLead({
@@ -81,31 +103,48 @@ export default function InquiryForm({ handle, byHost = false }) {
     </div>
   );
 
-  if (done) return (
-    <div className="iq-wrap">
-      <div className="iq-card iq-done">
-        <div className="iq-check">✓</div>
-        <h2>Thank you! 🎉</h2>
-        <p>Your inquiry has been sent. We'll be in touch soon.</p>
+  /* 🎉 The thank-you keeps the vendor's colour, font, name and logo — it used to
+     switch to plain beige, so the client seemed to land on another site. */
+  if (done) {
+    const b = cfg?.brand_color || '#2dd4bf';
+    return (
+      <div className="iq-wrap" style={themeStyleObject(b, cfg?.theme, cfg?.font || 'Inter')}>
+        <div className={`iq-card iq-theme-${cfg?.theme || DEFAULT_THEME}`}>
+          <div className="iq-hd">
+            {cfg?.logo_path && logoOk
+              ? <img className="iq-logo" src={`/api/me/logo/${cfg.logo_path}`} alt="" onError={() => setLogoOk(false)} />
+              : <div className="iq-mono" aria-hidden="true">{initials(cfg?.brand_name)}</div>}
+            <div className="iq-hd-text"><div className="iq-brand">{cfg?.brand_name || 'Booking Inquiry'}</div></div>
+          </div>
+          <div className="iq-done">
+            <div className="iq-check">✓</div>
+            <h2>Thank you! 🎉</h2>
+            <p>Your inquiry has been sent. We&apos;ll be in touch soon.</p>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   if (!cfg) return <div className="iq-wrap"><div className="iq-card">Loading…</div></div>;
 
   const c = cfg;
   const brand = c.brand_color || '#2dd4bf';
   const font = c.font || 'Inter';
-  const prof = PROFESSIONS[c.background] || PROFESSIONS.none;
+  const theme = c.theme || DEFAULT_THEME;
 
   return (
     <div className="iq-wrap" style={themeStyleObject(brand, cfg.theme, font)}>
-      {/* page-wide profession watermark */}
-      {prof.icon && <div className="iq-watermark" aria-hidden>{Array.from({ length: 120 }).map((_, i) => <span key={i}>{prof.icon}</span>)}</div>}
-      <div className={`iq-card iq-theme-${c.theme || 'classic'}`}>
+      {/* 🖼️ one big drawing for the vendor's trade behind the card ("None": plain) */}
+      <ProfessionArt trade={c.background} />
+      <div className={`iq-card iq-theme-${theme}`}>
         {/* header: logo left, brand + intro centered */}
         <div className="iq-hd">
-          {c.logo_path && <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={e => { e.currentTarget.style.display = 'none'; }} />}
+          {/* a logo that fails to load is left out, not shown as an empty box;
+              Ivory shows the studio's initials in a circle instead */}
+          {c.logo_path && logoOk
+            ? <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={() => setLogoOk(false)} />
+            : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
           <div className="iq-hd-text">
             <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
             {c.intro_link
@@ -115,12 +154,14 @@ export default function InquiryForm({ handle, byHost = false }) {
         </div>
 
         <div className="iq-body">
-          <LeadFormBody cfg={c} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes} />
+          <LeadFormBody cfg={c} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes}
+            clientForm errField={errField} errText={err} />
 
-          {err && <div className="iq-err" role="alert" ref={errRef}>⚠️ {err}</div>}
+          {err && !errField && <div className="iq-err">⚠️ {err}</div>}
           <button className="iq-btn" onClick={submit} disabled={busy}>
-            {busy ? 'Sending…' : '📨 Send Inquiry'}
+            {busy ? 'Sending…' : <><span className="iq-emoji">📨 </span>Send Inquiry</>}
           </button>
+          <p className="iq-req-note">Fields marked * are required</p>
         </div>
       </div>
       <ChatWidget handle={who} businessName={c.brand_name} botName={c.bot_name} />
@@ -129,32 +170,42 @@ export default function InquiryForm({ handle, byHost = false }) {
 }
 
 // 🧩 SHARED form body — used by Public form, Add Lead, Edit Lead
-export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes }) {
+/* The public form passes clientForm (+ the field an error is about); the
+   panel's Add / Edit Lead do not — a vendor recording an old booking must be
+   able to enter a past date. */
+export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, clientForm = false, errField = '', errText = '' }) {
   const c = cfg || {};
+  const box = (key, extra = '') => ({ 'data-field': key, className: `${extra} ${errField === key ? 'iq-field-err' : ''}`.trim() || undefined });
+  const note = (key) => (errField === key ? <div className="iq-field-msg" role="alert">⚠️ {errText}</div> : null);
   return (
     <>
       {/* Section 1: Contact Details */}
       <div className="iq-section">
-        <div className="iq-section-title">📇 Contact Details</div>
+        <div className="iq-section-title"><span className="iq-emoji">📇 </span>Contact Details</div>
         <div className="iq-grid">
-          <div>
+          <div {...box('role')}>
             <label>Your Role *</label>
             <select value={p.role} onChange={e => setPI('role', e.target.value)}>
               <option value="">Select…</option>
               <option>Bride</option><option>Groom</option><option>Planner</option><option>Other</option>
             </select>
+            {note('role')}
           </div>
-          <div>
+          <div {...box('name')}>
             <label>Full Name *</label>
-            <input value={p.name} onChange={e => setPI('name', e.target.value)} placeholder="Full name" />
+            <input value={p.name} onChange={e => setPI('name', e.target.value)} placeholder="Full name" autoComplete="name" />
+            {note('name')}
           </div>
-          <div>
+          {/* 📱 real email / phone fields: a phone shows the @ keyboard and the number pad */}
+          <div {...box('email')}>
             <label>Email *</label>
-            <input value={p.email} onChange={e => setPI('email', e.target.value)} placeholder="you@email.com" />
+            <input type="email" inputMode="email" autoComplete="email" value={p.email} onChange={e => setPI('email', e.target.value)} placeholder="you@email.com" />
+            {note('email')}
           </div>
-          <div>
+          <div {...box('phone')}>
             <label>Phone *</label>
-            <input value={p.phone} onChange={e => setPI('phone', e.target.value)} placeholder="(555) 555-5555" />
+            <input type="tel" inputMode="tel" autoComplete="tel" value={p.phone} onChange={e => setPI('phone', e.target.value)} placeholder="(555) 555-5555" />
+            {note('phone')}
           </div>
           <div>
             <label>Instagram Handle</label>
@@ -173,12 +224,13 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes }
       {/* Section 2: Inquiry Details (custom fields) */}
       {(c.custom_fields || []).length > 0 && (
         <div className="iq-section">
-          <div className="iq-section-title">✨ {c.details_heading || 'Inquiry Details'}</div>
+          <div className="iq-section-title"><span className="iq-emoji">✨ </span>{c.details_heading || 'Inquiry Details'}</div>
           <div className="iq-grid">
             {c.custom_fields.map(fld => (
-              <div key={fld.id} className={fld.type === 'checkbox' ? 'iq-full' : ''}>
+              <div key={fld.id} {...box(`f:${fld.id}`, fld.type === 'checkbox' ? 'iq-full' : '')}>
                 <CustomField fld={fld} value={answers[fld.id]} onChange={v => setAns(fld.id, v)}
-                  answers={answers} fields={c.custom_fields} />
+                  answers={answers} fields={c.custom_fields} clientForm={clientForm} />
+                {note(`f:${fld.id}`)}
               </div>
             ))}
           </div>
@@ -187,7 +239,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes }
 
       {/* Section 3: Notes */}
       <div className="iq-section">
-        <div className="iq-section-title">📝 Notes</div>
+        <div className="iq-section-title"><span className="iq-emoji">📝 </span>Notes</div>
         <label>Anything else?</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" placeholder="Tell us more…" />
       </div>
@@ -226,7 +278,48 @@ export function formatHours(dec) {
   return m ? `${hp} ${m} min` : hp;
 }
 
-function CustomField({ fld, value, onChange, answers, fields }) {
+/** Today as YYYY-MM-DD in the visitor's own time zone (what a date box shows). */
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+/** The field that holds the EVENT date: mapped to it, or (older forms) the first date field with no mapping. */
+function isEventDate(fld, fields) {
+  if (fld.maps_to) return fld.maps_to === 'event_date';
+  return fld.type === 'date' && fields.find(f => f.type === 'date' && !f.maps_to)?.id === fld.id;
+}
+
+/**
+ * ✅ What the client form refuses, field by field, in page order:
+ *   • a required question left empty;
+ *   • an event date already past — no one books a wedding for last year;
+ *   • a Number field that is not a number;
+ *   • a start and end time that make the event longer than 16 hours — an end
+ *     BEFORE the start is still allowed for an evening running past midnight
+ *     (20:00 → 01:00 is 5 hours), but 16:00 → 11:00 is a slip, not a 19-hour day.
+ * Returns { id, message } for the first problem, or null.
+ */
+export function checkAnswers(fields, answers) {
+  const today = todayLocal();
+  const hours = fields.find(f => f.type === 'hours' && f.from_field && f.to_field);
+  const fromF = fields.find(f => f.maps_to === 'timing_from') || (hours && fields.find(f => f.id === hours.from_field));
+  const toF = fields.find(f => f.maps_to === 'timing_to') || (hours && fields.find(f => f.id === hours.to_field));
+  for (const f of fields) {
+    const v = answers[f.id];
+    const empty = v === undefined || v === null || v === '' || v === false;
+    if (f.required && empty) return { id: f.id, message: `"${f.label}" is required` };
+    if (empty) continue;
+    if (f.type === 'date' && isEventDate(f, fields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
+    if (f.type === 'number' && !/^\d+$/.test(String(v).trim())) return { id: f.id, message: `"${f.label}" needs a number` };
+    if (toF && f.id === toF.id && fromF && answers[fromF.id]) {
+      const span = hoursBetween(answers[fromF.id], v);
+      if (span !== null && span > 16) return { id: f.id, message: 'The ending time is before the starting time — please check both' };
+    }
+  }
+  return null;
+}
+
+function CustomField({ fld, value, onChange, answers, fields, clientForm = false }) {
   const label = <label>{fld.label}{fld.required && ' *'}</label>;
 
   if (fld.type === 'dropdown') return (<>
@@ -241,7 +334,12 @@ function CustomField({ fld, value, onChange, answers, fields }) {
     <input value={value || ''} onChange={e => onChange(e.target.value)} /></>);
 
   if (fld.type === 'date') return (<>{label}
-    <input type="date" value={value || ''} onChange={e => onChange(e.target.value)} /></>);
+    <input type="date" value={value || ''} onChange={e => onChange(e.target.value)}
+      min={clientForm && isEventDate(fld, fields) ? todayLocal() : undefined} /></>);
+
+  // 🔢 a count — "how many people", "guests", "servings": the number pad on a phone, digits only
+  if (fld.type === 'number') return (<>{label}
+    <input type="number" inputMode="numeric" min="0" step="1" value={value ?? ''} onChange={e => onChange(e.target.value)} /></>);
 
   if (fld.type === 'time') return (<>{label}
     <input type="time" value={value || ''} onChange={e => onChange(e.target.value)} /></>);
