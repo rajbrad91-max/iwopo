@@ -1,0 +1,51 @@
+/* 🎞️ Raw Selector — the vendor's screen (.rs, inside the panel's theme) and
+   the editor's portal (.ep, a page of its own, so it defines its own colours). */
+
+.rs { display: grid; gap: 18px; max-width: 1100px; }
+.rs-card { background: var(--panel, #fff); border: 1px solid var(--line, #e3e6ea); border-radius: 14px; padding: 20px 22px; }
+.rs-h { margin: 0 0 6px; font-size: 17px; }
+.rs-sub { margin: 0 0 14px; color: var(--muted, #6b7280); font-size: 13.5px; line-height: 1.5; }
+.rs-sub a { color: var(--teal, #0f9f8f); word-break: break-all; }
+.rs-muted { color: var(--muted, #6b7280); font-size: 13px; }
+.rs-strong { font-weight: 600; }
+.rs-warn { color: #c77c0e; font-weight: 600; }
+.rs-err { margin: 10px 0; padding: 9px 12px; border-radius: 9px; background: #fdecec; color: #a23b33; font-size: 13px; }
+
+.rs-add { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.rs-add input { flex: 1 1 200px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line, #d7dbe0); border-radius: 9px; background: var(--bg, #fff); color: var(--text, #1f2328); font: inherit; font-size: 14px; }
+.rs-btn { min-height: 40px; padding: 0 16px; border: none; border-radius: 9px; background: var(--teal, #0f9f8f); color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.rs-btn:hover { filter: brightness(1.06); }
+
+.rs-list { list-style: none; margin: 0; padding: 0; }
+.rs-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line, #eceef1); }
+.rs-row:first-child { border-top: none; }
+.rs-row > :first-child { flex: 1; min-width: 0; }
+.rs-pill { padding: 3px 9px; border-radius: 999px; background: #f1f3f5; color: #5c6670; font-size: 12px; white-space: nowrap; }
+.rs-pill.is-on { background: #dcf5ef; color: #0b6e62; }
+.rs-x { min-height: 34px; padding: 0 12px; border: 1px solid var(--line, #d7dbe0); border-radius: 8px; background: transparent; color: var(--text, #1f2328); font: inherit; font-size: 13px; cursor: pointer; }
+.rs-x:hover { border-color: var(--teal, #0f9f8f); }
+
+.rs-table-wrap { overflow-x: auto; }
+.rs-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rs-table th { text-align: left; font-weight: 600; color: var(--muted, #6b7280); padding: 8px 10px; border-bottom: 1px solid var(--line, #e3e6ea); white-space: nowrap; }
+.rs-table td { padding: 10px; border-bottom: 1px solid var(--line, #eceef1); white-space: nowrap; }
+
+/* ── 👨‍💻 the editor's portal ── */
+.ep { --panel: #ffffff; --line: #e3e6ea; --text: #1f2328; --muted: #6b7280; --teal: #0f9f8f; --bg: #ffffff;
+  min-height: 100vh; box-sizing: border-box; padding: 28px 16px 60px; background: #f5f6f8; color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.ep-card { max-width: 760px; margin: 0 auto 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+.ep-auth { max-width: 400px; margin-top: 8vh; display: grid; gap: 12px; }
+.ep-title { margin: 0; font-size: 20px; font-weight: 700; }
+.ep-sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.ep-label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.ep-label input { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 15px; font-weight: 400; }
+.ep-label input:focus { outline: none; border-color: var(--teal); }
+.ep-wide { width: 100%; min-height: 46px; }
+.ep-link { justify-self: start; padding: 4px 0; background: none; border: none; color: var(--teal); font: inherit; font-size: 13.5px; cursor: pointer; }
+.ep-top { max-width: 760px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ep-progress { margin: 12px 0 4px; padding: 9px 12px; border-radius: 9px; background: #eef7f6; font-size: 13px; }
+.ep-client { padding: 0; }
+.ep-open { width: 100%; display: grid; gap: 3px; padding: 12px 4px; background: none; border: none; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.ep-open:hover .rs-strong { color: var(--teal); }
+.ep-new { margin-left: 8px; }

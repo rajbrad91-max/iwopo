@@ -49,6 +49,7 @@ import commsWebhookRoutes from './routes/commsWebhook.js';
 import { pollComms } from './lib/commsPoll.js';
 import commsRoutes from './routes/comms.js';
 import rawselRoutes from './routes/rawsel.js';
+import editorRoutes from './routes/editor.js';
 import { sweepRaws } from './lib/rawFiles.js';
 import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
@@ -169,6 +170,8 @@ app.use('/api/analytics', gate('analytics'), analyticsRoutes);
 app.use('/api/comms', gate('comms'), commsRoutes);
 // 🎞️ Raw Selector — private like comms: off for every vendor unless Super Admin switches it on
 app.use('/api/rawsel', gate('rawsel'), rawselRoutes);
+// 👨‍💻 the photo editor's own door — editor logins only (signed with a different key), see routes/editor.js
+app.use('/api/editor', editorRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
 app.use('/api/ppsite', gate('ppsite'), ppsiteRoutes);
 app.use('/api/devices', deviceRoutes);

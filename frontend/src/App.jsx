@@ -21,6 +21,7 @@ const VendorGallery = lazy(() => import('./pages/VendorGallery'));
 const Vote = lazy(() => import('./pages/Vote'));
 const KnowledgeFill = lazy(() => import('./pages/KnowledgeFill'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const EditorPortal = lazy(() => import('./pages/EditorPortal'));
 import { getUser, sessionMismatch, clearSession, clearTabSession } from './lib/api';
 
 /* ⚡ Every page loads only when it is visited (2026-10-10). Before, the
@@ -99,6 +100,8 @@ function AppRoutes() {
 
   // 🎥 Live shoot: /live/:token — one link for a whole wedding, and each guest
   // sees only themselves after showing their face once
+  // 👨‍💻 the photo editor's portal (Raw Selector) — its own sign-in, nothing else
+  if (window.location.pathname.match(/^\/editor\/?$/)) return <EditorPortal />;
   const lv = window.location.pathname.match(/^\/live\/([A-Za-z0-9]+)/);
   if (lv) return <Suspense fallback={null}><LiveShootPublic token={lv[1]} /></Suspense>;
 

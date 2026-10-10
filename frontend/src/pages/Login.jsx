@@ -18,7 +18,9 @@ export default function Login({ onLogin, onBack }) {
       setSession(token, user);
       onLogin(user);
     } catch (err) {
-      setError(err.message);
+      setError(err.message === 'Invalid credentials'
+        ? 'That email or password is not right.'
+        : err.message);
     } finally {
       setLoading(false);
     }

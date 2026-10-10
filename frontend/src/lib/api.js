@@ -304,7 +304,13 @@ async function request(path, options = {}) {
   // 🔑 an expired/invalid token, or a role mismatch on an admin-only route,
   // means this session can't do what the UI is showing. Clear it and send the
   // person back to login instead of leaving them stuck on a dead screen.
-  if (res.status === 401 || (res.status === 403 && sessionMismatch())) {
+  //
+  // A wrong password is also a 401, but it comes from the sign-in request
+  // itself. Treating that like an expired session wiped the page and reloaded
+  // the marketing site, so "that password is not right" never appeared.
+  const signingIn = path === '/auth/login' || path === '/auth/signup'
+    || path === '/auth/forgot' || path === '/auth/reset';
+  if (!signingIn && (res.status === 401 || (res.status === 403 && sessionMismatch()))) {
     clearSession();
     window.location.reload();
     throw new Error('Your session expired — please log in again.');
@@ -806,6 +812,10 @@ export const api = {
   // 🎞️ Raw Selector (private): how an album's RAWs stand; 403 when the feature is off
   rawselStatus: (albumId) => request(`/rawsel/albums/${albumId}`),
   rawselDeleteAll: (albumId) => request(`/rawsel/albums/${albumId}`, { method: 'DELETE' }),
+  rawselOverview: () => request('/rawsel/overview'),
+  rawselEditors: () => request('/rawsel/editors'),
+  rawselAddEditor: (email, name) => request('/rawsel/editors', { method: 'POST', body: JSON.stringify({ email, name }) }),
+  rawselRemoveEditor: (id) => request(`/rawsel/editors/${id}`, { method: 'DELETE' }),
   commsBadges: (numbers) => request('/comms/badges', { method: 'POST', body: JSON.stringify({ numbers }) }),
   // ✍️ save the person in Quo — shows in the Quo phone app too
   commsSaveContact: (c) => request('/comms/contact', { method: 'POST', body: JSON.stringify(c) }),

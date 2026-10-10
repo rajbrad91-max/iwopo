@@ -23,6 +23,7 @@ import RequestsView from './RequestsView.jsx';
    The rest of the panel loads faster as a side effect. */
 const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 const CommsView = lazy(() => import('./CommsView.jsx'));
+const RawSelectorView = lazy(() => import('./RawSelectorView.jsx'));
 const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private — part of Calls & messages
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
@@ -31,7 +32,7 @@ import './vendor.css';
 const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
   contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
-  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms', liveshoot: 'liveshoot',
+  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms', liveshoot: 'liveshoot', rawsel: 'rawsel',
   /* 🖨️ Rides on galleries, not its own key. It is a view of what clients sent
      from their galleries, so anybody with galleries should have it — mapping
      it to a feature nobody sells locked it behind a plan that will never
@@ -296,6 +297,7 @@ export default function VendorPanel({ onLogout }) {
             together and in a deliberate order rather than scattered down
             the list. Each still appears only for somebody granted it. */}
         {has('comms') && <div className={`nav-item ${tab==='comms'?'active':''}`} onClick={() => go('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></div>}
+        {has('rawsel') && <div className={`nav-item ${tab==='rawsel'?'active':''}`} onClick={() => go('rawsel')}><span className="nav-ic">🎞️</span><span className="nav-txt">Raw Selector</span></div>}
         {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
         {has('occasions') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
         {has('liveshoot') && <div className={`nav-item ${tab==='liveshoot'?'active':''}`} onClick={() => go('liveshoot')}><span className="nav-ic">🎥</span><span className="nav-txt">Live Shoot</span></div>}
@@ -333,7 +335,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -368,6 +370,8 @@ export default function VendorPanel({ onLogout }) {
           <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
         ) : tab === 'comms' ? (
           <Suspense fallback={<div className="tab-loading">Loading…</div>}><CommsView /></Suspense>
+        ) : tab === 'rawsel' ? (
+          <Suspense fallback={<div className="tab-loading">Loading…</div>}><RawSelectorView /></Suspense>
         ) : tab === 'analytics' ? (
           <Suspense fallback={<div className="tab-loading">Loading…</div>}><AnalyticsView /></Suspense>
         ) : tab === 'fileflyer' ? (
@@ -3382,9 +3386,9 @@ function LeadDetail({ lead, onBack }) {
 
       {/* 🎉 Event Details — driven entirely by the vendor's own inquiry form.
           A fixed list of rows meant a DJ saw "Bride Getting Ready ❌ No" for a
-          question their form never asked. Rows are built from the questions the
-          client actually answered, using the vendor's own wording, and a row is
-          only shown when there's an answer to put in it. */}
+          question their form never asked. Rows use the vendor's own wording.
+          An empty text answer stays hidden. A checkbox is always shown,
+          because leaving it unticked is an answer. */}
       {(() => {
         const defs = (Array.isArray(lead.form_snapshot) && lead.form_snapshot.length)
           ? lead.form_snapshot
@@ -3392,25 +3396,47 @@ function LeadDetail({ lead, onBack }) {
         const cd = lead.custom_data || {};
         const has = (v) => v !== '' && v !== null && v !== undefined && v !== false;
 
-        // an answer's display value; checkboxes read as Yes, and a mapped column
-        // wins over the raw answer because it's the coerced/cleaned version
+        // The calendar day and the clock the client typed. The date column
+        // arrives as "2027-03-14T00:00:00.000Z" and a time column as "16:00"
+        // or "16:00:00" — reading the parts off the string keeps 2027-03-14
+        // and 16:00, with the leading zeros, and no timezone can move the day.
+        const ymd = (v) => {
+          const m = String(v).match(/(\d{4})-(\d{2})-(\d{2})/);
+          return m ? `${m[1]}-${m[2]}-${m[3]}` : String(v);
+        };
+        const clock = (v) => {
+          const m = String(v).match(/(\d{1,2}):(\d{2})/);
+          if (!m) return String(v);
+          return `${String(Number(m[1])).padStart(2, '0')}:${m[2]}`;
+        };
+
         const valueFor = (f) => {
           const col = f.maps_to && lead[f.maps_to];
           const raw = cd[f.id];
+          // Unticked is "No". A mapped yes/no column is used only when the
+          // form never stored the tick itself.
+          if (f.type === 'checkbox') {
+            const on = raw === true || raw === false ? raw : col === true;
+            return on ? '✅ Yes' : '❌ No';
+          }
+          // Hours is stored twice: the sentence the client saw ("6 hrs",
+          // "6 hrs 30 min") and a whole-number column for bookings. The
+          // column drops the words and rounds the minutes away, so the lead
+          // shows the sentence.
+          if (f.type === 'hours') {
+            if (has(raw)) return String(raw);
+            if (has(col) || col === 0) {
+              const n = Number(col);
+              if (!n) return '0 min';
+              return `${n} hr${n === 1 ? '' : 's'}`;
+            }
+            return null;
+          }
           const v = has(col) ? col : raw;
           if (!has(v)) return null;
           if (v === true) return '✅ Yes';
-          // a date reads as a person would say it — "Sat, 17 Jul 2027", not
-          // "2027-07-17". Built from the date's own parts, so no time zone can
-          // move it a day.
-          if (f.type === 'date') {
-            const [y, m, d] = String(v).slice(0, 10).split('-').map(Number);
-            if (!y || !m || !d) return String(v).slice(0, 10);
-            return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-          }
-          // the form stores a time answer as plain "HH:MM", so it reads back in
-          // whichever clock the vendor set in their preferences
-          if (f.type === 'time') return fmtTime(v);
+          if (f.type === 'date') return ymd(v);
+          if (f.type === 'time') return clock(v);
           return String(v);
         };
 
@@ -4804,7 +4830,7 @@ const FORM_PRESETS = {
   ] },
 };
 
-function FieldBuilder({ fields, setFields }) {
+function FieldBuilder({ fields, setFields, onTrade }) {
   const dialog = useDialog();
   const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8, width: '100%', fontSize: 13 };
   const uid = () => 'f' + Math.random().toString(36).slice(2, 8);
@@ -4861,8 +4887,9 @@ function FieldBuilder({ fields, setFields }) {
   const loadPreset = async (key) => {
     const preset = FORM_PRESETS[key];
     if (!preset) return;
+    const trade = PROFESSIONS[key]?.label;
     if (fields.length && !await dialog.confirm(
-      `This replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.`,
+      `This replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.${trade ? ` The background watermark becomes ${trade}.` : ''}`,
       { title: `Load the ${preset.label} questions?`, okLabel: 'Load them', danger: false }
     )) return;
     const taken = new Set();
@@ -4888,6 +4915,10 @@ function FieldBuilder({ fields, setFields }) {
       if (f.type === 'hours' && fromId && toId) { f.from_field = fromId; f.to_field = toId; }
     }
     setFields(loaded);
+    // The preset is a trade. The watermark is the same list of trades, so
+    // loading "Florist" leaves the florist drawing behind the form rather
+    // than whatever trade was selected last time.
+    if (onTrade && PROFESSIONS[key]) onTrade(key);
   };
 
   const del = (i) => setFields(fields.filter((_, idx) => idx !== i));
@@ -5092,7 +5123,7 @@ function InqFormSettings() {
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub inq-link-row">
-          Your link: <b className="inq-link">iwopo.com/inquiry/{handle || '…'}</b> 🔗
+          Your link: <b className="inq-link">{window.location.origin}/inquiry/{handle || '…'}</b> 🔗
           {' · '}
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they
@@ -5160,7 +5191,11 @@ function InqFormSettings() {
           <input style={box} value={s.details_heading || ''} placeholder="Event Details" onChange={e => setS({ ...s, details_heading: e.target.value })} />
           <h3 style={{ margin: '16px 0 4px' }}>🏗️ Inquiry Details fields</h3>
           <p className="sub" style={{ marginBottom: 12 }}>Build your custom questions ⬇️</p>
-          <FieldBuilder fields={s.custom_fields || []} setFields={(f) => setS({ ...s, custom_fields: f })} />
+          <FieldBuilder
+            fields={s.custom_fields || []}
+            setFields={(f) => setS(prev => ({ ...prev, custom_fields: f }))}
+            onTrade={(key) => setS(prev => ({ ...prev, background: key }))}
+          />
         </div>
 
         <button className="refresh" onClick={save} disabled={saving} style={{ marginTop: 16, width: '100%', background: '#2dd4bf', color: '#06231f' }}>

@@ -82,11 +82,17 @@ export default function InquiryForm({ handle, byHost = false }) {
     if (problem) return fail(`f:${problem.id}`, problem.message);
     setBusy(true);
     try {
+      // An unticked box is an answer. Leaving it out of custom_data made the
+      // lead look as if the question had never been asked.
+      const custom = { ...answers };
+      for (const f of cfg.custom_fields || []) {
+        if (f.type === 'checkbox') custom[f.id] = answers[f.id] === true;
+      }
       await api.createLead({
         vendor_slug: who,
         name: p.name, email: p.email, phone: p.phone,
         role: p.role, instagram: p.instagram, heard: p.heard,
-        notes, custom_data: answers,
+        notes, custom_data: custom,
       });
       setDone(true);
     } catch (e) { setErr(e.message); }

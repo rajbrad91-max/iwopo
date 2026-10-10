@@ -285,6 +285,20 @@ export async function signPut(cls, key, size) {
   }), { expiresIn: PART_URL_TTL, signableHeaders: new Set(['content-length']) });
 }
 
+/**
+ * A short-lived link that downloads one private file STRAIGHT from the bucket
+ * to the browser, saved under `filename` — the bytes never pass through our
+ * server (a 50 MB camera RAW, two hundred times over, would otherwise).
+ */
+export async function signGet(cls, key, filename, ttlSeconds = 15 * 60) {
+  const { client, bucket } = await clientFor(cls);
+  const safe = String(filename || 'file').replace(/["\\\r\n]/g, '_');
+  return getSignedUrl(client, new GetObjectCommand({
+    Bucket: bucket, Key: key,
+    ResponseContentDisposition: `attachment; filename="${safe}"`,
+  }), { expiresIn: ttlSeconds });
+}
+
 /** Which parts R2 already holds — this is what makes a resume possible. */
 export async function listParts(cls, key, uploadId) {
   const { client, bucket } = await clientFor(cls);

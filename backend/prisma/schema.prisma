@@ -820,6 +820,7 @@ model vendors {
   vendor_sites             vendor_sites?
   vendor_subscriptions     vendor_subscriptions[]
   raw_files               raw_files[]
+  raw_editors             raw_editors[]
 }
 
 model album_faces {
@@ -1114,4 +1115,27 @@ model raw_files {
   @@unique([album_id, stem], map: "raw_files_album_stem")
   @@index([vendor_id], map: "idx_raw_files_vendor")
   @@index([photo_id], map: "idx_raw_files_photo")
+}
+
+/// 🎞️ Raw Selector: a photo editor the vendor has let in, by email. The editor
+/// signs up with that email and then sees only the clients who sent a
+/// selection, and only the RAWs of the photos they picked — never a JPEG,
+/// never a gallery, never anything else in the account. Their login is signed
+/// with a different key from a vendor's, so it opens nothing but /api/editor.
+model raw_editors {
+  id            Int       @id @default(autoincrement())
+  vendor_id     Int
+  email         String    @db.VarChar(160)
+  name          String?   @db.VarChar(120)
+  /// set when the editor signs up; null = invited, not joined yet
+  password_hash String?   @db.VarChar(100)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  joined_at     DateTime? @db.Timestamp(6)
+  last_login_at DateTime? @db.Timestamp(6)
+  /// a removed editor: their login stops working at once
+  revoked_at    DateTime? @db.Timestamp(6)
+  vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([vendor_id, email], map: "raw_editors_vendor_email")
+  @@index([email], map: "idx_raw_editors_email")
 }

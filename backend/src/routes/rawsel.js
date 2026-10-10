@@ -111,4 +111,69 @@ router.delete('/albums/:albumId', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* ── 👨‍💻 editors ────────────────────────────────────────────────────────
+   The vendor lets an editor in by email; the editor signs up with it on
+   /editor (routes/editor.js). Removing one ends their access immediately. */
+const normEmail = (e) => String(e || '').trim().toLowerCase().slice(0, 160);
+
+router.get('/editors', requireAuth, async (req, res) => {
+  try {
+    const rows = await prisma.raw_editors.findMany({ where: { vendor_id: vid(req) }, orderBy: { created_at: 'asc' } });
+    res.json({ editors: rows.map(r => ({ id: r.id, email: r.email, name: r.name || '', joined: !!r.password_hash, joinedAt: r.joined_at, lastLoginAt: r.last_login_at })) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/editors', requireAuth, async (req, res) => {
+  try {
+    const email = normEmail(req.body?.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'That email address does not look right' });
+    const name = String(req.body?.name || '').trim().slice(0, 120) || null;
+    const row = await prisma.raw_editors.upsert({
+      where: { vendor_id_email: { vendor_id: vid(req), email } },
+      create: { vendor_id: vid(req), email, name },
+      update: { name, revoked_at: null },
+    });
+    res.json({ id: row.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/editors/:id', requireAuth, async (req, res) => {
+  try {
+    const { count } = await prisma.raw_editors.deleteMany({ where: { id: Number(req.params.id), vendor_id: vid(req) } });   // 🔒
+    if (!count) return res.status(404).json({ error: 'Not found' });
+    res.json({ deleted: count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** Every album with RAWs or a client selection: where each client stands. */
+router.get('/overview', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    const albums = await prisma.albums.findMany({
+      where: { vendor_id: v, OR: [{ raw_files: { some: {} } }, { selections: { some: {} } }] },
+      select: { id: true, title: true, selection_notes: { select: { updated_at: true } } },
+      orderBy: { id: 'desc' },
+    });
+    const out = [];
+    for (const a of albums) {
+      await pairAlbum(a.id, v);
+      const [raws, picks] = await Promise.all([
+        prisma.raw_files.findMany({ where: { album_id: a.id, vendor_id: v }, select: { photo_id: true, size_bytes: true, delete_after: true } }),
+        prisma.selections.findMany({ where: { album_id: a.id }, select: { photo_id: true } }),
+      ]);
+      const picked = new Set(picks.map(p => p.photo_id));
+      out.push({
+        id: a.id, name: a.title,
+        raws: raws.length,
+        bytes: raws.reduce((t, r) => t + Number(r.size_bytes || 0), 0),
+        selected: picked.size,
+        selectedWithRaw: raws.filter(r => r.photo_id && picked.has(r.photo_id)).length,
+        sentAt: a.selection_notes?.updated_at || null,
+        deleteAfter: raws.map(r => r.delete_after).filter(Boolean).sort()[0] || null,
+      });
+    }
+    res.json({ clients: out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 export default router;
