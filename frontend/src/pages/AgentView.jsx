@@ -56,6 +56,12 @@ export default function AgentView() {
     return () => l.remove();
   }, []);
 
+  /* 📱 the app's service worker, registered as soon as this tab opens — Chrome
+     only offers "Install app" for a page that has one */
+  useEffect(() => {
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/agent-sw.js', { scope: '/' }).catch(() => {});
+  }, []);
+
   /* 🔔 is this device already getting pop-ups? */
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) { setPop('unsupported'); return; }
