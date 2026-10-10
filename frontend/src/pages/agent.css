@@ -1,0 +1,18 @@
+/* 🤖 AI Agent — chat inside the panel (uses the panel's theme colours) */
+.ag { display: flex; flex-direction: column; height: calc(100vh - 170px); min-height: 420px; max-width: 860px; }
+.ag-chat { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 6px 2px 12px; }
+.ag-hello { margin: auto 0; display: grid; gap: 14px; justify-items: start; }
+.ag-hello-t { font-size: 15px; color: var(--muted, #6b7280); }
+.ag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ag-chip { padding: 8px 14px; border: 1px solid var(--line, #d7dbe0); border-radius: 999px; background: var(--panel, #fff); color: var(--text, #1f2328); font: inherit; font-size: 13.5px; cursor: pointer; }
+.ag-chip:hover { border-color: var(--teal, #0f9f8f); }
+.ag-msg { max-width: 82%; align-self: flex-start; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: var(--panel, #fff); border: 1px solid var(--line, #e3e6ea); color: var(--text, #1f2328); font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; }
+.ag-msg.is-me { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: var(--teal, #0f9f8f); border-color: transparent; color: #fff; }
+.ag-typing { color: var(--muted, #6b7280); font-style: italic; }
+.ag-err { margin: 6px 0; padding: 9px 12px; border-radius: 9px; background: #fdecec; color: #a23b33; font-size: 13px; }
+.ag-bar { display: flex; gap: 8px; align-items: flex-end; padding-top: 8px; border-top: 1px solid var(--line, #e3e6ea); }
+.ag-bar textarea { flex: 1; min-height: 44px; max-height: 140px; resize: vertical; padding: 11px 12px; border: 1px solid var(--line, #d7dbe0); border-radius: 12px; background: var(--panel, #fff); color: var(--text, #1f2328); font: inherit; font-size: 15px; }
+.ag-send { min-height: 44px; padding: 0 18px; border: none; border-radius: 12px; background: var(--teal, #0f9f8f); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.ag-send:disabled { opacity: .5; cursor: default; }
+.ag-usage { margin-top: 6px; font-size: 12px; color: var(--muted, #6b7280); }
+@media (max-width: 620px) { .ag { height: calc(100vh - 140px); } .ag-msg { max-width: 92%; } }

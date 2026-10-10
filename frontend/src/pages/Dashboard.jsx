@@ -1426,50 +1426,48 @@ function ChatbotCosts() {
   );
 }
 
-// 🔑 Anthropic API key
-function ChatbotApiKey() {
+/* 🔑 The clients' AI chatbot key, kept masked. The AI Agent (the owner's
+   private assistant) has its own key in Settings, so Anthropic's bill keeps
+   the two apart (Raj, 2026-10-10). */
+function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
   const [s, setS] = useState(null);
   const [editing, setEditing] = useState(false);
   const [show, setShow] = useState(false);
   const [msg, setMsg] = useState('');
 
-  useEffect(() => { api.platformSettings().then(d => setS(d.settings || {})).catch(() => {}); }, []);
+  useEffect(() => { api.platformSettings().then(r => setS(r.settings || {})).catch(() => {}); }, []);
   if (!s) return <div className="sa-loading">Loading…</div>;
 
   async function startEdit() {
     setEditing(true); setShow(false);
-    try { const real = await api.revealAwsCreds(); setS(v => ({ ...v, anthropic_api_key: real.anthropic_api_key || '' })); } catch {}
+    try { const real = await api.revealAwsCreds(); setS(v => ({ ...v, [field]: real[field] || '' })); } catch {}
   }
   async function save() {
     try {
-      await api.savePlatformSettings({ anthropic_api_key: s.anthropic_api_key, anthropic_model: s.anthropic_model });
+      await api.savePlatformSettings({ [field]: s[field], [modelField]: s[modelField] });
       setEditing(false); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1800);
-      api.platformSettings().then(d => setS(d.settings || {})).catch(() => {});
+      api.platformSettings().then(r => setS(r.settings || {})).catch(() => {});
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
-  const val = () => {
-    if (!editing) return s.anthropic_api_key ? '••••••••••••••••' : '';
-    if (show) return s.anthropic_api_key || '';
-    return s.anthropic_api_key ? '••••••••••••••••' : '';
-  };
+  const val = () => (editing && show ? (s[field] || '') : (s[field] ? '••••••••••••••••' : ''));
 
   return (
     <>
-      <div className="sa-section-title">🔑 Anthropic API Key</div>
-      <div className="cb-sub">Powers Wopo Assistant for every subscriber. Kept masked.</div>
+      <div className="sa-section-title">{title}</div>
+      <div className="cb-sub">{sub}</div>
       <div className="sa-box cb-api">
         <div className="cb-api-row">
           <div className="cb-api-field">
             <label className="lbl">API Key</label>
             <input className="cb-input" readOnly={!editing} value={val()}
               placeholder="sk-ant-…"
-              onChange={e => setS({ ...s, anthropic_api_key: e.target.value })} />
+              onChange={e => setS({ ...s, [field]: e.target.value })} />
           </div>
           <div className="cb-api-field">
             <label className="lbl">Model (optional)</label>
-            <input className="cb-input" readOnly={!editing} value={s.anthropic_model || ''}
-              placeholder="claude-sonnet-4-6"
-              onChange={e => setS({ ...s, anthropic_model: e.target.value })} />
+            <input className="cb-input" readOnly={!editing} value={s[modelField] || ''}
+              placeholder={modelHint}
+              onChange={e => setS({ ...s, [modelField]: e.target.value })} />
           </div>
         </div>
         <div className="cb-api-actions">
@@ -1484,8 +1482,19 @@ function ChatbotApiKey() {
           )}
           {msg && <span className="cb-msg">{msg}</span>}
         </div>
-        {!s.anthropic_api_key && <div className="cb-warn">⚠️ No API key set — Wopo Assistant will reply with a fallback message until you add one.</div>}
+        {!s[field] && <div className="cb-warn">⚠️ {missing}</div>}
       </div>
+    </>
+  );
+}
+
+function ChatbotApiKey() {
+  return (
+    <>
+      <ApiKeyBox field="anthropic_api_key" modelField="anthropic_model" title="🔑 AI Chatbot key"
+        sub="Powers Wopo Assistant for every subscriber, leads from calls and photo descriptions. Kept masked."
+        modelHint="claude-sonnet-4-6"
+        missing="No key — Wopo Assistant replies with a fallback message until you add one." />
     </>
   );
 }
@@ -1658,11 +1667,11 @@ function FaceEngineSettings() {
   /** Removing a credential is its own act — see the comment on the button. */
   async function clearAiKey() {
     if (!await dialog.confirm(
-      'The AI chat and creating leads from calls will both stop working until a new key is added.',
-      { title: 'Remove the Claude key?', okLabel: 'Remove' })) return;
+      'Your AI Agent will stop answering until a new key is added.',
+      { title: 'Remove the AI Agent key?', okLabel: 'Remove' })) return;
     try {
-      await api.clearPlatformKeys(['anthropic_api_key']);
-      setS(v => ({ ...v, anthropic_api_key: '' }));
+      await api.clearPlatformKeys(['agent_api_key']);
+      setS(v => ({ ...v, agent_api_key: '' }));
       setAiMsg({ ok: true, text: 'Key removed.' });
     } catch (e) { setAiMsg({ ok: false, text: '⚠️ ' + e.message }); }
   }
@@ -1671,10 +1680,10 @@ function FaceEngineSettings() {
   async function testAi() {
     setAiTesting(true); setAiMsg(null);
     try {
-      const r = await api.testAi();
-      setAiMsg({ ok: true, text: `✅ Claude replied "${r.said}" using ${r.model || 'the default model'}` });
+      const r = await api.testAi('agent');
+      setAiMsg({ ok: true, text: `✅ The AI Agent replied "${r.said}" using ${r.model || 'the default model'}` });
     } catch (e) {
-      setAiMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach Claude') });
+      setAiMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach the AI Agent') });
     } finally { setAiTesting(false); }
   }
 
@@ -2031,12 +2040,13 @@ function FaceEngineSettings() {
           )}
         </div>
 
-        {/* 🤖 Claude. Reads call summaries into leads, and powers the AI chat —
-            which has never run, because this key has never existed anywhere. */}
+        {/* 🤖 The AI Agent — the platform owner's private assistant (Raj,
+            2026-10-10). Its own key: the clients' chatbot keeps its key under
+            AI Chat → API Key, so the two never share a bill. */}
         <div className="fr-cred">
           <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
             onClick={() => setAiOpen(o => !o)} aria-expanded={aiOpen}>
-            <span>🤖 AI assistant (Claude)</span>
+            <span>🤖 AI Agent</span>
             <span className="fr-cred-chev">{aiOpen ? '▲' : '▼'}</span>
           </button>
 
@@ -2054,28 +2064,29 @@ function FaceEngineSettings() {
             </div>
 
             <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
-              Powers the AI chat and turning a call summary into a lead. Get a
-              key at console.anthropic.com — it is charged per use, a fraction
-              of a penny per call.
+              Your private AI Agent (panel → 🤖 AI Agent) — only you use it.
+              The clients' chatbot has its own key under AI Chat → API Key. Get a
+              key at console.anthropic.com — charged per use, a fraction of a
+              cent per question.
             </p>
 
             <div><label className="lbl">API key</label>
               <input type="password" style={editing ? box : roBox} readOnly={!editing}
                 placeholder="sk-ant-…"
-                value={s.anthropic_api_key || ''}
-                onChange={e => setS({ ...s, anthropic_api_key: e.target.value })} /></div>
+                value={s.agent_api_key || ''}
+                onChange={e => setS({ ...s, agent_api_key: e.target.value })} /></div>
 
             <div className="sa-sec-hd" style={{ marginTop: 22 }}>Check the key</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
               <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5 }}
                 disabled={aiTesting} onClick={testAi}>
-                {aiTesting ? 'Checking…' : 'Say hello to Claude'}
+                {aiTesting ? 'Checking…' : 'Say hello to the AI Agent'}
               </button>
               {/* 🗑️ Emptying the box and saving deliberately does NOT remove a
                   key — the form sends every field on every save, so that would
                   wipe working credentials by accident. Removing one is its own
                   act, which is also the only way to revoke a key that leaked. */}
-              {s.anthropic_api_key && (
+              {s.agent_api_key && (
                 <button style={{ padding: '7px 14px', fontSize: 12.5, background: 'var(--panel-2)',
                   border: '1px solid var(--line)', borderRadius: 7, color: 'var(--red)', cursor: 'pointer' }}
                   onClick={clearAiKey}>

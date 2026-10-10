@@ -29,9 +29,6 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
     const s = await getAllSettings();
     // mask secret
     if (s.aws_secret_key) s.aws_secret_key = s.aws_secret_key.slice(0, 4) + '••••••••' + s.aws_secret_key.slice(-4);
-    if (s.anthropic_api_key) s.anthropic_api_key = s.anthropic_api_key.slice(0, 7) + '••••••••' + s.anthropic_api_key.slice(-4);
-    // the R2 secret is masked like the others — enough to recognise which key is
-    // in place, never enough to use
     // every R2 secret is masked the same way — enough to tell which key is in
     // place, never enough to use
     for (const k of ['r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key']) {
@@ -41,7 +38,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
        access key ID there is nothing useful to recognise it by, so the whole
        thing is replaced rather than clipped. */
     if (s.smtp_pass) s.smtp_pass = '••••••••';
-    for (const k of ['quo_api_key', 'quo_webhook_secret', 'anthropic_api_key']) {
+    for (const k of ['quo_api_key', 'quo_webhook_secret', 'anthropic_api_key', 'agent_api_key']) {
       if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
     }
     res.json({ settings: s });
@@ -187,15 +184,17 @@ router.post('/settings/platform/test-email', requireAuth, requireSuperAdmin, asy
  */
 router.post('/settings/platform/test-ai', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const key = await getSetting('anthropic_api_key', '');
-    if (!key) return res.status(400).json({ error: 'Add the Claude API key first.' });
+    // which key: the AI Agent's (Settings) or the chatbot's (AI Chat → API Key)
+    const agent = req.body?.which === 'agent';
+    const key = await getSetting(agent ? 'agent_api_key' : 'anthropic_api_key', '');
+    if (!key) return res.status(400).json({ error: agent ? 'Add the AI Agent key first.' : 'Add the chatbot key first.' });
 
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         // the model actually in use — testing a different one could pass while the real one fails
-        model: (await getSetting('anthropic_model', '')) || DEFAULT_MODEL,
+        model: agent ? ((await getSetting('agent_model', '')) || 'claude-haiku-5-5') : ((await getSetting('anthropic_model', '')) || DEFAULT_MODEL),
         max_tokens: 4,
         messages: [{ role: 'user', content: 'Reply with the word: ok' }],
       }),
@@ -244,6 +243,7 @@ router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (r
     res.json({
       aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '',
       aws_region: s.aws_region || '', anthropic_api_key: s.anthropic_api_key || '',
+      agent_api_key: s.agent_api_key || '',
       r2_secret_access_key: s.r2_secret_access_key || '',
       r2_private_secret_access_key: s.r2_private_secret_access_key || '',
       r2_public_secret_access_key: s.r2_public_secret_access_key || '',
@@ -257,6 +257,9 @@ router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (r
 router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const allowed = ['face_engine', 'aws_mode', 'aws_access_key', 'aws_secret_key', 'aws_region', 'anthropic_api_key', 'anthropic_model',
+      /* 🤖 AI Agent has its own key (Raj, 2026-10-10), so Anthropic's bill
+         shows the vendor's private assistant apart from the clients' chatbot */
+      'agent_api_key', 'agent_model',
       'r2_account_id',
       // shared pair, used by either bucket that has none of its own
       'r2_access_key_id', 'r2_secret_access_key',

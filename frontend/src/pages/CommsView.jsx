@@ -184,7 +184,7 @@ function LeadState({ e, onLead, onBooking, busy }) {
       )}
       {s === 'none' && <div className="cm-leadnote">🤷 This call didn't sound like an inquiry, so no lead was made.</div>}
       {s === 'no_text' && <div className="cm-leadnote">⚠️ Quo never wrote a transcript for this call — add the lead in Leads.</div>}
-      {s === 'no_ai' && <div className="cm-leadnote">🤖 The AI isn't set up yet — add its key in Super Admin → Settings → AI, and this lead is made by itself.</div>}
+      {s === 'no_ai' && <div className="cm-leadnote">🤖 The AI isn't set up yet — add its key in Super Admin → AI Chat → API Key, and this lead is made by itself.</div>}
       {s === 'failed' && <div className="cm-leadnote">⚠️ The AI could not read this call — add the lead in Leads.</div>}
 
       {e.booking_state === 'suggested' && (
@@ -372,7 +372,7 @@ export default function CommsView() {
       } else if (r.state === 'none') {
         setSynced('🤷 That call did not sound like an inquiry, so no lead was made');
       } else if (r.state === 'no_ai') {
-        setSynced('🤖 Add the AI key in Super Admin → Settings → AI — the lead is then made by itself');
+        setSynced('🤖 Add the AI key in Super Admin → AI Chat → API Key — the lead is then made by itself');
       }
       setTimeout(() => setSynced(''), 6000);
     } catch (e) { setErr(e.message); }

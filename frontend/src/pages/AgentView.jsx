@@ -1,0 +1,66 @@
+/**
+ * 🤖 AI Agent — chat with the vendor's private assistant (feature 'agent').
+ * Loaded on demand; nobody without the feature downloads it.
+ * Stage 1: it reads the panel and answers. Voice and pop-ups come later.
+ */
+import { useState, useEffect, useRef } from 'react';
+import { api } from '../lib/api';
+import './agent.css';
+
+const SUGGEST = ["What's new today?", 'Any new leads this week?', 'Which events do I have this month?', 'Show me my packages'];
+
+export default function AgentView() {
+  const [msgs, setMsgs] = useState([]);           // { role, content }
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [usage, setUsage] = useState(null);
+  const end = useRef(null);
+
+  useEffect(() => { api.agentUsage().then(setUsage).catch(() => {}); }, []);
+  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [msgs, busy]);
+
+  async function send(q) {
+    const say = (q ?? text).trim();
+    if (!say || busy) return;
+    const next = [...msgs, { role: 'user', content: say }];
+    setMsgs(next); setText(''); setErr(''); setBusy(true);
+    try {
+      const d = await api.agentChat(next);
+      setMsgs([...next, { role: 'assistant', content: d.reply }]);
+      api.agentUsage().then(setUsage).catch(() => {});
+    } catch (e) {
+      setErr(e.message || 'The assistant could not answer');
+      setMsgs(msgs);                              // give the question back to retry
+      setText(say);
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="ag">
+      <div className="ag-chat">
+        {msgs.length === 0 && (
+          <div className="ag-hello">
+            <div className="ag-hello-t">🤖 Hi! Ask me about your leads, bookings and what's new.</div>
+            <div className="ag-chips">{SUGGEST.map(s => <button key={s} type="button" className="ag-chip" onClick={() => send(s)}>{s}</button>)}</div>
+          </div>
+        )}
+        {msgs.map((m, i) => <div key={i} className={`ag-msg ${m.role === 'user' ? 'is-me' : ''}`}>{m.content}</div>)}
+        {busy && <div className="ag-msg ag-typing">Looking that up…</div>}
+        <div ref={end} />
+      </div>
+      {err && <div className="ag-err">⚠️ {err}</div>}
+      <form className="ag-bar" onSubmit={e => { e.preventDefault(); send(); }}>
+        <textarea rows={1} value={text} placeholder="Ask anything about your business…" aria-label="Message"
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
+        <button className="ag-send" type="submit" disabled={busy || !text.trim()}>Send</button>
+      </form>
+      {usage && (
+        <div className="ag-usage">
+          {usage.ready ? `This month: $${usage.spentUsd.toFixed(2)} of $${usage.capUsd} · ${usage.requests} question${usage.requests === 1 ? '' : 's'}` : '⚠️ Needs its key — Super Admin → Settings → AI Agent'}
+        </div>
+      )}
+    </div>
+  );
+}

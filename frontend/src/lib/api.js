@@ -642,7 +642,7 @@ export const api = {
   // 📞 does the Quo key work? listing the numbers is the cheapest proof
   testQuo: () => request('/settings/platform/test-quo', { method: 'POST' }),
   // 🤖 does the Claude key work? one token back is the cheapest proof
-  testAi: () => request('/settings/platform/test-ai', { method: 'POST' }),
+  testAi: (which) => request('/settings/platform/test-ai', { method: 'POST', body: JSON.stringify({ which }) }),
   // 🗑️ removing a credential is explicit — saving an empty box does not
   clearPlatformKeys: (keys) => request('/settings/platform', { method: 'PUT', body: JSON.stringify({ clear: keys }) }),
   setPlanStorage: (planId, gb) =>
@@ -875,6 +875,9 @@ export const api = {
   rawselStatus: (albumId) => request(`/rawsel/albums/${albumId}`),
   rawselDeleteAll: (albumId) => request(`/rawsel/albums/${albumId}`, { method: 'DELETE' }),
   rawselOverview: () => request('/rawsel/overview'),
+  // 🤖 AI Agent (private)
+  agentUsage: () => request('/agent/usage'),
+  agentChat: (messages) => request('/agent/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
   rawselEditors: () => request('/rawsel/editors'),
   rawselAddEditor: (email, name) => request('/rawsel/editors', { method: 'POST', body: JSON.stringify({ email, name }) }),
   rawselRemoveEditor: (id) => request(`/rawsel/editors/${id}`, { method: 'DELETE' }),

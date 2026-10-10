@@ -50,6 +50,7 @@ import { pollComms } from './lib/commsPoll.js';
 import commsRoutes from './routes/comms.js';
 import rawselRoutes from './routes/rawsel.js';
 import editorRoutes from './routes/editor.js';
+import agentRoutes from './routes/agent.js';
 import { sweepRaws } from './lib/rawFiles.js';
 import { writeAltTexts } from './lib/rawDelivery.js';
 import deviceRoutes from './routes/devices.js';
@@ -176,6 +177,8 @@ app.use('/api/comms', gate('comms'), commsRoutes);
 app.use('/api/rawsel', gate('rawsel'), rawselRoutes);
 // 👨‍💻 the photo editor's own door — editor logins only (signed with a different key), see routes/editor.js
 app.use('/api/editor', editorRoutes);
+// 🤖 AI Agent — private like comms: the vendor's own AI agent, reading their panel
+app.use('/api/agent', gate('agent'), agentRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
 app.use('/api/ppsite', gate('ppsite'), ppsiteRoutes);
 app.use('/api/devices', deviceRoutes);

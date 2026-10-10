@@ -24,6 +24,7 @@ import RequestsView from './RequestsView.jsx';
 const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 const CommsView = lazy(() => import('./CommsView.jsx'));
 const RawSelectorView = lazy(() => import('./RawSelectorView.jsx'));
+const AgentView = lazy(() => import('./AgentView.jsx'));
 const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private — part of Calls & messages
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
@@ -32,7 +33,7 @@ import './vendor.css';
 const TAB_FEATURE = {
   leads: 'leads', bookings: 'leads', packages: 'leads', inqform: 'leads',
   contracts: 'contracts', crew: 'crew', calendar: 'calendar', galleries: 'galleries',
-  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms', liveshoot: 'liveshoot', rawsel: 'rawsel',
+  website: 'website', fileflyer: 'fileflyer', analytics: 'analytics', comms: 'comms', liveshoot: 'liveshoot', rawsel: 'rawsel', agent: 'agent',
   /* 🖨️ Rides on galleries, not its own key. It is a view of what clients sent
      from their galleries, so anybody with galleries should have it — mapping
      it to a feature nobody sells locked it behind a plan that will never
@@ -294,6 +295,7 @@ export default function VendorPanel({ onLogout }) {
             together and in a deliberate order rather than scattered down
             the list. Each still appears only for somebody granted it. */}
         {has('comms') && <div className={`nav-item ${tab==='comms'?'active':''}`} onClick={() => go('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></div>}
+        {has('agent') && <div className={`nav-item ${tab==='agent'?'active':''}`} onClick={() => go('agent')}><span className="nav-ic">🤖</span><span className="nav-txt">AI Agent</span></div>}
         {has('rawsel') && <div className={`nav-item ${tab==='rawsel'?'active':''}`} onClick={() => go('rawsel')}><span className="nav-ic">🎞️</span><span className="nav-txt">Raw Selector</span></div>}
         {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
         {has('occasions') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
@@ -332,7 +334,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               <div className="sub">Welcome back, {user?.name} 👋</div>
             </div>
           </div>
@@ -367,6 +369,8 @@ export default function VendorPanel({ onLogout }) {
           <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
         ) : tab === 'comms' ? (
           <Suspense fallback={<div className="tab-loading">Loading…</div>}><CommsView /></Suspense>
+        ) : tab === 'agent' ? (
+          <Suspense fallback={<div className="tab-loading">Loading…</div>}><AgentView /></Suspense>
         ) : tab === 'rawsel' ? (
           <Suspense fallback={<div className="tab-loading">Loading…</div>}><RawSelectorView /></Suspense>
         ) : tab === 'analytics' ? (
