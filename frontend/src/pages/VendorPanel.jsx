@@ -5603,7 +5603,7 @@ function SettingsView({ user, onProfileChange }) {
 
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }}>Timezone</label>
         {zones.length > 1 ? (
-          <select style={box} value={s.timezone || ''} onChange={e => savePrefs({ ...s, timezone: e.target.value })}>
+          <select className="pref-static" value={s.timezone || ''} onChange={e => savePrefs({ ...s, timezone: e.target.value })}>
             {zones.map(z => <option key={z.tz} value={z.tz}>{z.city}</option>)}
           </select>
         ) : (

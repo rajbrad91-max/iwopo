@@ -2235,7 +2235,7 @@ tr:hover .bk-del { opacity: .8; }
 .cs-default.is-on { background: #b08a4f; border-color: #b08a4f; color: #fff; cursor: default; }
 .cs-card { position: relative; }
 
-/* Preferences: a value shown read-only in the place of a field (one time zone
-   for the country), and the small hint under a field */
+/* Preferences: the timezone city (dropdown when the country has several,
+   read-only when it has one) and the small hint under that field */
 .pref-static { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 10px; width: 100%; margin-top: 6px; box-sizing: border-box; }
 .pref-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
