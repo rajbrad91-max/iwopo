@@ -878,6 +878,8 @@ export const api = {
   // 🤖 AI Agent (private)
   agentUsage: () => request('/agent/usage'),
   agentChat: (messages) => request('/agent/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+  agentConfirm: (id) => request('/agent/confirm', { method: 'POST', body: JSON.stringify({ id }) }),
+  agentCancel: (id) => request('/agent/cancel', { method: 'POST', body: JSON.stringify({ id }) }),
   rawselEditors: () => request('/rawsel/editors'),
   rawselAddEditor: (email, name) => request('/rawsel/editors', { method: 'POST', body: JSON.stringify({ email, name }) }),
   rawselRemoveEditor: (id) => request(`/rawsel/editors/${id}`, { method: 'DELETE' }),

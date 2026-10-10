@@ -9,7 +9,10 @@
  */
 import prisma from '../config/prisma.js';
 
-const day = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+/** A date as people say it, weekday included — "Mon 15 Mar 2027". Worked out
+ *  here, in UTC (dates are stored as calendar days), so the model never has
+ *  to compute a weekday itself; it got one wrong when it did. */
+export const day = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(/,/g, '') : null);
 const leadLine = (l) => ({
   id: l.id, name: l.name, status: l.status || 'new', event_type: l.event_type, event_date: day(l.event_date),
   location: l.location, email: l.email, phone: l.phone, received: day(l.created_at),

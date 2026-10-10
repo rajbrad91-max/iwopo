@@ -15,6 +15,10 @@ import { requireAuth } from '../middleware/auth.js';
 import { getSetting } from '../lib/settings.js';
 import { limit } from '../middleware/rateLimit.js';
 import { TOOLS, runTool } from '../lib/agentTools.js';
+import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction } from '../lib/agentActions.js';
+
+const ALL_TOOLS = [...TOOLS, ...ACTION_TOOLS];
+const ACTIONS = new Set(ACTION_TOOLS.map(t => t.name));
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -63,7 +67,12 @@ The person talking to you runs the business. English may be their second languag
 Use the tools to look things up; never invent a client, date, amount or status. If something is not in the panel, say so plainly.
 Answer short and clear, like a helpful office manager: the key facts first, a few short lines, no long paragraphs. Dates as "Sat 14 Jun". Money with the currency sign.
 If a request is unclear, ask ONE short question.
-For now you can only read. If asked to send, change or delete anything (contracts, packages, messages, bookings), say you will be able to do that soon, and offer what you can see instead.`;
+Dates in tool results already carry their weekday — copy them as given and never work out a weekday yourself.
+When asked to CHECK a contract (or "is it right / any mistakes"), do not summarise it: compare it line by line with the lead and the vendor's packages that preview_contract returns — names, event day and weekday, venue, times and hours, guests, package and price, deposit and balance, everything the client asked for in their form answers — and list each mismatch, gap or leftover text as a short numbered point. If nothing is wrong, say so in one line.
+You can draft, inspect and check contracts with preview_contract — in the chat only. You can NEVER send, release or save a contract: the vendor does that themselves in Contracts & Invoices. Say so plainly if asked.
+You may PROPOSE an email (answers, instructions, reminders) or sending packages; the vendor gets a Yes/No card and nothing goes out until they press Yes. After proposing, say in one line what is waiting for their Yes. Never claim something was sent.
+Packages can only be proposed for a contract the vendor has already released.
+For anything else that would change data (bookings, payments, deleting), say it is not something you can do yet.`;
 }
 
 router.get('/usage', requireAuth, async (req, res) => {
@@ -98,11 +107,12 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
     const messages = [...history];
     let inTok = 0, outTok = 0;
     const looked = [];
+    const proposals = [];         // actions waiting for the vendor's Yes
     for (let step = 0; step < MAX_STEPS; step++) {
       const r = await fetch(API_URL, {
         method: 'POST',
         headers: { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: systemPrompt(vendor?.business_name, today), tools: TOOLS, messages }),
+        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: systemPrompt(vendor?.business_name, today), tools: ALL_TOOLS, messages }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -115,21 +125,35 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
       if (d.stop_reason !== 'tool_use' || !uses.length) {
         await record(v, inTok, outTok, cfg);
         const reply = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
-        return res.json({ reply: reply || (d.stop_reason === 'max_tokens' ? 'That needs a longer answer than I can give in one go — could you ask it in smaller parts?' : 'Sorry, I could not put an answer together — please ask again.'), looked, usage: { inTok, outTok } });
+        return res.json({ proposals, reply: reply || (d.stop_reason === 'max_tokens' ? 'That needs a longer answer than I can give in one go — could you ask it in smaller parts?' : 'Sorry, I could not put an answer together — please ask again.'), looked, usage: { inTok, outTok } });
       }
       messages.push({ role: 'assistant', content: d.content });
       const results = [];
       for (const u of uses) {
         looked.push(u.name);
         let out;
-        try { out = await runTool(u.name, u.input || {}, v); } catch (e) { out = { error: e.message }; }
+        try {
+          out = ACTIONS.has(u.name)
+            // acting tools run as the vendor themself, through the panel's own endpoints
+            ? await runActionTool(u.name, u.input || {}, v, req.headers.authorization)
+            : await runTool(u.name, u.input || {}, v);
+        } catch (e) { out = { error: e.message }; }
+        if (out?.proposal) { proposals.push(out.proposal); out = { waiting_for_vendor: 'A Yes/No card is shown to the vendor; nothing has been sent.' }; }
         results.push({ type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(out).slice(0, 20000) });
       }
       messages.push({ role: 'user', content: results });
     }
     await record(v, inTok, outTok, cfg);
-    res.json({ reply: 'That needed more looking up than I can do in one go — could you ask it in smaller parts?', looked, usage: { inTok, outTok } });
+    res.json({ proposals, reply: 'That needed more looking up than I can do in one go — could you ask it in smaller parts?', looked, usage: { inTok, outTok } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+/** ✅ The vendor pressed Yes on a proposed action. */
+router.post('/confirm', requireAuth, async (req, res) => {
+  try { res.json(await confirmAction(req.body?.id, vid(req), req.headers.authorization)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+/** ❌ The vendor pressed No. */
+router.post('/cancel', requireAuth, (req, res) => { cancelAction(req.body?.id, vid(req)); res.json({ ok: true }); });
 
 export default router;
