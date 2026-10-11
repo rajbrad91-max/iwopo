@@ -898,7 +898,8 @@ export const api = {
   // ✍️ save the person in Quo — shows in the Quo phone app too
   commsSaveContact: (c) => request('/comms/contact', { method: 'POST', body: JSON.stringify(c) }),
   // 💬 send a text through Quo, from the business number
-  commsSendText: (number, text) => request('/comms/message', { method: 'POST', body: JSON.stringify({ number, text }) }),
+  // start: true opens a NEW conversation with a number never called or texted before
+  commsSendText: (number, text, start = false) => request('/comms/message', { method: 'POST', body: JSON.stringify({ number, text, start }) }),
   // 📋 make a lead from a call — waits for the transcript if it is not ready yet
   commsLeadRequest: (which) => request('/comms/lead-request', { method: 'POST', body: JSON.stringify(which) }),
   // 🟢 answer "sounds booked — approve?"

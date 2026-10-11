@@ -169,8 +169,9 @@ router.post('/contact', requireAuth, async (req, res) => {
  *
  * 🔒 Only to someone this vendor already has a conversation with, at most
  * twenty a minute — a bug or a stolen session must not become a spam cannon.
- * The one exception is `start: true` — a NEW conversation the owner asked for
- * by name (Tornado sends it only after his yes, Raj 2026-10-11); it goes out
+ * The one exception is `start: true` — a NEW conversation the owner starts on
+ * purpose: the New message button here, or Tornado after his yes (Raj
+ * 2026-10-11); it goes out
  * from the line picked in Super Admin, or the business's first Quo line, under
  * the same twenty-a-minute cap.
  */

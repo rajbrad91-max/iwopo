@@ -433,6 +433,34 @@ export default function CommsView() {
     finally { setSending(false); }
   }
 
+  /* ➕ A NEW conversation (Raj, 2026-10-11): someone you have never called or
+     texted. The text goes first — that is what makes the thread — and the
+     name, if given, is then saved as a Quo contact like any other. */
+  const [fresh, setFresh] = useState(null);           // { number, first_name, last_name, text }
+  const [freshBusy, setFreshBusy] = useState(false);
+  async function sendFresh() {
+    const number = fresh.number.trim(), text = fresh.text.trim();
+    if (digits(number).length < 10 || !text || freshBusy) return;
+    setFreshBusy(true); setErr('');
+    try {
+      const r = await api.commsSendText(number, text, true);
+      let ev = r.event;
+      if (fresh.first_name.trim()) {
+        const c = await api.commsSaveContact({ number, first_name: fresh.first_name.trim(), last_name: fresh.last_name.trim(), email: '' }).catch(() => null);
+        if (c && ev) ev = { ...ev, contact_name: c.name };
+      }
+      if (ev) {
+        setEvents(prev => (prev.some(e => e.external_id === ev.external_id) ? prev : [ev, ...prev]));
+        newest.current = ev.occurred_at;
+      }
+      setParty(personKey(number));
+      setFresh(null);
+      setSynced('✅ Sent — the conversation is open');
+      setTimeout(() => setSynced(''), 5000);
+    } catch (e) { setErr(e.message); }
+    finally { setFreshBusy(false); }
+  }
+
   /* A sync that found nothing new used to say nothing at all, so a working
      sync and a broken one looked the same. It always answers now. */
   async function syncNow() {
@@ -460,6 +488,7 @@ export default function CommsView() {
         <button className={`cm-f ${kind === '' ? 'is-on' : ''}`} onClick={() => setKind('')}>All</button>
         <button className={`cm-f ${kind === 'call' ? 'is-on' : ''}`} onClick={() => setKind('call')}>📞 Calls</button>
         <button className={`cm-f ${kind === 'message' ? 'is-on' : ''}`} onClick={() => setKind('message')}>💬 Texts</button>
+        <button className="cm-f is-on" onClick={() => setFresh({ number: '', first_name: '', last_name: '', text: '' })}>＋ New message</button>
         <button className="cm-f" disabled={syncing} onClick={syncNow}>{syncing ? 'Syncing…' : '↻ Sync now'}</button>
         <span className="cm-live" title="New calls and texts appear on their own">● live</span>
       </div>
@@ -557,6 +586,40 @@ export default function CommsView() {
               )}
             </>)}
           </section>
+        </div>
+      )}
+
+      {fresh && (
+        <div className="cm-modal" onClick={() => setFresh(null)}>
+          <div className="cm-sheet" onClick={ev => ev.stopPropagation()}>
+            <div className="cm-sheet-h">New message — sent from your business number through Quo. A name, if you add one, is saved as a contact in Quo too.</div>
+            <div className="cm-grid">
+              <div className="cm-span">
+                <label className="lbl">Phone number</label>
+                <input className="cm-input" type="tel" inputMode="tel" autoComplete="off" placeholder="604 555 0123" autoFocus
+                  value={fresh.number} onChange={ev => setFresh({ ...fresh, number: ev.target.value })} />
+              </div>
+              <div>
+                <label className="lbl">First name (optional)</label>
+                <input className="cm-input" autoComplete="off" value={fresh.first_name} onChange={ev => setFresh({ ...fresh, first_name: ev.target.value })} />
+              </div>
+              <div>
+                <label className="lbl">Last name (optional)</label>
+                <input className="cm-input" autoComplete="off" value={fresh.last_name} onChange={ev => setFresh({ ...fresh, last_name: ev.target.value })} />
+              </div>
+              <div className="cm-span">
+                <label className="lbl">Message</label>
+                <textarea className="cm-input cm-newtext" rows={4} maxLength={1600} placeholder="Hi, it's Raj from Perfect Poses…"
+                  value={fresh.text} onChange={ev => setFresh({ ...fresh, text: ev.target.value })} />
+              </div>
+            </div>
+            <div className="cm-sheet-f">
+              <button className="cm-f" onClick={() => setFresh(null)}>Cancel</button>
+              <button className="cm-f is-on" disabled={freshBusy || digits(fresh.number).length < 10 || !fresh.text.trim()} onClick={sendFresh}>
+                {freshBusy ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
