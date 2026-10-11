@@ -64,13 +64,16 @@ function badgeText(b) {
   }
   return `Lead · ${STATUS_WORD[b.status] || 'Open'}`;
 }
-function Badge({ b, link }) {
+/* withName: the number is not saved as a contact, so the badge says WHO the
+   lead is (Raj, 2026-10-11: "so I would know we had a lead from this number") */
+function Badge({ b, link, withName = false }) {
   if (!b) return null;
   const cls = `cm-badge is-${b.kind}`;
-  if (!link) return <span className={cls}>{badgeText(b)}</span>;
+  const text = withName && b.name ? `${b.name} · ${badgeText(b)}` : badgeText(b);
+  if (!link) return <span className={cls}>{text}</span>;
   return (
     <a className={cls} href={b.kind === 'booked' ? `/panel/bookings/${b.lead_id}` : `/panel/leads/${b.lead_id}`}
-      title={b.kind === 'booked' ? 'Open this booking' : 'Open this lead'}>{badgeText(b)}</a>
+      title={b.kind === 'booked' ? 'Open this booking' : 'Open this lead'}>{text}</a>
   );
 }
 
@@ -412,6 +415,23 @@ export default function CommsView() {
     finally { setSaving(false); }
   }
 
+  /* 💾 One click: save an unsaved number under the name of the lead it matches.
+     Same save as "Save contact" (to Quo, so the phone shows it too). */
+  async function saveAsLead(person) {
+    const b = badges[person.key];
+    if (!b?.name || saving) return;
+    const [first, ...rest] = String(b.name).trim().split(/\s+/);
+    setSaving(true); setErr('');
+    try {
+      const r = await api.commsSaveContact({ number: person.number, first_name: first, last_name: rest.join(' '), email: b.email || '' });
+      const k = personKey(person.number);
+      setEvents(prev => prev.map(e => (personKey(other(e)) === k ? { ...e, contact_name: r.name } : e)));
+      setSynced(`✅ Saved as ${r.name} — it shows on your phone too`);
+      setTimeout(() => setSynced(''), 5000);
+    } catch (e) { setErr(e.message); }
+    finally { setSaving(false); }
+  }
+
   /* 💬 Texting from the thread. Sent through Quo from the business number, so
      it also shows in the Quo app; the sent text joins the conversation at once.
      Enter sends, Shift+Enter makes a new line — as in every chat app. */
@@ -509,7 +529,7 @@ export default function CommsView() {
                 <span className="cm-av" aria-hidden="true">{initials(p.name)}</span>
                 <span className="cm-pmain">
                   <span className="cm-pname">{p.name || pretty(p.number)}</span>
-                  <Badge b={badges[p.key]} />
+                  <Badge b={badges[p.key]} withName={!p.saved} />
                   <span className="cm-plast">
                     {p.last.kind === 'call'
                       ? (missed(p.last) ? 'Missed call' : `${p.last.direction === 'incoming' ? 'Incoming' : 'Outgoing'} call ${mmss(p.last.duration_sec)}`)
@@ -533,7 +553,7 @@ export default function CommsView() {
                 <span className="cm-av is-big" aria-hidden="true">{initials(active.name)}</span>
                 <span className="cm-cwho">
                   <span className="cm-cname">{active.name || pretty(active.number)}</span>
-                  <Badge b={badges[active.key]} link />
+                  <Badge b={badges[active.key]} link withName={!active.saved} />
                   {active.name && <span className="cm-cnum">{pretty(active.number)}</span>}
                   <span className="cm-ccount">{active.calls} call{active.calls === 1 ? '' : 's'}, {active.texts} text{active.texts === 1 ? '' : 's'}</span>
                 </span>
@@ -543,6 +563,13 @@ export default function CommsView() {
                     {!badges[active.key] && thread.some(e => e.kind === 'call' && e.status === 'completed') && (
                       <button className="cm-f" disabled={busyId === `p:${active.key}`}
                         onClick={() => requestLead({ number: active.number }, `p:${active.key}`)}>📋 Create lead</button>
+                    )}
+                    {/* 💡 unsaved, but a lead used this number — save it under the lead's name in one click */}
+                    {!active.saved && badges[active.key]?.name && (
+                      <button className="cm-f cm-suggest" disabled={saving} onClick={() => saveAsLead(active)}
+                        title={`Save this number as ${badges[active.key].name} — the name on the lead`}>
+                        💾 Save as {badges[active.key].name}
+                      </button>
                     )}
                     <button className="cm-f" onClick={() => openContact(active)}>{active.saved ? 'Edit contact' : 'Save contact'}</button>
                     <a className="cm-f" href={`tel:${active.number}`}>Call</a>

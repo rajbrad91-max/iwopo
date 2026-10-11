@@ -182,3 +182,6 @@ a.cm-leadnote:hover { text-decoration: underline; }
 /* ➕ New message sheet */
 .cm-span { grid-column: 1 / -1; }
 .cm-newtext { min-height: 96px; resize: vertical; font: inherit; }
+
+/* 💡 "Save as <lead name>" — a light suggestion, not a call to action */
+.cm-suggest { border-style: dashed; border-color: var(--teal, #0f9f8f); color: var(--teal, #0f9f8f); background: transparent; }
