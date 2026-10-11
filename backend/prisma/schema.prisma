@@ -1259,3 +1259,17 @@ model agent_conversations {
 
   @@index([vendor_id, created_at], map: "idx_agent_conversations_vendor")
 }
+
+/// 👀 TEMPORARY (2026-10-11, remove after about a month): which panel page a
+/// tracked tester was on, from when to when (routes/activity.js).
+model tester_activity {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  path       String   @db.VarChar(300)
+  started_at DateTime @db.Timestamp(6)
+  ended_at   DateTime @db.Timestamp(6)
+  /// live (the panel pinged) | log (rebuilt from the server's access log)
+  source     String   @default("live") @db.VarChar(8)
+
+  @@index([user_id, started_at], map: "idx_tester_activity_user")
+}

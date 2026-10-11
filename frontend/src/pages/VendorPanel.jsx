@@ -6,6 +6,7 @@ import PublicSite from './PublicSite';
 import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue, applyVendorClock, vendorDayKey } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
+import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
@@ -126,6 +127,7 @@ function StorageBar({ onUpgrade }) {
 let csLeaveGuard = null;
 
 export default function VendorPanel({ onLogout }) {
+  useActivityPing();                 // 👀 TEMPORARY — records pages only for the tracked tester
   const [services, setServices] = useState([]);
   // seeded from the last session so the sidebar and tab render immediately;
   // the network copy replaces it a moment later and the server decides regardless

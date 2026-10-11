@@ -884,6 +884,9 @@ export const api = {
   agentPushSubscribe: (sub) => request('/agent/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   agentPushUnsubscribe: (endpoint) => request('/agent/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) }),
   agentConfirm: (id) => request('/agent/confirm', { method: 'POST', body: JSON.stringify({ id }) }),
+  // 👀 TEMPORARY — tester activity
+  activityPing: (path) => request('/activity/ping', { method: 'POST', body: JSON.stringify({ path }) }),
+  testerActivity: () => request('/activity/report'),
   agentKnowledge: () => request('/agent/knowledge'),
   agentAddFact: (text) => request('/agent/knowledge', { method: 'POST', body: JSON.stringify({ text }) }),
   agentDeleteFact: (id) => request(`/agent/knowledge/${id}`, { method: 'DELETE' }),
