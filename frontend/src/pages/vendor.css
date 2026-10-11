@@ -64,7 +64,7 @@
   border-radius: 20px; padding: 15px 16px;
   background: linear-gradient(160deg, var(--panel-2), var(--fill));
   border: 1px solid var(--line);
-  position: relative; overflow: hidden;
+  position: relative;     /* no overflow: hidden — it was for the old top hairline; the hover bridge needs to reach below */
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) ease,
               border-color var(--dur) ease;
 }
@@ -1016,12 +1016,15 @@
 .gal-err { color: #fb7185; font-size: 13px; font-weight: 600; }
 .gal-empty { padding: 60px 40px; text-align: center; color: var(--muted); border-radius: 16px; border-style: dashed; }
 .gal-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap: 18px; }
+/* overflow stays visible so the hover bridge (index.css) can reach below the
+   card; the cover clips its own photo, rounded at the top (2026-10-11) */
+/* (the card also wears .table-wrap, which clips — overflow: visible wins here) */
 .gal-card {
-  padding: 0; cursor: pointer; overflow: hidden; border-radius: 16px; transition: transform .18s, box-shadow .18s, border-color .18s;
+  padding: 0; cursor: pointer; overflow: visible; border-radius: 16px; transition: transform .18s, box-shadow .18s, border-color .18s;
   position: relative;
 }
 .gal-card:hover { transform: translateY(-3px); border-color: #2dd4bf66; box-shadow: 0 12px 30px rgba(0,0,0,.25); }
-.gal-card-cover { aspect-ratio: 3/2; background: linear-gradient(135deg, var(--panel-2), var(--panel)); overflow: hidden; position: relative; }
+.gal-card-cover { aspect-ratio: 3/2; background: linear-gradient(135deg, var(--panel-2), var(--panel)); overflow: hidden; position: relative; border-radius: 16px 16px 0 0; }
 .gal-card-cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
 .gal-card:hover .gal-card-cover img { transform: scale(1.05); }
 .gal-card-noimg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 44px; opacity: .35; }

@@ -135,6 +135,15 @@ body {
              border-color var(--dur) ease;
 }
 .card:hover { transform:translateY(-4px); border-color:#2dd4bf3d; box-shadow:var(--shadow); }
+/* 🪜 hover bridge (2026-10-11). Cards that lift on hover lifted their bottom
+   edge away from a pointer resting right on it: the card un-hovered, dropped
+   back under the pointer, hovered and lifted again — a fast shake. While a
+   card is hovered, an invisible strip hangs under it covering the gap the
+   lift leaves, so the pointer stays "on" the card until it really leaves. */
+:is(.card, .gal-card, .ev-card, .lead-stat, .sa-card, .sa-manage-card, .sl-svc) { position: relative; }
+:is(.card, .gal-card, .ev-card, .lead-stat, .sa-card, .sa-manage-card, .sl-svc):hover::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 8px;
+}
 .card:active { transform:translateY(-1px) scale(.985); }
 .card .label { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:1px; font-weight:600; }
 .card .value { font-size:30px; font-weight:800; margin-top:6px; }
