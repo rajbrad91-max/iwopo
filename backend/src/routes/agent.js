@@ -20,6 +20,7 @@ import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction } from '../lib
 import { vapid } from '../lib/agentPush.js';
 import { liveSession } from '../lib/geminiLive.js';
 import { emailWarning } from '../lib/emailCheck.js';
+import { compactResult } from '../lib/tornadoLean.js';
 import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
 
@@ -215,6 +216,48 @@ router.post('/conversations', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* ── 💵 Tornado's voice cost ─────────────────────────────────────────────
+   Google list prices for gemini-3.1-flash-live (USD per million tokens),
+   overridable in platform_settings if Google changes them. */
+const VOICE_PRICES = { in_text: 0.75, in_audio: 3.0, out_text: 4.5, out_audio: 12.0 };
+const vDay = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Vancouver' });
+async function voicePrices() {
+  const out = { ...VOICE_PRICES };
+  for (const k of Object.keys(out)) { const v = Number(await getSetting(`gemini_price_${k}`, '')); if (v > 0) out[k] = v; }
+  return out;
+}
+async function voiceTotals(v) {
+  const day = vDay(), month = day.slice(0, 7);
+  const rows = await prisma.agent_voice_usage.findMany({ where: { vendor_id: v, day: { startsWith: month } }, select: { day: true, cost_micro: true } });
+  const usd = (list) => list.reduce((t, r) => t + Number(r.cost_micro), 0) / 1e6;
+  const rate = Number(await getSetting('usd_to_cad', '')) || 1.38;
+  const today = usd(rows.filter(r => r.day === day)), mon = usd(rows);
+  return { today_usd: today, month_usd: mon, today_cad: today * rate, month_cad: mon * rate, usd_to_cad: rate, month };
+}
+
+/** The app reports the tokens of each reply; the day's total grows. */
+router.post('/voice-usage', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req), p = await voicePrices();
+    const n = (k) => Math.max(0, Math.min(5e6, Math.round(Number(req.body?.[k]) || 0)));
+    const t = { in_text: n('in_text'), in_audio: n('in_audio'), out_text: n('out_text'), out_audio: n('out_audio') };
+    const micro = Math.round(Object.keys(t).reduce((sum, k) => sum + t[k] * p[k], 0));      // tokens × $/M = micro-dollars
+    if (micro || Object.values(t).some(Boolean)) {
+      const day = vDay();
+      await prisma.agent_voice_usage.upsert({
+        where: { vendor_id_day: { vendor_id: v, day } },
+        create: { vendor_id: v, day, ...Object.fromEntries(Object.entries(t).map(([k, x]) => [k, BigInt(x)])), cost_micro: BigInt(micro) },
+        update: { ...Object.fromEntries(Object.entries(t).map(([k, x]) => [k, { increment: BigInt(x) }])), cost_micro: { increment: BigInt(micro) }, updated_at: new Date() },
+      });
+    }
+    res.json({ added_usd: micro / 1e6, ...(await voiceTotals(v)) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.get('/voice-usage', requireAuth, async (req, res) => {
+  try { res.json({ ...(await voiceTotals(vid(req))), prices: await voicePrices() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /** 📥 New texts, calls and leads since `since` — the app polls this during a conversation. */
 router.get('/inbox', requireAuth, async (req, res) => {
   try {
@@ -251,7 +294,7 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
     const v = vid(req);
     const name = String(req.body?.name || '');
     const input = (req.body?.parameters && typeof req.body.parameters === 'object') ? req.body.parameters : {};
-    if (name === 'confirm_action') return res.json({ result: await confirmAction(input.proposal_id, v, req.headers.authorization) });
+    if (name === 'confirm_action') return res.json({ result: compactResult(await confirmAction(input.proposal_id, v, req.headers.authorization)) });
     if (name === 'cancel_action') { cancelAction(input.proposal_id, v); return res.json({ result: { ok: true, message: 'Cancelled — nothing was done.' } }); }
     let out;
     if (READ.has(name)) out = await runTool(name, input, v);
@@ -264,7 +307,7 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
         result: { ...Object.fromEntries(Object.entries(out).filter(([k]) => k !== 'proposal')), proposal_id: out.proposal.id, about_to: out.proposal.title, details: out.proposal.details, next: 'Tell the owner in one short sentence what you will do and ask if you should go ahead. Call confirm_action with this proposal_id only after a clear yes.' },
       });
     }
-    res.json({ result: out });
+    res.json({ result: compactResult(out) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -35,9 +35,11 @@ export async function waitingForYou(vendorId) {
     } else t.lastOut = e;
     byNum.set(n, t);
   }
+  // a name for each number — from the contact index (a lead's name), else "the number ending 7303"
+  const known = Object.fromEntries((await prisma.agent_contacts.findMany({ where: { vendor_id: v, phone: { in: [...byNum.keys()] } }, select: { phone: true, name: true } })).map(c => [c.phone, c.name]));
   const lines = [];
   for (const [n, t] of byNum) {
-    const who = t.name || n;
+    const who = t.name || known[n] || `the number ending ${n.slice(-4)}`;
     if (t.lastIn && (!t.lastOut || t.lastIn.occurred_at > t.lastOut.occurred_at)) lines.push(`unanswered text from ${who} (${when(t.lastIn.occurred_at)}): "${String(t.lastIn.body || '').slice(0, 120)}"`);
     if (t.missed && (!t.lastOut || t.missed.occurred_at > t.lastOut.occurred_at)) lines.push(`missed call from ${who} (${when(t.missed.occurred_at)}), not returned`);
   }

@@ -15,6 +15,7 @@ import { dueSoonLine, zoneOf } from './agentReminders.js';
 import { knowledgeText, briefingText, recentConversations } from './agentKnowledge.js';
 import prisma from '../config/prisma.js';
 import { waitingForYou } from './agentWaiting.js';
+import { SHORT, shortParams } from './tornadoLean.js';
 
 const API = 'https://generativelanguage.googleapis.com';
 export const GEMINI_DEFAULTS = { model: 'gemini-3.1-flash-live-preview', voice: 'Charon' };
@@ -57,10 +58,12 @@ export async function liveSetup(vendorId) {
     now: now.toLocaleString('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
     greeting: hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening',
     due_soon: await dueSoonLine(vendorId),
-    knowledge: await knowledgeText(vendorId),
-    briefing: await briefingText(vendorId),
-    recent: await recentConversations(vendorId),
-    waiting: await waitingForYou(vendorId),
+    // lessons first (they must be followed every turn), trimmed — facts and memories come from recall
+    knowledge: (await knowledgeText(vendorId)).slice(0, 1500),
+    // the business picture comes from today_summary / calendar / money when asked — not re-read every turn
+    briefing: 'not loaded up front — use today_summary, calendar, money, galleries and the other tools when a question needs it',
+    recent: await recentConversations(vendorId, 2),
+    waiting: (await waitingForYou(vendorId)).slice(0, 900),
   };
   const fill = (t) => t.replace(/\{\{(\w+)\}\}/g, (m, k) => (vars[k] ?? m));
   /* 👋 Raj, 2026-10-11: "good morning, Raj" only the first time or two in the
@@ -76,7 +79,7 @@ export async function liveSetup(vendorId) {
   let opening, carryOn = '';
   if (minutesSince < 20 && last?.transcript) {
     opening = 'Yes, Raj?';
-    carryOn = `\n\nYOU WERE JUST TALKING ${Math.max(1, Math.round(minutesSince))} minute(s) ago — this is the SAME conversation, carry on from it. Do not greet again or repeat what was already said. The end of it:\n${last.transcript.slice(-2500)}`;
+    carryOn = `\n\nYOU WERE JUST TALKING ${Math.max(1, Math.round(minutesSince))} minute(s) ago — this is the SAME conversation, carry on from it. Do not greet again or repeat what was already said. The end of it:\n${last.transcript.slice(-1200)}`;
   } else if (talksToday < 2) {
     opening = fill("{{greeting}}, {{user_name}}! Tornado here. What can I do for you?");
   } else {
@@ -89,14 +92,19 @@ START: the moment the conversation opens, say exactly: "${opening}" — then lis
     model: `models/${c.model}`,
     generationConfig: {
       responseModalities: ['AUDIO'],
+      // little hidden thinking before it speaks: billed as text, and slower — it reads tool results anyway
+      thinkingConfig: { thinkingLevel: 'minimal' },
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: c.voice } } },
     },
     systemInstruction: { parts: [{ text: instructions }] },
     tools: [
-      { functionDeclarations: VOICE_TOOLS.map(t => ({ name: t.name, description: t.description, parameters: toGemini(t.input_schema) })) },
+      // ✂️ one-line descriptions (tornadoLean.js): they are re-sent with every reply
+      { functionDeclarations: VOICE_TOOLS.map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
       // 🔎 the world as it is today — new cameras, prices, news (Raj, 2026-10-11: it denied the Canon R6 Mark V exists)
       { googleSearch: {} },
     ],
+    // a long conversation keeps its recent part and condenses the rest, instead of re-billing all of it
+    contextWindowCompression: { slidingWindow: {}, triggerTokens: 16000 },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
   };
