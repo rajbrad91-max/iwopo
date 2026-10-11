@@ -833,6 +833,7 @@ model vendors {
   agent_memory            agent_memory[]
   agent_briefing          agent_briefing?
   agent_conversations     agent_conversations[]
+  agent_contacts          agent_contacts[]
 }
 
 model album_faces {
@@ -1272,4 +1273,24 @@ model tester_activity {
   source     String   @default("live") @db.VarChar(8)
 
   @@index([user_id, started_at], map: "idx_tester_activity_user")
+}
+
+/// 📇 Tornado's contact index (lib/agentContacts.js): one short line per person
+/// the business has dealt with — leads, calls, texts, galleries, money —
+/// rebuilt every 5 minutes, searched by lookup_contact.
+model agent_contacts {
+  id         Int       @id @default(autoincrement())
+  vendor_id  Int
+  /// p:<last 10 digits> | e:<email> | n:<name>
+  key        String    @db.VarChar(200)
+  name       String?   @db.VarChar(120)
+  phone      String?   @db.VarChar(20)
+  email      String?   @db.VarChar(200)
+  line       String
+  last_seen  DateTime? @db.Timestamp(6)
+  updated_at DateTime  @default(now()) @db.Timestamp(6)
+  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([vendor_id, key], map: "uq_agent_contacts_vendor_key")
+  @@index([vendor_id, phone], map: "idx_agent_contacts_phone")
 }

@@ -69,7 +69,10 @@ export async function upcomingFor(vendorId, aheadDays = AHEAD_DAYS) {
     if (l.event_date && new Date(l.event_date) < today) {
       const on = nextOccurrence(l.event_date, today);
       const days = daysBetween(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())), on);
-      if (on && days <= aheadDays) {
+      // at least one year must have passed: an event dated TODAY compared "earlier
+      // than now" by the hour and became "Jerry's anniversary is today" (2026-10-11)
+      const yearsOn = on ? on.getUTCFullYear() - new Date(l.event_date).getUTCFullYear() : 0;
+      if (on && yearsOn >= 1 && days <= aheadDays) {
         out.push({
           lead_id: l.id, name: l.name, email: l.email,
           kind: 'anniversary',

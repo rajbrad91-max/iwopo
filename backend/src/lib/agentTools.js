@@ -10,6 +10,7 @@
 import prisma from '../config/prisma.js';
 import { zoneOf, atLocal, nice } from './agentReminders.js';
 import { PANEL_TOOLS, PANEL_TOOL_NAMES, runPanelTool } from './agentPanelTools.js';
+import { lookupContacts } from './agentContacts.js';
 
 /** A date as people say it, weekday included — "Mon 15 Mar 2027". Worked out
  *  here, in UTC (dates are stored as calendar days), so the model never has
@@ -71,6 +72,11 @@ export const TOOLS = [
     input_schema: { type: 'object', properties: { days: { type: 'integer', minimum: 1, maximum: 365 } }, additionalProperties: false },
   },
   {
+    name: 'lookup_contact',
+    description: "The quick scan of the WHOLE history for a person: give a phone number (any part, any format), an email or a name, and get one line per match — every inquiry they sent (event, date, booked or not, done, delivered, paid), their calls and texts (first contact, last message), their galleries. Use it FIRST whenever a person, number or email comes up (\"who texted me from 604…\", \"has Sanjeev been with us before?\"). Then get_lead or calls_and_messages for details.",
+    input_schema: { type: 'object', properties: { query: { type: 'string', description: 'phone number, email or name' } }, required: ['query'] },
+  },
+  {
     name: 'list_reminders',
     description: "The vendor's open reminders — promised deliveries, tasks and alarms — soonest first, with how many days are left. Deliveries for leads already marked delivered are left out.",
     input_schema: { type: 'object', properties: { days: { type: 'integer', description: 'how far ahead to look (default 60)' } } },
@@ -92,8 +98,8 @@ export const TOOLS = [
   },
   {
     name: 'complete_reminder',
-    description: 'Mark a reminder done (or cancel it) so it stops warning.',
-    input_schema: { type: 'object', properties: { id: { type: 'integer', description: 'the reminder id' } }, required: ['id'] },
+    description: "Close a reminder so it stops warning — call it whenever the owner says the thing is done, delivered, sent, sorted or cancelled. Give its id (from list_reminders) or words from its title (e.g. \"Anmol\"). A memory note does NOT stop a reminder; only this does.",
+    input_schema: { type: 'object', properties: { id: { type: 'integer', description: 'the reminder id' }, match: { type: 'string', description: 'words from the reminder title, if no id' } } },
   },
   {
     name: 'remember',
@@ -152,6 +158,8 @@ export async function runTool(name, input, vendorId) {
         today: day(now),
         new_leads_not_opened: newLeads.map(leadLine),
         booked_events_next_14_days: upcoming.map(leadLine),
+        // a shoot TODAY or TOMORROW counts whatever its status — not yet booked is said plainly, not left out
+        events_today_and_tomorrow_any_status: (await prisma.leads.findMany({ where: { ...live, event_date: { gte: new Date(now.toDateString()), lte: new Date(new Date(now.toDateString()).getTime() + 2 * 86400e3 - 1) } }, orderBy: { event_date: 'asc' }, take: 15 })).map(l => ({ ...leadLine(l), starts: l.timing_from, ends: l.timing_to, booked: l.status === 'booked' })),
         photo_selections_sent_last_7_days: selections.map(s => ({ client: s.albums.title, photos_picked: s.albums._count.selections, sent: day(s.updated_at) })),
         latest_notifications: notices.map(n => ({ title: n.title, detail: n.body, when: n.created_at, read: !!n.seen_at })),
       };
@@ -199,7 +207,8 @@ export async function runTool(name, input, vendorId) {
       const missing = [['guests', l.guests], ['email', l.email], ['phone', l.phone], ['venue', l.location], ['start time', l.timing_from], ['event date', l.event_date]].filter(([, val]) => val === null || val === undefined || val === '').map(([k]) => k);
       return {
         ...leadLine(l), role: l.role, instagram: l.instagram, heard_about_us: l.heard,
-        not_recorded: missing.length ? `${missing.join(', ')} — say plainly these are not recorded and offer to add them` : 'nothing important missing',
+        // a detail may be written in the notes or form answers instead of its own field ("starts at 6 AM") — read those first
+        not_in_their_own_fields: missing.length ? `${missing.join(', ')} — but READ client_notes, private_notes and form_answers first: a time or guest count is often written there. Only if it is nowhere, say it is not recorded and offer to add it to its field.` : 'nothing important missing',
         payments: { paid_total: pays.reduce((sum, p) => sum + Number(p.amount || 0), 0), list: pays.map(p => ({ amount: Number(p.amount), method: p.method, note: p.note, on: day(p.paid_at) })) },
         delivered: !!l.delivered, booked_package_price: l.package_snapshot?.price ?? null,
         times: [l.timing_from, l.timing_to].filter(Boolean).join(' to ') || null, hours: l.hours, guests: l.guests,
@@ -213,6 +222,10 @@ export async function runTool(name, input, vendorId) {
       const until = new Date(now.getTime() + (Number(input.days) || 30) * 86400e3);
       const rows = await prisma.leads.findMany({ where: { ...live, status: 'booked', event_date: { gte: new Date(now.toDateString()), lte: until } }, orderBy: { event_date: 'asc' }, take: 40 });
       return { count: rows.length, events: rows.map(leadLine) };
+    }
+    case 'lookup_contact': {
+      const lines = await lookupContacts(v, input.query, 5);
+      return lines.length ? { matches: lines } : { matches: [], note: 'Nobody in the history matches — a new contact.' };
     }
     case 'list_reminders': {
       const tz = await zoneOf(v);
@@ -241,8 +254,18 @@ export async function runTool(name, input, vendorId) {
       return { saved: true, id: r.id, when: nice(due, tz), warns: kind === 'alarm' ? 'once, at that time' : 'two weeks, a week, two days and a day before, and on the day' };
     }
     case 'complete_reminder': {
-      const { count } = await prisma.agent_reminders.updateMany({ where: { id: Number(input.id), vendor_id: v, done_at: null }, data: { done_at: new Date() } });
-      return count ? { done: true } : { error: 'No open reminder with that id' };
+      let where = null;
+      if (input.id) where = { id: Number(input.id), vendor_id: v, done_at: null };
+      else if (String(input.match || '').trim()) {
+        const words = String(input.match).trim().split(/\s+/).filter(w => w.length > 2).slice(0, 4);
+        const found = await prisma.agent_reminders.findMany({ where: { vendor_id: v, done_at: null, AND: words.map(w => ({ title: { contains: w, mode: 'insensitive' } })) }, select: { id: true, title: true } });
+        if (found.length > 1) return { error: 'More than one reminder matches — which one?', matches: found };
+        if (found.length) where = { id: found[0].id, vendor_id: v, done_at: null };
+      }
+      if (!where) return { error: 'No open reminder matches that' };
+      const r = await prisma.agent_reminders.findFirst({ where, select: { title: true } });
+      const { count } = await prisma.agent_reminders.updateMany({ where, data: { done_at: new Date() } });
+      return count ? { done: true, closed: r?.title } : { error: 'No open reminder matches that' };
     }
     case 'remember': {
       const text = String(input.text || '').trim().slice(0, 600);

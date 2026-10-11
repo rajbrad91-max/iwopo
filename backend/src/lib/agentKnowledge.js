@@ -17,6 +17,7 @@ import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
 import { zoneOf, nice } from './agentReminders.js';
 import { getSetting } from './settings.js';
+import { syncContactsSlow } from './agentContacts.js';
 
 const MAX_KNOWLEDGE = 5000;      // characters handed to the agent at the start — enough, and fast
 const day = (d, tz) => (d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/,/g, '') : '');
@@ -73,6 +74,7 @@ export async function buildBriefing(vendorId) {
     `Crew: ${crew.length ? crew.map(c => `${c.name}${c.role ? ` (${c.role})` : ''}`).join(', ') : 'none listed'}`,
     `Packages: ${packages.length ? packages.map(p => `${p.name}${p.base_price ? ` $${Number(p.base_price)}` : ''}${p.included_hours ? ` ${p.included_hours}h` : ''}`).join(', ') : 'none'}`,
     `Open reminders: ${reminders}`,
+    `Contact index: ${await prisma.agent_contacts.count({ where: { vendor_id: v } })} people with their whole history — use lookup_contact`,
     `Galleries: ${galleries} (newest: ${newGalleries.map(g => g.title).join(', ') || 'none'}) · RAWs waiting for edits in ${rawGalleries.length} galleries`,
     `Photo selections: ${sentSel.length} sent in the last 2 weeks (${sentSel.map(s => s.albums.title).join(', ') || 'none'}) · ${picking} clients still picking`,
     `Money owed on invoices: $${Number(owed._sum.balance || 0).toFixed(2)}`,
@@ -134,5 +136,6 @@ export async function recentConversations(vendorId, take = 6) {
 /** Every 5 minutes: fresh briefings for every vendor with the AI Agent switched on. */
 export async function refreshBriefings() {
   const on = await prisma.vendor_feature_overrides.findMany({ where: { feature_key: 'agent', enabled: true }, select: { vendor_id: true } });
+  await syncContactsSlow().catch(e => console.error('[agent] contact sync', e.message));   // 📇 galleries, contracts, the 3 AM rebuild
   for (const { vendor_id } of on) await buildBriefing(vendor_id).catch(e => console.error('[agent] briefing', vendor_id, e.message));
 }

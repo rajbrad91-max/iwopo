@@ -46,6 +46,10 @@ function Knowledge() {
     try { await api.agentAddFact(text.trim()); setText(''); load(); } catch (x) { setErr(x.message); }
   }
   async function drop(id) { await api.agentDeleteFact(id).catch(() => {}); load(); }
+  async function forgetTalk(id) { await api.agentForgetConversation(id).catch(() => {}); load(); }
+  async function dropReminder(id) { await api.agentDoneReminder(id).catch(() => {}); load(); }
+  const when = (d) => new Date(d).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
   async function refresh() { try { const r = await api.agentRefreshBriefing(); setData(d => ({ ...d, ...r })); } catch (x) { setErr(x.message); } }
   if (!data) return <div className="ag-know">{err ? `⚠️ ${err}` : 'Loading…'}</div>;
   const facts = data.items.filter(i => i.kind === 'fact'), mem = data.items.filter(i => i.kind === 'memory');
@@ -66,6 +70,16 @@ function Knowledge() {
         <h3 className="ag-k-h">🧠 What it remembers</h3>
         <p className="ag-k-sub">Things you asked it to remember while talking ("remember that…"). Remove anything that's wrong.</p>
         {mem.length ? <ul className="ag-k-list">{mem.map(m => <li key={m.id}><span>{m.text}</span><button type="button" className="ag-k-x" onClick={() => drop(m.id)} aria-label="Forget">✕</button></li>)}</ul> : <div className="ag-k-empty">Nothing remembered yet.</div>}
+      </section>
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">💬 What it remembers of your conversations</h3>
+        <p className="ag-k-sub">A short summary of each talk with Tornado — the newest ones are what it starts every conversation with. Remove anything you want it to forget.</p>
+        {(data.conversations || []).length ? <ul className="ag-k-list">{data.conversations.map(c => <li key={c.id}><span><span className="ag-k-when">{when(c.created_at)}</span>{c.summary}</span><button type="button" className="ag-k-x" onClick={() => forgetTalk(c.id)} aria-label="Forget this conversation">✕</button></li>)}</ul> : <div className="ag-k-empty">No conversations yet.</div>}
+      </section>
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">⏰ Open reminders</h3>
+        <p className="ag-k-sub">Deliveries, tasks and alarms Tornado is keeping for you. ✓ marks one done.</p>
+        {(data.reminders || []).length ? <ul className="ag-k-list">{data.reminders.map(r => <li key={r.id}><span><span className="ag-k-when">{when(r.due_at)} · {r.kind}</span>{r.title}</span><button type="button" className="ag-k-x" onClick={() => dropReminder(r.id)} aria-label="Mark done">✓</button></li>)}</ul> : <div className="ag-k-empty">No open reminders.</div>}
       </section>
       <section className="ag-k-card">
         <h3 className="ag-k-h">📊 Business briefing</h3>

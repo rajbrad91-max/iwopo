@@ -172,7 +172,9 @@ router.get('/knowledge', requireAuth, async (req, res) => {
     const v = vid(req);
     const rows = await prisma.agent_memory.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' } });
     const b = await prisma.agent_briefing.findUnique({ where: { vendor_id: v } });
-    res.json({ items: rows.map(r => ({ id: r.id, kind: r.kind, text: r.text, at: r.created_at })), briefing: b?.text || await briefingText(v), briefingAt: b?.updated_at || new Date() });
+    const talks = await prisma.agent_conversations.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, take: 15, select: { id: true, summary: true, created_at: true } });
+    const reminders = await prisma.agent_reminders.findMany({ where: { vendor_id: v, done_at: null }, orderBy: { due_at: 'asc' }, take: 30, select: { id: true, title: true, kind: true, due_at: true } });
+    res.json({ items: rows.map(r => ({ id: r.id, kind: r.kind, text: r.text, at: r.created_at })), briefing: b?.text || await briefingText(v), briefingAt: b?.updated_at || new Date(), conversations: talks, reminders });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.post('/knowledge', requireAuth, async (req, res) => {
@@ -188,6 +190,14 @@ router.delete('/knowledge/:id', requireAuth, async (req, res) => {
     const { count } = await prisma.agent_memory.deleteMany({ where: { id: Number(req.params.id), vendor_id: vid(req) } });   // 🔒
     res.status(count ? 200 : 404).json(count ? { ok: true } : { error: 'Not found' });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/conversations/:id', requireAuth, async (req, res) => {
+  try { const { count } = await prisma.agent_conversations.deleteMany({ where: { id: Number(req.params.id), vendor_id: vid(req) } }); res.status(count ? 200 : 404).json({ ok: !!count }); }   // 🔒
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/reminders/:id', requireAuth, async (req, res) => {
+  try { const { count } = await prisma.agent_reminders.updateMany({ where: { id: Number(req.params.id), vendor_id: vid(req), done_at: null }, data: { done_at: new Date() } }); res.status(count ? 200 : 404).json({ ok: !!count }); }   // 🔒
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.post('/knowledge/refresh', requireAuth, async (req, res) => {
   try { res.json({ briefing: await buildBriefing(vid(req)), briefingAt: new Date() }); }

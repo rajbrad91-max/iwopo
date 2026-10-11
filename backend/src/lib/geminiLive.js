@@ -71,7 +71,11 @@ START: the moment the conversation opens, say exactly: "${opening}" — then lis
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: c.voice } } },
     },
     systemInstruction: { parts: [{ text: instructions }] },
-    tools: [{ functionDeclarations: VOICE_TOOLS.map(t => ({ name: t.name, description: t.description, parameters: toGemini(t.input_schema) })) }],
+    tools: [
+      { functionDeclarations: VOICE_TOOLS.map(t => ({ name: t.name, description: t.description, parameters: toGemini(t.input_schema) })) },
+      // 🔎 the world as it is today — new cameras, prices, news (Raj, 2026-10-11: it denied the Canon R6 Mark V exists)
+      { googleSearch: {} },
+    ],
     inputAudioTranscription: {},
     outputAudioTranscription: {},
   };

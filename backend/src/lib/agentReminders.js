@@ -82,7 +82,7 @@ export async function alertsFor(vendorId, { from = new Date(Date.now() - 6 * 360
 /** What is due soon, as one short line for Tornado to mention after hello. */
 export async function dueSoonLine(vendorId) {
   const tz = await zoneOf(vendorId);
-  const open = await prisma.agent_reminders.findMany({ where: { vendor_id: Number(vendorId), done_at: null, due_at: { lte: new Date(Date.now() + 14 * 86400e3) } }, orderBy: { due_at: 'asc' }, take: 6 });
+  const open = await prisma.agent_reminders.findMany({ where: { vendor_id: Number(vendorId), done_at: null, due_at: { lte: new Date(Date.now() + 14 * 86400e3) }, NOT: { kind: 'alarm', due_at: { lt: new Date() } } }, orderBy: { due_at: 'asc' }, take: 6 });
   const items = [];
   for (const r of open) {
     if (await delivered(r)) continue;
@@ -102,7 +102,8 @@ export async function sweepReminders() {
     for (const a of due) {
       const r = await prisma.agent_reminders.findUnique({ where: { id: a.reminder_id }, select: { last_alert_at: true } });
       if (r?.last_alert_at && r.last_alert_at >= a.at) continue;
-      await prisma.agent_reminders.update({ where: { id: a.reminder_id }, data: { last_alert_at: a.at } });
+      // an alarm rings once — then it is finished (it used to stay open and come back as "overdue")
+      await prisma.agent_reminders.update({ where: { id: a.reminder_id }, data: { last_alert_at: a.at, ...(a.urgency === 'alarm' ? { done_at: new Date() } : {}) } });
       await notify(vendor_id, a.title, a.body, 'reminder');
     }
   }

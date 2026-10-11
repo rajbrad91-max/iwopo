@@ -57,6 +57,7 @@ export const ACTION_TOOLS = [
         timing_from: { type: 'string', description: 'HH:MM, 24-hour' }, timing_to: { type: 'string', description: 'HH:MM, 24-hour' },
         guests: { type: 'integer', description: 'guest count — 0 if the vendor does not know' },
         services: { type: 'array', items: { type: 'string' }, description: 'e.g. Photography, Videography, Live streaming, Drone, Album' },
+        status: { type: 'string', description: "'booked' when the owner says book / booked / confirmed; otherwise leave out (a new inquiry)" },
         bride_getting_ready: { type: 'boolean', description: 'bride getting-ready coverage' },
         groom_getting_ready: { type: 'boolean', description: 'groom getting-ready coverage' },
       },
@@ -155,6 +156,7 @@ export async function runActionTool(name, input, vendorId, auth) {
       timing_from: input.timing_from, timing_to: input.timing_to,
       guests: Number.isFinite(Number(input.guests)) ? Number(input.guests) : 0,          // unknown → 0 (Raj)
       gr_bride: input.bride_getting_ready === true, gr_groom: input.groom_getting_ready === true,
+      status: String(input.status || '').toLowerCase() === 'booked' ? 'booked' : 'new',
       notes: [services.length ? `Services: ${services.join(', ')}` : '', input.notes || ''].filter(Boolean).join('\n'),
     });
     if (!data.name) return { error: 'A new lead needs a name' };
@@ -248,7 +250,7 @@ export async function confirmAction(id, vendorId, auth) {
       const d = p.args;
       const lead = await prisma.leads.create({
         data: {
-          vendor_id: p.vendorId, status: 'new', name: d.name, email: d.email || null, phone: d.phone || null,
+          vendor_id: p.vendorId, status: d.status === 'booked' ? 'booked' : 'new', name: d.name, email: d.email || null, phone: d.phone || null,
           event_type: d.event_type || null, event_date: d.event_date ? new Date(d.event_date) : null,
           location: d.location || null, notes: d.notes || null, heard: 'Added by the AI Agent',
           timing_from: d.timing_from || null, timing_to: d.timing_to || null, guests: Number(d.guests) || 0,
@@ -256,7 +258,7 @@ export async function confirmAction(id, vendorId, auth) {
         },
         select: { id: true, name: true },
       });
-      return { ok: true, message: `🆕 ${lead.name} added to your leads (#${lead.id}).` };
+      return { ok: true, status: d.status === 'booked' ? 'booked' : 'new', message: d.status === 'booked' ? `📅 ${lead.name} added and BOOKED (#${lead.id}).` : `🆕 ${lead.name} added as a new lead — NOT booked yet (#${lead.id}).` };
     }
     if (p.kind === 'update_lead') {
       await asVendor(auth, 'PUT', `/leads/${p.args.lead_id}`, p.args.changes);

@@ -56,6 +56,7 @@ import { sweepRaws } from './lib/rawFiles.js';
 import { writeAltTexts } from './lib/rawDelivery.js';
 import { sweepReminders } from './lib/agentReminders.js';
 import { refreshBriefings } from './lib/agentKnowledge.js';
+import { syncContactsQuick } from './lib/agentContacts.js';
 import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
 import occasionRoutes from './routes/occasions.js';
@@ -302,6 +303,8 @@ setInterval(() => { writeAltTexts().catch(() => {}); }, 60 * 60_000).unref();
 setInterval(() => { sweepReminders().catch(() => {}); }, 15 * 60_000).unref();
 // 🧠 AI Agent: the business briefing, rebuilt from the live tables every 5 minutes (Raj, 2026-10-11)
 setInterval(() => { refreshBriefings().catch(() => {}); }, 5 * 60_000).unref();
+// 📇 Tornado's contact index, near real time: new or changed leads, calls, texts and payments every 10 s
+setInterval(() => { syncContactsQuick().catch(e => console.error('[agent] contact sync', e.message)); }, 10_000).unref();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
