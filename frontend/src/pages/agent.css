@@ -52,3 +52,4 @@
 .ag-k-link { background: none; border: none; color: var(--teal, #0f9f8f); cursor: pointer; font: inherit; font-size: 13px; padding: 0 0 0 6px; }
 .ag-k-brief { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.55; background: var(--panel-2, #f6f7f9); padding: 12px; border-radius: 10px; }
 .ag-k-when { display: block; font-size: 11.5px; color: var(--muted, #6b7280); margin-bottom: 2px; }
+.ag-k-lessons { border-color: var(--teal, #0f9f8f); }

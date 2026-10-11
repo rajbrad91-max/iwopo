@@ -52,11 +52,16 @@ function Knowledge() {
 
   async function refresh() { try { const r = await api.agentRefreshBriefing(); setData(d => ({ ...d, ...r })); } catch (x) { setErr(x.message); } }
   if (!data) return <div className="ag-know">{err ? `⚠️ ${err}` : 'Loading…'}</div>;
-  const facts = data.items.filter(i => i.kind === 'fact'), mem = data.items.filter(i => i.kind === 'memory');
+  const facts = data.items.filter(i => i.kind === 'fact'), mem = data.items.filter(i => i.kind === 'memory'), lessons = data.items.filter(i => i.kind === 'lesson');
   const ago = Math.max(0, Math.round((Date.now() - new Date(data.briefingAt)) / 60000));
 
   return (
     <div className="ag-know">
+      <section className="ag-k-card ag-k-lessons">
+        <h3 className="ag-k-h">📝 Lessons — how you've trained it</h3>
+        <p className="ag-k-sub">Every time you correct Tornado or say "make a note", it writes a rule here — and follows all of them in every conversation. Remove any that are wrong.</p>
+        {lessons.length ? <ul className="ag-k-list">{lessons.map(l => <li key={l.id}><span>{l.text}</span><button type="button" className="ag-k-x" onClick={() => drop(l.id)} aria-label="Remove lesson">✕</button></li>)}</ul> : <div className="ag-k-empty">No lessons yet — tell Tornado "make a note…" when it gets something wrong.</div>}
+      </section>
       <section className="ag-k-card">
         <h3 className="ag-k-h">📌 Facts you tell it</h3>
         <p className="ag-k-sub">How your business works — prices, policies, delivery times, what you never do. It uses these in every conversation.</p>

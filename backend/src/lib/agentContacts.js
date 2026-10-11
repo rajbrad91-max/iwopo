@@ -21,10 +21,12 @@
  */
 import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
+import { emailWarning } from './emailCheck.js';
 
 const ten = (p) => String(p || '').replace(/\D/g, '').slice(-10);
 const fmtPhone = (t) => (t.length === 10 ? `${t.slice(0, 3)}-${t.slice(3, 6)}-${t.slice(6)}` : t);
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '?');
+const at = (d) => (d ? new Date(d).toLocaleString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '?');
 const clip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n - 1)}…` : s; };
 /** A stored call transcript ({"v":1,"lines":[{text,us}]}) or plain text → readable words. */
 function spoken(raw) {
@@ -89,10 +91,15 @@ export async function buildContactIndex(vendorId, only = null) {
     const p = get(`p:${num}`);
     p.phone ||= num; if (e.contact_name && !p.name) p.name = e.contact_name;
     seen(p, e.occurred_at);
-    const c = (p.comms ||= { calls: 0, missed: 0, texts: 0, first: null, lastText: null, lastCall: null });
+    const c = (p.comms ||= { callsIn: 0, callsOut: 0, missed: 0, textsIn: 0, textsOut: 0, first: null, lastIn: null, lastOut: null, lastCall: null });
     c.first ||= e.occurred_at;
-    if (e.kind === 'call') { c.calls++; if (/miss|no-answer/i.test(e.status || '')) c.missed++; c.lastCall = { at: e.occurred_at, said: e.transcript || e.body }; }
-    else { c.texts++; c.lastText = { at: e.occurred_at, dir: e.direction, text: e.body }; }
+    const inc = e.direction === 'incoming';
+    if (e.kind === 'call') {
+      if (inc) c.callsIn++; else c.callsOut++;
+      if (/miss|no-answer/i.test(e.status || '')) c.missed++;
+      c.lastCall = { at: e.occurred_at, inc, said: e.transcript || e.body, missed: /miss|no-answer/i.test(e.status || '') };
+    } else if (inc) { c.textsIn++; c.lastIn = { at: e.occurred_at, text: e.body }; }
+    else { c.textsOut++; c.lastOut = { at: e.occurred_at, text: e.body }; }
   }
 
   // 🖼️ galleries — by the client's email, else by title matching a name
@@ -114,10 +121,15 @@ export async function buildContactIndex(vendorId, only = null) {
       p.name || 'Unknown',
       p.phone && `📞 ${fmtPhone(p.phone)}`,
       p.email && `✉ ${p.email}`,
+      p.email && emailWarning(p.email) && `⚠️ EMAIL LOOKS WRONG: ${emailWarning(p.email)}`,
       ...p.leads,
-      c && `${c.calls} call${c.calls === 1 ? '' : 's'}${c.missed ? ` (${c.missed} missed)` : ''}, ${c.texts} text${c.texts === 1 ? '' : 's'}, first contact ${day(c.first)}`,
-      c?.lastText && `last text ${day(c.lastText.at)} (${c.lastText.dir === 'incoming' ? 'from them' : 'from you'}): "${clip(c.lastText.text, 90)}"`,
-      c?.lastCall?.said && `last call ${day(c.lastCall.at)}: ${clip(spoken(c.lastCall.said), 130)}`,
+      c && `first contact ${at(c.first)}`,
+      c && `calls: ${c.callsIn} FROM them${c.missed ? ` (${c.missed} missed)` : ''}, ${c.callsOut} BY you`,
+      c && `texts: ${c.textsIn} FROM them, ${c.textsOut} SENT BY YOU`,
+      c?.lastIn && `their last text to you: ${at(c.lastIn.at)} "${clip(c.lastIn.text, 90)}"`,
+      c?.lastOut && `your last text to them: ${at(c.lastOut.at)} "${clip(c.lastOut.text, 90)}"`,
+      c?.lastIn && c?.lastOut && (new Date(c.lastIn.at) > new Date(c.lastOut.at) ? 'they replied after your last text' : 'no reply from them since your last text'),
+      c?.lastCall && `last call: ${at(c.lastCall.at)}, ${c.lastCall.inc ? 'FROM them' : 'BY you'}${c.lastCall.missed ? ', missed' : ''}${c.lastCall.said ? ` — ${clip(spoken(c.lastCall.said), 120)}` : ''}`,
       ...p.galleries,
       !p.leads.length && !p.galleries.length && 'never sent an inquiry',
     ].filter(Boolean);

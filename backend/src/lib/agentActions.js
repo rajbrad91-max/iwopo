@@ -175,7 +175,17 @@ export async function runActionTool(name, input, vendorId, auth) {
     const ten = number.replace(/\D/g, '').slice(-10);
     if (ten.length !== 10) return { error: 'I need a 10-digit phone number' };
     const prior = await privateDb.comms_events.count({ where: { vendor_id: v, OR: [{ from_number: { endsWith: ten } }, { to_number: { endsWith: ten } }] } });
-    return { proposal: propose(v, 'text', { number, text, start: !prior }, `Text ${who || number}`, `To: ${number}${prior ? '' : ' — a new conversation'}\n\n${text}`) };
+    // the latest of the thread — so a follow-up never asks about something they already answered
+    const thread = await privateDb.comms_events.findMany({ where: { vendor_id: v, kind: { not: 'call' }, OR: [{ from_number: { endsWith: ten } }, { to_number: { endsWith: ten } }] }, orderBy: { occurred_at: 'desc' }, take: 4, select: { direction: true, body: true, occurred_at: true } });
+    const when = (d) => new Date(d).toLocaleString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    const recent = thread.reverse().map(m => `${m.direction === 'incoming' ? 'THEM' : 'YOU'} (${when(m.occurred_at)}): ${String(m.body || '').slice(0, 160)}`);
+    const lastIn = thread.filter(m => m.direction === 'incoming').at(-1), lastOut = thread.filter(m => m.direction !== 'incoming').at(-1);
+    const repliedAlready = lastIn && (!lastOut || new Date(lastIn.occurred_at) > new Date(lastOut.occurred_at));
+    return {
+      proposal: propose(v, 'text', { number, text, start: !prior }, `Text ${who || number}`, `To: ${number}${prior ? '' : ' — a new conversation'}\n\n${text}`),
+      recent_thread: recent,
+      ...(repliedAlready ? { heads_up: `THEY ALREADY REPLIED (${when(lastIn.occurred_at)}): "${String(lastIn.body || '').slice(0, 160)}" — tell the owner, and if this text ignores their reply, offer to cancel it (cancel_action) and rewrite it.` } : {}),
+    };
   }
   const lead = await leadOf(input.lead_id, v);
   if (!lead) return { error: 'No lead with that id' };                 // 🔒 only this vendor's

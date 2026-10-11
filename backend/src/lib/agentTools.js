@@ -11,6 +11,7 @@ import prisma from '../config/prisma.js';
 import { zoneOf, atLocal, nice } from './agentReminders.js';
 import { PANEL_TOOLS, PANEL_TOOL_NAMES, runPanelTool } from './agentPanelTools.js';
 import { lookupContacts } from './agentContacts.js';
+import { emailWarning } from './emailCheck.js';
 
 /** A date as people say it, weekday included — "Mon 15 Mar 2027". Worked out
  *  here, in UTC (dates are stored as calendar days), so the model never has
@@ -34,6 +35,8 @@ alike.lev = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) =>
 const leadLine = (l) => ({
   id: l.id, name: l.name, status: l.status || 'new', event_type: l.event_type, event_date: day(l.event_date),
   location: l.location, email: l.email, phone: l.phone, received: day(l.created_at),
+  // 📧 Raj's lesson: flag a suspicious or throwaway email, and say why
+  ...(emailWarning(l.email) ? { email_warning: emailWarning(l.email) } : {}),
 });
 
 /** The tools as Claude sees them. */
@@ -105,6 +108,11 @@ export const TOOLS = [
     name: 'remember',
     description: "Save something to your long-term memory when the owner asks you to remember it, or tells you a lasting preference or fact about a client or the business (\"remember that Sanjeev prefers WhatsApp\"). Short, one fact per call.",
     input_schema: { type: 'object', properties: { text: { type: 'string', description: 'the fact, in a short sentence' } }, required: ['text'] },
+  },
+  {
+    name: 'save_lesson',
+    description: "Save a LESSON from the owner — whenever he corrects you, complains about how you answered, or says \"make a note\" / \"remember to\" / \"don't do that again\". Write it as a short rule you will follow from now on (\"Before texting a client, check whether they already replied\"). Lessons are kept separately and you follow them in every conversation.",
+    input_schema: { type: 'object', properties: { rule: { type: 'string', description: 'the rule, one sentence' } }, required: ['rule'] },
   },
   {
     name: 'recall',
@@ -272,6 +280,12 @@ export async function runTool(name, input, vendorId) {
       if (!text) return { error: 'Nothing to remember' };
       const m = await prisma.agent_memory.create({ data: { vendor_id: v, kind: 'memory', text } });
       return { remembered: true, id: m.id };
+    }
+    case 'save_lesson': {
+      const text = String(input.rule || '').trim().slice(0, 600);
+      if (!text) return { error: 'The lesson is empty' };
+      const m = await prisma.agent_memory.create({ data: { vendor_id: v, kind: 'lesson', text } });
+      return { saved: true, id: m.id, say: 'Tell the owner in a few words that you noted it.' };
     }
     case 'recall': {
       const rows = await prisma.agent_memory.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, take: 200 });

@@ -25,9 +25,10 @@ const day = (d, tz) => (d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 
 /** Facts first (the owner's own words), then memories, newest first — trimmed to fit. */
 export async function knowledgeText(vendorId) {
   const rows = await prisma.agent_memory.findMany({ where: { vendor_id: Number(vendorId) }, orderBy: [{ kind: 'asc' }, { created_at: 'desc' }], take: 200 });
+  const lessons = rows.filter(r => r.kind === 'lesson').map(r => `- ${r.text}`);
   const facts = rows.filter(r => r.kind === 'fact').map(r => `- ${r.text}`);
   const mem = rows.filter(r => r.kind === 'memory').map(r => `- ${r.text} (remembered ${day(r.created_at)})`);
-  let out = [facts.length ? `Facts from the owner:\n${facts.join('\n')}` : '', mem.length ? `Things you were asked to remember:\n${mem.join('\n')}` : ''].filter(Boolean).join('\n\n');
+  let out = [lessons.length ? `LESSONS FROM THE OWNER — follow every one of these, always:\n${lessons.join('\n')}` : '', facts.length ? `Facts from the owner:\n${facts.join('\n')}` : '', mem.length ? `Things you were asked to remember:\n${mem.join('\n')}` : ''].filter(Boolean).join('\n\n');
   if (out.length > MAX_KNOWLEDGE) out = `${out.slice(0, MAX_KNOWLEDGE)}\n…(more — use recall)`;
   return out || 'nothing yet';
 }

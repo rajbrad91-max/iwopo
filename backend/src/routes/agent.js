@@ -11,6 +11,7 @@
  */
 import express from 'express';
 import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getSetting } from '../lib/settings.js';
 import { limit } from '../middleware/rateLimit.js';
@@ -18,6 +19,7 @@ import { TOOLS, runTool } from '../lib/agentTools.js';
 import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction } from '../lib/agentActions.js';
 import { vapid } from '../lib/agentPush.js';
 import { liveSession } from '../lib/geminiLive.js';
+import { emailWarning } from '../lib/emailCheck.js';
 import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
 
@@ -213,6 +215,24 @@ router.post('/conversations', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/** 📥 New texts, calls and leads since `since` — the app polls this during a conversation. */
+router.get('/inbox', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    const since = new Date(Number(req.query.since) || Date.now() - 60e3);
+    const when = (d) => new Date(d).toLocaleString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit' });
+    const comms = await privateDb.comms_events.findMany({ where: { vendor_id: v, direction: 'incoming', created_at: { gt: since } }, orderBy: { occurred_at: 'asc' }, take: 20, select: { kind: true, status: true, from_number: true, contact_name: true, body: true, occurred_at: true } }).catch(() => []);
+    const leads = await prisma.leads.findMany({ where: { vendor_id: v, created_at: { gt: since } }, orderBy: { created_at: 'asc' }, take: 10, select: { id: true, name: true, event_type: true, event_date: true, email: true } });
+    const items = [
+      ...comms.map(e => e.kind === 'call'
+        ? `${/miss|no-answer/i.test(e.status || '') ? 'Missed call' : 'Call'} from ${e.contact_name || e.from_number} at ${when(e.occurred_at)}`
+        : `Text from ${e.contact_name || e.from_number} at ${when(e.occurred_at)}: "${String(e.body || '').slice(0, 200)}"`),
+      ...leads.map(l => `New lead: ${l.name}${l.event_type ? ` (${l.event_type}${l.event_date ? `, ${new Date(l.event_date).toDateString()}` : ''})` : ''}${emailWarning(l.email) ? ` — ⚠️ their email ${l.email} looks wrong: ${emailWarning(l.email)}` : ''}`),
+    ];
+    res.json({ items, now: Date.now() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /** ⏰ The alerts still to come — the phone app schedules them as alarms that ring with the app closed. */
 router.get('/reminders/alerts', requireAuth, async (req, res) => {
   try { res.json({ alerts: await alertsFor(vid(req), { from: new Date(), days: 45 }) }); }
@@ -240,7 +260,8 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
     if (out?.proposal) {
       return res.json({
         proposal: out.proposal,
-        result: { proposal_id: out.proposal.id, about_to: out.proposal.title, details: out.proposal.details, next: 'Tell the owner in one short sentence what you will do and ask if you should go ahead. Call confirm_action with this proposal_id only after a clear yes.' },
+        // everything else the tool returned (the thread before a text, a heads-up) goes to Tornado too
+        result: { ...Object.fromEntries(Object.entries(out).filter(([k]) => k !== 'proposal')), proposal_id: out.proposal.id, about_to: out.proposal.title, details: out.proposal.details, next: 'Tell the owner in one short sentence what you will do and ask if you should go ahead. Call confirm_action with this proposal_id only after a clear yes.' },
       });
     }
     res.json({ result: out });

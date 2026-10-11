@@ -13,6 +13,8 @@ import { getSetting } from './settings.js';
 import { VOICE_TOOLS, tornadoPrompt } from './tornado.js';
 import { dueSoonLine, zoneOf } from './agentReminders.js';
 import { knowledgeText, briefingText, recentConversations } from './agentKnowledge.js';
+import prisma from '../config/prisma.js';
+import { waitingForYou } from './agentWaiting.js';
 
 const API = 'https://generativelanguage.googleapis.com';
 export const GEMINI_DEFAULTS = { model: 'gemini-3.1-flash-live-preview', voice: 'Charon' };
@@ -58,10 +60,29 @@ export async function liveSetup(vendorId) {
     knowledge: await knowledgeText(vendorId),
     briefing: await briefingText(vendorId),
     recent: await recentConversations(vendorId),
+    waiting: await waitingForYou(vendorId),
   };
   const fill = (t) => t.replace(/\{\{(\w+)\}\}/g, (m, k) => (vars[k] ?? m));
-  const opening = fill("{{greeting}}, {{user_name}}! Tornado here. How's your day going — what can I do for you?");
-  const instructions = `${fill(tornadoPrompt())}
+  /* 👋 Raj, 2026-10-11: "good morning, Raj" only the first time or two in the
+     morning — and a conversation started soon after the last one CONTINUES it */
+  const todayStart = new Date(now.toLocaleDateString('en-CA', { timeZone: tz }) + 'T00:00:00');
+  const offsetMs = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' })) - new Date(now.toLocaleString('en-US', { timeZone: tz }));
+  const sinceMidnight = new Date(todayStart.getTime() + offsetMs);
+  const [talksToday, last] = await Promise.all([
+    prisma.agent_conversations.count({ where: { vendor_id: Number(vendorId), created_at: { gte: sinceMidnight } } }),
+    prisma.agent_conversations.findFirst({ where: { vendor_id: Number(vendorId) }, orderBy: { created_at: 'desc' }, select: { created_at: true, transcript: true } }),
+  ]);
+  const minutesSince = last ? (now - new Date(last.created_at)) / 60000 : Infinity;
+  let opening, carryOn = '';
+  if (minutesSince < 20 && last?.transcript) {
+    opening = 'Yes, Raj?';
+    carryOn = `\n\nYOU WERE JUST TALKING ${Math.max(1, Math.round(minutesSince))} minute(s) ago — this is the SAME conversation, carry on from it. Do not greet again or repeat what was already said. The end of it:\n${last.transcript.slice(-2500)}`;
+  } else if (talksToday < 2) {
+    opening = fill("{{greeting}}, {{user_name}}! Tornado here. What can I do for you?");
+  } else {
+    opening = fill("Hey {{user_name}}, what's next?");
+  }
+  const instructions = `${fill(tornadoPrompt())}${carryOn}
 
 START: the moment the conversation opens, say exactly: "${opening}" — then listen.`;
   return {
