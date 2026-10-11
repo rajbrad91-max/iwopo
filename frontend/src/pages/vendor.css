@@ -2241,3 +2241,6 @@ tr:hover .bk-del { opacity: .8; }
    read-only when it has one) and the small hint under that field */
 .pref-static { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 10px; width: 100%; margin-top: 6px; box-sizing: border-box; }
 .pref-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* a long answer keeps its line breaks on the lead page */
+.ld-val { white-space: pre-wrap; overflow-wrap: anywhere; }

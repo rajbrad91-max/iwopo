@@ -315,3 +315,9 @@ body:has(.cp-page) { background: #EFE9E0; }
   .iq-theme-ivory .iq-body { padding: 6px 20px 26px; }
   .iq-theme-ivory .iq-hd-text .iq-brand { font-size: 30px; }
 }
+
+/* 🕐 time as hour · minutes · AM/PM */
+.iq-time { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.iq-time select { min-width: 0; }
+/* the chat bubble must never sit over the last questions or the send button */
+.iq-wrap { padding-bottom: 96px; }

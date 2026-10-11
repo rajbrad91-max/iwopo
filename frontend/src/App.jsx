@@ -41,7 +41,8 @@ function AppRoutes() {
     if (sessionMismatch()) { clearSession(); return null; }
     return getUser();
   });
-  const [showLogin, setShowLogin] = useState(false);
+  // 🔐 /login is a link you can bookmark or send: it opens straight on the login screen (QA 2026-10-10)
+  const [showLogin, setShowLogin] = useState(() => /^\/login\/?$/.test(window.location.pathname));
   const switchedRef = useRef(false);   // clear the tab once, not on every render
   // re-render on Back/Forward so URL-driven routes (e.g. /panel ↔ /) stay in sync
   const [, forceUrlTick] = useState(0);

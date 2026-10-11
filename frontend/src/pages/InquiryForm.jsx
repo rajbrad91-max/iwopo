@@ -37,16 +37,18 @@ export default function InquiryForm({ handle, byHost = false }) {
   // 🎯 the field an error is about — it is outlined, scrolled to and focused,
   // because a message beside the Send button about a box at the top of the
   // form left clients hunting for it (QA, 2026-10-09)
-  const [errField, setErrField] = useState('');
+  // every problem found, keyed by the box it belongs to — all are shown at once (QA 2026-10-10)
+  const [errs, setErrs] = useState({});
   const [busy, setBusy] = useState(false);
   const [logoOk, setLogoOk] = useState(true);
   useDocumentTitle(cfg?.brand_name);
 
   const [p, setP] = useState({ role: '', name: '', email: '', phone: '', instagram: '', heard: '' });
-  const setPI = (k, v) => { setP(s => ({ ...s, [k]: v })); if (errField === k) { setErrField(''); setErr(''); } };
+  const clearErr = (k) => setErrs(e => { if (!e[k]) return e; const n = { ...e }; delete n[k]; return n; });
+  const setPI = (k, v) => { setP(s => ({ ...s, [k]: v })); clearErr(k); };
 
   const [answers, setAnswers] = useState({});
-  const setAns = (id, v) => { setAnswers(s => ({ ...s, [id]: v })); if (errField === `f:${id}`) { setErrField(''); setErr(''); } };
+  const setAns = (id, v) => { setAnswers(s => ({ ...s, [id]: v })); clearErr(`f:${id}`); };
 
   const [notes, setNotes] = useState('');
 
@@ -57,11 +59,13 @@ export default function InquiryForm({ handle, byHost = false }) {
   }, [handle, byHost]);
 
   /** Point at the field: outline it, bring it into view, put the cursor in it. */
-  function fail(field, message) {
-    setErr(message);
-    setErrField(field);
+  /** Mark every problem, and take the client to the first one. */
+  function fail(list) {
+    const all = Array.isArray(list) ? list : [list];
+    setErrs(Object.fromEntries(all.map(x => [x.field, x.message])));
+    const first = all[0]?.field;
     requestAnimationFrame(() => {
-      const box = document.querySelector(`[data-field="${field}"]`);
+      const box = document.querySelector(`[data-field="${first}"]`);
       if (!box) return;
       box.scrollIntoView({ behavior: 'smooth', block: 'center' });
       box.querySelector('input, select, textarea')?.focus({ preventScroll: true });
@@ -69,17 +73,18 @@ export default function InquiryForm({ handle, byHost = false }) {
   }
 
   async function submit() {
-    setErr(''); setErrField('');
-    // top to bottom, in the order the client sees the boxes
-    if (!p.role) return fail('role', 'Please choose your role');
-    if (!p.name.trim()) return fail('name', 'Please enter your name');
-    if (!p.email.trim()) return fail('email', 'Please enter your email');
+    setErr(''); setErrs({});
+    // top to bottom, in the order the client sees the boxes — every problem at once
+    const problems = [];
+    if (!p.role) problems.push({ field: 'role', message: 'Please choose your role' });
+    if (!p.name.trim()) problems.push({ field: 'name', message: 'Please enter your name' });
+    if (!p.email.trim()) problems.push({ field: 'email', message: 'Please enter your email' });
     // same rule the server enforces, so a typo is caught before the round-trip
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) return fail('email', 'That email address does not look right');
-    if (!p.phone.trim()) return fail('phone', 'Please enter your phone number');
-    if (p.phone.replace(/\D/g, '').length < 7) return fail('phone', 'That phone number looks too short');
-    const problem = checkAnswers(cfg.custom_fields || [], answers);
-    if (problem) return fail(`f:${problem.id}`, problem.message);
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) problems.push({ field: 'email', message: 'That email address does not look right' });
+    if (!p.phone.trim()) problems.push({ field: 'phone', message: 'Please enter your phone number' });
+    else if (p.phone.replace(/\D/g, '').length < 7) problems.push({ field: 'phone', message: 'That phone number looks too short' });
+    for (const x of allProblems(cfg.custom_fields || [], answers)) problems.push({ field: `f:${x.id}`, message: x.message });
+    if (problems.length) return fail(problems);
     setBusy(true);
     try {
       // An unticked box is an answer. Leaving it out of custom_data made the
@@ -87,6 +92,8 @@ export default function InquiryForm({ handle, byHost = false }) {
       const custom = { ...answers };
       for (const f of cfg.custom_fields || []) {
         if (f.type === 'checkbox') custom[f.id] = answers[f.id] === true;
+        // 349.99 stays 349.99 — kept as the client wrote it, without commas or a $ sign
+        if (f.type === 'number' && custom[f.id] !== undefined && custom[f.id] !== '') custom[f.id] = plainNumber(custom[f.id]);
       }
       await api.createLead({
         vendor_slug: who,
@@ -161,9 +168,9 @@ export default function InquiryForm({ handle, byHost = false }) {
 
         <div className="iq-body">
           <LeadFormBody cfg={c} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes}
-            clientForm errField={errField} errText={err} />
+            clientForm errs={errs} />
 
-          {err && !errField && <div className="iq-err">⚠️ {err}</div>}
+          {err && <div className="iq-err">⚠️ {err}</div>}
           <button className="iq-btn" onClick={submit} disabled={busy}>
             {busy ? 'Sending…' : <><span className="iq-emoji">📨 </span>Send Inquiry</>}
           </button>
@@ -180,10 +187,10 @@ export default function InquiryForm({ handle, byHost = false }) {
 /* The public form passes clientForm (+ the field an error is about); the
    panel's Add / Edit Lead do not — a vendor recording an old booking must be
    able to enter a past date. */
-export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, clientForm = false, errField = '', errText = '' }) {
+export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, clientForm = false, errs = {} }) {
   const c = cfg || {};
-  const box = (key, extra = '') => ({ 'data-field': key, className: `${extra} ${errField === key ? 'iq-field-err' : ''}`.trim() || undefined });
-  const note = (key) => (errField === key ? <div className="iq-field-msg" role="alert">⚠️ {errText}</div> : null);
+  const box = (key, extra = '') => ({ 'data-field': key, className: `${extra} ${errs[key] ? 'iq-field-err' : ''}`.trim() || undefined });
+  const note = (key) => (errs[key] ? <div className="iq-field-msg" role="alert">⚠️ {errs[key]}</div> : null);
   return (
     <>
       {/* Section 1: Contact Details */}
@@ -234,7 +241,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
           <div className="iq-section-title"><span className="iq-emoji">✨ </span>{c.details_heading || 'Inquiry Details'}</div>
           <div className="iq-grid">
             {c.custom_fields.map(fld => (
-              <div key={fld.id} {...box(`f:${fld.id}`, fld.type === 'checkbox' ? 'iq-full' : '')}>
+              <div key={fld.id} {...box(`f:${fld.id}`, fld.type === 'checkbox' || fld.type === 'paragraph' ? 'iq-full' : '')}>
                 <CustomField fld={fld} value={answers[fld.id]} onChange={v => setAns(fld.id, v)}
                   answers={answers} fields={c.custom_fields} clientForm={clientForm} />
                 {note(`f:${fld.id}`)}
@@ -306,18 +313,34 @@ function isEventDate(fld, fields) {
  *     (20:00 → 01:00 is 5 hours), but 16:00 → 11:00 is a slip, not a 19-hour day.
  * Returns { id, message } for the first problem, or null.
  */
-export function checkAnswers(fields, answers) {
+/** Every problem on the form, top to bottom. */
+export function allProblems(fields, answers) {
+  const out = [];
+  for (const f of fields) { const p = checkAnswers([f], answers, fields); if (p) out.push(p); }
+  return out;
+}
+
+/** "$1,349.99" → "1349.99"; anything that is not a plain amount comes back unchanged. */
+export function plainNumber(v) {
+  const t = String(v).trim().replace(/[$\s,]/g, '');
+  return /^\d+(\.\d+)?$/.test(t) ? t : String(v).trim();
+}
+
+export function checkAnswers(fields, answers, allFields = fields) {
   const today = todayLocal();
-  const hours = fields.find(f => f.type === 'hours' && f.from_field && f.to_field);
-  const fromF = fields.find(f => f.maps_to === 'timing_from') || (hours && fields.find(f => f.id === hours.from_field));
-  const toF = fields.find(f => f.maps_to === 'timing_to') || (hours && fields.find(f => f.id === hours.to_field));
+  const hours = allFields.find(f => f.type === 'hours' && f.from_field && f.to_field);
+  const fromF = allFields.find(f => f.maps_to === 'timing_from') || (hours && allFields.find(f => f.id === hours.from_field));
+  const toF = allFields.find(f => f.maps_to === 'timing_to') || (hours && allFields.find(f => f.id === hours.to_field));
   for (const f of fields) {
     const v = answers[f.id];
+    // ⏱️ a time with only some of hour / minutes / AM-PM picked
+    if (f.type === 'time' && v === PARTIAL_TIME) return { id: f.id, message: `Please pick the hour, minutes and AM/PM for "${f.label}"` };
     const empty = v === undefined || v === null || v === '' || v === false;
     if (f.required && empty) return { id: f.id, message: `"${f.label}" is required` };
     if (empty) continue;
-    if (f.type === 'date' && isEventDate(f, fields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
-    if (f.type === 'number' && !/^\d+$/.test(String(v).trim())) return { id: f.id, message: `"${f.label}" needs a number` };
+    if (f.type === 'date' && isEventDate(f, allFields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
+    // decimals are fine — a price or a budget has cents (QA 2026-10-10: 349.99 was refused)
+    if (f.type === 'number' && !/^\d+(\.\d{1,2})?$/.test(plainNumber(v))) return { id: f.id, message: `"${f.label}" needs a number, e.g. 350 or 349.99` };
     // hours typed by hand must say how many — words alone reached the lead as an empty Hours
     if (f.type === 'hours' && !/\d/.test(String(v))) return { id: f.id, message: `"${f.label}" needs a number of hours, e.g. 6 or 6 hrs 30 min` };
     if (toF && f.id === toF.id && fromF && answers[fromF.id]) {
@@ -342,16 +365,21 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
   if (fld.type === 'text') return (<>{label}
     <input value={value || ''} onChange={e => onChange(e.target.value)} /></>);
 
+  // 📝 a longer answer — line breaks kept (QA 2026-10-10: a one-line box flattened them)
+  if (fld.type === 'paragraph') return (<>{label}
+    <textarea rows="4" value={value || ''} onChange={e => onChange(e.target.value)} /></>);
+
   if (fld.type === 'date') return (<>{label}
     <input type="date" value={value || ''} onChange={e => onChange(e.target.value)}
       min={clientForm && isEventDate(fld, fields) ? todayLocal() : undefined} /></>);
 
-  // 🔢 a count — "how many people", "guests", "servings": the number pad on a phone, digits only
+  // 🔢 a number — a count or an amount. A text box with the number pad: a number
+  // box turned 349.99 into 349.989990234375 in some browsers and refused it.
   if (fld.type === 'number') return (<>{label}
-    <input type="number" inputMode="numeric" min="0" step="1" value={value ?? ''} onChange={e => onChange(e.target.value)} /></>);
+    <input type="text" inputMode="decimal" value={value ?? ''} onChange={e => onChange(e.target.value)} placeholder="e.g. 150" /></>);
 
   if (fld.type === 'time') return (<>{label}
-    <input type="time" value={value || ''} onChange={e => onChange(e.target.value)} /></>);
+    <TimeSelect value={value} onChange={onChange} /></>);
 
   if (fld.type === 'location') return (<>{label}
     <LocationField value={value || ''} onChange={onChange} /></>);
@@ -368,6 +396,50 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
   );
 
   return null;
+}
+
+/** A time where only some of hour / minutes / AM-PM is picked — caught before sending. */
+export const PARTIAL_TIME = 'partial';
+
+/**
+ * 🕐 Time — hour, minutes, AM/PM as three plain dropdowns.
+ *
+ * QA 2026-10-10: start and end times never reached a single lead. A browser's
+ * time box stays EMPTY until hour, minutes and AM/PM are all filled, and
+ * typing "4 PM" leaves it blank without a word — so the time, and the Hours
+ * worked out from it, silently vanished. Three dropdowns have no half-filled
+ * state the client can't see: picking the hour fills :00, AM/PM must be
+ * chosen, and anything still missing is pointed out before sending.
+ * The value stays "HH:MM" (24-hour), exactly what the lead has always stored.
+ */
+function TimeSelect({ value, onChange }) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value || '');
+  const [part, setPart] = useState(() => (m ? { h: String(+m[1] % 12 || 12), mi: m[2], ap: +m[1] >= 12 ? 'PM' : 'AM' } : { h: '', mi: '', ap: '' }));
+  const put = (next) => {
+    const t = { ...part, ...next };
+    if (next.h && !t.mi) t.mi = '00';
+    setPart(t);
+    if (t.h && t.mi && t.ap) {
+      const h24 = (+t.h % 12) + (t.ap === 'PM' ? 12 : 0);
+      onChange(`${String(h24).padStart(2, '0')}:${t.mi}`);
+    } else onChange(t.h || t.mi || t.ap ? PARTIAL_TIME : '');
+  };
+  return (
+    <div className="iq-time">
+      <select aria-label="Hour" value={part.h} onChange={e => put({ h: e.target.value })}>
+        <option value="">Hour</option>
+        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => <option key={h} value={String(h)}>{h}</option>)}
+      </select>
+      <select aria-label="Minutes" value={part.mi} onChange={e => put({ mi: e.target.value })}>
+        <option value="">Min</option>
+        {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(x => <option key={x} value={x}>:{x}</option>)}
+      </select>
+      <select aria-label="AM or PM" value={part.ap} onChange={e => put({ ap: e.target.value })}>
+        <option value="">AM/PM</option>
+        <option>AM</option><option>PM</option>
+      </select>
+    </div>
+  );
 }
 
 /**
@@ -401,7 +473,7 @@ function HoursField({ fld, value, onChange, answers, fields }) {
   return (<>
     <label>
       {fld.label}{fld.required && ' *'}
-      {linked && !manual && <span className="iq-auto-tag">auto</span>}
+      {linked && !manual && <>{' '}<span className="iq-auto-tag">auto</span></>}
     </label>
     <input
       value={value || ''}

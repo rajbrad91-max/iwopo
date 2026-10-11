@@ -7,7 +7,7 @@ import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime,
 import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
 import { COUNTRIES } from '../lib/countries';
-import { PROFESSIONS, LeadFormBody } from './InquiryForm';
+import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
@@ -2900,15 +2900,19 @@ function AddLeadModal({ vendorId, onClose, onSaveDone }) {
     api.myInquirySettings(vendorId).then(d => setCfg(d.settings)).catch(() => setCfg({}));
   }, [vendorId]);
 
+  const has = (v) => v !== undefined && v !== null && v !== '';
   async function save() {
     setErr('');
     if (!p.name || !p.email) { setErr('Name and email are required'); return; }
+    const custom = { ...answers };
     for (const fld of (cfg?.custom_fields || [])) {
+      if (fld.type === 'time' && answers[fld.id] === PARTIAL_TIME) { setErr(`Pick the hour, minutes and AM/PM for "${fld.label}"`); return; }
       if (fld.required && !answers[fld.id]) { setErr(`"${fld.label}" is required`); return; }
+      if (fld.type === 'number' && has(custom[fld.id])) custom[fld.id] = plainNumber(custom[fld.id]);
     }
     setBusy(true);
     try {
-      await api.createLead({ name: p.name, email: p.email, phone: p.phone, role: p.role, instagram: p.instagram, heard: p.heard, notes, custom_data: answers });
+      await api.createLead({ name: p.name, email: p.email, phone: p.phone, role: p.role, instagram: p.instagram, heard: p.heard, notes, custom_data: custom });
       onSaveDone();
     } catch (e) { setErr(e.message || 'Failed'); setBusy(false); }
   }
@@ -3529,7 +3533,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
             {rows.map(([label, value], i) => (
               <div className="ld-row" key={i}>
                 <div className="ld-label">{label}</div>
-                <div>{value}</div>
+                <div className="ld-val">{value}</div>
               </div>
             ))}
           </div>
@@ -4757,7 +4761,9 @@ function BookingsView({ routeBooking, onOpenBooking }) {
 const FIELD_TYPES = [
   { t: 'dropdown', label: '📋 Dropdown' },
   { t: 'text', label: '✏️ Text' },
-  // a count — guests, people, servings: digits only, the number pad on a phone
+  // a longer answer — line breaks kept
+  { t: 'paragraph', label: '📝 Long text' },
+  // a count or an amount — guests, servings, a budget (decimals allowed)
   { t: 'number', label: '🔢 Number' },
   { t: 'date', label: '📅 Date' },
   { t: 'time', label: '🕐 Time' },
@@ -4967,7 +4973,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
     if (!preset) return;
     const trade = PROFESSIONS[key]?.label;
     if (fields.length && !await dialog.confirm(
-      `This replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.${trade ? ` The background watermark becomes ${trade}.` : ''}`,
+      `This replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.${trade ? ` The background watermark becomes ${trade}.` : ''} The Section 2 heading goes back to the default.`,
       { title: `Load the ${preset.label} questions?`, okLabel: 'Load them', danger: false }
     )) return;
     const taken = new Set();
@@ -4999,7 +5005,11 @@ function FieldBuilder({ fields, setFields, onTrade }) {
     if (onTrade && PROFESSIONS[key]) onTrade(key);
   };
 
-  const del = (i) => setFields(fields.filter((_, idx) => idx !== i));
+  const del = async (i) => {
+    const name = fields[i]?.label?.trim();
+    if (!await dialog.confirm(name ? `"${name}" will be removed from your form.` : 'This question will be removed from your form.', { title: 'Delete this question?', okLabel: 'Delete' })) return;
+    setFields(fields.filter((_, idx) => idx !== i));
+  };
   const move = (i, dir) => {
     const j = i + dir; if (j < 0 || j >= fields.length) return;
     const copy = [...fields]; [copy[i], copy[j]] = [copy[j], copy[i]]; setFields(copy);
@@ -5068,6 +5078,8 @@ function FieldBuilder({ fields, setFields, onTrade }) {
               same form. Only Time fields are offered, and only ones that exist. */}
           {f.type === 'hours' && (() => {
             const times = fields.filter(x => x.type === 'time' && x.label);
+            const named = (t) => (times.filter(x => x.label.trim().toLowerCase() === t.label.trim().toLowerCase()).length > 1
+              ? `${t.label} (question ${fields.indexOf(t) + 1})` : t.label);
             if (!times.length) return (
               <p className="fb-hint">
                 💡 Add two <strong>🕐 Time</strong> fields to calculate hours automatically.
@@ -5080,7 +5092,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
                   <select className="fb-select" value={f.from_field || ''}
                     onChange={e => upd(i, { from_field: e.target.value })}>
                     <option value="">Client types it</option>
-                    {times.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    {times.map(t => <option key={t.id} value={t.id}>{named(t)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -5088,7 +5100,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
                   <select className="fb-select" value={f.to_field || ''}
                     onChange={e => upd(i, { to_field: e.target.value })}>
                     <option value="">Client types it</option>
-                    {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    {times.filter(t => t.id !== f.from_field).map(t => <option key={t.id} value={t.id}>{named(t)}</option>)}
                   </select>
                 </div>
               </div>
@@ -5108,8 +5120,12 @@ function FieldBuilder({ fields, setFields, onTrade }) {
               <input
                 type="checkbox"
                 checked={f.maps_to === 'event_type'}
-                onChange={e => {
+                onChange={async e => {
                   const on = e.target.checked;
+                  const owner = fields.find((o, idx) => idx !== i && o.maps_to === 'event_type');
+                  if (on && owner && !await dialog.confirm(
+                    `"${owner.label || 'Another question'}" fills the Event column now. Show "${f.label || 'this question'}" there instead?`,
+                    { title: 'Only one question can fill the Event column', okLabel: 'Use this one', danger: false })) return;
                   setFields(fields.map((o, idx) => {
                     if (idx === i) return { ...o, maps_to: on ? 'event_type' : '' };
                     // only one field may own the column — release it from any other
@@ -5272,7 +5288,7 @@ function InqFormSettings() {
           <FieldBuilder
             fields={s.custom_fields || []}
             setFields={(f) => setS(prev => ({ ...prev, custom_fields: f }))}
-            onTrade={(key) => setS(prev => ({ ...prev, background: key }))}
+            onTrade={(key) => setS(prev => ({ ...prev, background: key, details_heading: '' }))}
           />
         </div>
 
