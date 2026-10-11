@@ -23,9 +23,11 @@
 .cp-msg.is-ok { border-color: #2E7D4F55; color: #2E7D4F; }
 .cp-msg.is-err { border-color: #C0473055; color: #C04730; }
 
-/* the document below is SignContract untouched, so it renders exactly as the
-   client will see it — this only trims the page padding it assumes */
-.cp-doc .iq-wrap { padding-top: 20px; min-height: 0; }
+/* the document below is SignContract, so it renders as the client will see it */
+.cp-doc .ct-page { background: transparent; min-height: 0; padding-top: 18px; }
+
+/* the app shell is dark; this page is a paper document */
+body:has(.cp-page) { background: #EFE9E0; }
 
 @media (max-width: 700px) { .cp-top { padding: 12px 16px; } }
 

@@ -1,0 +1,404 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+
+/* One contract layout, shared by the vendor preview, the client sign page,
+   the portal signing step, and the template editor.
+   A letter sheet: logo at header size, business lines on the right, a gold
+   rule, then ruled sections. The app's own table rules must not leak in —
+   they set uppercase micro-type on every th, and a last-row rule that
+   drops the bottom border. */
+
+.ct-page {
+  min-height: 100vh;
+  background: #efe9e0;
+  padding: 28px 16px 72px;
+  color: #1f2937;
+}
+
+.po-sec .ct-sheet { margin-top: 8px; }
+
+.ct-sheet {
+  width: 100%;
+  max-width: 816px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e6e0d6;
+  box-shadow: 0 10px 36px rgba(60, 48, 36, 0.08);
+  padding: 52px 64px 56px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #1f2937;
+}
+.ct-sheet.is-busy { opacity: 0.55; }
+
+.ct-doc {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #1f2937;
+}
+
+/* editor preview sits on the panel, not inside a sheet */
+.cs-preview-doc.ct-doc {
+  background: #fff;
+  padding: 28px 28px 32px;
+  color: #1f2937;
+}
+
+.ct-rail {
+  width: 100%;
+  max-width: 816px;
+  margin: 0 auto 14px;
+}
+
+.ct-prev-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 auto 12px;
+  max-width: 816px;
+  padding: 10px 14px;
+  background: #fbf3e0;
+  border: 1px solid #e7d7a8;
+}
+.ct-prev-tag { font-size: 12.5px; color: #8a6d1f; font-weight: 700; }
+.ct-prev-ok { margin-left: auto; font-size: 12.5px; color: #2e7d4f; font-weight: 700; }
+.ct-prev-release {
+  margin-left: auto;
+  background: #1f1814;
+  border: 0;
+  color: #faf8f5;
+  padding: 8px 16px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.ct-prev-release:hover { background: #3d3530; }
+
+.ct-versions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 816px;
+  margin: 0 auto 14px;
+}
+.ct-versions-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b5d52;
+  margin-right: 4px;
+}
+.ct-ver {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e0d6c8;
+  color: #3d3530;
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ct-ver:hover { border-color: #1f1814; }
+.ct-ver:focus-visible { outline: 2px solid #1f1814; outline-offset: 2px; }
+.ct-ver.is-on { background: #1f1814; border-color: #1f1814; color: #fff; }
+.ct-ver:disabled { cursor: default; }
+.ct-ver-price { font-size: 12px; opacity: 0.75; }
+
+.ct-doc .ct-headband {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 2px;
+  border-bottom: 1.5px solid #c4a35a;
+}
+.ct-doc .ct-hb-logo {
+  width: 88px;
+  padding: 0 16px 14px 0;
+  vertical-align: middle;
+  border: 0;
+  background: transparent;
+}
+.ct-doc .ct-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 72px;
+  max-height: 52px;
+  object-fit: contain;
+}
+.ct-doc .ct-hb-info {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0 0 14px 12px;
+  border: 0;
+  background: transparent;
+}
+.ct-doc .ct-hb-info p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.ct-doc .ct-doc-title {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #1e293b;
+  margin: 26px 0 8px;
+  line-height: 1.35;
+}
+.ct-doc .ct-doc-for {
+  font-size: 14.5px;
+  text-align: center;
+  color: #6b7280;
+  margin: 0 0 26px;
+}
+
+.ct-doc .ct-sec { margin: 0 0 6px; }
+.ct-doc .ct-sec h2,
+.ct-accept-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: normal;
+  text-transform: none;
+  border-bottom: 1px solid #d1d5db;
+  padding: 0 0 6px;
+  margin: 22px 0 10px;
+}
+.ct-doc .ct-sec h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 16px 0 4px;
+}
+.ct-doc p { margin: 0 0 10px; }
+
+/* beat the app-wide th/td rules (uppercase, wide padding, missing last border) */
+.ct-doc table { width: 100%; border-collapse: collapse; margin: 0; }
+.ct-doc th,
+.ct-doc td {
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 14px;
+  font-weight: 400;
+  color: #1f2937;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  vertical-align: top;
+}
+.ct-doc tr:last-child th,
+.ct-doc tr:last-child td { border: 0; }
+
+.ct-doc .ct-details,
+.ct-doc .ct-svc { margin: 8px 0 16px; border: 1px solid #d1d5db; }
+.ct-doc .ct-details th,
+.ct-doc .ct-details td,
+.ct-doc .ct-svc th,
+.ct-doc .ct-svc td,
+.ct-doc .ct-details tr:last-child th,
+.ct-doc .ct-details tr:last-child td,
+.ct-doc .ct-svc tr:last-child th,
+.ct-doc .ct-svc tr:last-child td {
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  font-size: 13.5px;
+}
+.ct-doc .ct-details th,
+.ct-doc .ct-svc th {
+  width: 34%;
+  background: #f3f4f6;
+  font-weight: 600;
+  color: #374151;
+}
+
+.ct-doc .ct-kv { margin: 2px 0 12px; border: 0; }
+.ct-doc .ct-kv th,
+.ct-doc .ct-kv td,
+.ct-doc .ct-kv tr:last-child th,
+.ct-doc .ct-kv tr:last-child td {
+  border: 0;
+  background: transparent;
+  padding: 3px 0;
+  font-size: 14px;
+}
+.ct-doc .ct-kv th {
+  width: 168px;
+  font-weight: 600;
+  color: #374151;
+  padding-right: 18px;
+}
+
+.ct-doc .ct-inc { font-weight: 700; color: #166534; }
+.ct-doc .ct-notinc { font-weight: 700; color: #9ca3af; }
+
+.ct-doc .ct-init { width: auto; margin: 12px 0 4px; border: 0; }
+.ct-doc .ct-init td,
+.ct-doc .ct-init tr:last-child td {
+  border: 0;
+  background: transparent;
+  padding: 0 8px 0 0;
+}
+.ct-doc .ct-init-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.ct-doc .ct-init-line { min-width: 90px; }
+.ct-doc .ct-init-tap {
+  display: inline-block;
+  min-width: 88px;
+  text-align: center;
+  padding: 0 4px 1px;
+  border: 0;
+  border-bottom: 1px solid #9ca3af;
+  border-radius: 0;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.ct-doc .ct-init-tap:hover { color: #1f2937; border-bottom-color: #1f2937; }
+.ct-doc .ct-init-tap.is-done {
+  background: transparent;
+  border-bottom-color: #1e293b;
+  color: #1e293b;
+}
+.ct-hand,
+.ct-doc .ct-init-tap.ct-hand {
+  font-family: "Great Vibes", cursive;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #1e293b;
+  padding: 0 6px 2px;
+  min-width: 28px;
+  vertical-align: bottom;
+}
+.ct-doc .ct-init-tap.is-preview { cursor: default; }
+.ct-doc .ct-init-tap.is-preview:hover { color: #6b7280; border-bottom-color: #9ca3af; }
+.ct-doc .ct-init-tap.is-next { color: #1f2937; border-bottom-color: #1f2937; }
+
+.ct-left { font-size: 12.5px; margin: 14px 0 0; font-weight: 600; }
+.ct-left.is-todo { color: #8a6d1f; }
+.ct-left.is-done { color: #166534; }
+
+.ct-accept { margin-top: 8px; }
+.ct-accept-lead { margin: 0 0 4px; color: #4b5563; font-size: 14px; }
+.ct-field-label {
+  display: block;
+  margin: 16px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.ct-field {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 0;
+  background: #fff;
+  font: inherit;
+  font-size: 15px;
+  color: #1f2937;
+}
+.ct-field:focus { outline: none; border-color: #1f2937; }
+.ct-field:disabled { background: #fafafa; color: #6b7280; }
+.ct-pad {
+  display: block;
+  width: 100%;
+  height: 140px;
+  margin: 0;
+  color: #1f2937;
+  background: #fff;
+  border: 1px dashed #c4b49a;
+  border-radius: 0;
+  touch-action: none;
+}
+.ct-pad-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ct-clear {
+  background: none;
+  border: 0;
+  color: #6b7280;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ct-clear:hover { color: #1f2937; }
+.ct-sign-btn {
+  width: 100%;
+  margin-top: 18px;
+  padding: 12px 16px;
+  border: 0;
+  background: #1f1814;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ct-sign-btn:hover { background: #3d3530; }
+.ct-sign-btn:disabled { opacity: 0.55; cursor: default; }
+.ct-fine { font-size: 12px; color: #6b7280; margin: 12px 0 0; text-align: center; }
+.ct-err {
+  background: #fbeaea;
+  color: #b4433a;
+  padding: 10px 12px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+.ct-done { text-align: center; padding: 72px 48px; }
+.ct-done-mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e7f6ee;
+  color: #166534;
+  font-size: 28px;
+}
+.ct-done h2 { font-size: 22px; margin: 0 0 8px; color: #1e293b; }
+.ct-done p { margin: 0; color: #4b5563; }
+
+@media (max-width: 700px) {
+  .ct-page { padding: 16px 12px 48px; }
+  .ct-sheet { padding: 28px 18px 32px; }
+  .ct-prev-bar { flex-direction: column; align-items: flex-start; }
+  .ct-prev-ok, .ct-prev-release { margin-left: 0; }
+  .ct-doc .ct-doc-title { font-size: 16px; letter-spacing: 0.08em; }
+  .ct-doc .ct-details th,
+  .ct-doc .ct-svc th,
+  .ct-doc .ct-kv th { width: 42%; }
+}

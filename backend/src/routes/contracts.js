@@ -204,10 +204,53 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
     + (getting ? `<h3>Getting Ready Coverage</h3>${getting}` : '');
 }
 
-/** Everything the chosen package includes, one per line. */
+/**
+ * One package inclusion → one open row, same shape as Main Event.
+ * The right cell is the line the package already has. The left cell only
+ * names which words that line uses. A line that is not in the package
+ * is never added.
+ */
+function inclusionRow(line) {
+  const text = String(line ?? '').replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ');
+  if (!text) return null;
+  const colon = text.match(/^([^:]{1,40}):\s+(.+)$/);
+  if (colon) return [colon[1].trim(), colon[2].trim()];
+  const named = [
+    [/\bdrone\b/i, 'Drone'],
+    [/\b(photographer|videographer|shooter)s?\b/i, 'Team'],
+    [/\b(deliver\w*|weeks?)\b/i, 'Delivery'],
+    [/\bhours?\b/i, 'Hours'],
+    [/\bphotos?\b/i, 'Photos'],
+    [/\b(videos?|4k|films?)\b/i, 'Video'],
+    [/\b(albums?|prints?|frames?|books?)\b/i, 'Prints'],
+    [/\b(galler(?:y|ies)|usbs?|sticks?)\b/i, 'Gallery'],
+  ].find(([re]) => re.test(text));
+  return [named ? named[1] : 'Included', text];
+}
+
+/** Package inclusion lines, in the same open table as Main Event. */
 function deliverablesHtml(inclusions) {
-  if (!inclusions.length) return '';
-  return `<ul class="ct-incl">${inclusions.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`;
+  const rows = (inclusions || []).map(inclusionRow).filter(Boolean);
+  return kvTable('ct-kv', rows);
+}
+
+function unescapeHtml(s) {
+  return String(s)
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+/**
+ * Contracts saved before this table still store a bullet list.
+ * Those lines become the same open table on the way out. The saved
+ * bytes, and the signature over them, are left as they were.
+ */
+export function upgradeDeliverables(html) {
+  return String(html || '').replace(/<ul class="ct-incl">([\s\S]*?)<\/ul>/g, (full, inner) => {
+    const lines = [...inner.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(m => unescapeHtml(m[1]));
+    return deliverablesHtml(lines) || full;
+  });
 }
 
 /**
@@ -292,9 +335,33 @@ function sectionHtml(section, values, blocks, initCounter) {
 }
 
 function substitute(text, values) {
-  let t = text;
-  for (const [k, v] of Object.entries(values)) t = t.split(k).join(v);
-  return t;
+  let t = String(text ?? '');
+  for (const [k, v] of Object.entries(values)) t = t.split(k).join(v == null ? '' : String(v));
+  // a token the template still names, and this booking has no value for, must
+  // not reach the client as {{like_this}}
+  return t.replace(/\{\{[a-z0-9_]+\}\}/gi, '');
+}
+
+/**
+ * Price one package version.
+ * The stored contract still goes through moneySummary — a single offer, a
+ * snapshot, or a manual total. A preview of package N prices that package.
+ */
+function moneyForPackage(lead, price, money) {
+  const total = Number(price?.toString?.() ?? price) || 0;
+  const discount = (Number(lead.discount_percent) || 0) / 100 * total;
+  const finalTotal = Math.max(total - discount, 0);
+  const hasOverride = lead.deposit_amount_override != null;
+  const deposit = hasOverride
+    ? Number(lead.deposit_amount_override)
+    : (Number(lead.deposit_percent) || 0) / 100 * finalTotal;
+  return {
+    ...money,
+    base_total: +total.toFixed(2),
+    discount_amount: +discount.toFixed(2),
+    final_total: +finalTotal.toFixed(2),
+    deposit_amount: +deposit.toFixed(2),
+  };
 }
 
 /**
@@ -306,11 +373,12 @@ function substitute(text, values) {
  * the first two, and every one of them would have had to remember the third.
  * They all call this instead.
  */
-export async function buildContractBody(template, lead, businessName) {
-  const [offeredPkgs, crew, money, vset, vrow] = await Promise.all([
+export async function buildContractBody(template, lead, businessName, opts = {}) {
+  const forceId = Number(opts?.packageId) || null;
+  const [offeredPkgs, crew, moneyRaw, vset, vrow] = await Promise.all([
     prisma.lead_packages.findMany({
       where: { lead_id: lead.id },                         // 🔒 tenancy via the lead
-      select: { name: true, inclusions: true, is_selected: true },
+      select: { id: true, name: true, price: true, inclusions: true, is_selected: true },
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     }),
     prisma.lead_crew.findMany({
@@ -326,7 +394,10 @@ export async function buildContractBody(template, lead, businessName) {
       where: { id: lead.vendor_id }, select: { country: true, logo_path: true },
     }),
   ]);
-  const chosen = pickedOffer(offeredPkgs);
+  const chosen = forceId
+    ? (offeredPkgs.find(p => p.id === forceId) || null)
+    : pickedOffer(offeredPkgs);
+  const money = (forceId && chosen) ? moneyForPackage(lead, chosen.price, moneyRaw) : moneyRaw;
   const inclusions = Array.isArray(chosen?.inclusions) ? chosen.inclusions.map(String).filter(Boolean) : [];
   const pkgName = chosen?.name || '—';
 
@@ -645,9 +716,41 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
 
     const vendor = await prisma.vendors.findUnique({
       where: { id: lead.vendor_id },
-      select: { business_name: true, logo_path: true },
+      select: { business_name: true, logo_path: true, country: true },
     });
-    const filled = await buildContractBody(t, lead, vendor?.business_name);
+    const vset = await prisma.vendor_settings.findUnique({
+      where: { vendor_id: lead.vendor_id },
+      select: { currency: true },
+    });
+    // versions are this lead's packages. vendor_id is never read from the query.
+    const pkgs = await prisma.lead_packages.findMany({
+      where: { lead_id: lead.id },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+      select: { id: true, name: true, price: true, is_selected: true },
+    });
+    const requested = req.query.package;
+    let active = null;
+    if (requested != null && String(requested) !== '') {
+      const packageId = Number(requested);
+      if (!Number.isInteger(packageId)) return res.status(400).json({ error: 'Unknown package' });
+      active = pkgs.find(p => p.id === packageId) || null;
+      if (!active) return res.status(404).json({ error: 'Package not found' });
+    } else {
+      active = pkgs.find(p => p.is_selected) || pkgs[0] || null;
+    }
+    const code = currencyFor(vset?.currency, vendor?.country);
+    const priceLabel = (n) => {
+      const num = Number(n?.toString?.() ?? n) || 0;
+      try {
+        return num.toLocaleString('en', {
+          style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0,
+        });
+      } catch { return `${num} ${code}`; }
+    };
+    const filled = await buildContractBody(
+      t, lead, vendor?.business_name,
+      active ? { packageId: active.id } : undefined,
+    );
 
     /**
      * The preview renders through the same component the client signs on, so it
@@ -677,6 +780,13 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
         released_at: existing?.released_at || null,
         status: existing?.status || 'draft',
       },
+      packages: pkgs.map(p => ({
+        id: p.id,
+        name: p.name,
+        price_label: priceLabel(p.price),
+        is_selected: p.is_selected,
+      })),
+      active_package_id: active?.id ?? null,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -735,6 +845,7 @@ router.get('/sign/:token', async (req, res) => {
       await audit(c.id, 'viewed', ipOf(req));
     }
     const { leads, vendors, ...rest } = c;
+    rest.body = upgradeDeliverables(rest.body);
     res.json({ contract: { ...rest, client_name: leads?.name ?? null, business_name: vendors?.business_name ?? null, logo_path: vendors?.logo_path ?? null, brand_color: brand?.brand_color ?? null } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -837,48 +948,48 @@ function esc(s) {
 }
 
 const DOC_CSS = `
-  body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;background:#fff;
-       max-width:760px;margin:40px auto;padding:0 32px;line-height:1.75;font-size:15px}
+  @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+  body{font-family:"Segoe UI",system-ui,sans-serif;color:#1f2937;background:#fff;
+       max-width:760px;margin:40px auto;padding:0 32px 48px;line-height:1.55;font-size:14.5px}
   .hd{text-align:center;border-bottom:2px solid #222;padding-bottom:18px;margin-bottom:28px}
-  .hd img{max-height:56px;max-width:180px;object-fit:contain;margin-bottom:10px}
+  .hd img{max-height:52px;max-width:72px;object-fit:contain;margin-bottom:10px}
   .biz{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#666;margin:0}
   h1{font-size:24px;margin:8px 0 0}
-  /* the contract body is HTML — pre-wrap here turned every newline in the
-     markup into visible blank space in the downloaded document */
   .body{}
-
-  /* the document's own table layout, matching what was signed on screen. A
-     downloaded contract that looks nothing like the one the client agreed to
-     is a different document as far as anyone reading it is concerned. */
-  .ct-headband{width:100%;border-collapse:collapse;margin:0 0 6px}
-  .ct-hb-logo{width:64px;padding:0 12px 8px 0;vertical-align:top}
-  .ct-logo{max-width:60px;max-height:60px;object-fit:contain;display:block}
+  .ct-headband{width:100%;border-collapse:collapse;margin:0 0 2px;border-bottom:1.5px solid #c4a35a}
+  .ct-hb-logo{width:88px;padding:0 16px 14px 0;vertical-align:middle}
+  .ct-logo{max-width:72px;max-height:52px;width:auto;height:auto;object-fit:contain;display:block}
+  .ct-hb-info{text-align:right;vertical-align:middle}
   .ct-hb-info p{margin:0;font-size:12.5px;line-height:1.5;color:#4b5563}
-  .ct-doc-title{font-size:25px;font-weight:700;text-align:center;letter-spacing:.5px;margin:14px 0 4px}
-  .ct-doc-for{font-size:14.7px;text-align:center;color:#4b5563;margin:0 0 20px}
-  .ct-sec{margin:0 0 4px}
-  .ct-sec h2{font-size:17.3px;font-weight:700;border-bottom:1px solid #d1d5db;padding:0 0 3px;margin:18px 0 6px}
-  .ct-sec h3{font-size:14.7px;font-weight:700;color:#374151;margin:12px 0 3px}
+  .ct-doc-title{font-size:20px;font-weight:700;text-align:center;letter-spacing:.14em;text-transform:uppercase;margin:26px 0 8px;color:#1e293b}
+  .ct-doc-for{font-size:14.5px;text-align:center;color:#6b7280;margin:0 0 26px}
+  .ct-sec{margin:0 0 6px}
+  .ct-sec h2{font-size:16px;font-weight:700;border-bottom:1px solid #d1d5db;padding:0 0 6px;margin:22px 0 10px;color:#1e293b}
+  .ct-sec h3{font-size:14.5px;font-weight:700;color:#1f2937;margin:16px 0 4px}
   .ct-sec p{margin:0 0 10px}
-  .ct-details,.ct-kv,.ct-svc{width:100%;border-collapse:collapse;margin:6px 0 4px;font-size:13.3px}
-  .ct-details th,.ct-kv th,.ct-svc th{background:#f3f4f6;font-weight:700;color:#374151;text-align:left;
-    width:32%;padding:5px 9px;border-top:1px solid #d1d5db;border-bottom:1px solid #d1d5db;
-    font-size:13.3px;letter-spacing:normal;text-transform:none}
-  .ct-details td,.ct-kv td,.ct-svc td{padding:5px 9px;border-top:1px solid #d1d5db;border-bottom:1px solid #d1d5db}
+  .ct-details,.ct-svc{width:100%;border-collapse:collapse;margin:8px 0 16px;border:1px solid #d1d5db;font-size:13.5px}
+  .ct-details th,.ct-svc th{background:#f3f4f6;font-weight:600;color:#374151;text-align:left;width:34%;
+    padding:8px 12px;border:1px solid #e5e7eb;font-size:13.5px;letter-spacing:normal;text-transform:none}
+  .ct-details td,.ct-svc td{padding:8px 12px;border:1px solid #e5e7eb}
+  .ct-kv{width:100%;border-collapse:collapse;margin:2px 0 12px;border:0}
+  .ct-kv th{width:168px;background:transparent;font-weight:600;color:#374151;text-align:left;
+    padding:3px 18px 3px 0;border:0;font-size:14px;letter-spacing:normal;text-transform:none}
+  .ct-kv td{padding:3px 0;border:0}
   .ct-inc{font-weight:700;color:#166534}
   .ct-notinc{font-weight:700;color:#9ca3af}
-  .ct-incl{margin:2px 0 12px;padding:0 0 0 18px}
-  .ct-incl li{margin:0 0 2px}
-  .ct-init{width:auto;border-collapse:collapse;margin:8px 0 4px}
-  .ct-init-label{font-size:12px;font-weight:700;color:#6b7280;padding:0 8px 0 0;white-space:nowrap}
+  .ct-init{width:auto;border-collapse:collapse;margin:12px 0 4px}
+  .ct-init td{border:0;padding:0 8px 0 0;background:transparent}
+  .ct-init-label{font-size:12px;font-weight:700;color:#6b7280;white-space:nowrap}
   .ct-init-line{min-width:90px}
+  .ct-signed-init{border-bottom:1px solid #333;padding:0 8px 2px;display:inline-block;line-height:1}
+  .ct-hand{font-family:"Great Vibes",cursive;font-weight:400;font-style:normal;font-size:32px;line-height:1;letter-spacing:0;text-transform:none;color:#1e293b}
   .sig{margin-top:36px;border-top:1px solid #ccc;padding-top:22px}
   .sig img{max-height:90px;display:block;margin-bottom:6px}
   .meta{font-size:12.5px;color:#555;line-height:1.9}
   .meta b{color:#1a1a1a}
-  table{width:100%;border-collapse:collapse;margin-top:18px;font-family:system-ui,sans-serif;font-size:13.5px}
-  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #e3e3e3;vertical-align:top}
-  th{width:34%;color:#555;font-weight:600}
+  table:not([class]){width:100%;border-collapse:collapse;margin-top:18px;font-size:13.5px}
+  table:not([class]) th,table:not([class]) td{text-align:left;padding:9px 10px;border-bottom:1px solid #e3e3e3;vertical-align:top}
+  table:not([class]) th{width:34%;color:#555;font-weight:600}
   .fine{margin-top:34px;font-size:11.5px;color:#777;border-top:1px solid #e3e3e3;padding-top:12px;
         font-family:system-ui,sans-serif;line-height:1.7}
 `;
@@ -923,7 +1034,6 @@ router.get('/download/:token', async (req, res) => {
       where: { token: req.params.token, status: 'signed' },   // token is the access key
       include: {
         leads: { select: { name: true } },
-        vendors: { select: { business_name: true, logo_path: true } },
       },
     });
     if (!c) return res.status(404).send('Signed contract not found');
@@ -942,17 +1052,13 @@ router.get('/download/:token', async (req, res) => {
      * invitation to sign it again.
      */
     const initials = (c.signed_name || '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase();
-    const body = String(c.body || '').replace(
+    const body = upgradeDeliverables(c.body).replace(
       /<span class="ct-init-tap"[^>]*>.*?<\/span>/g,
-      `<span style="border-bottom:1px solid #333;padding:0 12px;font-family:cursive">${esc(initials)}</span>`
+      `<span class="ct-signed-init ct-hand">${esc(initials)}</span>`
     );
 
-    const logo = c.vendors?.logo_path
-      ? `<img src="${req.protocol}://${req.get('host')}/api/me/logo/${esc(c.vendors.logo_path)}" alt="">` : '';
-
     sendDoc(res, `contract-${c.leads?.name || c.id}-${String(c.signed_at).slice(0, 10)}.html`, c.title, `
-      <div class="hd">${logo}<p class="biz">${esc(c.vendors?.business_name || '')}</p><h1>${esc(c.title)}</h1></div>
-      <div class="body">${body}</div>
+      <div class="ct-doc">${body}</div>
       <div class="sig">
         ${c.signature_data ? `<img src="${esc(c.signature_data)}" alt="Signature">` : ''}
         <p class="meta">

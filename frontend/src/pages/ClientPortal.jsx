@@ -3,6 +3,7 @@ import { api, fmtEventDate, fmtMoney, moneyParts } from '../lib/api';
 import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
 import { useDialog } from '../lib/dialog.jsx';
 import './portal.css';
+import './contractdoc.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 /**
@@ -105,7 +106,7 @@ function ContractStep({ contract, clientName, onSigned }) {
     const ctx = canvas.getContext('2d');
     const r = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = r.width * dpr; canvas.height = 170 * dpr;
+    canvas.width = r.width * dpr; canvas.height = r.height * dpr;
     ctx.scale(dpr, dpr);
     ctx.lineWidth = 2.2; ctx.lineCap = 'round';
     ctx.strokeStyle = getComputedStyle(canvas).color;
@@ -165,41 +166,39 @@ function ContractStep({ contract, clientName, onSigned }) {
   return (
     <section className="po-sec">
       <p className="po-eyebrow">Step two</p>
-      <h2 className="po-h">{contract.title || 'Your contract'}</h2>
-      <p className="po-lead">Read it through, initial where marked, then sign to confirm your date.</p>
+      <h2 className="po-h">Sign</h2>
+      <p className="po-lead">Read the agreement, initial where marked, then sign.</p>
 
-      {/* the real document — same markup, same rendering as the standalone
-          sign page, so the two can no longer show something different */}
-      <div className="po-doc" ref={docRef} dangerouslySetInnerHTML={{ __html: body }} />
+      <article className="ct-sheet">
+        <div className="ct-doc" ref={docRef} dangerouslySetInnerHTML={{ __html: body }} />
 
-      <div className="po-sign-grid">
-        <label className="po-label" htmlFor="po-name">Your full legal name</label>
-        <input id="po-name" className="po-input" value={name} placeholder="Full name"
-          onChange={e => setName(e.target.value)} />
+        {initialed.length > 0 && (
+          <p className={`ct-left ${left ? 'is-todo' : 'is-done'}`}>
+            {left ? `${left} initial${left > 1 ? 's' : ''} left` : 'All initialed'}
+          </p>
+        )}
 
-        <div className="po-pad-head">
-          <label className="po-label" htmlFor="po-pad">Draw your signature</label>
-          <button type="button" className="po-clear" onClick={clearPad}>Clear</button>
-        </div>
-        <canvas id="po-pad" ref={canvasRef} className="po-pad" />
-      </div>
+        <section className="ct-accept">
+          <h2 className="ct-accept-title">Acceptance & Signature</h2>
+          <p className="ct-accept-lead">Sign below to confirm this agreement.</p>
 
-      {err && <div className="po-msg is-err">{err}</div>}
+          <label className="ct-field-label" htmlFor="po-name">Full legal name</label>
+          <input id="po-name" className="ct-field" value={name} placeholder="Full name"
+            onChange={e => setName(e.target.value)} />
 
-      <div className="po-signbar">
-        <span className="po-signbar-status">
-          <span className="po-dots">
-            {initialed.map((v, i) => <i key={i} className={`po-dot ${v ? 'is-on' : ''}`} />)}
-          </span>
-          {left > 0
-            ? `${left} initial${left > 1 ? 's' : ''} left`
-            : hasInk ? 'Ready to sign' : 'Signature needed'}
-        </span>
-        <button type="button" className="po-cta po-cta-sm" onClick={sign} disabled={busy || !ready}>
+          <div className="ct-pad-row">
+            <label className="ct-field-label" htmlFor="po-pad">Signature</label>
+            <button type="button" className="ct-clear" onClick={clearPad}>Clear</button>
+          </div>
+          <canvas id="po-pad" ref={canvasRef} className="ct-pad" />
+        </section>
+
+        {err && <div className="ct-err">{err}</div>}
+        <button type="button" className="ct-sign-btn" onClick={sign} disabled={busy || !ready}>
           {busy ? 'Signing…' : 'Sign contract'}
         </button>
-      </div>
-      <p className="po-fine">Your name, signature, IP address and the time are recorded with this agreement.</p>
+        <p className="ct-fine">Your name, signature, IP address and the time are recorded with this agreement.</p>
+      </article>
     </section>
   );
 }

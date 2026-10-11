@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { moneySummary } from './payments.js';
 import { notify } from './notifications.js';
-import { audit, templateForLead, buildContractBody } from './contracts.js';
+import { audit, templateForLead, buildContractBody, upgradeDeliverables } from './contracts.js';
 import { currencyFor } from '../lib/currencies.js';
 import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 import { limit } from '../middleware/rateLimit.js';
@@ -244,6 +244,7 @@ router.get('/:token', async (req, res) => {
     const contract = (contractRow && !contractRow.released_at && !contractRow.signed_at)
       ? null
       : contractRow;
+    if (contract?.body) contract.body = upgradeDeliverables(contract.body);
 
     // 💱 resolved the same way the panel resolves it — their choice, else their
     // country — so the figure a client sees matches the one the vendor sees

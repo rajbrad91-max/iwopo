@@ -722,7 +722,9 @@ export const api = {
   emailLead: (leadId, subject, body, cc, kind) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body, cc, kind }) }),
   leadContracts: (leadId) => request(`/contracts/lead/${leadId}`),
   releaseContract: (id) => request(`/contracts/${id}/release`, { method: 'PUT' }),
-  previewContract: (leadId) => request(`/contracts/preview/${leadId}`),
+  previewContract: (leadId, packageId) => request(
+    `/contracts/preview/${leadId}` + (packageId ? `?package=${encodeURIComponent(packageId)}` : '')
+  ),
   createContract: (leadId, title, body) => request(`/contracts/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ title, body }) }),
   voidContract: (id) => request(`/contracts/${id}`, { method: 'DELETE' }),
   viewContract: (token) => request(`/contracts/sign/${token}`),

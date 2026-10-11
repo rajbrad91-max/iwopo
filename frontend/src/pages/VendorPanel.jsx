@@ -10,6 +10,7 @@ import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber } from './InquiryForm';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
+import './contractdoc.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
 import PlansView from './PlansView.jsx';
 import RequestsView from './RequestsView.jsx';
@@ -3171,7 +3172,7 @@ function LeadsView({ routeLead, onOpenLead }) {
                             onClick={e => sendPkgs(l, e)}
                             title={`Email the packages to ${l.email}`}
                           >
-                            📤 Send Packages
+                            📤 <span className="lead-send-txt">Send Packages</span>
                           </button>
                         )}
                       </div>

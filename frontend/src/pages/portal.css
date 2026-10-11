@@ -282,73 +282,8 @@
 }
 .po-strip-v { font-size: 14.5px; font-weight: 600; color: var(--ink); }
 
-/* ── the contract itself ──────────────────────────────────── */
-/* Same reasoning as the vendor's own contract page: a 60vh scrolling cap on
-   a document a client is about to sign reads as a preview window rather than
-   the actual agreement. It runs the page's own length now. */
-.po-doc {
-  background: #fff; border: 1px solid var(--line); border-radius: 14px;
-  padding: 34px 36px; margin: 26px 0 8px;
-  text-align: left;
-  font-size: 15px; line-height: 1.75; color: var(--body);
-}
-
-/* The initial boxes themselves are .ct-init-tap now, shared with the
-   standalone sign page — see inquiry.css. This component no longer renders
-   its own tap markers, so there is only one set of rules to keep in sync. */
-
-/* ── signing ──────────────────────────────────────────────── */
-.po-sign-grid {
-  background: #fff; border: 1px solid var(--line); border-radius: 14px;
-  padding: 24px 26px; margin-top: 18px; text-align: left;
-}
-.po-label {
-  display: block; font-size: 11px; font-weight: 700;
-  letter-spacing: .12em; text-transform: uppercase;
-  color: var(--soft); margin-bottom: 7px;
-}
-.po-input {
-  width: 100%; padding: 12px 14px; font-size: 15px; color: var(--ink);
-  background: var(--paper); border: 1px solid var(--line); border-radius: 9px;
-}
-.po-input:focus { outline: none; border-color: var(--brand, #b8922a); }
-.po-pad-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-top: 20px;
-}
-.po-clear {
-  background: none; border: none; cursor: pointer;
-  font-size: 12px; color: var(--soft); text-decoration: underline; text-underline-offset: 3px;
-}
-.po-clear:hover { color: var(--brand, #b8922a); }
-/* the pad inherits `color` so the stroke is drawn in the ink colour */
-.po-pad {
-  display: block; width: 100%; height: 170px; color: var(--ink);
-  background: var(--paper);
-  border: 1.5px dashed color-mix(in srgb, var(--brand, #b8922a) 55%, #fff);
-  border-radius: 10px; touch-action: none;
-}
-
-/* Sticky so the client never has to scroll back up to sign, and always knows
-   how many initials are left. */
-.po-signbar {
-  position: sticky; bottom: 0; z-index: 5;
-  display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;
-  margin-top: 18px; padding: 13px 18px;
-  background: color-mix(in srgb, #fff 94%, transparent);
-  border: 1px solid var(--line); border-radius: 12px;
-}
-.po-signbar-status {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 13px; font-weight: 600; color: var(--ink);
-}
-.po-dots { display: flex; gap: 4px; }
-.po-dot {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: #fff; border: 1px solid color-mix(in srgb, var(--brand, #b8922a) 45%, #fff);
-}
-.po-dot.is-on { background: var(--brand, #b8922a); border-color: var(--brand, #b8922a); }
-.po-cta-sm { width: auto; padding: 12px 28px; font-size: 14px; }
+/* the agreement itself is .ct-sheet in contractdoc.css — same sheet as
+   the standalone sign page */
 
 /* ── continue button on a revisited step ──────────────────── */
 .po-next {
@@ -376,12 +311,10 @@
 .po-cheer-p { font-size: 15px; color: var(--soft); margin: 0; line-height: 1.6; }
 
 @media (max-width: 640px) {
-  .po-doc { padding: 22px 18px; }
   .po-strip { gap: 18px; }
   .po-steps { padding-inline: 10px; }
   .po-steps li + li::before { width: 20px; margin: 0 7px; }
   .po-steps li { font-size: 10px; letter-spacing: .04em; }
-  .po-signbar { gap: 10px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════

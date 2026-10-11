@@ -44,9 +44,10 @@ export function useContractInitials(docRef, initialed, setInitialed, name, { pre
       const idx = Number(tap.dataset.initIdx);
       const doneHere = !!initialed[idx];
       tap.classList.toggle('is-done', doneHere);
+      tap.classList.toggle('ct-hand', doneHere);
       tap.classList.toggle('is-preview', preview);
       tap.classList.toggle('is-next', !preview && !doneHere && idx === nextDue);
-      tap.textContent = doneHere ? `✓ ${initials}` : 'TAP TO INITIAL';
+      tap.textContent = doneHere ? initials : 'TAP TO INITIAL';
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialed, name, preview, docRef.current]);

@@ -258,6 +258,38 @@
 .lead-check { accent-color: #2dd4bf; pointer-events: none; }
 .lead-restore { cursor: pointer; color: #2dd4bf; font-size: 12px; }
 
+/* 📏 Leads table columns (desktop, 2026-10-11).
+   - Short columns (#, Date, Packages, Status, Actions) shrink to their content
+     (width: 1%), so spare width goes to the client's name — not into a gap
+     between Location and Packages.
+   - Long venues wrap inside a width that shrinks with the screen; zooming in
+     makes the screen narrower to the browser.
+   - The table box hid anything wider than itself (overflow: hidden, for the
+     round corners), which is what chopped Send Packages when zoomed in. Here
+     it scrolls sideways instead, so nothing is ever cut.
+   - Below ~1300px the Send Packages label folds to its 📤 (tooltip kept). */
+@media (min-width: 721px) {
+  .leads-table th, .leads-table td { padding-left: 12px; padding-right: 12px; }
+  .leads-table th.col-num, .leads-table td.col-num,
+  .leads-table td[data-label="Date"],
+  .leads-table td[data-label="Status"],
+  .leads-table td.col-actions { width: 1%; white-space: nowrap; }
+  .leads-table th:nth-last-child(2) { white-space: nowrap; }
+  .leads-table td[data-label="Packages"] { width: 1%; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .leads-table td[data-label="Location"] { width: 150px; overflow-wrap: anywhere; }      /* a cell ignores max-width; width holds */
+  .leads-table td[data-label="Event"] { max-width: 130px; }
+  .leads-table .lead-send { white-space: nowrap; }
+  .table-wrap:has(.leads-table) { overflow-x: auto; }
+}
+@media (min-width: 721px) and (max-width: 1300px) {
+  .leads-table th, .leads-table td { padding-left: 8px; padding-right: 8px; }
+  .leads-table td[data-label="Location"] { width: 120px; }
+  .leads-table td[data-label="Packages"] { max-width: 110px; }
+  .leads-table td[data-label="Event"] { max-width: 100px; }
+  .leads-table td.biz { max-width: 150px; overflow-wrap: anywhere; }
+  .lead-send-txt { display: none; }
+}
+
 /* 📱 Leads as compact cards on mobile */
 @media (max-width: 720px) {
   .leads-table, .leads-table tbody, .leads-table tr { display: block; width: 100%; }

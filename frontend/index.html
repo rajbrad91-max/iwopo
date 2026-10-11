@@ -3,6 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 🌗 Paint the right background BEFORE anything loads — no black flash on a
+       refresh (Raj, 2026-10-11). The styles start dark and the light theme was
+       only switched on by JavaScript once the page had loaded, so every hard
+       refresh showed dark first; the sign-up page sat on that same dark base
+       until its cream styles arrived. This runs first, sets the panel's
+       remembered theme (vf_theme) and the right colour for the page, and steps
+       aside once the page's own styles are in. -->
+  <script>
+    (function () {
+      try {
+        var d = document.documentElement, p = location.pathname, bg = '';
+        var signedIn = !!(sessionStorage.getItem('iwopo_token') || localStorage.getItem('iwopo_token'));
+        var light = localStorage.getItem('vf_theme') === 'light';
+        if (p.indexOf('/panel') === 0 || ((p === '/' || p === '/login') && signedIn)) {
+          if (light) d.setAttribute('data-theme', 'light');
+          bg = light ? '#eef2f3' : '#0a1013';
+        } else if (p === '/' || p === '/login' || p.indexOf('/inquiry/') === 0) {
+          bg = '#FFF7F0';                       // the sign-up / plans page, the inquiry form
+        }
+        if (bg) {
+          // data-boot lets the body show this colour too (index.css) — the body
+          // is what you see while the page's code is still downloading
+          d.style.setProperty('--boot-bg', bg);
+          d.setAttribute('data-boot', '');
+          window.addEventListener('load', function () { setTimeout(function () { d.removeAttribute('data-boot'); }, 1500); });
+        }
+      } catch (e) { /* storage blocked — the page still loads normally */ }
+    })();
+  </script>
   <link rel="icon" type="image/png" href="/favicon-32.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <title>iwopo — Run your whole wedding business in one place</title>

@@ -36,6 +36,12 @@
   --shadow:0 18px 40px #0f172a1f; --shadowSm:0 6px 16px #0f172a14;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
+/* 🌗 While a page's code is still downloading the app shows nothing, so the
+   body is all you see — and the body is dark by default. index.html sets
+   data-boot with the right colour for the page (the panel's remembered theme,
+   the cream sign-up page) until it has loaded: no black flash on a refresh. */
+html[data-boot], html[data-boot] body { background: var(--boot-bg) !important; }
+
 body {
   /* Native on whichever platform is actually running, not only on Apple's.
      The stack this replaces named -apple-system, SF Pro Display, SF Pro Text,
@@ -150,7 +156,9 @@ td { padding:14px 18px; border-bottom:1px solid var(--line2); }
 tr:last-child td { border-bottom:none; }
 .biz { font-weight:600; }
 .empty { color:var(--muted); text-align:center; padding:30px; }
-.badge { padding:4px 11px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.3px; }
+/* one piece, one line: wrapped across two lines an inline pill drew its colour
+   per line and looked chopped at both ends ("Booking Confirmed", 2026-10-11) */
+.badge { display:inline-block; white-space:nowrap; padding:4px 11px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.3px; }
 /* a soft tint reads as a state; a solid fill reads as a button you can press */
 .badge.active, .badge.booked { background:var(--greenSoft); color:var(--green); }
 .badge.trial  { background:var(--teal-soft);  color:var(--teal);  }
