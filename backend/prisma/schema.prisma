@@ -829,6 +829,10 @@ model vendors {
   rawsel_settings         rawsel_settings?
   agent_usage             agent_usage[]
   push_subscriptions      push_subscriptions[]
+  agent_reminders         agent_reminders[]
+  agent_memory            agent_memory[]
+  agent_briefing          agent_briefing?
+  agent_conversations     agent_conversations[]
 }
 
 model album_faces {
@@ -1195,4 +1199,63 @@ model push_subscriptions {
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_push_subscriptions_vendor")
+}
+
+/// ⏰ AI Agent / Tornado reminders (lib/agentReminders.js): a delivery the
+/// vendor promised a client, a task, or an alarm at a set time. Deliveries and
+/// tasks alert 14, 7, 2 and 1 days ahead and on the day; an alarm once.
+model agent_reminders {
+  id            Int       @id @default(autoincrement())
+  vendor_id     Int
+  /// the client it is about, if any — a lead marked delivered silences it
+  lead_id       Int?
+  title         String    @db.VarChar(200)
+  /// delivery | task | alarm
+  kind          String    @default("task") @db.VarChar(12)
+  due_at        DateTime  @db.Timestamp(6)
+  done_at       DateTime? @db.Timestamp(6)
+  /// the latest alert already put on the bell
+  last_alert_at DateTime? @db.Timestamp(6)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, done_at], map: "idx_agent_reminders_open")
+}
+
+/// 🧠 AI Agent / Tornado knowledge (lib/agentKnowledge.js): a fact the owner
+/// wrote for it, or something Tornado was asked to remember in conversation.
+model agent_memory {
+  id         Int       @id @default(autoincrement())
+  vendor_id  Int
+  /// fact (written by the owner) | memory (saved by the agent when asked)
+  kind       String    @default("memory") @db.VarChar(10)
+  text       String    @db.VarChar(600)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id], map: "idx_agent_memory_vendor")
+}
+
+/// 🧠 The business at a glance for the AI Agent — rebuilt every 15 minutes
+/// from leads, bookings, crew, packages and reminders.
+model agent_briefing {
+  vendor_id  Int      @id
+  text       String
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+  vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// 🧠 Tornado's memory of past conversations (Raj, 2026-10-11: "it forgets
+/// every time we start a new conversation"). The app sends the transcript when
+/// a conversation ends; a short summary is what the next one starts with.
+model agent_conversations {
+  id         Int       @id @default(autoincrement())
+  vendor_id  Int
+  summary    String
+  transcript String?
+  started_at DateTime? @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, created_at], map: "idx_agent_conversations_vendor")
 }

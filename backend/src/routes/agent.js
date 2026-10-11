@@ -17,9 +17,15 @@ import { limit } from '../middleware/rateLimit.js';
 import { TOOLS, runTool } from '../lib/agentTools.js';
 import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction } from '../lib/agentActions.js';
 import { vapid } from '../lib/agentPush.js';
+import { liveSession } from '../lib/geminiLive.js';
+import { alertsFor } from '../lib/agentReminders.js';
+import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
 
 const ALL_TOOLS = [...TOOLS, ...ACTION_TOOLS];
 const ACTIONS = new Set(ACTION_TOOLS.map(t => t.name));
+/* ⚡ the tool list never changes between turns: marked for Claude's prompt cache,
+   so a follow-up question does not pay to re-read it (faster and cheaper) */
+const CACHED_TOOLS = ALL_TOOLS.map((t, i) => (i === ALL_TOOLS.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t));
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -66,14 +72,15 @@ function systemPrompt(studio, today, voice = false) {
   return `You are the private assistant of ${studio || 'a wedding vendor'}, working inside their iwopo vendor panel. Today is ${today}.
 The person talking to you runs the business. English may be their second language and their messages may come from speech-to-text — read for what they MEAN, forgive spelling and grammar, and never comment on it.
 Use the tools to look things up; never invent a client, date, amount or status. If something is not in the panel, say so plainly.
-Answer short and clear, like a helpful office manager: the key facts first, a few short lines, no long paragraphs. Dates as "Sat 14 Jun". Money with the currency sign.
+Be warm and natural, like a friendly, capable office manager who knows the business well — a little personal, never stiff. Answer short and clear: the key facts first, a few short lines, no long paragraphs. Dates as "Sat 14 Jun". Money with the currency sign.
 If a request is unclear, ask ONE short question.
 Dates in tool results already carry their weekday — copy them as given and never work out a weekday yourself.
 When asked to CHECK a contract (or "is it right / any mistakes"), do not summarise it: compare it line by line with the lead and the vendor's packages that preview_contract returns — names, event day and weekday, venue, times and hours, guests, package and price, deposit and balance, everything the client asked for in their form answers — and list each mismatch, gap or leftover text as a short numbered point. If nothing is wrong, say so in one line.
 You can draft, inspect and check contracts with preview_contract — in the chat only. You can NEVER send, release or save a contract: the vendor does that themselves in Contracts & Invoices. Say so plainly if asked.
-You may PROPOSE an email (answers, instructions, reminders) or sending packages; the vendor gets a Yes/No card and nothing goes out until they press Yes. After proposing, say in one line what is waiting for their Yes. Never claim something was sent.
+You may PROPOSE: an email to a client (answers, instructions, reminders), sending packages, adding a new lead, updating a lead (status such as booked, date, venue, times, guests, contact details, client notes), a private note on a lead, or archiving a lead. Each becomes a Yes/No card for the vendor and nothing happens until they press Yes. After proposing, say in one line what is waiting for their Yes. Never claim something was done before the Yes.
 Packages can only be proposed for a contract the vendor has already released.
-For anything else that would change data (bookings, payments, deleting), say it is not something you can do yet.${voice ? `
+You can save reminders (set_reminder — deliveries promised to clients, tasks, alarms at a time), list and complete them, and tell the time anywhere (world_time). You may also answer general everyday questions from your own knowledge.
+For anything else that would change data (payments, invoices, deleting for good), say it is not something you can do yet.${voice ? `
 
 SPOKEN: this question was spoken and your answer will be read aloud. Reply like a person talking — one or two short sentences, the key fact first, no lists, no bold, no headings, no emojis, numbers in words people say ("three new leads"). If there is more, end with a short offer such as "Want the details?".` : ''}`;
 }
@@ -106,6 +113,8 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
     if (!history.length || history[history.length - 1].role !== 'user') return res.status(400).json({ error: 'Say something first' });
 
     const vendor = await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true } });
+    const knowledge = await knowledgeText(v).catch(() => '');
+    const briefing = await briefingText(v).catch(() => '');
     const today = new Date().toLocaleDateString('en-CA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const messages = [...history];
     let inTok = 0, outTok = 0;
@@ -115,7 +124,7 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
       const r = await fetch(API_URL, {
         method: 'POST',
         headers: { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: systemPrompt(vendor?.business_name, today, req.body?.voice === true), tools: ALL_TOOLS, messages }),
+        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: [{ type: 'text', text: systemPrompt(vendor?.business_name, today, req.body?.voice === true), cache_control: { type: 'ephemeral' } }, { type: 'text', text: `What you know (facts and memories):\n${knowledge}\n\nThe business right now (refreshed every 15 minutes — use tools for details):\n${briefing}` }], tools: CACHED_TOOLS, messages }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -148,6 +157,83 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
     }
     await record(v, inTok, outTok, cfg);
     res.json({ proposals, reply: 'That needed more looking up than I can do in one go — could you ask it in smaller parts?', looked, usage: { inTok, outTok } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── 🌪️ Tornado on Gemini Live (lib/geminiLive.js) — a single-use token + the locked setup ── */
+router.get('/gemini/session', requireAuth, limit({ name: 'agent-gemini', max: 20, windowMs: 60_000, key: (req) => String(req.user?.vendor_id || '') }), async (req, res) => {
+  try { res.json(await liveSession(vid(req))); }
+  catch (e) { res.status(409).json({ error: e.message }); }
+});
+
+/* ── 🧠 knowledge & memory (lib/agentKnowledge.js) ── */
+router.get('/knowledge', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    const rows = await prisma.agent_memory.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' } });
+    const b = await prisma.agent_briefing.findUnique({ where: { vendor_id: v } });
+    res.json({ items: rows.map(r => ({ id: r.id, kind: r.kind, text: r.text, at: r.created_at })), briefing: b?.text || await briefingText(v), briefingAt: b?.updated_at || new Date() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/knowledge', requireAuth, async (req, res) => {
+  try {
+    const text = String(req.body?.text || '').trim().slice(0, 600);
+    if (!text) return res.status(400).json({ error: 'Write something first' });
+    const r = await prisma.agent_memory.create({ data: { vendor_id: vid(req), kind: 'fact', text } });
+    res.json({ id: r.id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/knowledge/:id', requireAuth, async (req, res) => {
+  try {
+    const { count } = await prisma.agent_memory.deleteMany({ where: { id: Number(req.params.id), vendor_id: vid(req) } });   // 🔒
+    res.status(count ? 200 : 404).json(count ? { ok: true } : { error: 'Not found' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/knowledge/refresh', requireAuth, async (req, res) => {
+  try { res.json({ briefing: await buildBriefing(vid(req)), briefingAt: new Date() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** 🧠 A conversation just ended — remember what it was about (summary for the next one). */
+router.post('/conversations', requireAuth, async (req, res) => {
+  try {
+    const turns = Array.isArray(req.body?.turns) ? req.body.turns.slice(-120) : [];
+    const row = await saveConversation(vid(req), turns, req.body?.startedAt);
+    res.json({ saved: !!row, summary: row?.summary || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** ⏰ The alerts still to come — the phone app schedules them as alarms that ring with the app closed. */
+router.get('/reminders/alerts', requireAuth, async (req, res) => {
+  try { res.json({ alerts: await alertsFor(vid(req), { from: new Date(), days: 45 }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * Tornado asked the app to use a tool; the app asks here, as the vendor.
+ * Read tools answer with data; propose_… tools answer with a proposal the
+ * owner must say yes to (the app also shows it as a card); confirm_action
+ * runs it, cancel_action drops it. No tool can send a contract.
+ */
+const READ = new Set(TOOLS.map(t => t.name));
+router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs: 60_000, key: (req) => String(req.user?.vendor_id || '') }), async (req, res) => {
+  try {
+    const v = vid(req);
+    const name = String(req.body?.name || '');
+    const input = (req.body?.parameters && typeof req.body.parameters === 'object') ? req.body.parameters : {};
+    if (name === 'confirm_action') return res.json({ result: await confirmAction(input.proposal_id, v, req.headers.authorization) });
+    if (name === 'cancel_action') { cancelAction(input.proposal_id, v); return res.json({ result: { ok: true, message: 'Cancelled — nothing was done.' } }); }
+    let out;
+    if (READ.has(name)) out = await runTool(name, input, v);
+    else if (ACTIONS.has(name)) out = await runActionTool(name, input, v, req.headers.authorization);
+    else return res.status(400).json({ error: `Unknown tool ${name}` });
+    if (out?.proposal) {
+      return res.json({
+        proposal: out.proposal,
+        result: { proposal_id: out.proposal.id, about_to: out.proposal.title, details: out.proposal.details, next: 'Tell the owner in one short sentence what you will do and ask if you should go ahead. Call confirm_action with this proposal_id only after a clear yes.' },
+      });
+    }
+    res.json({ result: out });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

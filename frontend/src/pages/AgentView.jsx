@@ -31,6 +31,51 @@ function keyBytes(b64) {
   return Uint8Array.from(atob(s), c => c.charCodeAt(0));
 }
 
+/* 🧠 What the AI Agent (and Tornado) knows: facts the owner writes, things it
+   was asked to remember, and the business briefing rebuilt every 15 minutes. */
+function Knowledge() {
+  const [data, setData] = useState(null);
+  const [text, setText] = useState('');
+  const [err, setErr] = useState('');
+  const load = () => api.agentKnowledge().then(setData).catch(e => setErr(e.message));
+  useEffect(() => { api.agentKnowledge().then(setData).catch(e => setErr(e.message)); }, []);
+
+  async function add(e) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    try { await api.agentAddFact(text.trim()); setText(''); load(); } catch (x) { setErr(x.message); }
+  }
+  async function drop(id) { await api.agentDeleteFact(id).catch(() => {}); load(); }
+  async function refresh() { try { const r = await api.agentRefreshBriefing(); setData(d => ({ ...d, ...r })); } catch (x) { setErr(x.message); } }
+  if (!data) return <div className="ag-know">{err ? `⚠️ ${err}` : 'Loading…'}</div>;
+  const facts = data.items.filter(i => i.kind === 'fact'), mem = data.items.filter(i => i.kind === 'memory');
+  const ago = Math.max(0, Math.round((Date.now() - new Date(data.briefingAt)) / 60000));
+
+  return (
+    <div className="ag-know">
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">📌 Facts you tell it</h3>
+        <p className="ag-k-sub">How your business works — prices, policies, delivery times, what you never do. It uses these in every conversation.</p>
+        <form className="ag-k-add" onSubmit={add}>
+          <input value={text} maxLength={600} onChange={e => setText(e.target.value)} placeholder="e.g. Wedding photos are delivered within 6 weeks" aria-label="New fact" />
+          <button className="ag-send" type="submit" disabled={!text.trim()}>Add</button>
+        </form>
+        {facts.length ? <ul className="ag-k-list">{facts.map(f => <li key={f.id}><span>{f.text}</span><button type="button" className="ag-k-x" onClick={() => drop(f.id)} aria-label="Remove">✕</button></li>)}</ul> : <div className="ag-k-empty">No facts yet.</div>}
+      </section>
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">🧠 What it remembers</h3>
+        <p className="ag-k-sub">Things you asked it to remember while talking ("remember that…"). Remove anything that's wrong.</p>
+        {mem.length ? <ul className="ag-k-list">{mem.map(m => <li key={m.id}><span>{m.text}</span><button type="button" className="ag-k-x" onClick={() => drop(m.id)} aria-label="Forget">✕</button></li>)}</ul> : <div className="ag-k-empty">Nothing remembered yet.</div>}
+      </section>
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">📊 Business briefing</h3>
+        <p className="ag-k-sub">Rebuilt every 15 minutes from your leads, bookings, crew, packages and reminders · updated {ago === 0 ? 'just now' : `${ago} min ago`} <button type="button" className="ag-k-link" onClick={refresh}>Refresh now</button></p>
+        <pre className="ag-k-brief">{data.briefing}</pre>
+      </section>
+    </div>
+  );
+}
+
 export default function AgentView() {
   const [msgs, setMsgs] = useState([]);           // { role, content, proposal? }
   const [text, setText] = useState('');
@@ -40,6 +85,7 @@ export default function AgentView() {
   const [listening, setListening] = useState(false);
   const [speak, setSpeak] = useState(() => { try { return localStorage.getItem(SPEAK_KEY) !== 'off'; } catch { return true; } });
   const [pop, setPop] = useState('checking');      // checking | on | off | blocked | unsupported
+  const [know, setKnow] = useState(false);         // 🧠 the knowledge section instead of the chat
   const fromLink = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('voice') === '1';
   const end = useRef(null);
   const rec = useRef(null);
@@ -152,6 +198,7 @@ export default function AgentView() {
   return (
     <div className="ag">
       <div className="ag-tools">
+        <button type="button" className={`ag-tool ${know ? 'is-on' : ''}`} onClick={() => setKnow(k => !k)} aria-pressed={know}>{know ? '💬 Back to chat' : '🧠 Knowledge & memory'}</button>
         <button type="button" className={`ag-tool ${speak ? 'is-on' : ''}`} onClick={toggleSpeak} aria-pressed={speak}>{speak ? '🔊 Reads answers aloud' : '🔇 Silent'}</button>
         {pop !== 'unsupported' && (
           <button type="button" className={`ag-tool ${pop === 'on' ? 'is-on' : ''}`} onClick={popups} disabled={pop === 'blocked' || pop === 'checking'}>
@@ -159,6 +206,7 @@ export default function AgentView() {
           </button>
         )}
       </div>
+      {know ? <Knowledge /> : (<>
       <div className="ag-chat">
         {msgs.length === 0 && (
           <div className="ag-hello">
@@ -194,6 +242,7 @@ export default function AgentView() {
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
         <button className="ag-send" type="submit" disabled={busy || !text.trim() || listening}>Send</button>
       </form>
+      </>)}
       {usage && (
         <div className="ag-usage">
           {usage.ready ? `This month: $${usage.spentUsd.toFixed(2)} of $${usage.capUsd} · ${usage.requests} question${usage.requests === 1 ? '' : 's'}` : '⚠️ Needs its key — Super Admin → Settings → AI Agent'}

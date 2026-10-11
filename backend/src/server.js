@@ -53,6 +53,8 @@ import editorRoutes from './routes/editor.js';
 import agentRoutes from './routes/agent.js';
 import { sweepRaws } from './lib/rawFiles.js';
 import { writeAltTexts } from './lib/rawDelivery.js';
+import { sweepReminders } from './lib/agentReminders.js';
+import { refreshBriefings } from './lib/agentKnowledge.js';
 import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
 import occasionRoutes from './routes/occasions.js';
@@ -293,6 +295,10 @@ setInterval(() => { sweepRaws().catch(() => {}); }, 10 * 60_000).unref();
 setTimeout(() => { sweepRaws().catch(() => {}); }, 2 * 60_000).unref();
 // 🤖 alt text for delivered photos — catches up by itself once an AI key is saved
 setInterval(() => { writeAltTexts().catch(() => {}); }, 60 * 60_000).unref();
+// ⏰ AI Agent reminders: alerts that fall due go on the bell (the phone app also rings by itself)
+setInterval(() => { sweepReminders().catch(() => {}); }, 15 * 60_000).unref();
+// 🧠 AI Agent: the business briefing, rebuilt from the live tables every 5 minutes (Raj, 2026-10-11)
+setInterval(() => { refreshBriefings().catch(() => {}); }, 5 * 60_000).unref();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);

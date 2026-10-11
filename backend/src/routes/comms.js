@@ -10,7 +10,7 @@ import { Readable } from 'node:stream';
 import privateDb from '../config/privateDb.js';
 import { requireAuth } from '../middleware/auth.js';
 import { pollComms } from '../lib/commsPoll.js';
-import { quoConfig, getCallRecordings, ownNumbers, saveContact, sendMessage } from '../lib/quo.js';
+import { quoConfig, getCallRecordings, ownNumbers, saveContact, sendMessage, listPhoneNumbers } from '../lib/quo.js';
 import { contactsByNumber, forgetContacts } from '../lib/commsEnrich.js';
 import { normalise, upsertEvent } from './commsWebhook.js';
 import { limit } from '../middleware/rateLimit.js';
@@ -169,6 +169,10 @@ router.post('/contact', requireAuth, async (req, res) => {
  *
  * 🔒 Only to someone this vendor already has a conversation with, at most
  * twenty a minute — a bug or a stolen session must not become a spam cannon.
+ * The one exception is `start: true` — a NEW conversation the owner asked for
+ * by name (Tornado sends it only after his yes, Raj 2026-10-11); it goes out
+ * from the line picked in Super Admin, or the business's first Quo line, under
+ * the same twenty-a-minute cap.
  */
 const MAX_TEXT = 1600;
 router.post('/message', requireAuth,
@@ -194,8 +198,10 @@ router.post('/message', requireAuth,
             AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
               OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)
           ORDER BY occurred_at DESC LIMIT 1`, v, key10);
-      if (!last.length) return res.status(404).json({ error: 'No calls or texts with that number yet.' });
-      const from = cfg.phoneNumberId || last[0].line_id;
+      let from;
+      if (last.length) from = cfg.phoneNumberId || last[0].line_id;
+      else if (req.body?.start === true) from = cfg.phoneNumberId || (await listPhoneNumbers(cfg.key))[0]?.id;
+      if (!from) return res.status(404).json({ error: 'No calls or texts with that number yet.' });
 
       const raw = String(req.body.number).trim();
       const to = raw.startsWith('+') ? `+${raw.replace(/\D/g, '')}` : `+1${key10}`;

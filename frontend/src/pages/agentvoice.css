@@ -1,0 +1,11 @@
+/* 🌪️ Super Admin → Settings → AI Agent: Tornado's Gemini key and voice */
+.av { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.av-hd { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.av-sub { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+.av-input { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
+.av-input.is-ro { opacity: .75; }
+.av-msg { margin-top: 10px; font-size: 12.5px; }
+.av-gap { margin-top: 12px; }
+.av-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.av-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 12.5px; }
+.av-chip.is-on { border-color: var(--teal, #2dd4bf); background: rgba(45, 212, 191, .14); font-weight: 600; }

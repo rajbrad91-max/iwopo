@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ComposedChart, Bar, Line
 } from 'recharts';
 import './super.css';
+import './agentvoice.css';
 import { useDialog } from '../lib/dialog.jsx';
 import { PROFESSIONS } from '../lib/professions';
 
@@ -1426,6 +1427,35 @@ function ChatbotCosts() {
   );
 }
 
+/* 🌪️ Tornado's voice on Google Gemini Live: the key (hidden like the others) and
+   which of Google's male voices it speaks with (Raj, 2026-10-11: Gemini Live
+   is a few dollars a month; ElevenLabs agents were ~1,000 credits a minute). */
+const GEMINI_VOICES = ['Charon', 'Orus', 'Fenrir', 'Puck', 'Iapetus', 'Umbriel', 'Algenib', 'Alnilam', 'Achird', 'Sadaltager', 'Enceladus', 'Rasalgethi'];
+function GeminiVoiceSettings({ s, setS, editing }) {
+  const [msg, setMsg] = useState('');
+  async function pick(v) {
+    try { await api.savePlatformSettings({ gemini_voice: v }); setS(x => ({ ...x, gemini_voice: v })); setMsg(`✅ Tornado now speaks as ${v}`); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  return (
+    <div className="av">
+      <div className="av-hd">🌪️ Tornado's voice (Google Gemini Live)</div>
+      <p className="av-sub">Real-time voice for the Tornado app. Create a key at aistudio.google.com → Get API key. It stays on the server; the app only ever gets a single-use, 30-minute token.</p>
+      <label className="lbl">Gemini API key</label>
+      <input type="password" className={`av-input ${editing ? '' : 'is-ro'}`} readOnly={!editing} placeholder="AIza…"
+        value={s.gemini_api_key || ''} onChange={e => setS({ ...s, gemini_api_key: e.target.value })} />
+      <label className="lbl av-gap">Voice (Google's male voices)</label>
+      <div className="av-chips">
+        {GEMINI_VOICES.map(v => (
+          <button key={v} type="button" className={`av-chip ${(s.gemini_voice || 'Charon') === v ? 'is-on' : ''}`} onClick={() => pick(v)}>{v}</button>
+        ))}
+      </div>
+      <p className="av-sub av-gap">Hear them at aistudio.google.com → Stream → Voice.</p>
+      {msg && <div className="av-msg">{msg}</div>}
+    </div>
+  );
+}
+
 /* 🔑 The clients' AI chatbot key, kept masked. The AI Agent (the owner's
    private assistant) has its own key in Settings, so Anthropic's bill keeps
    the two apart (Raj, 2026-10-10). */
@@ -2099,6 +2129,7 @@ function FaceEngineSettings() {
                 {aiMsg.text}
               </div>
             )}
+            <GeminiVoiceSettings s={s} setS={setS} editing={editing} />
           </div>
           )}
         </div>
