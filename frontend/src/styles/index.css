@@ -40,7 +40,7 @@
    body is all you see — and the body is dark by default. index.html sets
    data-boot with the right colour for the page (the panel's remembered theme,
    the cream sign-up page) until it has loaded: no black flash on a refresh. */
-html[data-boot], html[data-boot] body { background: var(--boot-bg) !important; }
+html[data-boot], html[data-boot] body { background: var(--boot-bg); }
 
 body {
   /* Native on whichever platform is actually running, not only on Apple's.

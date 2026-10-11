@@ -164,7 +164,7 @@ export default function SignContract({ token, previewLeadId, onRelease, onLoaded
               disabled={switching}
               onClick={() => { if (p.id !== shown) setVer(p.id); }}
             >
-              <span className="ct-ver-name">{p.name}</span>
+              {p.name}
               {p.price_label ? <span className="ct-ver-price">{p.price_label}</span> : null}
             </button>
           ))}

@@ -1,18 +1,16 @@
-/* 🔔 iwopo AI Agent — the service worker behind the installed app and pop-ups.
+/* 🔔 iwopo AI Agent — the service worker behind pop-ups.
  *
- * Registered only from the AI Agent tab (a vendor with the private feature), so
- * clients' browsers never get it. It shows pushed notices, opens the AI Agent
- * when one is tapped, and passes page loads straight to the network — Chrome
- * only offers "Install app" when a worker handles fetches. Nothing is cached:
- * the panel must always be live. */
+ * Registered from the AI Agent tab (a vendor with the private feature). It
+ * shows pushed notices and opens the AI Agent when one is tapped.
+ *
+ * It has NO fetch handler on purpose (2026-10-11): it used to pass every page
+ * load through itself so Chrome would offer "Install app" — and a worker that
+ * answers page loads takes away the browser's "keep the old page up until the
+ * new one is ready", so every refresh on the whole site flashed a blank, dark
+ * frame. Tornado is a real Android app now; the web install is not needed. */
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-
-// page loads only, straight to the network; everything else is left to the browser
-self.addEventListener('fetch', (e) => {
-  if (e.request.mode === 'navigate') e.respondWith(fetch(e.request));
-});
 
 self.addEventListener('push', (e) => {
   let d = {};
