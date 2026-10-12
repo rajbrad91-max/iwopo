@@ -16,11 +16,14 @@ import { requireAuth } from '../middleware/auth.js';
 import { getSetting } from '../lib/settings.js';
 import { limit } from '../middleware/rateLimit.js';
 import { TOOLS, runTool } from '../lib/agentTools.js';
-import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction } from '../lib/agentActions.js';
+import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction, isSmallChange } from '../lib/agentActions.js';
 import { vapid } from '../lib/agentPush.js';
-import { liveSession } from '../lib/geminiLive.js';
+import { liveSession, liveSetup } from '../lib/geminiLive.js';
 import { emailWarning } from '../lib/emailCheck.js';
-import { compactResult } from '../lib/tornadoLean.js';
+import { compactResult, unpanel } from '../lib/tornadoLean.js';
+import { SECTIONS, kbSync } from '../lib/agentKb.js';
+import { rulesFor } from '../lib/agentRules.js';
+import { runTraining, undoLastTraining } from '../lib/agentTraining.js';
 import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
 
@@ -266,14 +269,66 @@ router.get('/inbox', requireAuth, async (req, res) => {
     const when = (d) => new Date(d).toLocaleString('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', minute: '2-digit' });
     const comms = await privateDb.comms_events.findMany({ where: { vendor_id: v, direction: 'incoming', created_at: { gt: since } }, orderBy: { occurred_at: 'asc' }, take: 20, select: { kind: true, status: true, from_number: true, contact_name: true, body: true, occurred_at: true } }).catch(() => []);
     const leads = await prisma.leads.findMany({ where: { vendor_id: v, created_at: { gt: since } }, orderBy: { created_at: 'asc' }, take: 10, select: { id: true, name: true, event_type: true, event_date: true, email: true } });
+    // 🏷️ who it is, by name — an unsaved number is matched to a lead through the contact index
+    // (Raj, 2026-10-12: Yuffie's text reached Tornado as a bare number and it missed it was her)
+    const last10 = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+    const people = comms.length ? await prisma.agent_contacts.findMany({ where: { vendor_id: v, phone: { not: null } }, select: { phone: true, name: true } }) : [];
+    const byPhone = new Map(people.map(p => [last10(p.phone), p.name]));
+    const who = (e) => e.contact_name || byPhone.get(last10(e.from_number)) || `the number ending ${last10(e.from_number).slice(-4)}`;
     const items = [
       ...comms.map(e => e.kind === 'call'
-        ? `${/miss|no-answer/i.test(e.status || '') ? 'Missed call' : 'Call'} from ${e.contact_name || e.from_number} at ${when(e.occurred_at)}`
-        : `Text from ${e.contact_name || e.from_number} at ${when(e.occurred_at)}: "${String(e.body || '').slice(0, 200)}"`),
+        ? `NEW ${/miss|no-answer/i.test(e.status || '') ? 'MISSED CALL' : 'CALL'} from ${who(e)} at ${when(e.occurred_at)}`
+        : `NEW TEXT from ${who(e)} at ${when(e.occurred_at)}: "${String(e.body || '').slice(0, 200)}"`),
       ...leads.map(l => `New lead: ${l.name}${l.event_type ? ` (${l.event_type}${l.event_date ? `, ${new Date(l.event_date).toDateString()}` : ''})` : ''}${emailWarning(l.email) ? ` — ⚠️ their email ${l.email} looks wrong: ${emailWarning(l.email)}` : ''}`),
     ];
     res.json({ items, now: Date.now() });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── 📜 the Rules tab: exactly what Tornado reads at the start (and re-reads every reply) ── */
+router.get('/rules', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req);
+    const tok = (x) => Math.round(String(x).length / 4);
+    const setup = await liveSetup(v, { preview: true });                  // a preview: no wake-up is counted
+    const rules = (await rulesFor(v)).map(r => ({ key: r.key, title: r.title, text: r.text, protected: r.protected, tokens: tok(r.text), live: /\{\{\w+\}\}/.test(r.text), updated_at: r.updated_at }));
+    const decls = setup.tools.flatMap(t => t.functionDeclarations || []);
+    const tools = decls.map(d => ({ name: d.name, description: d.description, tokens: tok(JSON.stringify(d)) }));
+    const runs = await prisma.agent_training_runs.findMany({ where: { vendor_id: v }, orderBy: { id: 'desc' }, take: 6, select: { id: true, at: true, manual: true, status: true, summary: true, chars_before: true, chars_after: true, conversations: true, cost_usd: true, undone_at: true } });
+    const history = await prisma.agent_rule_history.findMany({ where: { vendor_id: v }, orderBy: { id: 'desc' }, take: 20, select: { at: true, title: true, action: true, reason: true, run_id: true } });
+    const rulesTokens = tok(setup.systemInstruction.parts[0].text), toolsTokens = tok(JSON.stringify(setup.tools));
+    res.json({ rules, tools, runs, history, rules_tokens: rulesTokens, tools_tokens: toolsTokens, total_tokens: rulesTokens + toolsTokens });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+/** 🧠 Train now (the same run the weekly schedule does). */
+router.post('/rules/train', requireAuth, async (req, res) => {
+  try { res.json(await runTraining(vid(req), { manual: true })); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+/** ↩️ Undo the last training. */
+router.post('/rules/undo', requireAuth, async (req, res) => {
+  try { res.json(await undoLastTraining(vid(req))); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── 📚 the knowledge base, as tabs on the Knowledge page ── */
+router.get('/kb/sections', requireAuth, async (req, res) => {
+  try {
+    const counts = await prisma.agent_kb.groupBy({ by: ['section'], where: { vendor_id: vid(req) }, _count: { _all: true } });
+    res.json({ sections: SECTIONS.map(([key, label]) => ({ key, label, count: counts.find(c => c.section === key)?._count._all || 0 })) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.get('/kb', requireAuth, async (req, res) => {
+  try {
+    const section = SECTIONS.some(s => s[0] === req.query.section) ? req.query.section : null;
+    const q = String(req.query.q || '').trim().slice(0, 80);
+    const rows = await prisma.agent_kb.findMany({
+      where: { vendor_id: vid(req), ...(section ? { section } : {}), ...(q ? { text: { contains: q, mode: 'insensitive' } } : {}) },
+      orderBy: { updated_at: 'desc' }, take: 400, select: { id: true, section: true, text: true, updated_at: true },
+    });
+    res.json({ rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/kb/refresh', requireAuth, async (req, res) => {
+  try { res.json(await kbSync(vid(req))); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /** ⏰ The alerts still to come — the phone app schedules them as alarms that ring with the app closed. */
@@ -292,14 +347,23 @@ const READ = new Set(TOOLS.map(t => t.name));
 router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs: 60_000, key: (req) => String(req.user?.vendor_id || '') }), async (req, res) => {
   try {
     const v = vid(req);
-    const name = String(req.body?.name || '');
-    const input = (req.body?.parameters && typeof req.body.parameters === 'object') ? req.body.parameters : {};
+    let name = String(req.body?.name || '');
+    let input = (req.body?.parameters && typeof req.body.parameters === 'object') ? req.body.parameters : {};
+    // 🗂️ the voice model's one "panel" tool → the page's own tool (tornadoLean.js)
+    if (name === 'panel') ({ name, input } = unpanel(input));
     if (name === 'confirm_action') return res.json({ result: compactResult(await confirmAction(input.proposal_id, v, req.headers.authorization)) });
     if (name === 'cancel_action') { cancelAction(input.proposal_id, v); return res.json({ result: { ok: true, message: 'Cancelled — nothing was done.' } }); }
     let out;
     if (READ.has(name)) out = await runTool(name, input, v);
     else if (ACTIONS.has(name)) out = await runActionTool(name, input, v, req.headers.authorization);
     else return res.status(400).json({ error: `Unknown tool ${name}` });
+    // 🧰 for the self-training only (never sent to Tornado) — kept 28 days
+    prisma.agent_tool_log.create({ data: { vendor_id: v, tool: name.slice(0, 60), args: JSON.stringify(input).slice(0, 600), result: JSON.stringify(out ?? {}).slice(0, 600), error: Boolean(out?.error) } }).catch(() => {});
+    // ⚡ a small internal change is done straight away — Tornado just says it's done
+    if (out?.proposal && isSmallChange(out.proposal.id)) {
+      const done = await confirmAction(out.proposal.id, v, req.headers.authorization);
+      return res.json({ result: compactResult({ ...done, done_without_asking: true }) });
+    }
     if (out?.proposal) {
       return res.json({
         proposal: out.proposal,

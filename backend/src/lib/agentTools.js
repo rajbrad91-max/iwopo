@@ -8,10 +8,13 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import { getSetting } from './settings.js';
 import { zoneOf, atLocal, nice } from './agentReminders.js';
 import { PANEL_TOOLS, PANEL_TOOL_NAMES, runPanelTool } from './agentPanelTools.js';
 import { lookupContacts } from './agentContacts.js';
 import { emailWarning } from './emailCheck.js';
+import { searchKb, leadPrices, SECTIONS } from './agentKb.js';
+import { foldLesson } from './agentTraining.js';
 
 /** A date as people say it, weekday included — "Mon 15 Mar 2027". Worked out
  *  here, in UTC (dates are stored as calendar days), so the model never has
@@ -73,6 +76,21 @@ export const TOOLS = [
     name: 'upcoming_events',
     description: 'Booked events in the next N days (default 30), soonest first.',
     input_schema: { type: 'object', properties: { days: { type: 'integer', minimum: 1, maximum: 365 } }, additionalProperties: false },
+  },
+  {
+    name: 'web_search',
+    description: 'Search the web for anything outside the panel — gear, prices, places, distances and travel times, news, how-to. Returns a short answer to read aloud.',
+    input_schema: { type: 'object', properties: { query: { type: 'string', description: 'what to look up' } }, required: ['query'] },
+  },
+  {
+    name: 'search_knowledge',
+    description: "Search the knowledge base: EVERY page of the panel written as plain sentences, one per record — leads (with price, notes, form answers), bookings (paid, balance, contract, crew), contracts & invoices, calls & messages, galleries, photo selections, crew, packages, File Flyer, Raw Selector, occasions, reminders, website analytics. Give a few key words; optionally a section. The quickest first look for almost any business question.",
+    input_schema: { type: 'object', properties: { query: { type: 'string', description: 'key words, a name, a number' }, section: { type: 'string', description: 'optional: ' + SECTIONS.map(s => s[0]).join(' | ') } }, required: ['query'] },
+  },
+  {
+    name: 'leads_by_price',
+    description: "Every lead with its price — from the package they chose, a custom price, the assigned package, or the quoted options — highest first, with what was paid. Use it for the highest / lowest priced lead or booking: it checks ALL leads, not only those with payments.",
+    input_schema: { type: 'object', properties: { status: { type: 'string', description: 'optional: booked, new, quoted…' }, limit: { type: 'integer', description: 'how many, default 10' } } },
   },
   {
     name: 'lookup_contact',
@@ -231,6 +249,33 @@ export async function runTool(name, input, vendorId) {
       const rows = await prisma.leads.findMany({ where: { ...live, status: 'booked', event_date: { gte: new Date(now.toDateString()), lte: until } }, orderBy: { event_date: 'asc' }, take: 40 });
       return { count: rows.length, events: rows.map(leadLine) };
     }
+    case 'web_search': {
+      // 🔎 the typed AI Agent's Claude key with Anthropic's web search — short, for speaking aloud
+      const key = await getSetting('agent_api_key', '');
+      if (!key) return { error: 'Web search needs the AI Agent key (Super Admin → Settings → AI Agent).' };
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: (await getSetting('agent_model', '')) || 'claude-haiku-5-5', max_tokens: 400,
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+          messages: [{ role: 'user', content: `Today is ${new Date().toDateString()}. Search the web and answer in 1–3 short sentences that can be read aloud (no links, no lists). The owner is in Vancouver, BC, Canada. Question: ${String(input.query || '').slice(0, 300)}` }],
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      const text = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ').trim();
+      return text ? { answer: text.slice(0, 1200) } : { error: d.error?.message || 'No answer from the web search' };
+    }
+    case 'search_knowledge': {
+      const sec = SECTIONS.some(s => s[0] === input.section) ? input.section : null;
+      const rows = await searchKb(v, input.query, sec, 10);
+      return rows.length ? { found: rows.map(r => r.text) } : { found: [], note: 'Nothing in the knowledge base matches — try other words or a specific tool.' };
+    }
+    case 'leads_by_price': {
+      const where = { archived_at: null, ...(input.status ? { status: String(input.status) } : {}) };
+      const list = (await leadPrices(v, where)).filter(x => x.price !== null).sort((a, b) => b.price - a.price);
+      return { leads_with_a_price: list.length, top: list.slice(0, Math.min(Number(input.limit) || 10, 25)) };
+    }
     case 'lookup_contact': {
       const lines = await lookupContacts(v, input.query, 5);
       return lines.length ? { matches: lines } : { matches: [], note: 'Nobody in the history matches — a new contact.' };
@@ -282,10 +327,12 @@ export async function runTool(name, input, vendorId) {
       return { remembered: true, id: m.id };
     }
     case 'save_lesson': {
-      const text = String(input.rule || '').trim().slice(0, 600);
-      if (!text) return { error: 'The lesson is empty' };
+      const text = String(input.rule || input.text || '').trim().slice(0, 400);
+      if (!text) return { error: 'The note is empty' };
       const m = await prisma.agent_memory.create({ data: { vendor_id: v, kind: 'lesson', text } });
-      return { saved: true, id: m.id, say: 'Tell the owner in a few words that you noted it.' };
+      // 📝 sorted in the background: behaviour → folded into the rules; a bug or missing feature → a note for the developer
+      foldLesson(v, m.id).catch(e => console.error('[agent] fold lesson', e.message));
+      return { saved: true, note: 'Noted. Tell the owner "noted" — nothing more.' };
     }
     case 'recall': {
       const rows = await prisma.agent_memory.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, take: 200 });

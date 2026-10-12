@@ -54,7 +54,12 @@ export async function runPanelTool(name, input, vendorId) {
         where.OR = [{ contact_name: { contains: q, mode: 'insensitive' } }, ...(digits.length >= 3 ? [{ from_number: { contains: digits } }, { to_number: { contains: digits } }] : [])];
       }
       const rows = await privateDb.comms_events.findMany({ where, orderBy: { occurred_at: 'desc' }, take: 25 });
-      return { count: rows.length, items: rows.map(e => ({ kind: e.kind, direction: e.direction, status: e.status, who: e.contact_name || (e.direction === 'incoming' ? e.from_number : e.to_number), when: when(e.occurred_at), minutes: e.duration_sec ? Math.round(e.duration_sec / 6) / 10 : null, text: e.body ? String(e.body).slice(0, 400) : null, what_was_said: e.transcript ? String(e.transcript).slice(0, 900) : null, lead_id: e.lead_id })) };
+      // 🏷️ a number that isn't saved but matches a lead is shown by that person's name (Raj, 2026-10-12)
+      const last10 = (x) => String(x || '').replace(/\D/g, '').slice(-10);
+      const people = rows.length ? await prisma.agent_contacts.findMany({ where: { vendor_id: v, phone: { not: null } }, select: { phone: true, name: true } }) : [];
+      const byPhone = new Map(people.map(p => [last10(p.phone), p.name]));
+      const whoOf = (e) => { const n = e.direction === 'incoming' ? e.from_number : e.to_number; return e.contact_name || byPhone.get(last10(n)) || n; };
+      return { count: rows.length, items: rows.map(e => ({ kind: e.kind, direction: e.direction, status: e.status, who: whoOf(e), when: when(e.occurred_at), minutes: e.duration_sec ? Math.round(e.duration_sec / 6) / 10 : null, text: e.body ? String(e.body).slice(0, 400) : null, what_was_said: e.transcript ? String(e.transcript).slice(0, rows.length === 1 ? 4000 : 1500) : null, lead_id: e.lead_id })) };
     }
     case 'galleries': {
       const where = { vendor_id: v };

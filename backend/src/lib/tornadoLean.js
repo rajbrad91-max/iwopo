@@ -12,6 +12,9 @@ export const SHORT = {
   find_leads: 'Search leads by name/email/phone, status, event date range. Returns true totals.',
   get_lead: 'Everything about one lead: contact, event, form answers, notes, payments, what is missing.',
   upcoming_events: 'Booked events in the next N days.',
+  web_search: 'Search the web for anything outside the panel: gear, prices, places, distances, travel times, news, how-to.',
+  search_knowledge: 'Search ALL panel data written as sentences (leads, bookings, money, calls, galleries, selections, crew, packages, File Flyer, RAWs, occasions, reminders, analytics) by words; optional section.',
+  leads_by_price: 'Every lead with its price (chosen package, override, assigned or quoted) — highest first.',
   lookup_contact: 'FIRST STOP for any person, number or email: their whole history in one line (inquiries, booked/done/delivered/paid, calls, texts, galleries).',
   list_reminders: 'Open reminders, soonest first.',
   set_reminder: "Save a reminder now (no yes needed). kind: delivery | task | alarm (exact time). Link lead_id if it's about a client.",
@@ -38,6 +41,7 @@ export const SHORT = {
   propose_create_lead: 'Propose a new lead; status "booked" when the owner says book (owner confirms).',
   propose_update_lead: 'Propose changing a lead: status, date, venue, times, guests, delivered (owner confirms).',
   propose_add_note: 'Propose a private note on a lead (owner confirms).',
+  propose_mark_selection: 'Propose marking a gallery\'s photo selection done / not done (owner confirms).',
   propose_archive_lead: 'Propose archiving a lead (owner confirms).',
   propose_send_text: 'Propose a text from the business number — reply or new conversation; shows the thread first (owner confirms).',
   propose_record_payment: 'Propose recording a payment received outside the system (owner confirms).',
@@ -83,4 +87,34 @@ export function compactResult(value, limit = 3500) {
     out = cut(prune(value));
   }
   return out;
+}
+
+/* 🗂️ One "panel" tool for the voice model instead of fourteen look-at-a-page tools — the
+   same pages, the same answers (the server unpacks it: unpanel), about 1,800 characters
+   fewer re-read on every reply (2026-10-12). The typed AI Agent keeps the separate tools. */
+export const PANEL_PAGES = ['upcoming_events', 'list_reminders', 'list_crew', 'calendar', 'world_time', 'list_packages', 'galleries', 'gallery_detail', 'photo_selections', 'file_flyer', 'raw_selector', 'analytics', 'money', 'crew_schedule'];
+export const PANEL_TOOL = {
+  name: 'panel',
+  description: 'Look at a page of the panel. page: upcoming_events (days ahead), list_reminders, list_crew, calendar (from–to), world_time (timezone), list_packages, galleries (query), gallery_detail (id = gallery), photo_selections, file_flyer, raw_selector, analytics (days back), money (id = lead, optional), crew_schedule (from–to).',
+  input_schema: {
+    type: 'object',
+    properties: {
+      page: { type: 'string', enum: PANEL_PAGES },
+      query: { type: 'string', description: 'a name or words to look for' },
+      id: { type: 'integer', description: 'gallery id or lead id' },
+      days: { type: 'integer', description: 'how many days back or ahead' },
+      from: { type: 'string', description: 'YYYY-MM-DD' },
+      to: { type: 'string', description: 'YYYY-MM-DD' },
+      timezone: { type: 'string', description: 'e.g. Asia/Kolkata' },
+    },
+    required: ['page'],
+  },
+};
+/** "panel" → the page's own tool and its parameters. */
+export function unpanel(input = {}) {
+  const { page, id, ...rest } = input;
+  if (!PANEL_PAGES.includes(page)) return { name: null, input: {} };
+  const args = { ...rest };
+  if (id !== undefined && id !== null) args[page === 'gallery_detail' ? 'album_id' : 'lead_id'] = id;
+  return { name: page, input: args };
 }

@@ -835,6 +835,12 @@ model vendors {
   agent_conversations     agent_conversations[]
   agent_contacts          agent_contacts[]
   agent_voice_usage       agent_voice_usage[]
+  agent_kb                agent_kb[]
+  agent_notices           agent_notices[]
+  agent_rules             agent_rules[]
+  agent_rule_history      agent_rule_history[]
+  agent_training_runs     agent_training_runs[]
+  agent_tool_log          agent_tool_log[]
 }
 
 model album_faces {
@@ -1313,4 +1319,107 @@ model agent_voice_usage {
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([vendor_id, day])
+}
+
+/// 📚 Tornado's knowledge base (lib/agentKb.js): every page of the panel as
+/// plain sentences, one per record — kept current by kbSync (only changes are
+/// written), searched by search_knowledge, shown as tabs on the Knowledge page.
+model agent_kb {
+  id         Int      @id @default(autoincrement())
+  vendor_id  Int
+  /// leads | bookings | money | calls | galleries | selections | crew | packages | fileflyer | raws | occasions | reminders | analytics
+  section    String   @db.VarChar(30)
+  /// section:record — e.g. leads:95
+  ref        String   @db.VarChar(120)
+  text       String
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+  vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([vendor_id, ref], map: "uq_agent_kb_vendor_ref")
+  @@index([vendor_id, section], map: "idx_agent_kb_section")
+}
+
+/// 📬 How often Tornado mentioned an upcoming event or reminder, per Vancouver
+/// day (lib/agentWaiting.js): within 2 days at most 3 times a day, within a
+/// week once a day (Raj, 2026-10-12).
+model agent_notices {
+  vendor_id Int
+  /// YYYY-MM-DD in Vancouver
+  day       String  @db.VarChar(10)
+  /// event:<lead id> | reminder:<id>
+  key       String  @db.VarChar(80)
+  count     Int     @default(0)
+  vendors   vendors @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([vendor_id, day, key])
+}
+
+/// 📜 Tornado's rules per vendor (lib/agentRules.js) — read on every reply, kept short by the
+/// weekly self-training (lib/agentTraining.js). 🔒 protected rules are never removed.
+model agent_rules {
+  id         Int      @id @default(autoincrement())
+  vendor_id  Int
+  key        String   @db.VarChar(60)
+  title      String   @db.VarChar(80)
+  text       String
+  sort       Int      @default(0)
+  protected  Boolean  @default(false)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+  vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([vendor_id, key], map: "uq_agent_rules_vendor_key")
+}
+
+/// 📜 Every change the self-training made — "Undo last training" puts them back.
+model agent_rule_history {
+  id        Int      @id @default(autoincrement())
+  vendor_id Int
+  run_id    Int?
+  key       String   @db.VarChar(60)
+  title     String   @db.VarChar(80)
+  /// edit | remove | add
+  action    String   @db.VarChar(10)
+  old_text  String?
+  new_text  String?
+  reason    String   @default("")
+  protected Boolean  @default(false)
+  sort      Int      @default(0)
+  at        DateTime @default(now()) @db.Timestamp(6)
+  vendors   vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, run_id], map: "idx_agent_rule_history_run")
+}
+
+/// 🧠 One self-training run: what it changed, what the safety checks refused, what it cost.
+model agent_training_runs {
+  id            Int       @id @default(autoincrement())
+  vendor_id     Int
+  at            DateTime  @default(now()) @db.Timestamp(6)
+  manual        Boolean   @default(false)
+  /// running | done | failed
+  status        String    @db.VarChar(10)
+  summary       String?
+  chars_before  Int?
+  chars_after   Int?
+  conversations Int?
+  cost_usd      Float?
+  refused       String?
+  undone_at     DateTime? @db.Timestamp(6)
+  vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, at], map: "idx_agent_training_runs_vendor")
+}
+
+/// 🧰 Every tool Tornado used (for the self-training only — never sent to Tornado), kept 28 days.
+model agent_tool_log {
+  id        Int      @id @default(autoincrement())
+  vendor_id Int
+  at        DateTime @default(now()) @db.Timestamp(6)
+  tool      String   @db.VarChar(60)
+  args      String   @default("")
+  result    String   @default("")
+  error     Boolean  @default(false)
+  vendors   vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, at], map: "idx_agent_tool_log_vendor")
 }

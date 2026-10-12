@@ -33,7 +33,140 @@ function keyBytes(b64) {
 
 /* 🧠 What the AI Agent (and Tornado) knows: facts the owner writes, things it
    was asked to remember, and the business briefing rebuilt every 15 minutes. */
+/* 📚 The Knowledge page: tabs — Tornado's own mind first, then every page of
+   the panel as plain sentences (Raj's lessons, 2026-10-12: "the knowledge
+   base should have tabs … every page a separate tab … all tabs visible up
+   top"). The sentences are kept current by the server (lib/agentKb.js). */
 function Knowledge() {
+  const [tab, setTab] = useState('mind');
+  const [sections, setSections] = useState([]);
+  useEffect(() => { api.agentKbSections().then(d => setSections(d.sections || [])).catch(() => {}); }, []);
+  const current = sections.find(x => x.key === tab);
+  return (
+    <div className="ag-kb">
+      <div className="ag-kb-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'mind'} className={`ag-kb-tab ${tab === 'mind' ? 'is-on' : ''}`} onClick={() => setTab('mind')}>🧠 Lessons & memory</button>
+        <button type="button" role="tab" aria-selected={tab === 'rules'} className={`ag-kb-tab ${tab === 'rules' ? 'is-on' : ''}`} onClick={() => setTab('rules')}>📜 Rules</button>
+        {sections.map(x => (
+          <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} className={`ag-kb-tab ${tab === x.key ? 'is-on' : ''}`} onClick={() => setTab(x.key)}>
+            {x.label} <span className="ag-kb-n">{x.count}</span>
+          </button>
+        ))}
+      </div>
+      {tab === 'mind' ? <Mind /> : tab === 'rules' ? <Rules /> : <KbList key={tab} section={tab} label={current?.label || ''} />}
+    </div>
+  );
+}
+
+/** One page of the panel, as the sentences Tornado reads — searchable. */
+function KbList({ section, label }) {
+  const [q, setQ] = useState('');
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    const t = setTimeout(() => { api.agentKb(section, q).then(d => setRows(d.rows || [])).catch(() => setRows([])); }, q ? 250 : 0);
+    return () => clearTimeout(t);
+  }, [section, q]);
+  return (
+    <section className="ag-k-card">
+      <h3 className="ag-k-h">{label}</h3>
+      <p className="ag-k-sub">What Tornado knows from this page — one sentence per record, kept up to date by itself.</p>
+      <input className="ag-kb-search" type="search" placeholder="Search…" value={q} onChange={e => setQ(e.target.value)} />
+      {rows === null ? <div className="ag-k-empty">Loading…</div>
+        : rows.length ? <div className="ag-kb-cards">{rows.map(r => <KbCard key={r.id} text={r.text} />)}</div>
+        : <div className="ag-k-empty">{q ? 'Nothing matches.' : 'Nothing here yet.'}</div>}
+    </section>
+  );
+}
+
+/* 📜 Exactly what Tornado reads when a conversation starts — and re-reads on every reply.
+   The rules train themselves once a week from four weeks of conversation logs
+   (lib/agentTraining.js) — Raj doesn't review them; 🔒 rules are never removed, and
+   "Undo last training" puts a run's changes back (Raj, 2026-10-12). */
+function Rules() {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const load = () => api.agentRules().then(setD).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+  async function act(kind) {
+    setBusy(kind); setMsg('');
+    try {
+      const r = kind === 'train' ? await api.agentTrainRules() : await api.agentUndoTraining();
+      setMsg(kind === 'train' ? `🧠 ${r.summary}` : `↩️ ${r.message}`);
+      await load();
+    } catch (e) { setMsg(`⚠️ ${e.message}`); }
+    setBusy('');
+  }
+  if (!d) return <section className="ag-k-card"><div className="ag-k-empty">{err ? `⚠️ ${err}` : 'Loading…'}</div></section>;
+  const last = d.runs.find(r => r.status !== 'running');
+  return (
+    <div className="ag-rules">
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">📜 What Tornado reads on every reply</h3>
+        <p className="ag-k-sub">About <b>{d.total_tokens.toLocaleString()}</b> tokens before the conversation itself: rules {d.rules_tokens.toLocaleString()} · tools {d.tools_tokens.toLocaleString()}. The rules train themselves every Sunday from the last four weeks of conversations — 🔒 rules are never removed.</p>
+        <div className="ag-rule-actions">
+          <button type="button" className="ag-rule-btn" disabled={!!busy} onClick={() => act('train')}>{busy === 'train' ? '🧠 Training… (about a minute)' : '🧠 Train now'}</button>
+          <button type="button" className="ag-rule-btn is-quiet" disabled={!!busy} onClick={() => act('undo')}>{busy === 'undo' ? 'Undoing…' : '↩️ Undo last training'}</button>
+        </div>
+        {msg && <div className="av-msg">{msg}</div>}
+        {last && (
+          <p className="ag-rule-last">
+            Last training: {new Date(last.at).toLocaleString()} — {last.summary}
+            {last.chars_before && last.chars_after ? ` · ${last.chars_before.toLocaleString()} → ${last.chars_after.toLocaleString()} characters` : ''}
+            {last.undone_at ? ' · undone' : ''}
+          </p>
+        )}
+      </section>
+      {d.rules.map((x, i) => (
+        <section key={x.key} className="ag-k-card ag-rule">
+          <div className="ag-rule-hd"><h4 className="ag-rule-title">{i + 1}. {x.title}{x.protected ? ' 🔒' : ''}</h4><span className="ag-rule-size">~{x.tokens} tokens{x.live ? ' · filled in live' : ''}</span></div>
+          <p className="ag-rule-text">{x.text}</p>
+        </section>
+      ))}
+      {d.history.length > 0 && (
+        <section className="ag-k-card">
+          <h3 className="ag-k-h">🧠 What the training changed</h3>
+          <ul className="ag-k-list">
+            {d.history.map((h, i) => <li key={i}><span>{new Date(h.at).toLocaleDateString()} · {h.action === 'add' ? '➕ added' : h.action === 'remove' ? '➖ removed' : '✏️ changed'} <b>{h.title}</b> — {h.reason}</span></li>)}
+          </ul>
+        </section>
+      )}
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">🧰 Tools ({d.tools.length})</h3>
+        <div className="ag-kb-cards">
+          {d.tools.map(t => (
+            <article key={t.name} className="ag-kb-card">
+              <div className="ag-rule-hd"><h4 className="ag-kb-title">{t.name}</h4><span className="ag-rule-size">~{t.tokens}</span></div>
+              <p className="ag-rule-text">{t.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/** One record: "name | label: value | …" → a card with the name on top and labelled rows. */
+function KbCard({ text }) {
+  const [title, ...parts] = String(text).split(' | ');
+  return (
+    <article className="ag-kb-card">
+      <h4 className="ag-kb-title">{title}</h4>
+      <dl className="ag-kb-fields">
+        {parts.map((p, i) => {
+          const at = p.indexOf(': ');
+          return at > 0
+            ? <div key={i} className="ag-kb-row"><dt>{p.slice(0, at)}</dt><dd>{p.slice(at + 2)}</dd></div>
+            : <div key={i} className="ag-kb-row"><dt /><dd>{p}</dd></div>;
+        })}
+      </dl>
+    </article>
+  );
+}
+
+/** Tornado's own mind: lessons, facts, memories, conversations, reminders, briefing. */
+function Mind() {
   const [data, setData] = useState(null);
   const [text, setText] = useState('');
   const [err, setErr] = useState('');
@@ -52,15 +185,16 @@ function Knowledge() {
 
   async function refresh() { try { const r = await api.agentRefreshBriefing(); setData(d => ({ ...d, ...r })); } catch (x) { setErr(x.message); } }
   if (!data) return <div className="ag-know">{err ? `⚠️ ${err}` : 'Loading…'}</div>;
-  const facts = data.items.filter(i => i.kind === 'fact'), mem = data.items.filter(i => i.kind === 'memory'), lessons = data.items.filter(i => i.kind === 'lesson');
+  const facts = data.items.filter(i => i.kind === 'fact'), mem = data.items.filter(i => i.kind === 'memory'), lessons = data.items.filter(i => ['lesson', 'in_rules', 'note'].includes(i.kind));
+  const where = { in_rules: '✅ in the rules', note: '🛠️ for Claude', lesson: '⏳ sorting…' };
   const ago = Math.max(0, Math.round((Date.now() - new Date(data.briefingAt)) / 60000));
 
   return (
     <div className="ag-know">
       <section className="ag-k-card ag-k-lessons">
-        <h3 className="ag-k-h">📝 Lessons — how you've trained it</h3>
-        <p className="ag-k-sub">Every time you correct Tornado or say "make a note", it writes a rule here — and follows all of them in every conversation. Remove any that are wrong.</p>
-        {lessons.length ? <ul className="ag-k-list">{lessons.map(l => <li key={l.id}><span>{l.text}</span><button type="button" className="ag-k-x" onClick={() => drop(l.id)} aria-label="Remove lesson">✕</button></li>)}</ul> : <div className="ag-k-empty">No lessons yet — tell Tornado "make a note…" when it gets something wrong.</div>}
+        <h3 className="ag-k-h">📝 Your notes &amp; lessons</h3>
+        <p className="ag-k-sub">What you tell Tornado to note. Tornado doesn't re-read these (they would cost on every reply): how it should behave goes into its rules in a few words, and bugs or missing features are marked for Claude.</p>
+        {lessons.length ? <ul className="ag-k-list">{lessons.map(l => <li key={l.id}><span>{l.text} <em className="ag-k-where">{where[l.kind]}</em></span><button type="button" className="ag-k-x" onClick={() => drop(l.id)} aria-label="Remove lesson">✕</button></li>)}</ul> : <div className="ag-k-empty">No lessons yet — tell Tornado "make a note…" when it gets something wrong.</div>}
       </section>
       <section className="ag-k-card">
         <h3 className="ag-k-h">📌 Facts you tell it</h3>

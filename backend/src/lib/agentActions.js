@@ -91,6 +91,11 @@ export const ACTION_TOOLS = [
     input_schema: { type: 'object', properties: { lead_id: { type: 'integer' }, note: { type: 'string' } }, required: ['lead_id', 'note'], additionalProperties: false },
   },
   {
+    name: 'propose_mark_selection',
+    description: "Propose marking a gallery's photo selection done (or putting it back to not done) — the same as the Done button on the Photo Selection page. The vendor confirms with Yes/No.",
+    input_schema: { type: 'object', properties: { album_id: { type: 'integer', description: 'the gallery id' }, done: { type: 'boolean', description: 'true = done (default), false = not done' } }, required: ['album_id'], additionalProperties: false },
+  },
+  {
     name: 'propose_archive_lead',
     description: 'Propose archiving a lead (it leaves the active list; it can be restored). The vendor confirms with Yes/No.',
     input_schema: { type: 'object', properties: { lead_id: { type: 'integer' } }, required: ['lead_id'], additionalProperties: false },
@@ -186,6 +191,12 @@ export async function runActionTool(name, input, vendorId, auth) {
       recent_thread: recent,
       ...(repliedAlready ? { heads_up: `THEY ALREADY REPLIED (${when(lastIn.occurred_at)}): "${String(lastIn.body || '').slice(0, 160)}" — tell the owner, and if this text ignores their reply, offer to cancel it (cancel_action) and rewrite it.` } : {}),
     };
+  }
+  if (name === 'propose_mark_selection') {
+    const album = await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v }, select: { id: true, title: true } });   // 🔒 only this vendor's
+    if (!album) return { error: 'No gallery with that id' };
+    const done = input.done !== false;
+    return { proposal: propose(v, 'selection', { album_id: album.id, done }, `Mark "${album.title}" selection ${done ? 'done' : 'not done'}`, done ? 'It moves to the done list on the Photo Selection page.' : 'It goes back to the waiting list on the Photo Selection page.') };
   }
   const lead = await leadOf(input.lead_id, v);
   if (!lead) return { error: 'No lead with that id' };                 // 🔒 only this vendor's
@@ -295,12 +306,28 @@ export async function confirmAction(id, vendorId, auth) {
       await asVendor(auth, 'POST', `/payments/lead/${p.args.lead_id}`, { amount: p.args.amount, method: p.args.method, note: p.args.note });
       return { ok: true, message: `💵 ${money(p.args.amount)} recorded.` };
     }
+    if (p.kind === 'selection') {
+      // the Photo Selection page's own Done button — tenancy comes with it
+      await asVendor(auth, 'PUT', `/albums/requests/${p.args.album_id}`, { done: p.args.done });
+      return { ok: true, message: p.args.done ? '✅ Marked done.' : '↩️ Back to waiting.' };
+    }
     if (p.kind === 'packages') {
       await asVendor(auth, 'POST', `/leads/${p.args.lead_id}/send-packages`, {});
       return { ok: true, message: '📦 Packages sent.' };
     }
     return { ok: false, message: 'Unknown action' };
   } catch (e) { return { ok: false, message: `⚠️ ${e.message}` }; }
+}
+
+/** ⚡ Small, internal and undoable — done without asking: a private note, marking a photo selection,
+    fixing a lead's details (not its status), marking it delivered. Anything that reaches a client, money,
+    a booking, archiving or a new lead still asks first. */
+export function isSmallChange(id) {
+  const p = PENDING.get(String(id));
+  if (!p) return false;
+  if (p.kind === 'note' || p.kind === 'selection') return true;
+  if (p.kind === 'update_lead') return !Object.prototype.hasOwnProperty.call(p.args?.changes || {}, 'status');
+  return false;
 }
 
 /** The vendor said No. */

@@ -10,12 +10,27 @@
  * tenancy, the yes rule and "never send a contract" all hold.
  */
 import { getSetting } from './settings.js';
-import { VOICE_TOOLS, tornadoPrompt } from './tornado.js';
-import { dueSoonLine, zoneOf } from './agentReminders.js';
+import { VOICE_TOOLS } from './tornado.js';
+import { rulesText } from './agentRules.js';
+import { zoneOf } from './agentReminders.js';
 import { knowledgeText, briefingText, recentConversations } from './agentKnowledge.js';
 import prisma from '../config/prisma.js';
 import { waitingForYou } from './agentWaiting.js';
-import { SHORT, shortParams } from './tornadoLean.js';
+import { SHORT, shortParams, PANEL_PAGES, PANEL_TOOL } from './tornadoLean.js';
+
+/** ⏸️ "Hold on, Tornado" → the app stops listening but keeps the conversation; a tap on the bubble resumes (handled in the app). */
+const PAUSE_LISTENING = {
+  name: 'pause_listening',
+  description: 'Pause: stop listening but keep the conversation — call it right after a two-word reply ("Sure, Raj.") when he says hold on, wait, pause or one second.',
+  input_schema: { type: 'object', properties: {} },
+};
+
+/** 👋 "Thank you, bye" → the app lets the goodbye finish, stops listening and closes (handled in the app, never on the server). */
+const END_CONVERSATION = {
+  name: 'end_conversation',
+  description: 'Close Tornado completely — call it right after a short goodbye when he says bye, thank you bye, that\'s all, good night or stop listening.',
+  input_schema: { type: 'object', properties: {} },
+};
 
 const API = 'https://generativelanguage.googleapis.com';
 export const GEMINI_DEFAULTS = { model: 'gemini-3.1-flash-live-preview', voice: 'Charon' };
@@ -47,7 +62,8 @@ function toGemini(s) {
 }
 
 /** Everything Tornado starts a conversation with: who it is, the time, what is due, what it knows. */
-export async function liveSetup(vendorId) {
+/** preview: the Rules tab shows the same setup without counting it as a wake-up (no daily event/reminder mentions used up). */
+export async function liveSetup(vendorId, { preview = false } = {}) {
   const c = await geminiConfig();
   const tz = await zoneOf(vendorId);
   const now = new Date();
@@ -57,13 +73,13 @@ export async function liveSetup(vendorId) {
     timezone: tz,
     now: now.toLocaleString('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
     greeting: hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening',
-    due_soon: await dueSoonLine(vendorId),
+    due_soon: 'see WAITING FOR YOU',     // reminders come there now, within their daily limits
     // lessons first (they must be followed every turn), trimmed — facts and memories come from recall
     knowledge: (await knowledgeText(vendorId)).slice(0, 1500),
     // the business picture comes from today_summary / calendar / money when asked — not re-read every turn
     briefing: 'not loaded up front — use today_summary, calendar, money, galleries and the other tools when a question needs it',
     recent: await recentConversations(vendorId, 2),
-    waiting: (await waitingForYou(vendorId)).slice(0, 900),
+    waiting: '',            // filled below — a conversation that continues the last one is not a new wake-up
   };
   const fill = (t) => t.replace(/\{\{(\w+)\}\}/g, (m, k) => (vars[k] ?? m));
   /* 👋 Raj, 2026-10-11: "good morning, Raj" only the first time or two in the
@@ -76,6 +92,8 @@ export async function liveSetup(vendorId) {
     prisma.agent_conversations.findFirst({ where: { vendor_id: Number(vendorId) }, orderBy: { created_at: 'desc' }, select: { created_at: true, transcript: true } }),
   ]);
   const minutesSince = last ? (now - new Date(last.created_at)) / 60000 : Infinity;
+  // 📬 only what is new / unseen, events within their daily limits (agentWaiting.js) — counted only on a real wake-up
+  vars.waiting = (await waitingForYou(vendorId, { record: !preview && minutesSince >= 20 })).slice(0, 1200);
   let opening, carryOn = '';
   if (minutesSince < 20 && last?.transcript) {
     opening = 'Yes, Raj?';
@@ -83,28 +101,29 @@ export async function liveSetup(vendorId) {
   } else if (talksToday < 2) {
     opening = fill("{{greeting}}, {{user_name}}! Tornado here. What can I do for you?");
   } else {
-    opening = fill("Hey {{user_name}}, what's next?");
+    opening = fill('Hey {{user_name}}.');                 // not "what's next" (Raj, 2026-10-12)
   }
-  const instructions = `${fill(tornadoPrompt())}${carryOn}
+  const instructions = `${fill(await rulesText(vendorId))}${carryOn}
 
 START: the moment the conversation opens, say exactly: "${opening}" — then listen.`;
   return {
     model: `models/${c.model}`,
     generationConfig: {
       responseModalities: ['AUDIO'],
-      // little hidden thinking before it speaks: billed as text, and slower — it reads tool results anyway
-      thinkingConfig: { thinkingLevel: 'minimal' },
+      // "minimal" thinking made Tornado skip web search and forget its own name (2026-10-12);
+      // "low" thinks enough to use its tools and search.
+      thinkingConfig: { thinkingLevel: 'low' },
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: c.voice } } },
     },
     systemInstruction: { parts: [{ text: instructions }] },
     tools: [
       // ✂️ one-line descriptions (tornadoLean.js): they are re-sent with every reply
-      { functionDeclarations: VOICE_TOOLS.map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
+      { functionDeclarations: [...VOICE_TOOLS.filter(t => t.name !== 'web_search' && !PANEL_PAGES.includes(t.name)), PANEL_TOOL, END_CONVERSATION, PAUSE_LISTENING].map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
       // 🔎 the world as it is today — new cameras, prices, news (Raj, 2026-10-11: it denied the Canon R6 Mark V exists)
       { googleSearch: {} },
     ],
-    // a long conversation keeps its recent part and condenses the rest, instead of re-billing all of it
-    contextWindowCompression: { slidingWindow: {}, triggerTokens: 16000 },
+    // NO contextWindowCompression: with Google Search on, Gemini Live closes the conversation
+    // (1007 "invalid argument") the moment a question needs a search — 2026-10-12, twice.
     inputAudioTranscription: {},
     outputAudioTranscription: {},
   };

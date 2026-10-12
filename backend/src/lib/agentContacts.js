@@ -22,6 +22,7 @@
 import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
 import { emailWarning } from './emailCheck.js';
+import { kbSync } from './agentKb.js';
 
 const ten = (p) => String(p || '').replace(/\D/g, '').slice(-10);
 const fmtPhone = (t) => (t.length === 10 ? `${t.slice(0, 3)}-${t.slice(3, 6)}-${t.slice(6)}` : t);
@@ -165,7 +166,11 @@ async function apply(changes) {
     if (c.phone) b.phones.push(c.phone); if (c.email) b.emails.push(c.email); if (c.name) b.names.push(c.name);
     byVendor.set(c.vendor_id, b);
   }
-  for (const [v, only] of byVendor) await buildContactIndex(v, only).catch(e => console.error('[agent] contact sync', v, e.message));
+  for (const [v, only] of byVendor) {
+    await buildContactIndex(v, only).catch(e => console.error('[agent] contact sync', v, e.message));
+    // 📚 the sentences that move with a lead, a call or a payment, within the same ~10 s
+    await kbSync(v, ['leads', 'bookings', 'money', 'calls']).catch(e => console.error('[agent] kb sync', v, e.message));
+  }
 }
 
 /** Every 10 s: new or changed leads, new calls and texts, new payments. */
