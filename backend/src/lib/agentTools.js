@@ -14,7 +14,6 @@ import { PANEL_TOOLS, PANEL_TOOL_NAMES, runPanelTool } from './agentPanelTools.j
 import { lookupContacts } from './agentContacts.js';
 import { emailWarning } from './emailCheck.js';
 import { searchKb, leadPrices, SECTIONS } from './agentKb.js';
-import { foldLesson } from './agentTraining.js';
 
 /** A date as people say it, weekday included — "Mon 15 Mar 2027". Worked out
  *  here, in UTC (dates are stored as calendar days), so the model never has
@@ -331,7 +330,8 @@ export async function runTool(name, input, vendorId) {
       if (!text) return { error: 'The note is empty' };
       const m = await prisma.agent_memory.create({ data: { vendor_id: v, kind: 'lesson', text } });
       // 📝 sorted in the background: behaviour → folded into the rules; a bug or missing feature → a note for the developer
-      foldLesson(v, m.id).catch(e => console.error('[agent] fold lesson', e.message));
+      // loaded only here — a top-level import would make a cycle (agentTraining → agentRules → tornado → agentTools)
+      import('./agentTraining.js').then(({ foldLesson }) => foldLesson(v, m.id)).catch(e => console.error('[agent] fold lesson', e.message));
       return { saved: true, note: 'Noted. Tell the owner "noted" — nothing more.' };
     }
     case 'recall': {
