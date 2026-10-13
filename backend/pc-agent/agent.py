@@ -18,7 +18,7 @@ It connects OUT to the iwopo server (no port is opened on this PC), asks for job
   agent.py replaces this one and restarts — nothing to reinstall on the PC.
 Config: config.json next to this file (server, token, roots, drive_dir, ffmpeg).
 """
-import hashlib, json, os, shutil, sqlite3, subprocess, sys, threading, time, traceback, ctypes
+import hashlib, json, os, re, shutil, sqlite3, subprocess, sys, threading, time, traceback, ctypes
 from pathlib import Path
 import requests
 
@@ -29,7 +29,7 @@ H = {'X-PC-Token': TOKEN, 'Content-Type': 'application/json'}
 DATA = Path(os.environ.get('LOCALAPPDATA', str(HERE))) / 'PCAgent'
 DATA.mkdir(parents=True, exist_ok=True)
 DB = DATA / 'index.db'
-LOG = DATA / 'agent.log'
+LOG = DATA / ('helper.log' if '--helper' in sys.argv else 'agent.log')
 VIDEO = {'.mp4', '.mov', '.mxf', '.mts', '.m2ts', '.avi', '.mkv', '.braw', '.r3d', '.mpg', '.wmv', '.m4v', '.insv'}
 PHOTO = {'.jpg', '.jpeg', '.png', '.heic', '.tif', '.tiff', '.arw', '.cr2', '.cr3', '.nef', '.dng', '.raf', '.orf', '.rw2', '.psd'}
 
@@ -475,7 +475,11 @@ def apps(_p):
     skip = {'windows explorer', 'explorer', 'settings', 'windows input experience', 'text input application', 'program manager', 'python', 'pythonw',
             'application frame host', 'applicationframehost', 'textinputhost', 'shellexperiencehost', 'windows shell experience host', 'search', 'start',
             'nvidia app', 'nvidia overlay', 'nvidia share', 'lockapp', 'systemsettings', 'microsoft text input application', 'widgets'}
-    names = sorted({n.strip() for n in out.splitlines() if n.strip() and n.strip().lower() not in skip and not n.strip().lower().endswith(' host')})
+    def tidy(n):
+        n = re.sub(r'\.root$', '', n.strip(), flags=re.I)              # "WhatsApp.Root" → "WhatsApp"
+        return {'google chrome': 'Chrome', 'microsoft edge': 'Edge', 'parsecd': 'Parsec'}.get(n.lower(), n)
+    names = sorted({tidy(n) for n in out.splitlines() if n.strip() and n.strip().lower() not in skip
+                    and not n.strip().lower().endswith(' host') and 'webview' not in n.lower()})
     return {'open': names, 'summary': (', '.join(names) + ' — open') if names else 'Nothing is open'}
 
 
@@ -489,6 +493,16 @@ def _start_menu_apps():
             for fn in files:
                 if fn.lower().endswith(('.lnk', '.url')) and 'uninstall' not in fn.lower():
                     apps[os.path.splitext(fn)[0]] = os.path.join(dp, fn)
+    # Microsoft Store apps (e.g. WhatsApp) have no shortcut file: Windows lists them with their app id
+    try:
+        out = subprocess.run(['powershell', '-NoProfile', '-Command', 'Get-StartApps | ForEach-Object { $_.Name + "|" + $_.AppID }'],
+                             capture_output=True, text=True, creationflags=0x08000000, timeout=20).stdout
+        for line in out.splitlines():
+            name, _, appid = line.partition('|')
+            if name.strip() and appid.strip() and name.strip() not in apps and 'uninstall' not in name.lower():
+                apps[name.strip()] = 'shell:AppsFolder\\' + appid.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
     return apps
 
 
@@ -501,7 +515,11 @@ def open_app(p):
     if not best or best[0][0] == 0:
         raise ValueError(f"No app called {' '.join(want)} in the Start menu")
     name = best[0][2]
-    os.startfile(apps[name])
+    target = apps[name]
+    if target.startswith('shell:AppsFolder'):
+        subprocess.Popen(['explorer.exe', target], creationflags=0x08000000)   # a Store app
+    else:
+        os.startfile(target)
     return {'summary': f'Opening {name}'}
 
 
@@ -561,7 +579,7 @@ def update_if_newer(current):
     me.with_suffix('.py.bak').write_bytes(me.read_bytes())
     me.write_bytes(code)
     log('updated', MY_VERSION, '->', current, '— restarting')
-    os.execv(sys.executable, [sys.executable, str(me)])
+    os.execv(sys.executable, [sys.executable, str(me)] + (['--helper'] if HELPER else []))
 
 
 def hello_loop():
@@ -583,13 +601,31 @@ def awake(on):
         pass
 
 
-def main():
-    log('agent start')
-    threading.Thread(target=index_loop, daemon=True).start()
-    threading.Thread(target=hello_loop, daemon=True).start()
+HELPER = '--helper' in sys.argv     # 🔌 the startup helper: runs from boot (even at the sign-in screen), status + power only
+
+
+def helper_hello_loop():
+    """The startup helper only says "I'm on" (and keeps itself up to date) — the full agent says the rest."""
     while True:
         try:
-            r = requests.get(SERVER + '/api/pc/next', headers=H, timeout=40)
+            r = requests.post(SERVER + '/api/pc/hello', headers=H, json={'version': MY_VERSION, 'helper': True, 'summary': f"{os.environ.get('COMPUTERNAME')} is on"}, timeout=20)
+            if r.status_code == 200:
+                update_if_newer((r.json() or {}).get('agent_version'))
+        except Exception:
+            log('helper hello error', traceback.format_exc())
+        time.sleep(30)
+
+
+def main():
+    log('helper start' if HELPER else 'agent start')
+    if HELPER:
+        threading.Thread(target=helper_hello_loop, daemon=True).start()
+    else:
+        threading.Thread(target=index_loop, daemon=True).start()
+        threading.Thread(target=hello_loop, daemon=True).start()
+    while True:
+        try:
+            r = requests.get(SERVER + '/api/pc/next' + ('?can=status,power' if HELPER else ''), headers=H, timeout=40)
             if r.status_code == 200:
                 threading.Thread(target=run, args=(r.json(),), daemon=True).start()
             elif r.status_code == 401:

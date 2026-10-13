@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import prisma from '../config/prisma.js';
-import { deviceOf, pcAllowed, logDelivery } from '../lib/pcAgent.js';
+import { deviceOf, pcAllowed, logDelivery, pcCameOnline } from '../lib/pcAgent.js';
 import { signToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -26,13 +26,16 @@ async function device(req, res, next) {
   if (!d || d.revoked_at) return res.status(401).json({ error: 'Unknown device' });
   if (!(await pcAllowed(d.vendor_id))) return res.status(403).json({ error: 'Not available' });   // 🛡️ owner-only feature
   req.device = d;
-  await prisma.pc_devices.update({ where: { id: d.id }, data: { last_seen: new Date() } }).catch(() => {});
+  // ⏻ while a shutdown / restart / sleep counts down, its check-ins don't make it "on" again
+  const off = await prisma.pc_jobs.findFirst({ where: { device_id: d.id, action: 'power', status: 'done', updated_at: { gt: new Date(Date.now() - 120_000) } }, orderBy: { id: 'desc' }, select: { params: true } });
+  if (!off || !/shutdown|restart|sleep|off|reboot/i.test(off.params || '')) await prisma.pc_devices.update({ where: { id: d.id }, data: { last_seen: new Date() } }).catch(() => {});
   next();
 }
 
 /** The agent says hello (every ~30 s) with what it can see: drives, free space, Resolve running… */
 router.post('/hello', device, async (req, res) => {
   await prisma.pc_devices.update({ where: { id: req.device.id }, data: { info: JSON.stringify(req.body || {}).slice(0, 4000) } }).catch(() => {});
+  await pcCameOnline(req.device.id).catch(() => {});        // ⏰ a wake that was waiting for it
   res.json({ ok: true, agent_version: agentFile()?.version || null });
 });
 
@@ -59,9 +62,13 @@ router.post('/delivered', device, async (req, res) => {
 
 /** The next job for this PC — waits up to 20 s (long-poll), then 204. */
 router.get('/next', device, async (req, res) => {
+  // ⏱️ a command older than 2 minutes is never run (an old "shut down" must not fire hours later)
+  await prisma.pc_jobs.updateMany({ where: { device_id: req.device.id, status: 'queued', created_at: { lt: new Date(Date.now() - 120_000) } }, data: { status: 'failed', summary: 'expired — the PC was not reachable in time', notified: true, updated_at: new Date() } });
+  // 🔌 the startup helper (before sign-in) takes only what it can do: ?can=status,power
+  const can = String(req.query.can || '').split(',').map(x => x.trim()).filter(Boolean);
   const until = Date.now() + 20_000;
   while (Date.now() < until) {
-    const job = await prisma.pc_jobs.findFirst({ where: { device_id: req.device.id, status: 'queued' }, orderBy: { id: 'asc' } });
+    const job = await prisma.pc_jobs.findFirst({ where: { device_id: req.device.id, status: 'queued', created_at: { gte: new Date(Date.now() - 120_000) }, ...(can.length ? { action: { in: can } } : {}) }, orderBy: { id: 'asc' } });
     if (job) {
       const claimed = await prisma.pc_jobs.updateMany({ where: { id: job.id, status: 'queued' }, data: { status: 'running', updated_at: new Date() } });
       if (claimed.count) return res.json({ id: job.id, action: job.action, params: JSON.parse(job.params || '{}') });
@@ -79,6 +86,9 @@ router.post('/jobs/:id', device, async (req, res) => {
   const job = await prisma.pc_jobs.findFirst({ where: { id, device_id: req.device.id } });
   if (!job) return res.status(404).json({ error: 'Not found' });
   const status = ['running', 'done', 'failed'].includes(req.body?.status) ? req.body.status : job.status;
+  if (job.action === 'power' && req.body?.status === 'done' && /shutdown|restart|sleep|off|reboot/i.test(job.params || '')) {
+    await prisma.pc_devices.update({ where: { id: req.device.id }, data: { last_seen: new Date(Date.now() - 10 * 60_000) } }).catch(() => {});
+  }
   await prisma.pc_jobs.update({
     where: { id },
     data: {

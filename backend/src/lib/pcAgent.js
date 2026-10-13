@@ -42,15 +42,16 @@ export async function deviceOf(req) {
 export async function onlineDevice(vendorId) {
   const d = await prisma.pc_devices.findFirst({ where: { vendor_id: Number(vendorId), revoked_at: null }, orderBy: { last_seen: 'desc' } });
   if (!d?.last_seen) return { device: d, online: false };
-  return { device: d, online: Date.now() - new Date(d.last_seen) < 90_000 };
+  return { device: d, online: Date.now() - new Date(d.last_seen) < 45_000 };
 }
 
 /** Queue a job and wait up to `waitMs` for it to finish. */
-export async function runOnPc(vendorId, action, params, waitMs = 20_000) {
+export async function runOnPc(vendorId, action, params, waitMs = 8_000) {
   if (!(await pcAllowed(vendorId))) return { error: 'Not available.' };
   const { device, online } = await onlineDevice(vendorId);
   if (!device) return { error: 'No PC is connected yet — the PC agent has not been set up.' };
-  if (!online) return { error: `${device.name} is off or the PC agent isn't running (last seen ${device.last_seen ? new Date(device.last_seen).toLocaleString('en-US', { timeZone: 'America/Vancouver' }) : 'never'}).` };
+  const cancelling = action === 'power' && /cancel|abort|stop/i.test(String(params?.power || ''));   // still reaches a PC that is counting down
+  if (!online && !cancelling) return { error: `${device.name} is off or the PC agent isn't running (last seen ${device.last_seen ? new Date(device.last_seen).toLocaleString('en-US', { timeZone: 'America/Vancouver' }) : 'never'}).` };
   const job = await prisma.pc_jobs.create({ data: { vendor_id: Number(vendorId), device_id: device.id, action, params: JSON.stringify(params || {}) } });
   const until = Date.now() + waitMs;
   while (Date.now() < until) {
@@ -65,8 +66,14 @@ export async function runOnPc(vendorId, action, params, waitMs = 20_000) {
   return { status: 'running', job_id: job.id, progress: j.progress || 'started', note: 'Still running on the PC — tell him it has started; the result comes as an [Update] when it finishes.' };
 }
 
+/** The PC said hello: a wake that was waiting for it is done. */
+export async function pcCameOnline(deviceId) {
+  await prisma.pc_jobs.updateMany({ where: { device_id: deviceId, action: 'wake', status: 'running' }, data: { status: 'done', summary: 'Your PC is on', updated_at: new Date() } });
+}
+
 /** Finished long jobs the owner hasn't heard about yet (for Tornado's inbox) — marked as told. */
 export async function finishedPcJobs(vendorId, since) {
+  await prisma.pc_jobs.updateMany({ where: { vendor_id: Number(vendorId), action: 'wake', status: 'running', created_at: { lt: new Date(Date.now() - 4 * 60_000) } }, data: { status: 'failed', summary: 'No word from the PC — it may be at the sign-in screen, or Wake-on-LAN needs a check', updated_at: new Date() } });
   const jobs = await prisma.pc_jobs.findMany({ where: { vendor_id: Number(vendorId), notified: false, status: { in: ['done', 'failed'] }, updated_at: { gt: since } }, orderBy: { updated_at: 'asc' }, take: 5 });
   if (jobs.length) await prisma.pc_jobs.updateMany({ where: { id: { in: jobs.map(j => j.id) } }, data: { notified: true } });
   return jobs.map(j => `PC ${j.status === 'done' ? 'FINISHED' : 'FAILED'} — ${j.action}: ${String(j.summary || safeJson(j.result)?.summary || j.result || '').slice(0, 220)}`);
@@ -92,12 +99,11 @@ export async function wakePc(vendorId) {
       await new Promise(r => setTimeout(r, 1000));
     }
   } finally { sock.close(); }
-  // up to ~2 minutes for Windows to start and the agent to say hello
-  for (let i = 0; i < 40; i++) {
-    await new Promise(r => setTimeout(r, 3000));
-    if ((await onlineDevice(vendorId)).online) return { status: 'done', result: { summary: 'The PC is on and ready.' } };
-  }
-  return { status: 'running', note: 'Wake signal sent. Windows is starting; the PC agent says hello once he is signed in — tell him it is waking up.' };
+  // no waiting here (Raj, 2026-10-13: "it goes very quiet for a minute") — answer at once; the PC's first
+  // hello finishes this job and Tornado hears "PC is on" as an [Update]
+  const { device } = await onlineDevice(vendorId);
+  if (device) await prisma.pc_jobs.create({ data: { vendor_id: Number(vendorId), device_id: device.id, action: 'wake', status: 'running', params: '{}' } });
+  return { status: 'done', result: { summary: 'Waking it up — about a minute. I\'ll tell you when it\'s on.' } };
 }
 
 /* 📦 The delivery log — filed by client, read one client at a time. */
