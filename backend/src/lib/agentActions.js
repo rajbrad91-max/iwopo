@@ -96,6 +96,25 @@ export const ACTION_TOOLS = [
     input_schema: { type: 'object', properties: { album_id: { type: 'integer', description: 'the gallery id' }, done: { type: 'boolean', description: 'true = done (default), false = not done' } }, required: ['album_id'], additionalProperties: false },
   },
   {
+    name: 'propose_create_gallery',
+    description: "Create a client gallery exactly as the owner would in the panel (Galleries → New): title, the client's email, optional photo folders (e.g. Mehndi, Reception) and passwords. Give lead_id when it's for a lead — its name and email are used. Passwords are made for you if none are given (say the guest one to the owner).",
+    input_schema: { type: 'object', properties: {
+      title: { type: 'string' }, lead_id: { type: 'integer' }, client_email: { type: 'string' }, category: { type: 'string' },
+      folders: { type: 'array', items: { type: 'string' }, description: 'photo folder names, in order' },
+      guest_password: { type: 'string' }, admin_password: { type: 'string' },
+    }, additionalProperties: false },
+  },
+  {
+    name: 'propose_add_gallery_folder',
+    description: 'Add a photo folder (tab) to a gallery, as the panel\'s "Add Photos Folder" does.',
+    input_schema: { type: 'object', properties: { album_id: { type: 'integer' }, name: { type: 'string' } }, required: ['album_id', 'name'], additionalProperties: false },
+  },
+  {
+    name: 'propose_delete_gallery',
+    description: 'Delete a whole gallery with all its photos and videos — permanent. Always asks the owner first.',
+    input_schema: { type: 'object', properties: { album_id: { type: 'integer' } }, required: ['album_id'], additionalProperties: false },
+  },
+  {
     name: 'propose_archive_lead',
     description: 'Propose archiving a lead (it leaves the active list; it can be restored). The vendor confirms with Yes/No.',
     input_schema: { type: 'object', properties: { lead_id: { type: 'integer' } }, required: ['lead_id'], additionalProperties: false },
@@ -191,6 +210,29 @@ export async function runActionTool(name, input, vendorId, auth) {
       recent_thread: recent,
       ...(repliedAlready ? { heads_up: `THEY ALREADY REPLIED (${when(lastIn.occurred_at)}): "${String(lastIn.body || '').slice(0, 160)}" — tell the owner, and if this text ignores their reply, offer to cancel it (cancel_action) and rewrite it.` } : {}),
     };
+  }
+  if (name === 'propose_create_gallery') {
+    let lead = null;
+    if (input.lead_id) { lead = await leadOf(input.lead_id, v); if (!lead) return { error: 'No lead with that id' }; }
+    const title = String(input.title || lead?.name || '').trim().slice(0, 160);
+    if (!title) return { error: 'What should the gallery be called?' };
+    // passwords the way the panel wants them: different, long enough, easy to read out
+    const word = (title.split(/\s+/)[0] || 'gallery').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10) || 'gallery';
+    const guest = String(input.guest_password || `${word}${crypto.randomInt(1000, 9999)}`);
+    const admin = String(input.admin_password || `${word}-admin${crypto.randomInt(1000, 9999)}`);
+    const folders = (Array.isArray(input.folders) ? input.folders : []).map(f => String(f).trim()).filter(Boolean).slice(0, 12);
+    return { proposal: propose(v, 'gallery_create', { title, client_email: input.client_email || lead?.email || null, category: input.category || null, guest_password: guest, admin_password: admin, folders }, `Create gallery "${title}"`, `Guest password: ${guest}${folders.length ? ` · folders: ${folders.join(', ')}` : ''}`) };
+  }
+  if (name === 'propose_add_gallery_folder' || name === 'propose_delete_gallery') {
+    const album = await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v }, select: { id: true, title: true } });   // 🔒 only this vendor's
+    if (!album) return { error: 'No gallery with that id' };
+    if (name === 'propose_add_gallery_folder') {
+      const folder = String(input.name || '').trim().slice(0, 80);
+      if (!folder) return { error: 'What should the folder be called?' };
+      return { proposal: propose(v, 'gallery_folder', { album_id: album.id, name: folder }, `Add folder "${folder}" to "${album.title}"`, '') };
+    }
+    const n = await prisma.photos.count({ where: { album_id: album.id } });
+    return { proposal: propose(v, 'gallery_delete', { album_id: album.id }, `Delete gallery "${album.title}"`, `${n} photos and videos are removed for good.`) };
   }
   if (name === 'propose_mark_selection') {
     const album = await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v }, select: { id: true, title: true } });   // 🔒 only this vendor's
@@ -306,6 +348,22 @@ export async function confirmAction(id, vendorId, auth) {
       await asVendor(auth, 'POST', `/payments/lead/${p.args.lead_id}`, { amount: p.args.amount, method: p.args.method, note: p.args.note });
       return { ok: true, message: `💵 ${money(p.args.amount)} recorded.` };
     }
+    if (p.kind === 'gallery_create') {
+      const { folders, ...body } = p.args;
+      const made = await asVendor(auth, 'POST', '/albums', body);
+      const albumId = made?.album?.id ?? made?.id;                // the panel answers { album: {…} }
+      if (!albumId) throw new Error('The gallery was not created');
+      for (const f of folders || []) await asVendor(auth, 'POST', `/albums/${albumId}/events`, { name: f });
+      return { ok: true, album_id: albumId, guest_password: p.args.guest_password, message: `✅ Gallery "${p.args.title}" created${folders?.length ? ` with ${folders.length} folder${folders.length > 1 ? 's' : ''}` : ''}.` };
+    }
+    if (p.kind === 'gallery_folder') {
+      await asVendor(auth, 'POST', `/albums/${p.args.album_id}/events`, { name: p.args.name });
+      return { ok: true, message: `📁 Folder "${p.args.name}" added.` };
+    }
+    if (p.kind === 'gallery_delete') {
+      await asVendor(auth, 'DELETE', `/albums/${p.args.album_id}`);
+      return { ok: true, message: '🗑️ Gallery deleted.' };
+    }
     if (p.kind === 'selection') {
       // the Photo Selection page's own Done button — tenancy comes with it
       await asVendor(auth, 'PUT', `/albums/requests/${p.args.album_id}`, { done: p.args.done });
@@ -325,7 +383,7 @@ export async function confirmAction(id, vendorId, auth) {
 export function isSmallChange(id) {
   const p = PENDING.get(String(id));
   if (!p) return false;
-  if (p.kind === 'note' || p.kind === 'selection') return true;
+  if (['note', 'selection', 'gallery_create', 'gallery_folder'].includes(p.kind)) return true;
   if (p.kind === 'update_lead') return !Object.prototype.hasOwnProperty.call(p.args?.changes || {}, 'status');
   return false;
 }

@@ -54,12 +54,11 @@ export async function buildBriefing(vendorId) {
   ]);
   const undelivered = await prisma.leads.count({ where: { ...live, status: 'booked', delivered: false, event_date: { lt: today } } });
   const d14 = new Date(now.getTime() - 14 * 86400e3), d1 = new Date(now.getTime() - 86400e3);
-  const [galleries, newGalleries, picking, sentSel, owed, crewJobs, shares, rawGalleries, visits, calls, texts] = await Promise.all([
+  const [galleries, newGalleries, picking, sentSel, crewJobs, shares, rawGalleries, visits, calls, texts] = await Promise.all([
     prisma.albums.count({ where: { vendor_id: v } }),
     prisma.albums.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, take: 5, select: { title: true } }),
     prisma.selection_notes.count({ where: { albums: { vendor_id: v }, completed_at: null, updated_at: { gte: d14 } } }),
     prisma.selection_notes.findMany({ where: { albums: { vendor_id: v }, completed_at: { gte: d14 } }, select: { albums: { select: { title: true } } }, take: 8 }),
-    prisma.invoices.aggregate({ where: { vendor_id: v }, _sum: { balance: true } }),
     prisma.lead_crew.count({ where: { leads: { vendor_id: v, event_date: { gte: today, lte: new Date(today.getTime() + 14 * 86400e3) } } } }),
     prisma.file_shares.count({ where: { vendor_id: v, OR: [{ expires_at: null }, { expires_at: { gte: now } }] } }),
     prisma.raw_files.groupBy({ by: ['album_id'], where: { vendor_id: v, delivered_at: null } }),
@@ -73,12 +72,11 @@ export async function buildBriefing(vendorId) {
     `Bookings in the next 30 days (the calendar): ${upcoming.length ? upcoming.map(l => `${day(l.event_date)} ${l.name} (${l.event_type || 'event'}${l.location ? `, ${l.location}` : ''}${l.timing_from ? `, from ${l.timing_from}` : ''})`).join('; ') : 'none'}`,
     `Past events booked but not marked delivered: ${undelivered}`,
     `Crew: ${crew.length ? crew.map(c => `${c.name}${c.role ? ` (${c.role})` : ''}`).join(', ') : 'none listed'}`,
-    `Packages: ${packages.length ? packages.map(p => `${p.name}${p.base_price ? ` $${Number(p.base_price)}` : ''}${p.included_hours ? ` ${p.included_hours}h` : ''}`).join(', ') : 'none'}`,
+    `Packages: ${packages.length ? packages.map(p => `${p.name}${p.included_hours ? ` ${p.included_hours}h` : ''}`).join(', ') : 'none'}`,
     `Open reminders: ${reminders}`,
     `Contact index: ${await prisma.agent_contacts.count({ where: { vendor_id: v } })} people with their whole history — use lookup_contact`,
     `Galleries: ${galleries} (newest: ${newGalleries.map(g => g.title).join(', ') || 'none'}) · RAWs waiting for edits in ${rawGalleries.length} galleries`,
     `Photo selections: ${sentSel.length} sent in the last 2 weeks (${sentSel.map(s => s.albums.title).join(', ') || 'none'}) · ${picking} clients still picking`,
-    `Money owed on invoices: $${Number(owed._sum.balance || 0).toFixed(2)}`,
     `Crew assignments in the next 2 weeks: ${crewJobs}`,
     `File Flyer: ${shares} active shared links`,
     `Website: ${visits} visits/events in the last 7 days`,

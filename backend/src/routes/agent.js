@@ -20,9 +20,11 @@ import { ACTION_TOOLS, runActionTool, confirmAction, cancelAction, isSmallChange
 import { vapid } from '../lib/agentPush.js';
 import { liveSession, liveSetup } from '../lib/geminiLive.js';
 import { emailWarning } from '../lib/emailCheck.js';
-import { compactResult, unpanel } from '../lib/tornadoLean.js';
+import { compactResult, unpanel, unmerge, takesClient } from '../lib/tornadoLean.js';
 import { SECTIONS, kbSync } from '../lib/agentKb.js';
 import { rulesFor } from '../lib/agentRules.js';
+import { finishedPcJobs, pcAllowed } from '../lib/pcAgent.js';
+import { whatsNew, clipManifest, clipFile, recordClips, voiceBank } from '../lib/voiceClips.js';
 import { runTraining, undoLastTraining } from '../lib/agentTraining.js';
 import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
@@ -32,6 +34,9 @@ const ACTIONS = new Set(ACTION_TOOLS.map(t => t.name));
 /* ⚡ the tool list never changes between turns: marked for Claude's prompt cache,
    so a follow-up question does not pay to re-read it (faster and cheaper) */
 const CACHED_TOOLS = ALL_TOOLS.map((t, i) => (i === ALL_TOOLS.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t));
+// 🛡️ the owner's private PC tools are left out for every other vendor (pcAgent.js → pcAllowed)
+const PRIVATE_TOOLS = new Set(['pc_task', 'delivery_log']);
+const PUBLIC_TOOLS = ALL_TOOLS.filter(t => !PRIVATE_TOOLS.has(t.name)).map((t, i, a) => (i === a.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t));
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -130,7 +135,7 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
       const r = await fetch(API_URL, {
         method: 'POST',
         headers: { 'x-api-key': cfg.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: [{ type: 'text', text: systemPrompt(vendor?.business_name, today, req.body?.voice === true), cache_control: { type: 'ephemeral' } }, { type: 'text', text: `What you know (facts and memories):\n${knowledge}\n\nThe business right now (refreshed every 15 minutes — use tools for details):\n${briefing}` }], tools: CACHED_TOOLS, messages }),
+        body: JSON.stringify({ model: cfg.model, max_tokens: MAX_TOKENS, system: [{ type: 'text', text: systemPrompt(vendor?.business_name, today, req.body?.voice === true), cache_control: { type: 'ephemeral' } }, { type: 'text', text: `What you know (facts and memories):\n${knowledge}\n\nThe business right now (refreshed every 15 minutes — use tools for details):\n${briefing}` }], tools: (await pcAllowed(vid(req))) ? CACHED_TOOLS : PUBLIC_TOOLS, messages }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -281,9 +286,29 @@ router.get('/inbox', requireAuth, async (req, res) => {
         : `NEW TEXT from ${who(e)} at ${when(e.occurred_at)}: "${String(e.body || '').slice(0, 200)}"`),
       ...leads.map(l => `New lead: ${l.name}${l.event_type ? ` (${l.event_type}${l.event_date ? `, ${new Date(l.event_date).toDateString()}` : ''})` : ''}${emailWarning(l.email) ? ` — ⚠️ their email ${l.email} looks wrong: ${emailWarning(l.email)}` : ''}`),
     ];
+    items.push(...await finishedPcJobs(v, since).catch(() => []));   // 🖥️ a long PC job finished
     res.json({ items, now: Date.now() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+/* ── 🎙️ the greeting and "what's new", played by the app from Tornado's recorded lines (lib/voiceClips.js) ── */
+router.get('/whats-new', requireAuth, async (req, res) => {
+  try { res.json(await whatsNew(vid(req))); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.get('/voice-clips', requireAuth, (req, res) => {
+  const m = clipManifest(vid(req));
+  res.json(m ? { version: m.version, keys: Object.keys(m.lines) } : { version: null, keys: [] });
+});
+router.get('/voice-clips/:key', requireAuth, (req, res) => {
+  const f = clipFile(vid(req), req.params.key);              // 🔒 a clip name inside this vendor's folder, never a path
+  if (!f) return res.status(404).json({ error: 'No such clip' });
+  res.set('Cache-Control', 'private, max-age=86400').type('application/octet-stream').sendFile(f);
+});
+router.post('/voice-clips/record', requireAuth, async (req, res) => {
+  const key = req.body?.key ? String(req.body.key) : null;      // one line again, or all missing ones
+  try { res.json(await recordClips(vid(req), { force: req.body?.force === true || !!key, only: key ? [key] : null })); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.get('/voice-bank', requireAuth, (req, res) => res.json(voiceBank(vid(req))));
 
 /* ── 📜 the Rules tab: exactly what Tornado reads at the start (and re-reads every reply) ── */
 router.get('/rules', requireAuth, async (req, res) => {
@@ -351,6 +376,15 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
     let input = (req.body?.parameters && typeof req.body.parameters === 'object') ? req.body.parameters : {};
     // 🗂️ the voice model's one "panel" tool → the page's own tool (tornadoLean.js)
     if (name === 'panel') ({ name, input } = unpanel(input));
+    // 👥 a client's name instead of a lead id — only when exactly ONE client matches; two or more → the list, and Tornado asks which
+    if (takesClient(name) && input.client && !input.lead_id) {
+      const q = String(input.client).trim(), digits = q.replace(/\D/g, '');
+      const found = await prisma.leads.findMany({ where: { vendor_id: vid(req), archived_at: null, OR: [{ name: { contains: q, mode: 'insensitive' } }, ...(digits.length >= 7 ? [{ phone: { contains: digits.slice(-7) } }] : [])] }, orderBy: { event_date: 'desc' }, take: 6, select: { id: true, name: true, event_type: true, event_date: true, location: true } });
+      if (!found.length) return res.json({ result: { error: `No client called ${q}` } });
+      if (found.length > 1) return res.json({ result: { which_one: found.map(l => `#${l.id} ${l.name} — ${l.event_type || 'event'}${l.event_date ? `, ${new Date(l.event_date).toDateString()}` : ''}${l.location ? `, ${l.location}` : ''}`), note: 'More than one client by that name — ask the owner which one, then call again with lead_id.' } });
+      input = { ...input, lead_id: found[0].id };
+    }
+    ({ name, input } = unmerge(name, input));                    // 🧰 a merged voice tool → the original tool
     if (name === 'confirm_action') return res.json({ result: compactResult(await confirmAction(input.proposal_id, v, req.headers.authorization)) });
     if (name === 'cancel_action') { cancelAction(input.proposal_id, v); return res.json({ result: { ok: true, message: 'Cancelled — nothing was done.' } }); }
     let out;

@@ -895,6 +895,8 @@ export const api = {
   agentDoneReminder: (id) => request(`/agent/reminders/${id}`, { method: 'DELETE' }),
   agentKbSections: () => request('/agent/kb/sections'),
   agentRules: () => request('/agent/rules'),
+  agentVoiceBank: () => request('/agent/voice-bank'),
+  agentRecordClip: (key) => request('/agent/voice-clips/record', { method: 'POST', body: JSON.stringify({ key }) }),
   agentTrainRules: () => request('/agent/rules/train', { method: 'POST' }),
   agentUndoTraining: () => request('/agent/rules/undo', { method: 'POST' }),
   agentKb: (section, q = '') => request(`/agent/kb?section=${encodeURIComponent(section)}&q=${encodeURIComponent(q)}`),

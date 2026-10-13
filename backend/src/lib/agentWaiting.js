@@ -39,7 +39,9 @@ export async function waitingForYou(vendorId, { record = true } = {}) {
 
   // 🔔 unseen bell items (a lead's own "new inquiry" is covered above)
   const bell = await prisma.notifications.findMany({ where: { vendor_id: v, seen_at: null, type: { not: 'lead' }, created_at: { gte: new Date(Date.now() - 14 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 8, select: { title: true, body: true, created_at: true } });
-  for (const n of bell) lines.push(`UNSEEN on the bell: ${n.title}${n.body ? ` — ${String(n.body).slice(0, 100)}` : ''} (${when(n.created_at)})`);
+  // 💵 amounts never travel in the wake-up list — the owner may not be alone
+  const noMoney = (x) => String(x || '').replace(/\$\s?[\d,]+(\.\d+)?/g, '(amount on request)');
+  for (const n of bell) lines.push(`UNSEEN on the bell: ${noMoney(n.title)}${n.body ? ` — ${noMoney(String(n.body).slice(0, 100))}` : ''} (${when(n.created_at)})`);
 
   // 💬📞 unseen texts and calls
   const comms = await privateDb.comms_notices.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(Date.now() - 7 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 8, select: { title: true, body: true, created_at: true } }).catch(() => []);

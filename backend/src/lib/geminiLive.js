@@ -12,11 +12,12 @@
 import { getSetting } from './settings.js';
 import { VOICE_TOOLS } from './tornado.js';
 import { rulesText } from './agentRules.js';
+import { pcAllowed } from './pcAgent.js';
 import { zoneOf } from './agentReminders.js';
 import { knowledgeText, briefingText, recentConversations } from './agentKnowledge.js';
 import prisma from '../config/prisma.js';
 import { waitingForYou } from './agentWaiting.js';
-import { SHORT, shortParams, PANEL_PAGES, PANEL_TOOL } from './tornadoLean.js';
+import { SHORT, shortParams, PANEL_PAGES, PANEL_TOOL, MERGED_AWAY, MERGED_TOOLS } from './tornadoLean.js';
 
 /** ⏸️ "Hold on, Tornado" → the app stops listening but keeps the conversation; a tap on the bubble resumes (handled in the app). */
 const PAUSE_LISTENING = {
@@ -63,16 +64,16 @@ function toGemini(s) {
 
 /** Everything Tornado starts a conversation with: who it is, the time, what is due, what it knows. */
 /** preview: the Rules tab shows the same setup without counting it as a wake-up (no daily event/reminder mentions used up). */
-export async function liveSetup(vendorId, { preview = false } = {}) {
+/** The live values Tornado's rules are filled with — the same for the voice session and the
+    Wind trial: who, when, what is waiting, recent talks, what you know, a conversation carried on. */
+export async function liveVars(vendorId) {
   const c = await geminiConfig();
   const tz = await zoneOf(vendorId);
   const now = new Date();
-  const hour = Number(now.toLocaleString('en-US', { timeZone: tz, hour: 'numeric', hour12: false }));
   const vars = {
     user_name: c.callMe,
     timezone: tz,
     now: now.toLocaleString('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
-    greeting: hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening',
     due_soon: 'see WAITING FOR YOU',     // reminders come there now, within their daily limits
     // lessons first (they must be followed every turn), trimmed — facts and memories come from recall
     knowledge: (await knowledgeText(vendorId)).slice(0, 1500),
@@ -81,31 +82,24 @@ export async function liveSetup(vendorId, { preview = false } = {}) {
     recent: await recentConversations(vendorId, 2),
     waiting: '',            // filled below — a conversation that continues the last one is not a new wake-up
   };
-  const fill = (t) => t.replace(/\{\{(\w+)\}\}/g, (m, k) => (vars[k] ?? m));
-  /* 👋 Raj, 2026-10-11: "good morning, Raj" only the first time or two in the
-     morning — and a conversation started soon after the last one CONTINUES it */
-  const todayStart = new Date(now.toLocaleDateString('en-CA', { timeZone: tz }) + 'T00:00:00');
-  const offsetMs = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' })) - new Date(now.toLocaleString('en-US', { timeZone: tz }));
-  const sinceMidnight = new Date(todayStart.getTime() + offsetMs);
-  const [talksToday, last] = await Promise.all([
-    prisma.agent_conversations.count({ where: { vendor_id: Number(vendorId), created_at: { gte: sinceMidnight } } }),
-    prisma.agent_conversations.findFirst({ where: { vendor_id: Number(vendorId) }, orderBy: { created_at: 'desc' }, select: { created_at: true, transcript: true } }),
-  ]);
+  const last = await prisma.agent_conversations.findFirst({ where: { vendor_id: Number(vendorId) }, orderBy: { created_at: 'desc' }, select: { created_at: true, transcript: true } });   // the greeting count went with the spoken greeting
   const minutesSince = last ? (now - new Date(last.created_at)) / 60000 : Infinity;
   // 📬 only what is new / unseen, events within their daily limits (agentWaiting.js) — counted only on a real wake-up
-  vars.waiting = (await waitingForYou(vendorId, { record: !preview && minutesSince >= 20 })).slice(0, 1200);
-  let opening, carryOn = '';
+  vars.waiting = (await waitingForYou(vendorId, { record: false })).slice(0, 1200);   // the app's whats-new counts the wake-up
+  let carryOn = '';
   if (minutesSince < 20 && last?.transcript) {
-    opening = 'Yes, Raj?';
     carryOn = `\n\nYOU WERE JUST TALKING ${Math.max(1, Math.round(minutesSince))} minute(s) ago — this is the SAME conversation, carry on from it. Do not greet again or repeat what was already said. The end of it:\n${last.transcript.slice(-1200)}`;
-  } else if (talksToday < 2) {
-    opening = fill("{{greeting}}, {{user_name}}! Tornado here. What can I do for you?");
-  } else {
-    opening = fill('Hey {{user_name}}.');                 // not "what's next" (Raj, 2026-10-12)
   }
+  return { c, vars, carryOn };
+}
+
+export async function liveSetup(vendorId, { preview: _preview = false } = {}) {   // a preview no longer counts anything (the app's whats-new does)
+  const pcOk = await pcAllowed(vendorId);                       // 🛡️ the PC tools are the owner's alone
+  const { c, vars, carryOn } = await liveVars(vendorId);
+  const fill = (t) => t.replace(/\{\{(\w+)\}\}/g, (m, k) => (vars[k] ?? m));
   const instructions = `${fill(await rulesText(vendorId))}${carryOn}
 
-START: the moment the conversation opens, say exactly: "${opening}" — then listen.`;
+START: the app has already greeted him and read out what is new (the counts) in your voice — stay silent until he speaks, never greet again. If he asks who or what, answer from WAITING FOR YOU. Only if the app sends you a message first (an alarm, a reminder) do you speak first.`;
   return {
     model: `models/${c.model}`,
     generationConfig: {
@@ -118,7 +112,7 @@ START: the moment the conversation opens, say exactly: "${opening}" — then lis
     systemInstruction: { parts: [{ text: instructions }] },
     tools: [
       // ✂️ one-line descriptions (tornadoLean.js): they are re-sent with every reply
-      { functionDeclarations: [...VOICE_TOOLS.filter(t => t.name !== 'web_search' && !PANEL_PAGES.includes(t.name)), PANEL_TOOL, END_CONVERSATION, PAUSE_LISTENING].map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
+      { functionDeclarations: [...VOICE_TOOLS.filter(t => t.name !== 'web_search' && !PANEL_PAGES.includes(t.name) && !MERGED_AWAY.has(t.name) && (pcOk || !['pc_task', 'delivery_log'].includes(t.name))), PANEL_TOOL, ...MERGED_TOOLS, END_CONVERSATION, PAUSE_LISTENING].map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
       // 🔎 the world as it is today — new cameras, prices, news (Raj, 2026-10-11: it denied the Canon R6 Mark V exists)
       { googleSearch: {} },
     ],

@@ -841,6 +841,9 @@ model vendors {
   agent_rule_history      agent_rule_history[]
   agent_training_runs     agent_training_runs[]
   agent_tool_log          agent_tool_log[]
+  pc_devices              pc_devices[]
+  pc_jobs                 pc_jobs[]
+  agent_delivery_log      agent_delivery_log[]
 }
 
 model album_faces {
@@ -1422,4 +1425,70 @@ model agent_tool_log {
   vendors   vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, at], map: "idx_agent_tool_log_vendor")
+}
+
+/// 🖥️ The owner's PC(s) that Tornado can work on (lib/pcAgent.js). The agent connects out
+/// with a device token — only its SHA-256 hash is stored.
+model pc_devices {
+  id         Int       @id @default(autoincrement())
+  vendor_id  Int
+  name       String    @db.VarChar(80)
+  token_hash String    @unique @db.VarChar(64)
+  last_seen  DateTime? @db.Timestamp(6)
+  /// what the agent last reported: drives, free space, Resolve running…
+  info       String?
+  revoked_at DateTime? @db.Timestamp(6)
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pc_jobs    pc_jobs[]
+}
+
+/// 🖥️ One task for the PC: queued → running → done / failed.
+model pc_jobs {
+  id         Int        @id @default(autoincrement())
+  vendor_id  Int
+  device_id  Int
+  action     String     @db.VarChar(40)
+  params     String     @default("{}")
+  /// queued | running | done | failed
+  status     String     @default("queued") @db.VarChar(12)
+  progress   String?
+  result     String?
+  summary    String?
+  /// the owner has heard the result (Tornado's answer or an inbox [Update])
+  notified   Boolean    @default(false)
+  created_at DateTime   @default(now()) @db.Timestamp(6)
+  updated_at DateTime   @default(now()) @db.Timestamp(6)
+  vendors    vendors    @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pc_devices pc_devices @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([device_id, status], map: "idx_pc_jobs_device_status")
+}
+
+/// 📦 What was delivered to which client (Raj, 2026-10-12) — one short row per delivery,
+/// filed by client (name, email, phone) so Tornado looks up ONE client's rows and never
+/// reads the log as a whole. Written by the server when a delivery finishes.
+model agent_delivery_log {
+  id           Int      @id @default(autoincrement())
+  vendor_id    Int
+  lead_id      Int?
+  client_name  String   @default("") @db.VarChar(120)
+  client_email String   @default("") @db.VarChar(160)
+  client_phone String   @default("") @db.VarChar(40)
+  album_id     Int?
+  album_title  String   @default("") @db.VarChar(200)
+  file_name    String   @db.VarChar(260)
+  size_bytes   BigInt   @default(0)
+  source_path  String   @default("")
+  /// uploaded | redelivered | removed
+  action       String   @default("uploaded") @db.VarChar(20)
+  /// what the owner charged for this delivery, if anything (e.g. a re-delivery fee)
+  fee          Decimal? @db.Decimal(10, 2)
+  note         String   @default("")
+  at           DateTime @default(now()) @db.Timestamp(6)
+  vendors      vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, client_email], map: "idx_delivery_email")
+  @@index([vendor_id, client_phone], map: "idx_delivery_phone")
+  @@index([vendor_id, lead_id], map: "idx_delivery_lead")
 }

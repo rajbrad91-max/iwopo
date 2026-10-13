@@ -86,3 +86,6 @@
 .ag-rule-btn.is-quiet { background: transparent; color: inherit; border-color: var(--line, #e3e6ea); }
 .ag-rule-btn:disabled { opacity: .6; cursor: default; }
 .ag-k-where { font-style: normal; font-size: 11.5px; color: var(--muted, #6b7280); white-space: nowrap; margin-left: 6px; }
+.ag-vb-list { list-style: none; margin: 0; padding: 0; }
+.ag-vb-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line, #eef0f3); }
+.ag-vb-text { flex: 1; font-size: 13.5px; }

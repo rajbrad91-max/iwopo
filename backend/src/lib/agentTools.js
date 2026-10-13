@@ -14,6 +14,7 @@ import { PANEL_TOOLS, PANEL_TOOL_NAMES, runPanelTool } from './agentPanelTools.j
 import { lookupContacts } from './agentContacts.js';
 import { emailWarning } from './emailCheck.js';
 import { searchKb, leadPrices, SECTIONS } from './agentKb.js';
+import { runOnPc, wakePc, PC_ACTIONS, pcAllowed, deliveriesFor } from './pcAgent.js';
 
 /** A date as people say it, weekday included — "Mon 15 Mar 2027". Worked out
  *  here, in UTC (dates are stored as calendar days), so the model never has
@@ -77,9 +78,43 @@ export const TOOLS = [
     input_schema: { type: 'object', properties: { days: { type: 'integer', minimum: 1, maximum: 365 } }, additionalProperties: false },
   },
   {
+    name: 'pc_task',
+    description: "Work on the owner's editing PC: wake (switch it on — Wake-on-LAN); apps (what is open on it right now — names only); power (power: shutdown | restart | sleep — ONLY after his yes, shutdown/restart wait 60 s; lock; cancel stops a pending shutdown); open_app / close_app (query: the app's name — close only after his yes, it closes normally so it can ask to save); upload_to_gallery (put a video from the PC or NAS into a client gallery's Videos folder: path + album_id — find the gallery first; the client sees it with their usual login); status (only whether it is on); details (drives, free space, what is open — only when asked); find_folder (folders by a few words, e.g. \"inaya event 26\" — use it before list_folder: never guess a path); find_files (search the NAS and drives by words in the name, e.g. the longest video of a client — kind video/photo, sort size/date); list_folder; make_folder; copy (src → dest); move (only after he said yes); upload_drive (copy to his Google Drive, dest = folder inside My Drive); make_proxies (H.264 proxies of every video in a folder, into its Proxy subfolder — Resolve links them automatically). Long jobs keep running and report when done.",
+    input_schema: { type: 'object', properties: {
+      action: { type: 'string', enum: ["wake","apps","power","open_app","close_app","upload_to_gallery","status","details","find_files","find_folder","list_folder","make_folder","copy","move","upload_drive","make_proxies"] },
+      query: { type: 'string', description: 'find_files: words in the file name' },
+      kind: { type: 'string', enum: ['video', 'photo', 'any'] },
+      sort: { type: 'string', enum: ['size', 'date', 'name'] },
+      path: { type: 'string', description: 'a file or folder path, e.g. V:\\1-Weddings 2026-27\\Naya' },
+      album_id: { type: 'integer', description: 'upload_to_gallery: the client gallery' },
+      details: { type: 'boolean', description: 'sizes, dates, contents — only when the owner asks for them' },
+      power: { type: 'string', enum: ['shutdown', 'restart', 'sleep', 'lock', 'cancel'] },
+      dest: { type: 'string', description: 'copy / move / upload_drive destination' },
+      limit: { type: 'integer' },
+    }, required: ['action'] },
+  },
+  {
+    name: 'delivery_log',
+    description: "What was delivered to ONE client (videos uploaded to their gallery, re-deliveries, fees) — by their name, email or phone. Use it for \"did we deliver …\", \"when did … get their video\". Never reads the whole log.",
+    input_schema: { type: 'object', properties: { client: { type: 'string', description: 'name, email or phone' } }, required: ['client'] },
+  },
+  {
     name: 'web_search',
     description: 'Search the web for anything outside the panel — gear, prices, places, distances and travel times, news, how-to. Returns a short answer to read aloud.',
     input_schema: { type: 'object', properties: { query: { type: 'string', description: 'what to look up' } }, required: ['query'] },
+  },
+  {
+    name: 'client_directory',
+    description: "Any question about a client, in ONE call. Without fields: the basics — name, phone, email, what the shoot is, date, time, venue, booked or not. With fields: ONLY those facts (guests, contract, crew, notes, form_answers, delivered, source, inquired, packages_sent). Never money — that is client_payment. Search by name, phone or email.",
+    input_schema: { type: 'object', properties: {
+      query: { type: 'string', description: 'a name, phone number or email' },
+      fields: { type: 'array', items: { type: 'string', enum: ['venue', 'date', 'time', 'phone', 'email', 'event', 'status', 'guests', 'contract', 'crew', 'notes', 'form_answers', 'delivered', 'source', 'inquired', 'packages_sent'] }, description: 'only these facts — leave out for the basics' },
+    }, required: ['query'] },
+  },
+  {
+    name: 'client_payment',
+    description: "A client's money — price, paid, balance, last payment. ONLY when the owner asks about money or payment for that client; money is never mentioned otherwise (he may be with other people).",
+    input_schema: { type: 'object', properties: { query: { type: 'string', description: 'a name, phone number or email' } }, required: ['query'] },
   },
   {
     name: 'search_knowledge',
@@ -228,14 +263,12 @@ export async function runTool(name, input, vendorId) {
         const a = l.custom_data?.[f.id];
         if (a !== undefined && a !== null && a !== '' && a !== false) answers.push({ question: f.label, answer: a === true ? 'Yes' : a });
       }
-      const pays = await prisma.payments.findMany({ where: { lead_id: l.id, vendor_id: v }, orderBy: { paid_at: 'desc' }, select: { amount: true, method: true, note: true, paid_at: true } });
       const missing = [['guests', l.guests], ['email', l.email], ['phone', l.phone], ['venue', l.location], ['start time', l.timing_from], ['event date', l.event_date]].filter(([, val]) => val === null || val === undefined || val === '').map(([k]) => k);
       return {
         ...leadLine(l), role: l.role, instagram: l.instagram, heard_about_us: l.heard,
         // a detail may be written in the notes or form answers instead of its own field ("starts at 6 AM") — read those first
         not_in_their_own_fields: missing.length ? `${missing.join(', ')} — but READ client_notes, private_notes and form_answers first: a time or guest count is often written there. Only if it is nowhere, say it is not recorded and offer to add it to its field.` : 'nothing important missing',
-        payments: { paid_total: pays.reduce((sum, p) => sum + Number(p.amount || 0), 0), list: pays.map(p => ({ amount: Number(p.amount), method: p.method, note: p.note, on: day(p.paid_at) })) },
-        delivered: !!l.delivered, booked_package_price: l.package_snapshot?.price ?? null,
+        delivered: !!l.delivered,
         times: [l.timing_from, l.timing_to].filter(Boolean).join(' to ') || null, hours: l.hours, guests: l.guests,
         client_notes: l.notes, private_notes: l.internal_notes, booking_notes: l.booking_notes,
         package: l.package_snapshot?.name || null, packages_sent: day(l.packages_sent_at),
@@ -247,6 +280,18 @@ export async function runTool(name, input, vendorId) {
       const until = new Date(now.getTime() + (Number(input.days) || 30) * 86400e3);
       const rows = await prisma.leads.findMany({ where: { ...live, status: 'booked', event_date: { gte: new Date(now.toDateString()), lte: until } }, orderBy: { event_date: 'asc' }, take: 40 });
       return { count: rows.length, events: rows.map(leadLine) };
+    }
+    case 'pc_task': {
+      const action = PC_ACTIONS.includes(input.action) ? input.action : null;
+      if (!action) return { error: 'Unknown PC action' };
+      if (!(await pcAllowed(v))) return { error: 'Not available.' };
+      if (action === 'wake') return wakePc(v);                     // ⏰ the router, like the WolOn app
+      const { action: _a, ...params } = input;
+      return runOnPc(v, action, params);
+    }
+    case 'delivery_log': {
+      if (!(await pcAllowed(v))) return { error: 'Not available.' };
+      return deliveriesFor(v, input.client);
     }
     case 'web_search': {
       // 🔎 the typed AI Agent's Claude key with Anthropic's web search — short, for speaking aloud
@@ -264,6 +309,33 @@ export async function runTool(name, input, vendorId) {
       const d = await r.json().catch(() => ({}));
       const text = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ').trim();
       return text ? { answer: text.slice(0, 1200) } : { error: d.error?.message || 'No answer from the web search' };
+    }
+    case 'client_directory': {
+      // 📇 level 1 (Raj, 2026-10-13): who, how to reach them, what, when, where — nothing more
+      const q = String(input.query || '').trim();
+      if (!q) return { error: 'Who?' };
+      const digits = q.replace(/\D/g, '');
+      const leads = await prisma.leads.findMany({
+        where: { vendor_id: v, archived_at: null, OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }, ...(digits.length >= 7 ? [{ phone: { contains: digits.slice(-7) } }] : [])] },
+        orderBy: [{ event_date: 'desc' }], take: 6,
+        select: { id: true, name: true, phone: true, email: true, event_type: true, event_date: true, timing_from: true, timing_to: true, location: true, status: true },
+      });
+      const day = (d) => (d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : 'date not set');
+      if (Array.isArray(input.fields) && input.fields.length) {
+        if (!leads.length) return { error: 'No such client' };
+        return clientFacts(v, leads[0].id, input.fields);           // 🔎 only the facts asked for
+      }
+      return { clients: leads.map(l => `#${l.id} ${l.name} · ${l.phone || 'no phone'} · ${l.email || 'no email'} · ${l.event_type || 'event'} · ${day(l.event_date)}${l.timing_from ? ` ${l.timing_from}${l.timing_to ? `–${l.timing_to}` : ''}` : ''} · ${l.location || 'venue not set'} · ${l.status === 'booked' ? 'BOOKED' : 'not booked'}`) };
+    }
+    case 'client_payment': {
+      // 💵 the ONLY way a client's money reaches the voice — asked for, never volunteered (Raj, 2026-10-13)
+      const q = String(input.query || '').trim(), digits = q.replace(/\D/g, '');
+      if (!q) return { error: 'Which client?' };
+      const lead = await prisma.leads.findFirst({ where: { vendor_id: v, archived_at: null, OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }, ...(digits.length >= 7 ? [{ phone: { contains: digits.slice(-7) } }] : [])] }, orderBy: { event_date: 'desc' }, select: { id: true, name: true } });
+      if (!lead) return { error: 'No such client' };
+      const p = (await leadPrices(v, { id: lead.id }))[0] || {};
+      const last = await prisma.payments.findFirst({ where: { vendor_id: v, lead_id: lead.id }, orderBy: { paid_at: 'desc' }, select: { amount: true, method: true, paid_at: true } });
+      return { client: lead.name, price: p.price_note || 'no price set', paid: p.paid ?? 0, balance: p.price != null ? Math.max(0, p.price - (p.paid || 0)) : 'no price set', last_payment: last ? `$${Number(last.amount)} by ${last.method || 'unknown'} on ${new Date(last.paid_at).toDateString()}` : 'none' };
     }
     case 'search_knowledge': {
       const sec = SECTIONS.some(s => s[0] === input.section) ? input.section : null;
@@ -371,4 +443,37 @@ export async function runTool(name, input, vendorId) {
     default:
       return { error: `Unknown tool ${name}` };
   }
+}
+
+/** 🔎 Only the facts asked for about one client (client_directory with fields). */
+async function clientFacts(v, leadId, fields) {
+  const lead = await prisma.leads.findFirst({ where: { id: Number(leadId), vendor_id: v } });   // 🔒 this vendor's
+  if (!lead) return { error: 'No such client' };
+  const input = { fields };
+  const want = new Set(Array.isArray(input.fields) ? input.fields : []);
+  const out = { client: lead.name };
+  const day = (d) => (d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : 'not set');
+  if (want.has('venue')) out.venue = lead.location || 'not set';
+  if (want.has('date')) out.date = day(lead.event_date);
+  if (want.has('time')) out.time = lead.timing_from ? `${lead.timing_from}${lead.timing_to ? `–${lead.timing_to}` : ''}` : 'not set';
+  if (want.has('phone')) out.phone = lead.phone || 'not set';
+  if (want.has('email')) out.email = lead.email || 'not set';
+  if (want.has('event')) out.event = lead.event_type || 'not set';
+  if (want.has('status')) out.status = lead.status === 'booked' ? 'BOOKED' : (lead.status || 'inquiry');
+  // anything asked that isn't a known fact gets the basics, never an empty answer
+  const known = new Set(['venue', 'date', 'time', 'phone', 'email', 'event', 'status', 'guests', 'contract', 'crew', 'notes', 'form_answers', 'delivered', 'source', 'inquired', 'packages_sent']);
+  if ([...want].some(x => !known.has(x))) Object.assign(out, { venue: lead.location || 'not set', date: day(lead.event_date), time: lead.timing_from || 'not set', event: lead.event_type || 'event' });
+  if (want.has('guests')) out.guests = lead.guests ?? 'not recorded';
+  if (want.has('contract')) {
+    const c = await prisma.contracts.findFirst({ where: { vendor_id: v, lead_id: lead.id, voided_at: null }, orderBy: { id: 'desc' }, select: { signed_at: true, released_at: true } });
+    out.contract = !c ? 'none' : c.signed_at ? `signed ${new Date(c.signed_at).toDateString()}` : c.released_at ? 'sent, not signed' : 'draft, not sent';
+  }
+  if (want.has('crew')) out.crew = (await prisma.lead_crew.findMany({ where: { lead_id: lead.id }, include: { crew_members: { select: { name: true } } } })).map(x => `${x.crew_members?.name}${x.duty ? ` (${x.duty})` : ''}`).join(', ') || 'none assigned';
+  if (want.has('notes')) out.notes = [lead.notes && `client: ${lead.notes}`, lead.internal_notes && `private: ${lead.internal_notes}`, lead.booking_notes && `booking: ${lead.booking_notes}`].filter(Boolean).join(' / ') || 'no notes';
+  if (want.has('form_answers')) out.form_answers = lead.custom_data || 'none';
+  if (want.has('delivered')) out.delivered = lead.delivered ? 'yes' : 'no';
+  if (want.has('source')) out.source = lead.heard || 'not recorded';
+  if (want.has('inquired')) out.inquired = lead.created_at;
+  if (want.has('packages_sent')) out.packages_sent = lead.packages_sent_at || 'not sent';
+  return out;
 }

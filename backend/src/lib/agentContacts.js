@@ -63,7 +63,6 @@ export async function buildContactIndex(vendorId, only = null) {
     select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true, location: true, delivered: true, created_at: true, archived_at: true, package_snapshot: true, heard: true },
   });
   const leadIds = leads.map(l => l.id);
-  const paid = Object.fromEntries((await prisma.payments.groupBy({ by: ['lead_id'], where: { vendor_id: v, lead_id: { in: leadIds } }, _sum: { amount: true } })).map(r => [r.lead_id, Number(r._sum.amount || 0)]));
   const signed = new Set((await prisma.contracts.findMany({ where: { vendor_id: v, lead_id: { in: leadIds }, signed_at: { not: null } }, select: { lead_id: true } })).map(c => c.lead_id));
   // a person found by email or name may also have calls under the number on their lead
   if (only) for (const l of leads) { const t = ten(l.phone); if (t.length >= 7 && !ph.includes(t)) { ph.push(t); commsWhere.OR.push({ from_number: { endsWith: t } }, { to_number: { endsWith: t } }); } }
@@ -77,7 +76,7 @@ export async function buildContactIndex(vendorId, only = null) {
     seen(p, l.created_at);
     const past = l.event_date && new Date(l.event_date) < new Date();
     const who = p.name && l.name && l.name.toLowerCase() !== p.name.toLowerCase() ? ` ${l.name}` : '';
-    p.leads.push(`Lead #${l.id}${who} (${[l.event_type, l.event_date ? day(l.event_date) : null, l.location].filter(Boolean).join(', ')}; ${STATUS[l.status] || l.status || 'inquiry'}${l.status === 'booked' ? (past ? (l.delivered ? ', event done, DELIVERED' : ', event done, NOT delivered yet') : ', upcoming') : ''}${paid[l.id] ? `, paid $${paid[l.id]}` : ''}${signed.has(l.id) ? ', contract signed' : ''}${l.package_snapshot?.name ? `, ${l.package_snapshot.name}` : ''}${l.archived_at ? ', archived' : ''}; inquired ${day(l.created_at)})`);
+    p.leads.push(`Lead #${l.id}${who} (${[l.event_type, l.event_date ? day(l.event_date) : null, l.location].filter(Boolean).join(', ')}; ${STATUS[l.status] || l.status || 'inquiry'}${l.status === 'booked' ? (past ? (l.delivered ? ', event done, DELIVERED' : ', event done, NOT delivered yet') : ', upcoming') : ''}${signed.has(l.id) ? ', contract signed' : ''}${l.package_snapshot?.name ? `, ${l.package_snapshot.name}` : ''}${l.archived_at ? ', archived' : ''}; inquired ${day(l.created_at)})`);
   }
 
   // 📞 calls and texts, by number

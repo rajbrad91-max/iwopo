@@ -51,6 +51,7 @@ import commsRoutes from './routes/comms.js';
 import rawselRoutes from './routes/rawsel.js';
 import editorRoutes from './routes/editor.js';
 import agentRoutes from './routes/agent.js';
+import pcRoutes from './routes/pc.js';
 import activityRoutes from './routes/activity.js';     // 👀 TEMPORARY — tester activity
 import { sweepRaws } from './lib/rawFiles.js';
 import { writeAltTexts } from './lib/rawDelivery.js';
@@ -184,6 +185,7 @@ app.use('/api/rawsel', gate('rawsel'), rawselRoutes);
 app.use('/api/editor', editorRoutes);
 // 🤖 AI Agent — private like comms: the vendor's own AI agent, reading their panel
 app.use('/api/agent', gate('agent'), agentRoutes);
+app.use('/api/pc', pcRoutes);
 // 👀 TEMPORARY (2026-10-11): which pages a tracked tester visited — Super Admin report at /x/tester-activity
 app.use('/api/activity', activityRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device

@@ -55,19 +55,13 @@ async function buildSections(v, only) {
 
   if (want('leads') || want('bookings') || want('money')) {
     const leads = await prisma.leads.findMany({ where: { vendor_id: v } });
-    const ids = leads.map(l => l.id);
-    const [lp, vp, pays, inv, crew, contracts] = await Promise.all([
-      prisma.lead_packages.findMany({ where: { vendor_id: v, lead_id: { in: ids } }, select: { lead_id: true, name: true, price: true, is_selected: true } }),
-      prisma.vendor_packages.findMany({ where: { vendor_id: v }, select: { id: true, name: true, base_price: true } }),
-      prisma.payments.groupBy({ by: ['lead_id'], where: { vendor_id: v }, _sum: { amount: true } }),
+    // 💵 no prices or payments here any more — money lives only in the money section and client_payment
+    const [inv, crew, contracts] = await Promise.all([
       prisma.invoices.findMany({ where: { vendor_id: v } }),
       prisma.lead_crew.findMany({ where: { leads: { vendor_id: v } }, include: { crew_members: { select: { name: true, role: true } } } }),
       prisma.contracts.findMany({ where: { vendor_id: v }, select: { lead_id: true, status: true, signed_at: true, released_at: true, voided_at: true, title: true } }),
     ]);
-    const paid = Object.fromEntries(pays.map(p => [p.lead_id, Number(p._sum.amount || 0)]));
     for (const l of leads) {
-      const q = lp.filter(x => x.lead_id === l.id);
-      const price = priceOf(l, q.find(x => x.is_selected), q, vp.find(x => x.id === l.package_id));
       const answers = l.custom_data && typeof l.custom_data === 'object' ? Object.values(l.custom_data).filter(x => x !== '' && x !== null && x !== false && x !== true).map(x => clip(x, 60)).join(', ') : '';
       const ew = emailWarning(l.email);
       const c = contracts.find(x => x.lead_id === l.id && !x.voided_at);
@@ -77,7 +71,6 @@ async function buildSections(v, only) {
       if (want('leads')) add('leads', l.id, `${l.name} — Lead #${l.id}`, [
         ['status', `${STATUS[l.status] || l.status || 'new'}${l.archived_at ? ', archived' : ''}`],
         ['event', l.event_type], ['date', day(l.event_date)], ['time', time], ['venue', l.location], ['guests', l.guests],
-        ['price', price.text], ['paid', paid[l.id] ? money(paid[l.id]) : null],
         ['phone', l.phone], ['email', l.email ? `${l.email}${ew ? ` ⚠️ ${ew}` : ''}` : null], ['instagram', l.instagram],
         ['role', l.role], ['source', l.heard], ['birthday', day(l.client_birthday)],
         ['inquired', at(l.created_at)], ['opened', l.seen_at ? 'yes' : 'NOT YET'], ['packages sent', day(l.packages_sent_at)], ['contract', contract],
@@ -89,7 +82,6 @@ async function buildSections(v, only) {
         add('bookings', l.id, `${l.name} — ${l.event_type || 'event'}, ${day(l.event_date) || 'date not set'}`, [
           ['state', past ? (l.delivered ? 'done, DELIVERED' : 'done, NOT delivered yet') : 'upcoming'],
           ['time', time], ['venue', l.location], ['guests', l.guests],
-          ['price', price.text], ['paid', money(paid[l.id] || 0)], ['balance', price.value !== null ? money(Math.max(0, price.value - (paid[l.id] || 0))) : null],
           ['contract', contract || 'none yet'], ['crew', team.length ? team.join(', ') : 'none assigned'],
           ['phone', l.phone], ['email', l.email],
           ['client notes', note(l.notes)], ['private notes', note(l.internal_notes)], ['booking notes', note(l.booking_notes)],
@@ -205,7 +197,8 @@ export async function kbSync(vendorId, only = null) {
 export async function searchKb(vendorId, query, section = null, take = 10) {
   const v = Number(vendorId);
   const words = String(query || '').toLowerCase().split(/[\s,]+/).map(w => w.replace(/[^\p{L}\p{N}@.+-]/gu, '')).filter(w => w.length > 1).slice(0, 8);
-  const base = { vendor_id: v, ...(section ? { section } : {}) };
+  // 💵 the money section is searched only when asked for by name — never mixed into other answers
+  const base = { vendor_id: v, ...(section ? { section } : { section: { not: 'money' } }) };
   if (!words.length) return prisma.agent_kb.findMany({ where: base, orderBy: { updated_at: 'desc' }, take, select: { section: true, text: true } });
   let rows = await prisma.agent_kb.findMany({ where: { ...base, AND: words.map(w => ({ text: { contains: w, mode: 'insensitive' } })) }, take, select: { section: true, text: true } });
   if (!rows.length) {

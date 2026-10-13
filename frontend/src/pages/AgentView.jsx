@@ -10,7 +10,7 @@
  * contract. 🔔 Pop-ups bring the bell to this device; a tap opens this tab.
  */
 import { useState, useEffect, useRef } from 'react';
-import { api } from '../lib/api';
+import { api, authFetch } from '../lib/api';
 import './agent.css';
 
 const SUGGEST = ["What's new today?", 'Any new leads this week?', 'Which events do I have this month?', 'Show me my packages'];
@@ -47,13 +47,14 @@ function Knowledge() {
       <div className="ag-kb-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'mind'} className={`ag-kb-tab ${tab === 'mind' ? 'is-on' : ''}`} onClick={() => setTab('mind')}>🧠 Lessons & memory</button>
         <button type="button" role="tab" aria-selected={tab === 'rules'} className={`ag-kb-tab ${tab === 'rules' ? 'is-on' : ''}`} onClick={() => setTab('rules')}>📜 Rules</button>
+        <button type="button" role="tab" aria-selected={tab === 'voice'} className={`ag-kb-tab ${tab === 'voice' ? 'is-on' : ''}`} onClick={() => setTab('voice')}>🎙️ Voice bank</button>
         {sections.map(x => (
           <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} className={`ag-kb-tab ${tab === x.key ? 'is-on' : ''}`} onClick={() => setTab(x.key)}>
             {x.label} <span className="ag-kb-n">{x.count}</span>
           </button>
         ))}
       </div>
-      {tab === 'mind' ? <Mind /> : tab === 'rules' ? <Rules /> : <KbList key={tab} section={tab} label={current?.label || ''} />}
+      {tab === 'mind' ? <Mind /> : tab === 'rules' ? <Rules /> : tab === 'voice' ? <VoiceBank /> : <KbList key={tab} section={tab} label={current?.label || ''} />}
     </div>
   );
 }
@@ -75,6 +76,55 @@ function KbList({ section, label }) {
         : rows.length ? <div className="ag-kb-cards">{rows.map(r => <KbCard key={r.id} text={r.text} />)}</div>
         : <div className="ag-k-empty">{q ? 'Nothing matches.' : 'Nothing here yet.'}</div>}
     </section>
+  );
+}
+
+/* 🎙️ The voice bank: Tornado's recorded lines (its own voice), how often each one is played on a
+   wake-up, and the tokens that saved — every wake-up served from here skips a Gemini turn. */
+function VoiceBank() {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState('');
+  const load = () => api.agentVoiceBank().then(setD).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+  async function play(key) {
+    try {
+      const r = await authFetch(`/agent/voice-clips/${key}`);         // the login travels in a header, never the URL
+      const pcm = new Uint8Array(await r.arrayBuffer());
+      const head = new DataView(new ArrayBuffer(44));
+      const put = (o, s) => [...s].forEach((c, i) => head.setUint8(o + i, c.charCodeAt(0)));
+      put(0, 'RIFF'); head.setUint32(4, 36 + pcm.length, true); put(8, 'WAVE'); put(12, 'fmt '); head.setUint32(16, 16, true);
+      head.setUint16(20, 1, true); head.setUint16(22, 1, true); head.setUint32(24, 24000, true); head.setUint32(28, 48000, true);
+      head.setUint16(32, 2, true); head.setUint16(34, 16, true); put(36, 'data'); head.setUint32(40, pcm.length, true);
+      new Audio(URL.createObjectURL(new Blob([head.buffer, pcm], { type: 'audio/wav' }))).play();
+    } catch (e) { setErr(e.message); }
+  }
+  async function again(key) {
+    setBusy(key);
+    try { await api.agentRecordClip(key); await load(); } catch (e) { setErr(e.message); }
+    setBusy('');
+  }
+  if (!d) return <section className="ag-k-card"><div className="ag-k-empty">{err ? `⚠️ ${err}` : 'Loading…'}</div></section>;
+  return (
+    <div className="ag-rules">
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">🎙️ Tornado's voice bank</h3>
+        <p className="ag-k-sub">{d.clips.length} lines in Tornado's own voice, played by the phone when you open Tornado — no AI, no tokens. {d.wakeups.toLocaleString()} wake-ups served{d.since ? ` since ${d.since}` : ''} · about <b>{d.tokens_saved.toLocaleString()}</b> tokens saved. New lines reach the phone by themselves.</p>
+        {err && <div className="av-msg">⚠️ {err}</div>}
+      </section>
+      <section className="ag-k-card">
+        <ul className="ag-vb-list">
+          {d.clips.map(c => (
+            <li key={c.key} className="ag-vb-row">
+              <button type="button" className="ag-rule-btn is-quiet" onClick={() => play(c.key)} aria-label={`Play ${c.text}`}>▶</button>
+              <span className="ag-vb-text">{c.text}</span>
+              <span className="ag-rule-size">{c.plays ? `${c.plays}× · ` : ''}{c.seconds} s</span>
+              <button type="button" className="ag-rule-btn is-quiet" disabled={!!busy} onClick={() => again(c.key)}>{busy === c.key ? '…' : '⟳'}</button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }
 
