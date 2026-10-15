@@ -506,8 +506,12 @@ def _start_menu_apps():
     return apps
 
 
+def app_name(p):
+    return p.get('query') or p.get('name') or p.get('app') or p.get('path') or ''
+
+
 def open_app(p):
-    want = norm_words(p.get('query') or p.get('path') or '')
+    want = norm_words(app_name(p))
     if not want:
         raise ValueError('Which app?')
     apps = _start_menu_apps()
@@ -525,7 +529,7 @@ def open_app(p):
 
 def close_app(p):
     """Closes it the normal way (so it can ask to save) — never force-killed."""
-    want = norm_words(p.get('query') or '')
+    want = norm_words(app_name(p))
     if not want:
         raise ValueError('Which app?')
     tasks = subprocess.run(['tasklist', '/fo', 'csv', '/nh'], capture_output=True, text=True, creationflags=0x08000000).stdout
@@ -538,10 +542,27 @@ def close_app(p):
     return {'summary': f"Closing {', '.join(hits[:3])}"}
 
 
+def setup_wake(_p):
+    """Lets a Wake-on-LAN packet wake the PC from sleep too: the wired network card may wake it, on a magic packet only."""
+    ps = r'''
+$out = @()
+Get-NetAdapter -Physical | Where-Object { $_.Status -eq 'Up' -and $_.MediaType -eq '802.3' } | ForEach-Object {
+  $n = $_.Name
+  try { Set-NetAdapterPowerManagement -Name $n -WakeOnMagicPacket Enabled -ErrorAction Stop; $out += "$n magic packet: on" } catch { $out += "$n magic packet: $($_.Exception.Message)" }
+  try { Set-NetAdapterAdvancedProperty -Name $n -DisplayName 'Wake on Magic Packet' -DisplayValue 'Enabled' -ErrorAction Stop } catch {}
+  powercfg /deviceenablewake "$($_.InterfaceDescription)" 2>$null | Out-Null
+  $out += "$n may wake the PC: $((powercfg /devicequery wake_armed) -contains $_.InterfaceDescription)"
+}
+$out -join '; '
+'''
+    r = subprocess.run(['powershell', '-NoProfile', '-Command', ps], capture_output=True, text=True, creationflags=0x08000000, timeout=60)
+    return {'summary': (r.stdout.strip() or r.stderr.strip() or 'done')[:300]}
+
+
 ACTIONS = {'status': lambda p, j: status(p), 'details': lambda p, j: details(p), 'find_files': lambda p, j: find_files(p), 'list_folder': lambda p, j: list_folder(p),
            'make_folder': lambda p, j: make_folder(p), 'find_folder': lambda p, j: find_folder(p), 'copy': copy, 'move': move, 'upload_drive': upload_drive, 'make_proxies': make_proxies,
            'upload_to_gallery': upload_to_gallery,
-           'power': lambda p, j: power(p), 'apps': lambda p, j: apps(p), 'open_app': lambda p, j: open_app(p), 'close_app': lambda p, j: close_app(p)}
+           'power': lambda p, j: power(p), 'apps': lambda p, j: apps(p), 'setup_wake': lambda p, j: setup_wake(p), 'open_app': lambda p, j: open_app(p), 'close_app': lambda p, j: close_app(p)}
 
 
 def run(job):
@@ -625,7 +646,7 @@ def main():
         threading.Thread(target=hello_loop, daemon=True).start()
     while True:
         try:
-            r = requests.get(SERVER + '/api/pc/next' + ('?can=status,power' if HELPER else ''), headers=H, timeout=40)
+            r = requests.get(SERVER + '/api/pc/next' + ('?can=status,power,setup_wake' if HELPER else ''), headers=H, timeout=40)
             if r.status_code == 200:
                 threading.Thread(target=run, args=(r.json(),), daemon=True).start()
             elif r.status_code == 401:

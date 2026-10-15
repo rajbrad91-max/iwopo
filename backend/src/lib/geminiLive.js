@@ -13,6 +13,11 @@ import { getSetting } from './settings.js';
 import { VOICE_TOOLS } from './tornado.js';
 import { rulesText } from './agentRules.js';
 import { pcAllowed } from './pcAgent.js';
+
+/* 🧠 Raj, 2026-10-15: narrow "doing" tools made Tornado say "I can't" whenever one didn't fit exactly (admin
+   password, sending a gallery link). Every change in the panel now goes to panel_task — the operator, which
+   works out where everything is. The voice model keeps the reads, texts, reminders, memory and the PC. */
+const OPERATOR_DOES = new Set(['gallery', 'lead_quick', 'propose_create_lead', 'propose_update_lead', 'gallery_password', 'propose_create_gallery', 'propose_add_gallery_folder', 'propose_delete_gallery', 'propose_mark_selection']);
 import { zoneOf } from './agentReminders.js';
 import { knowledgeText, briefingText, recentConversations } from './agentKnowledge.js';
 import prisma from '../config/prisma.js';
@@ -112,7 +117,7 @@ START: the app has already greeted him and read out what is new (the counts) in 
     systemInstruction: { parts: [{ text: instructions }] },
     tools: [
       // ✂️ one-line descriptions (tornadoLean.js): they are re-sent with every reply
-      { functionDeclarations: [...VOICE_TOOLS.filter(t => t.name !== 'web_search' && !PANEL_PAGES.includes(t.name) && !MERGED_AWAY.has(t.name) && (pcOk || !['pc_task', 'delivery_log'].includes(t.name))), PANEL_TOOL, ...MERGED_TOOLS, END_CONVERSATION, PAUSE_LISTENING].map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
+      { functionDeclarations: [...VOICE_TOOLS.filter(t => t.name !== 'web_search' && !PANEL_PAGES.includes(t.name) && !MERGED_AWAY.has(t.name) && !OPERATOR_DOES.has(t.name) && (pcOk || !['pc_task', 'delivery_log'].includes(t.name))), PANEL_TOOL, ...MERGED_TOOLS.filter(t => !OPERATOR_DOES.has(t.name)), END_CONVERSATION, PAUSE_LISTENING].map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
       // 🔎 the world as it is today — new cameras, prices, news (Raj, 2026-10-11: it denied the Canon R6 Mark V exists)
       { googleSearch: {} },
     ],

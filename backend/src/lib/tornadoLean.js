@@ -12,9 +12,10 @@ export const SHORT = {
   find_leads: 'Search leads by name/email/phone, status, event date range. Returns true totals.',
   get_lead: 'Everything about one lead: contact, event, form answers, notes, payments, what is missing.',
   upcoming_events: 'Booked events in the next N days.',
-  pc_task: 'Work on the owner\'s PC (answer only what he asks — sizes, contents, drives only with details): wake it up, what is open (apps), power (shutdown / restart / sleep only after his yes; lock; cancel), open or close an app (close after his yes), upload a video to a client gallery (path + album_id), status, find folders (never guess a path) and files on the NAS / drives, list / make folders, copy, move (after his yes), upload to Google Drive, make Resolve proxies for a folder. Long jobs report when done.',
+  pc_task: 'Work on the owner\'s PC (answer only what he asks — sizes, contents, drives only with details): wake it up, what is open (apps), power (shutdown / restart / sleep / lock / cancel — straight away), open or close an app, upload a video to a client gallery (path + album_id), status, find folders (never guess a path) and files on the NAS / drives, list / make folders, copy, move (after his yes), upload to Google Drive, make Resolve proxies for a folder. Long jobs report when done.',
   delivery_log: 'What was delivered to one client (by name, email or phone).',
   web_search: 'Search the web for anything outside the panel: gear, prices, places, distances, travel times, news, how-to.',
+  mark_seen: 'Mark messages / notifications / leads seen ("mark them read"). Read-out items are already marked seen.',
   client_directory: 'Any question about a client in ONE call: the basics (name, phone, email, shoot, date, time, venue, booked) — or, with fields, ONLY those facts (venue, date, time, guests, contract, crew, notes…). Never money.',
   client_payment: 'A client\'s money (price, paid, balance, last payment) — ONLY when the owner asks about money.',
   search_knowledge: 'Search the panel data written as sentences by a few words. Set section when the question is about one page (leads, bookings, money, calls, galleries, selections, crew, packages, fileflyer, raws, occasions, reminders, analytics).',
@@ -46,6 +47,7 @@ export const SHORT = {
   propose_update_lead: 'Propose changing a lead: status, date, venue, times, guests, delivered (owner confirms).',
   propose_add_note: 'Propose a private note on a lead (owner confirms).',
   propose_mark_selection: 'Propose marking a gallery\'s photo selection done / not done (owner confirms).',
+  panel_task: 'ANYTHING in the panel he could do himself (albums, folders, passwords, lead details, packages, seen marks, contract drafts…): the whole job in plain words — done straight away. Asks his yes only to send a contract or delete for good.',
   propose_create_gallery: 'Create a client gallery (title or lead_id, folders, passwords made if not given) — done at once.',
   propose_add_gallery_folder: 'Add a photo folder to a gallery — done at once.',
   propose_delete_gallery: 'Delete a whole gallery — permanent, always asks first.',
@@ -108,7 +110,7 @@ export function compactResult(value, limit = 3500) {
 export const PANEL_PAGES = ['upcoming_events', 'list_reminders', 'list_crew', 'calendar', 'world_time', 'list_packages', 'galleries', 'gallery_detail', 'photo_selections', 'file_flyer', 'raw_selector', 'analytics', 'money', 'crew_schedule'];
 export const PANEL_TOOL = {
   name: 'panel',
-  description: 'Look at a page of the panel. page: upcoming_events (days ahead), list_reminders, list_crew, calendar (from–to), world_time (timezone), list_packages, galleries (query), gallery_detail (id = gallery), photo_selections, file_flyer, raw_selector, analytics (days back), money (id = lead, optional), crew_schedule (from–to).',
+  description: 'Look at a page of the panel. page: upcoming_events (days ahead), list_reminders, list_crew, calendar (from–to), world_time (timezone), list_packages, galleries (query), gallery_detail (id = gallery, or query = its name — includes the client link), photo_selections, file_flyer, raw_selector, analytics (days back), money (id = lead, optional), crew_schedule (from–to).',
   input_schema: {
     type: 'object',
     properties: {
@@ -162,13 +164,15 @@ export const MERGED = {
     key: 'yes',
   },
   gallery: {
-    description: 'Galleries like the owner does in the panel: create (title or lead_id, folders, passwords made if not given), add_folder, mark_selection (done true/false), delete (permanent — always asks).',
-    params: { do: s('string', '', { enum: ['create', 'add_folder', 'mark_selection', 'delete'] }), album_id: s('integer', ''), title: s('string', ''), lead_id: s('integer', ''), client_email: s('string', ''), category: s('string', ''), folders: s('array', 'photo folder names', { items: { type: 'string' } }), name: s('string', 'add_folder: the folder'), done: s('boolean', ''), guest_password: s('string', ''), admin_password: s('string', '') },
+    description: 'Galleries like the owner does in the panel: create (title or lead_id, folders, the guest password he gives — ask, never invent), add_folder, password (tells it), set_password, mark_selection (done true/false), delete (permanent — always asks).',
+    params: { do: s('string', '', { enum: ['create', 'add_folder', 'password', 'set_password', 'mark_selection', 'delete'] }), album_id: s('integer', ''), album: s('string', 'or the gallery name — no need to look it up first'), title: s('string', ''), lead_id: s('integer', ''), client_email: s('string', ''), category: s('string', ''), folders: s('array', 'photo folder names', { items: { type: 'string' } }), name: s('string', 'add_folder: the folder'), done: s('boolean', ''), guest_password: s('string', ''), admin_password: s('string', '') },
     map: {
       create: ['propose_create_gallery', i => ({ title: i.title, lead_id: i.lead_id, client_email: i.client_email, category: i.category, folders: i.folders, guest_password: i.guest_password, admin_password: i.admin_password })],
-      add_folder: ['propose_add_gallery_folder', i => ({ album_id: i.album_id, name: i.name })],
+      add_folder: ['propose_add_gallery_folder', i => ({ album_id: i.album_id, album: i.album, name: i.name })],
+      password: ['gallery_password', i => ({ album_id: i.album_id, album: i.album })],
+      set_password: ['gallery_password', i => ({ album_id: i.album_id, album: i.album, set: i.guest_password || i.name })],
       mark_selection: ['propose_mark_selection', i => ({ album_id: i.album_id, done: i.done })],
-      delete: ['propose_delete_gallery', i => ({ album_id: i.album_id })],
+      delete: ['propose_delete_gallery', i => ({ album_id: i.album_id, album: i.album })],
     },
   },
   lead_quick: {

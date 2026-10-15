@@ -21,7 +21,7 @@ export async function pcAllowed(vendorId) {
   return list.includes(Number(vendorId));
 }
 
-export const PC_ACTIONS = ['wake', 'apps', 'power', 'open_app', 'close_app', 'upload_to_gallery', 'status', 'details', 'find_files', 'find_folder', 'list_folder', 'make_folder', 'copy', 'move', 'upload_drive', 'make_proxies'];
+export const PC_ACTIONS = ['wake', 'setup_wake', 'apps', 'power', 'open_app', 'close_app', 'upload_to_gallery', 'status', 'details', 'find_files', 'find_folder', 'list_folder', 'make_folder', 'copy', 'move', 'upload_drive', 'make_proxies'];
 const hash = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
 
 /** A new device for a vendor — returns the token ONCE (put it in the agent's config). */
@@ -42,7 +42,9 @@ export async function deviceOf(req) {
 export async function onlineDevice(vendorId) {
   const d = await prisma.pc_devices.findFirst({ where: { vendor_id: Number(vendorId), revoked_at: null }, orderBy: { last_seen: 'desc' } });
   if (!d?.last_seen) return { device: d, online: false };
-  return { device: d, online: Date.now() - new Date(d.last_seen) < 45_000 };
+  let info; try { info = JSON.parse(d.info || '{}'); } catch { info = {}; }
+  const fresh = (t) => Boolean(t) && Date.now() - Number(t) < 60_000;
+  return { device: d, online: Date.now() - new Date(d.last_seen) < 45_000, agentOnline: fresh(info.agent_at), helperOnline: fresh(info.helper_at) };
 }
 
 /** Queue a job and wait up to `waitMs` for it to finish. */
@@ -51,7 +53,20 @@ export async function runOnPc(vendorId, action, params, waitMs = 8_000) {
   const { device, online } = await onlineDevice(vendorId);
   if (!device) return { error: 'No PC is connected yet — the PC agent has not been set up.' };
   const cancelling = action === 'power' && /cancel|abort|stop/i.test(String(params?.power || ''));   // still reaches a PC that is counting down
-  if (!online && !cancelling) return { error: `${device.name} is off or the PC agent isn't running (last seen ${device.last_seen ? new Date(device.last_seen).toLocaleString('en-US', { timeZone: 'America/Vancouver' }) : 'never'}).` };
+  const state = await onlineDevice(vendorId);
+  // 🧭 "is it on?" — answered at once from who checked in (no trip to the PC)
+  if (action === 'status') {
+    if (state.agentOnline) return { status: 'done', result: { summary: `${device.name.replace(/^Editing /, '')} is on` } };
+    if (state.helperOnline) return { status: 'done', result: { summary: 'It is asleep, locked out or at the sign-in screen — on, but not ready for apps or files. Say "wake it up".' } };
+    return { status: 'done', result: { summary: 'It is off' } };
+  }
+  // 🌙 an app / file job while it is asleep: wake it now, and say so — instead of waiting for a PC that can't answer
+  const needsUser = !['power', 'setup_wake'].includes(action);
+  if (needsUser && !state.agentOnline && state.helperOnline) {
+    await wakePc(vendorId, { force: true }).catch(() => {});
+    return { status: 'done', result: { summary: 'Your PC is asleep — I sent a wake signal. Ask again in a minute (if it shows the sign-in screen, sign in first).' } };
+  }
+  if (!online && !cancelling && !(state.helperOnline && ['power', 'setup_wake'].includes(action))) return { error: `${device.name} is off or the PC agent isn't running (last seen ${device.last_seen ? new Date(device.last_seen).toLocaleString('en-US', { timeZone: 'America/Vancouver' }) : 'never'}).` };
   const job = await prisma.pc_jobs.create({ data: { vendor_id: Number(vendorId), device_id: device.id, action, params: JSON.stringify(params || {}) } });
   const until = Date.now() + waitMs;
   while (Date.now() < until) {
@@ -84,12 +99,12 @@ function safeJson(s) { try { return JSON.parse(s); } catch { return s; } }
 /* ⏰ Wake the desktop (Raj, 2026-10-12) — the same magic packet his WolOn app sends:
    UDP to the home address (TP-Link DDNS) on port 9; the router forwards it to the PC.
    Settings: pc_wake_host, pc_wake_mac, pc_wake_port (Super Admin / platform_settings). */
-export async function wakePc(vendorId) {
+export async function wakePc(vendorId, { force = false } = {}) {
   const host = await getSetting('pc_wake_host', ''), mac = String(await getSetting('pc_wake_mac', '')).replace(/[^0-9a-f]/gi, '');
   const port = Number(await getSetting('pc_wake_port', '9')) || 9;
   if (!host || mac.length !== 12) return { error: 'Wake-on-LAN is not set up (home address and the PC\'s MAC).' };
-  const { online } = await onlineDevice(vendorId);
-  if (online) return { status: 'done', result: { summary: 'The PC is already on.' } };
+  const { agentOnline } = await onlineDevice(vendorId);
+  if (agentOnline && !force) return { status: 'done', result: { summary: 'The PC is already on.' } };   // awake and signed in — asleep still gets the packet
   const m = Buffer.from(mac, 'hex');
   const packet = Buffer.concat([Buffer.alloc(6, 0xff), ...Array(16).fill(m)]);
   const sock = dgram.createSocket('udp4');

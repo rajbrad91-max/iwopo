@@ -58,6 +58,7 @@ import { writeAltTexts } from './lib/rawDelivery.js';
 import { sweepReminders } from './lib/agentReminders.js';
 import { refreshBriefings } from './lib/agentKnowledge.js';
 import { weeklyTraining } from './lib/agentTraining.js';
+import { syncDocs } from './lib/googleDoc.js';
 import { syncContactsQuick } from './lib/agentContacts.js';
 import deviceRoutes from './routes/devices.js';
 import liveshootRoutes from './routes/liveshoot.js';
@@ -287,6 +288,8 @@ setInterval(() => { sweepOldEvents().catch(() => {}); }, 24 * 60 * 60_000).unref
 setInterval(() => { sweepOccasions().catch(() => {}); }, 24 * 60 * 60_000).unref();
 // 🧠 Tornado's self-training: Sunday 3 AM Vancouver, checked hourly; logs older than 28 days are cleared
 setInterval(() => { weeklyTraining().catch(e => console.error('[agent] weekly training', e.message)); }, 60 * 60_000).unref();
+// 📄 the knowledge base → the owner's Google Doc: checked every minute, written only when something changed
+setInterval(() => { syncDocs().catch(e => console.error('[agent] google doc', e.message)); }, 60_000).unref();
 setTimeout(() => { sweepOccasions().catch(() => {}); }, 30_000).unref();
 
 /* 📞 The net behind the webhook. Every minute, in-process — Perfect Poses used

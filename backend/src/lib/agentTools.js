@@ -8,6 +8,7 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import privateDb from '../config/privateDb.js';
 import { getSetting } from './settings.js';
 import { zoneOf, atLocal, nice } from './agentReminders.js';
 import { PANEL_TOOLS, PANEL_TOOL_NAMES, runPanelTool } from './agentPanelTools.js';
@@ -79,9 +80,9 @@ export const TOOLS = [
   },
   {
     name: 'pc_task',
-    description: "Work on the owner's editing PC: wake (switch it on — Wake-on-LAN); apps (what is open on it right now — names only); power (power: shutdown | restart | sleep — ONLY after his yes, shutdown/restart wait 60 s; lock; cancel stops a pending shutdown); open_app / close_app (query: the app's name — close only after his yes, it closes normally so it can ask to save); upload_to_gallery (put a video from the PC or NAS into a client gallery's Videos folder: path + album_id — find the gallery first; the client sees it with their usual login); status (only whether it is on); details (drives, free space, what is open — only when asked); find_folder (folders by a few words, e.g. \"inaya event 26\" — use it before list_folder: never guess a path); find_files (search the NAS and drives by words in the name, e.g. the longest video of a client — kind video/photo, sort size/date); list_folder; make_folder; copy (src → dest); move (only after he said yes); upload_drive (copy to his Google Drive, dest = folder inside My Drive); make_proxies (H.264 proxies of every video in a folder, into its Proxy subfolder — Resolve links them automatically). Long jobs keep running and report when done.",
+    description: "Work on the owner's editing PC: wake (switch it on or out of sleep — Wake-on-LAN); setup_wake (once: lets the network card wake it from sleep); apps (what is open on it right now — names only); power (power: shutdown | restart | sleep | lock — done straight away, shutdown/restart wait 60 s; cancel stops a pending shutdown); open_app / close_app (query: the app's name — it closes normally so it can ask to save); upload_to_gallery (put a video from the PC or NAS into a client gallery's Videos folder: path + album_id — find the gallery first; the client sees it with their usual login); status (only whether it is on); details (drives, free space, what is open — only when asked); find_folder (folders by a few words, e.g. \"inaya event 26\" — use it before list_folder: never guess a path); find_files (search the NAS and drives by words in the name, e.g. the longest video of a client — kind video/photo, sort size/date); list_folder; make_folder; copy (src → dest); move (only after he said yes); upload_drive (copy to his Google Drive, dest = folder inside My Drive); make_proxies (H.264 proxies of every video in a folder, into its Proxy subfolder — Resolve links them automatically). Long jobs keep running and report when done.",
     input_schema: { type: 'object', properties: {
-      action: { type: 'string', enum: ["wake","apps","power","open_app","close_app","upload_to_gallery","status","details","find_files","find_folder","list_folder","make_folder","copy","move","upload_drive","make_proxies"] },
+      action: { type: 'string', enum: ["wake","setup_wake","apps","power","open_app","close_app","upload_to_gallery","status","details","find_files","find_folder","list_folder","make_folder","copy","move","upload_drive","make_proxies"] },
       query: { type: 'string', description: 'find_files: words in the file name' },
       kind: { type: 'string', enum: ['video', 'photo', 'any'] },
       sort: { type: 'string', enum: ['size', 'date', 'name'] },
@@ -102,6 +103,11 @@ export const TOOLS = [
     name: 'web_search',
     description: 'Search the web for anything outside the panel — gear, prices, places, distances and travel times, news, how-to. Returns a short answer to read aloud.',
     input_schema: { type: 'object', properties: { query: { type: 'string', description: 'what to look up' } }, required: ['query'] },
+  },
+  {
+    name: 'mark_seen',
+    description: "Mark things seen in the panel, as he would by opening them: what = messages (texts and calls), notifications (the bell), leads, or all. What you read out on a wake-up or as an [Update] is already marked seen.",
+    input_schema: { type: 'object', properties: { what: { type: 'string', enum: ['messages', 'notifications', 'leads', 'all'] } }, required: ['what'] },
   },
   {
     name: 'client_directory',
@@ -309,6 +315,13 @@ export async function runTool(name, input, vendorId) {
       const d = await r.json().catch(() => ({}));
       const text = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ').trim();
       return text ? { answer: text.slice(0, 1200) } : { error: d.error?.message || 'No answer from the web search' };
+    }
+    case 'mark_seen': {
+      const what = String(input.what || 'all'), now = new Date(), done = [];
+      if (what === 'messages' || what === 'all') { const r = await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }).catch(() => ({ count: 0 })); done.push(`${r.count} message${r.count === 1 ? '' : 's'}`); }
+      if (what === 'notifications' || what === 'all') { const r = await prisma.notifications.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }); done.push(`${r.count} notification${r.count === 1 ? '' : 's'}`); }
+      if (what === 'leads' || what === 'all') { const r = await prisma.leads.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }); done.push(`${r.count} lead${r.count === 1 ? '' : 's'}`); }
+      return { summary: `Marked seen: ${done.join(', ')}` };
     }
     case 'client_directory': {
       // 📇 level 1 (Raj, 2026-10-13): who, how to reach them, what, when, where — nothing more

@@ -28,6 +28,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
   try {
     const s = await getAllSettings();
     // mask secret
+    if (s.gdoc_service_account) s.gdoc_service_account = '(saved — hidden)';   // 📄 the Google Doc key never leaves the server
     if (s.aws_secret_key) s.aws_secret_key = s.aws_secret_key.slice(0, 4) + '••••••••' + s.aws_secret_key.slice(-4);
     // every R2 secret is masked the same way — enough to tell which key is in
     // place, never enough to use

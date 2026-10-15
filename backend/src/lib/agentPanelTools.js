@@ -12,6 +12,9 @@ import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
 import { getFeatures } from './entitlements.js';
 
+/** 🔗 the address clients open (the panel builds the same: <site>/g/<public_token>) */
+const SITE = process.env.APP_URL || (String(process.env.STORAGE_BASE || '').includes('staging') ? 'https://alphabetaone.com' : 'https://iwopo.com');
+
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(/,/g, '') : null);
 const when = (d) => (d ? new Date(d).toLocaleString('en-GB', { timeZone: 'America/Vancouver', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null);
 const since = (days) => new Date(Date.now() - (Number(days) || 30) * 86400e3);
@@ -80,8 +83,12 @@ export async function runPanelTool(name, input, vendorId) {
       return { count: out.length, galleries: out };
     }
     case 'gallery_detail': {
-      const a = await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v } });          // 🔒
-      if (!a) return { error: 'No gallery with that id' };
+      // by id, or by the name he says (Raj: "what's the client link for the Raj gallery?")
+      const named = String(input.album || input.query || input.name || '').trim();
+      const a = input.album_id
+        ? await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v } })          // 🔒
+        : named ? await prisma.albums.findFirst({ where: { vendor_id: v, title: { contains: named, mode: 'insensitive' } }, orderBy: { id: 'desc' } }) : null;
+      if (!a) return { error: 'No gallery by that id or name' };
       const tabs = await prisma.album_events.findMany({ where: { album_id: a.id, vendor_id: v }, orderBy: { sort_order: 'asc' } });
       const perTab = [];
       for (const t of tabs) perTab.push({ tab: t.name, delivered_edits: !!t.delivery, photos: await prisma.photos.count({ where: { album_id: a.id, vendor_id: v, event_id: t.id } }) });
@@ -95,7 +102,8 @@ export async function runPanelTool(name, input, vendorId) {
         prisma.raw_files.count({ where: { album_id: a.id, vendor_id: v, photo_id: { not: null } } }),
         prisma.raw_files.count({ where: { album_id: a.id, vendor_id: v, delivered_at: { not: null } } }),
       ]);
-      return { id: a.id, title: a.title, type: a.category, made: day(a.created_at), photos, videos, tabs: perTab, client_selected: picked, selection: note?.completed_at ? `sent ${day(note.completed_at)}` : picked ? 'still picking' : 'not started', client_note: note?.note || null, favourites: favs, raws: { total: raws, matched_to_photos: rawsPaired, delivered: rawsDelivered }, expires: a.exp_enabled ? day(a.exp_date) : 'never', face_circles: !!a.face_ai, client_email: a.client_email, guest_login: !!a.guest_username };
+      const clientLink = a.public_token ? `${SITE}/g/${a.public_token}` : null;   // 🔗 what the panel's "copy link" gives
+      return { client_link: clientLink, id: a.id, title: a.title, type: a.category, made: day(a.created_at), photos, videos, tabs: perTab, client_selected: picked, selection: note?.completed_at ? `sent ${day(note.completed_at)}` : picked ? 'still picking' : 'not started', client_note: note?.note || null, favourites: favs, raws: { total: raws, matched_to_photos: rawsPaired, delivered: rawsDelivered }, expires: a.exp_enabled ? day(a.exp_date) : 'never', face_circles: !!a.face_ai, client_email: a.client_email, guest_login: !!a.guest_username };
     }
     case 'photo_selections': {
       const notes = await prisma.selection_notes.findMany({ where: { albums: { vendor_id: v }, updated_at: { gte: since(input.days || 60) } }, orderBy: { updated_at: 'desc' }, take: 25, select: { album_id: true, note: true, updated_at: true, completed_at: true, albums: { select: { title: true } } } });

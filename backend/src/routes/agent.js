@@ -25,6 +25,9 @@ import { SECTIONS, kbSync } from '../lib/agentKb.js';
 import { rulesFor } from '../lib/agentRules.js';
 import { finishedPcJobs, pcAllowed } from '../lib/pcAgent.js';
 import { whatsNew, clipManifest, clipFile, recordClips, voiceBank } from '../lib/voiceClips.js';
+import { gdocAllowed, docStatus, docSetup, syncDoc } from '../lib/googleDoc.js';
+import { operate } from '../lib/panelOperator.js';
+import { proposeOperatorCall } from '../lib/agentActions.js';
 import { runTraining, undoLastTraining } from '../lib/agentTraining.js';
 import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
@@ -287,13 +290,20 @@ router.get('/inbox', requireAuth, async (req, res) => {
       ...leads.map(l => `New lead: ${l.name}${l.event_type ? ` (${l.event_type}${l.event_date ? `, ${new Date(l.event_date).toDateString()}` : ''})` : ''}${emailWarning(l.email) ? ` — ⚠️ their email ${l.email} looks wrong: ${emailWarning(l.email)}` : ''}`),
     ];
     items.push(...await finishedPcJobs(v, since).catch(() => []));   // 🖥️ a long PC job finished
+    items.push(...(OPERATOR_DONE.get(v) || [])); OPERATOR_DONE.delete(v);   // 🧠 a long panel task finished
+    // ✅ Tornado tells him these now — they count as seen (never announced again on the next wake-up)
+    if (comms.length || leads.length) {
+      const now = new Date();
+      if (leads.length) await prisma.leads.updateMany({ where: { vendor_id: v, id: { in: leads.map(l => l.id) } }, data: { seen_at: now } });
+      if (comms.length) await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null, created_at: { gt: since } }, data: { seen_at: now } }).catch(() => {});
+    }
     res.json({ items, now: Date.now() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /* ── 🎙️ the greeting and "what's new", played by the app from Tornado's recorded lines (lib/voiceClips.js) ── */
 router.get('/whats-new', requireAuth, async (req, res) => {
-  try { res.json(await whatsNew(vid(req))); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await whatsNew(vid(req), { markSeen: true })); } catch (e) { res.status(500).json({ error: e.message }); }   // read out = seen
 });
 router.get('/voice-clips', requireAuth, (req, res) => {
   const m = clipManifest(vid(req));
@@ -309,6 +319,19 @@ router.post('/voice-clips/record', requireAuth, async (req, res) => {
   try { res.json(await recordClips(vid(req), { force: req.body?.force === true || !!key, only: key ? [key] : null })); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 router.get('/voice-bank', requireAuth, (req, res) => res.json(voiceBank(vid(req))));
+
+/* ── 📄 the knowledge base mirrored into one Google Doc (lib/googleDoc.js) — owner-only ── */
+async function gdocOwner(req, res, next) { if (!(await gdocAllowed(vid(req)))) return res.status(403).json({ error: 'Not available' }); next(); }
+router.get('/gdoc', requireAuth, gdocOwner, async (req, res) => res.json(await docStatus()));
+router.post('/gdoc/setup', requireAuth, gdocOwner, async (req, res) => {
+  try { res.json(await docSetup({ link: req.body?.link, key: req.body?.key })); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.post('/gdoc/sync', requireAuth, gdocOwner, async (req, res) => {
+  try { res.json(await syncDoc(vid(req))); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/** 🧠 panel tasks that finished after Tornado stopped waiting — handed over with the next [Update] */
+const OPERATOR_DONE = new Map();
 
 /* ── 📜 the Rules tab: exactly what Tornado reads at the start (and re-reads every reply) ── */
 router.get('/rules', requireAuth, async (req, res) => {
@@ -388,7 +411,18 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
     if (name === 'confirm_action') return res.json({ result: compactResult(await confirmAction(input.proposal_id, v, req.headers.authorization)) });
     if (name === 'cancel_action') { cancelAction(input.proposal_id, v); return res.json({ result: { ok: true, message: 'Cancelled — nothing was done.' } }); }
     let out;
-    if (READ.has(name)) out = await runTool(name, input, v);
+    if (name === 'panel_task') {
+      // 🧠 the panel operator: answers within ~25 s, or keeps going and reports as an [Update]
+      const job = operate({ vendorId: v, userId: req.user?.id, task: input.task })   // 🧬 the operator makes its own one-vendor login
+        .then(r => (r.ask ? { ...r, proposal: proposeOperatorCall(v, r.ask) } : r))
+        .catch(e => ({ summary: `The panel task failed: ${e.message}` }));
+      const quick = await Promise.race([job, new Promise(r => setTimeout(() => r(null), 25_000))]);
+      if (quick) out = quick.proposal ? { proposal: quick.proposal, summary: quick.summary } : { summary: quick.summary };
+      else {
+        job.then(r => { const list = OPERATOR_DONE.get(v) || []; list.push(r.proposal ? `PANEL TASK needs his yes: ${r.ask.summary} (proposal_id ${r.proposal.id})` : `PANEL TASK DONE: ${r.summary}`); OPERATOR_DONE.set(v, list); });
+        out = { status: 'working', note: 'It has started — tell him in a few words; the result comes as an [Update].' };
+      }
+    } else if (READ.has(name)) out = await runTool(name, input, v);
     else if (ACTIONS.has(name)) out = await runActionTool(name, input, v, req.headers.authorization);
     else return res.status(400).json({ error: `Unknown tool ${name}` });
     // 🧰 for the self-training only (never sent to Tornado) — kept 28 days

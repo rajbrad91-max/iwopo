@@ -89,3 +89,6 @@
 .ag-vb-list { list-style: none; margin: 0; padding: 0; }
 .ag-vb-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line, #eef0f3); }
 .ag-vb-text { flex: 1; font-size: 13.5px; }
+.ag-gd-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; margin: 8px 0; }
+.ag-gd-input { font: inherit; padding: 8px 10px; border: 1px solid var(--line, #e3e6ea); border-radius: 8px; background: transparent; color: inherit; }
+.ag-gd-key { min-height: 90px; font-family: ui-monospace, monospace; font-size: 12px; }

@@ -48,13 +48,14 @@ function Knowledge() {
         <button type="button" role="tab" aria-selected={tab === 'mind'} className={`ag-kb-tab ${tab === 'mind' ? 'is-on' : ''}`} onClick={() => setTab('mind')}>🧠 Lessons & memory</button>
         <button type="button" role="tab" aria-selected={tab === 'rules'} className={`ag-kb-tab ${tab === 'rules' ? 'is-on' : ''}`} onClick={() => setTab('rules')}>📜 Rules</button>
         <button type="button" role="tab" aria-selected={tab === 'voice'} className={`ag-kb-tab ${tab === 'voice' ? 'is-on' : ''}`} onClick={() => setTab('voice')}>🎙️ Voice bank</button>
+        <button type="button" role="tab" aria-selected={tab === 'gdoc'} className={`ag-kb-tab ${tab === 'gdoc' ? 'is-on' : ''}`} onClick={() => setTab('gdoc')}>📄 Google Doc</button>
         {sections.map(x => (
           <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} className={`ag-kb-tab ${tab === x.key ? 'is-on' : ''}`} onClick={() => setTab(x.key)}>
             {x.label} <span className="ag-kb-n">{x.count}</span>
           </button>
         ))}
       </div>
-      {tab === 'mind' ? <Mind /> : tab === 'rules' ? <Rules /> : tab === 'voice' ? <VoiceBank /> : <KbList key={tab} section={tab} label={current?.label || ''} />}
+      {tab === 'mind' ? <Mind /> : tab === 'rules' ? <Rules /> : tab === 'voice' ? <VoiceBank /> : tab === 'gdoc' ? <GoogleDoc /> : <KbList key={tab} section={tab} label={current?.label || ''} />}
     </div>
   );
 }
@@ -76,6 +77,57 @@ function KbList({ section, label }) {
         : rows.length ? <div className="ag-kb-cards">{rows.map(r => <KbCard key={r.id} text={r.text} />)}</div>
         : <div className="ag-k-empty">{q ? 'Nothing matches.' : 'Nothing here yet.'}</div>}
     </section>
+  );
+}
+
+/* 📄 The knowledge base (never money) + the unseen updates, mirrored into one Google Doc — checked every minute — the Gemini app on the phone can
+   read it (flat-rate, no tokens). Owner-only; the service-account key is pasted once and never shown again. */
+function GoogleDoc() {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+  const [link, setLink] = useState('');
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = () => api.agentGdoc().then(x => { setD(x); setErr(''); }).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+  async function save() {
+    setBusy(true); setMsg('');
+    try { setD(await api.agentGdocSetup({ ...(link ? { link } : {}), ...(key ? { key } : {}) })); setKey(''); setLink(''); setMsg('✅ Saved'); } catch (e) { setMsg(`⚠️ ${e.message}`); }
+    setBusy(false);
+  }
+  async function sync() {
+    setBusy(true); setMsg('');
+    try { const r = await api.agentGdocSync(); setMsg(`✅ Synced — ${r.lines} lines`); await load(); } catch (e) { setMsg(`⚠️ ${e.message}`); }
+    setBusy(false);
+  }
+  if (!d) return <section className="ag-k-card"><div className="ag-k-empty">{err ? `⚠️ ${err}` : 'Loading…'}</div></section>;
+  return (
+    <div className="ag-rules">
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">📄 Your business, as one Google Doc</h3>
+        <p className="ag-k-sub">Your business in one Google Doc — never any money — starting with "What are the updates" (only what you haven't seen yet). It is checked every minute and rewritten when something changes. Ask the Gemini app: "what are the updates in my doc?" — no Tornado tokens. Gemini can only read it; Tornado still does the actions.</p>
+        {d.doc_url && <p className="ag-k-sub">📄 <a href={d.doc_url} target="_blank" rel="noreferrer">Open the doc</a>{d.last ? ` · last synced ${new Date(d.last.at).toLocaleString()} · ${d.last.lines} lines` : ' · not synced yet'}</p>}
+        {d.error && <div className="av-msg">⚠️ {d.error}</div>}
+        {d.service_account && <p className="ag-k-sub">🔐 Share the doc with <b>{d.service_account}</b> as <b>Editor</b> — it can open only what you share with it.</p>}
+        <div className="ag-rule-actions">
+          <button type="button" className="ag-rule-btn" disabled={busy || !d.doc_id || !d.service_account} onClick={sync}>{busy ? 'Working…' : '🔄 Sync now'}</button>
+        </div>
+        {msg && <div className="av-msg">{msg}</div>}
+      </section>
+      <section className="ag-k-card">
+        <h3 className="ag-k-h">⚙️ Set up</h3>
+        <label className="ag-gd-field">Google Doc link
+          <input className="ag-gd-input" value={link} onChange={e => setLink(e.target.value)} placeholder={d.doc_id ? 'saved — paste a new link to change it' : 'https://docs.google.com/document/d/…'} />
+        </label>
+        <label className="ag-gd-field">Service-account key (the JSON file from Google Cloud)
+          <textarea className="ag-gd-input ag-gd-key" value={key} onChange={e => setKey(e.target.value)} placeholder={d.service_account ? 'saved — paste a new key to change it' : '{ "type": "service_account", … }'} />
+        </label>
+        <div className="ag-rule-actions">
+          <button type="button" className="ag-rule-btn" disabled={busy || (!link && !key)} onClick={save}>💾 Save</button>
+        </div>
+      </section>
+    </div>
   );
 }
 

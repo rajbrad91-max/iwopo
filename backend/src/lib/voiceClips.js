@@ -160,17 +160,24 @@ const vDay = (d = new Date()) => new Date(d).toLocaleDateString('en-CA', { timeZ
 const daysAway = (d) => Math.round((new Date(new Date(d).toISOString().slice(0, 10) + 'T00:00:00Z') - new Date(vDay() + 'T00:00:00Z')) / 86400e3);
 const when = (d) => new Date(d).toLocaleString('en-US', { timeZone: TZ, weekday: 'short', hour: 'numeric', minute: '2-digit' });
 
-export async function whatsNew(vendorId, { record = true } = {}) {
+export async function whatsNew(vendorId, { record = true, markSeen = false } = {}) {
   const v = Number(vendorId);
   const items = {}, names = [];
+  const told = { leads: [], comms: [], bell: [] };      // ✅ what is read out is marked seen (Raj: "once it tells me, that's it")
   const bump = (type, line) => { items[type] = (items[type] || 0) + 1; if (line) names.push(line); };
 
-  for (const l of await prisma.leads.findMany({ where: { vendor_id: v, archived_at: null, seen_at: null, created_at: { gte: new Date(Date.now() - 30 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { name: true, event_type: true, created_at: true } }))
+  for (const l of await prisma.leads.findMany({ where: { vendor_id: v, archived_at: null, seen_at: null, created_at: { gte: new Date(Date.now() - 30 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { id: true, name: true, event_type: true, created_at: true } })) {
+    told.leads.push(l.id);
     bump('lead', `🆕 Lead: ${l.name}${l.event_type ? ` (${l.event_type})` : ''} · ${when(l.created_at)}`);
-  for (const c of await privateDb.comms_notices.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(Date.now() - 7 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { title: true, created_at: true } }).catch(() => []))
-    bump(/call/i.test(c.title) ? 'call' : 'message', `${/call/i.test(c.title) ? '📞' : '💬'} ${c.title} · ${when(c.created_at)}`);
-  for (const n of await prisma.notifications.findMany({ where: { vendor_id: v, seen_at: null, type: { not: 'lead' }, created_at: { gte: new Date(Date.now() - 14 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { title: true } }))
+  }
+  for (const c of await privateDb.comms_notices.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(Date.now() - 7 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { id: true, title: true, created_at: true } }).catch(() => [])) {
+    told.comms.push(c.id);
+    bump(/call/i.test(c.title) ? 'call' : 'message', `${/^\p{Extended_Pictographic}/u.test(c.title) ? '' : (/call/i.test(c.title) ? '📞 ' : '💬 ')}${c.title} · ${when(c.created_at)}`);
+  }
+  for (const n of await prisma.notifications.findMany({ where: { vendor_id: v, seen_at: null, type: { not: 'lead' }, created_at: { gte: new Date(Date.now() - 14 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { id: true, title: true } })) {
+    told.bell.push(n.id);
     bump('notification', `🔔 ${String(n.title).replace(/\$\s?[\d,]+(\.\d+)?/g, '(amount on request)')}`);
+  }
 
   // shoots and reminders within their daily limits (agent_notices — the same counters as before)
   const day = vDay();
@@ -194,7 +201,7 @@ export async function whatsNew(vendorId, { record = true } = {}) {
   const last = await prisma.agent_conversations.findFirst({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, select: { created_at: true } });
   const continuing = last && Date.now() - new Date(last.created_at) < 20 * 60_000;
   const hour = Number(new Date().toLocaleString('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }));
-  const greet = continuing ? 'yes' : hour >= 4 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : hour >= 17 && hour < 23 ? 'evening' : 'hey';
+  const greet = continuing ? 'beep' : hour >= 4 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : hour >= 17 && hour < 23 ? 'evening' : 'hey';
 
   const order = ['lead', 'message', 'call', 'email', 'instagram', 'notification', 'shoot_today', 'shoot_tomorrow', 'shoot_week', 'reminder'];
   const parts = order.filter(t => items[t]).map(t => `${t}_${Math.min(items[t], 10)}`);
@@ -205,8 +212,14 @@ export async function whatsNew(vendorId, { record = true } = {}) {
     seq.push(parts[parts.length - 1]);
   }
   if (record) countPlays(v, seq);
+  if (markSeen && !continuing) {
+    const now = new Date();
+    if (told.leads.length) await prisma.leads.updateMany({ where: { vendor_id: v, id: { in: told.leads } }, data: { seen_at: now } });
+    if (told.bell.length) await prisma.notifications.updateMany({ where: { vendor_id: v, id: { in: told.bell } }, data: { seen_at: now } });
+    if (told.comms.length) await privateDb.comms_notices.updateMany({ where: { vendor_id: v, id: { in: told.comms } }, data: { seen_at: now } }).catch(() => {});
+  }
   const m = clipManifest(v);
-  const text = seq.map(k => m?.lines?.[k] || k).join(' ').replace(/ ([.?])/g, '$1');
+  const text = seq.filter(k => k !== 'beep').map(k => m?.lines?.[k] || k).join(' ').replace(/ ([.?])/g, '$1');
   return { sequence: seq, text, names: continuing ? [] : names, continuing: !!continuing, version: m?.version || null };
 }
 

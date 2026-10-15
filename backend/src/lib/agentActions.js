@@ -15,6 +15,7 @@
  *    packages for a contract the vendor has ALREADY released themselves.
  */
 import crypto from 'node:crypto';
+import { verdict } from './panelOperator.js';
 import prisma from '../config/prisma.js';
 import { day } from './agentTools.js';
 import privateDb from '../config/privateDb.js';
@@ -96,8 +97,13 @@ export const ACTION_TOOLS = [
     input_schema: { type: 'object', properties: { album_id: { type: 'integer', description: 'the gallery id' }, done: { type: 'boolean', description: 'true = done (default), false = not done' } }, required: ['album_id'], additionalProperties: false },
   },
   {
+    name: 'panel_task',
+    description: "ANYTHING else in the iwopo panel the owner could do himself, done the way he would (create or change albums, folders, passwords, gallery settings, lead details, packages, crew, reminders, drafts of contracts…): give the whole job in plain words. It reports what it did, with any password or link. Done straight away; it asks his yes only to send a contract (drafts are fine) or to delete something for good.",
+    input_schema: { type: 'object', properties: { task: { type: 'string', description: 'the whole job, in his words, with names' } }, required: ['task'] },
+  },
+  {
     name: 'propose_create_gallery',
-    description: "Create a client gallery exactly as the owner would in the panel (Galleries → New): title, the client's email, optional photo folders (e.g. Mehndi, Reception) and passwords. Give lead_id when it's for a lead — its name and email are used. Passwords are made for you if none are given (say the guest one to the owner).",
+    description: "Create a client gallery exactly as the owner would in the panel (Galleries → New): title, the client's email, optional photo folders (e.g. Mehndi, Reception) and the guest password HE gives (ask him for it — never make one up). Give lead_id when it's for a lead — its name and email are used.",
     input_schema: { type: 'object', properties: {
       title: { type: 'string' }, lead_id: { type: 'integer' }, client_email: { type: 'string' }, category: { type: 'string' },
       folders: { type: 'array', items: { type: 'string' }, description: 'photo folder names, in order' },
@@ -105,14 +111,19 @@ export const ACTION_TOOLS = [
     }, additionalProperties: false },
   },
   {
+    name: 'gallery_password',
+    description: "A gallery's password: without set → tells you the guest (and admin) password; with set → changes the guest password to that (at least 4 characters).",
+    input_schema: { type: 'object', properties: { album_id: { type: 'integer' }, album: { type: 'string', description: 'or the gallery name' }, set: { type: 'string' } }, additionalProperties: false },
+  },
+  {
     name: 'propose_add_gallery_folder',
     description: 'Add a photo folder (tab) to a gallery, as the panel\'s "Add Photos Folder" does.',
-    input_schema: { type: 'object', properties: { album_id: { type: 'integer' }, name: { type: 'string' } }, required: ['album_id', 'name'], additionalProperties: false },
+    input_schema: { type: 'object', properties: { album_id: { type: 'integer' }, album: { type: 'string', description: 'or the gallery name' }, name: { type: 'string' } }, required: ['name'], additionalProperties: false },
   },
   {
     name: 'propose_delete_gallery',
     description: 'Delete a whole gallery with all its photos and videos — permanent. Always asks the owner first.',
-    input_schema: { type: 'object', properties: { album_id: { type: 'integer' } }, required: ['album_id'], additionalProperties: false },
+    input_schema: { type: 'object', properties: { album_id: { type: 'integer' }, album: { type: 'string', description: 'or the gallery name' } }, additionalProperties: false },
   },
   {
     name: 'propose_archive_lead',
@@ -153,6 +164,31 @@ export const ACTION_TOOLS = [
     input_schema: { type: 'object', properties: { lead_id: { type: 'integer' } }, required: ['lead_id'], additionalProperties: false },
   },
 ];
+
+/** 🧠 a panel-operator step that needs the owner's yes (lib/panelOperator.js) — shown as a normal Yes/No card */
+export function proposeOperatorCall(vendorId, ask) {
+  return propose(vendorId, 'operator_call', { method: ask.method, path: ask.path, body: ask.body || null }, ask.summary, `${ask.method} ${ask.path}`);
+}
+
+/** A gallery by id, or by its name the way he says it — exactly one match, or the choices to ask about. */
+async function albumOf(input, v) {
+  if (input.album_id) return { album: await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v }, select: { id: true, title: true } }) };   // 🔒 only this vendor's
+  const q = String(input.album || input.name_of_album || '').trim();
+  if (!q) return { album: null };
+  const all = await prisma.albums.findMany({ where: { vendor_id: v, title: { contains: q, mode: 'insensitive' } }, orderBy: { id: 'desc' }, take: 6, select: { id: true, title: true } });
+  const exact = all.filter(a => a.title.toLowerCase() === q.toLowerCase());
+  if (exact.length === 1 || all.length === 1) return { album: exact[0] || all[0] };
+  if (all.length) return { album: null, choices: all.map(a => `#${a.id} ${a.title}`) };
+  // 🗣️ a name heard by voice is often spelled another way ("Raaz" for "Raj") — the closest title, if it is close
+  const flat = (x) => String(x).toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '').replace(/(.)\1+/g, '$1').replace(/z/g, 'j');
+  const dist = (x, y) => { const d = Array.from({ length: x.length + 1 }, (_, i) => [i, ...Array(y.length).fill(0)]); for (let j = 1; j <= y.length; j++) d[0][j] = j; for (let i = 1; i <= x.length; i++) for (let j = 1; j <= y.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1)); return d[x.length][y.length]; };
+  const fq = flat(q);
+  const near = (await prisma.albums.findMany({ where: { vendor_id: v }, select: { id: true, title: true } }))
+    .map(a => ({ a, d: Math.min(...[a.title, ...a.title.split(/\s+/)].map(t => dist(fq, flat(t)))) }))
+    .filter(x => x.d <= Math.max(1, Math.floor(fq.length / 3))).sort((x, y) => x.d - y.d);
+  if (near.length === 1 || (near.length > 1 && near[0].d < near[1].d)) return { album: near[0].a };
+  return { album: null, choices: near.slice(0, 5).map(x => `#${x.a.id} ${x.a.title}`) };
+}
 
 function propose(vendorId, kind, args, title, details) {
   for (const [k, p] of PENDING) if (Date.now() - p.at > TTL_MS) PENDING.delete(k);
@@ -216,16 +252,29 @@ export async function runActionTool(name, input, vendorId, auth) {
     if (input.lead_id) { lead = await leadOf(input.lead_id, v); if (!lead) return { error: 'No lead with that id' }; }
     const title = String(input.title || lead?.name || '').trim().slice(0, 160);
     if (!title) return { error: 'What should the gallery be called?' };
-    // passwords the way the panel wants them: different, long enough, easy to read out
-    const word = (title.split(/\s+/)[0] || 'gallery').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10) || 'gallery';
-    const guest = String(input.guest_password || `${word}${crypto.randomInt(1000, 9999)}`);
-    const admin = String(input.admin_password || `${word}-admin${crypto.randomInt(1000, 9999)}`);
+    // 🔑 never made up (Raj's note: "always ask for the gallery password, never generate one")
+    const guest = String(input.guest_password || '').trim();
+    if (guest.length < 4) return { error: 'Ask him what guest password he wants for this gallery (at least 4 characters).' };
+    const admin = input.admin_password ? String(input.admin_password).trim() : null;
     const folders = (Array.isArray(input.folders) ? input.folders : []).map(f => String(f).trim()).filter(Boolean).slice(0, 12);
-    return { proposal: propose(v, 'gallery_create', { title, client_email: input.client_email || lead?.email || null, category: input.category || null, guest_password: guest, admin_password: admin, folders }, `Create gallery "${title}"`, `Guest password: ${guest}${folders.length ? ` · folders: ${folders.join(', ')}` : ''}`) };
+    return { proposal: propose(v, 'gallery_create', { title, client_email: input.client_email || lead?.email || null, category: input.category || null, guest_password: guest, ...(admin ? { admin_password: admin } : {}), folders }, `Create gallery "${title}"`, `Guest password: ${guest}${folders.length ? ` · folders: ${folders.join(', ')}` : ''}`) };
+  }
+  if (name === 'gallery_password') {
+    const { album, choices } = await albumOf(input, v);
+    if (choices?.length) return { which_one: choices, note: 'More than one gallery matches — ask which one.' };
+    if (!album) return { error: 'No gallery by that name or id' };
+    if (!input.set) {
+      const pw = await asVendor(auth, 'GET', `/albums/${album.id}/passwords`);
+      return { gallery: album.title, guest_password: pw.guest || (pw.guest_set ? 'set before passwords were kept readable — set a new one' : 'none'), admin_password: pw.admin || (pw.admin_set ? 'set earlier, not readable' : 'none') };
+    }
+    const set = String(input.set).trim();
+    if (set.length < 4) return { error: 'Gallery passwords need at least 4 characters.' };
+    return { proposal: propose(v, 'gallery_password', { album_id: album.id, guest_password: set }, `Set the guest password of "${album.title}" to ${set}`, '') };
   }
   if (name === 'propose_add_gallery_folder' || name === 'propose_delete_gallery') {
-    const album = await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v }, select: { id: true, title: true } });   // 🔒 only this vendor's
-    if (!album) return { error: 'No gallery with that id' };
+    const { album, choices } = await albumOf(input, v);
+    if (choices?.length) return { which_one: choices, note: 'More than one gallery matches — ask which one.' };
+    if (!album) return { error: 'No gallery by that name or id' };
     if (name === 'propose_add_gallery_folder') {
       const folder = String(input.name || '').trim().slice(0, 80);
       if (!folder) return { error: 'What should the folder be called?' };
@@ -348,13 +397,23 @@ export async function confirmAction(id, vendorId, auth) {
       await asVendor(auth, 'POST', `/payments/lead/${p.args.lead_id}`, { amount: p.args.amount, method: p.args.method, note: p.args.note });
       return { ok: true, message: `💵 ${money(p.args.amount)} recorded.` };
     }
+    if (p.kind === 'operator_call') {
+      if (verdict(p.args.method, p.args.path, p.args.body) === 'never') throw new Error('Not allowed');   // checked again at the moment it runs
+      if (!/^Bearer /.test(String(auth)) || (() => { try { return JSON.parse(Buffer.from(String(auth).split('.')[1], 'base64url').toString()).role !== 'vendor'; } catch { return true; } })()) throw new Error('Only a vendor login can run this');   // 🧬 never an admin login
+      const r = await asVendor(auth, p.args.method, p.args.path, p.args.body || undefined);
+      return { ok: true, message: '✅ Done.', result: JSON.stringify(r).slice(0, 600) };
+    }
     if (p.kind === 'gallery_create') {
       const { folders, ...body } = p.args;
       const made = await asVendor(auth, 'POST', '/albums', body);
       const albumId = made?.album?.id ?? made?.id;                // the panel answers { album: {…} }
       if (!albumId) throw new Error('The gallery was not created');
       for (const f of folders || []) await asVendor(auth, 'POST', `/albums/${albumId}/events`, { name: f });
-      return { ok: true, album_id: albumId, guest_password: p.args.guest_password, message: `✅ Gallery "${p.args.title}" created${folders?.length ? ` with ${folders.length} folder${folders.length > 1 ? 's' : ''}` : ''}.` };
+      return { ok: true, album_id: albumId, guest_password: p.args.guest_password, message: `✅ Gallery "${p.args.title}" created${folders?.length ? ` with ${folders.length} folder${folders.length > 1 ? 's' : ''}` : ''}. Guest password: ${p.args.guest_password} — say it to him.` };
+    }
+    if (p.kind === 'gallery_password') {
+      await asVendor(auth, 'PUT', `/albums/${p.args.album_id}`, { guest_password: p.args.guest_password });
+      return { ok: true, message: `🔑 Guest password is now ${p.args.guest_password}.` };
     }
     if (p.kind === 'gallery_folder') {
       await asVendor(auth, 'POST', `/albums/${p.args.album_id}/events`, { name: p.args.name });
@@ -383,9 +442,9 @@ export async function confirmAction(id, vendorId, auth) {
 export function isSmallChange(id) {
   const p = PENDING.get(String(id));
   if (!p) return false;
-  if (['note', 'selection', 'gallery_create', 'gallery_folder'].includes(p.kind)) return true;
-  if (p.kind === 'update_lead') return !Object.prototype.hasOwnProperty.call(p.args?.changes || {}, 'status');
-  return false;
+  // Raj, 2026-10-15: everything he asks is done straight away — the only yes: deleting for good
+  // (and a contract is never sent from here at all)
+  return !['gallery_delete'].includes(p.kind) && !(p.kind === 'operator_call' && String(p.args?.method).toUpperCase() === 'DELETE') && !(p.kind === 'operator_call' && /contract/i.test(p.args?.path || ''));
 }
 
 /** The vendor said No. */

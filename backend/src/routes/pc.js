@@ -26,6 +26,16 @@ async function device(req, res, next) {
   if (!d || d.revoked_at) return res.status(401).json({ error: 'Unknown device' });
   if (!(await pcAllowed(d.vendor_id))) return res.status(403).json({ error: 'Not available' });   // 🛡️ owner-only feature
   req.device = d;
+  // 🧭 who is checking in: the startup helper (?can= / helper:true) — on even when the PC sleeps or nobody is
+  // signed in — or the full agent (answers only when the PC is awake and signed in). Kept apart so Tornado can
+  // tell "asleep" from "awake" (Raj, 2026-10-15: "it says the computer is on, but it's asleep").
+  const role = req.query.can || req.body?.helper ? 'helper' : (req.path === '/next' || req.path === '/hello') ? 'agent' : null;
+  if (role) {
+    let info; try { info = JSON.parse(d.info || '{}'); } catch { info = {}; }
+    info[`${role}_at`] = Date.now();
+    await prisma.pc_devices.update({ where: { id: d.id }, data: { info: JSON.stringify(info).slice(0, 4000) } }).catch(() => {});
+    d.info = JSON.stringify(info);
+  }
   // ⏻ while a shutdown / restart / sleep counts down, its check-ins don't make it "on" again
   const off = await prisma.pc_jobs.findFirst({ where: { device_id: d.id, action: 'power', status: 'done', updated_at: { gt: new Date(Date.now() - 120_000) } }, orderBy: { id: 'desc' }, select: { params: true } });
   if (!off || !/shutdown|restart|sleep|off|reboot/i.test(off.params || '')) await prisma.pc_devices.update({ where: { id: d.id }, data: { last_seen: new Date() } }).catch(() => {});
@@ -34,7 +44,8 @@ async function device(req, res, next) {
 
 /** The agent says hello (every ~30 s) with what it can see: drives, free space, Resolve running… */
 router.post('/hello', device, async (req, res) => {
-  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { info: JSON.stringify(req.body || {}).slice(0, 4000) } }).catch(() => {});
+  let prev; try { prev = JSON.parse(req.device.info || '{}'); } catch { prev = {}; }
+  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { info: JSON.stringify({ ...(req.body?.helper ? {} : req.body || {}), helper_at: prev.helper_at, agent_at: prev.agent_at, version: req.body?.version || prev.version }).slice(0, 4000) } }).catch(() => {});
   await pcCameOnline(req.device.id).catch(() => {});        // ⏰ a wake that was waiting for it
   res.json({ ok: true, agent_version: agentFile()?.version || null });
 });
