@@ -80,7 +80,24 @@ function trimAndLevel(pcm) {
   return Buffer.from(out.buffer);
 }
 
+/** 🎙️ The recorded lines in the same voice Tornado answers in — Deepgram Aura-2 by default (Raj, 2026-10-16),
+    so the greeting and the replies are one voice. Setting ear_tts_engine = gemini records with Gemini instead. */
 async function sayLines(lines) {
+  const key = await getSetting('deepgram_api_key', '');
+  if (((await getSetting('ear_tts_engine', '')) || 'gemini') !== 'deepgram' || !key) return sayLinesGemini(lines);
+  const voice = (await getSetting('ear_dg_voice', '')) || 'aura-2-odysseus-en';
+  const out = {};
+  for (const [k, text] of Object.entries(lines)) {
+    const r = await fetch(`https://api.deepgram.com/v1/speak?model=${encodeURIComponent(voice)}&encoding=linear16&sample_rate=24000&container=none`, {
+      method: 'POST', headers: { Authorization: `Token ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    if (!r.ok) throw new Error(`recording ${k}: Deepgram ${r.status}`);
+    out[k] = trimAndLevel(Buffer.from(await r.arrayBuffer()));
+  }
+  return out;
+}
+
+async function sayLinesGemini(lines) {
   const key = await getSetting('gemini_api_key', '');
   const voice = (await getSetting('gemini_voice', '')) || 'Charon';
   const model = (await getSetting('gemini_live_model', '')) || 'gemini-3.1-flash-live-preview';

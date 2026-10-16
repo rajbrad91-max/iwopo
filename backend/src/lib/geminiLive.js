@@ -98,8 +98,14 @@ export async function liveVars(vendorId) {
   return { c, vars, carryOn };
 }
 
-export async function liveSetup(vendorId, { preview: _preview = false } = {}) {   // a preview no longer counts anything (the app's whats-new does)
+/** Tornado's tools, plain JSON schema — shared by Gemini Live (converted) and ear mode (Claude, as is). */
+export async function voiceToolList(vendorId) {
   const pcOk = await pcAllowed(vendorId);                       // 🛡️ the PC tools are the owner's alone
+  return [...VOICE_TOOLS.filter(t => t.name !== 'web_search' && !PANEL_PAGES.includes(t.name) && !MERGED_AWAY.has(t.name) && !OPERATOR_DOES.has(t.name) && (pcOk || !['pc_task', 'delivery_log'].includes(t.name))), PANEL_TOOL, ...MERGED_TOOLS.filter(t => !OPERATOR_DOES.has(t.name)), END_CONVERSATION, PAUSE_LISTENING]
+    .map(t => ({ name: t.name, description: SHORT[t.name] || t.description, input_schema: shortParams(t.input_schema) }));
+}
+
+export async function liveSetup(vendorId, { preview: _preview = false } = {}) {   // a preview no longer counts anything (the app's whats-new does)
   const { c, vars, carryOn } = await liveVars(vendorId);
   const fill = (t) => t.replace(/\{\{(\w+)\}\}/g, (m, k) => (vars[k] ?? m));
   const instructions = `${fill(await rulesText(vendorId))}${carryOn}
@@ -117,7 +123,7 @@ START: the app has already greeted him and read out what is new (the counts) in 
     systemInstruction: { parts: [{ text: instructions }] },
     tools: [
       // ✂️ one-line descriptions (tornadoLean.js): they are re-sent with every reply
-      { functionDeclarations: [...VOICE_TOOLS.filter(t => t.name !== 'web_search' && !PANEL_PAGES.includes(t.name) && !MERGED_AWAY.has(t.name) && !OPERATOR_DOES.has(t.name) && (pcOk || !['pc_task', 'delivery_log'].includes(t.name))), PANEL_TOOL, ...MERGED_TOOLS.filter(t => !OPERATOR_DOES.has(t.name)), END_CONVERSATION, PAUSE_LISTENING].map(t => ({ name: t.name, description: SHORT[t.name] || t.description, parameters: toGemini(shortParams(t.input_schema)) })) },
+      { functionDeclarations: (await voiceToolList(vendorId)).map(t => ({ name: t.name, description: t.description, parameters: toGemini(t.input_schema) })) },
       // 🔎 the world as it is today — new cameras, prices, news (Raj, 2026-10-11: it denied the Canon R6 Mark V exists)
       { googleSearch: {} },
     ],

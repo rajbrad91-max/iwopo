@@ -12,7 +12,7 @@ export const SHORT = {
   find_leads: 'Search leads by name/email/phone, status, event date range. Returns true totals.',
   get_lead: 'Everything about one lead: contact, event, form answers, notes, payments, what is missing.',
   upcoming_events: 'Booked events in the next N days.',
-  pc_task: 'Work on the owner\'s PC (answer only what he asks — sizes, contents, drives only with details): wake it up, what is open (apps), power (shutdown / restart / sleep / lock / cancel — straight away), open or close an app, upload a video to a client gallery (path + album_id), status, find folders (never guess a path) and files on the NAS / drives, list / make folders, copy, move (after his yes), upload to Google Drive, make Resolve proxies for a folder. Long jobs report when done.',
+  pc_task: 'Work on the owner\'s PC (answer only what he asks — sizes, contents, drives only with details): wake it up, what is open (apps), power (shutdown / restart / sleep / lock / cancel — straight away), open or close an app, upload a video to a client gallery (path + album_id), status, find folders (never guess a path) and files on the NAS / drives, list / make folders, copy, move (after his yes), upload to Google Drive, make Resolve proxies for a folder, shell (Ubuntu: any terminal command, full access — delete/erase/format only after his yes, then approved:true). Long jobs report when done.',
   delivery_log: 'What was delivered to one client (by name, email or phone).',
   web_search: 'Search the web for anything outside the panel: gear, prices, places, distances, travel times, news, how-to.',
   mark_seen: 'Mark messages / notifications / leads seen ("mark them read"). Read-out items are already marked seen.',

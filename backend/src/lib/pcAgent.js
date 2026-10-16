@@ -21,7 +21,7 @@ export async function pcAllowed(vendorId) {
   return list.includes(Number(vendorId));
 }
 
-export const PC_ACTIONS = ['wake', 'setup_wake', 'apps', 'power', 'open_app', 'close_app', 'upload_to_gallery', 'status', 'details', 'find_files', 'find_folder', 'list_folder', 'make_folder', 'copy', 'move', 'upload_drive', 'make_proxies'];
+export const PC_ACTIONS = ['wake', 'setup_wake', 'apps', 'power', 'open_app', 'close_app', 'upload_to_gallery', 'status', 'details', 'find_files', 'find_folder', 'list_folder', 'make_folder', 'copy', 'move', 'upload_drive', 'make_proxies', 'shell'];
 const hash = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
 
 /** A new device for a vendor — returns the token ONCE (put it in the agent's config). */

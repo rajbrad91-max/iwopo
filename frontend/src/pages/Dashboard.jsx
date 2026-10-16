@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api, getUser, clearSession, fmtDateTime , logout as apiLogout } from '../lib/api';
+import { api, getUser, fmtDateTime, logout as apiLogout } from '../lib/api';
 import { COUNTRIES } from '../lib/countries';
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -441,7 +441,7 @@ function CountryPriceList({ cp }) {
   );
 }
 
-function CountryPriceEditor({ type, item, baseField = 'price', onSaved }) {
+function CountryPriceEditor({ type, item, onSaved }) {
   const dialog = useDialog();
   const [cp, setCp] = useState(item.country_prices || {});
   const [country, setCountry] = useState('CA-BC');
@@ -631,7 +631,7 @@ function PackageCard({ pkg, editMode, onSaved }) {
 
       {editMode && <StorageEditor pkg={pkg} onSaved={onSaved} />}
       {pkg.price_monthly != null ? (
-        editMode ? <><PriceEditor item={pkg} isPackage onSaved={onSaved} /><CountryPriceEditor type="package" item={pkg} baseField="price_monthly" onSaved={onSaved} /></> : (
+        editMode ? <><PriceEditor item={pkg} isPackage onSaved={onSaved} /><CountryPriceEditor type="package" item={pkg} onSaved={onSaved} /></> : (
           <div className="sa-pkg-price">
             <span className="amt">{money(pkg.price_monthly)}</span><span className="per">/mo</span>
             {hasAnnual && (
@@ -1444,6 +1444,15 @@ function GeminiVoiceSettings({ s, setS, editing }) {
       <label className="lbl">Gemini API key</label>
       <input type="password" className={`av-input ${editing ? '' : 'is-ro'}`} readOnly={!editing} placeholder="AIza…"
         value={s.gemini_api_key || ''} onChange={e => setS({ ...s, gemini_api_key: e.target.value })} />
+      <label className="lbl av-gap">Deepgram API key (Tornado's ear, optional)</label>
+      <input type="password" className={`av-input ${editing ? '' : 'is-ro'}`} readOnly={!editing} placeholder="Deepgram key"
+        value={s.deepgram_api_key || ''} onChange={e => setS({ ...s, deepgram_api_key: e.target.value })} />
+      <label className="lbl av-gap">PC voice address (Tornado's voice when your PC is on)</label>
+      <input className={`av-input ${editing ? '' : 'is-ro'}`} readOnly={!editing} placeholder="http://100.73.28.96:8880"
+        value={s.local_voice_url || ''} onChange={e => setS({ ...s, local_voice_url: e.target.value })} />
+      <label className="lbl av-gap">PC voice password</label>
+      <input type="password" className={`av-input ${editing ? '' : 'is-ro'}`} readOnly={!editing} placeholder="from ~/tts/voice_token on the PC"
+        value={s.local_voice_token || ''} onChange={e => setS({ ...s, local_voice_token: e.target.value })} />
       <label className="lbl av-gap">Voice (Google's male voices)</label>
       <div className="av-chips">
         {GEMINI_VOICES.map(v => (

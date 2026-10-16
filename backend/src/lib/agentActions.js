@@ -192,6 +192,11 @@ async function albumOf(input, v) {
 
 function propose(vendorId, kind, args, title, details) {
   for (const [k, p] of PENDING) if (Date.now() - p.at > TTL_MS) PENDING.delete(k);
+  // ✋ one outgoing message per person at a time: a new draft replaces the old one, never a second send
+  if (['text', 'email'].includes(kind)) {
+    const to = String(args?.number || args?.to || args?.lead_id || '').replace(/\D/g, '').slice(-10);
+    for (const [k, p] of PENDING) if (p.vendorId === vendorId && p.kind === kind && String(p.args?.number || p.args?.to || p.args?.lead_id || '').replace(/\D/g, '').slice(-10) === to) PENDING.delete(k);
+  }
   const id = crypto.randomBytes(9).toString('base64url');
   PENDING.set(id, { vendorId, kind, args, title, details, at: Date.now() });
   return { id, title, details };
@@ -444,6 +449,10 @@ export function isSmallChange(id) {
   if (!p) return false;
   // Raj, 2026-10-15: everything he asks is done straight away — the only yes: deleting for good
   // (and a contract is never sent from here at all)
+  // Raj, 2026-10-16: two texts went to a client without his yes — anything that REACHES A CLIENT
+  // (text, email, packages, or a panel call that sends/notifies) now always waits for his clear yes
+  if (['text', 'email', 'packages'].includes(p.kind)) return false;
+  if (p.kind === 'operator_call' && String(p.args?.method).toUpperCase() !== 'GET' && /send|sms|message|text|email|mail|notify|packages|invite|share/i.test(p.args?.path || '')) return false;
   return !['gallery_delete'].includes(p.kind) && !(p.kind === 'operator_call' && String(p.args?.method).toUpperCase() === 'DELETE') && !(p.kind === 'operator_call' && /contract/i.test(p.args?.path || ''));
 }
 

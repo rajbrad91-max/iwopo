@@ -109,7 +109,7 @@ ${logs.talks || '(none yet)'}`;
   if (!r.ok) throw new Error(d.error?.message || `trainer ${r.status}`);
   const out = (d.content || []).find(c => c.type === 'tool_use')?.input || { changes: [], summary: 'No answer from the trainer' };
   const u = d.usage || {};
-  return { ...out, cost: ((u.input_tokens || 0) * 1 + (u.output_tokens || 0) * 5) / 1e6 };   // Haiku prices
+  return { ...out, cost: ((u.input_tokens || 0) * 0.10 + (u.output_tokens || 0) * 0.50) / 1e6 };   // Haiku 5.5 prices ($0.10 / $0.50 per million)
 }
 
 /** Keep only the changes that pass every safety check. */

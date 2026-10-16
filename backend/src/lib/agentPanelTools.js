@@ -11,6 +11,7 @@
 import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
 import { getFeatures } from './entitlements.js';
+import { openPassword } from './sharePassword.js';
 
 /** 🔗 the address clients open (the panel builds the same: <site>/g/<public_token>) */
 const SITE = process.env.APP_URL || (String(process.env.STORAGE_BASE || '').includes('staging') ? 'https://alphabetaone.com' : 'https://iwopo.com');
@@ -103,7 +104,7 @@ export async function runPanelTool(name, input, vendorId) {
         prisma.raw_files.count({ where: { album_id: a.id, vendor_id: v, delivered_at: { not: null } } }),
       ]);
       const clientLink = a.public_token ? `${SITE}/g/${a.public_token}` : null;   // 🔗 what the panel's "copy link" gives
-      return { client_link: clientLink, id: a.id, title: a.title, type: a.category, made: day(a.created_at), photos, videos, tabs: perTab, client_selected: picked, selection: note?.completed_at ? `sent ${day(note.completed_at)}` : picked ? 'still picking' : 'not started', client_note: note?.note || null, favourites: favs, raws: { total: raws, matched_to_photos: rawsPaired, delivered: rawsDelivered }, expires: a.exp_enabled ? day(a.exp_date) : 'never', face_circles: !!a.face_ai, client_email: a.client_email, guest_login: !!a.guest_username };
+      return { client_link: clientLink, guest_password: openPassword(a.guest_password_enc) || (a.guest_password ? 'set, not readable — set a new one' : 'none'), admin_password: openPassword(a.admin_password_enc) || (a.admin_password ? 'set, not readable' : 'none'), id: a.id, title: a.title, type: a.category, made: day(a.created_at), photos, videos, tabs: perTab, client_selected: picked, selection: note?.completed_at ? `sent ${day(note.completed_at)}` : picked ? 'still picking' : 'not started', client_note: note?.note || null, favourites: favs, raws: { total: raws, matched_to_photos: rawsPaired, delivered: rawsDelivered }, expires: a.exp_enabled ? day(a.exp_date) : 'never', face_circles: !!a.face_ai, client_email: a.client_email, guest_login: !!a.guest_username };
     }
     case 'photo_selections': {
       const notes = await prisma.selection_notes.findMany({ where: { albums: { vendor_id: v }, updated_at: { gte: since(input.days || 60) } }, orderBy: { updated_at: 'desc' }, take: 25, select: { album_id: true, note: true, updated_at: true, completed_at: true, albums: { select: { title: true } } } });

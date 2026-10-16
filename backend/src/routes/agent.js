@@ -10,6 +10,8 @@
  *    stops answering until next month (or until the cap is raised).
  */
 import express from 'express';
+import path from 'node:path';
+import fs from 'node:fs';
 import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -27,6 +29,7 @@ import { finishedPcJobs, pcAllowed } from '../lib/pcAgent.js';
 import { whatsNew, clipManifest, clipFile, recordClips, voiceBank } from '../lib/voiceClips.js';
 import { gdocAllowed, docStatus, docSetup, syncDoc } from '../lib/googleDoc.js';
 import { operate } from '../lib/panelOperator.js';
+import { earTurn, galeUp, galeGreetingPcm } from '../lib/earBrain.js';
 import { proposeOperatorCall } from '../lib/agentActions.js';
 import { runTraining, undoLastTraining } from '../lib/agentTraining.js';
 import { alertsFor } from '../lib/agentReminders.js';
@@ -330,8 +333,90 @@ router.post('/gdoc/sync', requireAuth, gdocOwner, async (req, res) => {
   try { res.json(await syncDoc(vid(req))); } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+/* ── 📋 the phone's Tornado log, sent when a conversation ends — kept per vendor (newest 3,000 lines) so a
+   problem on the phone can be read on the server. The vendor's own device log; nothing is shown to anyone else. ── */
+router.post('/app-log', requireAuth, async (req, res) => {
+  try {
+    const lines = (Array.isArray(req.body?.lines) ? req.body.lines : []).slice(-150).map(l => String(l).replace(/[\r\n]+/g, ' ').slice(0, 400));
+    if (!lines.length) return res.json({ ok: true });
+    const dir = path.join(process.cwd(), '..', 'storage', 'agent-logs');
+    await fs.promises.mkdir(dir, { recursive: true });
+    const file = path.join(dir, `vendor-${vid(req)}.log`);        // 🔒 the file name comes from the login, never the request
+    let old = [];
+    try { old = (await fs.promises.readFile(file, 'utf8')).split('\n'); } catch { /* first log */ }
+    const merged = [...old, `— ${new Date().toISOString()} —`, ...lines].filter(Boolean).slice(-3000);
+    await fs.promises.writeFile(file, merged.join('\n') + '\n');
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── 🎧 ear mode: the phone heard him (Google speech, on the phone) — Haiku thinks, Gemini speaks (lib/earBrain.js) ── */
+router.post('/ear/turn', requireAuth, limit({ name: 'agent-ear', max: 60, windowMs: 60_000, key: (req) => String(req.user?.vendor_id || '') }), async (req, res) => {
+  res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no', Connection: 'keep-alive' });
+  res.flushHeaders();
+  const send = (type, data) => { if (!res.writableEnded) res.write(`data: ${JSON.stringify({ type, ...data })}\n\n`); };
+  try { await earTurn({ vendorId: vid(req), auth: req.headers.authorization, sessionId: req.body?.session, text: String(req.body?.text || ''), send }); }
+  catch (e) { send('error', { message: e.message }); }
+  res.end();
+});
+
 /** 🧠 panel tasks that finished after Tornado stopped waiting — handed over with the next [Update] */
 const OPERATOR_DONE = new Map();
+
+/* ── 🎧 Deepgram ear (optional, Raj 2026-10-16): the phone streams its mic straight to Deepgram. The key stays
+   here; the phone gets a 60-second token that only opens one stream. Owner-only (same list as the PC agent),
+   because the key is the platform owner's own Deepgram account. ── */
+const dgLimit = limit({ name: 'agent-dg', max: 20, windowMs: 60_000, key: (req) => String(req.user?.vendor_id || '') });
+router.get('/ear/deepgram-token', requireAuth, dgLimit, async (req, res) => {
+  try {
+    if (!(await pcAllowed(vid(req)))) return res.status(404).json({ error: 'Not available.' });
+    const key = await getSetting('deepgram_api_key', '');
+    if (!key) return res.status(404).json({ error: 'No Deepgram key in Super Admin settings.' });
+    const r = await fetch('https://api.deepgram.com/v1/auth/grant', { method: 'POST', headers: { Authorization: `Token ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl_seconds: 60 }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.access_token) return res.status(502).json({ error: j.err_msg || `Deepgram ${r.status}` });
+    res.json({ token: j.access_token, expires_in: j.expires_in });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+/* 💵 seconds of speech the phone sent to Deepgram → the same daily cost record the cost bar reads */
+/* 🎙️ Gale (Raj, 2026-10-16): is the PC voice up, and its recorded greeting (made once, kept, saved on the phone) */
+router.get('/ear/voice-status', requireAuth, async (req, res) => {
+  if (!(await pcAllowed(vid(req)))) return res.json({ gale: false });
+  res.json({ gale: await galeUp() });
+});
+const GALE_FILE = path.join(process.cwd(), '../storage/agent-voice/gale-greeting.pcm');
+router.get('/ear/gale-greeting', requireAuth, async (req, res) => {
+  try {
+    if (!(await pcAllowed(vid(req)))) return res.status(404).end();
+    let pcm = null, version = '';
+    try { pcm = fs.readFileSync(GALE_FILE); version = fs.readFileSync(GALE_FILE + '.v', 'utf8'); } catch {}
+    if (!pcm || req.query.fresh === '1') {
+      const g = await galeGreetingPcm();
+      if (!g) return pcm ? res.set('X-Version', version).type('application/octet-stream').send(pcm) : res.status(503).json({ error: 'PC voice is off' });
+      fs.mkdirSync(path.dirname(GALE_FILE), { recursive: true });
+      fs.writeFileSync(GALE_FILE, g.pcm); fs.writeFileSync(GALE_FILE + '.v', g.version);
+      pcm = g.pcm; version = g.version;
+    }
+    res.set('X-Version', version).type('application/octet-stream').send(pcm);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/ear/deepgram-usage', requireAuth, dgLimit, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    const secs = Math.max(0, Math.min(3600, Number(req.body?.seconds) || 0));
+    if (!secs || !(await pcAllowed(v))) return res.json({ ok: true, added_usd: 0 });
+    const perMin = Number(await getSetting('ear_deepgram_per_min', '')) || 0.0048;
+    const micro = Math.round((secs / 60) * perMin * 1e6);
+    const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Vancouver' });
+    await prisma.agent_voice_usage.upsert({
+      where: { vendor_id_day: { vendor_id: v, day } },
+      create: { vendor_id: v, day, in_text: 0n, in_audio: 0n, out_text: 0n, out_audio: 0n, cost_micro: BigInt(micro) },
+      update: { cost_micro: { increment: BigInt(micro) }, updated_at: new Date() },
+    });
+    res.json({ ok: true, added_usd: micro / 1e6 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 /* ── 📜 the Rules tab: exactly what Tornado reads at the start (and re-reads every reply) ── */
 router.get('/rules', requireAuth, async (req, res) => {
@@ -436,7 +521,9 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
       return res.json({
         proposal: out.proposal,
         // everything else the tool returned (the thread before a text, a heads-up) goes to Tornado too
-        result: { ...Object.fromEntries(Object.entries(out).filter(([k]) => k !== 'proposal')), proposal_id: out.proposal.id, about_to: out.proposal.title, details: out.proposal.details, next: 'Tell the owner in one short sentence what you will do and ask if you should go ahead. Call confirm_action with this proposal_id only after a clear yes.' },
+        result: { ...Object.fromEntries(Object.entries(out).filter(([k]) => k !== 'proposal')), proposal_id: out.proposal.id, about_to: out.proposal.title, details: out.proposal.details, next: /^(Text|Email|Send)/.test(out.proposal.title)
+          ? 'NOT SENT. Read him the exact words of this message, word for word, then ask "Send it?". It must say what HE asked to say (his words and meaning), never what the client wants. Call confirm_action only after his clear yes; if he changes anything, draft it again.'
+          : 'Tell the owner in one short sentence what you will do and ask if you should go ahead. Call confirm_action with this proposal_id only after a clear yes.' },
       });
     }
     res.json({ result: compactResult(out) });

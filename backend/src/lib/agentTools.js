@@ -17,6 +17,9 @@ import { emailWarning } from './emailCheck.js';
 import { searchKb, leadPrices, SECTIONS } from './agentKb.js';
 import { runOnPc, wakePc, PC_ACTIONS, pcAllowed, deliveriesFor } from './pcAgent.js';
 
+/** 🐧 shell commands that delete, erase, overwrite or format — these wait for Raj's yes (everything else runs at once) */
+const DESTRUCTIVE = /(^|[\s;&|(])(sudo\s+)?(rm|rmdir|shred|wipefs|mkfs(\.\w+)?|dd|fdisk|parted|sgdisk|truncate|unlink|find\b[^;|&]*-delete|git\s+(clean|reset\s+--hard)|apt(-get)?\s+(remove|purge|autoremove)|snap\s+remove|systemctl\s+(disable|mask))\b|>\s*[/~\w]|\bmv\b[^;|&]*\s\/dev\/null/;
+
 /** A date as people say it, weekday included — "Mon 15 Mar 2027". Worked out
  *  here, in UTC (dates are stored as calendar days), so the model never has
  *  to compute a weekday itself; it got one wrong when it did. */
@@ -80,9 +83,12 @@ export const TOOLS = [
   },
   {
     name: 'pc_task',
-    description: "Work on the owner's editing PC: wake (switch it on or out of sleep — Wake-on-LAN); setup_wake (once: lets the network card wake it from sleep); apps (what is open on it right now — names only); power (power: shutdown | restart | sleep | lock — done straight away, shutdown/restart wait 60 s; cancel stops a pending shutdown); open_app / close_app (query: the app's name — it closes normally so it can ask to save); upload_to_gallery (put a video from the PC or NAS into a client gallery's Videos folder: path + album_id — find the gallery first; the client sees it with their usual login); status (only whether it is on); details (drives, free space, what is open — only when asked); find_folder (folders by a few words, e.g. \"inaya event 26\" — use it before list_folder: never guess a path); find_files (search the NAS and drives by words in the name, e.g. the longest video of a client — kind video/photo, sort size/date); list_folder; make_folder; copy (src → dest); move (only after he said yes); upload_drive (copy to his Google Drive, dest = folder inside My Drive); make_proxies (H.264 proxies of every video in a folder, into its Proxy subfolder — Resolve links them automatically). Long jobs keep running and report when done.",
+    description: "Work on the owner's editing PC: wake (switch it on or out of sleep — Wake-on-LAN); setup_wake (once: lets the network card wake it from sleep); apps (what is open on it right now — names only); power (power: shutdown | restart | sleep | lock — done straight away, shutdown/restart wait 60 s; cancel stops a pending shutdown); open_app / close_app (query: the app's name — it closes normally so it can ask to save); upload_to_gallery (put a video from the PC or NAS into a client gallery's Videos folder: path + album_id — find the gallery first; the client sees it with their usual login); status (only whether it is on); details (drives, free space, what is open — only when asked); find_folder (folders by a few words, e.g. \"inaya event 26\" — use it before list_folder: never guess a path); find_files (search the NAS and drives by words in the name, e.g. the longest video of a client — kind video/photo, sort size/date); list_folder; make_folder; copy (src → dest); move (only after he said yes); upload_drive (copy to his Google Drive, dest = folder inside My Drive); make_proxies (H.264 proxies of every video in a folder, into its Proxy subfolder — Resolve links them automatically); shell (Ubuntu only: run any terminal command as Raj, full access — command, optional cwd; anything that deletes, erases, overwrites or formats needs his clear yes first: read him the command, then call again with approved:true). Long jobs keep running and report when done.",
     input_schema: { type: 'object', properties: {
-      action: { type: 'string', enum: ["wake","setup_wake","apps","power","open_app","close_app","upload_to_gallery","status","details","find_files","find_folder","list_folder","make_folder","copy","move","upload_drive","make_proxies"] },
+      action: { type: 'string', enum: ["wake","setup_wake","apps","power","open_app","close_app","upload_to_gallery","status","details","find_files","find_folder","list_folder","make_folder","copy","move","upload_drive","make_proxies","shell"] },
+      command: { type: 'string', description: 'shell: the terminal command (Ubuntu)' },
+      cwd: { type: 'string', description: 'shell: folder to run it in' },
+      approved: { type: 'boolean', description: 'shell: true only after the owner said yes to a delete/erase/format command' },
       query: { type: 'string', description: 'find_files: words in the file name' },
       kind: { type: 'string', enum: ['video', 'photo', 'any'] },
       sort: { type: 'string', enum: ['size', 'date', 'name'] },
@@ -292,6 +298,12 @@ export async function runTool(name, input, vendorId) {
       if (!action) return { error: 'Unknown PC action' };
       if (!(await pcAllowed(v))) return { error: 'Not available.' };
       if (action === 'wake') return wakePc(v);                     // ⏰ the router, like the WolOn app
+      // 🐧 Ubuntu full access (Raj, 2026-10-16) — the only yes: deleting / erasing / overwriting / formatting
+      if (action === 'shell') {
+        const cmd = String(input.command || '').trim();
+        if (!cmd) return { error: 'Which command?' };
+        if (DESTRUCTIVE.test(cmd) && input.approved !== true) return { needs_yes: true, command: cmd, next: 'This deletes, erases or overwrites. Read him the command in plain words and ask "Go ahead?". Call again with approved:true only after his clear yes.' };
+      }
       const { action: _a, ...params } = input;
       return runOnPc(v, action, params);
     }

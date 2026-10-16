@@ -39,7 +39,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
        access key ID there is nothing useful to recognise it by, so the whole
        thing is replaced rather than clipped. */
     if (s.smtp_pass) s.smtp_pass = '••••••••';
-    for (const k of ['quo_api_key', 'quo_webhook_secret', 'anthropic_api_key', 'agent_api_key', 'gemini_api_key']) {
+    for (const k of ['quo_api_key', 'quo_webhook_secret', 'anthropic_api_key', 'agent_api_key', 'gemini_api_key', 'deepgram_api_key', 'local_voice_token']) {
       if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
     }
     res.json({ settings: s });
@@ -246,6 +246,8 @@ router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (r
       aws_region: s.aws_region || '', anthropic_api_key: s.anthropic_api_key || '',
       agent_api_key: s.agent_api_key || '',
       gemini_api_key: s.gemini_api_key || '',
+      deepgram_api_key: s.deepgram_api_key || '',
+      local_voice_token: s.local_voice_token || '',
       r2_secret_access_key: s.r2_secret_access_key || '',
       r2_private_secret_access_key: s.r2_private_secret_access_key || '',
       r2_public_secret_access_key: s.r2_public_secret_access_key || '',
@@ -264,6 +266,10 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
       'agent_api_key', 'agent_model',
       // 🌪️ Tornado's voice on Gemini Live
       'gemini_api_key', 'gemini_voice', 'gemini_live_model',
+      // 🎧 Tornado's optional paid ear (Deepgram); the phone only ever gets a short-lived token
+      'deepgram_api_key',
+      // 🔊 Tornado's voice on Raj's own PC (Kokoro af_heart over Tailscale); Charon speaks when the PC is off
+      'local_voice_url', 'local_voice_token',
       'r2_account_id',
       // shared pair, used by either bucket that has none of its own
       'r2_access_key_id', 'r2_secret_access_key',

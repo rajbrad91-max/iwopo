@@ -8,7 +8,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import prisma from '../config/prisma.js';
-import { deviceOf, pcAllowed, logDelivery, pcCameOnline } from '../lib/pcAgent.js';
+import { deviceOf, pcAllowed, logDelivery, pcCameOnline, registerDevice } from '../lib/pcAgent.js';
+import { getSetting, setSetting } from '../lib/settings.js';
 import { signToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -41,6 +42,21 @@ async function device(req, res, next) {
   if (!off || !/shutdown|restart|sleep|off|reboot/i.test(off.params || '')) await prisma.pc_devices.update({ where: { id: d.id }, data: { last_seen: new Date() } }).catch(() => {});
   next();
 }
+
+/** 🔑 A new PC (e.g. Raj's Ubuntu) claims its device token with a ONE-TIME setup code (made on the server,
+    expires in 24 h, used once). Nobody ever has to paste a device token into a chat. */
+let claimTries = [];
+router.post('/claim', async (req, res) => {
+  claimTries = claimTries.filter(t => Date.now() - t < 10 * 60_000);
+  if (claimTries.length >= 10) return res.status(429).json({ error: 'Too many tries — wait 10 minutes' });
+  claimTries.push(Date.now());
+  let c; try { c = JSON.parse((await getSetting('pc_claim', '')) || '{}'); } catch { c = {}; }
+  const code = String(req.body?.code || '').trim();
+  if (!c.hash || !code || Date.now() > Number(c.exp || 0) || crypto.createHash('sha256').update(code).digest('hex') !== c.hash) return res.status(401).json({ error: 'Wrong or expired setup code' });
+  await setSetting('pc_claim', '');                               // used once
+  const d = await registerDevice(c.vendor, String(req.body?.name || 'Ubuntu PC').slice(0, 80));
+  res.json({ token: d.token, device_id: d.id });
+});
 
 /** The agent says hello (every ~30 s) with what it can see: drives, free space, Resolve running… */
 router.post('/hello', device, async (req, res) => {
