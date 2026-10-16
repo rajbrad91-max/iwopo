@@ -62,7 +62,6 @@
 .ag-kb-n { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; border-radius: 9px; font-size: 11px; background: rgba(0,0,0,.08); text-align: center; }
 .ag-kb-tab.is-on .ag-kb-n { background: rgba(255,255,255,.25); }
 .ag-kb-search { width: 100%; box-sizing: border-box; margin: 4px 0 10px; padding: 8px 10px; border: 1px solid var(--line, #e3e6ea); border-radius: 10px; background: var(--panel, #fff); color: inherit; font: inherit; }
-.ag-kb-list li span { line-height: 1.45; }
 
 /* 📚 a knowledge-base record as a card */
 .ag-kb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
