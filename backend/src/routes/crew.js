@@ -1,4 +1,5 @@
 import express from 'express';
+import { phoneProblem } from '../lib/phone.js';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -213,6 +214,7 @@ router.get('/schedule', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { name, role, phone, email } = req.body;
+    if (phoneProblem(phone)) return res.status(400).json({ error: phoneProblem(phone), field: 'phone' });   // 📞 never letters
     if (!name) return res.status(400).json({ error: 'Name required' });
     const member = await prisma.crew_members.create({
       data: {
@@ -232,6 +234,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     const { name, role, phone, email } = req.body;
+    if (phoneProblem(phone)) return res.status(400).json({ error: phoneProblem(phone), field: 'phone' });   // 📞 never letters
     const data = { role: role ?? null, phone: phone ?? null, email: email ?? null };
     if (name !== undefined && name !== null) data.name = name;   // COALESCE($1,name)
     const member = await prisma.crew_members.update({ where: { id }, data });

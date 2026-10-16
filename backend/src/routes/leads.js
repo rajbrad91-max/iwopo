@@ -1,4 +1,6 @@
 import express from 'express';
+import { phoneProblem } from '../lib/phone.js';
+import { cleanInstagram } from '../lib/instagram.js';
 import prisma from '../config/prisma.js';
 import jwt from 'jsonwebtoken';
 import { requireAuth } from '../middleware/auth.js';
@@ -249,6 +251,19 @@ const TYPE_TO_COLUMN = {
  * Prefers an explicit `maps_to` on the field; falls back to the old type rule
  * only for fields that have no mapping set, so existing forms keep working.
  */
+/** 🔢 Number questions on the vendor's form must get numbers (tester report 2026-10-16) — '' when fine. */
+async function numberProblem(vendorId, cd) {
+  if (!cd || typeof cd !== 'object') return '';
+  const s = await prisma.inquiry_settings.findUnique({ where: { vendor_id: Number(vendorId) }, select: { custom_fields: true } }).catch(() => null);   // 🔒 this vendor's form only
+  for (const fld of (Array.isArray(s?.custom_fields) ? s.custom_fields : [])) {
+    if (fld.type !== 'number') continue;
+    const v = cd[fld.id];
+    if (v === undefined || v === null || v === '') continue;
+    if (!/^\d+(\.\d{1,2})?$/.test(String(v).replace(/[,\s$]/g, ''))) return `"${fld.label}" needs a number, e.g. 150`;
+  }
+  return '';
+}
+
 async function mapCustomToColumns(vendorId, body, { overwrite = false } = {}) {
   const cd = body.custom_data;
   if (!cd || typeof cd !== 'object') return body;
@@ -372,6 +387,9 @@ router.post('/', async (req, res) => {
   }
 
   if (!vendor_id) return res.status(400).json({ error: 'Which vendor is this for?' });
+  if (phoneProblem(b.phone)) return res.status(400).json({ error: phoneProblem(b.phone), field: 'phone' });   // 📞 never letters
+  if (b.instagram !== undefined) { const ig = cleanInstagram(b.instagram); if (ig.error) return res.status(400).json({ error: ig.error, field: 'instagram' }); b.instagram = ig.value; }   // 📸 "@name", Instagram's characters only
+  { const np = await numberProblem(vendor_id, b.custom_data); if (np) return res.status(400).json({ error: np }); }   // 🔢 numbers only
 
   // This route is PUBLIC, so the body is untrusted. Without these checks an empty
   // POST created a blank lead row, a bad email was stored as-is, and an unknown
@@ -445,6 +463,9 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     const b = req.body;
     const ownerVid = exist.vendor_id;
+    if (b.phone !== undefined && phoneProblem(b.phone)) return res.status(400).json({ error: phoneProblem(b.phone), field: 'phone' });   // 📞 edits too
+    if (b.instagram !== undefined) { const ig = cleanInstagram(b.instagram); if (ig.error) return res.status(400).json({ error: ig.error, field: 'instagram' }); b.instagram = ig.value; }   // 📸 edits too
+    { const np = await numberProblem(exist.vendor_id, b.custom_data); if (np) return res.status(400).json({ error: np }); }   // 🔢 edits too
 
     // 🔗 keep the real columns in sync with the custom-field bag on every edit.
     // Here the mapped value WINS (the vendor just changed it in the form).

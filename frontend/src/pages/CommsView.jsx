@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { phoneChars } from '../lib/phone';
 import { api, authFetch, fmtDateTime, vendorDayKey } from '../lib/api';
 import './comms.css';
 
@@ -624,7 +625,7 @@ export default function CommsView() {
               <div className="cm-span">
                 <label className="lbl">Phone number</label>
                 <input className="cm-input" type="tel" inputMode="tel" autoComplete="off" placeholder="604 555 0123" autoFocus
-                  value={fresh.number} onChange={ev => setFresh({ ...fresh, number: ev.target.value })} />
+                  value={fresh.number} onChange={ev => setFresh({ ...fresh, number: phoneChars(ev.target.value) })} />
               </div>
               <div>
                 <label className="lbl">First name (optional)</label>

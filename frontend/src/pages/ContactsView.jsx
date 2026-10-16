@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { phoneChars } from '../lib/phone';
 import { api } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
 import './contacts.css';
@@ -103,7 +104,7 @@ export default function ContactsView() {
               <input type="email" value={edit.email || ''} onChange={e => setEdit({ ...edit, email: e.target.value })} />
             </label>
             <label>Phone <span className="cts-opt">optional</span>
-              <input value={edit.phone || ''} onChange={e => setEdit({ ...edit, phone: e.target.value })} />
+              <input type="tel" inputMode="tel" value={edit.phone || ''} onChange={e => setEdit({ ...edit, phone: phoneChars(e.target.value) })} />
             </label>
             <label>Note <span className="cts-opt">optional</span>
               <input value={edit.note || ''} onChange={e => setEdit({ ...edit, note: e.target.value })}

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { phoneChars, phoneProblem } from '../lib/phone';
+import { instaHandle, instaProblem } from '../lib/instagram';
 import { themeStyleObject } from '../lib/brandTheme.js';
 import { api } from '../lib/api';
 import ChatWidget from './ChatWidget';
@@ -17,6 +19,12 @@ import ProfessionArt from '../components/ProfessionArt.jsx';
    sits with any vendor's own website. The default for every form that has not
    chosen another style. */
 export const DEFAULT_THEME = 'ivory';
+/** 🔢 What a number box keeps: digits and one decimal point, two decimals at most (a count or an amount). */
+function numberChars(v) {
+  const s = String(v ?? '').replace(/[^0-9.]/g, '');
+  const i = s.indexOf('.');
+  return i < 0 ? s : s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '').slice(0, 2);
+}
 /** Up to two initials for the monogram: "Perfect Poses Media" → "PP". */
 function initials(name) {
   const w = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -82,7 +90,8 @@ export default function InquiryForm({ handle, byHost = false }) {
     // same rule the server enforces, so a typo is caught before the round-trip
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) problems.push({ field: 'email', message: 'That email address does not look right' });
     if (!p.phone.trim()) problems.push({ field: 'phone', message: 'Please enter your phone number' });
-    else if (p.phone.replace(/\D/g, '').length < 7) problems.push({ field: 'phone', message: 'That phone number looks too short' });
+    else if (phoneProblem(p.phone)) problems.push({ field: 'phone', message: phoneProblem(p.phone) });
+    if (instaProblem(p.instagram)) problems.push({ field: 'instagram', message: instaProblem(p.instagram) });
     for (const x of allProblems(cfg.custom_fields || [], answers)) problems.push({ field: `f:${x.id}`, message: x.message });
     if (problems.length) return fail(problems);
     setBusy(true);
@@ -98,7 +107,7 @@ export default function InquiryForm({ handle, byHost = false }) {
       await api.createLead({
         vendor_slug: who,
         name: p.name, email: p.email, phone: p.phone,
-        role: p.role, instagram: p.instagram, heard: p.heard,
+        role: p.role, instagram: p.instagram ? `@${p.instagram}` : '', heard: p.heard,
         notes, custom_data: custom,
       });
       setDone(true);
@@ -151,10 +160,9 @@ export default function InquiryForm({ handle, byHost = false }) {
       {/* 🖼️ one big drawing for the vendor's trade behind the card ("None": plain) */}
       <ProfessionArt trade={c.background} />
       <div className={`iq-card iq-theme-${theme}`}>
-        {/* header: logo left, brand + intro centered */}
+        {/* header: logo (or initials) on top, brand + intro under it — every theme */}
         <div className="iq-hd">
-          {/* a logo that fails to load is left out, not shown as an empty box;
-              Ivory shows the studio's initials in a circle instead */}
+          {/* a logo that fails to load is never an empty box — the studio's initials in a circle instead */}
           {c.logo_path && logoOk
             ? <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={() => setLogoOk(false)} />
             : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
@@ -218,12 +226,13 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
           </div>
           <div {...box('phone')}>
             <label>Phone *</label>
-            <input type="tel" inputMode="tel" autoComplete="tel" value={p.phone} onChange={e => setPI('phone', e.target.value)} placeholder="(555) 555-5555" />
+            <input type="tel" inputMode="tel" autoComplete="tel" value={p.phone} onChange={e => setPI('phone', phoneChars(e.target.value))} placeholder="Phone number" />
             {note('phone')}
           </div>
-          <div>
+          <div {...box('instagram')}>
             <label>Instagram Handle</label>
-            <input value={p.instagram} onChange={e => setPI('instagram', e.target.value)} placeholder="@yourhandle" />
+            <div className="inq-at"><span className="inq-at-sign" aria-hidden="true">@</span><input value={p.instagram} onChange={e => setPI('instagram', instaHandle(e.target.value))} placeholder="yourhandle" autoCapitalize="none" autoCorrect="off" spellCheck="false" aria-label="Instagram handle, without the @" /></div>
+            {note('instagram')}
           </div>
           <div>
             <label>How did you hear about us?</label>
@@ -376,7 +385,14 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
   // 🔢 a number — a count or an amount. A text box with the number pad: a number
   // box turned 349.99 into 349.989990234375 in some browsers and refused it.
   if (fld.type === 'number') return (<>{label}
-    <input type="text" inputMode="decimal" value={value ?? ''} onChange={e => onChange(e.target.value)} placeholder="e.g. 150" /></>);
+    <input type="text" inputMode="decimal" value={value ?? ''} placeholder="e.g. 150"
+      onChange={e => {
+        // tester report 2026-10-16: letters could be typed — they never appear now, and the box says why
+        const raw = e.target.value, clean = numberChars(raw);
+        e.target.setCustomValidity(clean !== raw ? 'Numbers only, e.g. 150' : '');
+        if (clean !== raw) e.target.reportValidity();
+        onChange(clean);
+      }} /></>);
 
   if (fld.type === 'time') return (<>{label}
     <TimeSelect value={value} onChange={onChange} /></>);

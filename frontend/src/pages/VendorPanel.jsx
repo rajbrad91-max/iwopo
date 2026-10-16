@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
+import { phoneChars, phoneProblem } from '../lib/phone';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
@@ -2533,7 +2534,7 @@ function CrewView() {
               <div className="cr-add-grid">
                 <input className="cr-input" placeholder="Name *" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} autoFocus />
                 <input className="cr-input" placeholder="Role (e.g. 2nd shooter)" value={f.role} onChange={e => setF({ ...f, role: e.target.value })} />
-                <input className="cr-input" placeholder="Phone" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
+                <input className="cr-input" type="tel" inputMode="tel" placeholder="Phone" value={f.phone} onChange={e => setF({ ...f, phone: phoneChars(e.target.value) })} />
                 <input className="cr-input" placeholder="Email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} />
               </div>
               <div className="cr-add-acts">
@@ -3468,7 +3469,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
         <div className="ld-client-name"><span className="ld-client-lbl">Name:</span> {lead.name || '—'}</div>
         {row('🙋 Role', lead.role)}
         {row('📧 Email', lead.email)}
-        {row('📞 Phone', lead.phone)}
+        {row('📞 Phone', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone)}
         {row('📷 Instagram', lead.instagram)}
         {row('🔎 Heard via', lead.heard)}
       </div>
@@ -5750,7 +5751,7 @@ function SettingsView({ user, onProfileChange }) {
         <label style={{ fontSize: 13, color: '#9fb3b0' }}>Company name</label>
         <input style={box} value={prof?.business_name || ''} onChange={e => setProf({ ...prof, business_name: e.target.value })} />
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Phone</label>
-        <input style={box} value={prof?.phone || ''} onChange={e => setProf({ ...prof, phone: e.target.value })} />
+        <input style={box} type="tel" inputMode="tel" value={prof?.phone || ''} onChange={e => setProf({ ...prof, phone: phoneChars(e.target.value) })} />
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Business email</label>
         <input style={box} value={prof?.email || ''} onChange={e => setProf({ ...prof, email: e.target.value })} />
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Country</label>

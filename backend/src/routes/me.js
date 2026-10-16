@@ -1,4 +1,5 @@
 import { LOGO_DIR as LOGO_DIR_CFG } from '../config/paths.js';
+import { phoneProblem } from '../lib/phone.js';
 import * as objects from '../lib/objectStore.js';
 import express from 'express';
 import multer from 'multer';
@@ -269,6 +270,7 @@ router.put('/profile', requireAuth, async (req, res) => {
   const vid = req.user.vendor_id;
   if (!vid) return res.status(400).json({ error: 'No vendor' });
   const { business_name, phone, email, country } = req.body;
+  if (phoneProblem(phone)) return res.status(400).json({ error: phoneProblem(phone), field: 'phone' });   // 📞 never letters
   try {
     const data = { phone: phone || '', email: email || '', country: country || '' };
     if (business_name) data.business_name = business_name;   // COALESCE($1,business_name)
