@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { firstName } from '../lib/firstName';
 import { api, fmtEventDate, fmtMoney, moneyParts } from '../lib/api';
 import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
 import { useDialog } from '../lib/dialog.jsx';
@@ -553,7 +554,7 @@ export default function ClientPortal({ token }) {
               /* they've told us they paid — waiting on the vendor to confirm */
               <div className="po-panel is-done">
                 <div className="po-panel-icon">⏳</div>
-                <h3 className="po-panel-t">Thank you — we&apos;re checking</h3>
+                <h3 className="po-panel-t">Thank you{firstName(lead?.name) ? `, ${firstName(lead.name)}` : ''} — we&apos;re checking</h3>
                 <p className="po-panel-p no-gap">
                   You told us the payment is on its way. We&apos;ll confirm as soon as it lands
                   and your date is locked in.
@@ -592,7 +593,7 @@ export default function ClientPortal({ token }) {
           <div className="po-cheer-box">
             <div className="po-check">✓</div>
             <h2 className="po-cheer-t">Contract signed</h2>
-            <p className="po-cheer-p">Thank you{contract?.signed_name ? `, ${contract.signed_name}` : ''} — last step is securing your date.</p>
+            <p className="po-cheer-p">Thank you{firstName(contract?.signed_name || lead?.name) ? `, ${firstName(contract?.signed_name || lead?.name)}` : ''} — last step is securing your date.</p>
           </div>
         </div>
       )}

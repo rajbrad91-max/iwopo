@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { firstName } from '../lib/firstName';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import { instaHandle, instaProblem } from '../lib/instagram';
 import { themeStyleObject } from '../lib/brandTheme.js';
@@ -140,7 +141,7 @@ export default function InquiryForm({ handle, byHost = false }) {
           </div>
           <div className="iq-done">
             <div className="iq-check">✓</div>
-            <h2>Thank you! 🎉</h2>
+            <h2>{firstName(p.name) ? `Thank you, ${firstName(p.name)}!` : 'Thank you!'} 🎉</h2>
             <p>Your inquiry has been sent. We&apos;ll be in touch soon.</p>
           </div>
         </div>

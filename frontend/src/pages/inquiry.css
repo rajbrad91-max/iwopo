@@ -39,7 +39,7 @@
   background: var(--page-bg);
 }
 .iq-card {
-  position: relative; overflow: hidden; width: 100%; max-width: 720px;
+  position: relative; overflow: hidden; width: 100%; max-width: 860px;
   background: var(--surface);
   border: 1px solid var(--line); border-radius: 20px;
   color: var(--text); box-shadow: var(--shadow);
@@ -139,16 +139,16 @@
    shifts the button, the accents and the page shade together. */
 .iq-mono { display: flex; width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid var(--on-brand, #F5F0EA); color: var(--on-brand, #F5F0EA); align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; flex-shrink: 0; }
 .iq-req-note { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
-.iq-card.iq-theme-ivory { max-width: 640px; border-radius: 4px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(40, 32, 24, 0.05); }
+.iq-card.iq-theme-ivory { max-width: 820px; border-radius: 4px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(40, 32, 24, 0.05); }
 .iq-theme-ivory .iq-hd { flex-direction: column; gap: 14px; padding: 38px 28px 6px; background: transparent; border-bottom: none; color: var(--text); }
 .iq-theme-ivory .iq-logo { width: 72px; height: 72px; border-radius: 50%; }
 .iq-theme-ivory .iq-mono { display: flex; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--brand); color: var(--brand); align-items: center; justify-content: center; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; letter-spacing: 1px; }
 .iq-theme-ivory .iq-hd-text .iq-brand { color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 34px; letter-spacing: .5px; line-height: 1.15; }
-.iq-theme-ivory .iq-hd-text .iq-sub { margin-top: 16px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.iq-theme-ivory .iq-hd-text .iq-sub { margin-top: 16px; color: var(--label); font-weight: 500; font-size: 15px; line-height: 1.55; }
 .iq-theme-ivory .iq-sub-link:hover { color: var(--text); }
 .iq-theme-ivory .iq-body { padding: 10px 28px 32px; }
 .iq-theme-ivory .iq-section { border-top: none; padding: 20px 0 4px; }
-.iq-theme-ivory .iq-section-title { font-size: 12px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--brand); margin-bottom: 14px; }
+.iq-theme-ivory .iq-section-title { font-size: 13px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: var(--text); margin-bottom: 14px; }
 .iq-theme-ivory .iq-emoji { display: none; }
 .iq-card.iq-theme-ivory label { font-size: 13px; font-weight: 500; color: var(--label); margin-bottom: 6px; }
 .iq-card.iq-theme-ivory input, .iq-card.iq-theme-ivory select, .iq-card.iq-theme-ivory textarea { min-height: 46px; border: 1px solid var(--field-line); border-radius: 4px; background: #fffdfa; font-size: 15px; }
@@ -162,8 +162,8 @@
 }
 
 /* 🕐 time as hour · minutes · AM/PM */
-.iq-time { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-.iq-time select { min-width: 0; }
+.iq-time { display: grid; grid-template-columns: 1fr 1fr minmax(96px, 1.2fr); gap: 6px; }
+.iq-card .iq-time select { min-width: 0; padding-left: 10px; padding-right: 26px; text-overflow: clip; }
 /* the chat bubble must never sit over the last questions or the send button */
 .iq-wrap { padding-bottom: 96px; }
 
