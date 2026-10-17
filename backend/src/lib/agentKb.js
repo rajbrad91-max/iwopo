@@ -117,8 +117,9 @@ async function buildSections(v, only) {
   if (want('galleries') || want('selections') || want('raws')) {
     const albums = await prisma.albums.findMany({ where: { vendor_id: v }, select: { id: true, title: true, category: true, created_at: true, exp_enabled: true, exp_date: true, client_email: true } });
     const ids = albums.map(a => a.id);
+    const videos = await prisma.photos.groupBy({ by: ['album_id'], where: { vendor_id: v, kind: 'video' }, _count: { _all: true } });   // 🔒
     const [photos, tabs, sel, favs, notes, raws] = await Promise.all([
-      prisma.photos.groupBy({ by: ['album_id'], where: { vendor_id: v }, _count: { _all: true } }),
+      prisma.photos.groupBy({ by: ['album_id'], where: { vendor_id: v, NOT: { kind: 'video' } }, _count: { _all: true } }),   // 🎞️ photos only — videos counted apart
       prisma.album_events.findMany({ where: { vendor_id: v }, select: { album_id: true, name: true, delivery: true } }),
       prisma.selections.groupBy({ by: ['album_id'], where: { album_id: { in: ids } }, _count: { _all: true } }),
       prisma.favorites.groupBy({ by: ['album_id'], where: { album_id: { in: ids } }, _count: { _all: true } }),
@@ -128,7 +129,7 @@ async function buildSections(v, only) {
     const cnt = (list, id) => list.find(x => x.album_id === id)?._count._all || 0;
     for (const a of albums) {
       const t = tabs.filter(x => x.album_id === a.id), n = notes.find(x => x.album_id === a.id), r = raws.filter(x => x.album_id === a.id);
-      if (want('galleries')) add('galleries', a.id, `${a.title} — Gallery #${a.id}`, [['type', a.category], ['photos', cnt(photos, a.id)], ['tabs', t.filter(x => !x.delivery).map(x => x.name).join(', ')], ['delivered edits', t.filter(x => x.delivery).map(x => x.name).join(', ')], ['favourites', cnt(favs, a.id)], ['selection', n?.completed_at ? `sent ${day(n.completed_at)}` : cnt(sel, a.id) ? `${cnt(sel, a.id)} picked, still picking` : null], ['expires', a.exp_enabled ? day(a.exp_date) : 'never'], ['client email', a.client_email], ['made', day(a.created_at)]]);
+      if (want('galleries')) add('galleries', a.id, `${a.title} — Gallery #${a.id}`, [['type', a.category], ['kind', a.kind === 'liveshoot' ? 'live shoot' : null], ['photos', cnt(photos, a.id)], ['videos', cnt(videos, a.id) || null], ['tabs', t.filter(x => !x.delivery).map(x => x.name).join(', ')], ['delivered edits', t.filter(x => x.delivery).map(x => x.name).join(', ')], ['favourites', cnt(favs, a.id)], ['selection', n?.completed_at ? `sent ${day(n.completed_at)}` : cnt(sel, a.id) ? `${cnt(sel, a.id)} picked, still picking` : null], ['expires', a.exp_enabled ? day(a.exp_date) : 'never'], ['client email', a.client_email], ['made', day(a.created_at)]]);
       if (want('selections') && (n || cnt(sel, a.id))) add('selections', a.id, `${a.title} — photo selection`, [['state', n?.completed_at ? `SENT ${at(n.completed_at)}` : 'still picking'], ['picked', cnt(sel, a.id)], ['client note', note(n?.note, 300)], ['last activity', at(n?.updated_at)]]);
       if (want('raws') && r.length) add('raws', a.id, `${a.title} — Raw Selector`, [['RAW files', r.length], ['matched to photos', r.filter(x => x.photo_id).length], ['delivered', r.filter(x => x.delivered_at).length], ['RAWs deleted on', r.some(x => x.delete_after) ? day(r.filter(x => x.delete_after).sort((x, y) => x.delete_after - y.delete_after)[0].delete_after) : null]]);
     }

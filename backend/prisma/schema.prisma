@@ -29,41 +29,42 @@ model album_settings {
 }
 
 model albums {
-  id                Int              @id @default(autoincrement())
-  vendor_id         Int
-  title             String           @db.VarChar(160)
-  category          String?          @db.VarChar(80)
-  cover_photo       String?          @db.VarChar(300)
-  guest_username    String?          @db.VarChar(80)
-  guest_password    String?          @db.VarChar(120)
-  admin_username    String?          @db.VarChar(80)
-  admin_password    String?          @db.VarChar(120)
+  id                 Int              @id @default(autoincrement())
+  vendor_id          Int
+  title              String           @db.VarChar(160)
+  category           String?          @db.VarChar(80)
+  cover_photo        String?          @db.VarChar(300)
+  guest_username     String?          @db.VarChar(80)
+  guest_password     String?          @db.VarChar(120)
+  admin_username     String?          @db.VarChar(80)
+  admin_password     String?          @db.VarChar(120)
   guest_password_enc String?
   admin_password_enc String?
-  created_at        DateTime?        @default(now()) @db.Timestamp(6)
-  exp_enabled       Boolean?         @default(false)
-  exp_from_date     DateTime?        @db.Date
-  exp_date          DateTime?        @db.Date
-  exp_notes         String?
-  client_email      String?          @db.VarChar(160)
-  face_ai           Boolean?         @default(false)
-  public_token      String?          @unique @db.VarChar(40)
-  gallery_mode      String?          @db.VarChar(20)
-  faces_clustered   Boolean?         @default(false)
-  face_engine_lock  String?          @db.VarChar(10)
-  cover_focus       String?          @default("50% 50%") @db.VarChar(20)
-  has_collection    Boolean          @default(false)
-  kind              String           @default("gallery") @db.VarChar(16)
-  selfie_strictness Int?             @db.SmallInt
-  album_events      album_events[]
-  album_faces       album_faces[]
-  face_clusters     face_clusters[]
-  favorites         favorites[]
-  photos            photos[]
-  selection_notes   selection_notes?
-  selections        selections[]
+  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  exp_enabled        Boolean?         @default(false)
+  exp_from_date      DateTime?        @db.Date
+  exp_date           DateTime?        @db.Date
+  exp_notes          String?
+  client_email       String?          @db.VarChar(160)
+  face_ai            Boolean?         @default(false)
+  public_token       String?          @unique @db.VarChar(40)
+  gallery_mode       String?          @db.VarChar(20)
+  faces_clustered    Boolean?         @default(false)
+  face_engine_lock   String?          @db.VarChar(10)
+  cover_focus        String?          @default("50% 50%") @db.VarChar(20)
+  has_collection     Boolean          @default(false)
+  kind               String           @default("gallery") @db.VarChar(16)
+  selfie_strictness  Int?             @db.SmallInt
+  album_events       album_events[]
+  album_faces        album_faces[]
+  face_clusters      face_clusters[]
+  favorites          favorites[]
+  photos             photos[]
+  selection_notes    selection_notes?
+  selections         selections[]
 
-  raw_files        raw_files[]
+  raw_files raw_files[]
+
   @@index([vendor_id], map: "idx_albums_vendor")
   @@index([vendor_id, kind], map: "idx_albums_kind")
 }
@@ -175,15 +176,17 @@ model contract_templates {
   updated_at  DateTime? @default(now()) @db.Timestamp(6)
   sections    Json      @default("[]")
   vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  is_default  Boolean   @default(false)
 
-  @@index([vendor_id], map: "idx_cttpl_vendor")
-  /* ⚠️ One default per vendor. Without a marked default the system picked
-     whichever template had the lowest id, which on a legal document is a
-     guess. Described HERE (partialIndexes preview), not only made by hand in
-     the database — so the migration history carries it and no future
-     migration ever tries to drop it. */
+  /**
+   * ⚠️ One default per vendor. Without a marked default the system picked
+   * whichever template had the lowest id, which on a legal document is a
+   * guess. Described HERE (partialIndexes preview), not only made by hand in
+   * the database — so the migration history carries it and no future
+   * migration ever tries to drop it.
+   */
   @@unique([vendor_id], map: "one_default_contract_per_vendor", where: raw("is_default"))
-  is_default        Boolean            @default(false)
+  @@index([vendor_id], map: "idx_cttpl_vendor")
 }
 
 model contracts {
@@ -365,6 +368,9 @@ model lead_crew {
 }
 
 model leads {
+  project_stages          project_stages?
+  outside_messages        outside_messages[]
+  email_log               email_log[]
   id                      Int                  @id @default(autoincrement())
   vendor_id               Int?
   name                    String?              @db.VarChar(200)
@@ -562,7 +568,7 @@ model photos {
   face_indexed Boolean?      @default(false)
   face_count   Int?          @default(0)
   /// 🎞️ Raw Selector: a description of an edited photo, written by Claude
-  alt_text     String?   @db.VarChar(400)
+  alt_text     String?       @db.VarChar(400)
   event_id     Int?
   face_engine  String?       @db.VarChar(20)
   kind         String        @default("photo") @db.VarChar(10)
@@ -575,7 +581,8 @@ model photos {
   album_events album_events? @relation(fields: [event_id], references: [id], onUpdate: NoAction)
   selections   selections[]
 
-  raw_files    raw_files[]
+  raw_files raw_files[]
+
   @@index([album_id], map: "idx_photos_album")
   @@index([vendor_id], map: "idx_photos_vendor")
   @@index([album_id, kind], map: "idx_photos_kind")
@@ -776,6 +783,9 @@ model vendor_subscriptions {
 }
 
 model vendors {
+  project_stages           project_stages[]
+  outside_messages         outside_messages[]
+  email_log                email_log[]
   id                       Int                        @id @default(autoincrement())
   business_name            String                     @db.VarChar(200)
   status                   String?                    @default("trial") @db.VarChar(50)
@@ -824,26 +834,26 @@ model vendors {
   vendor_settings          vendor_settings?
   vendor_sites             vendor_sites?
   vendor_subscriptions     vendor_subscriptions[]
-  raw_files               raw_files[]
-  raw_editors             raw_editors[]
-  rawsel_settings         rawsel_settings?
-  agent_usage             agent_usage[]
-  push_subscriptions      push_subscriptions[]
-  agent_reminders         agent_reminders[]
-  agent_memory            agent_memory[]
-  agent_briefing          agent_briefing?
-  agent_conversations     agent_conversations[]
-  agent_contacts          agent_contacts[]
-  agent_voice_usage       agent_voice_usage[]
-  agent_kb                agent_kb[]
-  agent_notices           agent_notices[]
-  agent_rules             agent_rules[]
-  agent_rule_history      agent_rule_history[]
-  agent_training_runs     agent_training_runs[]
-  agent_tool_log          agent_tool_log[]
-  pc_devices              pc_devices[]
-  pc_jobs                 pc_jobs[]
-  agent_delivery_log      agent_delivery_log[]
+  raw_files                raw_files[]
+  raw_editors              raw_editors[]
+  rawsel_settings          rawsel_settings?
+  agent_usage              agent_usage[]
+  push_subscriptions       push_subscriptions[]
+  agent_reminders          agent_reminders[]
+  agent_memory             agent_memory[]
+  agent_briefing           agent_briefing?
+  agent_conversations      agent_conversations[]
+  agent_contacts           agent_contacts[]
+  agent_voice_usage        agent_voice_usage[]
+  agent_kb                 agent_kb[]
+  agent_notices            agent_notices[]
+  agent_rules              agent_rules[]
+  agent_rule_history       agent_rule_history[]
+  agent_training_runs      agent_training_runs[]
+  agent_tool_log           agent_tool_log[]
+  pc_devices               pc_devices[]
+  pc_jobs                  pc_jobs[]
+  agent_delivery_log       agent_delivery_log[]
 }
 
 model album_faces {
@@ -1077,7 +1087,6 @@ model site_events {
   @@index([vendor_id, kind, created_at(sort: Desc)], map: "idx_events_kind")
   @@index([vendor_id, created_at(sort: Desc)], map: "idx_events_vendor")
 }
-
 
 model device_tokens {
   id         Int       @id @default(autoincrement())
@@ -1491,4 +1500,58 @@ model agent_delivery_log {
   @@index([vendor_id, client_email], map: "idx_delivery_email")
   @@index([vendor_id, client_phone], map: "idx_delivery_phone")
   @@index([vendor_id, lead_id], map: "idx_delivery_lead")
+}
+
+/// 🧭 A booking's production stages (owner's AI Agent feature — lib/projectStages.js). One row per lead.
+model project_stages {
+  id                     Int       @id @default(autoincrement())
+  vendor_id              Int
+  lead_id                Int       @unique
+  backed_up_at           DateTime? @db.Timestamp(6)
+  backed_up_by           String    @default("") @db.VarChar(80)
+  sent_to_editor_at      DateTime? @db.Timestamp(6)
+  editing_photos_done_at DateTime? @db.Timestamp(6)
+  editing_videos_done_at DateTime? @db.Timestamp(6)
+  updated_at             DateTime  @default(now()) @db.Timestamp(6)
+  vendors                vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  leads                  leads     @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id], map: "idx_stages_vendor")
+}
+
+/// 💬 Messages the owner sent (or got) outside iwopo — WhatsApp, Instagram… — recorded by him.
+model outside_messages {
+  id          Int      @id @default(autoincrement())
+  vendor_id   Int
+  lead_id     Int
+  /// whatsapp | instagram | facebook | phone | in_person | other
+  channel     String   @default("other") @db.VarChar(20)
+  /// out | in
+  direction   String   @default("out") @db.VarChar(4)
+  body        String
+  sent_at     DateTime @default(now()) @db.Timestamp(6)
+  recorded_by String   @default("") @db.VarChar(80)
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  vendors     vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  leads       leads    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vendor_id, lead_id], map: "idx_outside_msgs_lead")
+}
+
+/// 📧 Every email iwopo sent a client (written only for vendors with the AI Agent).
+model email_log {
+  id        Int      @id @default(autoincrement())
+  vendor_id Int
+  lead_id   Int?
+  to_email  String   @db.VarChar(200)
+  subject   String   @default("") @db.VarChar(300)
+  kind      String   @default("") @db.VarChar(40)
+  ok        Boolean  @default(true)
+  error     String   @default("")
+  sent_at   DateTime @default(now()) @db.Timestamp(6)
+  vendors   vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  leads     leads?   @relation(fields: [lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([vendor_id, lead_id], map: "idx_email_log_lead")
+  @@index([vendor_id, to_email], map: "idx_email_log_to")
 }

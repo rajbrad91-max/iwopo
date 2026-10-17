@@ -25,7 +25,7 @@ const obj = (props, req = []) => ({ type: 'object', properties: props, ...(req.l
 export const PANEL_TOOLS = [
   { name: 'calls_and_messages', description: 'Phone calls (with what was said, when there is a transcript) and text messages on the business line — newest first. Filter by part of a name or number, by calls or texts, and how many days back.',
     input_schema: obj({ query: { type: 'string', description: 'part of a name or phone number' }, kind: { type: 'string', description: 'call or message' }, days: { type: 'integer', description: 'how far back, default 14' } }) },
-  { name: 'galleries', description: 'Client galleries — title, photos, tabs, selections, favourites, expiry, delivered tabs, RAWs. Filter by part of the title.',
+  { name: 'galleries', description: 'Client galleries — title, photos, tabs, selections, favourites, expiry, delivered tabs, RAWs. Filter by part of the title. Galleries only, like the panel; kind "liveshoot" for live shoots, "all" for both. Photos and videos are counted apart.',
     input_schema: obj({ query: { type: 'string', description: 'part of the gallery title / client name' } }) },
   { name: 'gallery_detail', description: 'One gallery in full: every tab with its photo count, delivered tabs, how many photos the client selected and favourited, whether the selection was sent, RAW files, expiry and access.',
     input_schema: obj({ album_id: { type: 'integer', description: 'the gallery id from galleries' } }, ['album_id']) },
@@ -43,6 +43,13 @@ export const PANEL_TOOLS = [
     input_schema: obj({ from: { type: 'string', description: 'YYYY-MM-DD' }, to: { type: 'string', description: 'YYYY-MM-DD' } }) },
 ];
 export const PANEL_TOOL_NAMES = new Set(PANEL_TOOLS.map(t => t.name));
+
+/** 🎞️ An album's photos and videos, counted apart (a video is never a photo). */
+async function mediaOf(where) {
+  const g = await prisma.photos.groupBy({ by: ['kind'], where, _count: { _all: true } });
+  const videos = g.filter(x => x.kind === 'video').reduce((n, x) => n + x._count._all, 0);
+  return { photos: g.reduce((n, x) => n + x._count._all, 0) - videos, videos };
+}
 
 export async function runPanelTool(name, input, vendorId) {
   const v = Number(vendorId);
@@ -66,20 +73,22 @@ export async function runPanelTool(name, input, vendorId) {
       return { count: rows.length, items: rows.map(e => ({ kind: e.kind, direction: e.direction, status: e.status, who: whoOf(e), when: when(e.occurred_at), minutes: e.duration_sec ? Math.round(e.duration_sec / 6) / 10 : null, text: e.body ? String(e.body).slice(0, 400) : null, what_was_said: e.transcript ? String(e.transcript).slice(0, rows.length === 1 ? 4000 : 1500) : null, lead_id: e.lead_id })) };
     }
     case 'galleries': {
-      const where = { vendor_id: v };
+      // like the panel: galleries and live shoots are separate lists (live shoots only when asked)
+      const kind = ['liveshoot', 'all'].includes(input.kind) ? input.kind : 'gallery';
+      const where = { vendor_id: v, ...(kind === 'all' ? {} : { kind }) };
       if (input.query) where.title = { contains: String(input.query).slice(0, 60), mode: 'insensitive' };
-      const albums = await prisma.albums.findMany({ where, orderBy: { created_at: 'desc' }, take: 25, select: { id: true, title: true, category: true, created_at: true, exp_enabled: true, exp_date: true, client_email: true } });
+      const albums = await prisma.albums.findMany({ where, orderBy: { created_at: 'desc' }, take: 25, select: { id: true, title: true, kind: true, category: true, created_at: true, exp_enabled: true, exp_date: true, client_email: true } });
       const out = [];
       for (const a of albums) {
         const [photos, tabs, picked, favs, raws, note] = await Promise.all([
-          prisma.photos.count({ where: { album_id: a.id, vendor_id: v } }),
+          mediaOf({ album_id: a.id, vendor_id: v }),
           prisma.album_events.findMany({ where: { album_id: a.id, vendor_id: v }, select: { name: true, delivery: true } }),
           prisma.selections.count({ where: { album_id: a.id } }),
           prisma.favorites.count({ where: { album_id: a.id } }),
           prisma.raw_files.count({ where: { album_id: a.id, vendor_id: v } }),
           prisma.selection_notes.findUnique({ where: { album_id: a.id }, select: { completed_at: true } }),
         ]);
-        out.push({ id: a.id, title: a.title, type: a.category, made: day(a.created_at), photos, tabs: tabs.filter(t => !t.delivery).map(t => t.name), delivered_tabs: tabs.filter(t => t.delivery).map(t => t.name), selected: picked, selection_sent: !!note?.completed_at, favourites: favs, raws, expires: a.exp_enabled ? day(a.exp_date) : 'never', client_email: a.client_email });
+        out.push({ id: a.id, title: a.title, kind: a.kind, type: a.category, made: day(a.created_at), photos: photos.photos, videos: photos.videos, tabs: tabs.filter(t => !t.delivery).map(t => t.name), delivered_tabs: tabs.filter(t => t.delivery).map(t => t.name), selected: picked, selection_sent: !!note?.completed_at, favourites: favs, raws, expires: a.exp_enabled ? day(a.exp_date) : 'never', client_email: a.client_email });
       }
       return { count: out.length, galleries: out };
     }
@@ -92,7 +101,7 @@ export async function runPanelTool(name, input, vendorId) {
       if (!a) return { error: 'No gallery by that id or name' };
       const tabs = await prisma.album_events.findMany({ where: { album_id: a.id, vendor_id: v }, orderBy: { sort_order: 'asc' } });
       const perTab = [];
-      for (const t of tabs) perTab.push({ tab: t.name, delivered_edits: !!t.delivery, photos: await prisma.photos.count({ where: { album_id: a.id, vendor_id: v, event_id: t.id } }) });
+      for (const t of tabs) { const m = await mediaOf({ album_id: a.id, vendor_id: v, event_id: t.id }); perTab.push({ tab: t.name, delivered_edits: !!t.delivery, photos: m.photos, videos: m.videos }); }
       const [photos, videos, picked, favs, note, raws, rawsPaired, rawsDelivered] = await Promise.all([
         prisma.photos.count({ where: { album_id: a.id, vendor_id: v, kind: { not: 'video' } } }),
         prisma.photos.count({ where: { album_id: a.id, vendor_id: v, kind: 'video' } }),

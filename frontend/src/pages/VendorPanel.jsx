@@ -28,6 +28,7 @@ const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 const CommsView = lazy(() => import('./CommsView.jsx'));
 const RawSelectorView = lazy(() => import('./RawSelectorView.jsx'));
 const AgentView = lazy(() => import('./AgentView.jsx'));
+const ProjectStages = lazy(() => import('./ProjectStages.jsx'));
 const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private — part of Calls & messages
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
@@ -3473,6 +3474,9 @@ function LeadDetail({ lead, onBack, onSaved }) {
         {row('📷 Instagram', lead.instagram)}
         {row('🔎 Heard via', lead.heard)}
       </div>
+
+      {/* 🧭 Production stages — only with the AI Agent (the card stays away otherwise) */}
+      <Suspense fallback={null}><ProjectStages leadId={lead.id} /></Suspense>
 
       {/* 🎉 Event Details — driven entirely by the vendor's own inquiry form.
           A fixed list of rows meant a DJ saw "Bride Getting Ready ❌ No" for a

@@ -10,6 +10,7 @@
  *    stops answering until next month (or until the cap is raised).
  */
 import express from 'express';
+import { listStages, stagesFor, setStages, addOutsideMessage, deleteOutsideMessage } from '../lib/projectStages.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import prisma from '../config/prisma.js';
@@ -358,6 +359,28 @@ router.post('/ear/turn', requireAuth, limit({ name: 'agent-ear', max: 60, window
   try { await earTurn({ vendorId: vid(req), auth: req.headers.authorization, sessionId: req.body?.session, text: String(req.body?.text || ''), send }); }
   catch (e) { send('error', { message: e.message }); }
   res.end();
+});
+
+/* ── 🧭 project stages, outside messages, email log (lib/projectStages.js). Reached only here, so only by
+   vendors with the AI Agent; the vendor always comes from the login, never the body. ── */
+router.get('/stages', requireAuth, async (req, res) => {
+  try { res.json({ bookings: await listStages(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.get('/stages/:leadId', requireAuth, async (req, res) => {
+  try { const s = await stagesFor(vid(req), req.params.leadId); return s ? res.json(s) : res.status(404).json({ error: 'No such booking' }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/stages/:leadId', requireAuth, async (req, res) => {
+  try { const s = await setStages(vid(req), req.params.leadId, req.body || {}); return s ? res.json(s) : res.status(404).json({ error: 'No such booking' }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.post('/stages/:leadId/messages', requireAuth, async (req, res) => {
+  try { const m = await addOutsideMessage(vid(req), req.params.leadId, req.body || {}); return m ? res.json(m) : res.status(404).json({ error: 'No such booking' }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete('/stages/messages/:id', requireAuth, async (req, res) => {
+  try { return (await deleteOutsideMessage(vid(req), req.params.id)) ? res.json({ ok: true }) : res.status(404).json({ error: 'Not found' }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /** 🧠 panel tasks that finished after Tornado stopped waiting — handed over with the next [Update] */

@@ -1,0 +1,21 @@
+/* 🧭 the Production card in a booking's detail (ProjectStages.jsx) — done green, not-yet orange, like the PPM board */
+.ps-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-top: 6px; }
+.ps-step { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, #e5e7eb); }
+.ps-step.is-done { background: #ecfdf3; border-color: #a7e3bd; }
+.ps-step.is-todo { background: #fff4e6; border-color: #ffd29a; }
+.ps-step-l { font-size: 13px; font-weight: 600; }
+.ps-date, .ps-text, .ps-ch { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line, #d9dde3); background: #fff; color: inherit; }
+.ps-by .ps-text { flex: 1; min-width: 0; }
+.ps-sub { margin: 14px 0 6px; font-size: 13px; font-weight: 700; }
+.ps-add { display: flex; gap: 6px; flex-wrap: wrap; }
+.ps-add .ps-text { flex: 1; min-width: 160px; }
+.ps-btn { padding: 6px 14px; }
+.ps-list { list-style: none; margin: 6px 0 0; padding: 0; }
+.ps-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line, #eef0f3); font-size: 13px; }
+.ps-item-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ps-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #eef2f7; white-space: nowrap; }
+.ps-tag.is-bad { background: #fde8e8; color: #b42318; }
+.ps-when { font-size: 12px; opacity: 0.7; white-space: nowrap; }
+.ps-x { border: none; background: none; cursor: pointer; opacity: 0.55; font-size: 13px; }
+.ps-x:hover { opacity: 1; }
+.ps-empty { font-size: 13px; opacity: 0.7; }

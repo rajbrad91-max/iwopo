@@ -78,7 +78,7 @@ router.get('/agent', device, (req, res) => {
 router.post('/vendor-token', device, async (req, res) => {
   const user = await prisma.users.findFirst({ where: { vendor_id: req.device.vendor_id }, orderBy: { id: 'asc' }, select: { id: true, role: true, vendor_id: true } });
   if (!user) return res.status(404).json({ error: 'No user for this vendor' });
-  res.json({ token: signToken(user) });
+  res.json({ token: signToken({ id: user.id, role: 'vendor', vendor_id: user.vendor_id }) });   // 🔒 this vendor only, no admin powers
 });
 
 /** 📦 A delivery finished on the PC → the delivery log. */

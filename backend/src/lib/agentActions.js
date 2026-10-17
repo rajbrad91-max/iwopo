@@ -285,8 +285,9 @@ export async function runActionTool(name, input, vendorId, auth) {
       if (!folder) return { error: 'What should the folder be called?' };
       return { proposal: propose(v, 'gallery_folder', { album_id: album.id, name: folder }, `Add folder "${folder}" to "${album.title}"`, '') };
     }
-    const n = await prisma.photos.count({ where: { album_id: album.id } });
-    return { proposal: propose(v, 'gallery_delete', { album_id: album.id }, `Delete gallery "${album.title}"`, `${n} photos and videos are removed for good.`) };
+    const vids = await prisma.photos.count({ where: { album_id: album.id, kind: 'video' } });
+    const pics = (await prisma.photos.count({ where: { album_id: album.id } })) - vids;
+    return { proposal: propose(v, 'gallery_delete', { album_id: album.id }, `Delete gallery "${album.title}"`, `${pics} photo${pics === 1 ? '' : 's'}${vids ? ` and ${vids} video${vids === 1 ? '' : 's'}` : ''} are removed for good.`) };
   }
   if (name === 'propose_mark_selection') {
     const album = await prisma.albums.findFirst({ where: { id: Number(input.album_id), vendor_id: v }, select: { id: true, title: true } });   // 🔒 only this vendor's

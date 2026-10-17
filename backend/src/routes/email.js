@@ -1,4 +1,5 @@
 import express from 'express';
+import { logEmail } from '../lib/projectStages.js';
 import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -236,6 +237,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       subject,
       text: body,
     });
+    logEmail(lead.vendor_id, { to: lead.email, subject, kind: 'lead_reply', leadId: lead.id });   // 📧 the email log
     res.json({ ok: true, sent_to: lead.email, cc: ccEmail || null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -249,6 +251,7 @@ export async function sendLeadEmail(req, lead, subject, body) {
   const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
   const fromName = s.from_name || 'iwopo';
   await t.sendMail({ from: `"${fromName}" <${fromEmail}>`, to: lead.email, subject, text: body });
+  logEmail(lead.vendor_id, { to: lead.email, subject, kind: 'lead', leadId: lead.id });   // 📧 the email log
 }
 
 // 📬 helper used by leads route: notify vendor of new lead
@@ -321,8 +324,10 @@ export async function sendAsVendor(vendorId, { to, subject, html, text, replyTo 
       // a client replying should reach the vendor, not a platform mailbox
       replyTo: replyTo || s.from_email || undefined,
     });
+    logEmail(vendorId, { to, subject, kind: 'vendor' });   // 📧 the email log
     return { ok: true, via: s.mode === 'smtp' && s.smtp_host ? 'vendor' : 'platform' };
   } catch (e) {
+    logEmail(vendorId, { to, subject, kind: 'vendor', ok: false, error: e.message });
     return { ok: false, error: 'send_failed', message: e.message };
   }
 }

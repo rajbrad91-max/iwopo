@@ -15,6 +15,7 @@ export const SHORT = {
   pc_task: 'Work on the owner\'s PC (answer only what he asks — sizes, contents, drives only with details): wake it up, what is open (apps), power (shutdown / restart / sleep / lock / cancel — straight away), open or close an app, upload a video to a client gallery (path + album_id), status, find folders (never guess a path) and files on the NAS / drives, list / make folders, copy, move (after his yes), upload to Google Drive, make Resolve proxies for a folder, shell (Ubuntu: any terminal command, full access — delete/erase/format only after his yes, then approved:true). Long jobs report when done.',
   delivery_log: 'What was delivered to one client (by name, email or phone).',
   web_search: 'Search the web for anything outside the panel: gear, prices, places, distances, travel times, news, how-to.',
+  project_stages: 'A booking\'s production stages (backed up, sent to editor, photos/videos edited) and its last outside message and email — by client name.',
   mark_seen: 'Mark messages / notifications / leads seen ("mark them read"). Read-out items are already marked seen.',
   client_directory: 'Any question about a client in ONE call: the basics (name, phone, email, shoot, date, time, venue, booked) — or, with fields, ONLY those facts (venue, date, time, guests, contract, crew, notes…). Never money.',
   client_payment: 'A client\'s money (price, paid, balance, last payment) — ONLY when the owner asks about money.',

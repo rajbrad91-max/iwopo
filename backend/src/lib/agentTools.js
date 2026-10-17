@@ -8,6 +8,7 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import { stagesSummary } from './projectStages.js';
 import privateDb from '../config/privateDb.js';
 import { getSetting } from './settings.js';
 import { zoneOf, atLocal, nice } from './agentReminders.js';
@@ -55,7 +56,7 @@ export const TOOLS = [
   },
   {
     name: 'find_leads',
-    description: "Search the vendor's leads (inquiries and bookings). Filter by part of a name, email or phone; by status ('new', 'booked', or other statuses the panel uses); by event date range; and by the date the lead was RECEIVED (e.g. 'leads this month'). 'total' is the true count of every match; 'leads' lists up to 'limit' of them, newest first.",
+    description: "Search the vendor's leads (inquiries and bookings). Filter by part of a name, email or phone; by status ('new', 'booked', or other statuses the panel uses); by event date range; and by the date the lead was RECEIVED (e.g. 'leads this month'). 'Bookings this month' = status booked with the EVENT this month (event_from / event_to), not received. 'total' is the true count of every match; 'leads' lists up to 'limit' of them, newest first.",
     input_schema: {
       type: 'object',
       properties: {
@@ -109,6 +110,11 @@ export const TOOLS = [
     name: 'web_search',
     description: 'Search the web for anything outside the panel — gear, prices, places, distances and travel times, news, how-to. Returns a short answer to read aloud.',
     input_schema: { type: 'object', properties: { query: { type: 'string', description: 'what to look up' } }, required: ['query'] },
+  },
+  {
+    name: 'project_stages',
+    description: "A booking's production stages: data backed up (when, by whom), sent to the editor, editing done (photos and videos separately), plus the last message sent outside iwopo and the last email. By client name or lead_id.",
+    input_schema: { type: 'object', properties: { client: { type: 'string' }, lead_id: { type: 'integer' } } },
   },
   {
     name: 'mark_seen',
@@ -246,7 +252,7 @@ export async function runTool(name, input, vendorId) {
       if (input.event_from || input.event_to) {
         where.event_date = {};
         if (input.event_from) where.event_date.gte = new Date(input.event_from);
-        if (input.event_to) where.event_date.lte = new Date(input.event_to);
+        if (input.event_to) where.event_date.lte = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(input.event_to)) ? `${input.event_to}T23:59:59` : input.event_to);   // the whole last day
       }
       if (input.received_from || input.received_to) {
         where.created_at = {};
@@ -328,6 +334,7 @@ export async function runTool(name, input, vendorId) {
       const text = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ').trim();
       return text ? { answer: text.slice(0, 1200) } : { error: d.error?.message || 'No answer from the web search' };
     }
+    case 'project_stages': return stagesSummary(v, input);
     case 'mark_seen': {
       const what = String(input.what || 'all'), now = new Date(), done = [];
       if (what === 'messages' || what === 'all') { const r = await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }).catch(() => ({ count: 0 })); done.push(`${r.count} message${r.count === 1 ? '' : 's'}`); }
