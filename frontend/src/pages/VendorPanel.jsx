@@ -4286,6 +4286,8 @@ function paintPlaceholdersHtml(html) {
 
 
 function ContractSetup() {
+  const [studio, setStudio] = useState('');   // the vendor's own name for the sample preview
+  useEffect(() => { api.myProfile().then(d => setStudio(d.profile?.business_name || '')).catch(() => {}); }, []);
   const dialog = useDialog();
   const [tpls, setTpls] = useState([]);
   /* ⚠️ TRUE to begin with: "No templates yet" must not appear before the
@@ -4443,7 +4445,7 @@ function ContractSetup() {
   };
 
   const assembled = sel ? templateAssembled(sel) : '';
-  const previewHtml = showRaw ? paintPlaceholdersHtml(assembled) : fillSample(assembled, { event_type: sel?.event_type });
+  const previewHtml = showRaw ? paintPlaceholdersHtml(assembled) : fillSample(assembled, { event_type: sel?.event_type, ...(studio ? { company_name: studio } : {}) });
   const initialCount = (sel?.sections || []).filter(x => x.initial).length;
 
   if (sel) return (

@@ -422,8 +422,8 @@ export async function buildContractBody(template, lead, businessName, opts = {})
     '{{event_type}}': lead.event_type || '—',
     '{{event_date}}': fmtDate(lead.event_date) || '—',
     '{{location}}': lead.location || '—',
-    '{{hours}}': lead.hours ?? '—',
-    '{{guests}}': lead.guests ?? '—',
+    '{{hours}}': lead.hours ?? 'agreed',
+    '{{guests}}': lead.guests ?? 'the expected number of',
     '{{package_name}}': chosen?.name || 'custom',   // no package chosen: "under the custom package", never "under the — package"
     '{{total_cost}}': cash(money.final_total),
     '{{deposit}}': cash(money.deposit_amount),
@@ -482,7 +482,7 @@ export async function fillPlaceholders(text, lead, businessName) {
   const values = {
     '{{client_name}}': lead.name || '—', '{{client_email}}': lead.email || '—',
     '{{event_type}}': lead.event_type || '—', '{{event_date}}': fmtDate(lead.event_date) || '—',
-    '{{location}}': lead.location || '—', '{{hours}}': lead.hours ?? '—', '{{guests}}': lead.guests ?? '—',
+    '{{location}}': lead.location || '—', '{{hours}}': lead.hours ?? 'agreed', '{{guests}}': lead.guests ?? 'the expected number of',
     '{{total_cost}}': cash(money.final_total), '{{deposit}}': cash(money.deposit_amount),
     '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
     '{{today_date}}': today, '{{company_name}}': businessName || '—',

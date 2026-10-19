@@ -144,7 +144,7 @@ export default function SignContract({ token, previewLeadId, onRelease, onLoaded
         <div className="ct-prev-bar">
           <span className="ct-prev-tag">Preview — this is what your client will see</span>
           {c.released_at
-            ? <span className="ct-prev-ok">Released {String(c.released_at).slice(0, 10)}</span>
+            ? <span className="ct-prev-ok">Released {String(c.released_at).slice(0, 10)} · your client gets it through the packages link you send them</span>
             : <button type="button" className="ct-prev-release" onClick={() => onRelease && onRelease(c.id)}>
                 Release contract
               </button>}
