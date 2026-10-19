@@ -25,6 +25,15 @@ import requests
 HERE = Path(__file__).resolve().parent
 CFG = json.loads((HERE / 'config.json').read_text(encoding='utf-8-sig'))
 SERVER, TOKEN = CFG['server'].rstrip('/'), CFG['token']
+# 🧳 moved to iwopo.com (Raj, 2026-10-19): alphabetaone is for testing (a developer works there), so the PCs take
+# their jobs from the live server only. One time: rewrite this PC's own config, keeping everything else in it.
+if 'alphabetaone.com' in SERVER:
+    SERVER = 'https://iwopo.com'
+    try:
+        CFG['server'] = SERVER
+        (HERE / 'config.json').write_text(json.dumps(CFG, indent=2), encoding='utf-8')
+    except OSError:
+        pass   # the other copy (helper / agent) may be writing it at the same moment — it ends up the same
 H = {'X-PC-Token': TOKEN, 'Content-Type': 'application/json'}
 DATA = Path(os.environ.get('LOCALAPPDATA', str(HERE))) / 'PCAgent'
 DATA.mkdir(parents=True, exist_ok=True)
@@ -585,6 +594,30 @@ def run(job):
 MY_VERSION = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
 
 
+# ✍️ SIGNED UPDATES (Raj, 2026-10-19): a new agent is installed only if it carries Raj's signature. The private
+# key lives only on Raj's Windows PC (C:/Users/rajbr/pc-agent-signing) — never on a server, never on GitHub — so
+# nobody who can change a server or the code can make this PC run their program. RSA-3072, SHA-256, PKCS#1 v1.5.
+UPDATE_KEY_N = int('d343c3e6f4da3edefc33b2551b3d61fab2a9948b7e24a93fcde29997f399790c1eb152143e248721165a1a10b23baef1426020e1c7c5197775c67542dacdfacd45a10f8ce8332b55d0c148caf402db6d506e8fd05b2e1e592853c2fa8f8f62302aeaed7003faaa802c1adf15463991615176709a8242e6f526619ef05e8b0784fbbc0c5086e115a13805c4b76ff77906ab33e044cbbf6ba636b9d0a7e8066226188079e85a3fa25c92a6c49fb869ac5d79ef10b1dd79cea325d14543273590a421778e4a13cd792c28e4752251fa0fb6ee6a4c03441e751131206a4baf74ee655b23392635292506768a2c35ab29c5dcf0ca6cd20ff4036e07bbf8f542217039d3dc8736cc3c7e6f0455ae022fe27f10435dabf66bf5a695d0a5bc6ce1bf43fdacf5d410f8c71262529af4a669f10f171394160e66ff412ee95442840e014457d50f512d059538f8e51bedf9e37a66f07eb711809789f056de8b53f30d076a227c6c02dce4c9ddf9534aaef3fc63126a4bbd00d6697562bd1ea876bdaf91cbdf', 16)
+UPDATE_KEY_E = 65537
+_SHA256_INFO = bytes.fromhex('3031300d060960864801650304020105000420')
+
+
+def signed_by_raj(code, sig_b64):
+    """True only when sig_b64 is Raj's signature of exactly these bytes."""
+    import base64, hmac
+    try:
+        s = int.from_bytes(base64.b64decode(sig_b64 or '', validate=True), 'big')
+    except Exception:
+        return False
+    k = (UPDATE_KEY_N.bit_length() + 7) // 8
+    if not 0 < s < UPDATE_KEY_N:
+        return False
+    em = pow(s, UPDATE_KEY_E, UPDATE_KEY_N).to_bytes(k, 'big')
+    info = _SHA256_INFO + hashlib.sha256(code).digest()
+    expected = b'\x00\x01' + b'\xff' * (k - len(info) - 3) + b'\x00' + info
+    return hmac.compare_digest(em, expected)
+
+
 def update_if_newer(current):
     """The server holds the current agent.py; when it differs, replace this file and restart."""
     if not current or current == MY_VERSION:
@@ -595,6 +628,9 @@ def update_if_newer(current):
     code = r.content
     if hashlib.sha256(code).hexdigest()[:16] != current:
         log('update: download did not match the version — skipped')
+        return
+    if not signed_by_raj(code, r.headers.get('X-Agent-Signature', '')):
+        log('update REFUSED: not signed by Raj - this PC keeps running the version it has')   # ✍️
         return
     me = Path(__file__)
     me.with_suffix('.py.bak').write_bytes(me.read_bytes())

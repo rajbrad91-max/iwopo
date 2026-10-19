@@ -61,7 +61,7 @@ router.post('/claim', async (req, res) => {
 /** The agent says hello (every ~30 s) with what it can see: drives, free space, Resolve running… */
 router.post('/hello', device, async (req, res) => {
   let prev; try { prev = JSON.parse(req.device.info || '{}'); } catch { prev = {}; }
-  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { info: JSON.stringify({ ...(req.body?.helper ? {} : req.body || {}), helper_at: prev.helper_at, agent_at: prev.agent_at, version: req.body?.version || prev.version }).slice(0, 4000) } }).catch(() => {});
+  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { info: JSON.stringify({ ...(req.body?.helper ? {} : req.body || {}), helper_at: prev.helper_at, agent_at: prev.agent_at, version: req.body?.helper ? prev.version : (req.body?.version || prev.version), helper_version: req.body?.helper ? req.body?.version : prev.helper_version }).slice(0, 4000) } }).catch(() => {});
   await pcCameOnline(req.device.id).catch(() => {});        // ⏰ a wake that was waiting for it
   res.json({ ok: true, agent_version: agentFile()?.version || null });
 });
@@ -70,6 +70,10 @@ router.post('/hello', device, async (req, res) => {
 router.get('/agent', device, (req, res) => {
   const a = agentFile();
   if (!a) return res.status(404).json({ error: 'No agent on the server' });
+  // ✍️ Raj's signature travels with the code (made on his PC, never here); the agent refuses code without it
+  let sig = '';
+  try { sig = fs.readFileSync(`${AGENT_FILE}.sig`, 'utf8').trim(); } catch { /* unsigned — the PC will refuse it */ }
+  res.set('X-Agent-Signature', sig);
   res.type('text/x-python').send(a.code);
 });
 
