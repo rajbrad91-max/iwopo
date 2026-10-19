@@ -11,6 +11,7 @@ import './occasions.css';
  */
 export default function OccasionsView() {
   const [rows, setRows] = useState(null);
+  const [ahead, setAhead] = useState(null);       // how far ahead the server looks (days)
   const [draft, setDraft] = useState(null);       // { lead_id, kind, subject, body }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -18,7 +19,7 @@ export default function OccasionsView() {
 
   const load = useCallback(() => {
     api.occasions()
-      .then(d => setRows(d.occasions || []))
+      .then(d => { setRows(d.occasions || []); setAhead(d.ahead_days || null); })
       .catch(e => { setErr(e.message); setRows([]); });
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -48,9 +49,9 @@ export default function OccasionsView() {
   if (!rows.length) {
     return (
       <div className="oc-quiet">
-        Nothing coming up. Anniversaries appear here once an event has passed,
-        counted from the date on the booking. Birthdays appear once you add one
-        to a client.
+        Nothing coming up{ahead ? ` in the next ${ahead} days` : ''}. A past event&apos;s anniversary appears
+        here {ahead ? `${ahead} days` : 'a few weeks'} before it comes round, counted from the date on the booking.
+        Birthdays appear the same way once you add one to a client.
       </div>
     );
   }

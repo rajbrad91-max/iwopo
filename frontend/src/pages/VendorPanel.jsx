@@ -283,7 +283,7 @@ export default function VendorPanel({ onLogout }) {
           {profile?.logo_path
             ? <img className="brand-logo" src={`/api/me/logo/${profile.logo_path}`} alt="logo" />
             : <span>📸</span>}
-          <span className="nav-txt">{profile?.business_name || 'My Studio'}<small>VENDOR</small></span>
+          <span className="nav-txt">{profile ? (profile.business_name || 'My Studio') : (user?.name || '')}<small>VENDOR</small></span>
         </div>
         <div className="nav-group">WORK</div>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => go('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></div>
@@ -2876,7 +2876,7 @@ function DashHome({ goTab }) {
                 <div className="ev-body">
                   <div className="ev-name">{b.name}</div>
                   <div className="ev-type">{b.event_type}{b.package_snapshot?.name ? ` · ${b.package_snapshot.name}` : ''}</div>
-                  {(b.timing_from || b.timing_to) && <div className="ev-line">🕐 {b.timing_from ? fmtTime(b.timing_from) : '?'} — {b.timing_to ? fmtTime(b.timing_to) : '?'}</div>}
+                  <div className="ev-line">🕐 {b.timing_from || b.timing_to ? `${b.timing_from ? fmtTime(b.timing_from) : '?'} — ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : 'Time to be confirmed'}</div>
                   {b.location && <div className="ev-line">📍 {b.location}</div>}
                   {b.phone && <div className="ev-line">📞 {b.phone}</div>}
                   {b.email && <div className="ev-line">✉️ {b.email}</div>}
@@ -3940,12 +3940,12 @@ function MoneySection({ lead }) {
         <div className="ms-field">
           <label className="ms-label">Discount %</label>
           <input className="ms-input" type="number"
-            value={money.discount_percent} onChange={e => setMoney({ ...money, discount_percent: e.target.value })} onBlur={saveMoney} />
+            value={money.discount_percent} onChange={e => setMoney({ ...money, discount_percent: e.target.value })} onBlur={saveMoney} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} />
         </div>
         <div className="ms-field">
           <label className="ms-label">Custom Billed ($)</label>
           <input className="ms-input" type="number" placeholder="auto"
-            value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} />
+            value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} />
         </div>
         <p className="ms-deposit-note ms-deposit-note-full">
           {depositMode === 'percent'
@@ -4075,7 +4075,7 @@ function AllContracts() {
       </p>
       <div className="table-wrap">
         <table>
-        <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th>Signed</th><th>Documents</th></tr></thead>
+        <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th className="ct-date">Signed</th><th>Documents</th></tr></thead>
         <tbody>
           {shown.length === 0 ? (
             <tr><td colSpan="6" className="empty">
@@ -4087,7 +4087,7 @@ function AllContracts() {
               <td className="biz">{c.client_name}</td>
               <td>{c.title}</td>
               <td>{c.signed_name || '—'}</td>
-              <td>{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
+              <td className="ct-date">{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
               {/* Both open in a tab rather than landing on disk: saving a file
                   before you have looked at it is a guess. Each document carries
                   its own Save as PDF button once it's open. */}
@@ -4671,7 +4671,7 @@ function BookingsView({ routeBooking, onOpenBooking }) {
   const [q, setQ] = useState('');
   useEffect(() => {
     api.bookings().then(d => setBookings(d.bookings || [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  }, [routeBooking]);
 
   async function removeBooking(b, e) {
     e.stopPropagation();                       // don't open the booking behind it
@@ -5578,11 +5578,9 @@ function DevicesSetup() {
           {rows.map(d => (
             <tr key={d.id}>
               <td>{d.name}</td>
-              <td style={{ color: 'var(--muted)' }}>
-                {d.last_used ? fmtDateTime(d.last_used) : 'never'}
-              </td>
-              <td style={{ color: 'var(--muted)' }}>{fmtDateTime(d.created_at)}</td>
-              <td><button className="refresh" style={{ fontSize: 12 }} onClick={() => revoke(d)}>Switch off</button></td>
+              <td className="dev-date">{d.last_used ? fmtDateTime(d.last_used) : 'never'}</td>
+              <td className="dev-date">{fmtDateTime(d.created_at)}</td>
+              <td><button className="refresh dev-off" onClick={() => revoke(d)}>Switch off</button></td>
             </tr>
           ))}
         </tbody></table>

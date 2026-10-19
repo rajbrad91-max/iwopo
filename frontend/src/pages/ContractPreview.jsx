@@ -17,6 +17,7 @@ import './contractpreview.css';
  */
 export default function ContractPreview({ leadId }) {
   const [released, setReleased] = useState(false);
+  const [docKey, setDocKey] = useState(0);   // bumped after release: the document reloads and shows "Released"
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   /* the vendor's templates, so they can choose which agreement to send */
@@ -70,7 +71,8 @@ export default function ContractPreview({ leadId }) {
     try {
       await api.releaseContract(contractId);
       setReleased(true);
-      setMsg('✅ Released — the packages can be sent now.');
+      setDocKey(k => k + 1);
+      setMsg('✅ Released. The client has not been told yet: send the packages to share it with them.');
     } catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
@@ -108,7 +110,7 @@ export default function ContractPreview({ leadId }) {
           )}
 
       <div className="cp-doc">
-        <SignContract previewLeadId={leadId} onRelease={release} onLoaded={onLoaded} />
+        <SignContract key={docKey} previewLeadId={leadId} onRelease={release} onLoaded={onLoaded} />
       </div>
     </div>
   );

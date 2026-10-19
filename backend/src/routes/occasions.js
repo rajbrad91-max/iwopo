@@ -179,7 +179,7 @@ router.get('/', requireAuth, async (req, res) => {
   const v = vid(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
-    res.json({ occasions: await upcomingFor(v), notify_days: NOTIFY_DAYS });
+    res.json({ occasions: await upcomingFor(v), notify_days: NOTIFY_DAYS, ahead_days: AHEAD_DAYS });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

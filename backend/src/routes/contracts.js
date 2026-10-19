@@ -424,7 +424,7 @@ export async function buildContractBody(template, lead, businessName, opts = {})
     '{{location}}': lead.location || '—',
     '{{hours}}': lead.hours ?? '—',
     '{{guests}}': lead.guests ?? '—',
-    '{{package_name}}': pkgName,
+    '{{package_name}}': chosen?.name || 'custom',   // no package chosen: "under the custom package", never "under the — package"
     '{{total_cost}}': cash(money.final_total),
     '{{deposit}}': cash(money.deposit_amount),
     // on a contract this means what's left AFTER the deposit, not what's
