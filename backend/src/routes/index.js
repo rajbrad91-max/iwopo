@@ -121,7 +121,6 @@ router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req,
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 🔓 Super admin: reveal full AWS creds (edit-mode eye toggle)
 /**
  * 📧 POST /api/settings/platform/test-email → prove the settings work.
  *
@@ -238,25 +237,9 @@ router.post('/settings/platform/test-quo', requireAuth, requireSuperAdmin, async
   }
 });
 
-router.get('/settings/platform/reveal', requireAuth, requireSuperAdmin, async (req, res) => {
-  try {
-    const s = await getAllSettings();
-    res.json({
-      aws_access_key: s.aws_access_key || '', aws_secret_key: s.aws_secret_key || '',
-      aws_region: s.aws_region || '', anthropic_api_key: s.anthropic_api_key || '',
-      agent_api_key: s.agent_api_key || '',
-      gemini_api_key: s.gemini_api_key || '',
-      deepgram_api_key: s.deepgram_api_key || '',
-      local_voice_token: s.local_voice_token || '',
-      r2_secret_access_key: s.r2_secret_access_key || '',
-      r2_private_secret_access_key: s.r2_private_secret_access_key || '',
-      r2_public_secret_access_key: s.r2_public_secret_access_key || '',
-      smtp_pass: s.smtp_pass || '',
-      quo_api_key: s.quo_api_key || '',
-      quo_webhook_secret: s.quo_webhook_secret || '',
-    });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+/* 🔒 Keys are WRITE-ONLY (Raj, 2026-10-19): there is no route that returns a full key — not even to the
+   super admin. A key can be replaced (paste a new one) but never read back; to see one, use the provider's
+   own dashboard. The settings view shows them masked, and saving skips empty and masked values. */
 
 router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
   try {

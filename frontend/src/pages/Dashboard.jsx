@@ -1468,6 +1468,9 @@ function GeminiVoiceSettings({ s, setS, editing }) {
 /* 🔑 The clients' AI chatbot key, kept masked. The AI Agent (the owner's
    private assistant) has its own key in Settings, so Anthropic's bill keeps
    the two apart (Raj, 2026-10-10). */
+/** 🔒 Settings that are keys or passwords — write-only: never read back, only replaced. */
+const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass', 'quo_api_key', 'quo_webhook_secret'];
+
 function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
   const [s, setS] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -1479,7 +1482,7 @@ function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
 
   async function startEdit() {
     setEditing(true); setShow(false);
-    try { const real = await api.revealAwsCreds(); setS(v => ({ ...v, [field]: real[field] || '' })); } catch {}
+    setS(v => ({ ...v, [field]: '' }));                  // 🔒 write-only: paste a new key, or leave empty to keep the current one
   }
   async function save() {
     try {
@@ -1488,7 +1491,7 @@ function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
       api.platformSettings().then(r => setS(r.settings || {})).catch(() => {});
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
-  const val = () => (editing && show ? (s[field] || '') : (s[field] ? '••••••••••••••••' : ''));
+  const val = () => (editing ? (s[field] || '') : (s[field] ? '••••••••••••••••' : ''));
 
   return (
     <>
@@ -1498,8 +1501,8 @@ function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
         <div className="cb-api-row">
           <div className="cb-api-field">
             <label className="lbl">API Key</label>
-            <input className="cb-input" readOnly={!editing} value={val()}
-              placeholder="sk-ant-…"
+            <input className="cb-input" type={editing && !show ? 'password' : 'text'} readOnly={!editing} value={val()} autoComplete="off"
+              placeholder={editing ? 'Paste a new key (empty keeps the current one)' : 'not set'}
               onChange={e => setS({ ...s, [field]: e.target.value })} />
           </div>
           <div className="cb-api-field">
@@ -1795,8 +1798,8 @@ function FaceEngineSettings() {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function startEdit() {
-    // pull real creds to edit
-    try { const real = await api.revealAwsCreds(); setS(v => ({ ...v, ...real })); } catch {}
+    // 🔒 write-only keys: the secret boxes open empty — paste a new one, or leave empty to keep the current one
+    setS(v => ({ ...v, ...Object.fromEntries(SECRET_FIELDS.map(k => [k, ''])) }));
     setEditing(true); setShow(false);
   }
   function stopEdit() {
@@ -1931,7 +1934,7 @@ function FaceEngineSettings() {
 
               <div><label className="lbl">Shared Secret Access Key</label>
                 <input style={editing ? box : roBox} readOnly={!editing}
-                  value={s.r2_secret_access_key || ''}
+                  value={s.r2_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_secret_access_key: e.target.value })} /></div>
 
               {/* ── 🔒 private ─────────────────────────────────────────── */}
@@ -1954,7 +1957,7 @@ function FaceEngineSettings() {
               <div><label className="lbl">Secret Access Key <span style={{ color: 'var(--muted)' }}>— optional</span></label>
                 <input style={editing ? box : roBox} readOnly={!editing}
                   placeholder="leave blank to use the shared key"
-                  value={s.r2_private_secret_access_key || ''}
+                  value={s.r2_private_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_private_secret_access_key: e.target.value })} /></div>
 
               {/* ── 🌐 public ──────────────────────────────────────────── */}
@@ -1977,7 +1980,7 @@ function FaceEngineSettings() {
               <div><label className="lbl">Secret Access Key <span style={{ color: 'var(--muted)' }}>— optional</span></label>
                 <input style={editing ? box : roBox} readOnly={!editing}
                   placeholder="leave blank to use the shared key"
-                  value={s.r2_public_secret_access_key || ''}
+                  value={s.r2_public_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_public_secret_access_key: e.target.value })} /></div>
 
               <div><label className="lbl">Public URL</label>
@@ -2044,7 +2047,7 @@ function FaceEngineSettings() {
 
             <div><label className="lbl">Password</label>
               <input type="password" style={editing ? box : roBox} readOnly={!editing}
-                value={s.smtp_pass || ''}
+                value={s.smtp_pass || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                 onChange={e => setS({ ...s, smtp_pass: e.target.value })} /></div>
 
             <div><label className="lbl">From address</label>
@@ -2173,7 +2176,7 @@ function FaceEngineSettings() {
 
             <div><label className="lbl">API key</label>
               <input type="password" style={editing ? box : roBox} readOnly={!editing}
-                value={s.quo_api_key || ''}
+                value={s.quo_api_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                 onChange={e => setS({ ...s, quo_api_key: e.target.value })} /></div>
 
             {/* Quo can give every webhook its own signing secret (messages, calls,
