@@ -876,6 +876,7 @@ export const api = {
     if (since) p.set('since', since);
     return request('/comms' + (p.toString() ? '?' + p : ''));
   },
+  commsStatus: () => request('/comms/status'),
   commsSync: () => request('/comms/sync', { method: 'POST' }),
   // 🎞️ Raw Selector (private): how an album's RAWs stand; 403 when the feature is off
   rawselStatus: (albumId) => request(`/rawsel/albums/${albumId}`),

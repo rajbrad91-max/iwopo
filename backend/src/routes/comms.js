@@ -182,7 +182,7 @@ router.post('/message', requireAuth,
     const v = vid(req);
     try {
       const cfg = await quoConfig();
-      if (!cfg.ready || cfg.vendorId !== v) return res.status(403).json({ error: 'Quo is connected to a different account.' });
+      if (!cfg.ready || cfg.vendorId !== v) return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
       const key10 = tenDigits(req.body?.number);
       const text = String(req.body?.text || '').trim();
       if (key10.length !== 10) return res.status(400).json({ error: 'That is not a phone number.' });
@@ -227,6 +227,25 @@ router.post('/message', requireAuth,
  * because a sync button that says nothing is the one Raj ends up pressing
  * repeatedly.
  */
+/* 🔌 GET /api/comms/status — is the business line connected for THIS vendor, and which number texts go from.
+   Vendor-facing: never names settings pages or keys. Quo's number list is cached for five minutes. */
+let numbersCache = { at: 0, key: '', list: [] };
+router.get('/status', requireAuth, async (req, res) => {
+  try {
+    const cfg = await quoConfig();
+    if (!cfg.ready || cfg.vendorId !== vid(req)) return res.json({ connected: false });
+    let from = null;
+    try {
+      if (numbersCache.key !== cfg.key || Date.now() - numbersCache.at > 300_000) numbersCache = { at: Date.now(), key: cfg.key, list: await listPhoneNumbers(cfg.key) };
+      const pick = cfg.phoneNumberId ? numbersCache.list.find(n => n.id === cfg.phoneNumberId) : numbersCache.list[0];
+      from = pick?.number || pick?.phoneNumber || pick?.formattedNumber || null;
+    } catch { /* the number is a nicety; connected is what matters */ }
+    res.json({ connected: true, from });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+const NOT_CONNECTED = 'Calls & messages are not connected for this account yet.';
+
 router.post('/sync', requireAuth, async (req, res) => {
   try {
     /* Each refusal says what to do. "Not configured" was returned for every
@@ -234,15 +253,16 @@ router.post('/sync', requireAuth, async (req, res) => {
        to a key that was fine while the vendor box sat empty. */
     const cfg = await quoConfig();
     if (!cfg.ready) {
-      return res.status(400).json({ error: `Quo is missing ${cfg.missing.join(' and ')} — set it in Super Admin → Settings → Calls & messages.` });
+      console.warn('[comms] sync refused, Quo is missing:', cfg.missing.join(', '));   // the detail is for the logs and Super Admin, not the vendor
+      return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
     }
     // 🔒 the mirrored calls belong to ONE vendor; anybody else would sync into a timeline they cannot see
     if (cfg.vendorId !== vid(req)) {
-      return res.status(403).json({ error: 'Quo is connected to a different account.' });
+      return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
     }
     const r = await pollComms();
     if (r.skipped === 'already running') return res.json({ ok: true, added: 0, note: 'A sync is already running — new calls will appear in a moment.' });
-    if (r.skipped) return res.status(400).json({ error: `Quo is missing ${(r.missing || []).join(' and ')}.` });
+    if (r.skipped) { console.warn('[comms] sync skipped, Quo is missing:', (r.missing || []).join(', ')); return res.status(409).json({ error: NOT_CONNECTED, not_connected: true }); }
     if (r.error) return res.status(400).json({ error: r.error });
     const note = r.failed ? `⚠️ ${r.added || 0} synced, but Quo refused ${r.failed} request(s) — some calls or messages may be missing.` : undefined;
     res.json({ ok: true, added: r.added || 0, filled: r.filled || 0, ...(note ? { note } : {}) });

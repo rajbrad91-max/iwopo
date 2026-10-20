@@ -456,7 +456,7 @@ router.post('/', async (req, res) => {
   try {
     const lead = await prisma.leads.create({ data });
     notifyNewLead(lead);
-    notify(lead.vendor_id, `🆕 New inquiry from ${lead.name || 'a client'}`, `${lead.event_type || 'Event'} · ${lead.event_date ? String(lead.event_date).slice(0,10) : 'no date'}`, 'lead', { type: 'lead', id: lead.id });
+    notify(lead.vendor_id, `🆕 New inquiry from ${lead.name || 'a client'}`, `${lead.event_type || 'Event'} · ${lead.event_date ? new Date(lead.event_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'no date'}`, 'lead', { type: 'lead', id: lead.id });
     res.status(201).json({ lead });
   } catch (e) {
     // a public caller must never see a raw Prisma error

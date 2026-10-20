@@ -185,3 +185,42 @@ a.cm-leadnote:hover { text-decoration: underline; }
 
 /* 💡 "Save as <lead name>" — a light suggestion, not a call to action */
 .cm-suggest { border-style: dashed; border-color: var(--teal, #0f9f8f); color: var(--teal, #0f9f8f); background: transparent; }
+
+/* ✉️ New text, status pill, banners, empty states, delivery — Muse review 2026-10-20 */
+.cm-status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+.cm-status.is-on { color: var(--teal); background: var(--teal-soft); border-color: transparent; }
+.cm-banner { margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); }
+.cm-empty { text-align: center; padding: 44px 20px; border: 1.5px dashed var(--line); border-radius: 14px; }
+.cm-empty-art { font-size: 34px; margin-bottom: 8px; }
+.cm-empty-t { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--text); }
+.cm-empty .cm-f { margin-top: 12px; }
+.cm-sheet-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.cm-sheet-t { margin: 0; font-size: 17px; font-weight: 700; color: var(--text); }
+.cm-x { border: 0; background: none; font-size: 16px; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+.cm-x:hover { background: var(--fill); color: var(--text); }
+.cm-sheet-p { font-size: 14px; line-height: 1.55; color: var(--text); margin: 6px 0 4px; }
+.cm-from { margin: 2px 0 12px; font-size: 13px; color: var(--muted); }
+.cm-to { display: flex; gap: 8px; }
+.cm-cc { width: 128px; flex: none; }
+.cm-picked { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); font-size: 14px; }
+.cm-src { margin-left: 8px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--teal-soft); color: var(--teal); }
+.cm-sugg { list-style: none; margin: 6px 0 0; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.cm-sugg button { width: 100%; text-align: left; display: flex; gap: 8px; align-items: center; padding: 7px 9px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 13.5px; cursor: pointer; }
+.cm-sugg button:hover { background: var(--fill); }
+.cm-sugg button span { color: var(--muted); font-size: 12.5px; }
+.cm-field-err { margin: 6px 0 0; font-size: 13px; color: #dc2626; }
+.cm-msg-h { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.cm-quick { width: auto; max-width: 260px; font-size: 12.5px; padding: 5px 8px; }
+.cm-count-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.cm-seg { font-size: 12px; color: var(--muted); }
+.cm-seg.is-warn, .cm-count.is-warn { color: #b45309; font-weight: 600; }
+.cm-linkbtn { border: 0; background: none; padding: 0 0 0 8px; font: inherit; font-size: 12px; font-weight: 600; color: var(--teal); cursor: pointer; }
+.cm-linkbtn:disabled { color: var(--muted); cursor: default; }
+.cm-review { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 14px; }
+.cm-review .lbl { display: block; margin-bottom: 2px; }
+.cm-review-msg { white-space: pre-wrap; padding: 10px 12px; border-radius: 10px; background: var(--teal-soft); color: var(--text); }
+.cm-real { margin: 0; font-size: 13px; font-weight: 600; color: #b45309; }
+.cm-fail { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: #b91c1c; background: color-mix(in srgb, #dc2626 9%, transparent); }
+.cm-dlv.is-ok { color: var(--teal); }
+.cm-dlv.is-bad { color: #dc2626; font-weight: 600; }
+.cm-dlv.is-wait { color: var(--muted); }

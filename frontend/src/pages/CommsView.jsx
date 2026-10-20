@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { phoneChars } from '../lib/phone';
 import { api, authFetch, fmtDateTime, vendorDayKey } from '../lib/api';
 import './comms.css';
+import CommsNewText, { prettyNumber, smsCount } from './CommsNewText.jsx';
 
 /* How often the open page asks for anything new. Five seconds: the request is
    tiny — it asks only for events newer than the newest one already held, and
@@ -188,7 +188,7 @@ function LeadState({ e, onLead, onBooking, busy }) {
       )}
       {s === 'none' && <div className="cm-leadnote">🤷 This call didn't sound like an inquiry, so no lead was made.</div>}
       {s === 'no_text' && <div className="cm-leadnote">⚠️ Quo never wrote a transcript for this call — add the lead in Leads.</div>}
-      {s === 'no_ai' && <div className="cm-leadnote">🤖 The AI isn't set up yet — add its key in Super Admin → AI Chat → API Key, and this lead is made by itself.</div>}
+      {s === 'no_ai' && <div className="cm-leadnote">🤖 Making leads from calls isn't switched on yet.</div>}
       {s === 'failed' && <div className="cm-leadnote">⚠️ The AI could not read this call — add the lead in Leads.</div>}
 
       {e.booking_state === 'suggested' && (
@@ -221,6 +221,9 @@ export default function CommsView() {
   const [badges, setBadges] = useState({});       // personKey → { kind: 'lead'|'booked', lead_id, … }
   const [kind, setKind] = useState('');
   const [q, setQ] = useState('');
+  const [qInput, setQInput] = useState('');      // what is typed; q follows once typing pauses
+  const [status, setStatus] = useState(null);     // { connected, from } — the business line
+  const [slow, setSlow] = useState(false);        // a load that gave up
   const [party, setParty] = useState(null);       // personKey of the open conversation
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
@@ -231,23 +234,28 @@ export default function CommsView() {
   const newest = useRef(null);
   const streamRef = useRef(null);
 
+  /* The list stays on screen while it refreshes (tab, search); only the first load shows "Loading…".
+     A load that takes over twelve seconds gives up with a Retry instead of spinning forever. */
   const load = useCallback(async () => {
-    setLoading(true); setErr('');
+    setLoading(prev => prev || !newest.current); setSlow(false);
     try {
-      const d = await api.comms({ kind, q });
+      const d = await Promise.race([api.comms({ kind, q }), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 12_000))]);
       setEvents(d.events || []);
       setBadges(d.badges || {});
       newest.current = d.events?.[0]?.occurred_at || null;
-    } catch (e) { setErr(e.message); }
+    } catch (e) { if (e.message === 'slow') setSlow(true); else setErr(e.message); }
     finally { setLoading(false); }
   }, [kind, q]);
 
+  useEffect(() => { const t = setTimeout(() => setQ(qInput.trim()), 300); return () => clearTimeout(t); }, [qInput]);
+  useEffect(() => { api.commsStatus().then(setStatus).catch(() => setStatus({ connected: false })); }, []);
   useEffect(() => { load(); }, [load]);
 
   /* 📋 While a call is waiting for its lead (or a summary is still coming),
      re-read the timeline quietly every 15 s — the live tick only brings NEW
      rows, and "lead created" is a change to an old one. */
-  const pending = events.some(e => e.lead_state === 'waiting' || e.lead_state === 'working');
+  const pending = events.some(e => e.lead_state === 'waiting' || e.lead_state === 'working'
+    || (e.kind === 'message' && e.direction === 'outgoing' && ['queued', 'sending', 'sent'].includes(e.status) && Date.now() - new Date(e.occurred_at) < 600_000));
   useEffect(() => {
     if (!pending) return undefined;
     const t = setInterval(() => {
@@ -376,7 +384,7 @@ export default function CommsView() {
       } else if (r.state === 'none') {
         setSynced('🤷 That call did not sound like an inquiry, so no lead was made');
       } else if (r.state === 'no_ai') {
-        setSynced('🤖 Add the AI key in Super Admin → AI Chat → API Key — the lead is then made by itself');
+        setSynced('🤖 Making leads from calls isn\'t switched on yet');
       }
       setTimeout(() => setSynced(''), 6000);
     } catch (e) { setErr(e.message); }
@@ -454,32 +462,22 @@ export default function CommsView() {
     finally { setSending(false); }
   }
 
-  /* ➕ A NEW conversation (Raj, 2026-10-11): someone you have never called or
-     texted. The text goes first — that is what makes the thread — and the
-     name, if given, is then saved as a Quo contact like any other. */
-  const [fresh, setFresh] = useState(null);           // { number, first_name, last_name, text }
-  const [freshBusy, setFreshBusy] = useState(false);
-  async function sendFresh() {
-    const number = fresh.number.trim(), text = fresh.text.trim();
-    if (digits(number).length < 10 || !text || freshBusy) return;
-    setFreshBusy(true); setErr('');
+  async function retryText(e) {
+    if (!active?.number || sending) return;
+    setSending(true); setErr('');
     try {
-      const r = await api.commsSendText(number, text, true);
-      let ev = r.event;
-      if (fresh.first_name.trim()) {
-        const c = await api.commsSaveContact({ number, first_name: fresh.first_name.trim(), last_name: fresh.last_name.trim(), email: '' }).catch(() => null);
-        if (c && ev) ev = { ...ev, contact_name: c.name };
-      }
-      if (ev) {
-        setEvents(prev => (prev.some(e => e.external_id === ev.external_id) ? prev : [ev, ...prev]));
-        newest.current = ev.occurred_at;
-      }
-      setParty(personKey(number));
-      setFresh(null);
-      setSynced('✅ Sent — the conversation is open');
-      setTimeout(() => setSynced(''), 5000);
-    } catch (e) { setErr(e.message); }
-    finally { setFreshBusy(false); }
+      const r = await api.commsSendText(active.number, e.body || '');
+      if (r.event) { setEvents(prev => [r.event, ...prev]); newest.current = r.event.occurred_at; }
+    } catch (x) { setErr(x.message); }
+    finally { setSending(false); }
+  }
+
+  /* ✉️ "＋ New text" (CommsNewText.jsx): a confirmed send starts the conversation, which opens at the top. */
+  const [composing, setComposing] = useState(false);
+  function startedConversation(ev, key) {
+    if (ev) { setEvents(prev => (prev.some(x => x.external_id === ev.external_id) ? prev : [ev, ...prev])); newest.current = ev.occurred_at; }
+    setParty(key);
+    setComposing(false);
   }
 
   /* A sync that found nothing new used to say nothing at all, so a working
@@ -494,7 +492,7 @@ export default function CommsView() {
       if (r.filled) bits.push(`${r.filled} call${r.filled === 1 ? '' : 's'} filled in`);
       setSynced(r.note || (bits.length ? `✅ ${bits.join(', ')}` : '✅ Up to date — nothing new from Quo'));
       setTimeout(() => setSynced(''), 5000);
-    } catch (e) { setErr(e.message); }
+    } catch (e) { if (/not connected/i.test(e.message)) setStatus({ connected: false }); else setErr(e.message); }
     finally { setSyncing(false); }
   }
 
@@ -505,23 +503,42 @@ export default function CommsView() {
     <div className={`cm ${active ? 'has-open' : ''}`}>
       <div className="cm-bar">
         <input className="cm-search" placeholder="Search a name, number or words said"
-          value={q} onChange={e => setQ(e.target.value)} />
+          value={qInput} onChange={e => setQInput(e.target.value)} />
         <button className={`cm-f ${kind === '' ? 'is-on' : ''}`} onClick={() => setKind('')}>All</button>
         <button className={`cm-f ${kind === 'call' ? 'is-on' : ''}`} onClick={() => setKind('call')}>📞 Calls</button>
         <button className={`cm-f ${kind === 'message' ? 'is-on' : ''}`} onClick={() => setKind('message')}>💬 Texts</button>
-        <button className="cm-f is-on" onClick={() => setFresh({ number: '', first_name: '', last_name: '', text: '' })}>＋ New message</button>
-        <button className="cm-f" disabled={syncing} onClick={syncNow}>{syncing ? 'Syncing…' : '↻ Sync now'}</button>
-        <span className="cm-live" title="New calls and texts appear on their own">● live</span>
+        <button className="cm-f is-on" title="Start a conversation by text" onClick={() => setComposing(true)}>＋ New text</button>
+        <button className="cm-f" disabled={syncing || status?.connected === false} onClick={syncNow}>{syncing ? 'Syncing…' : '↻ Sync now'}</button>
+        {status && (status.connected
+          ? <span className="cm-status is-on" title="New calls and texts appear by themselves">● Connected{status.from ? ` · ${prettyNumber(status.from)}` : ''}</span>
+          : <span className="cm-status" title="Your business phone line isn't linked to iwopo yet">○ Not connected</span>)}
       </div>
 
       {err && <div className="cm-err">⚠️ {err}</div>}
       {synced && <div className="cm-new">{synced}</div>}
 
+      {status?.connected === false && (
+        <div className="cm-banner" role="status">
+          <b>Calls &amp; messages aren&apos;t connected yet.</b> Once your business phone line is linked to iwopo, every call and text shows here by itself.
+        </div>
+      )}
+      {slow && <div className="cm-err">⚠️ Calls and texts are taking too long to load. <button className="cm-f" onClick={load}>Retry</button></div>}
+
       {loading ? <p className="cm-quiet">Loading…</p>
        : events.length === 0 ? (
-        <p className="cm-quiet">
-          No calls or texts yet. They appear here as they happen once Quo is connected — press Sync now to fetch the last month.
-        </p>
+        q ? <p className="cm-quiet">No results for &ldquo;{q}&rdquo;{kind ? ` in ${kind === 'call' ? 'calls' : 'texts'}` : ''}.</p>
+        : kind === 'call' ? <p className="cm-quiet">No calls yet.</p>
+        : kind === 'message' ? <p className="cm-quiet">No texts yet.</p>
+        : (
+          <div className="cm-empty">
+            <div className="cm-empty-art" aria-hidden="true">📞 💬</div>
+            <p className="cm-empty-t">Your calls and texts live here</p>
+            <p className="cm-quiet">Every call and text with a client, grouped by person, with call summaries and their lead or booking alongside.</p>
+            {status?.connected
+              ? <button className="cm-f is-on" onClick={() => setComposing(true)}>＋ Start a conversation</button>
+              : <p className="cm-quiet">They appear here once your business phone line is connected.</p>}
+          </div>
+        )
       ) : (
         <div className="cm-wrap">
           <nav className="cm-people" aria-label="People">
@@ -592,7 +609,17 @@ export default function CommsView() {
                         : (
                           <div className={`cm-msg ${e.direction === 'outgoing' ? 'is-out' : 'is-in'}`}>
                             <div className="cm-bubble">{e.body || <em>(no text)</em>}</div>
-                            <div className="cm-mtime">{clock(e.occurred_at)}</div>
+                            <div className="cm-mtime">
+                              {clock(e.occurred_at)}
+                              {e.direction === 'outgoing' && e.status && (
+                                <span className={`cm-dlv is-${['failed', 'undelivered'].includes(e.status) ? 'bad' : e.status === 'delivered' ? 'ok' : 'wait'}`}>
+                                  {' · '}{['failed', 'undelivered'].includes(e.status) ? 'Failed' : e.status === 'delivered' ? 'Delivered' : ['queued', 'sending'].includes(e.status) ? 'Sending…' : 'Sent'}
+                                </span>
+                              )}
+                              {e.direction === 'outgoing' && ['failed', 'undelivered'].includes(e.status) && (
+                                <button className="cm-linkbtn" disabled={sending} onClick={() => retryText(e)}>Retry</button>
+                              )}
+                            </div>
                           </div>
                         )}
                     </div>
@@ -609,7 +636,7 @@ export default function CommsView() {
                   <button className="cm-f is-on cm-send" disabled={sending || !draft.trim()} onClick={sendText}>
                     {sending ? 'Sending…' : 'Send'}
                   </button>
-                  {draft.length > 300 && <span className="cm-count">{draft.length}/1600</span>}
+                  {draft.length > 0 && (() => { const n = smsCount(draft); return <span className={`cm-count ${n.segments > 1 ? 'is-warn' : ''}`}>{n.len}/{n.limit} · {n.segments} segment{n.segments === 1 ? '' : 's'}</span>; })()}
                 </div>
               )}
             </>)}
@@ -617,39 +644,7 @@ export default function CommsView() {
         </div>
       )}
 
-      {fresh && (
-        <div className="cm-modal" onClick={() => setFresh(null)}>
-          <div className="cm-sheet" onClick={ev => ev.stopPropagation()}>
-            <div className="cm-sheet-h">New message — sent from your business number through Quo. A name, if you add one, is saved as a contact in Quo too.</div>
-            <div className="cm-grid">
-              <div className="cm-span">
-                <label className="lbl">Phone number</label>
-                <input className="cm-input" type="tel" inputMode="tel" autoComplete="off" placeholder="604 555 0123" autoFocus
-                  value={fresh.number} onChange={ev => setFresh({ ...fresh, number: phoneChars(ev.target.value) })} />
-              </div>
-              <div>
-                <label className="lbl">First name (optional)</label>
-                <input className="cm-input" autoComplete="off" value={fresh.first_name} onChange={ev => setFresh({ ...fresh, first_name: ev.target.value })} />
-              </div>
-              <div>
-                <label className="lbl">Last name (optional)</label>
-                <input className="cm-input" autoComplete="off" value={fresh.last_name} onChange={ev => setFresh({ ...fresh, last_name: ev.target.value })} />
-              </div>
-              <div className="cm-span">
-                <label className="lbl">Message</label>
-                <textarea className="cm-input cm-newtext" rows={4} maxLength={1600} placeholder="Hi, it's Raj from Perfect Poses…"
-                  value={fresh.text} onChange={ev => setFresh({ ...fresh, text: ev.target.value })} />
-              </div>
-            </div>
-            <div className="cm-sheet-f">
-              <button className="cm-f" onClick={() => setFresh(null)}>Cancel</button>
-              <button className="cm-f is-on" disabled={freshBusy || digits(fresh.number).length < 10 || !fresh.text.trim()} onClick={sendFresh}>
-                {freshBusy ? 'Sending…' : 'Send'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {composing && <CommsNewText status={status} people={people} onSent={startedConversation} onClose={() => setComposing(false)} />}
 
       {contact && (
         <div className="cm-modal" onClick={() => setContact(null)}>

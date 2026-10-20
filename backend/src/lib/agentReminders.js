@@ -71,8 +71,8 @@ export async function alertsFor(vendorId, { from = new Date(Date.now() - 6 * 360
       if (at < from || at > until || at > new Date(r.due_at.getTime() + 86400e3)) continue;
       out.push({
         id: `${r.id}-${s.days}`, reminder_id: r.id, at, urgency: s.urgency,
-        title: `${s.days <= 1 ? '🚨' : s.days <= 2 ? '⚠️' : '📅'} ${r.title} — ${s.say}`,
-        body: `Due ${new Date(r.due_at).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' })}${r.kind === 'delivery' ? ' · not marked delivered yet' : ''}`,
+        title: `${s.days <= 1 ? '🚨' : s.days <= 2 ? '⚠️' : '📅'} ${r.title} — due ${new Date(r.due_at).toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`,
+        body: `${s.say[0].toUpperCase()}${s.say.slice(1)} when this was sent${r.kind === 'delivery' ? ' · not marked delivered yet' : ''}`,
       });
     }
   }
