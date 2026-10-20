@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, authFetch } from '../lib/api';
 import { fmtBytes } from './FileFlyerView.jsx';
 import { useDialog } from '../lib/dialog.jsx';
+import ShareDialog from './ShareDialog.jsx';
 
 /** Icon for a file with no preview — from the extension, since the stored mime
  *  is whatever the uploading client claimed and is often just octet-stream. */
@@ -17,6 +18,59 @@ function iconFor(name) {
   if (/^(psd|ai|indd|xd|fig|sketch)$/.test(e)) return '🎨';
   if (/^(raw|cr2|nef|arw|dng)$/.test(e)) return '📷';
   return '📎';
+}
+
+/** ⋯ The quieter actions for one row. Destructive ones live here, never one click from the main action. */
+function RowMenu({ label, items }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', close); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  return (
+    <span className="fd-more" ref={ref}>
+      <button type="button" className="fd-act fd-more-btn" aria-label={`More for ${label}`} aria-expanded={open}
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}>⋯</button>
+      {open && (
+        <span className="fd-menu" role="menu">
+          {items.map(i => (
+            <button key={i.label} type="button" role="menuitem" className={`fd-menu-i ${i.danger ? 'is-del' : ''}`}
+              onClick={e => { e.stopPropagation(); setOpen(false); i.run(e); }}>{i.label}</button>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
+const looksVideo = (n) => /\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(String(n));
+
+/** 🎬 A still frame from a video on the vendor's own computer (no upload needed to make it). null if the
+    browser cannot read the video — the tile then keeps its film icon. */
+function videoPoster(file) {
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    let done = false;
+    const finish = (b) => { if (done) return; done = true; URL.revokeObjectURL(url); resolve(b || null); };
+    v.muted = true; v.preload = 'metadata'; v.playsInline = true; v.src = url;
+    v.onloadeddata = () => { v.currentTime = Math.min(1, (v.duration || 3) / 3); };
+    v.onseeked = () => {
+      try {
+        const k = Math.min(1, 640 / (v.videoWidth || 640));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round((v.videoWidth || 640) * k)); c.height = Math.max(1, Math.round((v.videoHeight || 360) * k));
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob(finish, 'image/jpeg', 0.82);
+      } catch { finish(null); }
+    };
+    v.onerror = () => finish(null);
+    setTimeout(() => finish(null), 10000);
+  });
 }
 
 const looksImage = (n) => /\.(jpe?g|png|webp|gif|avif|tiff?|bmp)$/i.test(String(n));
@@ -139,9 +193,20 @@ function Viewer({ photos, index, onIndex, onClose }) {
  * just a folder, and repeating it below was saying the same thing twice while
  * making both harder to read.
  */
-export default function ShareDrive({ onStorage }) {
+export default function ShareDrive({onStorage, tabs }) {
   const dialog = useDialog();
-  const [folderId, setFolderId] = useState(null);
+  // 🔗 every folder has its own address (/panel/fileflyer/<id>): bookmarkable, and the Back button works
+  const [folderId, setFolderIdState] = useState(() => { const m = location.pathname.match(/^\/panel\/fileflyer\/(\d+)/); return m ? Number(m[1]) : null; });
+  const setFolderId = useCallback((id) => {
+    setFolderIdState(id || null);
+    const path = id ? `/panel/fileflyer/${id}` : '/panel/fileflyer';
+    if (location.pathname !== path) history.pushState(null, '', path);
+  }, []);
+  useEffect(() => {
+    const back = () => { const m = location.pathname.match(/^\/panel\/fileflyer\/(\d+)/); setFolderIdState(m ? Number(m[1]) : null); };
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, []);
   const [trail, setTrail] = useState([]);
   const [folders, setFolders] = useState([]);
   const [items, setItems] = useState([]);
@@ -150,6 +215,13 @@ export default function ShareDrive({ onStorage }) {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(() => localStorage.getItem('ff_view') || 'grid');
   const [busy, setBusy] = useState(false);
+  const [sort, setSort] = useState(() => localStorage.getItem('ff_sort') || 'modified');
+  const [filter, setFilter] = useState('all');
+  const [q, setQ] = useState('');
+  const [everywhere, setEverywhere] = useState(false);
+  const [found, setFound] = useState(null);       // search results across the whole drive
+  const [moving, setMoving] = useState(null);     // { kind: 'file' | 'folder', id, name }
+  const [queue, setQueue] = useState([]);         // uploads: { key, name, size, status, done, total, error }
   const [prog, setProg] = useState('');          // part x of y, while a big file uploads
   const [pending, setPending] = useState([]);    // uploads that never finished
   const resumeInput = useRef(null);
@@ -157,7 +229,7 @@ export default function ShareDrive({ onStorage }) {
   const [zipping, setZipping] = useState(false);
   const [msg, setMsg] = useState('');
   const [dragging, setDragging] = useState(false);
-  const [emailFor, setEmailFor] = useState(null);   // folder whose link is being sent
+  const [sharing, setSharing] = useState(null);    // { folder, share } open in the Share dialog
   const [viewing, setViewing] = useState(-1);       // index into photos, -1 = closed
   const fileRef = useRef(null);
 
@@ -168,6 +240,13 @@ export default function ShareDrive({ onStorage }) {
 
   const flash = (t) => { setMsg(t); setTimeout(() => setMsg(''), 1800); };
   const chooseView = (v) => { setView(v); localStorage.setItem('ff_view', v); };
+  const chooseSort = (v) => { setSort(v); localStorage.setItem('ff_sort', v); };
+  useEffect(() => {
+    const term = q.trim();
+    if (!everywhere || !term) { setFound(null); return undefined; }
+    const t = setTimeout(() => { api.searchFiles(term).then(setFound).catch(() => setFound({ folders: [], items: [] })); }, 250);
+    return () => clearTimeout(t);
+  }, [q, everywhere]);
 
   const load = useCallback(async (fid) => {
     setLoading(true);
@@ -229,18 +308,28 @@ export default function ShareDrive({ onStorage }) {
 
   async function upload(files) {
     if (!files?.length) return;
+    const add = files.map((f, i) => ({ key: `${Date.now()}-${i}-${f.name}`, file: f, name: f.name, size: f.size, status: 'waiting', done: 0, total: 0 }));
+    setQueue(qu => [...qu.filter(x => x.status !== 'done'), ...add]);
     setBusy(true);
-    try {
-      /* A large file goes up in parts, which can take an hour. Without this the
-         panel says nothing at all for that hour. */
-      await api.uploadShareFiles(files, folderId,
-        (name, done, total) => setProg(`${name} — part ${done} of ${total}`));
-      load(folderId); loadPending(); flash(`✅ ${files.length} added`);
+    let ok = 0;
+    for (const job of add) {
+      const set = (patch) => setQueue(qu => qu.map(x => (x.key === job.key ? { ...x, ...patch } : x)));
+      set({ status: 'uploading' });
+      try {
+        const poster = looksVideo(job.name) ? await videoPoster(job.file) : null;
+        await api.uploadShareFiles([job.file], folderId, (name, done, total) => set({ done, total }));
+        if (poster) {
+          const d = await api.drive(folderId).catch(() => null);
+          const mine = (d?.items || []).filter(i => i.filename === job.name).sort((x, y) => new Date(y.created_at) - new Date(x.created_at))[0];
+          if (mine) await api.uploadPoster(mine.id, poster).catch(() => {});   // no poster is fine: the film icon stays
+        }
+        set({ status: 'done' }); ok++;
+      } catch (e) { set({ status: 'failed', error: e.message }); }
     }
-    catch (e) { dialog.alert(e.message, { error: true }); loadPending(); }
-    finally { setBusy(false); setProg(''); }
+    load(folderId); loadPending();
+    setBusy(false); setProg('');
+    if (ok) flash(`✅ ${ok} added`);
   }
-
 
   /** Uploads that started and never finished — shown so they are not lost.
       useCallback so the effect below can depend on it honestly rather than
@@ -271,36 +360,29 @@ export default function ShareDrive({ onStorage }) {
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
-  /** Share the folder being viewed, or the one whose badge was pressed. */
-  async function shareFolder(id, e) {
-    e?.stopPropagation();
-    try {
-      const d = await api.shareFolder(id);
-      await navigator.clipboard?.writeText(location.origin + '/f/' + d.share.token).catch(() => {});
-      load(folderId);
-      flash('🔗 Link created and copied');
-    } catch (err) { dialog.alert(err.message, { error: true }); }
-  }
-
-  async function manageShare(id, token, e) {
-    e?.stopPropagation();
-    const url = location.origin + '/f/' + token;
-    if (await dialog.confirm(`${url}\n\nAnyone with this link can open the folder and download what is in it.`,
-      { title: 'This folder is shared', okLabel: 'Stop sharing', danger: true })) {
-      try { await api.unshareFolder(id); load(folderId); flash('🔒 Link revoked'); }
-      catch (err) { dialog.alert(err.message, { error: true }); }
-    } else {
-      await navigator.clipboard?.writeText(url).catch(() => {});
-      flash('🔗 Link copied');
-    }
-  }
+  /** 🔗 Open the Share dialog: nothing becomes public until the dialog's "Create link" is pressed. */
+  const openShare = (folder, folderShare, e) => { e?.stopPropagation(); setSharing({ folder, share: folderShare || null }); };
 
   const photos = items.filter(i => looksImage(i.filename));
   const openPhoto = (it) => { const i = photos.findIndex(p => p.id === it.id); if (i > -1) setViewing(i); };
 
   const here = trail.length ? trail[trail.length - 1].name : 'My files';
-  const isEmpty = !loading && !folders.length && !items.length;
+  const isEmpty = !loading && !found && !folders.length && !items.length;
+  const byDate = (x) => new Date(x.modified_at || x.created_at || 0).getTime();
+  const order = (a, b, nameKey) => (sort === 'name' ? String(a[nameKey]).localeCompare(String(b[nameKey]))
+    : sort === 'size' ? (b.size_bytes || 0) - (a.size_bytes || 0) : byDate(b) - byDate(a));
+  const needle = q.trim().toLowerCase();
+  const srcFolders = found ? found.folders : folders;
+  const srcItems = found ? found.items : items;
+  const shownFolders = filter === 'files' ? [] : srcFolders
+    .filter(f => (!needle || f.name.toLowerCase().includes(needle)) && (filter !== 'shared' || f.share))
+    .sort((a, b) => order(a, b, 'name'));
+  const shownItems = filter === 'folders' || filter === 'shared' ? [] : srcItems
+    .filter(i => !needle || i.filename.toLowerCase().includes(needle))
+    .sort((a, b) => order(a, b, 'filename'));
+  const when = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
   const pct = storage ? Math.min(100, Math.round(storage.used_bytes / storage.limit_bytes * 100)) : 0;
+  const noMatch = !loading && !isEmpty && !shownFolders.length && !shownItems.length;
 
   return (
     <div className="fd"
@@ -339,7 +421,9 @@ export default function ShareDrive({ onStorage }) {
         </div>
       )}
 
+      <div className="fd-sticky">
       <div className="fd-bar">
+        {tabs}
         <nav className="fd-crumbs" aria-label="Location">
           <button className={`fd-crumb ${!folderId ? 'is-here' : ''}`} onClick={() => setFolderId(null)}>My files</button>
           {trail.map(t => (
@@ -349,13 +433,18 @@ export default function ShareDrive({ onStorage }) {
                 onClick={() => setFolderId(t.id)}>{t.name}</button>
             </span>
           ))}
-          {folderId && (share
-            ? <>
-                <button className="fd-tag is-on" onClick={e => manageShare(folderId, share.token, e)}>🔗 Shared</button>
-                <button className="fd-tag" onClick={() => setEmailFor({ id: share.id, title: here, password: share.has_password })}>✉️ Send</button>
-              </>
-            : <button className="fd-tag" onClick={e => shareFolder(folderId, e)}>Share</button>)}
+          {folderId && (
+            <button className={`fd-tag ${share ? 'is-on' : ''}`} onClick={e => openShare({ id: folderId, name: here }, share, e)}>
+              {share ? 'Shared · link' : 'Share'}
+            </button>
+          )}
         </nav>
+
+        <div className="fd-find">
+          <input className="fd-search" type="search" value={q} onChange={e => setQ(e.target.value)} aria-label="Search"
+            placeholder={everywhere ? 'Search all your files' : 'Search this folder'} />
+          <label className="fd-everywhere"><input type="checkbox" checked={everywhere} onChange={e => setEverywhere(e.target.checked)} /> everywhere</label>
+        </div>
 
         <div className="fd-actions">
           <button className="fd-b is-primary" disabled={busy} onClick={() => fileRef.current?.click()}>
@@ -377,10 +466,26 @@ export default function ShareDrive({ onStorage }) {
         </div>
       </div>
 
-      {storage && (
-        <div className="fd-quota" title={`${fmtBytes(storage.used_bytes)} of ${storage.limit_mb} MB`}>
+      <div className="fd-chips">
+        {[['all', 'All'], ['folders', 'Folders'], ['files', 'Files'], ['shared', 'Shared']].map(([k, l]) => (
+          <button key={k} type="button" className={`fd-chip ${filter === k ? 'is-on' : ''}`} onClick={() => setFilter(k)}>{l}</button>
+        ))}
+        <span className="fd-spacer" />
+        <label className="fd-sort">Sort
+          <select value={sort} onChange={e => chooseSort(e.target.value)}>
+            <option value="modified">Recently modified</option>
+            <option value="name">Name</option>
+            <option value="size">Size</option>
+          </select>
+        </label>
+      </div>
+      </div>
+
+      {/* the sidebar already shows storage; here only as a warning when it is nearly full */}
+      {storage && pct > 80 && (
+        <div className="fd-quota">
           <div className="fd-quota-bar"><span className={pct > 90 ? 'is-full' : ''} style={{ width: `${pct}%` }} /></div>
-          <span className="fd-quota-t">{fmtBytes(storage.used_bytes)} of {storage.limit_mb} MB</span>
+          <span className="fd-quota-t">⚠️ {fmtBytes(storage.used_bytes)} of {fmtBytes(storage.limit_bytes)} used ({pct}%)</span>
         </div>
       )}
 
@@ -389,93 +494,114 @@ export default function ShareDrive({ onStorage }) {
 
       {msg && <p className="fd-msg">{msg}</p>}
 
+      {queue.length > 0 && (
+        <div className="fd-queue" aria-live="polite">
+          <div className="fd-queue-h">
+            <b>Uploads</b>
+            <span className="fd-quiet">Up to 2 GB goes up in one go; bigger files go up in parts and can resume.</span>
+            {!busy && <button type="button" className="fd-act" onClick={() => setQueue([])}>Clear</button>}
+          </div>
+          {queue.map(j => (
+            <div key={j.key} className={`fd-q is-${j.status}`}>
+              <span className="fd-q-n" title={j.name}>{j.name}</span>
+              <span className="fd-q-s">{fmtBytes(j.size)}</span>
+              <progress className="fd-q-bar" max={100} value={j.status === 'done' ? 100 : j.status === 'waiting' ? 0 : j.total ? Math.round(j.done / j.total * 100) : undefined} />
+              <span className="fd-q-st">{j.status === 'done' ? 'Done' : j.status === 'failed' ? (j.error || 'Failed') : j.status === 'waiting' ? 'Waiting' : j.total ? `${Math.round(j.done / j.total * 100)}%` : 'Uploading…'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {loading ? <p className="fd-quiet">Loading…</p>
         : isEmpty ? (
           <div className="fd-empty">
+            <div className="fd-empty-art" aria-hidden="true">📂</div>
             <p className="fd-empty-t">Nothing here yet</p>
-            <p className="fd-quiet">Drop files anywhere on this page, or use Upload.</p>
+            <p className="fd-quiet">Drag files onto this page, or:</p>
+            <div className="fd-empty-acts">
+              <button type="button" className="fd-b is-primary" onClick={() => fileRef.current?.click()}>Upload files</button>
+              <button type="button" className="fd-b" onClick={newFolder}>New folder</button>
+            </div>
+            <p className="fd-quiet fd-limit">Any file type. Up to 2 GB goes up in one go; bigger files go up in parts and can resume.</p>
           </div>
+        ) : noMatch ? (
+          <p className="fd-quiet">Nothing matches{needle ? ` "${q.trim()}"` : ''}{filter !== 'all' ? ` in ${filter}` : ''}.</p>
         ) : view === 'grid' ? (
           <div className="fd-grid">
-            {folders.map(f => (
-              <button key={'f' + f.id} className="fd-tile is-folder" onClick={() => setFolderId(f.id)}>
-                <span className="fd-ic">📁</span>
+            {shownFolders.map(f => (
+              <div key={'f' + f.id} className="fd-tile is-folder" role="button" tabIndex={0}
+                onClick={() => setFolderId(f.id)}
+                onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) setFolderId(f.id); }}>
+                {f.previews?.length ? (
+                  <span className={`fd-ic fd-collage is-n${Math.min(4, f.previews.length)}`}>
+                    {f.previews.slice(0, 4).map(id => <span key={id} className="fd-collage-cell"><Thumb itemId={id} name="" /></span>)}
+                    <span className="fd-folder-badge" aria-hidden="true">📁</span>
+                  </span>
+                ) : <span className="fd-ic">📁</span>}
                 <span className="fd-name">{f.name}</span>
-                <span className="fd-meta">{f.file_count} item{f.file_count === 1 ? '' : 's'}</span>
-                {/* shared state lives on the folder — no second list below */}
-                {f.share && <span className="fd-badge" title="Shared">🔗</span>}
+                <span className="fd-meta">{f.file_count} item{f.file_count === 1 ? '' : 's'} · {when(f.modified_at)}{f.in_folder ? ` · in ${f.in_folder}` : ''}</span>
+                {f.share && <span className="fd-pill">Shared · link</span>}
                 <span className="fd-acts">
-                  {f.share
-                    ? <>
-                        <span className="fd-a" role="button" tabIndex={0} title="Send by email"
-                          onClick={e => { e.stopPropagation(); setEmailFor({ id: f.share.id, title: f.name, password: f.share.has_password }); }}
-                          onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setEmailFor({ id: f.share.id, title: f.name, password: f.share.has_password }); } }}>✉️</span>
-                        <span className="fd-a" role="button" tabIndex={0} title="Manage link"
-                          onClick={e => manageShare(f.id, f.share.token, e)}
-                          onKeyDown={e => { if (e.key === 'Enter') manageShare(f.id, f.share.token, e); }}>🔗</span>
-                      </>
-                    : <span className="fd-a" role="button" tabIndex={0} title="Share"
-                        onClick={e => shareFolder(f.id, e)}
-                        onKeyDown={e => { if (e.key === 'Enter') shareFolder(f.id, e); }}>↗</span>}
-                  <span className="fd-a" role="button" tabIndex={0} title="Rename"
-                    onClick={e => renameFolder(f, e)}
-                    onKeyDown={e => { if (e.key === 'Enter') renameFolder(f, e); }}>✏️</span>
-                  <span className="fd-a is-del" role="button" tabIndex={0} title="Delete"
-                    onClick={e => removeFolder(f, e)}
-                    onKeyDown={e => { if (e.key === 'Enter') removeFolder(f, e); }}>🗑️</span>
+                  <button type="button" className="fd-act" onClick={e => openShare(f, f.share, e)}>{f.share ? 'Shared' : 'Share'}</button>
+                  <RowMenu label={f.name} items={[
+                    { label: 'Rename', run: e => renameFolder(f, e) },
+                    { label: 'Download', run: () => download(`/files/zip?folder=${f.id}`, f.name + '.zip') },
+                    { label: 'Move to…', run: () => setMoving({ kind: 'folder', id: f.id, name: f.name }) },
+                    { label: 'Delete…', run: e => removeFolder(f, e), danger: true },
+                  ]} />
                 </span>
-              </button>
+              </div>
             ))}
-            {items.map(it => (
+            {shownItems.map(it => (
               <div key={'i' + it.id}
                 className={`fd-tile ${looksImage(it.filename) ? 'is-photo' : ''}`}
                 title={it.filename}
                 onClick={() => looksImage(it.filename) && openPhoto(it)}>
                 <span className="fd-ic">
-                  {looksImage(it.filename) ? <Thumb itemId={it.id} name={it.filename} /> : iconFor(it.filename)}
+                  {looksImage(it.filename) || looksVideo(it.filename) ? <Thumb itemId={it.id} name={it.filename} /> : iconFor(it.filename)}
+                  {looksVideo(it.filename) && <span className="fd-play" aria-hidden="true">▶</span>}
                 </span>
                 <span className="fd-name">{it.filename}</span>
-                <span className="fd-meta">{fmtBytes(it.size_bytes)}</span>
+                <span className="fd-meta">{fmtBytes(it.size_bytes)} · {when(it.created_at)}{it.in_folder ? ` · in ${it.in_folder}` : ''}</span>
                 <span className="fd-acts">
-                  <span className="fd-a" role="button" tabIndex={0} title="Download"
-                    onClick={() => download(`/files/item/${it.id}/download`, it.filename)}
-                    onKeyDown={e => { if (e.key === 'Enter') download(`/files/item/${it.id}/download`, it.filename); }}>⬇</span>
-                  <span className="fd-a is-del" role="button" tabIndex={0} title="Delete"
-                    onClick={e => removeItem(it, e)}
-                    onKeyDown={e => { if (e.key === 'Enter') removeItem(it, e); }}>🗑️</span>
+                  <button type="button" className="fd-act" onClick={e => { e.stopPropagation(); download(`/files/item/${it.id}/download`, it.filename); }}>Download</button>
+                  <RowMenu label={it.filename} items={[{ label: 'Move to…', run: () => setMoving({ kind: 'file', id: it.id, name: it.filename }) }, { label: 'Delete…', run: e => removeItem(it, e), danger: true }]} />
                 </span>
               </div>
             ))}
           </div>
         ) : (
           <table className="fd-table">
-            <thead><tr><th>Name</th><th>Size</th><th>Added by</th><th aria-label="Actions" /></tr></thead>
+            <thead><tr><th>Name</th><th>Modified</th><th>Size</th><th>Added by</th><th aria-label="Actions" /></tr></thead>
             <tbody>
-              {folders.map(f => (
+              {shownFolders.map(f => (
                 <tr key={'f' + f.id} className="fd-row is-folder" onClick={() => setFolderId(f.id)}>
-                  <td><span className="fd-row-ic">📁</span>{f.name}{f.share && <span className="fd-badge-in">🔗</span>}</td>
-                  <td>{f.file_count} item{f.file_count === 1 ? '' : 's'}</td>
+                  <td><span className="fd-row-ic">📁</span>{f.name}<span className="fd-sub">{f.file_count} item{f.file_count === 1 ? '' : 's'}{f.in_folder ? ` · in ${f.in_folder}` : ''}</span>{f.share && <span className="fd-pill is-inline">Shared · link</span>}</td>
+                  <td className="fd-quiet">{when(f.modified_at)}</td>
+                  <td>{f.size_bytes ? fmtBytes(f.size_bytes) : '—'}</td>
                   <td className="fd-quiet">—</td>
                   <td className="fd-row-acts">
-                    {f.share
-                      ? <button className="fd-a" title="Manage link" onClick={e => manageShare(f.id, f.share.token, e)}>🔗</button>
-                      : <button className="fd-a" title="Share" onClick={e => shareFolder(f.id, e)}>↗</button>}
-                    <button className="fd-a" title="Rename" onClick={e => renameFolder(f, e)}>✏️</button>
-                    <button className="fd-a is-del" title="Delete" onClick={e => removeFolder(f, e)}>🗑️</button>
+                    <button type="button" className="fd-act" onClick={e => openShare(f, f.share, e)}>{f.share ? 'Shared' : 'Share'}</button>
+                    <RowMenu label={f.name} items={[
+                      { label: 'Rename', run: e => renameFolder(f, e) },
+                      { label: 'Download', run: () => download(`/files/zip?folder=${f.id}`, f.name + '.zip') },
+                    { label: 'Move to…', run: () => setMoving({ kind: 'folder', id: f.id, name: f.name }) },
+                      { label: 'Delete…', run: e => removeFolder(f, e), danger: true },
+                    ]} />
                   </td>
                 </tr>
               ))}
-              {items.map(it => (
+              {shownItems.map(it => (
                 <tr key={'i' + it.id}
                   className={`fd-row ${looksImage(it.filename) ? 'is-photo' : ''}`}
                   onClick={() => looksImage(it.filename) && openPhoto(it)}>
                   <td><span className="fd-row-ic">{iconFor(it.filename)}</span>{it.filename}</td>
-                  <td>{fmtBytes(it.size_bytes)}</td>
+                  <td className="fd-quiet">{when(it.created_at)}</td>
+                  <td>{fmtBytes(it.size_bytes)}{it.in_folder ? <span className="fd-sub">in {it.in_folder}</span> : null}</td>
                   <td className="fd-quiet">{it.uploaded_by === 'client' ? (it.uploader_name || 'Client') : 'You'}</td>
                   <td className="fd-row-acts">
-                    <button className="fd-a" title="Download"
-                      onClick={() => download(`/files/item/${it.id}/download`, it.filename)}>⬇</button>
-                    <button className="fd-a is-del" title="Delete" onClick={e => removeItem(it, e)}>🗑️</button>
+                    <button type="button" className="fd-act" onClick={e => { e.stopPropagation(); download(`/files/item/${it.id}/download`, it.filename); }}>Download</button>
+                    <RowMenu label={it.filename} items={[{ label: 'Move to…', run: () => setMoving({ kind: 'file', id: it.id, name: it.filename }) }, { label: 'Delete…', run: e => removeItem(it, e), danger: true }]} />
                   </td>
                 </tr>
               ))}
@@ -485,7 +611,8 @@ export default function ShareDrive({ onStorage }) {
 
       {dragging && <div className="fd-drop">Drop to upload into {here}</div>}
 
-      {emailFor && <EmailShareModal share={emailFor} onClose={() => setEmailFor(null)} />}
+      {moving && <MoveDialog what={moving} onClose={() => setMoving(null)} onMoved={() => { setMoving(null); load(folderId); flash('↪️ Moved'); }} />}
+      {sharing && <ShareDialog folder={sharing.folder} share={sharing.share} onClose={() => setSharing(null)} onChanged={() => load(folderId)} />}
 
       {viewing > -1 && (
         <Viewer photos={photos} index={viewing} onIndex={setViewing} onClose={() => setViewing(-1)} />
@@ -494,66 +621,37 @@ export default function ShareDrive({ onStorage }) {
   );
 }
 
-/**
- * ✉️ Send a share link to a client.
- *
- * Addresses are validated on the server too — this only catches the obvious
- * cases early so a typo does not cost a round trip.
- */
-function EmailShareModal({ share, onClose }) {
+/** ↪️ Move a file or folder: pick where. A folder is never offered itself or its own sub-folders. */
+function MoveDialog({ what, onClose, onMoved }) {
   const dialog = useDialog();
+  const [folders, setFolders] = useState(null);
   const [to, setTo] = useState('');
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-
-  async function send() {
-    const list = to.split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
-    if (!list.length) { dialog.alert('Add at least one email address.', { error: true }); return; }
-    setSending(true);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.allFolders().then(d => setFolders(d.folders || [])).catch(e => { setFolders([]); dialog.alert(e.message, { error: true }); }); }, [dialog]);
+  const byId = Object.fromEntries((folders || []).map(f => [f.id, f]));
+  const pathOf = (f) => { const names = []; for (let c = f, i = 0; c && i < 50; c = byId[c.parent_id], i++) names.unshift(c.name); return names.join(' / '); };
+  const inside = (f) => { for (let c = f, i = 0; c && i < 50; c = byId[c.parent_id], i++) if (c.id === what.id) return true; return false; };
+  const options = (folders || []).filter(f => !(what.kind === 'folder' && inside(f))).map(f => ({ id: f.id, label: pathOf(f) })).sort((a, b) => a.label.localeCompare(b.label));
+  async function move() {
+    setBusy(true);
     try {
-      const d = await api.emailShare(share.id, { to: list, message: message.trim() || undefined });
-      onClose();
-      dialog.alert(
-        `Sent to ${d.sent_to} ${d.sent_to === 1 ? 'person' : 'people'}` +
-        (d.via === 'platform' ? ', using iwopo\u2019s mail server.' : ', from your own email.'),
-        { title: 'On its way' });
-    } catch (e) {
-      // the server explains WHY when there is no mail server configured — pass
-      // that through rather than a generic failure the vendor cannot act on
-      dialog.alert(e.message, { title: 'Could not send', error: true });
-    } finally { setSending(false); }
+      const target = to === '' ? null : Number(to);
+      if (what.kind === 'folder') await api.moveFolder(what.id, target); else await api.moveItem(what.id, target);
+      onMoved();
+    } catch (e) { dialog.alert(e.message, { error: true }); setBusy(false); }
   }
-
   return (
-    <div className="ff-modal-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="ff-modal">
-        <h3 className="ff-modal-t">✉️ Send &ldquo;{share.title}&rdquo;</h3>
-        <p className="ff-modal-sub">
-          They&rsquo;ll get a link to open and download everything in this folder.
-        </p>
-
-        <label className="ff-label">Send to</label>
-        <input className="ff-input" autoFocus placeholder="client@example.com, someone@else.com"
-          value={to} onChange={e => setTo(e.target.value)} />
-        <p className="ff-hint">Separate several addresses with a comma.</p>
-
-        <label className="ff-label">Add a message (optional)</label>
-        <textarea className="ff-input ff-ta" rows={3}
-          placeholder="Here are the photos from Saturday!"
-          value={message} onChange={e => setMessage(e.target.value)} />
-
-        {share.password && (
-          <p className="ff-hint">
-            🔒 This link asks for a password. The email says so, but it will not
-            include the password — send that separately.
-          </p>
-        )}
-
-        <div className="ff-modal-acts">
-          <button className="ff-btn" onClick={onClose} disabled={sending}>Cancel</button>
-          <button className="ff-btn is-primary" onClick={send} disabled={sending}>
-            {sending ? 'Sending…' : 'Send link'}
-          </button>
+    <div className="dlg-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="dlg-panel" role="dialog" aria-label={`Move ${what.name}`}>
+        <h3 className="dlg-title">Move &ldquo;{what.name}&rdquo;</h3>
+        <p className="dlg-msg">Choose where it should go.</p>
+        <select className="dlg-input" value={to} onChange={e => setTo(e.target.value)} disabled={!folders}>
+          <option value="">My files (top level)</option>
+          {options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+        <div className="dlg-actions">
+          <button type="button" className="dlg-btn" onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="dlg-btn is-primary" onClick={move} disabled={busy || !folders}>{busy ? 'Moving…' : 'Move'}</button>
         </div>
       </div>
     </div>

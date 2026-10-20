@@ -135,6 +135,76 @@ router.get('/', requireAuth, async (req, res) => {
 // There is deliberately no endpoint for a link that points at nothing.
 
 // PUT /api/files/:id → rename, re-note, change the gate
+
+/* 🔍 GET /api/files/search?q= — files and folders by name, across the whole drive (this vendor only). */
+router.get('/search', requireAuth, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    const q = String(req.query.q || '').trim().slice(0, 100);
+    if (!q) return res.json({ folders: [], items: [] });
+    const [folders, items] = await Promise.all([
+      prisma.file_folders.findMany({ where: { vendor_id: v, name: { contains: q, mode: 'insensitive' } }, orderBy: { updated_at: 'desc' }, take: 60 }),   // 🔒
+      prisma.file_share_items.findMany({ where: { vendor_id: v, filename: { contains: q, mode: 'insensitive' } }, orderBy: { created_at: 'desc' }, take: 300 }),   // 🔒
+    ]);
+    const parentIds = [...new Set([...folders.map(f => f.parent_id), ...items.map(i => i.folder_id)].filter(Boolean))];
+    const parents = parentIds.length ? await prisma.file_folders.findMany({ where: { vendor_id: v, id: { in: parentIds } }, select: { id: true, name: true } }) : [];   // 🔒
+    const nameOf = Object.fromEntries(parents.map(p => [p.id, p.name]));
+    const shares = folders.length ? await prisma.file_shares.findMany({ where: { vendor_id: v, folder_id: { in: folders.map(f => f.id) } }, select: { id: true, folder_id: true, token: true, password: true, allow_upload: true, expires_at: true } }) : [];
+    const shareOf = Object.fromEntries(shares.map(x => [x.folder_id, x]));
+    res.json({
+      folders: folders.map(f => ({ ...f, in_folder: f.parent_id ? nameOf[f.parent_id] || null : null, modified_at: f.updated_at || f.created_at,
+        share: shareOf[f.id] ? { id: shareOf[f.id].id, token: shareOf[f.id].token, has_password: !!shareOf[f.id].password, allow_upload: !!shareOf[f.id].allow_upload, expires_at: shareOf[f.id].expires_at } : null })),
+      items: items.map(i => ({ ...i, size_bytes: Number(i.size_bytes), in_folder: i.folder_id ? nameOf[i.folder_id] || null : null })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* 📁 GET /api/files/folders/all — every folder (id, name, parent) for the "Move to…" picker. */
+router.get('/folders/all', requireAuth, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    const folders = await prisma.file_folders.findMany({ where: { vendor_id: v }, select: { id: true, name: true, parent_id: true }, orderBy: { name: 'asc' } });   // 🔒
+    res.json({ folders });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** The target folder, only if it is this vendor's (null = My files). */
+async function ownFolder(v, id) {
+  if (id === null || id === undefined || id === '') return { ok: true, id: null };
+  const f = await prisma.file_folders.findFirst({ where: { id: Number(id), vendor_id: v }, select: { id: true, parent_id: true } });   // 🔒
+  return f ? { ok: true, id: f.id } : { ok: false };
+}
+
+/* ↪️ PUT /api/files/item/:itemId/move { folder_id } — a file into another folder (or My files). */
+router.put('/item/:itemId/move', requireAuth, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    const it = await prisma.file_share_items.findFirst({ where: { id: Number(req.params.itemId), vendor_id: v }, select: { id: true } });   // 🔒
+    if (!it) return res.status(404).json({ error: 'File not found' });
+    const to = await ownFolder(v, req.body?.folder_id);
+    if (!to.ok) return res.status(404).json({ error: 'Folder not found' });
+    await prisma.file_share_items.update({ where: { id: it.id }, data: { folder_id: to.id } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ↪️ PUT /api/files/folder/:folderId/move { parent_id } — a folder into another (never into itself or its own sub-folders). */
+router.put('/folder/:folderId/move', requireAuth, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    const f = await prisma.file_folders.findFirst({ where: { id: Number(req.params.folderId), vendor_id: v }, select: { id: true } });   // 🔒
+    if (!f) return res.status(404).json({ error: 'Folder not found' });
+    const to = await ownFolder(v, req.body?.parent_id);
+    if (!to.ok) return res.status(404).json({ error: 'Folder not found' });
+    for (let cur = to.id, hops = 0; cur && hops < 100; hops++) {   // walk up from the target: it must not sit inside the folder being moved
+      if (cur === f.id) return res.status(400).json({ error: 'A folder cannot go inside itself.' });
+      cur = (await prisma.file_folders.findFirst({ where: { id: cur, vendor_id: v }, select: { parent_id: true } }))?.parent_id || null;
+    }
+    await prisma.file_folders.update({ where: { id: f.id }, data: { parent_id: to.id, updated_at: new Date() } });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.put('/:id', requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -223,11 +293,11 @@ export const SIZES = {
 };
 
 export async function thumbPathFor(vendorId, item, size = 'thumb') {
-  if (!maybeImage(item)) return null;
   const cfg = SIZES[size] || SIZES.thumb;
   const dir = vendorDir(vendorId);
   const out = path.join(dir, item.stored_name + cfg.suffix);
-  if (fs.existsSync(out)) return out;            // made earlier, still here
+  if (fs.existsSync(out)) return out;            // made earlier, still here — or a video's poster frame
+  if (!maybeImage(item)) return null;
 
   /* The original may not be on this disk at all — storage keeps it in R2. sharp
      needs a path, so it is fetched to a temp file, resized, and the temp thrown
@@ -247,6 +317,25 @@ export async function thumbPathFor(vendorId, item, size = 'thumb') {
   ).catch(() => null);                           // corrupt or unsupported — icon instead
   return made;
 }
+
+/* 🎬 POST /api/files/item/:itemId/poster — a video's poster frame, drawn by the browser from the file
+   being uploaded (the same approach as gallery videos), so no video tool is needed on the server. */
+const posterUpload = multer({ dest: '/tmp/iwopo_files', limits: { fileSize: 5 * 1024 * 1024 } });
+router.post('/item/:itemId/poster', requireAuth, posterUpload.single('poster'), async (req, res) => {
+  const tmp = req.file?.path;
+  try {
+    const v = Number(vid(req));
+    const it = await prisma.file_share_items.findFirst({ where: { id: Number(req.params.itemId), vendor_id: v } });   // 🔒 tenancy
+    if (!it) return res.status(404).json({ error: 'File not found' });
+    if (!tmp) return res.status(400).json({ error: 'No picture sent' });
+    const dir = vendorDir(v);
+    fs.mkdirSync(dir, { recursive: true });
+    await sharp(tmp).resize(SIZES.thumb.px, SIZES.thumb.px, { fit: 'inside', withoutEnlargement: true }).webp({ quality: SIZES.thumb.q })
+      .toFile(path.join(dir, it.stored_name + SIZES.thumb.suffix));
+    res.json({ ok: true });
+  } catch { res.status(400).json({ error: 'That picture could not be read.' }); }
+  finally { if (tmp) fs.promises.unlink(tmp).catch(() => {}); }
+});
 
 // GET /api/files/item/:itemId/thumb
 router.get('/item/:itemId/thumb', requireAuth, async (req, res) => {
@@ -501,9 +590,18 @@ router.get('/drive', requireAuth, async (req, res) => {
     const counts = folders.length ? await prisma.file_share_items.groupBy({
       by: ['folder_id'],
       where: { folder_id: { in: folders.map(f => f.id) } },
-      _count: { _all: true }, _sum: { size_bytes: true },
+      _count: { _all: true }, _sum: { size_bytes: true }, _max: { created_at: true },
     }) : [];
     const byFolder = Object.fromEntries(counts.map(c => [c.folder_id, c]));
+    const previewRows = folders.length ? await prisma.$queryRaw`
+      SELECT id, folder_id FROM (
+        SELECT id, folder_id, row_number() OVER (PARTITION BY folder_id ORDER BY created_at DESC) AS rn
+        FROM file_share_items
+        WHERE vendor_id = ${v} AND folder_id = ANY(${folders.map(f => f.id)}::int[])
+          AND filename ~* '\\.(jpe?g|png|webp|gif|avif|tiff?|bmp)$'
+      ) t WHERE rn <= 4` : [];   // 🔒 vendor in the query
+    const previewsOf = {};
+    for (const r of previewRows) (previewsOf[r.folder_id] ||= []).push(Number(r.id));
 
     // which of these folders already have a link, so the list can say so
     const shares = folders.length ? await prisma.file_shares.findMany({
@@ -523,9 +621,12 @@ router.get('/drive', requireAuth, async (req, res) => {
         ...f,
         file_count: byFolder[f.id]?._count?._all || 0,
         size_bytes: Number(byFolder[f.id]?._sum?.size_bytes || 0),
+        previews: previewsOf[f.id] || [],
+        modified_at: [f.updated_at, f.created_at, byFolder[f.id]?._max?.created_at].filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0] || null,
         share: shareByFolder[f.id]
           ? { id: shareByFolder[f.id].id, token: shareByFolder[f.id].token,
-              has_password: !!shareByFolder[f.id].password }
+              has_password: !!shareByFolder[f.id].password,
+              allow_upload: !!shareByFolder[f.id].allow_upload, expires_at: shareByFolder[f.id].expires_at }
           : null,
       })),
       items: items.map(i => ({ ...i, size_bytes: Number(i.size_bytes) })),

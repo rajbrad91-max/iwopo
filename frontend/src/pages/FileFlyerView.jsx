@@ -25,29 +25,29 @@ export function fmtBytes(n) {
  */
 export default function FileFlyerView() {
   const [tab, setTab] = useState('files');
+  const [tip, setTip] = useState(() => localStorage.getItem('ff_tip') !== 'off');
+  const hideTip = () => { localStorage.setItem('ff_tip', 'off'); setTip(false); };
+
+  const tabs = (
+    <div className="ff-tabs" role="tablist">
+      <button role="tab" aria-selected={tab === 'files'}
+        className={`ff-tab ${tab === 'files' ? 'is-on' : ''}`}
+        onClick={() => setTab('files')}>📁 Files</button>
+      <button role="tab" aria-selected={tab === 'contacts'}
+        className={`ff-tab ${tab === 'contacts' ? 'is-on' : ''}`}
+        onClick={() => setTab('contacts')}>📇 Contacts</button>
+    </div>
+  );
 
   return (
     <div className="ff-page">
-      <div className="ff-tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'files'}
-          className={`ff-tab ${tab === 'files' ? 'is-on' : ''}`}
-          onClick={() => setTab('files')}>📁 Files</button>
-        <button role="tab" aria-selected={tab === 'contacts'}
-          className={`ff-tab ${tab === 'contacts' ? 'is-on' : ''}`}
-          onClick={() => setTab('contacts')}>📇 Contacts</button>
-      </div>
-
-      {tab === 'files' ? (
-        <>
-          <p className="ff-lede">
-            Your files, in folders. Share any folder with a link when you want to —
-            clients can download what is in it, and send things back.
-          </p>
-          <ShareDrive />
-        </>
-      ) : (
-        <ContactsView />
+      {tip && tab === 'files' && (
+        <p className="ff-lede ff-tip">
+          Share any folder with a link: clients can download what is in it, and send things back.
+          <button type="button" className="ff-tip-x" onClick={hideTip} aria-label="Hide this tip">✕</button>
+        </p>
       )}
+      {tab === 'files' ? <ShareDrive tabs={tabs} /> : <>{tabs}<ContactsView /></>}
     </div>
   );
 }

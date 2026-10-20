@@ -161,22 +161,12 @@
 .fd-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
 /* shared shows on the folder itself — there is no second list underneath */
-.fd-badge { position: absolute; top: 7px; left: 8px; font-size: 11px; opacity: .8; }
-.fd-badge-in { margin-left: 7px; font-size: 11px; opacity: .7; }
 
 .fd-acts {
   position: absolute; top: 5px; right: 6px; display: flex; gap: 1px;
   opacity: 0; transition: opacity .18s ease;
 }
 .fd-tile:hover .fd-acts, .fd-tile:focus-within .fd-acts { opacity: 1; }
-.fd-a {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 7px; cursor: pointer;
-  background: var(--panel); border: 1px solid var(--line);
-  font-size: 11px; line-height: 1; color: var(--text);
-}
-.fd-a:hover { border-color: var(--teal); }
-.fd-a.is-del:hover { border-color: #f87171; }
 
 /* ── list ──────────────────────────────────────────────────────────────── */
 .fd-table { width: 100%; border-collapse: collapse; }
@@ -190,7 +180,6 @@
 .fd-row.is-folder { cursor: pointer; }
 .fd-row-ic { margin-right: 9px; }
 .fd-row-acts { width: 110px; text-align: right; white-space: nowrap; }
-.fd-row-acts .fd-a { margin-left: 3px; }
 
 /* ── empty, quiet, drop ────────────────────────────────────────────────── */
 .fd-quiet { color: var(--muted); font-size: 13px; }
@@ -318,3 +307,95 @@
   border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .ff-tab:hover { color: var(--text); }
 .ff-tab.is-on { color: var(--teal); border-bottom-color: var(--teal); }
+
+/* 🔗 one labelled main action per row + a ⋯ menu (Muse review 2026-10-20) */
+.fd-act { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 7px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+.fd-act:hover { border-color: var(--teal); color: var(--teal); }
+.fd-row-acts .fd-act { margin-left: 4px; }
+.fd-more { position: relative; display: inline-block; }
+.fd-more-btn { padding: 4px 9px; line-height: 1; }
+.fd-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 140px; display: flex; flex-direction: column;
+  padding: 4px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .16); }
+.fd-menu-i { text-align: left; font: inherit; font-size: 13px; padding: 7px 10px; border: 0; border-radius: 7px; background: none; color: var(--text); cursor: pointer; }
+.fd-menu-i:hover { background: var(--fill); }
+.fd-menu-i.is-del { color: #dc2626; }
+.fd-acts:has(.fd-menu) { opacity: 1; }
+@media (hover: none) { .fd-acts { opacity: 1; } }
+.fd-pill { position: absolute; top: 7px; left: 8px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: var(--teal-soft); color: var(--teal); }
+.fd-pill.is-inline { position: static; margin-left: 8px; }
+
+/* 🔗 the Share dialog — built on the panel's own dialog (dialog.css), light and self-contained like it */
+.ff-share { max-width: 520px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.ff-share .dlg-input { margin-top: 6px; }
+.ff-share-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #64757d; margin: 16px 0 0; }
+.ff-share-hint { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: #64757d; }
+.ff-status { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e6f4f1; color: #0f766e; }
+.ff-link-row { display: flex; gap: 8px; margin-top: 12px; }
+.ff-link-row .dlg-input { flex: 1; min-width: 0; margin-top: 0; }
+.ff-section { border-top: 1px solid #e3e8ec; margin-top: 16px; padding-top: 2px; }
+.ff-check { display: flex; gap: 8px; align-items: center; font-size: 13.5px; color: #1a2529; margin: 12px 0 0; cursor: pointer; }
+.ff-date { max-width: 220px; }
+.ff-send { margin-top: 10px; }
+.ff-people { list-style: none; margin: 12px 0 0; padding: 0; }
+.ff-person { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #1a2529; padding: 6px 0; border-bottom: 1px solid #e3e8ec; }
+.ff-person-n { overflow-wrap: anywhere; }
+.ff-person-s { font-size: 12px; color: #64757d; }
+.ff-note { margin: 12px 0 0; font-size: 13px; color: #0f766e; }
+.ff-spacer { flex: 1; }
+.ff-stop { color: #dc2626; }
+
+/* 🔍 one sticky toolbar (tabs + where you are + search + actions), then filters and sort — Muse review 2026-10-20 */
+.fd-sticky { position: sticky; top: 0; z-index: 6; padding: 8px 0 2px; margin-bottom: 6px;
+  background: color-mix(in srgb, var(--panel-2) 92%, transparent); backdrop-filter: blur(6px); }
+.fd-bar .ff-tabs { margin: 0; border-bottom: 0; }   /* the tabs share the toolbar row */
+.fd-find { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 200px; max-width: 420px; }
+.fd-search { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
+.fd-search:focus { outline: none; border-color: var(--teal); }
+.fd-everywhere { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.fd-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 8px; }
+.fd-chip { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
+.fd-chip.is-on { background: var(--teal-soft); border-color: transparent; color: var(--teal); }
+.fd-spacer { flex: 1; }
+.fd-sort { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.fd-sort select { font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
+.fd-sub { margin-left: 8px; font-size: 11.5px; color: var(--muted); }
+.fd-empty-art { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+.fd-empty-acts { display: flex; gap: 8px; justify-content: center; margin: 12px 0 8px; }
+.fd-limit { font-size: 11.5px; }
+
+/* ⬆️ uploads: one line per file */
+.fd-queue { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; background: var(--panel-2); }
+.fd-queue-h { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+.fd-queue-h .fd-quiet { flex: 1; font-size: 11.5px; }
+.fd-q { display: grid; grid-template-columns: minmax(0, 1fr) 72px 160px 96px; gap: 10px; align-items: center; font-size: 12.5px; padding: 4px 0; }
+.fd-q-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-q-s, .fd-q-st { color: var(--muted); }
+.fd-q-bar { width: 100%; height: 6px; accent-color: var(--teal); }
+.fd-q.is-done .fd-q-st { color: var(--teal); }
+.fd-q.is-failed .fd-q-st { color: #dc2626; }
+@media (max-width: 640px) { .fd-q { grid-template-columns: minmax(0, 1fr) 84px; } .fd-q-s, .fd-q-bar { display: none; } }
+
+/* 💡 the one-line tip that replaced the intro paragraph */
+.ff-tip { display: flex; align-items: center; gap: 8px; }
+.ff-lede.ff-tip { max-width: none; margin: 0 0 6px; }
+.ff-tip-x { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 12px; padding: 2px 6px; }
+
+/* 🖼️ folder cards: a collage of the newest photos inside, with a small folder badge */
+.fd-ic { position: relative; }
+.fd-collage { display: grid; gap: 2px; padding: 0; overflow: hidden; }
+.fd-collage.is-n1 { grid-template-columns: 1fr; }
+.fd-collage.is-n2 { grid-template-columns: 1fr 1fr; }
+.fd-collage.is-n3, .fd-collage.is-n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.fd-collage.is-n3 .fd-collage-cell:first-child { grid-row: span 2; }
+.fd-collage-cell { overflow: hidden; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.fd-collage-cell img { border-radius: 0; }
+.fd-folder-badge { position: absolute; left: 6px; bottom: 6px; font-size: 14px; line-height: 1; padding: 3px 5px;
+  border-radius: 6px; background: rgba(255, 255, 255, .88); }
+/* 🎬 a video's poster wears a play badge */
+.fd-play { position: absolute; inset: 0; margin: auto; width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff;
+  background: rgba(0, 0, 0, .55); pointer-events: none; }

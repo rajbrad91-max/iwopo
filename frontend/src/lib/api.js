@@ -450,6 +450,10 @@ export const api = {
     request(`/files/folder/${folderId}/share`, { method: 'POST', body: JSON.stringify(body) }),
   unshareFolder: (folderId) =>
     request(`/files/folder/${folderId}/share`, { method: 'DELETE' }),
+  searchFiles: (q) => request('/files/search?q=' + encodeURIComponent(q)),
+  allFolders: () => request('/files/folders/all'),
+  moveItem: (itemId, folderId) => request(`/files/item/${itemId}/move`, { method: 'PUT', body: JSON.stringify({ folder_id: folderId }) }),
+  moveFolder: (folderId, parentId) => request(`/files/folder/${folderId}/move`, { method: 'PUT', body: JSON.stringify({ parent_id: parentId }) }),
   renameFolder: (folderId, name) =>
     request(`/files/folder/${folderId}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   deleteFolder: (folderId) =>
@@ -494,6 +498,7 @@ export const api = {
     return { added };
   },
   deleteShareItem: (itemId) => request(`/files/item/${itemId}`, { method: 'DELETE' }),
+  uploadPoster: (itemId, blob) => { const fd = new FormData(); fd.append('poster', blob, 'poster.jpg'); return request(`/files/item/${itemId}/poster`, { method: 'POST', body: fd }); },
 
   // 📤 File Flyer — the client's side, token only, no auth
   publicShare: (token) => request(`/f/${token}`),

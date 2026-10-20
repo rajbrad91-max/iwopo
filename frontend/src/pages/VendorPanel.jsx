@@ -340,7 +340,7 @@ export default function VendorPanel({ onLogout }) {
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
               <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
-              <div className="sub">Welcome back, {user?.name} 👋</div>
+              {tab !== 'fileflyer' && <div className="sub">Welcome back, {user?.name} 👋</div>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
