@@ -70,8 +70,8 @@
    right, its smaller companion high on the left, both in the brand colour and
    faint enough to read as a watermark. It replaced rows of small emoji across
    the whole page (Raj, 2026-10-09: "one big watermark, stylish"). */
-.iq-art { position: fixed; z-index: 0; right: -4vw; bottom: -6vh; width: min(58vw, 560px); height: auto; color: var(--brand); opacity: .10; transform: rotate(-9deg); pointer-events: none; }
-.iq-art-2 { right: auto; bottom: auto; left: -3vw; top: 8vh; width: min(28vw, 260px); opacity: .07; transform: rotate(11deg); }
+.iq-art { position: fixed; z-index: 0; right: 3vw; bottom: 4vh; width: min(40vw, 440px); height: auto; color: var(--brand); opacity: .10; transform: rotate(-9deg); pointer-events: none; }
+.iq-art-2 { right: auto; bottom: auto; left: 3vw; top: 9vh; width: min(22vw, 210px); opacity: .07; transform: rotate(11deg); }
 .iq-card { z-index: 1; }
 @media (max-width: 620px) {
   .iq-art { width: 78vw; right: -18vw; bottom: -4vh; opacity: .08; }
@@ -79,7 +79,7 @@
 }
 
 /* sections */
-.iq-section { padding: 20px 0; border-top: 1px solid #ECE4D8; }
+.iq-section { padding: 20px 0; border-top: 1px solid #D3C3AC; }   /* a divider you can see, the same between every section */
 .iq-section:first-child { border-top: none; padding-top: 4px; }
 .iq-section-title { font-size: 15px; font-weight: 800; color: #4A3E3D; margin-bottom: 14px; letter-spacing: .3px; }
 

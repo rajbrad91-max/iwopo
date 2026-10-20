@@ -376,6 +376,7 @@ router.post('/', async (req, res) => {
     vendor_id = v.id;
   }
   const auth = req.headers.authorization || '';
+  let viaPanel = false;   // a vendor adding a lead by hand may enter a past event (an old wedding); the public form may not
   if (auth.startsWith('Bearer ')) {
     try {
       const user = jwt.verify(auth.slice(7), process.env.JWT_SECRET || 'dev-secret-change-me');
@@ -383,6 +384,7 @@ router.post('/', async (req, res) => {
       if (!await tokenStillValid(user)) throw new Error('revoked');
       if (user.role === 'super_admin') vendor_id = b.vendor_id || null;   // super admin must say which vendor
       else vendor_id = user.vendor_id;                                     // vendors always their own
+      viaPanel = true;
     } catch { /* bad token → fall back to body (public form) */ }
   }
 
@@ -418,6 +420,18 @@ router.post('/', async (req, res) => {
 
   // 🔗 pull real columns (event_date, location…) out of the custom-field bag
   const mapped = await mapCustomToColumns(vendor_id, b);
+  /* 📅 The public form can't book a date that has already passed (Raj, 2026-10-19). "Today" is the CLIENT's
+     own date (sent by the form), because a client may be many hours ahead of or behind the vendor. A missing
+     or implausible value falls back to the earliest date anywhere on Earth right now, so no time zone is ever
+     wrongly refused and a faked "today" can't let a past date through. Times of day are not checked. */
+  if (!viaPanel && mapped.event_date) {
+    const ed = mapped.event_date instanceof Date ? mapped.event_date.toISOString().slice(0, 10) : String(mapped.event_date).slice(0, 10);
+    const dayOff = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+    const earliest = dayOff(-1), latest = dayOff(1);
+    const ct = /^\d{4}-\d{2}-\d{2}$/.test(String(b.client_today || '')) ? String(b.client_today) : '';
+    const clientToday = ct && ct >= earliest && ct <= latest ? ct : earliest;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ed) && ed < clientToday) return res.status(400).json({ error: 'That date has already passed — please check the event date', field: 'event_date' });
+  }
 
   // build the row from the whitelisted FIELDS only (never trust arbitrary body keys)
   const data = {

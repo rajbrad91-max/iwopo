@@ -110,6 +110,7 @@ export default function InquiryForm({ handle, byHost = false }) {
         name: p.name, email: p.email, phone: p.phone,
         role: p.role, instagram: p.instagram ? `@${p.instagram}` : '', heard: p.heard,
         notes, custom_data: custom,
+        client_today: todayLocal(),   // 📅 the client's own date: the server refuses event dates before it
       });
       setDone(true);
     } catch (e) { setErr(e.message); }
