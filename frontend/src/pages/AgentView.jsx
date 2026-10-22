@@ -492,7 +492,7 @@ export default function AgentView() {
           <button type="button" className={`ag-mic ${listening ? 'is-on' : ''} ${fromLink && !listening && !msgs.length ? 'is-ready' : ''}`}
             onClick={talk} aria-label={listening ? 'Stop listening' : 'Talk'}>{listening ? '⏹️' : '🎙️'}</button>
         )}
-        <textarea rows={1} value={text} placeholder={listening ? 'Listening…' : 'Ask anything about your business…'} aria-label="Message"
+        <textarea rows={1} value={text} placeholder={listening ? 'Listening…' : 'Ask anything…'} aria-label="Message"
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} />
         <button className="ag-send" type="submit" disabled={busy || !text.trim() || listening}>Send</button>

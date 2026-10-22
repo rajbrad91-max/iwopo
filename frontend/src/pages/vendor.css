@@ -2281,3 +2281,24 @@ tr:hover .bk-del { opacity: .8; }
 
 /* a long answer keeps its line breaks on the lead page */
 .ld-val { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* 📱 Mobile audit (Muse, 2026-10-22) */
+/* 🔗 M3: the sidebar items are links now — same look as before */
+a.nav-item { color: inherit; text-decoration: none; }
+/* M1/M2: on a phone a wide table scrolls sideways inside its own card instead of being cut off */
+@media (max-width: 720px) {
+  .table-wrap:not(.gal-card):has(> table:not(.leads-table)) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap:not(.gal-card):has(> table:not(.leads-table)) .badge { white-space: nowrap; }
+  /* M5: a lead card with nothing to do ends at its status — no empty ruled strip */
+  .leads-table td.col-actions:not(:has(button, a, select)) { display: none; }
+}
+.bk-nw { white-space: nowrap; }
+/* M7: each DNS record reads as one unit on a phone */
+@media (max-width: 560px) {
+  .ws-dns-r { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+  .ws-dns-v { grid-column: 1 / -1; grid-row: 2; overflow-wrap: anywhere; }
+}
+/* the dashboard's four counters: two by two on a narrow phone */
+@media (max-width: 420px) {
+  .dash .stats { grid-template-columns: repeat(2, 1fr); }
+}

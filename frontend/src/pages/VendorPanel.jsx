@@ -178,6 +178,12 @@ export default function VendorPanel({ onLogout }) {
   // The badge is NOT cleared here: it counts leads the vendor hasn't opened, and
   // wiping it just for landing on the list made it meaningless — you'd never see
   // which lead was actually new. Opening a lead clears that lead (see LeadsView).
+  /* 🔗 sidebar links: a plain click stays inside the panel; Ctrl/⌘/Shift/middle-click opens a new tab as normal */
+  const navHref = (t) => (t === 'dashboard' ? '/panel' : `/panel/${t}`);
+  const navClick = (t) => (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault(); go(t);
+  };
   const go = async (t) => {
     /* ⚠️ Ask the contract editor first — it may be holding unsaved work.
        Awaited: the guard asks through the in-app dialog, which is async, and
@@ -286,25 +292,25 @@ export default function VendorPanel({ onLogout }) {
           <span className="nav-txt">{profile ? (profile.business_name || 'My Studio') : (user?.name || '')}<small>VENDOR</small></span>
         </div>
         <div className="nav-group">WORK</div>
-        <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={() => go('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></div>
-        {has('leads') && <div className={`nav-item ${tab==='leads'?'active':''}`} onClick={() => go('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span>{newLeadCount > 0 && <span className="nav-badge" title={`${newLeadCount} new lead${newLeadCount === 1 ? '' : 's'}`}>{newLeadCount > 99 ? '99+' : newLeadCount}</span>}</div>}
-        {has('leads') && <div className={`nav-item ${tab==='bookings'?'active':''}`} onClick={() => go('bookings')}><span className="nav-ic">📅</span><span className="nav-txt">Bookings</span></div>}
-        {has('contracts') && <div className={`nav-item ${tab==='contracts'?'active':''}`} onClick={() => go('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></div>}
-        {has('crew') && <div className={`nav-item ${tab==='crew'?'active':''}`} onClick={() => go('crew')}><span className="nav-ic">👷</span><span className="nav-txt">Crew Management</span></div>}
-        {has('galleries') && <div className={`nav-item ${tab==='galleries'?'active':''}`} onClick={() => go('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></div>}
+        <a href={navHref('dashboard')} className={`nav-item ${tab==='dashboard'?'active':''}`} aria-current={tab==='dashboard' ? 'page' : undefined} onClick={navClick('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></a>
+        {has('leads') && <a href={navHref('leads')} className={`nav-item ${tab==='leads'?'active':''}`} aria-current={tab==='leads' ? 'page' : undefined} onClick={navClick('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span>{newLeadCount > 0 && <span className="nav-badge" title={`${newLeadCount} new lead${newLeadCount === 1 ? '' : 's'}`}>{newLeadCount > 99 ? '99+' : newLeadCount}</span>}</a>}
+        {has('leads') && <a href={navHref('bookings')} className={`nav-item ${tab==='bookings'?'active':''}`} aria-current={tab==='bookings' ? 'page' : undefined} onClick={navClick('bookings')}><span className="nav-ic">📅</span><span className="nav-txt">Bookings</span></a>}
+        {has('contracts') && <a href={navHref('contracts')} className={`nav-item ${tab==='contracts'?'active':''}`} aria-current={tab==='contracts' ? 'page' : undefined} onClick={navClick('contracts')}><span className="nav-ic">📄</span><span className="nav-txt">Contracts & Invoices</span></a>}
+        {has('crew') && <a href={navHref('crew')} className={`nav-item ${tab==='crew'?'active':''}`} aria-current={tab==='crew' ? 'page' : undefined} onClick={navClick('crew')}><span className="nav-ic">👷</span><span className="nav-txt">Crew Management</span></a>}
+        {has('galleries') && <a href={navHref('galleries')} className={`nav-item ${tab==='galleries'?'active':''}`} aria-current={tab==='galleries' ? 'page' : undefined} onClick={navClick('galleries')}><span className="nav-ic">📸</span><span className="nav-txt">Galleries</span></a>}
         {/* 🖨️ Sits under Galleries because that is where the requests come
             from — a client picks photographs in their gallery and sends them. */}
-        {has('galleries') && <div className={`nav-item ${tab==='requests'?'active':''}`} onClick={() => go('requests')}><span className="nav-ic">🖼️</span><span className="nav-txt">Photo Selection</span></div>}
-        {has('fileflyer') && <div className={`nav-item ${tab==='fileflyer'?'active':''}`} onClick={() => go('fileflyer')}><span className="nav-ic">📤</span><span className="nav-txt">File Flyer</span></div>}
+        {has('galleries') && <a href={navHref('requests')} className={`nav-item ${tab==='requests'?'active':''}`} aria-current={tab==='requests' ? 'page' : undefined} onClick={navClick('requests')}><span className="nav-ic">🖼️</span><span className="nav-txt">Photo Selection</span></a>}
+        {has('fileflyer') && <a href={navHref('fileflyer')} className={`nav-item ${tab==='fileflyer'?'active':''}`} aria-current={tab==='fileflyer' ? 'page' : undefined} onClick={navClick('fileflyer')}><span className="nav-ic">📤</span><span className="nav-txt">File Flyer</span></a>}
         {/* 🔒 The four features private to the platform owner, kept
             together and in a deliberate order rather than scattered down
             the list. Each still appears only for somebody granted it. */}
-        {has('comms') && <div className={`nav-item ${tab==='comms'?'active':''}`} onClick={() => go('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></div>}
-        {has('agent') && <div className={`nav-item ${tab==='agent'?'active':''}`} onClick={() => go('agent')}><span className="nav-ic">🤖</span><span className="nav-txt">AI Agent</span></div>}
-        {has('rawsel') && <div className={`nav-item ${tab==='rawsel'?'active':''}`} onClick={() => go('rawsel')}><span className="nav-ic">🎞️</span><span className="nav-txt">Raw Selector</span></div>}
-        {has('analytics') && <div className={`nav-item ${tab==='analytics'?'active':''}`} onClick={() => go('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></div>}
-        {has('occasions') && <div className={`nav-item ${tab==='occasions'?'active':''}`} onClick={() => go('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></div>}
-        {has('liveshoot') && <div className={`nav-item ${tab==='liveshoot'?'active':''}`} onClick={() => go('liveshoot')}><span className="nav-ic">🎥</span><span className="nav-txt">Live Shoot</span></div>}
+        {has('comms') && <a href={navHref('comms')} className={`nav-item ${tab==='comms'?'active':''}`} aria-current={tab==='comms' ? 'page' : undefined} onClick={navClick('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></a>}
+        {has('agent') && <a href={navHref('agent')} className={`nav-item ${tab==='agent'?'active':''}`} aria-current={tab==='agent' ? 'page' : undefined} onClick={navClick('agent')}><span className="nav-ic">🤖</span><span className="nav-txt">AI Agent</span></a>}
+        {has('rawsel') && <a href={navHref('rawsel')} className={`nav-item ${tab==='rawsel'?'active':''}`} aria-current={tab==='rawsel' ? 'page' : undefined} onClick={navClick('rawsel')}><span className="nav-ic">🎞️</span><span className="nav-txt">Raw Selector</span></a>}
+        {has('analytics') && <a href={navHref('analytics')} className={`nav-item ${tab==='analytics'?'active':''}`} aria-current={tab==='analytics' ? 'page' : undefined} onClick={navClick('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></a>}
+        {has('occasions') && <a href={navHref('occasions')} className={`nav-item ${tab==='occasions'?'active':''}`} aria-current={tab==='occasions' ? 'page' : undefined} onClick={navClick('occasions')}><span className="nav-ic">🎉</span><span className="nav-txt">Occasions</span></a>}
+        {has('liveshoot') && <a href={navHref('liveshoot')} className={`nav-item ${tab==='liveshoot'?'active':''}`} aria-current={tab==='liveshoot' ? 'page' : undefined} onClick={navClick('liveshoot')}><span className="nav-ic">🎥</span><span className="nav-txt">Live Shoot</span></a>}
         {/* 🚪 Raj's own website admin — a separate system on its own
             database. This asks for a one-time proof and follows it; nothing
             of that site renders inside this panel. */}
@@ -320,14 +326,14 @@ export default function VendorPanel({ onLogout }) {
         }}><span className="nav-ic">🌐</span><span className="nav-txt">Perfect Poses Site</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
         <div className="nav-group">SETUP</div>
-        {has('website') && <div className={`nav-item ${tab==='website'?'active':''}`} onClick={() => go('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></div>}
-        {has('leads') && <div className={`nav-item ${tab==='packages'?'active':''}`} onClick={() => go('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></div>}
-        {has('leads') && <div className={`nav-item ${tab==='inqform'?'active':''}`} onClick={() => go('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></div>}
-        <div className={`nav-item ${tab==='services'?'active':''}`} onClick={() => go('services')}><span className="nav-ic">🧩</span><span className="nav-txt">My Services</span></div>
-        <div className={`nav-item ${tab==='aichat'?'active':''}`} onClick={() => go('aichat')}><span className="nav-ic">🤖</span><span className="nav-txt">AI Chat</span></div>
+        {has('website') && <a href={navHref('website')} className={`nav-item ${tab==='website'?'active':''}`} aria-current={tab==='website' ? 'page' : undefined} onClick={navClick('website')}><span className="nav-ic">🌐</span><span className="nav-txt">My Website</span></a>}
+        {has('leads') && <a href={navHref('packages')} className={`nav-item ${tab==='packages'?'active':''}`} aria-current={tab==='packages' ? 'page' : undefined} onClick={navClick('packages')}><span className="nav-ic">📦</span><span className="nav-txt">My Packages</span></a>}
+        {has('leads') && <a href={navHref('inqform')} className={`nav-item ${tab==='inqform'?'active':''}`} aria-current={tab==='inqform' ? 'page' : undefined} onClick={navClick('inqform')}><span className="nav-ic">🎨</span><span className="nav-txt">Inquiry Form</span></a>}
+        <a href={navHref('services')} className={`nav-item ${tab==='services'?'active':''}`} aria-current={tab==='services' ? 'page' : undefined} onClick={navClick('services')}><span className="nav-ic">🧩</span><span className="nav-txt">My Services</span></a>
+        <a href={navHref('aichat')} className={`nav-item ${tab==='aichat'?'active':''}`} aria-current={tab==='aichat' ? 'page' : undefined} onClick={navClick('aichat')}><span className="nav-ic">🤖</span><span className="nav-txt">AI Chat</span></a>
         <div className="nav-group">ACCOUNT</div>
-        <div className={`nav-item ${tab==='refer'?'active':''}`} onClick={() => go('refer')}><span className="nav-ic">👥</span><span className="nav-txt">Refer a Friend</span></div>
-        <div className={`nav-item ${tab==='settings'?'active':''}`} onClick={() => go('settings')}><span className="nav-ic">⚙️</span><span className="nav-txt">Settings</span></div>
+        <a href={navHref('refer')} className={`nav-item ${tab==='refer'?'active':''}`} aria-current={tab==='refer' ? 'page' : undefined} onClick={navClick('refer')}><span className="nav-ic">👥</span><span className="nav-txt">Refer a Friend</span></a>
+        <a href={navHref('settings')} className={`nav-item ${tab==='settings'?'active':''}`} aria-current={tab==='settings' ? 'page' : undefined} onClick={navClick('settings')}><span className="nav-ic">⚙️</span><span className="nav-txt">Settings</span></a>
         {/* ⚠️ This went to 'packages', which is the vendor's own client-facing
             price list — nothing to do with their subscription. */}
         <StorageBar onUpgrade={() => go('plans')} />
@@ -4746,10 +4752,10 @@ function BookingsView({ routeBooking, onOpenBooking }) {
                   <td className="col-num" data-label="#">{seqOf(b.id)}</td>
                   <td className="biz">{b.name}</td>
                   <td>{b.event_type}</td>
-                  <td>{b.event_date ? String(b.event_date).slice(0, 10) : '—'}</td>
+                  <td className="bk-nw">{b.event_date ? String(b.event_date).slice(0, 10) : '—'}</td>
                   {/* the hours they've booked you for — what a vendor checks
                       when planning a day, rather than the money */}
-                  <td>{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
+                  <td className="bk-nw">{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
                   <td data-label="Crew Status"><span className={`badge ${cs.cls}`}>{cs.icon} {cs.label}</span></td>
                   <td><span className="badge active">✅ Booked</span></td>
                   <td className="col-act">
@@ -6289,7 +6295,7 @@ function DomainBlock() {
           onBlur={save}
           onKeyDown={e => e.key === 'Enter' && save()} />
         {d.domain && (
-          <button className="btn btn-sm" disabled={busy} onClick={check}>
+          <button className="refresh" disabled={busy} onClick={check}>
             {busy ? 'Checking…' : 'Check DNS'}
           </button>
         )}

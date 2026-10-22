@@ -25,6 +25,26 @@ async function trialCount(ip) {
 }
 
 // POST /api/auth/login
+/**
+ * 🧪 GET /api/auth/qa-session — a Test Vendor session for scripted QA (phone/tablet screenshots), without a password.
+ *
+ * Exists ONLY where the server's own settings hold QA_SESSION_TOKEN (the staging .env; never live, never in git),
+ * answers ONLY on the staging address, and ONLY ever signs in the one account named in QA_SESSION_EMAIL, which must
+ * be an ordinary vendor (never a super admin). The key travels in the X-QA-Token header, so it is never written to
+ * web logs. Anything else gets a plain 404, exactly as if the route did not exist.
+ */
+router.get('/qa-session', limit({ name: 'qa-session', max: 30, windowMs: 60_000 }), async (req, res) => {
+  const secret = process.env.QA_SESSION_TOKEN || '';
+  const email = (process.env.QA_SESSION_EMAIL || '').toLowerCase();
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0].toLowerCase();
+  const given = String(req.headers['x-qa-token'] || '');
+  const same = secret.length >= 32 && given.length === secret.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(secret));
+  if (!secret || !email || host !== 'alphabetaone.com' || !same) return res.status(404).json({ error: 'Not found' });
+  const user = await prisma.users.findFirst({ where: { email } });
+  if (!user || user.role !== 'vendor' || !user.vendor_id) return res.status(404).json({ error: 'Not found' });
+  res.json({ token: signToken(user), user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id } });
+});
+
 router.post('/login',
   // per address, so one machine cannot grind through a password list
   limit({ name: 'login-ip', max: 20, windowMs: 15 * 60_000 }),
