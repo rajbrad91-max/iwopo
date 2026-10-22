@@ -224,6 +224,9 @@ export default function CommsView() {
   const [qInput, setQInput] = useState('');      // what is typed; q follows once typing pauses
   const [status, setStatus] = useState(null);     // { connected, from } — the business line
   const [slow, setSlow] = useState(false);        // a load that gave up
+  const [refreshing, setRefreshing] = useState(false);
+  const loadedOnce = useRef(false);
+  const loadSeq = useRef(0);                      // only the newest request may change the page
   const [party, setParty] = useState(null);       // personKey of the open conversation
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
@@ -237,14 +240,22 @@ export default function CommsView() {
   /* The list stays on screen while it refreshes (tab, search); only the first load shows "Loading…".
      A load that takes over twelve seconds gives up with a Retry instead of spinning forever. */
   const load = useCallback(async () => {
-    setLoading(prev => prev || !newest.current); setSlow(false);
+    const mine = ++loadSeq.current;
+    if (loadedOnce.current) setRefreshing(true); else setLoading(true);
+    setSlow(false);
+    const tooSlow = setTimeout(() => { if (mine === loadSeq.current) setSlow(true); }, 12_000);   // a warning only while THIS load is still out
     try {
-      const d = await Promise.race([api.comms({ kind, q }), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 12_000))]);
+      const d = await api.comms({ kind, q });
+      if (mine !== loadSeq.current) return;          // a newer tab or search has taken over
       setEvents(d.events || []);
       setBadges(d.badges || {});
       newest.current = d.events?.[0]?.occurred_at || null;
-    } catch (e) { if (e.message === 'slow') setSlow(true); else setErr(e.message); }
-    finally { setLoading(false); }
+      loadedOnce.current = true;
+    } catch (e) { if (mine === loadSeq.current) setErr(e.message); }
+    finally {
+      clearTimeout(tooSlow);
+      if (mine === loadSeq.current) { setSlow(false); setLoading(false); setRefreshing(false); }
+    }
   }, [kind, q]);
 
   useEffect(() => { const t = setTimeout(() => setQ(qInput.trim()), 300); return () => clearTimeout(t); }, [qInput]);
@@ -507,10 +518,13 @@ export default function CommsView() {
         <button className={`cm-f ${kind === '' ? 'is-on' : ''}`} onClick={() => setKind('')}>All</button>
         <button className={`cm-f ${kind === 'call' ? 'is-on' : ''}`} onClick={() => setKind('call')}>📞 Calls</button>
         <button className={`cm-f ${kind === 'message' ? 'is-on' : ''}`} onClick={() => setKind('message')}>💬 Texts</button>
+        {(refreshing || qInput.trim() !== q) && <span className="cm-updating" aria-live="polite">Updating…</span>}
         <button className="cm-f is-on" title="Start a conversation by text" onClick={() => setComposing(true)}>＋ New text</button>
-        <button className="cm-f" disabled={syncing || status?.connected === false} onClick={syncNow}>{syncing ? 'Syncing…' : '↻ Sync now'}</button>
+        <button className="cm-f" disabled={syncing || status?.connected === false || status?.sandbox} onClick={syncNow}>{syncing ? 'Syncing…' : '↻ Sync now'}</button>
         {status && (status.connected
-          ? <span className="cm-status is-on" title="New calls and texts appear by themselves">● Connected{status.from ? ` · ${prettyNumber(status.from)}` : ''}</span>
+          ? status.sandbox
+            ? <span className="cm-status is-practice" title="Test site only: texts are never really sent">● Practice mode</span>
+            : <span className="cm-status is-on" title="New calls and texts appear by themselves">● Connected{status.from ? ` · ${prettyNumber(status.from)}` : ''}</span>
           : <span className="cm-status" title="Your business phone line isn't linked to iwopo yet">○ Not connected</span>)}
       </div>
 

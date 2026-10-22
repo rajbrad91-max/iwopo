@@ -141,6 +141,7 @@ export default function CommsNewText({ status, people, onSent, onClose }) {
     <div className="cm-modal" onClick={close}>
       <div className="cm-sheet" role="dialog" aria-label="New text" onClick={ev => ev.stopPropagation()}>
         {head}
+        {status.sandbox && <p className="cm-practice">🧪 Practice mode (test site): everything works, but no text is ever sent.</p>}
         <p className="cm-from">From: <b>{status.from ? prettyNumber(status.from) : 'your business line'}</b></p>
 
         {step === 'write' ? (<>
@@ -211,7 +212,7 @@ export default function CommsNewText({ status, people, onSent, onClose }) {
             <div><span className="lbl">To</span><b>{toLabel}</b></div>
             <div><span className="lbl">From</span><b>{status.from ? prettyNumber(status.from) : 'your business line'}</b></div>
             <div className="cm-review-msg">{text.trim()}</div>
-            <p className="cm-real">This sends a real text message{count.segments > 1 ? ` (${count.segments} parts)` : ''}.</p>
+            <p className="cm-real">{status.sandbox ? 'Practice mode: this is NOT sent to anyone.' : `This sends a real text message${count.segments > 1 ? ` (${count.segments} parts)` : ''}.`}</p>
           </div>
           {failure && (
             <div className="cm-fail" role="alert">

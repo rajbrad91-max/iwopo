@@ -182,12 +182,17 @@ router.post('/message', requireAuth,
     const v = vid(req);
     try {
       const cfg = await quoConfig();
-      if (!cfg.ready || cfg.vendorId !== v) return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
+      const sandbox = process.env.COMMS_SANDBOX === '1' && !(cfg.ready && cfg.vendorId === v);   // 🧪 staging only: checks run, nothing is sent
+      if (!sandbox && (!cfg.ready || cfg.vendorId !== v)) return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
       const key10 = tenDigits(req.body?.number);
       const text = String(req.body?.text || '').trim();
       if (key10.length !== 10) return res.status(400).json({ error: 'That is not a phone number.' });
       if (!text) return res.status(400).json({ error: 'Write a message first.' });
       if (text.length > MAX_TEXT) return res.status(400).json({ error: `A text can be at most ${MAX_TEXT} characters.` });
+      if (sandbox) {
+        return res.json({ ok: true, sandbox: true, event: { id: -Date.now(), external_id: `sandbox-${Date.now()}`, kind: 'message', direction: 'outgoing', status: 'sent',
+          from_number: SANDBOX_FROM, to_number: `+1${key10}`, body: text, occurred_at: new Date().toISOString() } });
+      }
       const ours = await ownNumbers(cfg.key);
       if (ours.has(key10)) return res.status(400).json({ error: 'That is one of your own Quo numbers.' });
 
@@ -233,7 +238,11 @@ let numbersCache = { at: 0, key: '', list: [] };
 router.get('/status', requireAuth, async (req, res) => {
   try {
     const cfg = await quoConfig();
-    if (!cfg.ready || cfg.vendorId !== vid(req)) return res.json({ connected: false });
+    if (!cfg.ready || cfg.vendorId !== vid(req)) {
+      // 🧪 practice mode (staging .env only): the real composer opens, and /message below never sends
+      if (process.env.COMMS_SANDBOX === '1') return res.json({ connected: true, sandbox: true, from: SANDBOX_FROM });
+      return res.json({ connected: false });
+    }
     let from = null;
     try {
       if (numbersCache.key !== cfg.key || Date.now() - numbersCache.at > 300_000) numbersCache = { at: Date.now(), key: cfg.key, list: await listPhoneNumbers(cfg.key) };
@@ -245,6 +254,7 @@ router.get('/status', requireAuth, async (req, res) => {
 });
 
 const NOT_CONNECTED = 'Calls & messages are not connected for this account yet.';
+const SANDBOX_FROM = '+15550100100';   // a 555 number: practice mode only
 
 router.post('/sync', requireAuth, async (req, res) => {
   try {

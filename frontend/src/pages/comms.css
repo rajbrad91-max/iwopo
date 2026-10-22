@@ -224,3 +224,8 @@ a.cm-leadnote:hover { text-decoration: underline; }
 .cm-dlv.is-ok { color: var(--teal); }
 .cm-dlv.is-bad { color: #dc2626; font-weight: 600; }
 .cm-dlv.is-wait { color: var(--muted); }
+
+.cm-updating { font-size: 12px; color: var(--muted); }
+/* 🧪 staging practice mode */
+.cm-status.is-practice { color: #b45309; background: color-mix(in srgb, #f59e0b 14%, transparent); border-color: transparent; }
+.cm-practice { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: #92400e; background: color-mix(in srgb, #f59e0b 14%, transparent); }
