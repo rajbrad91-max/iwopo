@@ -534,7 +534,7 @@ export default function CommsView() {
         <button className={`cm-f ${kind === 'call' ? 'is-on' : ''}`} onClick={() => setKind('call')}>📞 Calls</button>
         <button className={`cm-f ${kind === 'message' ? 'is-on' : ''}`} onClick={() => setKind('message')}>💬 Texts</button>
         {(refreshing || qInput.trim() !== q) && <span className="cm-updating" aria-live="polite">Updating…</span>}
-        <button className="cm-f is-on" title="Start a conversation by text" onClick={() => setComposing(true)}>＋ New text</button>
+        <button className="cm-f cm-start" title="Start a conversation by text" onClick={() => setComposing(true)}>＋ New text</button>
         <button className="cm-f" disabled={syncing || status?.connected === false || status?.sandbox} onClick={syncNow}>{syncing ? 'Syncing…' : '↻ Sync now'}</button>
         {status && (status.connected
           ? status.sandbox
