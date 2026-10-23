@@ -99,3 +99,8 @@
 .ib-set > .ib-btn { align-self: flex-start; }
 .ib-keys-left { justify-content: flex-start; flex-wrap: wrap; }
 .ib-num { flex: 1 1 200px; min-width: 0; }
+
+/* labels over the key boxes; secrets are hidden by the font, not by type="password" (which invites login autofill) */
+.ib-keys-l { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 4px; }
+.ib-keys-l span { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 12px; }
+.ib-secret { -webkit-text-security: disc; }

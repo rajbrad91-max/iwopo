@@ -81,7 +81,9 @@ function QuoKeys({ onSaved }) {
     <div className="ib-keys">
       <p className="ib-keys-t">🔑 Quo connection</p>
       {info.has_key && <p className="ib-quiet">Saved: API key <b>{info.key_hint}</b> · {info.secrets} webhook secret{info.secrets === 1 ? '' : 's'}. Fill a box only to replace it.</p>}
-      <input className="ib-input" type="password" autoComplete="off" placeholder={info.has_key ? 'Quo API key (empty keeps the saved one)' : 'Quo API key'} value={key} onChange={e => setKey(e.target.value)} />
+      <label className="ib-keys-l" htmlFor="quo-key">Quo API key</label>
+      <input id="quo-key" name="quo-key" className="ib-input ib-secret" autoComplete="off" data-1p-ignore data-lpignore="true" spellCheck={false}
+        placeholder={info.has_key ? 'Empty keeps the saved one' : 'Paste your Quo API key'} value={key} onChange={e => setKey(e.target.value)} />
       <div className="ib-keys-row ib-keys-left">
         <button className="ib-btn" onClick={list} disabled={!key.trim() && !info.has_key}>List my numbers</button>
         <select className="ib-input ib-num" value={num} onChange={e => setNum(e.target.value)} aria-label="Phone number">
@@ -176,8 +178,12 @@ function EmailKeys({ onSaved, onCancel }) {
       <p className="ib-quiet">Created in <b>your own</b> Google account (Google Cloud → Credentials → OAuth client, type Web application). Its redirect address must be:</p>
       <code className="ib-keys-code">{redirect}</code>
       {info?.has_app && <p className="ib-quiet">Saved now: <b>{info.client_id_hint}</b>. Paste new keys only to replace them.</p>}
-      <input className="ib-input" placeholder="Client ID (…apps.googleusercontent.com)" value={id} onChange={e => setId(e.target.value)} autoComplete="off" spellCheck={false} />
-      <input className="ib-input" type="password" placeholder={info?.has_app ? 'Client secret (empty keeps the saved one)' : 'Client secret'} value={secret} onChange={e => setSecret(e.target.value)} autoComplete="off" />
+      <label className="ib-keys-l" htmlFor="gm-client-id">Client ID <span>ends in .apps.googleusercontent.com</span></label>
+      <input id="gm-client-id" name="gm-client-id" className="ib-input" placeholder="1234567890-abc123.apps.googleusercontent.com" value={id}
+        onChange={e => setId(e.target.value)} autoComplete="off" data-1p-ignore data-lpignore="true" spellCheck={false} />
+      <label className="ib-keys-l" htmlFor="gm-client-secret">Client secret <span>starts with GOCSPX-</span></label>
+      <input id="gm-client-secret" name="gm-client-secret" className="ib-input ib-secret" placeholder={info?.has_app ? 'Empty keeps the saved one' : 'GOCSPX-…'} value={secret}
+        onChange={e => setSecret(e.target.value)} autoComplete="off" data-1p-ignore data-lpignore="true" spellCheck={false} />
       {err && <p className="ib-msg" role="alert">⚠️ {err}</p>}
       <div className="ib-keys-row">
         {onCancel && <button className="ib-btn" onClick={onCancel}>Cancel</button>}
