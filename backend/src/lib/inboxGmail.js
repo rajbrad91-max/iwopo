@@ -189,11 +189,28 @@ export async function unreadCount(v) {
   if (!st.connected) return 0;
   const hit = unreadCache.get(Number(v));
   if (hit && hit.until > Date.now()) return hit.n;
-  const n = Number((await gmail(v, '/labels/INBOX')).threadsUnread || 0);
+  const n = await newSinceSeen(v);
   unreadCache.set(Number(v), { n, until: Date.now() + 60_000 });
   return n;
 }
 export const forgetUnread = (v) => unreadCache.delete(Number(v));
+/* 🔴 The Email number (Raj, 2026-10-23): only conversations that arrived since he last opened the Email tab, and only
+   those his filters show (rules or the inquiry detector) — not the whole inbox. Opening the tab sets it back to 0. */
+const seenKey = (v) => `gmail_seen_${Number(v)}`;
+export async function markEmailSeen(v) { await saveSetting(seenKey(v), new Date().toISOString()); unreadCache.delete(Number(v)); }
+async function newSinceSeen(v) {
+  const since = Date.parse((await setting(seenKey(v))) || '') || Date.now() - 86400e3;
+  const after = `after:${Math.floor(since / 1000)}`;
+  const ids = new Set();
+  const filters = await getFilters(v);
+  for (const f of filters) {
+    if (f.ai) for (const r of await prisma.email_inquiries.findMany({ where: { vendor_id: Number(v), is_inquiry: true, last_at: { gt: new Date(since) } }, select: { thread_id: true } })) ids.add(r.thread_id);   // 🔒 tenancy
+    const rules = filterQuery(f);
+    if (rules) for (const t of (await gmail(v, `/threads?maxResults=50&q=${encodeURIComponent(`${rules} ${after}`)}`)).threads || []) ids.add(t.id);
+  }
+  if (!filters.length) for (const t of (await gmail(v, `/threads?maxResults=50&q=${encodeURIComponent(`in:inbox ${after}`)}`)).threads || []) ids.add(t.id);
+  return ids.size;
+}
 
 /** One page of conversations: filter 'all' (the inbox) or one of the vendor's filters; a search narrows either;
  *  `page` is the token from the previous page ("Load more"). Returns { threads, next }. */

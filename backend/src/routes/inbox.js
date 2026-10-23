@@ -35,6 +35,8 @@ router.get('/gmail/filters', requireAuth, async (req, res) => { try { res.json({
 router.put('/gmail/filters', requireAuth, async (req, res) => { try { res.json({ filters: await gm.saveFilters(vid(req), req.body?.filters) }); } catch (e) { fail(res, e); } });
 /* 🚫 the owner says a conversation in the Inquiries chip isn't one */
 router.post('/gmail/not-inquiry/:threadId', requireAuth, async (req, res) => { try { res.json(await notAnInquiry(vid(req), req.params.threadId)); } catch (e) { fail(res, e); } });
+/* 🔴 he opened the Email tab: its number goes back to 0 */
+router.post('/gmail/seen', requireAuth, async (req, res) => { try { await gm.markEmailSeen(vid(req)); res.json({ ok: true }); } catch (e) { fail(res, e); } });
 router.get('/gmail/labels', requireAuth, async (req, res) => { try { res.json({ labels: await gm.listLabels(vid(req)) }); } catch (e) { fail(res, e); } });
 router.get('/gmail/threads/:id', requireAuth, async (req, res) => { try { res.json(await gm.getThread(vid(req), req.params.id)); } catch (e) { fail(res, e); } });
 router.post('/gmail/send', requireAuth, async (req, res) => {

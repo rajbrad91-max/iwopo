@@ -20,6 +20,8 @@ export default function Inbox() {
     return TABS.some(t => t[0] === q) ? q : (localStorage.getItem('inbox_tab') || 'calls');
   });
   const counts = useInboxCounts();
+  // 🔴 opening Email sets its number (and its share of the sidebar's) back to 0
+  useEffect(() => { if (tab === 'email') api.inboxEmailSeen().then(inboxChanged).catch(() => {}); }, [tab]);
   const [gear, setGear] = useState(false);       // ⚙️ this tab's settings instead of its content
   const tabName = TABS.find(t => t[0] === tab)[2];
   const choose = (t) => { setGear(false); setTab(t); localStorage.setItem('inbox_tab', t); history.replaceState(null, '', t === 'calls' ? location.pathname : `${location.pathname}?tab=${t}`); };

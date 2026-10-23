@@ -90,32 +90,59 @@ async function speakDeepgram(text, push, send, cost) {
 /* ── 🔊 Tornado's voice on Raj's own PC (Raj, 2026-10-16): Kokoro af_heart on BRAR's Ubuntu, reached over Tailscale.
    Raw 24 kHz 16-bit PCM — what the phone plays. If the PC is off or slow to answer, Charon speaks instead, and the
    PC is not tried again for 20 s so an off PC never adds a delay to every sentence. ── */
+/* v40 (Raj, 2026-10-23: "Gale starts stuttering after a few minutes"): the cause was voices switching mid-answer —
+   every sentence was sent to the PC at once, a slow one timed out after 2.5 s, and Charon took over for 20 s, then
+   Gale came back. Now: the voice is chosen ONCE per answer (cost.voice), at most 2 sentences go to the PC at a time,
+   a slow sentence gets 8 s and one retry, and only a real failure moves the rest of THAT answer to Charon.
+   The audio is passed on as it arrives instead of after the whole sentence. */
 const pcVoice = { downUntil: 0 };
-async function speakLocal(text, push, send) {
-  const url = (await getSetting('local_voice_url', '')).replace(/\/+$/, '');
-  const token = await getSetting('local_voice_token', '');
-  if (!url || !token || Date.now() < pcVoice.downUntil) return false;
+const pcSlots = { busy: 0, queue: [] };
+async function pcSlot() { if (pcSlots.busy >= 2) await new Promise((r) => pcSlots.queue.push(r)); pcSlots.busy++; }
+function pcFree() { pcSlots.busy--; const next = pcSlots.queue.shift(); if (next) next(); }
+async function pcSpeakOnce(url, token, text, push) {
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 2500);          // PC off / asleep → give up fast
+  const timer = setTimeout(() => ctl.abort(), 8000);
   try {
     const r = await fetch(`${url}/speak`, {
       method: 'POST', signal: ctl.signal,
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, voice: (await getSetting('local_voice_name', '')) || 'af_heart' }),
     });
-    if (!r.ok) throw new Error(`PC voice ${r.status}`);
-    const pcm = Buffer.from(await r.arrayBuffer());
-    clearTimeout(timer);
-    if (pcm.length < 2) throw new Error('PC voice: empty');
-    const even = pcm.length - (pcm.length % 2);
-    for (let i = 0; i < even; i += 24000) push(pcm.subarray(i, Math.min(i + 24000, even)).toString('base64'));
+    if (!r.ok || !r.body) throw new Error(`PC voice ${r.status}`);
+    let carry = null, bytes = 0;
+    for await (const chunk of r.body) {                       // pass the sound on as it arrives
+      let b = Buffer.from(chunk);
+      if (carry) { b = Buffer.concat([carry, b]); carry = null; }
+      if (b.length % 2) { carry = b.subarray(b.length - 1); b = b.subarray(0, b.length - 1); }
+      if (b.length) { bytes += b.length; push(b.toString('base64')); }
+    }
+    if (bytes < 2) throw new Error('PC voice: empty');
     return true;
-  } catch (e) {
-    clearTimeout(timer);
-    pcVoice.downUntil = Date.now() + 20_000;
-    send('error', { message: `PC voice unavailable (${e.name === 'AbortError' ? 'no answer' : e.message}) — Charon speaks` });
+  } finally { clearTimeout(timer); }
+}
+async function speakLocal(text, push, send, cost) {
+  const v = cost?.voice;
+  if (!v?.gale || v.dead) return false;                      // this answer isn't (or no longer) in Gale's voice
+  const url = (await getSetting('local_voice_url', '')).replace(/\/+$/, '');
+  const token = await getSetting('local_voice_token', '');
+  if (!url || !token) return false;
+  await pcSlot();
+  try {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      let sounded = false;
+      try { return await pcSpeakOnce(url, token, text, (pcm) => { sounded = true; push(pcm); }); }
+      catch (e) {
+        if (sounded) return true;                             // part of the sentence played: never repeat it
+        if (attempt === 2) {
+          v.dead = true;                                       // the rest of THIS answer: Charon
+          pcVoice.downUntil = Date.now() + 20_000;             // and the next answers check the PC again first
+          send('error', { message: `PC voice unavailable (${e.name === 'AbortError' ? 'no answer' : e.message}) — Charon speaks` });
+          return false;
+        }
+      }
+    }
     return false;
-  }
+  } finally { pcFree(); }
 }
 
 /** The PC voice when it's set up and answering, else the main voice (setting ear_tts_engine, default Gemini). */
@@ -165,13 +192,15 @@ function sameAsLast(prev, now) {
   return b.length >= 3 && a.size >= 3 && b.filter(w => a.has(w)).length / b.length >= 0.6;
 }
 function pickBrain(s, text) {
+  // a question ("what did Yuffie text me?", "any emails from…?") is a lookup, never a critical action
+  const question = /^\s*(what|when|who|whom|whose|where|which|why|how|did|do|does|is|are|was|were|can|could|any|show|tell|read|find|check|list)\b/i.test(text) || /\?\s*$/.test(text);
   let why = HARDER.test(text) ? 'asked to think harder'
     : FIX.test(text) ? 'correction or repeat'
     : sameAsLast(s.lastUser || '', text) ? 'asked again'
-    : CRITICAL.test(text) ? 'critical request' : '';
+    : (!question && CRITICAL.test(text)) ? 'critical request' : '';
   // small talk ("thanks", "okay") never needs the smart brain — and doesn't use up its follow-ups
   const smallTalk = !why && /^(ok(ay)?|thanks?|thank you|cool|great|nice|alright|all right|perfect|got it|bye|good)\b/i.test(text.trim()) && text.trim().split(/\s+/).length <= 4;
-  if (why) s.sonnetLeft = 2;
+  if (why) s.sonnetLeft = 1;
   else if (!smallTalk && s.sonnetLeft > 0) { s.sonnetLeft--; why = 'following up'; }
   s.lastUser = text;
   return why;
@@ -230,8 +259,9 @@ export async function earTurn({ vendorId, auth, sessionId, text, send }) {
   let why = pickBrain(s, String(text));
   let model = why ? SONNET : HAIKU;
   if (why) send('brain', { model: 'sonnet', why });
-  const gale = await galeUp();
+  const gale = Date.now() >= pcVoice.downUntil && await galeUp();
   const cost = { in: 0, out: 0, cache_read: 0, cache_write: 0, tts_in: 0, tts_in_total: 0, tts_out: 0, tts_out_last: 0, s_in: 0, s_out: 0, s_cache_read: 0, s_cache_write: 0 };
+  cost.voice = { gale, dead: false };                         // 🔊 one voice for the whole answer (v40)
   let spoke = false, filled = false;      // filled: "One sec." already said this turn                                 // ✂️ nothing said yet this turn → speak at the first comma
   let voice = Promise.resolve();                     // sentences are spoken in order, while Haiku keeps writing
   const tm = { t0: Date.now(), word: 0, sound: 0 };   // ⏱️ timing, sent back with 'done' for the phone log
