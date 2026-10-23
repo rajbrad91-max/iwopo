@@ -232,7 +232,7 @@ a.cm-leadnote:hover { text-decoration: underline; }
 /* 👁️ unread conversations: bold and highlighted until opened (or reported by Tornado) */
 .cm-person.is-unread { background: var(--teal-soft); }
 .cm-person.is-unread .cm-pname, .cm-person.is-unread .cm-plast { font-weight: 700; color: var(--text); }
-.cm-kind { font-size: 13px; line-height: 1; }
+.cm-kind { font-size: 14px; line-height: 1; display: inline-flex; align-items: center; opacity: .85; }
 .cm-kind.is-missed { color: #dc2626; }
 .cm-kind.is-call { color: #16a34a; }
 .cm-unread { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--teal); color: #fff;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { MdPhone, MdPhoneMissed } from 'react-icons/md';   // handset only; the missed-call handset for missed calls
 import { inboxChanged } from '../lib/inboxCounts.js';
 import { api, authFetch, fmtDateTime, vendorDayKey } from '../lib/api';
 import './comms.css';
@@ -586,7 +587,7 @@ export default function CommsView() {
                 <span className="cm-pside">
                   <span className="cm-pwhen">{ago(p.last.occurred_at)}</span>
                   {p.last.kind === 'call'
-                    ? <span className={`cm-kind ${missed(p.last) ? 'is-missed' : 'is-call'}`} title={missed(p.last) ? 'Missed call' : 'Call'}>☎︎</span>
+                    ? <span className={`cm-kind ${missed(p.last) ? 'is-missed' : 'is-call'}`} title={missed(p.last) ? 'Missed call' : 'Call'} aria-label={missed(p.last) ? 'Missed call' : 'Call'}>{missed(p.last) ? <MdPhoneMissed /> : <MdPhone />}</span>
                     : <span className="cm-kind" title="Text">💬</span>}
                   {p.unread > 0 && <span className="cm-unread" title={`${p.unread} unread`}>{p.unread}</span>}
                 </span>
