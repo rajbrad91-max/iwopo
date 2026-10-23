@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { inboxChanged } from '../lib/inboxCounts.js';
 import { api, authFetch, fmtDateTime, vendorDayKey } from '../lib/api';
 import './comms.css';
 import CommsNewText, { prettyNumber, smsCount } from './CommsNewText.jsx';
@@ -331,7 +332,7 @@ export default function CommsView() {
 
   /* 👁️ an open conversation is a seen conversation — also when a new text arrives while it is open */
   const openUnread = people.find(p => p.key === party)?.unread || 0;
-  const markSeenNow = useCallback((k) => { setSeen(s => ({ ...s, [k]: new Date().toISOString() })); api.commsSeen(k).catch(() => {}); }, []);
+  const markSeenNow = useCallback((k) => { setSeen(s => ({ ...s, [k]: new Date().toISOString() })); api.commsSeen(k).then(inboxChanged).catch(() => {}); }, []);
   useEffect(() => {   // a new text arriving in the conversation you opened is seen too
     if (party && openUnread && party === openedByYou.current) markSeenNow(party);
   }, [party, openUnread, markSeenNow]);

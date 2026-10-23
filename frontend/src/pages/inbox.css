@@ -50,3 +50,14 @@
   .ib-cols.has-open .ib-list { display: none; }
   .ib-pill { max-width: 100%; }
 }
+
+/* 🔴 unread number on a tab's top-right edge — same red as the sidebar's numbers */
+.ib-tab { position: relative; }
+.ib-count { position: absolute; top: -7px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: #ef4444; color: #fff; font-size: 10.5px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--panel, #fff); }
+/* 📱 phones: the four tabs are one even row of icons — never wrapping (Raj, 2026-10-23) */
+@media (max-width: 600px) {
+  .ib-tabs { flex-wrap: nowrap; gap: 8px; }
+  .ib-tab { flex: 1 1 0; min-width: 0; padding: 8px 0; text-align: center; font-size: 19px; line-height: 1; }
+  .ib-tab-txt { display: none; }
+}

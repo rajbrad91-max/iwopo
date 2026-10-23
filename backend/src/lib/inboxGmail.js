@@ -129,6 +129,21 @@ const PRACTICE = [
     messages: [{ id: 'p2a', from: 'Venue Coordinator <events@example.com>', to: 'you@example.com', date: new Date(Date.now() - 86400e3).toISOString(), body: 'Hello, confirming vendor meals will be served at 7pm and load-in is from 2pm.' }] },
 ];
 
+/** 🔴 unread emails in the inbox (Gmail's own count), cached for a minute; 0 when not connected */
+const unreadCache = new Map();
+export async function unreadCount(v) {
+  const st = await status(v);
+  if (st.sandbox) return PRACTICE.filter(t => t.unread).length;
+  if (!st.connected) return 0;
+  const hit = unreadCache.get(Number(v));
+  if (hit && hit.until > Date.now()) return hit.n;
+  const l = await gmail(v, '/labels/INBOX');
+  const n = Number(l.threadsUnread || 0);
+  unreadCache.set(Number(v), { n, until: Date.now() + 60_000 });
+  return n;
+}
+export const forgetUnread = (v) => unreadCache.delete(Number(v));
+
 export async function listThreads(v, q = '') {
   if ((await status(v)).sandbox) return PRACTICE.filter(t => !q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())).map(({ messages, ...t }) => t);
   const d = await gmail(v, `/threads?maxResults=25&q=${encodeURIComponent(q || 'in:inbox')}`);
@@ -142,8 +157,9 @@ export async function listThreads(v, q = '') {
 }
 
 export async function getThread(v, id) {
-  if ((await status(v)).sandbox) { const t = PRACTICE.find(x => x.id === id); if (!t) throw new Error('Not found'); return { id, subject: t.subject, messages: t.messages }; }
+  if ((await status(v)).sandbox) { const t = PRACTICE.find(x => x.id === id); if (!t) throw new Error('Not found'); t.unread = false; return { id, subject: t.subject, messages: t.messages }; }
   const th = await gmail(v, `/threads/${encodeURIComponent(id)}?format=full`);
+  if ((th.messages || []).some(m => (m.labelIds || []).includes('UNREAD'))) forgetUnread(v);
   if ((th.messages || []).some(m => (m.labelIds || []).includes('UNREAD'))) gmail(v, `/threads/${encodeURIComponent(id)}/modify`, { method: 'POST', body: JSON.stringify({ removeLabelIds: ['UNREAD'] }) }).catch(() => {});
   return { id, subject: header(th.messages[0], 'Subject') || '(no subject)',
     messages: th.messages.map(m => ({ id: m.id, from: header(m, 'From'), to: header(m, 'To'), date: new Date(Number(m.internalDate)).toISOString(),

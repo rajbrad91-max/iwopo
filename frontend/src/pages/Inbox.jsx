@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { api } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
+import { useInboxCounts, inboxChanged } from '../lib/inboxCounts.js';
 import './inbox.css';
 
 const CommsView = lazy(() => import('./CommsView.jsx'));
@@ -9,19 +10,23 @@ const CommsView = lazy(() => import('./CommsView.jsx'));
  * 📥 The owner's private inbox (Raj, 2026-10-22): one page, four tabs — Calls & Texts (Quo), Email (Gmail),
  * Instagram, WhatsApp. It lives inside the private Calls & Messages feature, so no other vendor can see it.
  */
-const TABS = [['calls', '📞 Calls & Texts'], ['email', '📧 Email'], ['instagram', '📸 Instagram'], ['whatsapp', '💬 WhatsApp']];
+const TABS = [['calls', '📞', 'Calls & Texts'], ['email', '📧', 'Email'], ['instagram', '📸', 'Instagram'], ['whatsapp', '💬', 'WhatsApp']];
 
 export default function Inbox() {
   const [tab, setTab] = useState(() => {
     const q = new URLSearchParams(location.search).get('tab');
     return TABS.some(t => t[0] === q) ? q : (localStorage.getItem('inbox_tab') || 'calls');
   });
+  const counts = useInboxCounts();
   const choose = (t) => { setTab(t); localStorage.setItem('inbox_tab', t); history.replaceState(null, '', t === 'calls' ? location.pathname : `${location.pathname}?tab=${t}`); };
   return (
     <div className="ib">
       <div className="ib-tabs" role="tablist">
-        {TABS.map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={`ib-tab ${tab === k ? 'is-on' : ''}`} onClick={() => choose(k)}>{l}</button>
+        {TABS.map(([k, ic, name]) => (
+          <button key={k} role="tab" aria-selected={tab === k} aria-label={name} title={name} className={`ib-tab ${tab === k ? 'is-on' : ''}`} onClick={() => choose(k)}>
+            <span className="ib-tab-ic" aria-hidden="true">{ic}</span><span className="ib-tab-txt"> {name}</span>
+            {counts[k === 'calls' ? 'calls' : k] > 0 && <span className="ib-count" title={`${counts[k === 'calls' ? 'calls' : k]} unread`}>{counts[k === 'calls' ? 'calls' : k] > 99 ? '99+' : counts[k === 'calls' ? 'calls' : k]}</span>}
+          </button>
         ))}
       </div>
       {tab === 'calls' && <Suspense fallback={<p className="ib-quiet">Loading…</p>}><CommsView /></Suspense>}
@@ -73,7 +78,7 @@ function EmailTab() {
   }
   async function read(id) {
     setOpen({ id, loading: true });
-    try { setOpen(await api.inboxEmailThread(id)); setThreads(t => (t || []).map(x => (x.id === id ? { ...x, unread: false } : x))); }
+    try { setOpen(await api.inboxEmailThread(id)); setThreads(t => (t || []).map(x => (x.id === id ? { ...x, unread: false } : x))); inboxChanged(); }
     catch (e) { setOpen(null); setMsg(e.message); }
   }
   async function send(payload, after) {

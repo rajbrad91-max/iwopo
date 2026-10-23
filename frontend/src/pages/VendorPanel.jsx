@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
+import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
@@ -179,6 +180,7 @@ export default function VendorPanel({ onLogout }) {
   // wiping it just for landing on the list made it meaningless — you'd never see
   // which lead was actually new. Opening a lead clears that lead (see LeadsView).
   /* 🔗 sidebar links: a plain click stays inside the panel; Ctrl/⌘/Shift/middle-click opens a new tab as normal */
+  const inbox = useInboxCounts(has('comms'));   // 🔴 unread calls, texts and emails
   const navHref = (t) => (t === 'dashboard' ? '/panel' : `/panel/${t}`);
   const navClick = (t) => (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -305,7 +307,7 @@ export default function VendorPanel({ onLogout }) {
         {/* 🔒 The four features private to the platform owner, kept
             together and in a deliberate order rather than scattered down
             the list. Each still appears only for somebody granted it. */}
-        {has('comms') && <a href={navHref('comms')} className={`nav-item ${tab==='comms'?'active':''}`} aria-current={tab==='comms' ? 'page' : undefined} onClick={navClick('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span></a>}
+        {has('comms') && <a href={navHref('comms')} className={`nav-item ${tab==='comms'?'active':''}`} aria-current={tab==='comms' ? 'page' : undefined} onClick={navClick('comms')}><span className="nav-ic">📞</span><span className="nav-txt">Calls & Messages</span>{inbox.total > 0 && <span className="nav-badge" title={`${inbox.total} unread`}>{inbox.total > 99 ? '99+' : inbox.total}</span>}</a>}
         {has('agent') && <a href={navHref('agent')} className={`nav-item ${tab==='agent'?'active':''}`} aria-current={tab==='agent' ? 'page' : undefined} onClick={navClick('agent')}><span className="nav-ic">🤖</span><span className="nav-txt">AI Agent</span></a>}
         {has('rawsel') && <a href={navHref('rawsel')} className={`nav-item ${tab==='rawsel'?'active':''}`} aria-current={tab==='rawsel' ? 'page' : undefined} onClick={navClick('rawsel')}><span className="nav-ic">🎞️</span><span className="nav-txt">Raw Selector</span></a>}
         {has('analytics') && <a href={navHref('analytics')} className={`nav-item ${tab==='analytics'?'active':''}`} aria-current={tab==='analytics' ? 'page' : undefined} onClick={navClick('analytics')}><span className="nav-ic">📊</span><span className="nav-txt">Analytics</span></a>}
@@ -2847,7 +2849,7 @@ function DashHome({ goTab }) {
             <button className="refresh" onClick={() => goTab('leads')} style={{ padding: '6px 14px', fontSize: 12 }}>View all →</button>
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="dash-recent">
               <thead><tr><th>Name</th><th>Event</th><th>Date</th><th>Status</th></tr></thead>
               <tbody>
                 {recent.length === 0 ? (
@@ -2882,10 +2884,10 @@ function DashHome({ goTab }) {
                 <div className="ev-body">
                   <div className="ev-name">{b.name}</div>
                   <div className="ev-type">{b.event_type}{b.package_snapshot?.name ? ` · ${b.package_snapshot.name}` : ''}</div>
-                  <div className="ev-line">🕐 {b.timing_from || b.timing_to ? `${b.timing_from ? fmtTime(b.timing_from) : '?'} — ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : 'Time to be confirmed'}</div>
-                  {b.location && <div className="ev-line">📍 {b.location}</div>}
-                  {b.phone && <div className="ev-line">📞 {b.phone}</div>}
-                  {b.email && <div className="ev-line">✉️ {b.email}</div>}
+                  <div className="ev-line ev-time"><span className="ev-ic">🕐 </span>{b.timing_from || b.timing_to ? `${b.timing_from ? fmtTime(b.timing_from) : '?'} — ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : 'Time to be confirmed'}</div>
+                  {b.location && <div className="ev-line ev-loc"><span className="ev-ic">📍 </span>{b.location}</div>}
+                  {b.phone && <div className="ev-line ev-phone"><span className="ev-ic">📞 </span>{b.phone}</div>}
+                  {b.email && <div className="ev-line ev-mail"><span className="ev-ic">✉️ </span>{b.email}</div>}
                 </div>
               </div>
             );
