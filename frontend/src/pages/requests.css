@@ -59,3 +59,8 @@
    differently from the other two — not alarming, but not identical either. */
 .rq-del { color: var(--red); }
 .rq-del:hover { border-color: var(--red); }
+
+/* 📱 (Raj's mobile audit, 2026-10-23): icon + label on one line; the row wraps; "Done …" gets its own line on phones */
+.rq-acts { flex-wrap: wrap; }
+.rq-acts .refresh { white-space: nowrap; }
+@media (max-width: 600px) { .rq-done-at { flex-basis: 100%; } }

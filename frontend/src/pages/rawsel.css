@@ -67,3 +67,13 @@
 .ep-deliver { margin: 18px 0; padding: 16px; border: 1px dashed var(--line); border-radius: 12px; background: #fafbfc; }
 .ep-gap { margin-top: 18px; }
 .rs-file.is-off { opacity: .5; cursor: not-allowed; }
+
+/* 📱 phones (Raj's mobile audit, 2026-10-23): cards never wider than the screen — the wide Clients table
+   scrolls inside its own box, long links break, and the add-editor form stacks */
+.rs { grid-template-columns: minmax(0, 1fr); }
+.rs-card { min-width: 0; }
+.rs-sub, .rs-sub a { overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .rs-card { padding: 16px 14px; }
+  .rs-add > * { flex: 1 1 100%; }
+}

@@ -2561,10 +2561,10 @@ function CrewView() {
                 ) : crew.map(c => (
                   <tr key={c.id}>
                     <td className="biz">{c.name}</td>
-                    <td>{c.role || '—'}</td>
-                    <td>{c.phone || '—'}</td>
-                    <td>{c.email || '—'}</td>
-                    <td>
+                    <td className="cr-role">{c.role || '—'}</td>
+                    <td className="cr-phone">{c.phone || '—'}</td>
+                    <td className="cr-email">{c.email || '—'}</td>
+                    <td className="cr-acts">
                       <button type="button" className="cr-icon-btn" onClick={() => startEdit(c)} title="Edit this person">✏️</button>
                       <button type="button" className="cr-icon-btn" onClick={() => del(c.id)} title="Remove from your team">🗑️</button>
                     </td>
@@ -4082,7 +4082,7 @@ function AllContracts() {
         Keep your own copy of anything you may need later — download it from the row.
       </p>
       <div className="table-wrap">
-        <table>
+        <table className="ct-table">
         <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th className="ct-date">Signed</th><th>Documents</th></tr></thead>
         <tbody>
           {shown.length === 0 ? (
@@ -4093,8 +4093,8 @@ function AllContracts() {
             <tr key={c.id}>
               <td className="ct-num">{n + 1}</td>
               <td className="biz">{c.client_name}</td>
-              <td>{c.title}</td>
-              <td>{c.signed_name || '—'}</td>
+              <td className="ct-title">{c.title}</td>
+              <td className="ct-signer">{c.signed_name || '—'}</td>
               <td className="ct-date">{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
               {/* Both open in a tab rather than landing on disk: saving a file
                   before you have looked at it is a guess. Each document carries
@@ -5249,7 +5249,7 @@ function InqFormSettings() {
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Brand name</label>
         <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
 
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', marginTop: 12 }}>
+        <div className="if-brand-row">
           <div>
             <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block' }}>Brand color</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -5258,7 +5258,7 @@ function InqFormSettings() {
               <HexField value={s.brand_color} onChange={hex => setS({ ...s, brand_color: hex })} />
             </div>
           </div>
-          <div style={{ flex: 1 }}>
+          <div className="if-wm">
             <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Background watermark</label>
             <select style={box} value={s.background || 'none'} onChange={e => setS({ ...s, background: e.target.value })}>
               {Object.entries(PROFESSIONS).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
@@ -5694,7 +5694,7 @@ function SettingsView({ user, onProfileChange }) {
 
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="set-tabs">
         {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices']].map(([k, label]) => (
           <button key={k} className="refresh" onClick={() => setSub(k)}
             style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
