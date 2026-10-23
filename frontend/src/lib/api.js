@@ -877,6 +877,7 @@ export const api = {
     return request('/comms' + (p.toString() ? '?' + p : ''));
   },
   commsStatus: () => request('/comms/status'),
+  commsSeen: (key) => request('/comms/seen', { method: 'POST', body: JSON.stringify({ key }) }),
   inboxEmailStatus: () => request('/inbox/gmail/status'),
   inboxEmailConnect: () => request('/inbox/gmail/connect'),
   inboxEmailDisconnect: () => request('/inbox/gmail/disconnect', { method: 'POST' }),

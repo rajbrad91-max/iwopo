@@ -4725,8 +4725,8 @@ function BookingsView({ routeBooking, onOpenBooking }) {
         </div>
         <div className="bk-toggle">
           <button className={`bk-tog-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(''); }} title="Search bookings">🔍</button>
-          <button className={`bk-tog-btn ${mode === 'list' ? 'is-on' : ''}`} onClick={() => setMode('list')}>📋 List</button>
-          <button className={`bk-tog-btn ${mode === 'calendar' ? 'is-on' : ''}`} onClick={() => setMode('calendar')}>🗓️ Calendar</button>
+          <button className={`bk-tog-btn ${mode === 'list' ? 'is-on' : ''}`} onClick={() => setMode('list')} title="List"><span className="bk-tog-ic">☰</span><span className="bk-tog-txt"> List</span></button>
+          <button className={`bk-tog-btn ${mode === 'calendar' ? 'is-on' : ''}`} onClick={() => setMode('calendar')} title="Calendar">🗓️<span className="bk-tog-txt"> Calendar</span></button>
         </div>
       </div>
 
@@ -4740,7 +4740,7 @@ function BookingsView({ routeBooking, onOpenBooking }) {
 
       {mode === 'calendar' ? <CalendarView onOpen={(l) => onOpenBooking(l.id)} filter={term} /> : (
         <div className="table-wrap">
-          <table>
+          <table className="bk-table">
             <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Crew Status</th><th>Status</th><th className="col-act"></th></tr></thead>
             <tbody>
               {shown.length === 0 ? (
@@ -4751,13 +4751,13 @@ function BookingsView({ routeBooking, onOpenBooking }) {
                 <tr key={b.id} className="row-clickable" onClick={() => onOpenBooking(b.id)}>
                   <td className="col-num" data-label="#">{seqOf(b.id)}</td>
                   <td className="biz">{b.name}</td>
-                  <td>{b.event_type}</td>
-                  <td className="bk-nw">{b.event_date ? String(b.event_date).slice(0, 10) : '—'}</td>
+                  <td className="bk-ev">{b.event_type}</td>
+                  <td className="bk-nw bk-date">{b.event_date ? String(b.event_date).slice(0, 10) : '—'}</td>
                   {/* the hours they've booked you for — what a vendor checks
                       when planning a day, rather than the money */}
-                  <td className="bk-nw">{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
-                  <td data-label="Crew Status"><span className={`badge ${cs.cls}`}>{cs.icon} {cs.label}</span></td>
-                  <td><span className="badge active">✅ Booked</span></td>
+                  <td className="bk-nw bk-time">{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
+                  <td className="bk-crew" data-label="Crew Status"><span className={`badge ${cs.cls}`}>{cs.icon} {cs.label}</span></td>
+                  <td className="bk-st"><span className="badge active">✅ Booked</span></td>
                   <td className="col-act">
                     <button type="button" className="bk-del" title="Remove this booking"
                       onClick={e => removeBooking(b, e)}>🗑️</button>

@@ -219,6 +219,8 @@ function LeadState({ e, onLead, onBooking, busy }) {
 export default function CommsView() {
   const [events, setEvents] = useState([]);
   const [badges, setBadges] = useState({});       // personKey → { kind: 'lead'|'booked', lead_id, … }
+  const [seen, setSeen] = useState({});           // 👁️ personKey (or '*') → seen up to
+  const openedByYou = useRef(null);               // the conversation the owner clicked (not the desktop auto-open)
   const [kind, setKind] = useState('');
   const [q, setQ] = useState('');
   const [qInput, setQInput] = useState('');      // what is typed; q follows once typing pauses
@@ -249,6 +251,7 @@ export default function CommsView() {
       if (mine !== loadSeq.current) return;          // a newer tab or search has taken over
       setEvents(d.events || []);
       setBadges(d.badges || {});
+      if (d.seen) setSeen(d.seen);
       newest.current = d.events?.[0]?.occurred_at || null;
       loadedOnce.current = true;
     } catch (e) { if (mine === loadSeq.current) setErr(e.message); }
@@ -316,11 +319,22 @@ export default function CommsView() {
       const p = by.get(k);
       if (e.contact_name && !p.name) { p.name = e.contact_name; p.saved = true; }   // saved: the name came from a Quo contact
       if (e.kind === 'call') p.calls++; else p.texts++;
+      // 👁️ unread: a text received or a call missed after the moment this person was last seen
+      const since = Math.max(Date.parse(seen[k] || 0) || 0, Date.parse(seen['*'] || 0) || 0);
+      const inbound = (e.kind === 'message' && e.direction === 'incoming') || (missed(e) && e.direction !== 'outgoing');
+      if (inbound && Date.parse(e.occurred_at) > since) p.unread = (p.unread || 0) + 1;
     }
     // no saved Quo contact → the name on their lead, so a client is never just a number
     for (const p of by.values()) if (!p.name && badges[p.key]?.name) p.name = badges[p.key].name;
     return [...by.values()];
-  }, [events, badges]);
+  }, [events, badges, seen]);
+
+  /* 👁️ an open conversation is a seen conversation — also when a new text arrives while it is open */
+  const openUnread = people.find(p => p.key === party)?.unread || 0;
+  const markSeenNow = useCallback((k) => { setSeen(s => ({ ...s, [k]: new Date().toISOString() })); api.commsSeen(k).catch(() => {}); }, []);
+  useEffect(() => {   // a new text arriving in the conversation you opened is seen too
+    if (party && openUnread && party === openedByYou.current) markSeenNow(party);
+  }, [party, openUnread, markSeenNow]);
 
   /* Badges kept fresh while the page is open: a lead created or marked booked
      somewhere else shows here within half a minute, without a reload. */
@@ -557,7 +571,7 @@ export default function CommsView() {
         <div className="cm-wrap">
           <nav className="cm-people" aria-label="People">
             {people.map(p => (
-              <button key={p.key} className={`cm-person ${party === p.key ? 'is-on' : ''}`} onClick={() => setParty(p.key)}>
+              <button key={p.key} className={`cm-person ${party === p.key ? 'is-on' : ''} ${p.unread ? 'is-unread' : ''}`} onClick={() => { openedByYou.current = p.key; setParty(p.key); if (p.unread) markSeenNow(p.key); }}>
                 <span className="cm-av" aria-hidden="true">{initials(p.name)}</span>
                 <span className="cm-pmain">
                   <span className="cm-pname">{p.name || pretty(p.number)}</span>
@@ -570,7 +584,10 @@ export default function CommsView() {
                 </span>
                 <span className="cm-pside">
                   <span className="cm-pwhen">{ago(p.last.occurred_at)}</span>
-                  {missed(p.last) && <span className="cm-dot" title="Missed call" />}
+                  {p.last.kind === 'call'
+                    ? <span className={`cm-kind ${missed(p.last) ? 'is-missed' : 'is-call'}`} title={missed(p.last) ? 'Missed call' : 'Call'}>☎︎</span>
+                    : <span className="cm-kind" title="Text">💬</span>}
+                  {p.unread > 0 && <span className="cm-unread" title={`${p.unread} unread`}>{p.unread}</span>}
                 </span>
               </button>
             ))}

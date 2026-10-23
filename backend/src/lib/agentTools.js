@@ -8,6 +8,7 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import { markSeen as markCommsSeen } from './commsSeen.js';
 import { stagesSummary } from './projectStages.js';
 import privateDb from '../config/privateDb.js';
 import { getSetting } from './settings.js';
@@ -337,6 +338,7 @@ export async function runTool(name, input, vendorId) {
     case 'project_stages': return stagesSummary(v, input);
     case 'mark_seen': {
       const what = String(input.what || 'all'), now = new Date(), done = [];
+      if (what === 'messages' || what === 'all') await markCommsSeen(v, 'all').catch(() => {});   // 👁️ the calls & texts list too
       if (what === 'messages' || what === 'all') { const r = await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }).catch(() => ({ count: 0 })); done.push(`${r.count} message${r.count === 1 ? '' : 's'}`); }
       if (what === 'notifications' || what === 'all') { const r = await prisma.notifications.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }); done.push(`${r.count} notification${r.count === 1 ? '' : 's'}`); }
       if (what === 'leads' || what === 'all') { const r = await prisma.leads.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }); done.push(`${r.count} lead${r.count === 1 ? '' : 's'}`); }

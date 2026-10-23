@@ -6,6 +6,7 @@
  * to the vendor on the token regardless.
  */
 import express from 'express';
+import { seenMap, markSeen } from '../lib/commsSeen.js';
 import { Readable } from 'node:stream';
 import privateDb from '../config/privateDb.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -88,7 +89,7 @@ router.get('/', requireAuth, async (req, res) => {
     /* Grouping by person is done in the page, from these same events, so a
        call that arrives while somebody is watching joins its thread at once
        instead of waiting for a full reload. */
-    res.json({ events, badges: await leadBadges(v, events), now: new Date().toISOString() });
+    res.json({ events, badges: await leadBadges(v, events), seen: await seenMap(v), now: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -254,6 +255,14 @@ router.get('/status', requireAuth, async (req, res) => {
 });
 
 const NOT_CONNECTED = 'Calls & messages are not connected for this account yet.';
+
+/* 👁️ POST /api/comms/seen { key } — the owner opened this conversation (key = last 10 digits, or 'all'). */
+router.post('/seen', requireAuth, async (req, res) => {
+  try {
+    const k = String(req.body?.key || '');
+    res.json({ seen: await markSeen(vid(req), k === 'all' ? 'all' : [k.replace(/\D/g, '').slice(-10)]) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 const SANDBOX_FROM = '+15550100100';   // a 555 number: practice mode only
 
 router.post('/sync', requireAuth, async (req, res) => {
