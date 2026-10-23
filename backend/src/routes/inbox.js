@@ -27,11 +27,12 @@ router.put('/gmail/app', requireAuth, async (req, res) => { try { await gm.saveA
 router.get('/gmail/connect', requireAuth, async (req, res) => { try { res.json({ url: await gm.connectUrl(vid(req), callbackUrl(req)) }); } catch (e) { fail(res, e); } });
 router.post('/gmail/disconnect', requireAuth, async (req, res) => { try { await gm.disconnect(vid(req)); res.json({ ok: true }); } catch (e) { fail(res, e); } });
 router.get('/gmail/threads', requireAuth, async (req, res) => {
-  try { res.json({ threads: await gm.listThreads(vid(req), String(req.query.q || '').slice(0, 200), req.query.view === 'all' ? 'all' : 'smart') }); } catch (e) { fail(res, e); }
+  try { res.json({ threads: await gm.listThreads(vid(req), String(req.query.q || '').slice(0, 200), String(req.query.filter || 'all').slice(0, 40)) }); } catch (e) { fail(res, e); }
 });
-/* ✨ the vendor's smart filter */
-router.get('/gmail/filter', requireAuth, async (req, res) => { try { res.json(await gm.getFilter(vid(req))); } catch (e) { fail(res, e); } });
-router.put('/gmail/filter', requireAuth, async (req, res) => { try { res.json(await gm.saveFilter(vid(req), req.body || {})); } catch (e) { fail(res, e); } });
+/* 🏷️ the vendor's filters (the whole list is saved at once) and their Gmail labels */
+router.get('/gmail/filters', requireAuth, async (req, res) => { try { res.json({ filters: await gm.getFilters(vid(req)) }); } catch (e) { fail(res, e); } });
+router.put('/gmail/filters', requireAuth, async (req, res) => { try { res.json({ filters: await gm.saveFilters(vid(req), req.body?.filters) }); } catch (e) { fail(res, e); } });
+router.get('/gmail/labels', requireAuth, async (req, res) => { try { res.json({ labels: await gm.listLabels(vid(req)) }); } catch (e) { fail(res, e); } });
 router.get('/gmail/threads/:id', requireAuth, async (req, res) => { try { res.json(await gm.getThread(vid(req), req.params.id)); } catch (e) { fail(res, e); } });
 router.post('/gmail/send', requireAuth, async (req, res) => {
   try { const b = req.body || {}; res.json(await gm.sendEmail(vid(req), { to: b.to, subject: b.subject, body: b.body, threadId: b.threadId, replyTo: b.replyTo })); }

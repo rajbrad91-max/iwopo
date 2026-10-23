@@ -48,28 +48,67 @@ export default function Inbox() {
   );
 }
 
-/** ✨ Smart filter: which emails the ✨ Smart view shows (and the red number counts). */
-function SmartFilter() {
-  const [f, setF] = useState(null);
-  const [words, setWords] = useState('');
+/** 🏷️ Filters, Gmail-style: From, To, Subject, Has the words, Doesn't have, Gmail label. Each shows as a chip in the Email tab. */
+const BLANK_FILTER = { name: '', from: '', to: '', subject: '', has: '', not: '', label: '' };
+function EmailFilters() {
+  const dialog = useDialog();
+  const [list, setList] = useState(null);
+  const [labels, setLabels] = useState([]);
+  const [edit, setEdit] = useState(null);     // the filter being created/edited
   const [msg, setMsg] = useState('');
-  useEffect(() => { api.inboxEmailFilter().then(d => { setF(d); setWords(d.words.join(', ')); }).catch(() => {}); }, []);
-  async function save() {
+  useEffect(() => {
+    api.inboxEmailFilters().then(d => setList(d.filters || [])).catch(() => setList([]));
+    api.inboxEmailLabels().then(d => setLabels(d.labels || [])).catch(() => {});
+  }, []);
+  async function persist(next, done) {
     setMsg('');
-    try { const d = await api.inboxEmailSaveFilter({ ...f, words }); setF(d); setWords(d.words.join(', ')); setMsg('✅ Saved'); inboxChanged(); }
+    try { const d = await api.inboxEmailSaveFilters(next); setList(d.filters); setEdit(null); setMsg(done); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
-  if (!f) return null;
+  const saveEdit = () => persist(edit.id ? list.map(f => (f.id === edit.id ? edit : f)) : [...list, edit], `✅ "${edit.name}" saved — refresh the Email tab to see its chip.`);
+  async function remove(f) {
+    if (!await dialog.confirm(`The "${f.name}" chip goes away. Nothing in Gmail changes.`, { title: 'Delete this filter?', okLabel: 'Delete', danger: true })) return;
+    persist(list.filter(x => x.id !== f.id), `🗑️ "${f.name}" deleted.`);
+  }
+  if (!list) return null;
+  const field = (k, label, hint, ph) => (
+    <>
+      <label className="ib-keys-l" htmlFor={`ef-${k}`}>{label}{hint && <span>{hint}</span>}</label>
+      <input id={`ef-${k}`} className="ib-input" autoComplete="off" spellCheck={false} placeholder={ph} value={edit[k]} onChange={e => setEdit({ ...edit, [k]: e.target.value })} />
+    </>
+  );
   return (
     <div className="ib-keys">
-      <p className="ib-keys-t">✨ Smart filter</p>
-      <label className="ib-check"><input type="checkbox" checked={f.enabled} onChange={e => setF({ ...f, enabled: e.target.checked })} /> Only show emails that match (✨ Smart view)</label>
-      <label className="ib-keys-l" htmlFor="sf-words">Words or phrases <span>any of them, in the subject or the email · separate with commas</span></label>
-      <textarea id="sf-words" className="ib-input" rows={3} spellCheck={false} value={words} onChange={e => setWords(e.target.value)} placeholder="wedding, inquiry, booking, package, quote, photo booth" />
-      <label className="ib-check"><input type="checkbox" checked={f.clients} onChange={e => setF({ ...f, clients: e.target.checked })} /> Always show emails from my leads and bookings</label>
-      <label className="ib-check"><input type="checkbox" checked={f.hide_promos} onChange={e => setF({ ...f, hide_promos: e.target.checked })} /> Hide promotions and social emails</label>
+      <p className="ib-keys-t">🏷️ Filters</p>
+      {list.length === 0 && !edit && <p className="ib-quiet">No filters yet. Each filter becomes a chip at the top of your Email tab.</p>}
+      {!edit && list.map(f => (
+        <div key={f.id} className="ib-frow">
+          <span className="ib-frow-n">🏷️ {f.name}</span>
+          <span className="ib-frow-r">{[f.from && `from ${f.from}`, f.to && `to ${f.to}`, f.subject && `subject "${f.subject}"`, f.has && `has "${f.has}"`, f.not && `not "${f.not}"`, f.label && `label ${f.label}`].filter(Boolean).join(' · ')}</span>
+          <button className="ib-link" onClick={() => setEdit({ ...f })}>Edit</button>
+          <button className="ib-link" onClick={() => remove(f)}>Delete</button>
+        </div>
+      ))}
+      {edit ? (
+        <div className="ib-fedit">
+          {field('name', 'Name', 'shown on the chip', 'Inquiries')}
+          {field('from', 'From', '', 'booking@perfectposes.ca')}
+          {field('to', 'To', '', '')}
+          {field('subject', 'Subject', '', 'New Inquiry from')}
+          {field('has', 'Has the words', '', '')}
+          {field('not', "Doesn't have", '', '')}
+          <label className="ib-keys-l" htmlFor="ef-label">Gmail label <span>optional</span></label>
+          <select id="ef-label" className="ib-input" value={edit.label} onChange={e => setEdit({ ...edit, label: e.target.value })}>
+            <option value="">— any —</option>
+            {[...new Set([...labels, edit.label].filter(Boolean))].map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <div className="ib-keys-row">
+            <button className="ib-btn" onClick={() => setEdit(null)}>Cancel</button>
+            <button className="ib-btn is-on" disabled={!edit.name.trim()} onClick={saveEdit}>Save filter</button>
+          </div>
+        </div>
+      ) : <button className="ib-btn ib-fnew" onClick={() => setEdit({ ...BLANK_FILTER })}>＋ New filter</button>}
       {msg && <p className="ib-msg">{msg}</p>}
-      <div className="ib-keys-row"><button className="ib-btn is-on" onClick={save}>Save filter</button></div>
     </div>
   );
 }
@@ -158,7 +197,7 @@ function ChannelSettings({ tab }) {
     <div className="ib-set">
       <p className="ib-set-row"><b>Mailbox</b><span>{st.sandbox ? '🧪 Practice mode (test site)' : st.connected ? `● ${st.email}` : '○ Not connected yet'}</span></p>
       {st.connected && !st.sandbox && <button type="button" className="ib-btn" onClick={disconnect}>Disconnect this mailbox</button>}
-      <SmartFilter />
+      <EmailFilters />
       <EmailKeys onSaved={load} />
     </div>
   );
@@ -236,8 +275,10 @@ function EmailTab() {
 
   useEffect(() => { api.inboxEmailStatus().then(setStatus).catch(e => setStatus({ connected: false, error: e.message })); }, []);
   useEffect(() => { const t = setTimeout(() => setQ(qLive.trim()), 350); return () => clearTimeout(t); }, [qLive]);
-  const [view, setView] = useState(() => localStorage.getItem('ib_view') || 'smart');   // ✨ smart filter or 📥 everything
-  const pickView = (x) => { setView(x); localStorage.setItem('ib_view', x); setThreads(null); };
+  const [filters, setFilters] = useState([]);                                         // 🏷️ the vendor's own filters
+  const [view, setView] = useState(() => localStorage.getItem('ib_filter') || 'all');   // 'all' or a filter's id
+  const pickView = (x) => { setView(x); localStorage.setItem('ib_filter', x); setThreads(null); };
+  useEffect(() => { if (status?.connected) api.inboxEmailFilters().then(d => setFilters(d.filters || [])).catch(() => {}); }, [status?.connected]);
   const load = useCallback(() => { api.inboxEmailThreads(q, view).then(d => setThreads(d.threads || [])).catch(e => { setThreads([]); setMsg(e.message); }); }, [q, view]);
   useEffect(() => { if (status?.connected) load(); }, [status?.connected, load]);
 
@@ -287,10 +328,6 @@ function EmailTab() {
   return (
     <div className="ib-mail">
       <div className="ib-bar">
-        <div className="ib-seg" role="tablist" aria-label="Which emails">
-          <button type="button" role="tab" aria-selected={view === 'smart'} className={`ib-seg-b ${view === 'smart' ? 'is-on' : ''}`} onClick={() => pickView('smart')} title="Only emails that match your smart filter (⚙️)">✨ Smart</button>
-          <button type="button" role="tab" aria-selected={view === 'all'} className={`ib-seg-b ${view === 'all' ? 'is-on' : ''}`} onClick={() => pickView('all')} title="The whole inbox">📥 All</button>
-        </div>
         <input className="ib-search" type="search" placeholder="Search email" value={qLive} onChange={e => setQLive(e.target.value)} aria-label="Search email" />
         <button className="ib-btn is-on" onClick={() => setCompose({ to: '', subject: '', body: '' })}>＋ New email</button>
         <span className={`ib-pill ${status.sandbox ? 'is-practice' : 'is-on'}`} title={status.sandbox ? 'Test site only: nothing is really sent' : 'Connected'}>
@@ -298,11 +335,17 @@ function EmailTab() {
         </span>
       </div>
       {msg && <p className="ib-msg">{msg}</p>}
+      <div className="ib-fchips" role="tablist" aria-label="Filters">
+        <button type="button" role="tab" aria-selected={view === 'all'} className={`ib-fchip ${view === 'all' ? 'is-on' : ''}`} onClick={() => pickView('all')}>📥 All</button>
+        {filters.map(f => (
+          <button key={f.id} type="button" role="tab" aria-selected={view === f.id} className={`ib-fchip ${view === f.id ? 'is-on' : ''}`} onClick={() => pickView(f.id)}>🏷️ {f.name}</button>
+        ))}
+      </div>
 
       <div className={`ib-cols ${open ? 'has-open' : ''}`}>
         <ul className="ib-list">
           {threads === null ? <li className="ib-quiet">Loading…</li>
-            : threads.length === 0 ? <li className="ib-quiet">{q ? `No results for "${q}".` : view === 'smart' ? 'No emails match your smart filter. Adjust it in ⚙️, or switch to 📥 All.' : 'No emails yet.'}</li>
+            : threads.length === 0 ? <li className="ib-quiet">{q ? `No results for "${q}".` : view !== 'all' ? 'No emails match this filter. Edit it in ⚙️ → Filters.' : 'No emails yet.'}</li>
             : threads.map(t => (
               <li key={t.id}>
                 <button className={`ib-row ${t.unread ? 'is-unread' : ''} ${open?.id === t.id ? 'is-on' : ''}`} onClick={() => read(t.id)}>

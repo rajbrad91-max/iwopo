@@ -135,38 +135,51 @@ const PRACTICE = [
 
 /** 🔴 unread emails in the inbox (Gmail's own count), cached for a minute; 0 when not connected */
 const unreadCache = new Map();
-/* ✨ Smart filter (Raj, 2026-10-23): the vendor's own words, plus their leads' and bookings' addresses, minus promotions
-   and social — turned into ONE Gmail search, so Gmail does the filtering and nothing in the mailbox is changed. */
-const filterKey = (v) => `gmail_filter_${Number(v)}`;
-const DEFAULT_FILTER = { enabled: true, words: ['wedding', 'inquiry', 'booking', 'package', 'quote', 'engagement', 'photography', 'videography'], clients: true, hide_promos: true };
-export async function getFilter(v) {
-  const raw = await setting(filterKey(v));
-  try { return raw ? { ...DEFAULT_FILTER, ...JSON.parse(raw) } : { ...DEFAULT_FILTER }; } catch { return { ...DEFAULT_FILTER }; }
+/* 🏷️ Filters (Raj, 2026-10-23): Gmail-style — From, To, Subject, Has the words, Doesn't have, and a Gmail label.
+   Each becomes a Gmail search, so it shows old and new matching mail alike; nothing in the mailbox is changed. */
+const filtersKey = (v) => `gmail_filters_${Number(v)}`;
+const FIELDS = ['from', 'to', 'subject', 'has', 'not', 'label'];
+export async function getFilters(v) {
+  const raw = await setting(filtersKey(v));
+  try { return raw ? JSON.parse(raw) : []; } catch { return []; }
 }
-export async function saveFilter(v, f = {}) {
-  const list = Array.isArray(f.words) ? f.words : String(f.words || '').split(',');
-  const words = [...new Set(list.map(w => String(w).replace(/["{}()]/g, '').trim().toLowerCase()).filter(w => w && w.length <= 60))].slice(0, 40);
-  const clean = { enabled: !!f.enabled, words, clients: !!f.clients, hide_promos: !!f.hide_promos };
-  await saveSetting(filterKey(v), JSON.stringify(clean));
-  unreadCache.delete(Number(v));
+export async function saveFilters(v, list = []) {
+  if (!Array.isArray(list)) throw new Error('Filters must be a list.');
+  const clean = list.slice(0, 30).map((f, i) => {
+    const o = { id: String(f.id || `f${Date.now().toString(36)}${i}`).slice(0, 40), name: String(f.name || '').trim().slice(0, 40) };
+    for (const k of FIELDS) o[k] = String(f[k] || '').replace(/[{}]/g, '').trim().slice(0, 200);
+    return o;
+  });
+  for (const f of clean) {
+    if (!f.name) throw new Error('Every filter needs a name.');
+    if (!FIELDS.some(k => f[k])) throw new Error(`"${f.name}" needs at least one rule (From, To, Subject, words or label).`);
+  }
+  await saveSetting(filtersKey(v), JSON.stringify(clean));
   return clean;
 }
-async function smartQuery(v) {
-  const f = await getFilter(v);
-  if (!f.enabled) return 'in:inbox';
-  const terms = f.words.map(w => (/\s/.test(w) ? `"${w}"` : w));
-  if (f.clients) {
-    const leads = await prisma.leads.findMany({ where: { vendor_id: Number(v), email: { not: null } }, select: { email: true }, orderBy: { id: 'desc' }, take: 80 });   // 🔒 tenancy
-    for (const l of leads) { const e = String(l.email || '').trim(); if (/^[^\s@{}()"]+@[^\s@{}()"]+$/.test(e)) terms.push(`from:${e}`); }
-  }
-  if (!terms.length) return 'in:inbox';
-  return `in:inbox {${terms.join(' ')}}${f.hide_promos ? ' -category:promotions -category:social' : ''}`;
+const phrase = (s) => (/[\s"]/.test(s) ? `"${s.replace(/"/g, '')}"` : s);
+/** a filter → the Gmail search that finds the same mail */
+export function filterQuery(f) {
+  const q = [];
+  if (f.from) q.push(`from:(${f.from})`);
+  if (f.to) q.push(`to:(${f.to})`);
+  if (f.subject) q.push(`subject:(${phrase(f.subject)})`);
+  if (f.has) q.push(f.has);
+  if (f.not) q.push(`-(${f.not})`);
+  if (f.label) q.push(`label:${phrase(f.label).replace(/ /g, '-')}`);
+  return q.join(' ');
 }
-const practiceMatch = async (v, t) => {
-  const f = await getFilter(v);
-  if (!f.enabled || !f.words.length) return true;
-  const text = `${t.from} ${t.subject} ${t.snippet}`.toLowerCase();
-  return f.words.some(w => text.includes(w));
+/** the vendor's own Gmail labels (for the filter form) */
+export async function listLabels(v) {
+  if ((await status(v)).sandbox) return ['Inquiries', 'Payments', 'Receipts'];
+  const d = await gmail(v, '/labels');
+  return (d.labels || []).filter(l => l.type === 'user').map(l => l.name).sort((a, b) => a.localeCompare(b));
+}
+const practiceMatch = (f, t) => {
+  const text = (s) => String(s || '').toLowerCase();
+  const all = text(`${t.from} ${t.subject} ${t.snippet}`);
+  return (!f.from || text(t.from).includes(text(f.from))) && (!f.subject || text(t.subject).includes(text(f.subject)))
+    && (!f.has || all.includes(text(f.has))) && (!f.not || !all.includes(text(f.not)));
 };
 
 export async function unreadCount(v) {
@@ -175,23 +188,20 @@ export async function unreadCount(v) {
   if (!st.connected) return 0;
   const hit = unreadCache.get(Number(v));
   if (hit && hit.until > Date.now()) return hit.n;
-  const f = await getFilter(v);
-  let n;
-  if (f.enabled) n = ((await gmail(v, `/threads?maxResults=100&q=${encodeURIComponent(`${await smartQuery(v)} is:unread`)}`)).threads || []).length;   // ✨ only smart emails count
-  else n = Number((await gmail(v, '/labels/INBOX')).threadsUnread || 0);
+  const n = Number((await gmail(v, '/labels/INBOX')).threadsUnread || 0);
   unreadCache.set(Number(v), { n, until: Date.now() + 60_000 });
   return n;
 }
 export const forgetUnread = (v) => unreadCache.delete(Number(v));
 
-/** view 'smart' (the vendor's filter) or 'all' (the whole inbox); a search narrows either. */
-export async function listThreads(v, q = '', view = 'smart') {
+/** filter 'all' (the inbox) or one of the vendor's filters; a search narrows either. */
+export async function listThreads(v, q = '', filterId = 'all') {
+  const f = filterId === 'all' ? null : (await getFilters(v)).find(x => x.id === filterId) || null;
   if ((await status(v)).sandbox) {
-    const out = [];
-    for (const t of PRACTICE) if ((!q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())) && (view !== 'smart' || await practiceMatch(v, t))) out.push(t);
-    return out.map(({ messages, ...t }) => t);
+    return PRACTICE.filter(t => (!q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())) && (!f || practiceMatch(f, t)))
+      .map(({ messages, ...t }) => t);
   }
-  const base = view === 'smart' ? await smartQuery(v) : 'in:inbox';
+  const base = f ? filterQuery(f) : 'in:inbox';
   const d = await gmail(v, `/threads?maxResults=25&q=${encodeURIComponent(q ? `${base} ${q}` : base)}`);
   const list = await Promise.all((d.threads || []).map(async (t) => {
     const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`);
