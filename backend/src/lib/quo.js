@@ -17,21 +17,64 @@
  */
 import crypto from 'node:crypto';
 import { getAllSettings } from './settings.js';
+import prisma from '../config/prisma.js';
+import { seal, unseal } from './secretBox.js';
 
 const BASE = 'https://api.openphone.com/v1';
 
 /** The credentials, or a clear reason there are none. */
-export async function quoConfig() {
+/* 📞 Each vendor's own Quo connection (Raj, 2026-10-23): set in Calls & Messages → Calls & Texts → ⚙️, stored encrypted
+   as platform_settings "quo_cfg_<vendor>". The settings that used to live in Super Admin move to their vendor once. */
+const cfgKey = (v) => `quo_cfg_${Number(v)}`;
+let movedLegacy = false;
+async function moveLegacyQuo() {
+  if (movedLegacy) return;
   const s = await getAllSettings().catch(() => ({}));
-  const key = s.quo_api_key || '';
-  const vendorId = Number(s.quo_vendor_id || 0);
+  const v = Number(s.quo_vendor_id || 0);
+  if (s.quo_api_key && v) {
+    // upsert with an empty update: a vendor who already has their own settings keeps them, and two first calls can't collide
+    await prisma.platform_settings.upsert({ where: { key: cfgKey(v) }, update: {},
+      create: { key: cfgKey(v), value: seal({ key: s.quo_api_key, webhookSecrets: String(s.quo_webhook_secret || '').split(/[\s,]+/).filter(Boolean), phoneNumberId: s.quo_phone_number_id || '' }) } });
+    console.log(`[comms] Quo settings moved from Super Admin to vendor ${v}'s own (encrypted) settings`);
+  }
+  if (s.quo_api_key || s.quo_vendor_id || s.quo_webhook_secret || s.quo_phone_number_id) {
+    await prisma.platform_settings.deleteMany({ where: { key: { in: ['quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id'] } } });
+  }
+  movedLegacy = true;   // only once it has really happened — a failure is simply tried again on the next call
+}
+let warnedKey = false;
+/** Every vendor with Quo connected. */
+export async function quoConfigs() {
+  await moveLegacyQuo().catch(e => console.error('[comms] moving the old Quo settings failed (will retry):', e.message));
+  const rows = await prisma.platform_settings.findMany({ where: { key: { startsWith: 'quo_cfg_' } } });
+  // a vendor that no longer exists keeps nothing running
+  const alive = new Set((await prisma.vendors.findMany({ where: { id: { in: rows.map(r => Number(r.key.slice(8))) } }, select: { id: true } })).map(x => x.id));
+  return rows.filter(r => alive.has(Number(r.key.slice(8)))).map(r => {
+    try { return shapeQuo(Number(r.key.slice(8)), unseal(r.value)); }
+    catch (e) { if (!warnedKey) { warnedKey = true; console.error('[comms] a Quo connection could not be opened — is INBOX_SECRET set in .env?', e.message); } return null; }
+  }).filter(Boolean);
+}
+/** Save a vendor's Quo connection (null removes it). */
+export async function saveQuo(v, c) {
+  if (!c) { await prisma.platform_settings.deleteMany({ where: { key: cfgKey(v) } }); return; }
+  const value = seal({ key: c.key, webhookSecrets: c.webhookSecrets || [], phoneNumberId: c.phoneNumberId || '' });
+  await prisma.platform_settings.upsert({ where: { key: cfgKey(v) }, create: { key: cfgKey(v), value }, update: { value } });
+}
+/** One vendor's Quo (or, without a vendor, the first connected one — background jobs). */
+export async function quoConfig(v) {
+  const all = await quoConfigs();
+  if (v != null) return all.find(c => c.vendorId === Number(v)) || shapeQuo(Number(v), {});
+  return all[0] || shapeQuo(0, {});
+}
+function shapeQuo(vendorId, c) {
+  const key = c.key || '';
   /* Which piece is missing, in words a super admin can act on. "Not
      configured" alone sent Raj looking at a key that was fine — the vendor
      box was the empty one. */
   const missing = [];
   if (!key) missing.push('the API key');
   if (!vendorId) missing.push('whose timeline (the vendor)');
-  const phoneNumberId = s.quo_phone_number_id || '';
+  const phoneNumberId = c.phoneNumberId || '';
   // a phone number saved before the picker existed — Quo answers it with "not found"
   if (phoneNumberId && !isQuoNumberId(phoneNumberId)) missing.push('a number picked from "List my numbers"');
   return {
@@ -39,7 +82,7 @@ export async function quoConfig() {
     /* Quo can give each webhook its own signing secret (messages, calls,
        summaries, transcripts). They are saved one per line; a webhook is
        genuine if ANY of them signs it. */
-    webhookSecrets: String(s.quo_webhook_secret || '').split(/[\s,]+/).filter(Boolean),
+    webhookSecrets: c.webhookSecrets || [],
     phoneNumberId,
     vendorId,                                   // whose timeline these land in
     ready: missing.length === 0,

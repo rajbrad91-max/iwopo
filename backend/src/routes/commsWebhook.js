@@ -13,7 +13,7 @@
  */
 import express from 'express';
 import privateDb from '../config/privateDb.js';
-import { quoConfig, verifyWebhook, ownNumbers, otherParticipant } from '../lib/quo.js';
+import { quoConfigs, verifyWebhook, ownNumbers, otherParticipant } from '../lib/quo.js';
 import { enrichCall, CALL_FIELDS } from '../lib/commsEnrich.js';
 import { announce } from '../lib/commsNotify.js';
 import { ringScreens } from '../lib/commsPop.js';
@@ -99,10 +99,11 @@ export async function upsertEvent(vendorId, row) {
 
 router.post('/', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
   try {
-    const cfg = await quoConfig();
     const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');
 
-    const check = verifyWebhook(raw, req.headers, cfg.webhookSecrets);
+    // 🔑 each vendor has their own Quo; the one whose secret signed this is the one it belongs to
+    let cfg = { vendorId: 0, webhookSecrets: [] }, check = { ok: false, scheme: 'none', why: 'no vendor has Quo connected' };
+    for (const c of await quoConfigs()) { const r = verifyWebhook(raw, req.headers, c.webhookSecrets); if (r.ok) { cfg = c; check = r; break; } check = r; }
     if (!check.ok) {
       /* Terse to the caller — a detailed rejection tells somebody probing the
          endpoint which part of their forgery to fix — but the REASON goes to

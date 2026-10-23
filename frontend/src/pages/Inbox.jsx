@@ -20,7 +20,9 @@ export default function Inbox() {
     return TABS.some(t => t[0] === q) ? q : (localStorage.getItem('inbox_tab') || 'calls');
   });
   const counts = useInboxCounts();
-  const choose = (t) => { setTab(t); localStorage.setItem('inbox_tab', t); history.replaceState(null, '', t === 'calls' ? location.pathname : `${location.pathname}?tab=${t}`); };
+  const [gear, setGear] = useState(false);       // ⚙️ this tab's settings instead of its content
+  const tabName = TABS.find(t => t[0] === tab)[2];
+  const choose = (t) => { setGear(false); setTab(t); localStorage.setItem('inbox_tab', t); history.replaceState(null, '', t === 'calls' ? location.pathname : `${location.pathname}?tab=${t}`); };
   return (
     <div className={`ib ib-on-${tab}`}>
       <div className="ib-tabs" role="tablist">
@@ -31,10 +33,110 @@ export default function Inbox() {
           </button>
         ))}
       </div>
-      {tab === 'calls' && <Suspense fallback={<p className="ib-quiet">Loading…</p>}><CommsView /></Suspense>}
-      {tab === 'email' && <EmailTab />}
-      {tab === 'instagram' && <Soon icon={<SiInstagram className="ib-brand ib-brand-ig" />} name="Instagram" what="Direct messages from your business Instagram, with replies from here." />}
-      {tab === 'whatsapp' && <Soon icon={<SiWhatsapp className="ib-brand ib-brand-wa" />} name="WhatsApp" what="Chats from your WhatsApp Business number, with replies from here." />}
+      <div className="ib-head">
+        <span className="ib-head-t">{tabName}{gear ? ' · Settings' : ''}</span>
+        <button type="button" className={`ib-gear ${gear ? 'is-on' : ''}`} aria-pressed={gear} onClick={() => setGear(g => !g)}
+          aria-label={gear ? 'Close settings' : `${tabName} settings`} title={gear ? 'Close settings' : 'Settings'}>{gear ? '✕' : '⚙️'}</button>
+      </div>
+      {gear ? <ChannelSettings tab={tab} /> : (<>
+        {tab === 'calls' && <Suspense fallback={<p className="ib-quiet">Loading…</p>}><CommsView /></Suspense>}
+        {tab === 'email' && <EmailTab />}
+        {tab === 'instagram' && <Soon icon={<SiInstagram className="ib-brand ib-brand-ig" />} name="Instagram" what="Direct messages from your business Instagram, with replies from here." />}
+        {tab === 'whatsapp' && <Soon icon={<SiWhatsapp className="ib-brand ib-brand-wa" />} name="WhatsApp" what="Chats from your WhatsApp Business number, with replies from here." />}
+      </>)}
+    </div>
+  );
+}
+
+/** 📞 The vendor's own Quo connection — API key and webhook secrets are write-only; the number is picked from Quo's list. */
+function QuoKeys({ onSaved }) {
+  const dialog = useDialog();
+  const [info, setInfo] = useState(null);
+  const [key, setKey] = useState('');
+  const [secrets, setSecrets] = useState('');
+  const [numbers, setNumbers] = useState(null);
+  const [num, setNum] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const load = () => api.quoSettings().then(d => { setInfo(d); setNum(d.phone_number_id || ''); }).catch(() => setInfo({ has_key: false }));
+  useEffect(() => { load(); }, []);
+  async function list() {
+    setMsg('');
+    try { const d = await api.quoNumbers(key.trim()); setNumbers(d.numbers || []); setMsg(`✅ ${(d.numbers || []).length} number(s) found — pick one, or every number.`); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function save() {
+    setBusy(true); setMsg('');
+    try { await api.saveQuoSettings({ api_key: key.trim(), webhook_secrets: secrets.trim(), phone_number_id: num }); setKey(''); setSecrets(''); setMsg('✅ Saved'); load(); onSaved && onSaved(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+  async function remove() {
+    if (!await dialog.confirm('Calls and texts will stop arriving here. Everything already here stays.', { title: 'Remove the Quo connection?', okLabel: 'Remove', danger: true })) return;
+    await api.removeQuoSettings().catch(() => {}); setNumbers(null); load(); onSaved && onSaved();
+  }
+  if (!info) return null;
+  const named = numbers?.find(n => n.id === num);
+  return (
+    <div className="ib-keys">
+      <p className="ib-keys-t">🔑 Quo connection</p>
+      {info.has_key && <p className="ib-quiet">Saved: API key <b>{info.key_hint}</b> · {info.secrets} webhook secret{info.secrets === 1 ? '' : 's'}. Fill a box only to replace it.</p>}
+      <input className="ib-input" type="password" autoComplete="off" placeholder={info.has_key ? 'Quo API key (empty keeps the saved one)' : 'Quo API key'} value={key} onChange={e => setKey(e.target.value)} />
+      <div className="ib-keys-row ib-keys-left">
+        <button className="ib-btn" onClick={list} disabled={!key.trim() && !info.has_key}>List my numbers</button>
+        <select className="ib-input ib-num" value={num} onChange={e => setNum(e.target.value)} aria-label="Phone number">
+          <option value="">Every number on the account</option>
+          {(numbers || []).map(n => <option key={n.id} value={n.id}>{n.name ? `${n.name} · ` : ''}{n.number}</option>)}
+          {num && !named && <option value={num}>{num} (press "List my numbers" to name it)</option>}
+        </select>
+      </div>
+      <textarea className="ib-input" rows={3} spellCheck={false} autoComplete="off" value={secrets} onChange={e => setSecrets(e.target.value)}
+        placeholder={info.has_key ? 'Webhook signing secrets, one per line (empty keeps the saved ones)' : 'Webhook signing secrets from Quo, one per line'} />
+      <p className="ib-quiet">In Quo, point the webhooks to:</p>
+      <code className="ib-keys-code">{info.webhook_url}</code>
+      {msg && <p className="ib-msg">{msg}</p>}
+      <div className="ib-keys-row">
+        {info.has_key && <button className="ib-btn" onClick={remove}>Remove connection</button>}
+        <button className="ib-btn is-on" disabled={busy || (!info.has_key && !key.trim())} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+      </div>
+      <p className="ib-quiet ib-keys-note">🔒 Stored encrypted for your account only. The key and secrets can't be viewed again.</p>
+    </div>
+  );
+}
+
+/** ⚙️ One channel's settings (Raj, 2026-10-23): what it's connected to, and how to change it. */
+function ChannelSettings({ tab }) {
+  const dialog = useDialog();
+  const [st, setSt] = useState(null);
+  const load = useCallback(() => {
+    if (tab === 'calls') api.commsStatus().then(setSt).catch(() => setSt({ connected: false }));
+    else if (tab === 'email') api.inboxEmailStatus().then(setSt).catch(() => setSt({ connected: false }));
+    else setSt({ connected: false });
+  }, [tab]);
+  useEffect(() => { load(); }, [load]);
+  async function disconnect() {
+    if (!await dialog.confirm('iwopo will stop reading and sending from this mailbox. Your emails stay in Gmail.', { title: 'Disconnect email?', okLabel: 'Disconnect', danger: true })) return;
+    await api.inboxEmailDisconnect().catch(() => {}); load();
+  }
+  if (!st) return <p className="ib-quiet">Loading…</p>;
+  if (tab === 'calls') return (
+    <div className="ib-set">
+      <p className="ib-set-row"><b>Business phone line</b><span>{st.sandbox ? '🧪 Practice mode (test site)' : st.connected ? `● Connected${st.from ? ` · ${st.from}` : ''}` : '○ Not connected yet'}</span></p>
+      <p className="ib-quiet">Calls and texts on this line appear in this tab by themselves.</p>
+      <QuoKeys onSaved={load} />
+    </div>
+  );
+  if (tab === 'email') return (
+    <div className="ib-set">
+      <p className="ib-set-row"><b>Mailbox</b><span>{st.sandbox ? '🧪 Practice mode (test site)' : st.connected ? `● ${st.email}` : '○ Not connected yet'}</span></p>
+      {st.connected && !st.sandbox && <button type="button" className="ib-btn" onClick={disconnect}>Disconnect this mailbox</button>}
+      <EmailKeys onSaved={load} />
+    </div>
+  );
+  return (
+    <div className="ib-set">
+      <p className="ib-set-row"><b>{tab === 'instagram' ? 'Instagram account' : 'WhatsApp number'}</b><span>○ Not connected yet</span></p>
+      <p className="ib-quiet">Its connection settings will appear here once {tab === 'instagram' ? 'Instagram' : 'WhatsApp'} is supported.</p>
     </div>
   );
 }
@@ -98,7 +200,6 @@ function EmailTab() {
   const [compose, setCompose] = useState(null); // { to, subject, body }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(() => new URLSearchParams(location.search).get('email_error') || '');
-  const [keysOpen, setKeysOpen] = useState(false);   // 🔑 the vendor's own Google keys form
 
   useEffect(() => { api.inboxEmailStatus().then(setStatus).catch(e => setStatus({ connected: false, error: e.message })); }, []);
   useEffect(() => { const t = setTimeout(() => setQ(qLive.trim()), 350); return () => clearTimeout(t); }, [qLive]);
@@ -107,10 +208,6 @@ function EmailTab() {
 
   async function connect() {
     try { const d = await api.inboxEmailConnect(); location.href = d.url; } catch (e) { setMsg(e.message); }
-  }
-  async function disconnect() {
-    if (!await dialog.confirm('iwopo will stop reading and sending from this mailbox. Your emails stay in Gmail.', { title: 'Disconnect email?', okLabel: 'Disconnect', danger: true })) return;
-    await api.inboxEmailDisconnect().catch(() => {}); setStatus({ connected: false, configured: true }); setThreads(null); setOpen(null);
   }
   async function read(id) {
     setOpen({ id, loading: true });
@@ -144,12 +241,9 @@ function EmailTab() {
         <div className="ib-empty-art" aria-hidden="true">📧</div>
         <p className="ib-empty-t">Email isn&apos;t connected yet</p>
         <p className="ib-quiet">Connect your business Gmail to read and answer client emails here, next to their calls and texts.</p>
-        {status.configured && !keysOpen
-          ? (<>
-            <button className="ib-btn is-on" onClick={connect}>Connect Gmail</button>
-            <button className="ib-link ib-keys-link" onClick={() => setKeysOpen(true)}>🔑 Change email keys</button>
-          </>)
-          : <EmailKeys onSaved={() => { setKeysOpen(false); api.inboxEmailStatus().then(setStatus).catch(() => {}); }} onCancel={status.configured ? () => setKeysOpen(false) : null} />}
+        {status.configured
+          ? <button className="ib-btn is-on" onClick={connect}>Connect Gmail</button>
+          : <EmailKeys onSaved={() => api.inboxEmailStatus().then(setStatus).catch(() => {})} />}
         {msg && <p className="ib-msg">{msg}</p>}
       </div>
     );
@@ -163,7 +257,6 @@ function EmailTab() {
         <span className={`ib-pill ${status.sandbox ? 'is-practice' : 'is-on'}`} title={status.sandbox ? 'Test site only: nothing is really sent' : 'Connected'}>
           {status.sandbox ? '● Practice mode' : `● ${status.email}`}
         </span>
-        {!status.sandbox && <button className="ib-link" onClick={disconnect}>Disconnect</button>}
       </div>
       {msg && <p className="ib-msg">{msg}</p>}
 

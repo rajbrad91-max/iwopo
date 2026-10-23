@@ -1,8 +1,8 @@
 /* 📥 the owner's private inbox: tabs + Email (Inbox.jsx) */
 .ib-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
-.ib-tab { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
+.ib-tab { position: relative; font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
   background: none; color: var(--muted); cursor: pointer; }
-.ib-tab.is-on { background: var(--teal-soft); border-color: transparent; color: var(--teal); }
+.ib-tab.is-on { background: var(--teal-soft); border-color: transparent; color: var(--text); }
 .ib-quiet { color: var(--muted); font-size: 13.5px; line-height: 1.55; list-style: none; padding: 10px 4px; margin: 0; }
 .ib-empty { text-align: center; padding: 44px 20px; border: 1.5px dashed var(--line); border-radius: 14px; }
 .ib-empty-art { font-size: 34px; margin-bottom: 8px; }
@@ -52,7 +52,6 @@
 }
 
 /* 🔴 unread number on a tab's top-right edge — same red as the sidebar's numbers */
-.ib-tab { position: relative; }
 .ib-count { position: absolute; top: -7px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
   background: #ef4444; color: #fff; font-size: 10.5px; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px var(--panel, #fff); }
 /* 📱 phones: the four tabs are one even row of icons — never wrapping (Raj, 2026-10-23) */
@@ -68,7 +67,6 @@
 .ib-on-calls { background: color-mix(in srgb, #facc15 9%, transparent); }
 .ib-on-instagram { background: linear-gradient(135deg, color-mix(in srgb, #f58529 9%, transparent), color-mix(in srgb, #dd2a7b 9%, transparent) 50%, color-mix(in srgb, #8134af 9%, transparent)); }
 .ib-on-whatsapp { background: color-mix(in srgb, #25d366 10%, transparent); }
-.ib-tab.is-on { border-color: transparent; color: var(--text); }
 .ib-on-calls .ib-tab.is-on { background: color-mix(in srgb, #facc15 32%, transparent); }
 .ib-on-email .ib-tab.is-on { background: var(--teal-soft); color: var(--teal); }
 .ib-on-instagram .ib-tab.is-on { background: linear-gradient(135deg, #f58529, #dd2a7b 55%, #8134af); color: #fff; }
@@ -88,4 +86,16 @@
 .ib-keys-code { display: block; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12.5px; overflow-wrap: anywhere; user-select: all; }
 .ib-keys-row { display: flex; justify-content: flex-end; gap: 8px; }
 .ib-keys-note { font-size: 12px; padding: 0; }
-.ib-keys-link { display: block; margin: 10px auto 0; }
+
+/* ⚙️ each tab's header: its name, and the settings button top-right */
+.ib-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px 10px; }
+.ib-head-t { font-size: 14px; font-weight: 700; color: var(--text); }
+.ib-gear { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); font-size: 16px; line-height: 1; cursor: pointer; }
+.ib-gear.is-on { background: var(--teal-soft); border-color: transparent; }
+.ib-set { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); }
+.ib-set-row { margin: 0; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--text); }
+.ib-set-row span { color: var(--muted); }
+.ib-set .ib-keys { margin: 4px 0 0; max-width: none; }
+.ib-set > .ib-btn { align-self: flex-start; }
+.ib-keys-left { justify-content: flex-start; flex-wrap: wrap; }
+.ib-num { flex: 1 1 200px; min-width: 0; }

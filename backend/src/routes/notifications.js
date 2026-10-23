@@ -44,8 +44,8 @@ export async function notify(vendorId, title, body, type = 'info', link = null) 
    database, and only the vendor Quo is connected to has any. Every other
    vendor's bell never touches that database at all. */
 async function privateOwner(v) {
-  const cfg = await quoConfig().catch(() => null);
-  return !!cfg?.vendorId && cfg.vendorId === v;
+  const cfg = await quoConfig(v).catch(() => null);
+  return !!cfg?.key;
 }
 
 router.get('/', requireAuth, async (req, res) => {

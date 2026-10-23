@@ -11,6 +11,7 @@
  */
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
+import { secretKey, seal, unseal } from './secretBox.js';
 
 const SCOPE = 'https://www.googleapis.com/auth/gmail.modify';   // read, label read/unread, compose and send
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
@@ -19,21 +20,6 @@ const linkKey = (v) => `gmail_link_${Number(v)}`;
 async function setting(key) { return (await prisma.platform_settings.findUnique({ where: { key } }))?.value || ''; }
 async function saveSetting(key, value) { await prisma.platform_settings.upsert({ where: { key }, create: { key, value }, update: { value } }); }
 
-function secretKey() {
-  const k = process.env.INBOX_SECRET || '';
-  if (!/^[0-9a-f]{64}$/i.test(k)) throw new Error('inbox_key_missing');
-  return Buffer.from(k, 'hex');
-}
-function seal(obj) {
-  const iv = crypto.randomBytes(12), c = crypto.createCipheriv('aes-256-gcm', secretKey(), iv);
-  const data = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final()]);
-  return Buffer.concat([iv, c.getAuthTag(), data]).toString('base64');
-}
-function unseal(s) {
-  const b = Buffer.from(s, 'base64'), d = crypto.createDecipheriv('aes-256-gcm', secretKey(), b.subarray(0, 12));
-  d.setAuthTag(b.subarray(12, 28));
-  return JSON.parse(Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8'));
-}
 const sign = (s) => crypto.createHmac('sha256', secretKey()).update(s).digest('base64url');
 
 export const sandbox = () => process.env.COMMS_SANDBOX === '1';

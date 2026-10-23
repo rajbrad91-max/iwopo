@@ -1469,7 +1469,7 @@ function GeminiVoiceSettings({ s, setS, editing }) {
    private assistant) has its own key in Settings, so Anthropic's bill keeps
    the two apart (Raj, 2026-10-10). */
 /** 🔒 Settings that are keys or passwords — write-only: never read back, only replaced. */
-const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass', 'quo_api_key', 'quo_webhook_secret'];
+const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass'];
 
 function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
   const [s, setS] = useState(null);
@@ -1729,39 +1729,6 @@ function FaceEngineSettings() {
     } finally { setAiTesting(false); }
   }
 
-  const [quoOpen, setQuoOpen] = useState(false);
-  const [quoTesting, setQuoTesting] = useState(false);
-  const [quoMsg, setQuoMsg] = useState(null);
-  /* 📞 Picked, never typed. The vendor and the number used to be free-text
-     boxes, and live ended up with no vendor and a phone number where Quo's
-     own number id belongs — so every sync said "not configured". */
-  const [quoNumbers, setQuoNumbers] = useState([]);
-  const [vendorList, setVendorList] = useState([]);
-  useEffect(() => {
-    if (!quoOpen || vendorList.length) return;
-    api.vendors().then(d => setVendorList(d.vendors || [])).catch(() => {});
-  }, [quoOpen, vendorList.length]);
-  /* The saved number is Quo's id ("PN91M3…"), which means nothing to a
-     person. Opening the section fetches the numbers once, quietly, so the box
-     reads "Perfect Poses · +1 778…" without pressing anything first. */
-  const hasQuoKey = !!s?.quo_api_key;
-  useEffect(() => {
-    if (!quoOpen || !hasQuoKey || quoNumbers.length) return;
-    api.testQuo().then(r => setQuoNumbers(r.numbers || []))
-      .catch(e => setQuoMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach Quo') }));
-  }, [quoOpen, hasQuoKey, quoNumbers.length]);
-
-  /** Listing the numbers proves the key works and fills the number picker. */
-  async function testQuo() {
-    setQuoTesting(true); setQuoMsg(null);
-    try {
-      const r = await api.testQuo();
-      setQuoNumbers(r.numbers || []);
-      setQuoMsg({ ok: true, text: `✅ The key works — ${(r.numbers || []).length} number(s) found. Pick one below, or every number.` });
-    } catch (e) {
-      setQuoMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not reach Quo') });
-    } finally { setQuoTesting(false); }
-  }
   const [testTo, setTestTo] = useState('');
   const [testing, setTesting] = useState(false);
   const [testMsg, setTestMsg] = useState(null);
@@ -1793,7 +1760,7 @@ function FaceEngineSettings() {
     setS(next);
     /* "Every number" is an empty number id, and the server skips empty values
        so a blank box never wipes a key — so emptying it is asked for by name. */
-    const payload = { ...next, clear: next.quo_phone_number_id ? [] : ['quo_phone_number_id'] };
+    const payload = { ...next };
     try { await api.savePlatformSettings(payload); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -2146,107 +2113,8 @@ function FaceEngineSettings() {
           )}
         </div>
 
-        {/* 📞 Quo (OpenPhone) — calls and messages.
-            Private to the platform owner, so quo_vendor_id decides whose
-            timeline the mirrored events land in. */}
-        <div className="fr-cred">
-          <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
-            onClick={() => setQuoOpen(o => !o)} aria-expanded={quoOpen}>
-            <span>📞 Calls &amp; messages (Quo)</span>
-            <span className="fr-cred-chev">{quoOpen ? '▲' : '▼'}</span>
-          </button>
-
-          {quoOpen && (
-          <div className="fr-cred-body">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-              {!editing ? (
-                <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
-              ) : (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
-                  <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
-                </div>
-              )}
-            </div>
-
-            <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
-              Mirrors calls and messages from Quo. It cannot place a call — their
-              API has no endpoint for it — so this is the history, not a phone.
-            </p>
-
-            <div><label className="lbl">API key</label>
-              <input type="password" style={editing ? box : roBox} readOnly={!editing}
-                value={s.quo_api_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
-                onChange={e => setS({ ...s, quo_api_key: e.target.value })} /></div>
-
-            {/* Quo can give every webhook its own signing secret (messages, calls,
-                summaries, transcripts); one box holding one secret rejected
-                the rest as forgeries. One per line — any of them may sign. */}
-            <div><label className="lbl">Webhook signing secrets <span className="sa-hint">one per line — Quo may give each webhook its own</span></label>
-              {editing ? (
-                <textarea style={box} rows={4} spellCheck={false} autoComplete="off"
-                  value={s.quo_webhook_secret || ''}
-                  onChange={e => setS({ ...s, quo_webhook_secret: e.target.value })} />
-              ) : (
-                <input type="password" style={roBox} readOnly value={s.quo_webhook_secret || ''} />
-              )}</div>
-
-            <div><label className="lbl">Phone number</label>
-              {editing ? (
-                <select style={box} value={s.quo_phone_number_id || ''}
-                  onChange={e => setS({ ...s, quo_phone_number_id: e.target.value })}>
-                  <option value="">Every number on the account</option>
-                  {quoNumbers.map(n => <option key={n.id} value={n.id}>{n.name} · {n.number}</option>)}
-                  {/* the saved one, until the list is loaded to name it */}
-                  {s.quo_phone_number_id && !quoNumbers.some(n => n.id === s.quo_phone_number_id) && (
-                    <option value={s.quo_phone_number_id}>{s.quo_phone_number_id} (press "List my numbers" to name it)</option>
-                  )}
-                </select>
-              ) : (
-                <input style={roBox} readOnly
-                  value={s.quo_phone_number_id
-                    ? (() => { const n = quoNumbers.find(x => x.id === s.quo_phone_number_id); return n ? `${n.name} · ${n.number}` : (quoMsg && !quoMsg.ok ? s.quo_phone_number_id : 'Loading the number…'); })()
-                    : 'Every number on the account'} />
-              )}</div>
-
-            <div><label className="lbl">Whose timeline</label>
-              {editing ? (
-                <select style={box} value={s.quo_vendor_id || ''}
-                  onChange={e => setS({ ...s, quo_vendor_id: e.target.value })}>
-                  <option value="" disabled>Choose the vendor the calls belong to…</option>
-                  {vendorList.map(v => <option key={v.id} value={String(v.id)}>{v.business_name || `Vendor ${v.id}`} (#{v.id})</option>)}
-                </select>
-              ) : (
-                <input style={roBox} readOnly
-                  value={s.quo_vendor_id
-                    ? (vendorList.find(v => String(v.id) === String(s.quo_vendor_id))?.business_name || `Vendor #${s.quo_vendor_id}`)
-                    : '⚠️ Not chosen — calls cannot sync until a vendor is picked'} />
-              )}</div>
-
-            {/* The URL to paste into Quo. Shown rather than described, because
-                a webhook pointed at the wrong path fails silently forever. */}
-            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Webhook URL for Quo</div>
-            <code style={{ display: 'block', marginTop: 8, padding: '9px 11px', borderRadius: 8,
-              background: 'var(--panel-2)', border: '1px solid var(--line)',
-              fontSize: 12, color: 'var(--text)', wordBreak: 'break-all' }}>
-              {window.location.origin}/api/comms/webhook
-            </code>
-
-            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Check the key</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-              <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5 }}
-                disabled={quoTesting} onClick={testQuo}>
-                {quoTesting ? 'Checking…' : 'List my numbers'}
-              </button>
-            </div>
-            {quoMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, color: quoMsg.ok ? '#4ade80' : '#f87171' }}>
-                {quoMsg.text}
-              </div>
-            )}
-          </div>
-          )}
-        </div>
+        {/* 📞 Calls & texts (Quo) are now each vendor's own: Calls & Messages → Calls & Texts → ⚙️ (2026-10-23) */}
+        <p className="sa-hint">📞 Calls &amp; texts (Quo) are set up by each vendor in Calls &amp; Messages → ⚙️.</p>
         {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#4ade80' }}>{msg}</div>}
       </div>
     </>

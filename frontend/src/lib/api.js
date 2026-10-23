@@ -648,7 +648,6 @@ export const api = {
   // 📧 prove the platform mail settings actually work
   testPlatformEmail: (to) => request('/settings/platform/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
   // 📞 does the Quo key work? listing the numbers is the cheapest proof
-  testQuo: () => request('/settings/platform/test-quo', { method: 'POST' }),
   // 🤖 does the Claude key work? one token back is the cheapest proof
   testAi: (which) => request('/settings/platform/test-ai', { method: 'POST', body: JSON.stringify({ which }) }),
   // 🗑️ removing a credential is explicit — saving an empty box does not
@@ -881,6 +880,10 @@ export const api = {
     return request('/comms' + (p.toString() ? '?' + p : ''));
   },
   commsStatus: () => request('/comms/status'),
+  quoSettings: () => request('/comms/quo-settings'),
+  saveQuoSettings: (body) => request('/comms/quo-settings', { method: 'PUT', body: JSON.stringify(body) }),
+  removeQuoSettings: () => request('/comms/quo-settings', { method: 'DELETE' }),
+  quoNumbers: (api_key) => request('/comms/quo-settings/numbers', { method: 'POST', body: JSON.stringify({ api_key }) }),
   commsSeen: (key) => request('/comms/seen', { method: 'POST', body: JSON.stringify({ key }) }),
   inboxCounts: () => request('/inbox/counts'),
   inboxEmailStatus: () => request('/inbox/gmail/status'),

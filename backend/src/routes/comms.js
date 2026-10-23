@@ -11,7 +11,7 @@ import { Readable } from 'node:stream';
 import privateDb from '../config/privateDb.js';
 import { requireAuth } from '../middleware/auth.js';
 import { pollComms } from '../lib/commsPoll.js';
-import { quoConfig, getCallRecordings, ownNumbers, saveContact, sendMessage, listPhoneNumbers } from '../lib/quo.js';
+import { quoConfig, getCallRecordings, ownNumbers, saveContact, sendMessage, listPhoneNumbers, saveQuo, isQuoNumberId } from '../lib/quo.js';
 import { contactsByNumber, forgetContacts } from '../lib/commsEnrich.js';
 import { normalise, upsertEvent } from './commsWebhook.js';
 import { limit } from '../middleware/rateLimit.js';
@@ -66,7 +66,7 @@ router.get('/', requireAuth, async (req, res) => {
        other used to leave the first number's messages on screen, because
        nothing recorded which line an event came from. "Every number" shows
        them all. */
-    const cfg = await quoConfig();
+    const cfg = await quoConfig(vid(req));
     const line = cfg.phoneNumberId && cfg.vendorId === v ? cfg.phoneNumberId : null;
 
     const events = await privateDb.comms_events.findMany({
@@ -120,7 +120,7 @@ router.post('/badges', requireAuth, async (req, res) => {
 router.post('/contact', requireAuth, async (req, res) => {
   const v = vid(req);
   try {
-    const cfg = await quoConfig();
+    const cfg = await quoConfig(vid(req));
     if (!cfg.ready || cfg.vendorId !== v) return res.status(403).json({ error: 'Quo is connected to a different account.' });   // 🔒
     const key10 = tenDigits(req.body?.number);
     const firstName = String(req.body?.first_name || '').trim().slice(0, 80);
@@ -182,7 +182,7 @@ router.post('/message', requireAuth,
   async (req, res) => {
     const v = vid(req);
     try {
-      const cfg = await quoConfig();
+      const cfg = await quoConfig(vid(req));
       const sandbox = process.env.COMMS_SANDBOX === '1' && !(cfg.ready && cfg.vendorId === v);   // 🧪 staging only: checks run, nothing is sent
       if (!sandbox && (!cfg.ready || cfg.vendorId !== v)) return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
       const key10 = tenDigits(req.body?.number);
@@ -238,7 +238,7 @@ router.post('/message', requireAuth,
 let numbersCache = { at: 0, key: '', list: [] };
 router.get('/status', requireAuth, async (req, res) => {
   try {
-    const cfg = await quoConfig();
+    const cfg = await quoConfig(vid(req));
     if (!cfg.ready || cfg.vendorId !== vid(req)) {
       // 🧪 practice mode (staging .env only): the real composer opens, and /message below never sends
       if (process.env.COMMS_SANDBOX === '1') return res.json({ connected: true, sandbox: true, from: SANDBOX_FROM });
@@ -256,6 +256,39 @@ router.get('/status', requireAuth, async (req, res) => {
 
 const NOT_CONNECTED = 'Calls & messages are not connected for this account yet.';
 
+/* ⚙️ Calls & Texts → settings: this vendor's own Quo connection (the API key and secrets are write-only) */
+router.get('/quo-settings', requireAuth, async (req, res) => {
+  try {
+    const c = await quoConfig(vid(req));
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0];
+    res.json({ has_key: !!c.key, key_hint: c.key ? `••••${c.key.slice(-4)}` : '', secrets: c.webhookSecrets.length, phone_number_id: c.phoneNumberId || '', webhook_url: `https://${host}/api/comms/webhook` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/quo-settings/numbers', requireAuth, async (req, res) => {
+  try {
+    const key = String(req.body?.api_key || '').trim() || (await quoConfig(vid(req))).key;
+    if (!key) return res.status(400).json({ error: 'Paste your Quo API key first.' });
+    const numbers = await listPhoneNumbers(key);
+    res.json({ numbers: numbers.map(n => ({ id: n.id, name: n.name || '', number: n.number || n.phoneNumber || n.formattedNumber || '' })) });
+  } catch (e) { res.status(400).json({ error: /401|unauthor/i.test(e.message) ? 'Quo did not accept that API key.' : `Could not reach Quo: ${e.message}` }); }
+});
+router.put('/quo-settings', requireAuth, async (req, res) => {
+  try {
+    const v = vid(req), cur = await quoConfig(v), b = req.body || {};
+    const key = String(b.api_key || '').trim() || cur.key;
+    const secretsIn = String(b.webhook_secrets || '').trim();
+    const webhookSecrets = secretsIn ? secretsIn.split(/[\s,]+/).filter(Boolean) : cur.webhookSecrets;
+    const phoneNumberId = b.phone_number_id !== undefined ? String(b.phone_number_id || '').trim() : cur.phoneNumberId;
+    if (!key) return res.status(400).json({ error: 'Paste your Quo API key.' });
+    if (phoneNumberId && !isQuoNumberId(phoneNumberId)) return res.status(400).json({ error: 'Pick the number from the list (press "List my numbers").' });
+    await saveQuo(v, { key, webhookSecrets, phoneNumberId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/quo-settings', requireAuth, async (req, res) => {
+  try { await saveQuo(vid(req), null); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /* 👁️ POST /api/comms/seen { key } — the owner opened this conversation (key = last 10 digits, or 'all'). */
 router.post('/seen', requireAuth, async (req, res) => {
   try {
@@ -270,7 +303,7 @@ router.post('/sync', requireAuth, async (req, res) => {
     /* Each refusal says what to do. "Not configured" was returned for every
        case — including a sync that was simply already running — and sent Raj
        to a key that was fine while the vendor box sat empty. */
-    const cfg = await quoConfig();
+    const cfg = await quoConfig(vid(req));
     if (!cfg.ready) {
       console.warn('[comms] sync refused, Quo is missing:', cfg.missing.join(', '));   // the detail is for the logs and Super Admin, not the vendor
       return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
@@ -279,7 +312,7 @@ router.post('/sync', requireAuth, async (req, res) => {
     if (cfg.vendorId !== vid(req)) {
       return res.status(409).json({ error: NOT_CONNECTED, not_connected: true });
     }
-    const r = await pollComms();
+    const r = await pollComms(vid(req));   // "Sync now" syncs only this vendor
     if (r.skipped === 'already running') return res.json({ ok: true, added: 0, note: 'A sync is already running — new calls will appear in a moment.' });
     if (r.skipped) { console.warn('[comms] sync skipped, Quo is missing:', (r.missing || []).join(', ')); return res.status(409).json({ error: NOT_CONNECTED, not_connected: true }); }
     if (r.error) return res.status(400).json({ error: r.error });
@@ -303,7 +336,7 @@ router.get('/:id/recording', requireAuth, async (req, res) => {
       select: { external_id: true, recording_url: true },
     });
     if (!ev || !String(ev.recording_url || '').startsWith('quo:')) return res.status(404).json({ error: 'No recording for this call' });
-    const cfg = await quoConfig();
+    const cfg = await quoConfig(vid(req));
     if (cfg.vendorId !== v || !cfg.key) return res.status(404).json({ error: 'No recording for this call' });
     const recs = await getCallRecordings(cfg.key, ev.external_id);
     const want = ev.recording_url.slice(4);

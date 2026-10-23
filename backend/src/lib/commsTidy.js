@@ -21,7 +21,7 @@
  * its own notes. Quo's own copy is untouched (its API cannot delete).
  */
 import privateDb from '../config/privateDb.js';
-import { quoConfig, getCall, getMessage } from './quo.js';
+import { quoConfigs, getCall, getMessage } from './quo.js';
 import { badgesFor, tenDigits } from './commsBadges.js';
 
 export const RETAIN_MONTHS = 12;
@@ -77,13 +77,15 @@ export async function forgetOld(cfg) {
 /** Both, once a night. A run that fails is simply tried again the next night. */
 export async function tidyComms() {
   try {
-    const cfg = await quoConfig();
-    if (!cfg.ready) return null;
-    const mirrored = await mirrorQuoDeletions(cfg);
-    const aged = await forgetOld(cfg);
-    if (mirrored.removed || aged.removed) {
-      console.log(`[comms] tidy: ${mirrored.removed} gone from Quo, ${aged.removed} older than ${RETAIN_MONTHS} months removed (${aged.kept} kept — leads/bookings)`);
+    const out = [];
+    for (const cfg of (await quoConfigs()).filter(c => c.ready)) {   // every vendor with Quo connected
+      const mirrored = await mirrorQuoDeletions(cfg);
+      const aged = await forgetOld(cfg);
+      out.push({ vendor: cfg.vendorId, mirrored, aged });
+      if (mirrored.removed || aged.removed) {
+        console.log(`[comms] tidy: vendor ${cfg.vendorId}: ${mirrored.removed} gone from Quo, ${aged.removed} older than ${RETAIN_MONTHS} months removed (${aged.kept} kept — leads/bookings)`);
+      }
     }
-    return { mirrored, aged };
+    return out;
   } catch (e) { console.error('[comms] tidy failed:', e.message); return null; }
 }
