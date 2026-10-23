@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { api } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
 import { useInboxCounts, inboxChanged } from '../lib/inboxCounts.js';
+import { SiInstagram, SiWhatsapp } from 'react-icons/si';   // the real brand icons (Simple Icons, CC0)
 import './inbox.css';
 
 const CommsView = lazy(() => import('./CommsView.jsx'));
@@ -10,7 +11,8 @@ const CommsView = lazy(() => import('./CommsView.jsx'));
  * 📥 The owner's private inbox (Raj, 2026-10-22): one page, four tabs — Calls & Texts (Quo), Email (Gmail),
  * Instagram, WhatsApp. It lives inside the private Calls & Messages feature, so no other vendor can see it.
  */
-const TABS = [['calls', '📞', 'Calls & Texts'], ['email', '📧', 'Email'], ['instagram', '📸', 'Instagram'], ['whatsapp', '💬', 'WhatsApp']];
+const TABS = [['calls', '📞', 'Calls & Texts'], ['email', '📧', 'Email'],
+  ['instagram', <SiInstagram key="ig" className="ib-brand ib-brand-ig" />, 'Instagram'], ['whatsapp', <SiWhatsapp key="wa" className="ib-brand ib-brand-wa" />, 'WhatsApp']];
 
 export default function Inbox() {
   const [tab, setTab] = useState(() => {
@@ -31,8 +33,8 @@ export default function Inbox() {
       </div>
       {tab === 'calls' && <Suspense fallback={<p className="ib-quiet">Loading…</p>}><CommsView /></Suspense>}
       {tab === 'email' && <EmailTab />}
-      {tab === 'instagram' && <Soon icon="📸" name="Instagram" what="Direct messages from your business Instagram, with replies from here." />}
-      {tab === 'whatsapp' && <Soon icon="💬" name="WhatsApp" what="Chats from your WhatsApp Business number, with replies from here." />}
+      {tab === 'instagram' && <Soon icon={<SiInstagram className="ib-brand ib-brand-ig" />} name="Instagram" what="Direct messages from your business Instagram, with replies from here." />}
+      {tab === 'whatsapp' && <Soon icon={<SiWhatsapp className="ib-brand ib-brand-wa" />} name="WhatsApp" what="Chats from your WhatsApp Business number, with replies from here." />}
     </div>
   );
 }

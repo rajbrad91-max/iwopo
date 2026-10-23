@@ -74,3 +74,10 @@
 .ib-on-instagram .ib-tab.is-on { background: linear-gradient(135deg, #f58529, #dd2a7b 55%, #8134af); color: #fff; }
 .ib-on-whatsapp .ib-tab.is-on { background: #25d366; color: #fff; }
 @media (max-width: 600px) { .ib { padding: 8px 6px; border-radius: 16px; } }
+
+/* 📸💬 real Instagram / WhatsApp icons in their brand colours; white on their own coloured (selected) pill */
+.ib-brand { width: 1.05em; height: 1.05em; vertical-align: -0.15em; }
+.ib-brand-ig { color: #e1306c; }
+.ib-brand-wa { color: #25d366; }
+.ib-tab.is-on .ib-brand { color: #fff; }
+.ib-empty-art .ib-brand { width: 40px; height: 40px; }
