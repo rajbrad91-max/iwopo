@@ -10,6 +10,7 @@
  * Staging: with COMMS_SANDBOX=1 and nothing connected, a practice mailbox answers instead (nothing is sent).
  */
 import crypto from 'crypto';
+import { inquiryPage } from './inquiryDetector.js';
 import prisma from '../config/prisma.js';
 import { secretKey, seal, unseal } from './secretBox.js';
 
@@ -108,14 +109,14 @@ async function accessToken(v) {
   tokens.set(Number(v), { token: t.access_token, until: Date.now() + (t.expires_in - 120) * 1000 });
   return t.access_token;
 }
-async function gmail(v, path, opts = {}) {
+export async function gmail(v, path, opts = {}) {
   const r = await fetch(`${API}${path}`, { ...opts, headers: { Authorization: `Bearer ${await accessToken(v)}`, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.error?.message || `Gmail error ${r.status}`);
   return d;
 }
 
-const header = (m, name) => (m.payload?.headers || []).find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+export const header = (m, name) => (m.payload?.headers || []).find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
 const b64 = (s) => Buffer.from(String(s || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
 function bodyOf(part) {
   if (!part) return '';
@@ -146,13 +147,13 @@ export async function getFilters(v) {
 export async function saveFilters(v, list = []) {
   if (!Array.isArray(list)) throw new Error('Filters must be a list.');
   const clean = list.slice(0, 30).map((f, i) => {
-    const o = { id: String(f.id || `f${Date.now().toString(36)}${i}`).slice(0, 40), name: String(f.name || '').trim().slice(0, 40) };
+    const o = { id: String(f.id || `f${Date.now().toString(36)}${i}`).slice(0, 40), name: String(f.name || '').trim().slice(0, 40), ai: !!f.ai };
     for (const k of FIELDS) o[k] = String(f[k] || '').replace(/[{}]/g, '').trim().slice(0, 200);
     return o;
   });
   for (const f of clean) {
     if (!f.name) throw new Error('Every filter needs a name.');
-    if (!FIELDS.some(k => f[k])) throw new Error(`"${f.name}" needs at least one rule (From, To, Subject, words or label).`);
+    if (!f.ai && !FIELDS.some(k => f[k])) throw new Error(`"${f.name}" needs at least one rule (From, To, Subject, words or label), or the AI inquiry detector.`);
   }
   await saveSetting(filtersKey(v), JSON.stringify(clean));
   return clean;
@@ -163,7 +164,7 @@ export function filterQuery(f) {
   const q = [];
   if (f.from) q.push(`from:(${f.from})`);
   if (f.to) q.push(`to:(${f.to})`);
-  if (f.subject) q.push(`subject:(${phrase(f.subject)})`);
+  if (f.subject) q.push(`subject:(${f.subject})`);
   if (f.has) q.push(f.has);
   if (f.not) q.push(`-(${f.not})`);
   if (f.label) q.push(`label:${phrase(f.label).replace(/ /g, '-')}`);
@@ -194,23 +195,33 @@ export async function unreadCount(v) {
 }
 export const forgetUnread = (v) => unreadCache.delete(Number(v));
 
-/** filter 'all' (the inbox) or one of the vendor's filters; a search narrows either. */
-export async function listThreads(v, q = '', filterId = 'all') {
+/** One page of conversations: filter 'all' (the inbox) or one of the vendor's filters; a search narrows either;
+ *  `page` is the token from the previous page ("Load more"). Returns { threads, next }. */
+export async function listThreadsPage(v, q = '', filterId = 'all', page = '') {
   const f = filterId === 'all' ? null : (await getFilters(v)).find(x => x.id === filterId) || null;
   if ((await status(v)).sandbox) {
-    return PRACTICE.filter(t => (!q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())) && (!f || practiceMatch(f, t)))
-      .map(({ messages, ...t }) => t);
+    return { next: null, threads: PRACTICE.filter(t => (!q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())) && (!f || practiceMatch(f, t)))
+      .map(({ messages, ...t }) => t) };
   }
-  const base = f ? filterQuery(f) : 'in:inbox';
-  const d = await gmail(v, `/threads?maxResults=25&q=${encodeURIComponent(q ? `${base} ${q}` : base)}`);
-  const list = await Promise.all((d.threads || []).map(async (t) => {
-    const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`);
+  let ids, next;
+  if (f?.ai) ({ ids, next } = await inquiryPage(v, { q, page }));    // 🧠 the detector's list (rules + AI)
+  else {
+    const base = f ? filterQuery(f) : 'in:inbox';
+    const d = await gmail(v, `/threads?maxResults=30&q=${encodeURIComponent(q ? `${base} ${q}` : base)}${page ? `&pageToken=${encodeURIComponent(page)}` : ''}`);
+    ids = (d.threads || []).map(t => t.id); next = d.nextPageToken || null;
+  }
+  const list = (await Promise.all(ids.map(async (id) => {
+    const t = { id };
+    const th = await gmail(v, `/threads/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`).catch(() => null);
+    if (!th) return null;                                             // deleted in Gmail since
     const last = th.messages[th.messages.length - 1], first = th.messages[0];
     return { id: t.id, from: header(last, 'From'), subject: header(first, 'Subject') || '(no subject)', snippet: last.snippet || '',
       date: new Date(Number(last.internalDate)).toISOString(), unread: th.messages.some(m => (m.labelIds || []).includes('UNREAD')), count: th.messages.length };
-  }));
-  return list;
+  }))).filter(Boolean);
+  return { threads: list, next };
 }
+/** the first page only (Tornado / Gale) */
+export const listThreads = async (v, q = '', filterId = 'all') => (await listThreadsPage(v, q, filterId)).threads;
 
 export async function getThread(v, id) {
   if ((await status(v)).sandbox) { const t = PRACTICE.find(x => x.id === id); if (!t) throw new Error('Not found'); t.unread = false; return { id, subject: t.subject, messages: t.messages }; }

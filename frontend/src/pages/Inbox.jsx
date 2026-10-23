@@ -49,7 +49,7 @@ export default function Inbox() {
 }
 
 /** 🏷️ Filters, Gmail-style: From, To, Subject, Has the words, Doesn't have, Gmail label. Each shows as a chip in the Email tab. */
-const BLANK_FILTER = { name: '', from: '', to: '', subject: '', has: '', not: '', label: '' };
+const BLANK_FILTER = { name: '', from: '', to: '', subject: '', has: '', not: '', label: '', ai: false };
 function EmailFilters() {
   const dialog = useDialog();
   const [list, setList] = useState(null);
@@ -83,7 +83,7 @@ function EmailFilters() {
       {list.length === 0 && !edit && <p className="ib-quiet">No filters yet. Each filter becomes a chip at the top of your Email tab.</p>}
       {!edit && list.map(f => (
         <div key={f.id} className="ib-frow">
-          <span className="ib-frow-n">🏷️ {f.name}</span>
+          <span className="ib-frow-n">🏷️ {f.name}{f.ai && <span className="ib-ai-tag">🧠 AI</span>}</span>
           <span className="ib-frow-r">{[f.from && `from ${f.from}`, f.to && `to ${f.to}`, f.subject && `subject "${f.subject}"`, f.has && `has "${f.has}"`, f.not && `not "${f.not}"`, f.label && `label ${f.label}`].filter(Boolean).join(' · ')}</span>
           <button className="ib-link" onClick={() => setEdit({ ...f })}>Edit</button>
           <button className="ib-link" onClick={() => remove(f)}>Delete</button>
@@ -102,6 +102,7 @@ function EmailFilters() {
             <option value="">— any —</option>
             {[...new Set([...labels, edit.label].filter(Boolean))].map(l => <option key={l} value={l}>{l}</option>)}
           </select>
+          <label className="ib-check"><input type="checkbox" checked={!!edit.ai} onChange={e => setEdit({ ...edit, ai: e.target.checked })} /> 🧠 AI inquiry detector — also catch emails the AI recognises as client inquiries (checks every new email once)</label>
           <div className="ib-keys-row">
             <button className="ib-btn" onClick={() => setEdit(null)}>Cancel</button>
             <button className="ib-btn is-on" disabled={!edit.name.trim()} onClick={saveEdit}>Save filter</button>
@@ -279,7 +280,15 @@ function EmailTab() {
   const [view, setView] = useState(() => localStorage.getItem('ib_filter') || 'all');   // 'all' or a filter's id
   const pickView = (x) => { setView(x); localStorage.setItem('ib_filter', x); setThreads(null); };
   useEffect(() => { if (status?.connected) api.inboxEmailFilters().then(d => setFilters(d.filters || [])).catch(() => {}); }, [status?.connected]);
-  const load = useCallback(() => { api.inboxEmailThreads(q, view).then(d => setThreads(d.threads || [])).catch(e => { setThreads([]); setMsg(e.message); }); }, [q, view]);
+  const [next, setNext] = useState(null);         // the next page's token ("Load more")
+  const [more, setMore] = useState(false);
+  const load = useCallback(() => { api.inboxEmailThreads(q, view).then(d => { setThreads(d.threads || []); setNext(d.next || null); }).catch(e => { setThreads([]); setNext(null); setMsg(e.message); }); }, [q, view]);
+  async function loadMore() {
+    setMore(true);
+    try { const d = await api.inboxEmailThreads(q, view, next); setThreads(t => [...(t || []), ...(d.threads || []).filter(x => !(t || []).some(y => y.id === x.id))]); setNext(d.next || null); }
+    catch (e) { setMsg(e.message); }
+    finally { setMore(false); }
+  }
   useEffect(() => { if (status?.connected) load(); }, [status?.connected, load]);
 
   async function connect() {
@@ -355,6 +364,7 @@ function EmailTab() {
                 </button>
               </li>
             ))}
+          {next && threads?.length > 0 && <li className="ib-more"><button type="button" className="ib-btn" disabled={more} onClick={loadMore}>{more ? 'Loading…' : 'Load more'}</button></li>}
         </ul>
 
         {open && (

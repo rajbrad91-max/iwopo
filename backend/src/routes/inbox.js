@@ -27,7 +27,7 @@ router.put('/gmail/app', requireAuth, async (req, res) => { try { await gm.saveA
 router.get('/gmail/connect', requireAuth, async (req, res) => { try { res.json({ url: await gm.connectUrl(vid(req), callbackUrl(req)) }); } catch (e) { fail(res, e); } });
 router.post('/gmail/disconnect', requireAuth, async (req, res) => { try { await gm.disconnect(vid(req)); res.json({ ok: true }); } catch (e) { fail(res, e); } });
 router.get('/gmail/threads', requireAuth, async (req, res) => {
-  try { res.json({ threads: await gm.listThreads(vid(req), String(req.query.q || '').slice(0, 200), String(req.query.filter || 'all').slice(0, 40)) }); } catch (e) { fail(res, e); }
+  try { res.json(await gm.listThreadsPage(vid(req), String(req.query.q || '').slice(0, 200), String(req.query.filter || 'all').slice(0, 40), String(req.query.page || '').slice(0, 200))); } catch (e) { fail(res, e); }
 });
 /* 🏷️ the vendor's filters (the whole list is saved at once) and their Gmail labels */
 router.get('/gmail/filters', requireAuth, async (req, res) => { try { res.json({ filters: await gm.getFilters(vid(req)) }); } catch (e) { fail(res, e); } });

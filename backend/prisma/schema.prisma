@@ -786,6 +786,7 @@ model vendor_subscriptions {
 }
 
 model vendors {
+  email_inquiries         email_inquiries[]
   followups               followups[]
   project_stages           project_stages[]
   outside_messages         outside_messages[]
@@ -1593,4 +1594,21 @@ model followups {
   vendors         vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, channel, thread_key])
+}
+
+/// 🧠 every inbox conversation the inquiry detector has looked at, once (is_inquiry = shown in the Inquiries chip)
+model email_inquiries {
+  id         Int      @id @default(autoincrement())
+  vendor_id  Int
+  thread_id  String   @db.VarChar(40)
+  is_inquiry Boolean
+  source     String   @db.VarChar(8)
+  from_addr  String?  @db.VarChar(200)
+  subject    String?  @db.VarChar(300)
+  last_at    DateTime @db.Timestamp(6)
+  checked_at DateTime @default(now()) @db.Timestamp(6)
+  vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([vendor_id, thread_id])
+  @@index([vendor_id, is_inquiry, last_at])
 }
