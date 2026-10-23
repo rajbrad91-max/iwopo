@@ -1469,7 +1469,7 @@ function GeminiVoiceSettings({ s, setS, editing }) {
    private assistant) has its own key in Settings, so Anthropic's bill keeps
    the two apart (Raj, 2026-10-10). */
 /** 🔒 Settings that are keys or passwords — write-only: never read back, only replaced. */
-const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass', 'quo_api_key', 'quo_webhook_secret', 'gmail_client_secret'];
+const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass', 'quo_api_key', 'quo_webhook_secret'];
 
 function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
   const [s, setS] = useState(null);
@@ -2190,15 +2190,6 @@ function FaceEngineSettings() {
               ) : (
                 <input type="password" style={roBox} readOnly value={s.quo_webhook_secret || ''} />
               )}</div>
-
-            {/* 📧 the owner's private inbox: Google's OAuth client (create it in Google Cloud → Credentials) */}
-            <div><label className="lbl">Gmail client ID <span className="sa-hint">for the private inbox's Email tab</span></label>
-              <input style={editing ? box : roBox} readOnly={!editing} value={s.gmail_client_id || ''} autoComplete="off"
-                onChange={e => setS({ ...s, gmail_client_id: e.target.value })} /></div>
-            <div><label className="lbl">Gmail client secret</label>
-              <input type="password" style={editing ? box : roBox} readOnly={!editing} value={s.gmail_client_secret || ''}
-                placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
-                onChange={e => setS({ ...s, gmail_client_secret: e.target.value })} /></div>
 
             <div><label className="lbl">Phone number</label>
               {editing ? (

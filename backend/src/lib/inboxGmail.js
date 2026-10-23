@@ -38,8 +38,26 @@ const sign = (s) => crypto.createHmac('sha256', secretKey()).update(s).digest('b
 
 export const sandbox = () => process.env.COMMS_SANDBOX === '1';
 
-export async function gmailClient() {
-  return { id: await setting('gmail_client_id'), secret: await setting('gmail_client_secret') };
+/* 🔑 The vendor's OWN Google app keys (Raj, 2026-10-23): pasted in their Email tab, stored encrypted per vendor. */
+const appKey = (v) => `gmail_app_${Number(v)}`;
+export async function gmailClient(v) {
+  const raw = await setting(appKey(v));
+  if (!raw) return { id: '', secret: '' };
+  try { return unseal(raw); } catch { return { id: '', secret: '' }; }
+}
+export async function saveApp(v, { client_id, client_secret } = {}) {
+  const cur = await gmailClient(v);
+  const id = String(client_id || '').trim() || cur.id;
+  const secret = String(client_secret || '').trim() || cur.secret;
+  if (!/^[\w.-]+\.apps\.googleusercontent\.com$/.test(id)) throw new Error("That Client ID doesn't look right — it ends in .apps.googleusercontent.com.");
+  if (!secret) throw new Error('Paste the Client secret too.');
+  await saveSetting(appKey(v), seal({ id, secret }));
+  tokens.delete(Number(v));
+}
+/** what the panel may show about the keys: whether they exist, and a short hint of the ID (never the secret) */
+export async function appInfo(v) {
+  const c = await gmailClient(v);
+  return c.id ? { has_app: true, client_id_hint: `${c.id.slice(0, 8)}…${c.id.slice(c.id.indexOf('.apps'))}` } : { has_app: false };
 }
 export async function linkOf(v) {
   const raw = await setting(linkKey(v));
@@ -49,7 +67,7 @@ export async function linkOf(v) {
 
 /** What the page shows: configured? connected? as whom? (never any key) */
 export async function status(v) {
-  const c = await gmailClient();
+  const c = await gmailClient(v).catch(() => ({}));
   const link = await linkOf(v).catch(() => null);
   if (link) return { connected: true, email: link.email };
   if (sandbox()) return { connected: true, sandbox: true, email: 'practice@example.com' };
@@ -58,7 +76,7 @@ export async function status(v) {
 
 /** The Google sign-in address for this vendor (state is signed and lasts ten minutes). */
 export async function connectUrl(v, redirectUri) {
-  const c = await gmailClient();
+  const c = await gmailClient(v);
   if (!c.id || !c.secret) throw new Error('Email is not set up yet.');
   const body = `${Number(v)}.${Date.now() + 600_000}.${crypto.randomBytes(8).toString('hex')}`;
   const p = new URLSearchParams({ client_id: c.id, redirect_uri: redirectUri, response_type: 'code', scope: SCOPE,
@@ -72,7 +90,7 @@ export async function finishConnect(state, code, redirectUri) {
   const body = parts.slice(0, 3).join('.');
   if (parts.length !== 4 || sign(body) !== parts[3] || Number(parts[1]) < Date.now()) throw new Error('This sign-in link has expired. Please try again.');
   const v = Number(parts[0]);
-  const c = await gmailClient();
+  const c = await gmailClient(v);
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ code, client_id: c.id, client_secret: c.secret, redirect_uri: redirectUri, grant_type: 'authorization_code' }) });
   const t = await r.json();
@@ -96,7 +114,7 @@ async function accessToken(v) {
   if (hit && hit.until > Date.now()) return hit.token;
   const link = await linkOf(v);
   if (!link) throw new Error('not_connected');
-  const c = await gmailClient();
+  const c = await gmailClient(v);
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: c.id, client_secret: c.secret, refresh_token: link.refresh_token, grant_type: 'refresh_token' }) });
   const t = await r.json();

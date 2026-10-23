@@ -884,6 +884,8 @@ export const api = {
   commsSeen: (key) => request('/comms/seen', { method: 'POST', body: JSON.stringify({ key }) }),
   inboxCounts: () => request('/inbox/counts'),
   inboxEmailStatus: () => request('/inbox/gmail/status'),
+  inboxEmailApp: () => request('/inbox/gmail/app'),
+  inboxEmailSaveApp: (body) => request('/inbox/gmail/app', { method: 'PUT', body: JSON.stringify(body) }),
   inboxEmailConnect: () => request('/inbox/gmail/connect'),
   inboxEmailDisconnect: () => request('/inbox/gmail/disconnect', { method: 'POST' }),
   inboxEmailThreads: (q) => request('/inbox/gmail/threads?q=' + encodeURIComponent(q || '')),

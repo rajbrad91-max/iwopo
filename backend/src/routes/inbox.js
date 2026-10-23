@@ -21,6 +21,9 @@ router.get('/counts', requireAuth, async (req, res) => {
 });
 
 router.get('/gmail/status', requireAuth, async (req, res) => { try { res.json(await gm.status(vid(req))); } catch (e) { fail(res, e); } });
+/* 🔑 the vendor's own Google keys: GET shows only whether they exist (+ a hint), PUT saves them (secret is write-only) */
+router.get('/gmail/app', requireAuth, async (req, res) => { try { res.json(await gm.appInfo(vid(req))); } catch (e) { fail(res, e); } });
+router.put('/gmail/app', requireAuth, async (req, res) => { try { await gm.saveApp(vid(req), req.body || {}); res.json(await gm.appInfo(vid(req))); } catch (e) { fail(res, e); } });
 router.get('/gmail/connect', requireAuth, async (req, res) => { try { res.json({ url: await gm.connectUrl(vid(req), callbackUrl(req)) }); } catch (e) { fail(res, e); } });
 router.post('/gmail/disconnect', requireAuth, async (req, res) => { try { await gm.disconnect(vid(req)); res.json({ ok: true }); } catch (e) { fail(res, e); } });
 router.get('/gmail/threads', requireAuth, async (req, res) => { try { res.json({ threads: await gm.listThreads(vid(req), String(req.query.q || '').slice(0, 200)) }); } catch (e) { fail(res, e); } });

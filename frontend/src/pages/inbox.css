@@ -81,3 +81,11 @@
 .ib-brand-wa { color: #25d366; }
 .ib-tab.is-on .ib-brand { color: #fff; }
 .ib-empty-art .ib-brand { width: 40px; height: 40px; }
+
+/* 🔑 the vendor's own email keys (Email tab) */
+.ib-keys { max-width: 520px; margin: 14px auto 0; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.ib-keys-t { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); }
+.ib-keys-code { display: block; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12.5px; overflow-wrap: anywhere; user-select: all; }
+.ib-keys-row { display: flex; justify-content: flex-end; gap: 8px; }
+.ib-keys-note { font-size: 12px; padding: 0; }
+.ib-keys-link { display: block; margin: 10px auto 0; }

@@ -53,6 +53,39 @@ const when = (d) => { const t = new Date(d); return Date.now() - t < 86400e3 ? t
 const nameOf = (from) => String(from || '').replace(/<[^>]+>/, '').replace(/"/g, '').trim() || from;
 const addrOf = (from) => { const m = String(from || '').match(/<([^>]+)>/); return m ? m[1] : from; };
 
+/** 🔑 The vendor's own Google keys — made in THEIR Google account, pasted here, stored encrypted; the secret is never shown again. */
+function EmailKeys({ onSaved, onCancel }) {
+  const [info, setInfo] = useState(null);
+  const [id, setId] = useState('');
+  const [secret, setSecret] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  useEffect(() => { api.inboxEmailApp().then(setInfo).catch(() => setInfo({ has_app: false })); }, []);
+  const redirect = `${location.origin}/api/inbox/gmail/callback`;
+  async function save() {
+    setErr(''); setBusy(true);
+    try { await api.inboxEmailSaveApp({ client_id: id, client_secret: secret }); setId(''); setSecret(''); onSaved(); }
+    catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="ib-keys">
+      <p className="ib-keys-t">🔑 Your email keys</p>
+      <p className="ib-quiet">Created in <b>your own</b> Google account (Google Cloud → Credentials → OAuth client, type Web application). Its redirect address must be:</p>
+      <code className="ib-keys-code">{redirect}</code>
+      {info?.has_app && <p className="ib-quiet">Saved now: <b>{info.client_id_hint}</b>. Paste new keys only to replace them.</p>}
+      <input className="ib-input" placeholder="Client ID (…apps.googleusercontent.com)" value={id} onChange={e => setId(e.target.value)} autoComplete="off" spellCheck={false} />
+      <input className="ib-input" type="password" placeholder={info?.has_app ? 'Client secret (empty keeps the saved one)' : 'Client secret'} value={secret} onChange={e => setSecret(e.target.value)} autoComplete="off" />
+      {err && <p className="ib-msg" role="alert">⚠️ {err}</p>}
+      <div className="ib-keys-row">
+        {onCancel && <button className="ib-btn" onClick={onCancel}>Cancel</button>}
+        <button className="ib-btn is-on" disabled={busy || !id.trim() || (!secret.trim() && !info?.has_app)} onClick={save}>{busy ? 'Saving…' : 'Save keys'}</button>
+      </div>
+      <p className="ib-quiet ib-keys-note">🔒 Stored encrypted for your account only. The secret can't be viewed again, here or by anyone at iwopo.</p>
+    </div>
+  );
+}
+
 function EmailTab() {
   const dialog = useDialog();
   const [status, setStatus] = useState(null);
@@ -65,6 +98,7 @@ function EmailTab() {
   const [compose, setCompose] = useState(null); // { to, subject, body }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(() => new URLSearchParams(location.search).get('email_error') || '');
+  const [keysOpen, setKeysOpen] = useState(false);   // 🔑 the vendor's own Google keys form
 
   useEffect(() => { api.inboxEmailStatus().then(setStatus).catch(e => setStatus({ connected: false, error: e.message })); }, []);
   useEffect(() => { const t = setTimeout(() => setQ(qLive.trim()), 350); return () => clearTimeout(t); }, [qLive]);
@@ -110,9 +144,12 @@ function EmailTab() {
         <div className="ib-empty-art" aria-hidden="true">📧</div>
         <p className="ib-empty-t">Email isn&apos;t connected yet</p>
         <p className="ib-quiet">Connect your business Gmail to read and answer client emails here, next to their calls and texts.</p>
-        {status.configured
-          ? <button className="ib-btn is-on" onClick={connect}>Connect Gmail</button>
-          : <p className="ib-quiet">It can be connected once email is set up for this account.</p>}
+        {status.configured && !keysOpen
+          ? (<>
+            <button className="ib-btn is-on" onClick={connect}>Connect Gmail</button>
+            <button className="ib-link ib-keys-link" onClick={() => setKeysOpen(true)}>🔑 Change email keys</button>
+          </>)
+          : <EmailKeys onSaved={() => { setKeysOpen(false); api.inboxEmailStatus().then(setStatus).catch(() => {}); }} onCancel={status.configured ? () => setKeysOpen(false) : null} />}
         {msg && <p className="ib-msg">{msg}</p>}
       </div>
     );
