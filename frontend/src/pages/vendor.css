@@ -2302,3 +2302,15 @@ a.nav-item { color: inherit; text-decoration: none; }
 @media (max-width: 420px) {
   .dash .stats { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* 📱 Mobile audit round 2 (Muse, 2026-10-22) */
+@media (max-width: 720px) {
+  /* R2-1: the gallery's buttons wrap under its title instead of running off the screen */
+  .ad-head { flex-wrap: wrap; gap: 10px; }
+  .ad-head-actions { flex-wrap: wrap; }
+  /* R2-2: the Online-pay switch drops under the status menu instead of covering it */
+  .ms-top-row .ms-status-row { flex-basis: 100%; }   /* the status gets its own line; the switch sits under it */
+  .ms-webpay-chip { white-space: nowrap; }
+}
+/* R2-3: a video's name stops before its duration chip */
+.ad-photo.is-video .ad-photo-name { padding-right: 48px; }

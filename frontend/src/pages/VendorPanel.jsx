@@ -25,7 +25,7 @@ import RequestsView from './RequestsView.jsx';
    do. It is not hidden from anybody; it is never sent to them.
    The rest of the panel loads faster as a side effect. */
 const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
-const CommsView = lazy(() => import('./CommsView.jsx'));
+const Inbox = lazy(() => import('./Inbox.jsx'));   // 📥 Calls & Texts + Email (+ Instagram, WhatsApp) — CommsView lives inside it
 const RawSelectorView = lazy(() => import('./RawSelectorView.jsx'));
 const AgentView = lazy(() => import('./AgentView.jsx'));
 const ProjectStages = lazy(() => import('./ProjectStages.jsx'));
@@ -379,7 +379,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'liveshoot' ? (
           <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
         ) : tab === 'comms' ? (
-          <Suspense fallback={<div className="tab-loading">Loading…</div>}><CommsView /></Suspense>
+          <Suspense fallback={<div className="tab-loading">Loading…</div>}><Inbox /></Suspense>
         ) : tab === 'agent' ? (
           <Suspense fallback={<div className="tab-loading">Loading…</div>}><AgentView /></Suspense>
         ) : tab === 'rawsel' ? (

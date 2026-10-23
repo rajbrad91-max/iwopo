@@ -39,7 +39,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
        access key ID there is nothing useful to recognise it by, so the whole
        thing is replaced rather than clipped. */
     if (s.smtp_pass) s.smtp_pass = '••••••••';
-    for (const k of ['quo_api_key', 'quo_webhook_secret', 'anthropic_api_key', 'agent_api_key', 'gemini_api_key', 'deepgram_api_key', 'local_voice_token']) {
+    for (const k of ['quo_api_key', 'quo_webhook_secret', 'gmail_client_secret', 'anthropic_api_key', 'agent_api_key', 'gemini_api_key', 'deepgram_api_key', 'local_voice_token']) {
       if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
     }
     res.json({ settings: s });
@@ -267,7 +267,9 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
       'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name',
       /* 📞 Quo (OpenPhone) — calls and messages. Private to the platform owner,
          so quo_vendor_id says whose timeline the mirrored events land in. */
-      'quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id'];
+      'quo_api_key', 'quo_webhook_secret', 'quo_phone_number_id', 'quo_vendor_id',
+      /* 📧 Google OAuth client for the owner's private inbox (the secret is write-only, masked like the rest) */
+      'gmail_client_id', 'gmail_client_secret'];
 
     /* 🔒 One bucket for both classes would silently un-gate every client gallery
        and every File Flyer link at once: the album password and the share token

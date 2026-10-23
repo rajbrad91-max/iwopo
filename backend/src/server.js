@@ -46,6 +46,7 @@ import { sweepExpiredSubscriptions } from './lib/subscriptionSweep.js';
 import { sweepOldEvents } from './lib/siteEvents.js';
 import analyticsRoutes from './routes/analytics.js';
 import commsWebhookRoutes from './routes/commsWebhook.js';
+import inboxRoutes, { inboxCallback } from './routes/inbox.js';
 import { pollComms } from './lib/commsPoll.js';
 import commsRoutes from './routes/comms.js';
 import rawselRoutes from './routes/rawsel.js';
@@ -180,6 +181,9 @@ app.use('/api/files', gate('fileflyer'), fileRoutes);
 app.use('/api/analytics', gate('analytics'), analyticsRoutes);
 // 📞 also private to the platform owner
 app.use('/api/comms', gate('comms'), commsRoutes);
+// 📥 the owner's private inbox (Email now; Instagram/WhatsApp next). Google's return hop has no panel login, so it sits outside the gate.
+app.use('/api/inbox/gmail/callback', inboxCallback);
+app.use('/api/inbox', gate('comms'), inboxRoutes);
 // 🎞️ Raw Selector — private like comms: off for every vendor unless Super Admin switches it on
 app.use('/api/rawsel', gate('rawsel'), rawselRoutes);
 // 👨‍💻 the photo editor's own door — editor logins only (signed with a different key), see routes/editor.js

@@ -400,3 +400,9 @@
 .fd-play { position: absolute; inset: 0; margin: auto; width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff;
   background: rgba(0, 0, 0, .55); pointer-events: none; }
+
+/* R2-5: the share link, readable in full */
+.ff-link-text { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid #e3e8ec; background: #f6f8f9;
+  color: #1a2529; font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; user-select: all; }
+/* R2-4: inside a folder the toolbar has one more button: it wraps on a phone instead of running off */
+@media (max-width: 720px) { .fd-actions { flex-wrap: wrap; } }

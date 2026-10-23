@@ -94,7 +94,7 @@ export default function ShareDialog({ folder, share: initial, onClose, onChanged
 
         {share && (
           <div className="ff-link-row">
-            <input className="dlg-input" readOnly value={link} onFocus={e => e.target.select()} aria-label="Share link" />
+            <code className="ff-link-text" aria-label="Share link">{link}</code>
             <button type="button" className="dlg-btn is-primary" onClick={copy}>Copy link</button>
           </div>
         )}

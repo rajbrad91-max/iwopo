@@ -877,6 +877,12 @@ export const api = {
     return request('/comms' + (p.toString() ? '?' + p : ''));
   },
   commsStatus: () => request('/comms/status'),
+  inboxEmailStatus: () => request('/inbox/gmail/status'),
+  inboxEmailConnect: () => request('/inbox/gmail/connect'),
+  inboxEmailDisconnect: () => request('/inbox/gmail/disconnect', { method: 'POST' }),
+  inboxEmailThreads: (q) => request('/inbox/gmail/threads?q=' + encodeURIComponent(q || '')),
+  inboxEmailThread: (id) => request('/inbox/gmail/threads/' + encodeURIComponent(id)),
+  inboxEmailSend: (body) => request('/inbox/gmail/send', { method: 'POST', body: JSON.stringify(body) }),
   commsSync: () => request('/comms/sync', { method: 'POST' }),
   // 🎞️ Raw Selector (private): how an album's RAWs stand; 403 when the feature is off
   rawselStatus: (albumId) => request(`/rawsel/albums/${albumId}`),
