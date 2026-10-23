@@ -1,0 +1,16 @@
+/* ⏰ Smart reminders (SmartReminders.jsx) */
+.sr-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sr-intro { flex: 1 1 260px; margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.sr-quiet { color: var(--muted); font-size: 14px; padding: 14px 4px; margin: 0; }
+.sr-err { margin: 0 0 10px; font-size: 13px; color: #dc2626; }
+.sr-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sr-row { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.sr-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sr-who { font-weight: 700; font-size: 15px; color: var(--text); }
+.sr-when { font-size: 12.5px; font-weight: 600; color: #c2410c; white-space: nowrap; }
+.sr-contact { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.sr-snip { font-size: 13.5px; color: var(--text); line-height: 1.45; overflow-wrap: anywhere; }
+.sr-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.sr-btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+.sr-btn.is-on { background: var(--teal); border-color: var(--teal); color: #fff; }
+.sr-btn:disabled { opacity: .55; cursor: default; }

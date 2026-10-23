@@ -8,6 +8,8 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import { openFollowups, actOnFollowup, waitedLabel } from './followups.js';
+import { emailSummary, emailRead } from './inboxGmail.js';
 import { markSeen as markCommsSeen } from './commsSeen.js';
 import { stagesSummary } from './projectStages.js';
 import privateDb from '../config/privateDb.js';
@@ -121,6 +123,21 @@ export const TOOLS = [
     name: 'mark_seen',
     description: "Mark things seen in the panel, as he would by opening them: what = messages (texts and calls), notifications (the bell), leads, or all. What you read out on a wake-up or as an [Update] is already marked seen.",
     input_schema: { type: 'object', properties: { what: { type: 'string', enum: ['messages', 'notifications', 'leads', 'all'] } }, required: ['what'] },
+  },
+  {
+    name: 'email_inbox',
+    description: "His business email (Gmail), when he asks about emails: the latest ones — sender, subject, when, NEW if unread. filter = one of his email filters by name (e.g. Inquiries, Money Received); unread_only for just the new ones. Listing does NOT mark anything read.",
+    input_schema: { type: 'object', properties: { filter: { type: 'string' }, unread_only: { type: 'boolean' } } },
+  },
+  {
+    name: 'email_read',
+    description: "Read one email out to him — found by the sender's name or email, or words from its subject. Reading it marks it read in Gmail, so his phone shows it read too.",
+    input_schema: { type: 'object', properties: { who: { type: 'string', description: 'sender name / email, or subject words' } }, required: ['who'] },
+  },
+  {
+    name: 'followups',
+    description: "Smart reminders: people waiting more than a day for his reply (unanswered texts, missed calls not returned, emails without a reply). action=list to hear them; done when he says he already replied or called back; mute when he says not to remind him about someone; snooze (hours) to be reminded later. who = a name, number or email.",
+    input_schema: { type: 'object', properties: { action: { type: 'string', enum: ['list', 'done', 'mute', 'snooze'] }, who: { type: 'string' }, hours: { type: 'number' } }, required: ['action'] },
   },
   {
     name: 'client_directory',
@@ -336,6 +353,24 @@ export async function runTool(name, input, vendorId) {
       return text ? { answer: text.slice(0, 1200) } : { error: d.error?.message || 'No answer from the web search' };
     }
     case 'project_stages': return stagesSummary(v, input);
+    case 'email_inbox': {
+      const r = await emailSummary(v, { filterName: input.filter, unreadOnly: !!input.unread_only });
+      if (r.error) return { error: r.error };
+      if (!r.items.length) return { summary: `No ${input.unread_only ? 'new ' : ''}emails${r.filter ? ` in ${r.filter}` : ''}.` };
+      return { summary: r.items.map(t => `${t.unread ? 'NEW · ' : ''}${t.from} — ${t.subject} (${t.when})`).join('\n') };
+    }
+    case 'email_read': {
+      const m = await emailRead(v, input.who);
+      return m ? { summary: `From ${m.from}, ${m.when}. Subject: ${m.subject}.\n${m.body}` } : { error: `No recent email from or about "${input.who}".` };
+    }
+    case 'followups': {
+      if (input.action === 'list') {
+        const rows = await openFollowups(v);
+        return { summary: rows.length ? `${rows.length} waiting on him: ${rows.map(waitedLabel).join('; ')}` : 'Nobody is waiting on him.' };
+      }
+      const r = await actOnFollowup(v, input);
+      return { summary: r.changed ? `${input.action === 'snooze' ? 'Snoozed' : input.action === 'mute' ? "Won't remind him about" : 'Cleared'}: ${r.who.join(', ')}` : `No open reminder matches "${input.who}".` };
+    }
     case 'mark_seen': {
       const what = String(input.what || 'all'), now = new Date(), done = [];
       if (what === 'messages' || what === 'all') await markCommsSeen(v, 'all').catch(() => {});   // 👁️ the calls & texts list too

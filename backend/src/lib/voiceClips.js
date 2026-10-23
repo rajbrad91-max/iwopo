@@ -12,6 +12,7 @@
  *                            A database read — no AI, no tokens.
  */
 import fs from 'node:fs';
+import { openFollowups, waitedLabel } from './followups.js';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import prisma from '../config/prisma.js';
@@ -212,6 +213,12 @@ export async function whatsNew(vendorId, { record = true, markSeen = false } = {
   for (const r of await prisma.agent_reminders.findMany({ where: { vendor_id: v, done_at: null, kind: { not: 'alarm' }, due_at: { lte: new Date(Date.now() + 86400e3) } }, take: 8, select: { id: true, title: true } })) {
     if (!(await allowed(`reminder:${r.id}`, 3))) continue;
     bump('reminder', `⏰ ${r.title}`);
+  }
+
+  // ⏰ smart reminders — people waiting on his reply (each at most four times a day)
+  for (const f of await openFollowups(v)) {
+    if (!(await allowed(`followup:${f.id}`, 4))) continue;
+    bump('reminder', `⏳ Waiting on your reply: ${waitedLabel(f)}`);
   }
 
   // the greeting: carrying on a conversation of the last 20 minutes, or the time of day

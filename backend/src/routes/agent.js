@@ -10,6 +10,7 @@
  *    stops answering until next month (or until the cap is raised).
  */
 import express from 'express';
+import { openFollowups, actOnFollowup, scanVendor } from '../lib/followups.js';
 import { listStages, stagesFor, setStages, addOutsideMessage, deleteOutsideMessage } from '../lib/projectStages.js';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -363,6 +364,16 @@ router.post('/ear/turn', requireAuth, limit({ name: 'agent-ear', max: 60, window
 
 /* ── 🧭 project stages, outside messages, email log (lib/projectStages.js). Reached only here, so only by
    vendors with the AI Agent; the vendor always comes from the login, never the body. ── */
+/* ⏰ smart reminders */
+router.get('/followups', requireAuth, async (req, res) => { try { res.json({ followups: await openFollowups(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+router.post('/followups/scan', requireAuth, async (req, res) => { try { await scanVendor(vid(req)); res.json({ followups: await openFollowups(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+router.post('/followups/:id', requireAuth, async (req, res) => {
+  try {
+    const action = ['done', 'mute', 'snooze'].includes(req.body?.action) ? req.body.action : 'done';
+    res.json(await actOnFollowup(vid(req), { id: req.params.id, action, hours: req.body?.hours }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/stages', requireAuth, async (req, res) => {
   try { res.json({ bookings: await listStages(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); }
 });

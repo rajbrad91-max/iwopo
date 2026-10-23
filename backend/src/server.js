@@ -2,6 +2,7 @@
 // file's own statements, so this must load ahead of any route (which pulls in
 // the Prisma client) for the env check to happen before anything connects.
 import { checkEnv } from './config/checkEnv.js';
+import { scanFollowups } from './lib/followups.js';
 import prisma from './config/prisma.js';
 checkEnv();
 
@@ -306,6 +307,9 @@ pollComms().catch(() => {});
    of an hour after boot, so a restart never starts with it. */
 setInterval(() => { tidyComms().catch(() => {}); }, 24 * 60 * 60_000).unref();
 setTimeout(() => { tidyComms().catch(() => {}); }, 15 * 60_000).unref();
+// ⏰ smart reminders: who is waiting more than a day for a reply — every 15 minutes
+setInterval(() => { scanFollowups().catch(() => {}); }, 15 * 60_000).unref();
+setTimeout(() => { scanFollowups().catch(() => {}); }, 2 * 60_000).unref();
 // 🎞️ Raw Selector: RAWs whose photo was deleted, and RAWs 30 days past delivery
 setInterval(() => { sweepRaws().catch(() => {}); }, 10 * 60_000).unref();
 setTimeout(() => { sweepRaws().catch(() => {}); }, 2 * 60_000).unref();

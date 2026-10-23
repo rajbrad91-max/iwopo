@@ -235,3 +235,49 @@ export async function sendEmail(v, { to, subject, body, threadId, replyTo }) {
   const sent = await gmail(v, '/messages/send', { method: 'POST', body: JSON.stringify({ raw, ...(threadId ? { threadId } : {}) }) });
   return { ok: true, id: sent.id, threadId: sent.threadId };
 }
+
+/* ⏰ inbox threads 1–14 days old whose last message is someone else's (smart reminders); automated senders skipped */
+export async function awaitingReply(v) {
+  const st = await status(v);
+  if (!st.connected || st.sandbox) return [];
+  const me = String(st.email || '').toLowerCase();
+  const d = await gmail(v, `/threads?maxResults=30&q=${encodeURIComponent('in:inbox older_than:1d newer_than:14d -category:promotions -category:social -category:updates -category:forums')}`);
+  const out = [];
+  for (const t of d.threads || []) {
+    const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
+    const last = th.messages[th.messages.length - 1];
+    const from = header(last, 'From');
+    const m = from.match(/<([^>]+)>/);
+    const addr = (m ? m[1] : from).toLowerCase().trim();
+    if (!addr || addr === me || /no-?reply|notifications?@|mailer-daemon|postmaster@/i.test(addr)) continue;
+    out.push({ key: t.id, who: from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || addr, contact: addr,
+      snippet: `${header(th.messages[0], 'Subject')} — ${last.snippet || ''}`.slice(0, 300), at: new Date(Number(last.internalDate)) });
+  }
+  return out;
+}
+
+const spokenWhen = (d) => new Date(d).toLocaleString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const plainName = (from) => String(from || '').replace(/<[^>]+>/, '').replace(/"/g, '').trim() || from;
+
+/** 🎙️ for Tornado / Gale: the latest emails (optionally one filter, or only unread) — listing marks nothing read */
+export async function emailSummary(v, { filterName, unreadOnly } = {}) {
+  const st = await status(v);
+  if (!st.connected) return { error: 'His email is not connected yet.' };
+  const f = filterName ? (await getFilters(v)).find(x => x.name.toLowerCase().includes(String(filterName).toLowerCase())) : null;
+  const list = await listThreads(v, unreadOnly ? 'is:unread' : '', f ? f.id : 'all');
+  return { filter: f?.name || null, items: list.slice(0, 8).map(t => ({ from: plainName(t.from), subject: t.subject, unread: !!t.unread, when: spokenWhen(t.date) })) };
+}
+
+/** 🎙️ read one email out — found by sender or subject words; reading it marks it read in Gmail (his phone matches) */
+export async function emailRead(v, who) {
+  const st = await status(v);
+  const w = String(who || '').replace(/["(){}]/g, '').trim();
+  if (!st.connected || !w) return null;
+  let id;
+  if (st.sandbox) id = PRACTICE.find(t => `${t.from} ${t.subject}`.toLowerCase().includes(w.toLowerCase()))?.id;
+  else id = (await gmail(v, `/threads?maxResults=1&q=${encodeURIComponent(`newer_than:60d {from:(${w}) subject:(${w}) "${w}"}`)}`)).threads?.[0]?.id;
+  if (!id) return null;
+  const t = await getThread(v, id);
+  const m = t.messages[t.messages.length - 1];
+  return { from: plainName(m.from), subject: t.subject, when: spokenWhen(m.date), body: String(m.body || '').replace(/\n{3,}/g, '\n\n').slice(0, 1500) };
+}

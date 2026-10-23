@@ -10,6 +10,7 @@
  * contract. 🔔 Pop-ups bring the bell to this device; a tap opens this tab.
  */
 import { useState, useEffect, useRef } from 'react';
+import SmartReminders from './SmartReminders.jsx';
 import PpmBoard from './PpmBoard.jsx';
 import { api, authFetch } from '../lib/api';
 import './agent.css';
@@ -342,6 +343,7 @@ export default function AgentView() {
   const [speak, setSpeak] = useState(() => { try { return localStorage.getItem(SPEAK_KEY) !== 'off'; } catch { return true; } });
   const [pop, setPop] = useState('checking');      // checking | on | off | blocked | unsupported
   const [ppm, setPpm] = useState(false);           // 📋 the PPM Board instead of the chat
+  const [rem, setRem] = useState(false);           // ⏰ smart reminders instead of the chat
   const [know, setKnow] = useState(false);         // 🧠 the knowledge section instead of the chat
   const fromLink = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('voice') === '1';
   const end = useRef(null);
@@ -455,8 +457,9 @@ export default function AgentView() {
   return (
     <div className="ag">
       <div className="ag-tools">
-        <button type="button" className={`ag-tool ${know ? 'is-on' : ''}`} onClick={() => { setKnow(k => !k); setPpm(false); }} aria-pressed={know}>{know ? '💬 Back to chat' : '🧠 Knowledge & memory'}</button>
-        <button type="button" className={`ag-tool ${ppm ? 'is-on' : ''}`} onClick={() => { setPpm(p => !p); setKnow(false); }} aria-pressed={ppm}>{ppm ? '💬 Back to chat' : '📋 PPM Board'}</button>
+        <button type="button" className={`ag-tool ${know ? 'is-on' : ''}`} onClick={() => { setKnow(k => !k); setPpm(false); setRem(false); }} aria-pressed={know}>{know ? '💬 Back to chat' : '🧠 Knowledge & memory'}</button>
+        <button type="button" className={`ag-tool ${ppm ? 'is-on' : ''}`} onClick={() => { setPpm(p => !p); setKnow(false); setRem(false); }} aria-pressed={ppm}>{ppm ? '💬 Back to chat' : '📋 PPM Board'}</button>
+        <button type="button" className={`ag-tool ${rem ? 'is-on' : ''}`} onClick={() => { setRem(r => !r); setKnow(false); setPpm(false); }} aria-pressed={rem}>{rem ? '💬 Back to chat' : '⏰ Smart reminders'}</button>
         <button type="button" className={`ag-tool ${speak ? 'is-on' : ''}`} onClick={toggleSpeak} aria-pressed={speak}>{speak ? '🔊 Reads answers aloud' : '🔇 Silent'}</button>
         {pop !== 'unsupported' && (
           <button type="button" className={`ag-tool ${pop === 'on' ? 'is-on' : ''}`} onClick={popups} disabled={pop === 'blocked' || pop === 'checking'}>
@@ -464,7 +467,7 @@ export default function AgentView() {
           </button>
         )}
       </div>
-      {ppm ? <PpmBoard /> : know ? <Knowledge /> : (<>
+      {rem ? <SmartReminders /> : ppm ? <PpmBoard /> : know ? <Knowledge /> : (<>
       <div className="ag-chat">
         {msgs.length === 0 && (
           <div className="ag-hello">
