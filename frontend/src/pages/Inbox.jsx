@@ -283,6 +283,14 @@ function EmailTab() {
   const [next, setNext] = useState(null);         // the next page's token ("Load more")
   const [more, setMore] = useState(false);
   const load = useCallback(() => { api.inboxEmailThreads(q, view).then(d => { setThreads(d.threads || []); setNext(d.next || null); }).catch(e => { setThreads([]); setNext(null); setMsg(e.message); }); }, [q, view]);
+  async function notInquiry() {
+    const id = open.id;
+    try {
+      const r = await api.inboxNotInquiry(id);
+      setThreads(t => (t || []).filter(x => x.id !== id)); setOpen(null);
+      setMsg(r.sender ? `🚫 Removed — emails from ${r.sender} won't show as inquiries again.` : '🚫 Removed.');
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+  }
   async function loadMore() {
     setMore(true);
     try { const d = await api.inboxEmailThreads(q, view, next); setThreads(t => [...(t || []), ...(d.threads || []).filter(x => !(t || []).some(y => y.id === x.id))]); setNext(d.next || null); }
@@ -372,6 +380,7 @@ function EmailTab() {
             <div className="ib-thread-h">
               <button className="ib-link" onClick={() => setOpen(null)}>‹ Back</button>
               <h3 className="ib-thread-t">{open.subject || '…'}</h3>
+              {filters.find(f => f.id === view)?.ai && <button type="button" className="ib-link ib-notinq" onClick={notInquiry} title="Remove it, and skip this sender from now on">🚫 Not an inquiry</button>}
             </div>
             {open.loading ? <p className="ib-quiet">Loading…</p> : (<>
               {open.messages.map(m => (

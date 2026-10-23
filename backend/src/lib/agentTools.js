@@ -9,7 +9,7 @@
  */
 import prisma from '../config/prisma.js';
 import { openFollowups, actOnFollowup, waitedLabel } from './followups.js';
-import { emailSummary, emailRead } from './inboxGmail.js';
+import { emailSummary, emailRead, emailSearch, resolveRecipient, voiceSend } from './inboxGmail.js';
 import { markSeen as markCommsSeen } from './commsSeen.js';
 import { stagesSummary } from './projectStages.js';
 import privateDb from '../config/privateDb.js';
@@ -51,6 +51,9 @@ const leadLine = (l) => ({
 });
 
 /** The tools as Claude sees them. */
+/* ✉️ drafts read back to him by voice — key → when; a send needs its exact draft here (see email_send) */
+const readBack = new Map();
+
 export const TOOLS = [
   {
     name: 'today_summary',
@@ -133,6 +136,16 @@ export const TOOLS = [
     name: 'email_read',
     description: "Read one email out to him — found by the sender's name or email, or words from its subject. Reading it marks it read in Gmail, so his phone shows it read too.",
     input_schema: { type: 'object', properties: { who: { type: 'string', description: 'sender name / email, or subject words' } }, required: ['who'] },
+  },
+  {
+    name: 'email_search',
+    description: "Search ALL his email (not only the inbox) for a person's name, an address or words. By default only the last 90 days. If nothing is found, tell him and ASK whether to search further back; only after he says yes, call again with beyond_90_days=true. Never search beyond 90 days on your own.",
+    input_schema: { type: 'object', properties: { query: { type: 'string' }, beyond_90_days: { type: 'boolean' } }, required: ['query'] },
+  },
+  {
+    name: 'email_send',
+    description: "Send an email for him, hands-free. ALWAYS two steps: first call WITHOUT confirmed — you get back the exact recipient and the draft; read it to him (who, subject, message) and ask \"Send it?\". Only when he clearly says yes, call again with the same fields and confirmed=true. If he changes anything, call again without confirmed. reply=true answers his latest conversation with that person. to = a name, or an email address.",
+    input_schema: { type: 'object', properties: { to: { type: 'string' }, subject: { type: 'string' }, body: { type: 'string' }, reply: { type: 'boolean' }, confirmed: { type: 'boolean' } }, required: ['to', 'body'] },
   },
   {
     name: 'followups',
@@ -362,6 +375,27 @@ export async function runTool(name, input, vendorId) {
     case 'email_read': {
       const m = await emailRead(v, input.who);
       return m ? { summary: `From ${m.from}, ${m.when}. Subject: ${m.subject}.\n${m.body}` } : { error: `No recent email from or about "${input.who}".` };
+    }
+    case 'email_search': {
+      const r = await emailSearch(v, input.query, { beyond: !!input.beyond_90_days });
+      if (r.error) return { error: r.error };
+      if (!r.items.length) return { summary: r.beyond ? `No emails at all for "${input.query}".` : `Nothing for "${input.query}" in the last 90 days. Ask him whether to search further back.` };
+      return { summary: r.items.map(t => `${t.from} — ${t.subject} (${t.when})`).join('\n') };
+    }
+    case 'email_send': {
+      const who = await resolveRecipient(v, input.to);
+      if (!who) return { error: `No email address found for "${input.to}". Ask him for the address.` };
+      if (who.options) return { summary: `More than one match — ask which: ${who.options.map(o => `${o.name || o.email} <${o.email}>`).join('; ')}` };
+      const to = who.name ? `${who.name} <${who.email}>` : who.email;
+      // 🔒 the server, not the model, guarantees the read-back: only a draft he heard in the last 10 minutes can be sent
+      const draftKey = `${v}|${who.email}|${input.subject || ''}|${input.body}|${!!input.reply}`;
+      if (!input.confirmed || !(Date.now() - (readBack.get(draftKey) || 0) < 10 * 60_000)) {
+        readBack.set(draftKey, Date.now());
+        return { summary: `DRAFT — NOT SENT. To: ${to}. ${input.reply ? 'As a reply to their latest email.' : `Subject: ${input.subject || '(none)'}.`} Message: ${input.body}\nRead this back to him and ask "Send it?". Send only after a clear yes.` };
+      }
+      readBack.delete(draftKey);
+      const r = await voiceSend(v, { email: who.email, subject: input.subject, body: input.body, reply: !!input.reply });
+      return { summary: r.sandbox ? `Practice mode: the email to ${to} was not really sent.` : `Sent to ${to}.` };
     }
     case 'followups': {
       if (input.action === 'list') {

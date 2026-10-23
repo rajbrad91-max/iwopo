@@ -18,6 +18,12 @@ const AUTOMATED_SENDER = /no-?reply|do-?not-?reply|notify@|notifications?@|maile
 const AUTOMATED_SUBJECT = /interac e-transfer|e-transfer|receipt|invoice|payment (received|sent)|your order|order confirm|verification code|security alert|left a review|has been (edited|culled)|your album|webinar|newsletter/i;
 const machineMail = (fromAddr, subject) => AUTOMATED_SENDER.test(fromAddr) || AUTOMATED_SUBJECT.test(subject);
 const KEYWORDS = /inquir|enquir|wedding|engagement|quote|pric|availab|book|package|photograph|videograph|shoot|our event|my event/i;
+const ignoreKey = (v) => `inquiry_ignore_${Number(v)}`;
+/** senders the owner marked "not an inquiry" */
+export async function ignoredSenders(v) {
+  const r = await prisma.platform_settings.findUnique({ where: { key: ignoreKey(v) } });
+  try { return r ? JSON.parse(r.value) : []; } catch { return []; }
+}
 const addrOf = (from) => ((String(from || '').match(/<([^>]+)>/) || [])[1] || from || '').toLowerCase().trim();
 
 /** the AI's answer: 'yes', 'no', or null when it could not be asked */
@@ -46,6 +52,7 @@ export async function scanInquiries(v) {
   const st = await status(v);
   if (!st.connected || st.sandbox) return { checked: 0, found: 0 };
   const me = String(st.email || '').toLowerCase();
+  const ignored = new Set(await ignoredSenders(v));
   const detecting = (await getFilters(v)).filter(f => f.ai);
   if (!detecting.length) return { checked: 0, found: 0 };
   const firstRun = !(await prisma.email_inquiries.count({ where: { vendor_id: v } }));
@@ -78,7 +85,7 @@ export async function scanInquiries(v) {
       const fromAddr = addrOf(from);
       let yes, source;
       if (byRule.has(t.id)) { yes = true; source = 'rule'; }
-      else if (fromAddr === me || machineMail(fromAddr, subject)) { yes = false; source = 'none'; }   // the owner himself, or machine mail
+      else if (fromAddr === me || machineMail(fromAddr, subject) || ignored.has(fromAddr)) { yes = false; source = 'none'; }   // the owner, machine mail, or a sender he ruled out
       else { yes = await isInquiry(from, subject, first.snippet || ''); source = yes ? 'ai' : 'none'; checked++; }
       await prisma.email_inquiries.create({ data: { vendor_id: v, thread_id: t.id, is_inquiry: yes, source, from_addr: from.slice(0, 200), subject: subject.slice(0, 300), last_at: lastAt } });
       if (yes) {
@@ -118,4 +125,21 @@ export async function inquiryPage(v, { q = '', page = '' } = {}) {
   const rows = await prisma.email_inquiries.findMany({ where, orderBy: { last_at: 'desc' }, skip, take: 30, select: { thread_id: true } });
   const more = await prisma.email_inquiries.count({ where }) > skip + rows.length;
   return { ids: rows.map(r => r.thread_id), next: more ? String(skip + rows.length) : null };
+}
+
+/** 🚫 the owner says this conversation isn't an inquiry: it leaves the list, and so does everything the AI picked from that sender */
+export async function notAnInquiry(v, threadId) {
+  const row = await prisma.email_inquiries.findFirst({ where: { vendor_id: Number(v), thread_id: String(threadId) } });   // 🔒 tenancy
+  if (!row) return { ok: false };
+  const sender = addrOf(row.from_addr);
+  await prisma.email_inquiries.update({ where: { id: row.id }, data: { is_inquiry: false, source: 'user' } });
+  if (sender) {
+    await prisma.email_inquiries.updateMany({ where: { vendor_id: Number(v), source: 'ai', from_addr: { contains: sender, mode: 'insensitive' } }, data: { is_inquiry: false, source: 'user' } });
+    const list = await ignoredSenders(v);
+    if (!list.includes(sender)) {
+      const value = JSON.stringify([...list, sender].slice(-500));
+      await prisma.platform_settings.upsert({ where: { key: ignoreKey(v) }, create: { key: ignoreKey(v), value }, update: { value } });
+    }
+  }
+  return { ok: true, sender };
 }

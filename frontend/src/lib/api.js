@@ -895,6 +895,7 @@ export const api = {
   inboxEmailFilters: () => request('/inbox/gmail/filters'),
   inboxEmailSaveFilters: (filters) => request('/inbox/gmail/filters', { method: 'PUT', body: JSON.stringify({ filters }) }),
   inboxEmailLabels: () => request('/inbox/gmail/labels'),
+  inboxNotInquiry: (threadId) => request(`/inbox/gmail/not-inquiry/${encodeURIComponent(threadId)}`, { method: 'POST' }),
   inboxEmailThread: (id) => request('/inbox/gmail/threads/' + encodeURIComponent(id)),
   inboxEmailSend: (body) => request('/inbox/gmail/send', { method: 'POST', body: JSON.stringify(body) }),
   commsSync: () => request('/comms/sync', { method: 'POST' }),

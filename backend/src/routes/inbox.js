@@ -1,4 +1,5 @@
 import express from 'express';
+import { notAnInquiry } from '../lib/inquiryDetector.js';
 import { requireAuth } from '../middleware/auth.js';
 import * as gm from '../lib/inboxGmail.js';
 import { unreadCalls } from '../lib/commsSeen.js';
@@ -32,6 +33,8 @@ router.get('/gmail/threads', requireAuth, async (req, res) => {
 /* 🏷️ the vendor's filters (the whole list is saved at once) and their Gmail labels */
 router.get('/gmail/filters', requireAuth, async (req, res) => { try { res.json({ filters: await gm.getFilters(vid(req)) }); } catch (e) { fail(res, e); } });
 router.put('/gmail/filters', requireAuth, async (req, res) => { try { res.json({ filters: await gm.saveFilters(vid(req), req.body?.filters) }); } catch (e) { fail(res, e); } });
+/* 🚫 the owner says a conversation in the Inquiries chip isn't one */
+router.post('/gmail/not-inquiry/:threadId', requireAuth, async (req, res) => { try { res.json(await notAnInquiry(vid(req), req.params.threadId)); } catch (e) { fail(res, e); } });
 router.get('/gmail/labels', requireAuth, async (req, res) => { try { res.json({ labels: await gm.listLabels(vid(req)) }); } catch (e) { fail(res, e); } });
 router.get('/gmail/threads/:id', requireAuth, async (req, res) => { try { res.json(await gm.getThread(vid(req), req.params.id)); } catch (e) { fail(res, e); } });
 router.post('/gmail/send', requireAuth, async (req, res) => {

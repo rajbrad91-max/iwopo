@@ -292,3 +292,56 @@ export async function emailRead(v, who) {
   const m = t.messages[t.messages.length - 1];
   return { from: plainName(m.from), subject: t.subject, when: spokenWhen(m.date), body: String(m.body || '').replace(/\n{3,}/g, '\n\n').slice(0, 1500) };
 }
+
+/** 🎙️ search ALL his mail (not only the inbox) for a person, address or words — the last 90 days unless `beyond` */
+export async function emailSearch(v, query, { beyond = false } = {}) {
+  const st = await status(v);
+  if (!st.connected) return { error: 'His email is not connected yet.' };
+  const w = String(query || '').replace(/[{}()"]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!w) return { error: 'What should I search for?' };
+  if (st.sandbox) return { beyond, items: PRACTICE.filter(t => `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(w.toLowerCase())).map(t => ({ from: plainName(t.from), subject: t.subject, when: spokenWhen(t.date) })) };
+  const q = `${beyond ? '' : 'newer_than:90d '}{from:(${w}) to:(${w}) subject:(${w}) "${w}"}`;
+  const d = await gmail(v, `/threads?maxResults=8&q=${encodeURIComponent(q)}`);
+  const items = [];
+  for (const t of d.threads || []) {
+    const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
+    const last = th.messages[th.messages.length - 1];
+    items.push({ from: plainName(header(last, 'From')), subject: header(th.messages[0], 'Subject') || '(no subject)', when: spokenWhen(Number(last.internalDate)) });
+  }
+  return { beyond, items };
+}
+
+/** who an email goes to: an address as given, else a lead/booking by name, else someone he has emailed with (last year) */
+export async function resolveRecipient(v, who) {
+  const w = String(who || '').trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(w)) return { email: w.toLowerCase(), name: '' };
+  if (!w) return null;
+  const leads = await prisma.leads.findMany({ where: { vendor_id: Number(v), email: { not: null }, name: { contains: w, mode: 'insensitive' } }, select: { name: true, email: true }, take: 5 });   // 🔒 tenancy
+  const found = new Map(leads.filter(l => l.email).map(l => [l.email.toLowerCase(), l.name]));
+  if (!found.size && !(await status(v)).sandbox) {
+    const d = await gmail(v, `/threads?maxResults=5&q=${encodeURIComponent(`newer_than:365d from:(${w.replace(/[{}()"]/g, ' ')})`)}`);
+    for (const t of d.threads || []) {
+      const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From`);
+      const from = header(th.messages[0], 'From'); const m = from.match(/<([^>]+)>/);
+      const addr = (m ? m[1] : from).toLowerCase().trim();
+      if (addr.includes('@')) found.set(addr, plainName(from));
+    }
+  }
+  const list = [...found].map(([email, name]) => ({ email, name }));
+  return list.length === 1 ? list[0] : list.length ? { options: list } : null;
+}
+
+/** ✉️ send for him by voice (only ever called after he said yes to the read-back); reply = answer his latest conversation with them */
+export async function voiceSend(v, { email, subject, body, reply }) {
+  let threadId, replyTo, subj = String(subject || '').trim();
+  if (reply && !(await status(v)).sandbox) {
+    const id = (await gmail(v, `/threads?maxResults=1&q=${encodeURIComponent(`from:(${email}) OR to:(${email})`)}`)).threads?.[0]?.id;
+    if (id) {
+      const t = await getThread(v, id);
+      const last = t.messages[t.messages.length - 1];
+      threadId = id; replyTo = { messageId: last.messageId, references: last.references };
+      if (!subj) subj = /^re:/i.test(t.subject) ? t.subject : `Re: ${t.subject}`;
+    }
+  }
+  return sendEmail(v, { to: email, subject: subj || '(no subject)', body, threadId, replyTo });
+}
