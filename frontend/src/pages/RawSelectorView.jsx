@@ -153,11 +153,11 @@ export default function RawSelectorView() {
                     {clients.map(c => (
                       <tr key={c.id}>
                         <td className="rs-strong">{c.name}</td>
-                        <td>{c.selected || '—'}</td>
-                        <td>{c.selected ? <span className={c.selectedWithRaw < c.selected ? 'rs-warn' : ''}>{c.selectedWithRaw} / {c.selected}</span> : '—'}</td>
-                        <td>{c.raws ? `${c.raws} · ${gb(c.bytes)}` : '—'}</td>
-                        <td>{c.sentAt ? day(c.sentAt) : 'Not yet'}</td>
-                        <td>{c.deleteAfter ? day(c.deleteAfter) : 'After delivery + 30 days'}</td>
+                        <td data-label="Picked">{c.selected || '—'}</td>
+                        <td data-label="RAWs for the editor">{c.selected ? <span className={c.selectedWithRaw < c.selected ? 'rs-warn' : ''}>{c.selectedWithRaw} / {c.selected}</span> : '—'}</td>
+                        <td data-label="All RAWs">{c.raws ? `${c.raws} · ${gb(c.bytes)}` : '—'}</td>
+                        <td data-label="Selection sent">{c.sentAt ? day(c.sentAt) : 'Not yet'}</td>
+                        <td data-label="RAWs deleted on">{c.deleteAfter ? day(c.deleteAfter) : 'After delivery + 30 days'}</td>
                       </tr>
                     ))}
                   </tbody>

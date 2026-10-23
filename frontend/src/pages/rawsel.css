@@ -77,3 +77,17 @@
   .rs-card { padding: 16px 14px; }
   .rs-add > * { flex: 1 1 100%; }
 }
+
+/* 📱 Clients on phones (Raj, 2026-10-23): one compact card per client — name on top, then small labelled values
+   two by two — nothing to slide sideways */
+@media (max-width: 600px) {
+  .rs-table-wrap { overflow: visible; }
+  .rs-table thead { display: none; }
+  .rs-table { display: block; width: 100%; }
+  .rs-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .rs-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 12px 14px; border: 1px solid var(--line, #eceef1); border-radius: 12px; background: var(--panel-2, #f8fafb); }
+  .rs-table td { display: flex; flex-direction: column; gap: 1px; padding: 0; border: 0; white-space: normal; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+  .rs-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--muted, #6b7280); }
+  .rs-table td.rs-strong { grid-column: 1 / -1; font-size: 15px; }
+  .rs-table td.rs-strong::before { content: none; }
+}
