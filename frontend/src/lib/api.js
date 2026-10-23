@@ -910,6 +910,7 @@ export const api = {
   agentRules: () => request('/agent/rules'),
   agentVoiceBank: () => request('/agent/voice-bank'),
   agentGdoc: () => request('/agent/gdoc'),
+  agentStagesList: () => request('/agent/stages'),
   agentStages: (leadId) => request(`/agent/stages/${leadId}`),
   agentSetStages: (leadId, body) => request(`/agent/stages/${leadId}`, { method: 'PUT', body: JSON.stringify(body) }),
   agentAddOutsideMessage: (leadId, body) => request(`/agent/stages/${leadId}/messages`, { method: 'POST', body: JSON.stringify(body) }),

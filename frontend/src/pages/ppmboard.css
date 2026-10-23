@@ -1,0 +1,29 @@
+/* 📋 PPM Board inside AI Agent (PpmBoard.jsx) — done steps green, not-yet orange, like the board */
+.ppm-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ppm-search { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 13px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
+.ppm-seg { display: flex; }
+.ppm-seg-b { font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 12px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); cursor: pointer; }
+.ppm-seg-b:first-child { border-radius: 9px 0 0 9px; border-right: 0; }
+.ppm-seg-b:last-child { border-radius: 0 9px 9px 0; }
+.ppm-seg-b.is-on { background: var(--teal-soft); color: var(--teal); }
+.ppm-refresh { font: inherit; font-size: 15px; padding: 5px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+.ppm-at { font-size: 11.5px; color: var(--muted); }
+.ppm-err { margin: 0 0 8px; font-size: 13px; color: #dc2626; }
+.ppm-quiet { color: var(--muted); font-size: 13.5px; padding: 12px 4px; margin: 0; }
+.ppm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ppm-row { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 10px 12px; }
+.ppm-row.is-done { opacity: .75; }
+.ppm-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; text-align: left; border: 0; background: none; padding: 0 0 8px; font: inherit; color: var(--text); cursor: pointer; }
+.ppm-who b { font-size: 15px; }
+.ppm-who span { font-size: 12.5px; color: var(--muted); }
+.ppm-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.ppm-step { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 7px 6px; border-radius: 10px; border: 1px solid transparent;
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+.ppm-step-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ppm-step.is-done { background: color-mix(in srgb, #16a34a 14%, transparent); color: #15803d; border-color: color-mix(in srgb, #16a34a 30%, transparent); }
+.ppm-step.is-todo { background: color-mix(in srgb, #f97316 12%, transparent); color: #c2410c; border-color: color-mix(in srgb, #f97316 28%, transparent); }
+.ppm-step.is-busy { opacity: .55; cursor: progress; }
+.ppm-detail { margin-top: 10px; }
+@media (max-width: 600px) {
+  .ppm-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

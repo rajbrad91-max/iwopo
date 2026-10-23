@@ -61,3 +61,16 @@
   .ib-tab { flex: 1 1 0; min-width: 0; padding: 8px 0; text-align: center; font-size: 19px; line-height: 1; }
   .ib-tab-txt { display: none; }
 }
+
+/* 🎨 each tab has its own tint — on the active pill and on the area beneath — so it's clear where you are
+   (Raj, 2026-10-23): calls & texts yellow (Quo), email unchanged, Instagram orange→pink→purple, WhatsApp green */
+.ib { border-radius: 18px; padding: 10px; transition: background .25s ease; }
+.ib-on-calls { background: color-mix(in srgb, #facc15 9%, transparent); }
+.ib-on-instagram { background: linear-gradient(135deg, color-mix(in srgb, #f58529 9%, transparent), color-mix(in srgb, #dd2a7b 9%, transparent) 50%, color-mix(in srgb, #8134af 9%, transparent)); }
+.ib-on-whatsapp { background: color-mix(in srgb, #25d366 10%, transparent); }
+.ib-tab.is-on { border-color: transparent; color: var(--text); }
+.ib-on-calls .ib-tab.is-on { background: color-mix(in srgb, #facc15 32%, transparent); }
+.ib-on-email .ib-tab.is-on { background: var(--teal-soft); color: var(--teal); }
+.ib-on-instagram .ib-tab.is-on { background: linear-gradient(135deg, #f58529, #dd2a7b 55%, #8134af); color: #fff; }
+.ib-on-whatsapp .ib-tab.is-on { background: #25d366; color: #fff; }
+@media (max-width: 600px) { .ib { padding: 8px 6px; border-radius: 16px; } }

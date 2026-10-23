@@ -29,7 +29,6 @@ const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 const Inbox = lazy(() => import('./Inbox.jsx'));   // 📥 Calls & Texts + Email (+ Instagram, WhatsApp) — CommsView lives inside it
 const RawSelectorView = lazy(() => import('./RawSelectorView.jsx'));
 const AgentView = lazy(() => import('./AgentView.jsx'));
-const ProjectStages = lazy(() => import('./ProjectStages.jsx'));
 const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private — part of Calls & messages
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
@@ -287,12 +286,13 @@ export default function VendorPanel({ onLogout }) {
     <div ref={dashRef} className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
       {!collapsed && <div className="sidebar-backdrop" onClick={() => setCollapsed(true)} />}
       <aside className="sidebar">
-        <div className="brand">
+        {/* 🏠 the studio's logo + name lead home to the dashboard (Raj, 2026-10-23) */}
+        <a href={navHref('dashboard')} className="brand" title="Dashboard" onClick={navClick('dashboard')}>
           {profile?.logo_path
             ? <img className="brand-logo" src={`/api/me/logo/${profile.logo_path}`} alt="logo" />
             : <span>📸</span>}
           <span className="nav-txt">{profile ? (profile.business_name || 'My Studio') : (user?.name || '')}<small>VENDOR</small></span>
-        </div>
+        </a>
         <div className="nav-group">WORK</div>
         <a href={navHref('dashboard')} className={`nav-item ${tab==='dashboard'?'active':''}`} aria-current={tab==='dashboard' ? 'page' : undefined} onClick={navClick('dashboard')}><span className="nav-ic">📊</span><span className="nav-txt">Dashboard</span></a>
         {has('leads') && <a href={navHref('leads')} className={`nav-item ${tab==='leads'?'active':''}`} aria-current={tab==='leads' ? 'page' : undefined} onClick={navClick('leads')}><span className="nav-ic">📋</span><span className="nav-txt">Leads</span>{newLeadCount > 0 && <span className="nav-badge" title={`${newLeadCount} new lead${newLeadCount === 1 ? '' : 's'}`}>{newLeadCount > 99 ? '99+' : newLeadCount}</span>}</a>}
@@ -407,7 +407,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'settings' ? (
           <SettingsView user={user} onProfileChange={setProfile} />
         ) : tab === 'dashboard' ? (
-          <DashHome goTab={setTab} />
+          <DashHome goTab={setTab} openBooking={(id) => navigate({ tab: 'bookings', booking: String(id) })} />
         ) : (
           <div className="table-wrap">
             <table>
@@ -2751,28 +2751,7 @@ function CalendarView({ onOpen, filter }) {
               <span className="cal-side-date">{selLabel}</span>
               <button className="cal-side-x" onClick={() => setSelDay(null)} aria-label="Close">✕</button>
             </div>
-            {selected.map(b => (
-              <div key={b.id} className={`cal-evt ${onOpen ? 'is-open' : ''}`}
-                onClick={() => onOpen && onOpen(b)}
-                role={onOpen ? 'button' : undefined}
-                tabIndex={onOpen ? 0 : undefined}
-                onKeyDown={e => { if (onOpen && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(b); } }}>
-                {/* the client's name first — it's how a vendor recognises which
-                    booking this is; the type is what kind of day it will be */}
-                <div className="cal-evt-name">{b.name}</div>
-                <div className="cal-evt-type">{b.event_type || 'Event'}</div>
-                <div className="cal-evt-row">🕐 {b.timing_from
-                  ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}`
-                  : 'Time to be confirmed'}</div>
-                {b.location && <div className="cal-evt-row">📍 {b.location}</div>}
-                <div className="cal-evt-row">
-                  👥 {b.crew?.names?.length
-                    ? b.crew.names.map(c => c.duty ? `${c.name} (${c.duty})` : c.name).join(', ')
-                    : <span className="cal-evt-none">No crew assigned</span>}
-                </div>
-                {onOpen && <span className="cal-evt-open">👁️ Open booking</span>}
-              </div>
-            ))}
+            {selected.map(b => <EventCard key={b.id} b={b} onOpen={onOpen ? () => onOpen(b) : null} />)}
           </>
         )}
       </aside>
@@ -2798,7 +2777,32 @@ function StatTile({ icon, value, label, onOpen }) {
   );
 }
 
-function DashHome({ goTab }) {
+/** 📅 One event card, used by the dashboard's Upcoming Events AND the calendar's day panel — one design everywhere
+ *  (Raj, 2026-10-23). The whole card opens the booking; no separate "open" link. */
+function EventCard({ b, onOpen }) {
+  const d = eventDateParts(b.event_date);
+  const open = onOpen ? () => onOpen(b) : undefined;
+  return (
+    <div className={`ev-card ${onOpen ? 'is-open' : ''}`} onClick={open} role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined}
+      onKeyDown={onOpen ? (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(b); } }) : undefined}>
+      <div className="ev-date">
+        <div className="ev-day">{d.day}</div>
+        <div className="ev-mon">{d.mon}</div>
+        <div className="ev-dow">{d.dow}</div>
+      </div>
+      <div className="ev-body">
+        <div className="ev-name">{b.name}</div>
+        <div className="ev-type">{b.event_type}{b.package_snapshot?.name ? ` · ${b.package_snapshot.name}` : ''}</div>
+        <div className="ev-line ev-time"><span className="ev-ic">🕐 </span>{b.timing_from || b.timing_to ? `${b.timing_from ? fmtTime(b.timing_from) : '?'}–${b.timing_to ? fmtTime(b.timing_to) : '?'}` : 'Time to be confirmed'}</div>
+        {b.location && <div className="ev-line ev-loc"><span className="ev-ic">📍 </span>{b.location}</div>}
+        {b.phone && <div className="ev-line ev-phone"><span className="ev-ic">📞 </span>{b.phone}</div>}
+        {b.email && <div className="ev-line ev-mail"><span className="ev-ic">✉️ </span>{b.email}</div>}
+      </div>
+    </div>
+  );
+}
+
+function DashHome({ goTab, openBooking }) {
   const [leads, setLeads] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [albums, setAlbums] = useState([]);
@@ -2824,7 +2828,6 @@ function DashHome({ goTab }) {
     .sort((a, b) => eventDateValue(a.event_date) - eventDateValue(b.event_date))
     .slice(0, 6);
   const SB = { new: 'trial', quoted: 'trial', booked: 'active' };
-  const dParts = (d) => eventDateParts(d);
 
   return (
     <>
@@ -2873,24 +2876,7 @@ function DashHome({ goTab }) {
           {upcoming.length === 0 ? (
             <div className="table-wrap" style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>No upcoming events 🗓️</div>
           ) : upcoming.map(b => {
-            const d = dParts(b.event_date);
-            return (
-              <div key={b.id} className="ev-card" onClick={() => goTab('bookings')}>
-                <div className="ev-date">
-                  <div className="ev-day">{d.day}</div>
-                  <div className="ev-mon">{d.mon}</div>
-                  <div className="ev-dow">{d.dow}</div>
-                </div>
-                <div className="ev-body">
-                  <div className="ev-name">{b.name}</div>
-                  <div className="ev-type">{b.event_type}{b.package_snapshot?.name ? ` · ${b.package_snapshot.name}` : ''}</div>
-                  <div className="ev-line ev-time"><span className="ev-ic">🕐 </span>{b.timing_from || b.timing_to ? `${b.timing_from ? fmtTime(b.timing_from) : '?'} — ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : 'Time to be confirmed'}</div>
-                  {b.location && <div className="ev-line ev-loc"><span className="ev-ic">📍 </span>{b.location}</div>}
-                  {b.phone && <div className="ev-line ev-phone"><span className="ev-ic">📞 </span>{b.phone}</div>}
-                  {b.email && <div className="ev-line ev-mail"><span className="ev-ic">✉️ </span>{b.email}</div>}
-                </div>
-              </div>
-            );
+            return <EventCard key={b.id} b={b} onOpen={() => openBooking(b.id)} />;
           })}
         </div>
       </div>
@@ -3483,8 +3469,6 @@ function LeadDetail({ lead, onBack, onSaved }) {
         {row('🔎 Heard via', lead.heard)}
       </div>
 
-      {/* 🧭 Production stages — only with the AI Agent (the card stays away otherwise) */}
-      <Suspense fallback={null}><ProjectStages leadId={lead.id} /></Suspense>
 
       {/* 🎉 Event Details — driven entirely by the vendor's own inquiry form.
           A fixed list of rows meant a DJ saw "Bride Getting Ready ❌ No" for a
@@ -3728,6 +3712,10 @@ function expiryText(startedAt, hours) {
 }
 
 function MoneySection({ lead }) {
+  const [hidePay, setHidePay] = useState(false);   // 🔒 the vendor's payment-privacy setting
+  const [reveal, setReveal] = useState(false);     // 👁 shown for this visit only
+  useEffect(() => { api.mySettings().then(s => setHidePay(!!s?.settings?.hide_payments)).catch(() => {}); }, []);
+  const masked = hidePay && !reveal;
   const dialog = useDialog();
   const [data, setData] = useState(null);
   // the client pressed "Pay directly" — the vendor confirms once funds arrive
@@ -3842,8 +3830,17 @@ function MoneySection({ lead }) {
   const sum = data?.summary;
   const pending = sum ? sum.balance : null;
   return (
-    <div className="ms-wrap">
-      <div className="ld-card-h">💰 Payments</div>
+    <div className={`ms-wrap ${masked ? 'is-pay-hidden' : ''}`}>
+      <div className="ld-card-h ms-pay-h">
+        💰 Payments
+        {hidePay && (
+          <button type="button" className="pay-eye" onClick={() => setReveal(r => !r)} aria-pressed={reveal}
+            title={reveal ? 'Hide the amounts' : 'Show the amounts'} aria-label={reveal ? 'Hide the amounts' : 'Show the amounts'}>
+            {reveal ? '🙈' : '👁️'}
+          </button>
+        )}
+      </div>
+      {masked && <div className="pay-hidden-note">🔒 Amounts are hidden · tap 👁️ to show them</div>}
       {/* 💰 the client says they've paid — confirm it once the money is in.
           Sits at the top because it's the one thing here that needs an action. */}
       {claimed && (
@@ -5740,6 +5737,17 @@ function SettingsView({ user, onProfileChange }) {
         <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
           💰 Your packages, invoices and what clients see are all shown in {s.currency || 'USD'}.
           {' '}Example: {fmtMoney(1250, { currency: s.currency })}
+        </div>
+
+        {/* 🔒 Payment privacy (Raj, 2026-10-23): off = amounts always visible; on = hidden in a booking until 👁 is tapped */}
+        <label className="pref-toggle">
+          <input type="checkbox" checked={!!s.hide_payments} onChange={e => savePrefs({ ...s, hide_payments: e.target.checked })} />
+          <span>🔒 Payment privacy</span>
+        </label>
+        <div className="pref-hint">
+          {s.hide_payments
+            ? 'On: payment amounts in a booking stay hidden until you tap 👁️ beside "Payments".'
+            : 'Off: payment amounts are always shown. Turn on to keep them hidden until you tap 👁️.'}
         </div>
       </div>
       )}

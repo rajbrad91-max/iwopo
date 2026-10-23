@@ -20,7 +20,7 @@ export default function Inbox() {
   const counts = useInboxCounts();
   const choose = (t) => { setTab(t); localStorage.setItem('inbox_tab', t); history.replaceState(null, '', t === 'calls' ? location.pathname : `${location.pathname}?tab=${t}`); };
   return (
-    <div className="ib">
+    <div className={`ib ib-on-${tab}`}>
       <div className="ib-tabs" role="tablist">
         {TABS.map(([k, ic, name]) => (
           <button key={k} role="tab" aria-selected={tab === k} aria-label={name} title={name} className={`ib-tab ${tab === k ? 'is-on' : ''}`} onClick={() => choose(k)}>

@@ -764,6 +764,7 @@ model vendor_settings {
   updated_at              DateTime? @default(now()) @db.Timestamp(6)
   currency                String?   @db.VarChar(3)
   auto_release_contract   Boolean   @default(false)
+  hide_payments           Boolean   @default(false)
   default_deposit_percent Decimal   @default(30) @db.Decimal(5, 2)
   storage_limit_mb        Int?
   vendors                 vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)

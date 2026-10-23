@@ -168,7 +168,7 @@ router.get('/settings', requireAuth, async (req, res) => {
 router.put('/settings', requireAuth, async (req, res) => {
   const vid = req.user.vendor_id;
   if (!vid) return res.status(400).json({ error: 'No vendor' });
-  const { time_format, timezone, theme, currency, auto_release_contract } = req.body;
+  const { time_format, timezone, theme, currency, auto_release_contract, hide_payments } = req.body;
   try {
     const [existing, vendor] = await Promise.all([
       prisma.vendor_settings.findUnique({ where: { vendor_id: vid }, select: { timezone: true } }),
@@ -188,6 +188,8 @@ router.put('/settings', requireAuth, async (req, res) => {
     if (auto_release_contract !== undefined) {
       data.auto_release_contract = !!auto_release_contract;
     }
+    // 🔒 payment privacy: amounts stay hidden in a booking until the vendor taps 👁
+    if (hide_payments !== undefined) data.hide_payments = !!hide_payments;
     await prisma.vendor_settings.upsert({
       where: { vendor_id: vid },                  // 🔒 tenancy
       update: { ...data, updated_at: new Date() },
