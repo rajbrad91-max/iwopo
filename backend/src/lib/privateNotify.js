@@ -10,9 +10,13 @@ import { pushToVendor } from './agentPush.js';
 
 export async function notifyPrivate(vendorId, title, body, type = 'comms', link = null) {
   try {
+    // 🕐 the call's / text's own time from Quo, never the moment iwopo imported it (a late sync shows the true time)
+    const ev = link?.type === 'comms' && link.id != null
+      ? await privateDb.comms_events.findUnique({ where: { id: Number(link.id) }, select: { occurred_at: true } }).catch(() => null) : null;
     await privateDb.comms_notices.create({
       data: {
         vendor_id: Number(vendorId),
+        occurred_at: ev?.occurred_at || null,
         type,
         title: String(title).slice(0, 200),
         body: body ? String(body).slice(0, 400) : null,

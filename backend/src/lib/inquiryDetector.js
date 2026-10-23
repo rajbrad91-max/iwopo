@@ -101,7 +101,7 @@ export async function scanInquiries(v, { lookback } = {}) {
       else await prisma.email_inquiries.create({ data: { vendor_id: v, thread_id: t.id, ...row } });
       if (yes) {
         found++;
-        if (!quiet) await prisma.notifications.create({ data: { vendor_id: v, type: 'email_inquiry', title: `📧 New email inquiry from ${from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || fromAddr}`, body: subject.slice(0, 200) } });
+        if (!quiet) await prisma.notifications.create({ data: { vendor_id: v, occurred_at: new Date(Number((theirs || last).internalDate)), type: 'email_inquiry', title: `📧 New email inquiry from ${from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || fromAddr}`, body: subject.slice(0, 200) } });
       }
     }
     page = d.nextPageToken || '';

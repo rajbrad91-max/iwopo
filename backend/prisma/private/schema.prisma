@@ -65,6 +65,8 @@ model comms_notices {
   body       String?   @db.VarChar(400)
   seen_at    DateTime? @db.Timestamp(6)
   created_at DateTime? @default(now()) @db.Timestamp(6)
+  /// when the call or text actually happened (Quo's time) — created_at is when iwopo imported it
+  occurred_at DateTime? @db.Timestamp(6)
   link_type  String?   @db.VarChar(20)
   link_id    Int?
 

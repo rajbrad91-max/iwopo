@@ -189,9 +189,9 @@ export async function whatsNew(vendorId, { record = true, markSeen = false } = {
     told.leads.push(l.id);
     bump('lead', `🆕 Lead: ${l.name}${l.event_type ? ` (${l.event_type})` : ''} · ${when(l.created_at)}`);
   }
-  for (const c of await privateDb.comms_notices.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(Date.now() - 7 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { id: true, title: true, created_at: true } }).catch(() => [])) {
+  for (const c of await privateDb.comms_notices.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(Date.now() - 7 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { id: true, title: true, created_at: true, occurred_at: true } }).catch(() => [])) {
     told.comms.push(c.id);
-    bump(/call/i.test(c.title) ? 'call' : 'message', `${/^\p{Extended_Pictographic}/u.test(c.title) ? '' : (/call/i.test(c.title) ? '📞 ' : '💬 ')}${c.title} · ${when(c.created_at)}`);
+    bump(/call/i.test(c.title) ? 'call' : 'message', `${/^\p{Extended_Pictographic}/u.test(c.title) ? '' : (/call/i.test(c.title) ? '📞 ' : '💬 ')}${c.title} · ${when(c.occurred_at || c.created_at)}`);   // the call's own time
   }
   for (const n of await prisma.notifications.findMany({ where: { vendor_id: v, seen_at: null, type: { not: 'lead' }, created_at: { gte: new Date(Date.now() - 14 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 20, select: { id: true, title: true } })) {
     told.bell.push(n.id);

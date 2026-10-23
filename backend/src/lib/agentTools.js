@@ -267,7 +267,7 @@ export async function runTool(name, input, vendorId) {
         prisma.leads.findMany({ where: { ...live, seen_at: null }, orderBy: { created_at: 'desc' }, take: 15 }),
         prisma.leads.findMany({ where: { ...live, status: 'booked', event_date: { gte: new Date(now.toDateString()), lte: in14 } }, orderBy: { event_date: 'asc' }, take: 15 }),
         prisma.selection_notes.findMany({ where: { albums: { vendor_id: v }, updated_at: { gte: new Date(now.getTime() - 7 * 86400e3) } }, select: { updated_at: true, albums: { select: { title: true, _count: { select: { selections: true } } } } }, orderBy: { updated_at: 'desc' }, take: 10 }),
-        prisma.notifications.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(now.getTime() - 3 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 10, select: { title: true, body: true, created_at: true } }),   // only unseen, last 3 days
+        prisma.notifications.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(now.getTime() - 3 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 10, select: { title: true, body: true, created_at: true, occurred_at: true } }),   // only unseen, last 3 days
       ]);
       return {
         today: day(now),
@@ -276,7 +276,7 @@ export async function runTool(name, input, vendorId) {
         // a shoot TODAY or TOMORROW counts whatever its status — not yet booked is said plainly, not left out
         events_today_and_tomorrow_any_status: (await prisma.leads.findMany({ where: { ...live, event_date: { gte: new Date(now.toDateString()), lte: new Date(new Date(now.toDateString()).getTime() + 2 * 86400e3 - 1) } }, orderBy: { event_date: 'asc' }, take: 15 })).map(l => ({ ...leadLine(l), starts: l.timing_from, ends: l.timing_to, booked: l.status === 'booked' })),
         photo_selections_sent_last_7_days: selections.map(s => ({ client: s.albums.title, photos_picked: s.albums._count.selections, sent: day(s.updated_at) })),
-        new_notifications_not_seen: notices.map(n => ({ title: n.title, detail: n.body, when: n.created_at })),
+        new_notifications_not_seen: notices.map(n => ({ title: n.title, detail: n.body, when: n.occurred_at || n.created_at })),   // when it happened, not when iwopo noticed
         new_texts_and_calls: await unreadCalls(v, privateDb).catch(() => 0),        // details: calls_texts
         new_emails: await unreadCount(v).catch(() => 0),                            // details: email_inbox
       };
