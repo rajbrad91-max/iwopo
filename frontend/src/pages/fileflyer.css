@@ -406,3 +406,9 @@
   color: #1a2529; font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; user-select: all; }
 /* R2-4: inside a folder the toolbar has one more button: it wraps on a phone instead of running off */
 @media (max-width: 720px) { .fd-actions { flex-wrap: wrap; } }
+
+/* R2-5 (phone): the link box sits above the Copy button instead of being squeezed beside it */
+@media (max-width: 560px) {
+  .ff-link-row { flex-direction: column; align-items: stretch; }
+  .ff-link-row .dlg-btn { flex: none; }
+}

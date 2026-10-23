@@ -53,7 +53,8 @@ function EmailTab() {
   const [q, setQ] = useState('');
   const [qLive, setQLive] = useState('');
   const [open, setOpen] = useState(null);       // a thread being read
-  const [reply, setReply] = useState('');
+  const [drafts, setDrafts] = useState(() => { try { return JSON.parse(sessionStorage.getItem('ib_drafts') || '{}'); } catch { return {}; } });
+  useEffect(() => { try { sessionStorage.setItem('ib_drafts', JSON.stringify(drafts)); } catch { /* storage full: drafts stay in memory */ } }, [drafts]);
   const [compose, setCompose] = useState(null); // { to, subject, body }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(() => new URLSearchParams(location.search).get('email_error') || '');
@@ -71,7 +72,7 @@ function EmailTab() {
     await api.inboxEmailDisconnect().catch(() => {}); setStatus({ connected: false, configured: true }); setThreads(null); setOpen(null);
   }
   async function read(id) {
-    setReply(''); setOpen({ id, loading: true });
+    setOpen({ id, loading: true });
     try { setOpen(await api.inboxEmailThread(id)); setThreads(t => (t || []).map(x => (x.id === id ? { ...x, unread: false } : x))); }
     catch (e) { setOpen(null); setMsg(e.message); }
   }
@@ -81,6 +82,9 @@ function EmailTab() {
     catch (e) { setMsg(`⚠️ Not sent: ${e.message} Your text is kept.`); }
     finally { setBusy(false); }
   }
+  const reply = open?.id ? (drafts[open.id] || '') : '';
+  const setReply = (t) => { if (open?.id) setDrafts(d => { const n = { ...d }; if (t) n[open.id] = t; else delete n[open.id]; return n; }); };
+
   function sendReply() {
     const last = open.messages[open.messages.length - 1];
     const to = addrOf(last.from === status.email ? last.to : last.from);
