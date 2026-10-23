@@ -135,22 +135,64 @@ const PRACTICE = [
 
 /** 🔴 unread emails in the inbox (Gmail's own count), cached for a minute; 0 when not connected */
 const unreadCache = new Map();
+/* ✨ Smart filter (Raj, 2026-10-23): the vendor's own words, plus their leads' and bookings' addresses, minus promotions
+   and social — turned into ONE Gmail search, so Gmail does the filtering and nothing in the mailbox is changed. */
+const filterKey = (v) => `gmail_filter_${Number(v)}`;
+const DEFAULT_FILTER = { enabled: true, words: ['wedding', 'inquiry', 'booking', 'package', 'quote', 'engagement', 'photography', 'videography'], clients: true, hide_promos: true };
+export async function getFilter(v) {
+  const raw = await setting(filterKey(v));
+  try { return raw ? { ...DEFAULT_FILTER, ...JSON.parse(raw) } : { ...DEFAULT_FILTER }; } catch { return { ...DEFAULT_FILTER }; }
+}
+export async function saveFilter(v, f = {}) {
+  const list = Array.isArray(f.words) ? f.words : String(f.words || '').split(',');
+  const words = [...new Set(list.map(w => String(w).replace(/["{}()]/g, '').trim().toLowerCase()).filter(w => w && w.length <= 60))].slice(0, 40);
+  const clean = { enabled: !!f.enabled, words, clients: !!f.clients, hide_promos: !!f.hide_promos };
+  await saveSetting(filterKey(v), JSON.stringify(clean));
+  unreadCache.delete(Number(v));
+  return clean;
+}
+async function smartQuery(v) {
+  const f = await getFilter(v);
+  if (!f.enabled) return 'in:inbox';
+  const terms = f.words.map(w => (/\s/.test(w) ? `"${w}"` : w));
+  if (f.clients) {
+    const leads = await prisma.leads.findMany({ where: { vendor_id: Number(v), email: { not: null } }, select: { email: true }, orderBy: { id: 'desc' }, take: 80 });   // 🔒 tenancy
+    for (const l of leads) { const e = String(l.email || '').trim(); if (/^[^\s@{}()"]+@[^\s@{}()"]+$/.test(e)) terms.push(`from:${e}`); }
+  }
+  if (!terms.length) return 'in:inbox';
+  return `in:inbox {${terms.join(' ')}}${f.hide_promos ? ' -category:promotions -category:social' : ''}`;
+}
+const practiceMatch = async (v, t) => {
+  const f = await getFilter(v);
+  if (!f.enabled || !f.words.length) return true;
+  const text = `${t.from} ${t.subject} ${t.snippet}`.toLowerCase();
+  return f.words.some(w => text.includes(w));
+};
+
 export async function unreadCount(v) {
   const st = await status(v);
   if (st.sandbox) return PRACTICE.filter(t => t.unread).length;
   if (!st.connected) return 0;
   const hit = unreadCache.get(Number(v));
   if (hit && hit.until > Date.now()) return hit.n;
-  const l = await gmail(v, '/labels/INBOX');
-  const n = Number(l.threadsUnread || 0);
+  const f = await getFilter(v);
+  let n;
+  if (f.enabled) n = ((await gmail(v, `/threads?maxResults=100&q=${encodeURIComponent(`${await smartQuery(v)} is:unread`)}`)).threads || []).length;   // ✨ only smart emails count
+  else n = Number((await gmail(v, '/labels/INBOX')).threadsUnread || 0);
   unreadCache.set(Number(v), { n, until: Date.now() + 60_000 });
   return n;
 }
 export const forgetUnread = (v) => unreadCache.delete(Number(v));
 
-export async function listThreads(v, q = '') {
-  if ((await status(v)).sandbox) return PRACTICE.filter(t => !q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())).map(({ messages, ...t }) => t);
-  const d = await gmail(v, `/threads?maxResults=25&q=${encodeURIComponent(q || 'in:inbox')}`);
+/** view 'smart' (the vendor's filter) or 'all' (the whole inbox); a search narrows either. */
+export async function listThreads(v, q = '', view = 'smart') {
+  if ((await status(v)).sandbox) {
+    const out = [];
+    for (const t of PRACTICE) if ((!q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())) && (view !== 'smart' || await practiceMatch(v, t))) out.push(t);
+    return out.map(({ messages, ...t }) => t);
+  }
+  const base = view === 'smart' ? await smartQuery(v) : 'in:inbox';
+  const d = await gmail(v, `/threads?maxResults=25&q=${encodeURIComponent(q ? `${base} ${q}` : base)}`);
   const list = await Promise.all((d.threads || []).map(async (t) => {
     const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`);
     const last = th.messages[th.messages.length - 1], first = th.messages[0];
