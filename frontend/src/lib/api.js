@@ -370,7 +370,7 @@ async function request(path, options = {}) {
   // A wrong password is also a 401, but it comes from the sign-in request
   // itself. Treating that like an expired session wiped the page and reloaded
   // the marketing site, so "that password is not right" never appeared.
-  const signingIn = path === '/auth/login' || path === '/auth/signup'
+  const signingIn = path === '/auth/login' || path === '/auth/signup' || path === '/auth/verify' || path === '/auth/resend'
     || path === '/auth/forgot' || path === '/auth/reset';
   if (!signingIn && (res.status === 401 || (res.status === 403 && sessionMismatch()))) {
     clearSession();
@@ -392,6 +392,7 @@ async function request(path, options = {}) {
     const err = new Error(data.message || data.error || 'Request failed');
     err.code = data.error || null;
     err.status = res.status;
+    err.data = data;           // e.g. { verify, email, sandbox_code } for the confirm-your-email step
     throw err;
   }
   return data;
@@ -402,6 +403,9 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   signup: (businessName, email, password) =>
     request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password }) }),
+  verifyEmail: (email, code) => request('/auth/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
+  resendCode: (email) => request('/auth/resend', { method: 'POST', body: JSON.stringify({ email }) }),
+  confirmEmailChange: (code) => request('/me/email/confirm', { method: 'PUT', body: JSON.stringify({ code }) }),
   forgotPassword: (email) =>
     request('/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (token, password) =>

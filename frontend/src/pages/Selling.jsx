@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import VerifyCode from '../components/VerifyCode';
 import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import { PROFESSION_LIST } from '../lib/professions';
@@ -178,6 +179,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const [form, setForm] = useState({ businessName: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verify, setVerify] = useState(null);   // ✉️ { email, code } after sign-up: the emailed code comes next
   const [trialOk, setTrialOk] = useState(true);
   const [chosen, setChosen] = useState(null);
   const [faqOpen, setFaqOpen] = useState(0);
@@ -227,9 +229,10 @@ export default function Selling({ onSignup, onGoLogin }) {
     if (!form.businessName || !form.email || !form.password) { setError('Please fill in all fields'); return; }
     setLoading(true);
     try {
-      const { token, user } = await api.signup(form.businessName, form.email, form.password);
-      setSession(token, user);
-      onSignup(user);
+      const r = await api.signup(form.businessName, form.email, form.password);
+      if (r.verify) { setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent }); return; }   // ✉️ confirm the address first
+      setSession(r.token, r.user);
+      onSignup(r.user);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
@@ -242,6 +245,14 @@ export default function Selling({ onSignup, onGoLogin }) {
 
   return (
     <div className="sl">
+      {verify && (
+        <div className="vc-overlay" role="dialog" aria-label="Confirm your email">
+          <div className="login-card">
+            <VerifyCode email={verify.email} sandboxCode={verify.code} notSent={verify.notSent}
+              onVerified={({ token, user }) => { setSession(token, user); onSignup(user); }} onBack={() => setVerify(null)} />
+          </div>
+        </div>
+      )}
       <nav className="sl-nav">
         <div className="sl-nav-inner">
           <a href="/" className="sl-logo" aria-label="iwopo home">

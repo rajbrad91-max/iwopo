@@ -2802,6 +2802,9 @@ function EventCard({ b, onOpen }) {
   );
 }
 
+/** ✉️ the same email rule the server applies when an address is changed */
+const EMAIL_OK = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || '').trim());
+
 function DashHome({ goTab, openBooking }) {
   const [leads, setLeads] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -5603,6 +5606,7 @@ function SettingsView({ user, onProfileChange }) {
   const [profMsg, setProfMsg] = useState('');
   const [saved, setSaved] = useState('');
   const [em, setEm] = useState({ email: user?.email || '', password: '' });
+  const [emCode, setEmCode] = useState(null);   // ✉️ { email, code, practice } — waiting for the code from the new address
   const [pw, setPw] = useState({ current: '', next: '' });
   const [msg, setMsg] = useState('');
   // 💱 the choices come from the server so the country-to-currency rules live in
@@ -5662,9 +5666,21 @@ function SettingsView({ user, onProfileChange }) {
     try { await api.saveSettings(next); setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500); }
     catch (e) { setSaved('⚠️ ' + e.message); }
   }
-  async function saveEmail() {
+  /* ✉️ the code from the NEW address finishes the change */
+  async function confirmEmail() {
     setMsg('');
-    try { await api.changeEmail(em.email, em.password); setMsg('✅ Email updated'); setEm({ ...em, password: '' }); }
+    try { const r = await api.confirmEmailChange(emCode.code); setEmCode(null); setEm({ email: '', password: '' }); setMsg(`✅ Email changed — you now sign in with ${r.email}`); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+  }
+  async function saveEmail() {
+    if (!EMAIL_OK(em.email)) { setMsg('⚠️ That is not a valid email address.'); return; }
+    setMsg('');
+    try {
+      const r = await api.changeEmail(em.email, em.password);
+      setEm({ ...em, password: '' });
+      setEmCode({ email: r.email, practice: r.sandbox_code || '', code: '' });
+      setMsg(`📬 We sent a 6-digit code to ${r.email}. Enter it below to finish the change.`);
+    }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function savePw() {
@@ -5791,14 +5807,26 @@ function SettingsView({ user, onProfileChange }) {
         {msg && <div style={{ padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 13, background: msg[0] === '✅' ? '#4ade8018' : '#fb718518', color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</div>}
 
         <label style={{ fontSize: 13, color: '#9fb3b0' }}>📧 Change email</label>
-        <input style={box} value={em.email} onChange={e => setEm({ ...em, email: e.target.value })} placeholder="new@email.com" />
+        <input style={box} type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={em.email} onChange={e => setEm({ ...em, email: e.target.value })} placeholder="new@email.com" />
+        {/* ✉️ a heads-up while typing (Raj, 2026-10-23): an address without its @ was once saved and nobody could sign in */}
+        {em.email.trim() && !EMAIL_OK(em.email) && <div className="em-warn" role="alert">⚠️ That doesn't look like a valid email address. It needs an @ and a domain, like name@example.com.</div>}
+        {EMAIL_OK(em.email) && <div className="pref-hint">You'll sign in with: <b>{em.email.trim().toLowerCase()}</b></div>}
         {/* Confirming with the current password is what stops a hijacked session
             silently moving the account to an attacker's address, so the field
             stays — but it is masked with no reveal. There is nothing useful to
             check by eye here: you either know it or you don't. */}
         <input type="password" style={box} value={em.password} autoComplete="current-password"
           onChange={e => setEm({ ...em, password: e.target.value })} placeholder="Confirm with your current password" />
-        <button className="refresh" onClick={saveEmail} style={{ marginTop: 8 }}>Update email</button>
+        <button className="refresh em-btn" onClick={saveEmail} disabled={!EMAIL_OK(em.email) || !em.password}>Update email</button>
+        {emCode && (
+          <div className="em-confirm">
+            <label className="em-confirm-l" htmlFor="em-code">Code sent to {emCode.email}</label>
+            <input id="em-code" style={box} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456"
+              value={emCode.code} onChange={e => setEmCode({ ...emCode, code: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
+            {emCode.practice && <div className="pref-hint">🧪 Test site: emails aren't sent here. The code is <b>{emCode.practice}</b>.</div>}
+            <button className="refresh em-btn" disabled={emCode.code.length !== 6} onClick={confirmEmail}>Confirm new email</button>
+          </div>
+        )}
 
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 18 }}>🔑 Change password</label>
         <PasswordInput style={box} value={pw.current} onChange={e => setPw({ ...pw, current: e.target.value })} placeholder="Current password" />

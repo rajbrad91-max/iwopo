@@ -205,3 +205,12 @@ tr:last-child td { border-bottom:none; }
 .sell-btn { width:100%; margin-top:22px; padding:13px; background:var(--teal); color:#06231f; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
 .sell-btn:hover { background:var(--teal-2); }
 .sell-btn:disabled { opacity:0.6; }
+
+/* ✉️ "Check your email" code step (VerifyCode.jsx) — inside the sign-in card, and over the sign-up page */
+.login-card .vc-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
+.vc-practice { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: #92400e; background: color-mix(in srgb, #f59e0b 16%, transparent); }
+.vc-warn { margin: 0 0 12px; font-size: 13px; color: #b45309; }
+.vc-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.vc-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: #0d9488; cursor: pointer; }
+.vc-link:disabled { color: #9ca3af; cursor: default; }
+.vc-overlay { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .55); }

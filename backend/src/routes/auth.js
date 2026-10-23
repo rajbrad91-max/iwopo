@@ -1,4 +1,5 @@
 import express from 'express';
+import { issueCode, useCode, notice, normEmail, emailOk } from '../lib/emailCodes.js';
 import { limit, forgive } from '../middleware/rateLimit.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -51,14 +52,19 @@ router.post('/login',
   // and per account, so a spread of addresses cannot gang up on one inbox
   limit({ name: 'login-user', max: 8, windowMs: 15 * 60_000, key: r => String(r.body?.email || '').toLowerCase() }),
   async (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = String(req.body.email || '').trim();   // ✉️ "Info@…" from a phone keyboard is the same address
   if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
 
-  const user = await prisma.users.findFirst({ where: { email } });
+  const user = await prisma.users.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user.email_verified_at) {   // ✉️ right password, address not confirmed yet: send (or re-send) the code
+    const sent = await issueCode(user.id, 'verify', { to: user.email });
+    return res.status(403).json({ error: 'Please confirm your email first — enter the code we sent you.', verify: true, email: user.email, ...(sent.code ? { sandbox_code: sent.code } : {}) });
+  }
 
   // getting in clears the count — a person who mistyped twice then succeeded
   // should not be closer to a lockout than one who typed it right first time
@@ -81,6 +87,7 @@ router.get('/trial-eligible', async (req, res) => {
 router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   const { businessName, name, email, password, plan } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
+  if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
 
   const isPaid = plan && plan !== 'trial';
   const ip = clientIp(req);
@@ -162,7 +169,10 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
       return user;
     });
 
-    res.status(201).json({ token: signToken(created), user: created });
+    // ✉️ the account works once the address is confirmed with the emailed code
+    await prisma.users.update({ where: { id: created.id }, data: { email_verified_at: null } });
+    const sent = await issueCode(created.id, 'verify', { to: created.email });
+    res.status(201).json({ verify: true, email: created.email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -228,6 +238,8 @@ router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), 
        working for another seven days defeats the point. PUT /me/password
        already did this; the reset path did not. */
     await revokeAllForUser(row.user_id);
+    const who = await prisma.users.findUnique({ where: { id: row.user_id }, select: { email: true } });
+    notice(who?.email, 'Your iwopo password was changed', ['The password for your iwopo account was just reset, and every device was signed out.']);
     res.json({ ok: true, message: 'Password updated — you can log in now. ✅' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -247,6 +259,30 @@ router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), 
  * not sign out the desktop. Cancelling everything is what a password change
  * does.
  */
+/* ✉️ POST /api/auth/verify { email, code } — confirm the address and sign in */
+router.post('/verify', limit({ name: 'verify', max: 20, windowMs: 15 * 60_000 }), async (req, res) => {
+  try {
+    const user = await prisma.users.findFirst({ where: { email: { equals: normEmail(req.body.email), mode: 'insensitive' } } });
+    if (!user) return res.status(400).json({ error: 'That code is not right.' });
+    if (user.email_verified_at) return res.status(400).json({ error: 'This email is already confirmed — sign in with your password.' });
+    await useCode(user.id, 'verify', req.body.code);
+    const done = await prisma.users.update({ where: { id: user.id }, data: { email_verified_at: new Date() } });
+    res.json({ token: signToken(done), user: { id: done.id, name: done.name, email: done.email, role: done.role, vendor_id: done.vendor_id } });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/* ✉️ POST /api/auth/resend { email } — a new code; the same answer whether or not the address has an account */
+router.post('/resend', limit({ name: 'resend', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
+  const message = 'If that address is waiting to be confirmed, a new code is on its way. 📬';
+  try {
+    const user = await prisma.users.findFirst({ where: { email: { equals: normEmail(req.body.email), mode: 'insensitive' } } });
+    if (!user || user.email_verified_at) return res.json({ ok: true, message });
+    const sent = await issueCode(user.id, 'verify', { to: user.email });
+    if (sent.tooSoon) return res.status(429).json({ error: 'Please wait a little before asking for another code.' });
+    res.json({ ok: true, message, ...(sent.code ? { sandbox_code: sent.code } : {}) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/logout', requireAuth, async (req, res) => {
   await revokeToken(req.user);
   res.json({ ok: true });

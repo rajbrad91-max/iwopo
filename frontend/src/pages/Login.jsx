@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
+import VerifyCode from '../components/VerifyCode';
 
 export default function Login({ onLogin, onBack }) {
   const [mode, setMode] = useState('login'); // 'login' | 'forgot'
@@ -9,6 +10,7 @@ export default function Login({ onLogin, onBack }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verify, setVerify] = useState(null);   // ✉️ { email, sandbox_code } — the address still needs its code
 
   async function handleSubmit() {
     setError('');
@@ -18,6 +20,7 @@ export default function Login({ onLogin, onBack }) {
       setSession(token, user);
       onLogin(user);
     } catch (err) {
+      if (err.data?.verify) { setVerify({ email: err.data.email, code: err.data.sandbox_code }); return; }
       setError(err.message === 'Invalid credentials'
         ? 'That email or password is not right.'
         : err.message);
@@ -46,7 +49,10 @@ export default function Login({ onLogin, onBack }) {
         {onBack && <div className="login-back" onClick={onBack}>← Back</div>}
         <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>
 
-        {mode === 'login' ? (
+        {verify ? (
+          <VerifyCode email={verify.email} sandboxCode={verify.code}
+            onVerified={({ token, user }) => { setSession(token, user); onLogin(user); }} onBack={() => setVerify(null)} />
+        ) : mode === 'login' ? (
           <>
             <h1>Sign in</h1>
             <p className="login-sub">Vendors &amp; admins</p>

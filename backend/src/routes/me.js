@@ -1,4 +1,5 @@
 import { LOGO_DIR as LOGO_DIR_CFG } from '../config/paths.js';
+import { issueCode, useCode, notice } from '../lib/emailCodes.js';
 import { phoneProblem } from '../lib/phone.js';
 import * as objects from '../lib/objectStore.js';
 import express from 'express';
@@ -201,19 +202,25 @@ router.put('/settings', requireAuth, async (req, res) => {
 
 // PUT /api/me/email
 router.put('/email', requireAuth, async (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  // ✉️ a real address only, stored the way it is typed at login: trimmed, lower-case. (Raj's "info@…" was saved
+  //    without its @ and nobody could sign in with it, 2026-10-23.)
+  const email = String(req.body.email || '').trim().toLowerCase();
   if (!email || !password) return res.status(400).json({ error: 'Email + current password required' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
   try {
     const me = await prisma.users.findUnique({ where: { id: req.user.id } });   // 🔒 own account only
     const ok = await bcrypt.compare(password, me.password_hash);
     if (!ok) return res.status(401).json({ error: 'Wrong password' });
     const dupe = await prisma.users.findFirst({
-      where: { email, id: { not: req.user.id } },
+      where: { email: { equals: email, mode: 'insensitive' }, id: { not: req.user.id } },
       select: { id: true },
     });
     if (dupe) return res.status(409).json({ error: 'Email already in use' });
-    await prisma.users.update({ where: { id: req.user.id }, data: { email } });
-    res.json({ ok: true });
+    const sent = await issueCode(req.user.id, 'change', { newEmail: email, to: email });
+    if (sent.tooSoon) return res.status(429).json({ error: 'A code was just sent — please wait a little before asking again.' });
+    if (sent.error === 'not_configured') return res.status(503).json({ error: "iwopo can't send email yet, so the address can't be confirmed. Please try again later." });
+    res.json({ ok: true, pending: true, email, ...(sent.code ? { sandbox_code: sent.code } : {}) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -235,6 +242,19 @@ router.put('/account', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* ✉️ PUT /api/me/email/confirm { code } — the code from the new address switches the account over */
+router.put('/email/confirm', requireAuth, async (req, res) => {
+  try {
+    const row = await useCode(req.user.id, 'change', req.body.code);
+    const me = await prisma.users.findUnique({ where: { id: req.user.id }, select: { email: true } });
+    const taken = await prisma.users.findFirst({ where: { email: { equals: row.new_email, mode: 'insensitive' }, id: { not: req.user.id } }, select: { id: true } });
+    if (taken) return res.status(409).json({ error: 'Email already in use' });
+    await prisma.users.update({ where: { id: req.user.id }, data: { email: row.new_email, email_verified_at: new Date() } });
+    notice(me?.email, 'Your iwopo email was changed', [`Your iwopo account now signs in with ${row.new_email} instead of this address.`]);
+    res.json({ ok: true, email: row.new_email });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 // PUT /api/me/password
 router.put('/password', requireAuth, async (req, res) => {
   const { current, next } = req.body;
@@ -250,6 +270,7 @@ router.put('/password', requireAuth, async (req, res) => {
        because you fear someone has it is pointless if their session survives
        the change — which is exactly what happened before. */
     await revokeAllForUser(req.user.id);
+    notice(me.email, 'Your iwopo password was changed', ['The password for your iwopo account was just changed, and every other device was signed out.']);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
