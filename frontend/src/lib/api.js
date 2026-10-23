@@ -881,6 +881,8 @@ export const api = {
   },
   commsStatus: () => request('/comms/status'),
   quoSettings: () => request('/comms/quo-settings'),
+  contactsSync: () => request('/comms/contacts-sync'),
+  contactsSyncNow: () => request('/comms/contacts-sync', { method: 'POST' }),
   saveQuoSettings: (body) => request('/comms/quo-settings', { method: 'PUT', body: JSON.stringify(body) }),
   removeQuoSettings: () => request('/comms/quo-settings', { method: 'DELETE' }),
   quoNumbers: (api_key) => request('/comms/quo-settings/numbers', { method: 'POST', body: JSON.stringify({ api_key }) }),

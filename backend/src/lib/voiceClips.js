@@ -36,6 +36,7 @@ const TYPES = {
   shoot_tomorrow: ['a shoot tomorrow', 'shoots tomorrow'],
   shoot_week: ['a shoot this week', 'shoots this week'],
   reminder: ['a reminder due today', 'reminders due today'],
+  waiting: ['someone waiting on your reply', 'people waiting on your reply'],
 };
 export function clipLines(name) {
   const lines = {
@@ -218,7 +219,7 @@ export async function whatsNew(vendorId, { record = true, markSeen = false } = {
   // ⏰ smart reminders — people waiting on his reply (each at most four times a day)
   for (const f of await openFollowups(v)) {
     if (!(await allowed(`followup:${f.id}`, 4))) continue;
-    bump('reminder', `⏳ Waiting on your reply: ${waitedLabel(f)}`);
+    bump('waiting', `⏳ Waiting on your reply: ${waitedLabel(f)}`);
   }
 
   // the greeting: carrying on a conversation of the last 20 minutes, or the time of day
@@ -227,7 +228,7 @@ export async function whatsNew(vendorId, { record = true, markSeen = false } = {
   const hour = Number(new Date().toLocaleString('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }));
   const greet = continuing ? 'beep' : hour >= 4 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : hour >= 17 && hour < 23 ? 'evening' : 'hey';
 
-  const order = ['lead', 'message', 'call', 'email', 'instagram', 'notification', 'shoot_today', 'shoot_tomorrow', 'shoot_week', 'reminder'];
+  const order = ['lead', 'message', 'call', 'email', 'instagram', 'notification', 'shoot_today', 'shoot_tomorrow', 'shoot_week', 'reminder', 'waiting'];
   const parts = order.filter(t => items[t]).map(t => `${t}_${Math.min(items[t], 10)}`);
   const seq = [greet];
   if (parts.length && !continuing) {

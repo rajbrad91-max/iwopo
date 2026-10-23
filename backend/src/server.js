@@ -2,6 +2,7 @@
 // file's own statements, so this must load ahead of any route (which pulls in
 // the Prisma client) for the env check to happen before anything connects.
 import { checkEnv } from './config/checkEnv.js';
+import { syncAllContacts } from './lib/contactsSync.js';
 import { scanAllInquiries } from './lib/inquiryDetector.js';
 import { scanFollowups } from './lib/followups.js';
 import prisma from './config/prisma.js';
@@ -312,6 +313,8 @@ setTimeout(() => { tidyComms().catch(() => {}); }, 15 * 60_000).unref();
 setInterval(() => { scanFollowups().catch(() => {}); }, 15 * 60_000).unref();
 // 🧠 email inquiry detector: every new inbox conversation looked at once — every 15 minutes
 setInterval(() => { scanAllInquiries().catch(() => {}); }, 15 * 60_000).unref();
+// 📇 new Google contacts → Quo, every 15 minutes
+setInterval(() => { syncAllContacts().catch(() => {}); }, 15 * 60_000).unref();
 setTimeout(() => { scanAllInquiries().catch(() => {}); }, 3 * 60_000).unref();
 setTimeout(() => { scanFollowups().catch(() => {}); }, 2 * 60_000).unref();
 // 🎞️ Raw Selector: RAWs whose photo was deleted, and RAWs 30 days past delivery

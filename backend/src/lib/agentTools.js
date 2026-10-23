@@ -8,8 +8,9 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import { seenMap, markSeen, unreadCalls } from './commsSeen.js';
 import { openFollowups, actOnFollowup, waitedLabel } from './followups.js';
-import { emailSummary, emailRead, emailSearch, resolveRecipient, voiceSend } from './inboxGmail.js';
+import { emailSummary, emailRead, emailSearch, resolveRecipient, voiceSend, unreadCount } from './inboxGmail.js';
 import { markSeen as markCommsSeen } from './commsSeen.js';
 import { stagesSummary } from './projectStages.js';
 import privateDb from '../config/privateDb.js';
@@ -57,7 +58,7 @@ const readBack = new Map();
 export const TOOLS = [
   {
     name: 'today_summary',
-    description: "What is new and coming up for the vendor: new leads not looked at yet, events in the next 14 days, client photo selections sent recently, and the latest panel notifications. Use it for 'what's new', 'any updates', 'what's happening today'.",
+    description: "What is new and coming up for the vendor: new leads not looked at yet, events in the next 14 days, client photo selections sent recently, how many NEW texts/calls and emails are waiting, and notifications he has NOT seen yet. Use it for 'what's new', 'any updates', 'what's happening today'. Only speak of what is new or coming up; when a part has nothing new, say so plainly (e.g. 'no new texts or emails today') — never present things he has already seen as new.",
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
@@ -128,9 +129,14 @@ export const TOOLS = [
     input_schema: { type: 'object', properties: { what: { type: 'string', enum: ['messages', 'notifications', 'leads', 'all'] } }, required: ['what'] },
   },
   {
+    name: 'calls_texts',
+    description: "His business line — calls and texts. By default ONLY what is NEW: texts and missed calls he has not opened in Calls & Messages yet; say they are new. If there are none, say plainly 'no new texts or calls today'. include_seen=true only when he asks for all / old ones (each is then marked NEW or SEEN). days = how far back (default 1 = today). What you report as new counts as seen afterwards.",
+    input_schema: { type: 'object', properties: { include_seen: { type: 'boolean' }, days: { type: 'integer' } } },
+  },
+  {
     name: 'email_inbox',
-    description: "His business email (Gmail), when he asks about emails: the latest ones — sender, subject, when, NEW if unread. filter = one of his email filters by name (e.g. Inquiries, Money Received); unread_only for just the new ones. Listing does NOT mark anything read.",
-    input_schema: { type: 'object', properties: { filter: { type: 'string' }, unread_only: { type: 'boolean' } } },
+    description: "His business email (Gmail). By default ONLY NEW (unread) emails, newest first — say they are new; if none, say 'no new emails'. all=true only when he asks for all / recent / old emails (then each is marked NEW or read). filter = one of his email filters by name (e.g. Inquiries, Money Received). Listing does NOT mark anything read.",
+    input_schema: { type: 'object', properties: { filter: { type: 'string' }, all: { type: 'boolean' } } },
   },
   {
     name: 'email_read',
@@ -149,7 +155,7 @@ export const TOOLS = [
   },
   {
     name: 'followups',
-    description: "Smart reminders: people waiting more than a day for his reply (unanswered texts, missed calls not returned, emails without a reply). action=list to hear them; done when he says he already replied or called back; mute when he says not to remind him about someone; snooze (hours) to be reminded later. who = a name, number or email.",
+    description: "People waiting on his reply (part of 'my reminders' — check list_reminders too). Smart reminders: people waiting more than a day for his reply (unanswered texts, missed calls not returned, emails without a reply). action=list to hear them; done when he says he already replied or called back; mute when he says not to remind him about someone; snooze (hours) to be reminded later. who = a name, number or email.",
     input_schema: { type: 'object', properties: { action: { type: 'string', enum: ['list', 'done', 'mute', 'snooze'] }, who: { type: 'string' }, hours: { type: 'number' } }, required: ['action'] },
   },
   {
@@ -182,7 +188,7 @@ export const TOOLS = [
   },
   {
     name: 'list_reminders',
-    description: "The vendor's open reminders — promised deliveries, tasks and alarms — soonest first, with how many days are left. Deliveries for leads already marked delivered are left out.",
+    description: "The vendor's open reminders — promised deliveries, tasks and alarms — soonest first, with how many days are left. Deliveries for leads already marked delivered are left out. People waiting on HIS reply (unanswered texts, missed calls, emails) are NOT here — they are in followups; when he asks about his reminders, check both and say which is which.",
     input_schema: { type: 'object', properties: { days: { type: 'integer', description: 'how far ahead to look (default 60)' } } },
   },
   {
@@ -261,7 +267,7 @@ export async function runTool(name, input, vendorId) {
         prisma.leads.findMany({ where: { ...live, seen_at: null }, orderBy: { created_at: 'desc' }, take: 15 }),
         prisma.leads.findMany({ where: { ...live, status: 'booked', event_date: { gte: new Date(now.toDateString()), lte: in14 } }, orderBy: { event_date: 'asc' }, take: 15 }),
         prisma.selection_notes.findMany({ where: { albums: { vendor_id: v }, updated_at: { gte: new Date(now.getTime() - 7 * 86400e3) } }, select: { updated_at: true, albums: { select: { title: true, _count: { select: { selections: true } } } } }, orderBy: { updated_at: 'desc' }, take: 10 }),
-        prisma.notifications.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, take: 10, select: { title: true, body: true, created_at: true, seen_at: true } }),
+        prisma.notifications.findMany({ where: { vendor_id: v, seen_at: null, created_at: { gte: new Date(now.getTime() - 3 * 86400e3) } }, orderBy: { created_at: 'desc' }, take: 10, select: { title: true, body: true, created_at: true } }),   // only unseen, last 3 days
       ]);
       return {
         today: day(now),
@@ -270,7 +276,9 @@ export async function runTool(name, input, vendorId) {
         // a shoot TODAY or TOMORROW counts whatever its status — not yet booked is said plainly, not left out
         events_today_and_tomorrow_any_status: (await prisma.leads.findMany({ where: { ...live, event_date: { gte: new Date(now.toDateString()), lte: new Date(new Date(now.toDateString()).getTime() + 2 * 86400e3 - 1) } }, orderBy: { event_date: 'asc' }, take: 15 })).map(l => ({ ...leadLine(l), starts: l.timing_from, ends: l.timing_to, booked: l.status === 'booked' })),
         photo_selections_sent_last_7_days: selections.map(s => ({ client: s.albums.title, photos_picked: s.albums._count.selections, sent: day(s.updated_at) })),
-        latest_notifications: notices.map(n => ({ title: n.title, detail: n.body, when: n.created_at, read: !!n.seen_at })),
+        new_notifications_not_seen: notices.map(n => ({ title: n.title, detail: n.body, when: n.created_at })),
+        new_texts_and_calls: await unreadCalls(v, privateDb).catch(() => 0),        // details: calls_texts
+        new_emails: await unreadCount(v).catch(() => 0),                            // details: email_inbox
       };
     }
     case 'find_leads': {
@@ -366,11 +374,38 @@ export async function runTool(name, input, vendorId) {
       return text ? { answer: text.slice(0, 1200) } : { error: d.error?.message || 'No answer from the web search' };
     }
     case 'project_stages': return stagesSummary(v, input);
+    case 'calls_texts': {
+      const days = Math.min(Math.max(Number(input.days) || 1, 1), 30);
+      const MISSED = ['missed', 'no-answer', 'canceled', 'busy', 'failed'];
+      const seen = await seenMap(v);
+      const everything = Date.parse(seen['*'] || '') || 0;
+      const evs = await privateDb.comms_events.findMany({
+        where: { vendor_id: v, occurred_at: { gte: new Date(Date.now() - days * 86400e3) } }, orderBy: { occurred_at: 'desc' }, take: 60,
+        select: { kind: true, direction: true, status: true, from_number: true, to_number: true, body: true, contact_name: true, occurred_at: true },
+      });
+      const lines = [], fresh = new Set();
+      for (const e of evs) {
+        const other = e.direction === 'incoming' ? e.from_number : e.to_number;
+        const k = String(other || '').replace(/\D/g, '').slice(-10);
+        const missed = e.kind === 'call' && MISSED.includes(e.status);
+        const inbound = (e.kind === 'message' && e.direction === 'incoming') || (missed && e.direction !== 'outgoing');
+        const isNew = inbound && e.occurred_at.getTime() > Math.max(everything, Date.parse(seen[k] || '') || 0);
+        if (!isNew && !input.include_seen) continue;
+        if (isNew) fresh.add(k);
+        const what = e.kind === 'call' ? (missed ? 'missed call from' : `${e.direction === 'outgoing' ? 'call to' : 'call with'}`) : (e.direction === 'incoming' ? 'text from' : 'text to');
+        const when = e.occurred_at.toLocaleString('en-US', { timeZone: 'America/Vancouver', weekday: 'short', hour: 'numeric', minute: '2-digit' });
+        lines.push(`${isNew ? 'NEW' : 'SEEN'} · ${what} ${e.contact_name || other} (${when})${e.kind === 'message' ? ` "${String(e.body || '').slice(0, 160)}"` : ''}`);
+      }
+      if (fresh.size) await markSeen(v, [...fresh]);
+      if (!lines.length) return { summary: `No new texts or calls ${days === 1 ? 'today' : `in the last ${days} days`}.` };
+      return { summary: lines.join('\n') };
+    }
     case 'email_inbox': {
-      const r = await emailSummary(v, { filterName: input.filter, unreadOnly: !!input.unread_only });
+      const onlyNew = input.all !== true;
+      const r = await emailSummary(v, { filterName: input.filter, unreadOnly: onlyNew });
       if (r.error) return { error: r.error };
-      if (!r.items.length) return { summary: `No ${input.unread_only ? 'new ' : ''}emails${r.filter ? ` in ${r.filter}` : ''}.` };
-      return { summary: r.items.map(t => `${t.unread ? 'NEW · ' : ''}${t.from} — ${t.subject} (${t.when})`).join('\n') };
+      if (!r.items.length) return { summary: `No ${onlyNew ? 'new ' : ''}emails${r.filter ? ` in ${r.filter}` : ''}.` };
+      return { summary: r.items.map(t => `${t.unread ? 'NEW' : 'read'} · ${t.from} — ${t.subject} (${t.when})`).join('\n') };
     }
     case 'email_read': {
       const m = await emailRead(v, input.who);

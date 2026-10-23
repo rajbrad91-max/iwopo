@@ -116,6 +116,25 @@ function EmailFilters() {
   );
 }
 
+/** 📇 Google Contacts → Quo: when it last ran, what it did, and "Sync now" */
+function ContactsSync() {
+  const [st, setSt] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.contactsSync().then(d => setSt(d.state)).catch(() => {}); }, []);
+  async function now() { setBusy(true); try { setSt((await api.contactsSyncNow()).state); } catch { /* the state shows the error */ } finally { setBusy(false); } }
+  const when = st?.at ? new Date(st.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
+  return (
+    <div className="ib-keys">
+      <p className="ib-keys-t">📇 Google Contacts → Quo</p>
+      <p className="ib-quiet">New contacts you save in Google appear in Quo by themselves (every 15 minutes). A contact you save here goes to Google too.</p>
+      {st && (st.ok
+        ? <p className="ib-msg">✅ Last sync {when}: {st.google} Google contacts checked, {st.added} added to Quo.</p>
+        : <p className="ib-msg">⚠️ {st.error}</p>)}
+      <div className="ib-keys-row"><button className="ib-btn" disabled={busy} onClick={now}>{busy ? 'Syncing…' : 'Sync now'}</button></div>
+    </div>
+  );
+}
+
 /** 📞 The vendor's own Quo connection — API key and webhook secrets are write-only; the number is picked from Quo's list. */
 function QuoKeys({ onSaved }) {
   const dialog = useDialog();
@@ -194,6 +213,7 @@ function ChannelSettings({ tab }) {
       <p className="ib-set-row"><b>Business phone line</b><span>{st.sandbox ? '🧪 Practice mode (test site)' : st.connected ? `● Connected${st.from ? ` · ${st.from}` : ''}` : '○ Not connected yet'}</span></p>
       <p className="ib-quiet">Calls and texts on this line appear in this tab by themselves.</p>
       <QuoKeys onSaved={load} />
+      <ContactsSync />
     </div>
   );
   if (tab === 'email') return (

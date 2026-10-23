@@ -6,6 +6,7 @@
  * to the vendor on the token regardless.
  */
 import express from 'express';
+import { addToGoogle, syncGoogleToQuo, syncState } from '../lib/contactsSync.js';
 import { seenMap, markSeen } from '../lib/commsSeen.js';
 import { Readable } from 'node:stream';
 import privateDb from '../config/privateDb.js';
@@ -146,6 +147,7 @@ router.post('/contact', requireAuth, async (req, res) => {
     const e164 = raw.startsWith('+') ? `+${raw.replace(/\D/g, '')}` : `+1${key10}`;
     const saved = await saveContact(cfg.key, { existingId: existing?.id, firstName, lastName, email, number: e164 });
     forgetContacts();
+    addToGoogle(v, { firstName, lastName, email, number: e164 }).catch(() => {});   // 📇 saved once → in Google too
 
     const name = [firstName, lastName].filter(Boolean).join(' ');
     await privateDb.$executeRawUnsafe(
@@ -257,6 +259,11 @@ router.get('/status', requireAuth, async (req, res) => {
 const NOT_CONNECTED = 'Calls & messages are not connected for this account yet.';
 
 /* ⚙️ Calls & Texts → settings: this vendor's own Quo connection (the API key and secrets are write-only) */
+/* 📇 Google Contacts → Quo sync: its last run, and "Sync now" */
+router.get('/contacts-sync', requireAuth, async (req, res) => { try { res.json({ state: await syncState(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+router.post('/contacts-sync', requireAuth, async (req, res) => {
+  try { const r = await syncGoogleToQuo(vid(req)); res.json({ ...r, state: await syncState(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); }
+});
 router.get('/quo-settings', requireAuth, async (req, res) => {
   try {
     const c = await quoConfig(vid(req));

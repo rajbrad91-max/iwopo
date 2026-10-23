@@ -14,7 +14,8 @@ import { inquiryPage } from './inquiryDetector.js';
 import prisma from '../config/prisma.js';
 import { secretKey, seal, unseal } from './secretBox.js';
 
-const SCOPE = 'https://www.googleapis.com/auth/gmail.modify';   // read, label read/unread, compose and send
+// Gmail: read, mark read/unread, compose and send · Contacts: the Google Contacts ↔ Quo sync (Raj, 2026-10-23)
+const SCOPE = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/contacts';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const linkKey = (v) => `gmail_link_${Number(v)}`;
 
@@ -108,6 +109,13 @@ async function accessToken(v) {
   if (!r.ok) throw new Error(t.error === 'invalid_grant' ? 'Your Gmail connection has ended. Connect it again.' : 'Gmail did not answer.');
   tokens.set(Number(v), { token: t.access_token, until: Date.now() + (t.expires_in - 120) * 1000 });
   return t.access_token;
+}
+/** any Google API with the vendor's own sign-in (e.g. People API for contacts) */
+export async function googleApi(v, url, { method = 'GET', body } = {}) {
+  const r = await fetch(url, { method, headers: { Authorization: `Bearer ${await accessToken(v)}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`${d.error?.status || r.status}: ${d.error?.message || 'Google error'}`);
+  return d;
 }
 export async function gmail(v, path, opts = {}) {
   const r = await fetch(`${API}${path}`, { ...opts, headers: { Authorization: `Bearer ${await accessToken(v)}`, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
@@ -322,7 +330,8 @@ export async function emailSummary(v, { filterName, unreadOnly } = {}) {
   const st = await status(v);
   if (!st.connected) return { error: 'His email is not connected yet.' };
   const f = filterName ? (await getFilters(v)).find(x => x.name.toLowerCase().includes(String(filterName).toLowerCase())) : null;
-  const list = await listThreads(v, unreadOnly ? 'is:unread' : '', f ? f.id : 'all');
+  // unread = Gmail's own UNREAD mark (asked of Gmail on the real mailbox, checked here on each line either way)
+  const list = (await listThreads(v, unreadOnly && !st.sandbox ? 'is:unread' : '', f ? f.id : 'all')).filter(t => !unreadOnly || t.unread);
   return { filter: f?.name || null, items: list.slice(0, 8).map(t => ({ from: plainName(t.from), subject: t.subject, unread: !!t.unread, when: spokenWhen(t.date) })) };
 }
 
