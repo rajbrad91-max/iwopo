@@ -8,6 +8,7 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import { savedContactMatches } from './contactMatch.js';
 import { seenMap, markSeen, unreadCalls } from './commsSeen.js';
 import { openFollowups, actOnFollowup, waitedLabel } from './followups.js';
 import { emailSummary, emailRead, emailSearch, resolveRecipient, voiceSend, unreadCount } from './inboxGmail.js';
@@ -183,7 +184,7 @@ export const TOOLS = [
   },
   {
     name: 'lookup_contact',
-    description: "The quick scan of the WHOLE history for a person: give a phone number (any part, any format), an email or a name, and get one line per match — every inquiry they sent (event, date, booked or not, done, delivered, paid), their calls and texts (first contact, last message), their galleries. Use it FIRST whenever a person, number or email comes up (\"who texted me from 604…\", \"has Sanjeev been with us before?\"). Then get_lead or calls_and_messages for details.",
+    description: "Use this whenever he asks whether someone is saved / a contact — it also searches his SAVED PHONE CONTACTS, forgiving of spelling (first name only, part of a name, small differences). Never say someone is not saved without calling it; if only close matches come back, offer them. The quick scan of the WHOLE history for a person: give a phone number (any part, any format), an email or a name, and get one line per match — every inquiry they sent (event, date, booked or not, done, delivered, paid), their calls and texts (first contact, last message), their galleries. Use it FIRST whenever a person, number or email comes up (\"who texted me from 604…\", \"has Sanjeev been with us before?\"). Then get_lead or calls_and_messages for details.",
     input_schema: { type: 'object', properties: { query: { type: 'string', description: 'phone number, email or name' } }, required: ['query'] },
   },
   {
@@ -486,8 +487,12 @@ export async function runTool(name, input, vendorId) {
       return { leads_with_a_price: list.length, top: list.slice(0, Math.min(Number(input.limit) || 10, 25)) };
     }
     case 'lookup_contact': {
-      const lines = await lookupContacts(v, input.query, 5);
-      return lines.length ? { matches: lines } : { matches: [], note: 'Nobody in the history matches — a new contact.' };
+      // 📇 the history AND his saved phone contacts, forgiving of how speech spells names
+      const [lines, saved] = await Promise.all([lookupContacts(v, input.query, 5), savedContactMatches(v, input.query).catch(() => [])]);
+      const savedLines = saved.map(c => `📇 saved contact: ${c.name} · ${c.phone}${c.exact ? '' : ' (close match)'}`);
+      if (!lines.length && !savedLines.length) return { matches: [], note: 'Not in the history and not a saved contact.' };
+      const close = saved.length && !saved[0].exact;
+      return { matches: [...savedLines, ...lines], ...(close ? { note: 'No exact name match among saved contacts — these are the closest; ask him which one he means.' } : {}) };
     }
     case 'list_reminders': {
       const tz = await zoneOf(v);

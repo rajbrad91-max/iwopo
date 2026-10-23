@@ -345,19 +345,19 @@ export async function earTurn({ vendorId, auth, sessionId, text, send }) {
     const calls = content.filter(b => b.type === 'tool_use');
     if (!calls.length) break;
     // 🧰 the tools run exactly as on Gemini Live: through the same route, as this vendor
-    const results = [];
+    // ⚡ (Raj, 2026-10-23) several lookups asked for in one go run side by side, not one after another
     let snag = false;
-    for (const c of calls) {
-      if (c.name === 'learn') { results.push({ type: 'tool_result', tool_use_id: c.id, content: JSON.stringify(await saveLearned(vendorId, c.input?.lesson)) }); send('learned', { lesson: String(c.input?.lesson || '').slice(0, 300) }); continue; }
-      if (c.name === 'end_conversation') { results.push({ type: 'tool_result', tool_use_id: c.id, content: '{"ok":true}' }); send('end', {}); continue; }
-      if (c.name === 'pause_listening') { results.push({ type: 'tool_result', tool_use_id: c.id, content: '{"ok":true}' }); send('pause', {}); continue; }
+    const results = await Promise.all(calls.map(async (c) => {
+      if (c.name === 'learn') { const r = { type: 'tool_result', tool_use_id: c.id, content: JSON.stringify(await saveLearned(vendorId, c.input?.lesson)) }; send('learned', { lesson: String(c.input?.lesson || '').slice(0, 300) }); return r; }
+      if (c.name === 'end_conversation') { send('end', {}); return { type: 'tool_result', tool_use_id: c.id, content: '{"ok":true}' }; }
+      if (c.name === 'pause_listening') { send('pause', {}); return { type: 'tool_result', tool_use_id: c.id, content: '{"ok":true}' }; }
       const t = await fetch(`http://127.0.0.1:${PORT}/api/agent/tool`, { method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: c.name, parameters: c.input }) });
       const d = await t.json().catch(() => ({}));
       if (d.proposal) send('card', { proposal: d.proposal });
       const res = t.ok ? d.result ?? d : { error: d.error || t.status };
       if (res?.error || res?.which_one || res?.needs_yes) snag = true;       // 🧠 a snag → the smart brain takes the rest of this turn
-      results.push({ type: 'tool_result', tool_use_id: c.id, content: JSON.stringify(res).slice(0, 4000) });
-    }
+      return { type: 'tool_result', tool_use_id: c.id, content: JSON.stringify(res).slice(0, 4000) };
+    }));
     s.messages.push({ role: 'user', content: results });
     if (snag && model !== SONNET) { model = SONNET; why = 'a lookup hit a snag'; s.sonnetLeft = Math.max(s.sonnetLeft || 0, 1); send('brain', { model: 'sonnet', why }); }
   }

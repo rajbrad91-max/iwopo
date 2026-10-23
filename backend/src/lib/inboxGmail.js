@@ -222,6 +222,16 @@ async function newSinceSeen(v) {
 
 /** One page of conversations: filter 'all' (the inbox) or one of the vendor's filters; a search narrows either;
  *  `page` is the token from the previous page ("Load more"). Returns { threads, next }. */
+/* 📧 each conversation's line, remembered with Gmail's change marker (historyId): asked again only when it changed
+   — the inbox list, Tornado and Gale answer near-instantly, and Gmail is asked far less often (Raj, 2026-10-23) */
+const metaCache = new Map();
+async function threadMetaKnown(v, t) {
+  const k = `${v}|${t.id}`, hit = metaCache.get(k);
+  if (hit && t.historyId && hit.historyId === t.historyId) return hit.meta;
+  const meta = await threadMeta(v, t.id);
+  if (meta && t.historyId) { metaCache.set(k, { historyId: t.historyId, meta }); if (metaCache.size > 5000) metaCache.delete(metaCache.keys().next().value); }
+  return meta;
+}
 /** one conversation's line in a list (null if it was deleted in Gmail since) */
 async function threadMeta(v, id) {
   const th = await gmail(v, `/threads/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`).catch(() => null);
@@ -239,13 +249,13 @@ const recentCache = new Map();
 async function recentSorted(v, query) {
   const key = `${v}|${query}`, hit = recentCache.get(key);
   if (hit && hit.until > Date.now()) return hit.list;
-  const ids = []; let token = '';
+  const found = []; let token = '';
   do {
     const d = await gmail(v, `/threads?maxResults=100&q=${encodeURIComponent(`${query} newer_than:${RECENT_DAYS}d`)}${token ? `&pageToken=${token}` : ''}`);
-    for (const t of d.threads || []) ids.push(t.id);
+    for (const t of d.threads || []) found.push(t);
     token = d.nextPageToken || '';
-  } while (token && ids.length < 300);
-  const list = (await Promise.all(ids.map(id => threadMeta(v, id)))).filter(Boolean).sort((x, y) => y.date.localeCompare(x.date));
+  } while (token && found.length < 300);
+  const list = (await Promise.all(found.map(t => threadMetaKnown(v, t)))).filter(Boolean).sort((x, y) => y.date.localeCompare(x.date));
   recentCache.set(key, { list, until: Date.now() + 60_000 });
   return list;
 }
@@ -358,13 +368,8 @@ export async function emailSearch(v, query, { beyond = false } = {}) {
   if (st.sandbox) return { beyond, items: PRACTICE.filter(t => `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(w.toLowerCase())).map(t => ({ from: plainName(t.from), subject: t.subject, when: spokenWhen(t.date) })) };
   const q = `${beyond ? '' : 'newer_than:90d '}{from:(${w}) to:(${w}) subject:(${w}) "${w}"}`;
   const d = await gmail(v, `/threads?maxResults=8&q=${encodeURIComponent(q)}`);
-  const items = [];
-  for (const t of d.threads || []) {
-    const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
-    const last = th.messages[th.messages.length - 1];
-    items.push({ from: plainName(header(last, 'From')), subject: header(th.messages[0], 'Subject') || '(no subject)', when: spokenWhen(Number(last.internalDate)) });
-  }
-  return { beyond, items };
+  const metas = (await Promise.all((d.threads || []).map(t => threadMetaKnown(v, t)))).filter(Boolean);   // side by side
+  return { beyond, items: metas.map(m => ({ from: plainName(m.from), subject: m.subject, when: spokenWhen(m.date) })) };
 }
 
 /** who an email goes to: an address as given, else a lead/booking by name, else someone he has emailed with (last year) */
