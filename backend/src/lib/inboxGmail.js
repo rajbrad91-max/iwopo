@@ -214,28 +214,57 @@ async function newSinceSeen(v) {
 
 /** One page of conversations: filter 'all' (the inbox) or one of the vendor's filters; a search narrows either;
  *  `page` is the token from the previous page ("Load more"). Returns { threads, next }. */
+/** one conversation's line in a list (null if it was deleted in Gmail since) */
+async function threadMeta(v, id) {
+  const th = await gmail(v, `/threads/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`).catch(() => null);
+  if (!th) return null;
+  const last = th.messages[th.messages.length - 1], first = th.messages[0];
+  return { id, from: header(last, 'From'), subject: header(first, 'Subject') || '(no subject)', snippet: last.snippet || '',
+    date: new Date(Number(last.internalDate)).toISOString(), unread: th.messages.some(m => (m.labelIds || []).includes('UNREAD')), count: th.messages.length };
+}
+
+/* Gmail lists conversations in its own order, not "newest reply first" — a client's reply today in a conversation
+   started two weeks ago sat 21st (Meena, 2026-10-23). So the last 14 days are gathered whole and sorted by their latest
+   message here; older mail follows with Gmail's own paging. Cached a minute per search. */
+const RECENT_DAYS = 14;
+const recentCache = new Map();
+async function recentSorted(v, query) {
+  const key = `${v}|${query}`, hit = recentCache.get(key);
+  if (hit && hit.until > Date.now()) return hit.list;
+  const ids = []; let token = '';
+  do {
+    const d = await gmail(v, `/threads?maxResults=100&q=${encodeURIComponent(`${query} newer_than:${RECENT_DAYS}d`)}${token ? `&pageToken=${token}` : ''}`);
+    for (const t of d.threads || []) ids.push(t.id);
+    token = d.nextPageToken || '';
+  } while (token && ids.length < 300);
+  const list = (await Promise.all(ids.map(id => threadMeta(v, id)))).filter(Boolean).sort((x, y) => y.date.localeCompare(x.date));
+  recentCache.set(key, { list, until: Date.now() + 60_000 });
+  return list;
+}
+export const forgetRecent = (v) => { for (const k of recentCache.keys()) if (k.startsWith(`${v}|`)) recentCache.delete(k); };
+
+/** One page of conversations: filter 'all' (the inbox) or one of the vendor's filters; a search narrows either.
+ *  page: '' or 'r:<n>' = the newest-first recent list from position n; 'o:<token>' = older mail. Returns { threads, next }. */
 export async function listThreadsPage(v, q = '', filterId = 'all', page = '') {
   const f = filterId === 'all' ? null : (await getFilters(v)).find(x => x.id === filterId) || null;
   if ((await status(v)).sandbox) {
     return { next: null, threads: PRACTICE.filter(t => (!q || `${t.from} ${t.subject} ${t.snippet}`.toLowerCase().includes(q.toLowerCase())) && (!f || practiceMatch(f, t)))
       .map(({ messages, ...t }) => t) };
   }
-  let ids, next;
-  if (f?.ai) ({ ids, next } = await inquiryPage(v, { q, page }));    // 🧠 the detector's list (rules + AI)
-  else {
-    const base = f ? filterQuery(f) : 'in:inbox';
-    const d = await gmail(v, `/threads?maxResults=30&q=${encodeURIComponent(q ? `${base} ${q}` : base)}${page ? `&pageToken=${encodeURIComponent(page)}` : ''}`);
-    ids = (d.threads || []).map(t => t.id); next = d.nextPageToken || null;
+  if (f?.ai) {                                                       // 🧠 the detector's list (rules + AI), already newest-first
+    const { ids, next } = await inquiryPage(v, { q, page });
+    return { threads: (await Promise.all(ids.map(id => threadMeta(v, id)))).filter(Boolean), next };
   }
-  const list = (await Promise.all(ids.map(async (id) => {
-    const t = { id };
-    const th = await gmail(v, `/threads/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`).catch(() => null);
-    if (!th) return null;                                             // deleted in Gmail since
-    const last = th.messages[th.messages.length - 1], first = th.messages[0];
-    return { id: t.id, from: header(last, 'From'), subject: header(first, 'Subject') || '(no subject)', snippet: last.snippet || '',
-      date: new Date(Number(last.internalDate)).toISOString(), unread: th.messages.some(m => (m.labelIds || []).includes('UNREAD')), count: th.messages.length };
-  }))).filter(Boolean);
-  return { threads: list, next };
+  const query = [f ? filterQuery(f) : 'in:inbox', q].filter(Boolean).join(' ');
+  if (!page || page.startsWith('r:')) {
+    const all = await recentSorted(v, query), from = Number(page.slice(2)) || 0;
+    const threads = all.slice(from, from + 30);
+    return { threads, next: from + 30 < all.length ? `r:${from + 30}` : 'o:' };
+  }
+  const token = page.slice(2);
+  const d = await gmail(v, `/threads?maxResults=30&q=${encodeURIComponent(`${query} older_than:${RECENT_DAYS}d`)}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`);
+  const threads = (await Promise.all((d.threads || []).map(t => threadMeta(v, t.id)))).filter(Boolean);
+  return { threads, next: d.nextPageToken ? `o:${d.nextPageToken}` : null };
 }
 /** the first page only (Tornado / Gale) */
 export const listThreads = async (v, q = '', filterId = 'all') => (await listThreadsPage(v, q, filterId)).threads;
@@ -261,6 +290,7 @@ export async function sendEmail(v, { to, subject, body, threadId, replyTo }) {
   if (replyTo?.messageId) head.push(`In-Reply-To: ${clean(replyTo.messageId)}`, `References: ${clean(`${replyTo.references || ''} ${replyTo.messageId}`)}`);
   const raw = Buffer.from(`${head.join('\r\n')}\r\n\r\n${String(body)}`, 'utf8').toString('base64url');
   const sent = await gmail(v, '/messages/send', { method: 'POST', body: JSON.stringify({ raw, ...(threadId ? { threadId } : {}) }) });
+  forgetRecent(v);
   return { ok: true, id: sent.id, threadId: sent.threadId };
 }
 

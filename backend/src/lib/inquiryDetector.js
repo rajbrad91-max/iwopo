@@ -48,7 +48,8 @@ async function isInquiry(from, subject, text) {
 }
 
 /** one vendor: look at conversations not seen before; keep each conversation's latest time up to date */
-export async function scanInquiries(v) {
+/** lookback: look further back than usual (e.g. "newer_than:90d") — used once after a rules change; no notifications */
+export async function scanInquiries(v, { lookback } = {}) {
   const st = await status(v);
   if (!st.connected || st.sandbox) return { checked: 0, found: 0 };
   const me = String(st.email || '').toLowerCase();
@@ -56,7 +57,8 @@ export async function scanInquiries(v) {
   const detecting = (await getFilters(v)).filter(f => f.ai);
   if (!detecting.length) return { checked: 0, found: 0 };
   const firstRun = !(await prisma.email_inquiries.count({ where: { vendor_id: v } }));
-  const window = firstRun ? FIRST_LOOKBACK : RECENT;
+  const window = lookback || (firstRun ? FIRST_LOOKBACK : RECENT);
+  const quiet = firstRun || !!lookback;   // old mail found now is not "new" — no 🔔 for it
 
   // threads matching a detecting filter's own rules are inquiries without asking the AI
   const byRule = new Set();
@@ -71,7 +73,7 @@ export async function scanInquiries(v) {
     } while (page && byRule.size < 500);
   }
 
-  const known = new Map((await prisma.email_inquiries.findMany({ where: { vendor_id: v }, select: { thread_id: true, last_at: true } })).map(r => [r.thread_id, r]));
+  const known = new Map((await prisma.email_inquiries.findMany({ where: { vendor_id: v }, select: { thread_id: true, last_at: true, is_inquiry: true, source: true } })).map(r => [r.thread_id, r]));
   let checked = 0, found = 0, page = '';
   do {
     const d = await gmail(v, `/threads?maxResults=100&q=${encodeURIComponent(`in:inbox ${window}`)}${page ? `&pageToken=${page}` : ''}`);
@@ -79,22 +81,31 @@ export async function scanInquiries(v) {
       const th = await gmail(v, `/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
       const first = th.messages[0], last = th.messages[th.messages.length - 1];
       const lastAt = new Date(Number(last.internalDate));
+      // judge the newest message from the OTHER person — a conversation he started can still hold a client's inquiry
+      const theirs = [...th.messages].reverse().find(m => addrOf(header(m, 'From')) !== me);
       const had = known.get(t.id);
-      if (had) { if (had.last_at.getTime() !== lastAt.getTime()) await prisma.email_inquiries.updateMany({ where: { vendor_id: v, thread_id: t.id }, data: { last_at: lastAt } }); continue; }
-      const from = header(first, 'From'), subject = header(first, 'Subject') || '(no subject)';
+      const newReply = had && theirs && Number(theirs.internalDate) > had.last_at.getTime();
+      if (had && !(newReply && !had.is_inquiry && had.source !== 'user')) {
+        if (had.last_at.getTime() !== lastAt.getTime()) await prisma.email_inquiries.updateMany({ where: { vendor_id: v, thread_id: t.id }, data: { last_at: lastAt } });
+        continue;
+      }
+      const subject = header(first, 'Subject') || '(no subject)';
+      const from = theirs ? header(theirs, 'From') : header(first, 'From');
       const fromAddr = addrOf(from);
       let yes, source;
       if (byRule.has(t.id)) { yes = true; source = 'rule'; }
-      else if (fromAddr === me || machineMail(fromAddr, subject) || ignored.has(fromAddr)) { yes = false; source = 'none'; }   // the owner, machine mail, or a sender he ruled out
-      else { yes = await isInquiry(from, subject, first.snippet || ''); source = yes ? 'ai' : 'none'; checked++; }
-      await prisma.email_inquiries.create({ data: { vendor_id: v, thread_id: t.id, is_inquiry: yes, source, from_addr: from.slice(0, 200), subject: subject.slice(0, 300), last_at: lastAt } });
+      else if (!theirs || machineMail(fromAddr, subject) || ignored.has(fromAddr)) { yes = false; source = 'none'; }   // only his own mail, machine mail, or a sender he ruled out
+      else { yes = await isInquiry(from, subject, theirs.snippet || ''); source = yes ? 'ai' : 'none'; checked++; }
+      const row = { is_inquiry: yes, source, from_addr: from.slice(0, 200), subject: subject.slice(0, 300), last_at: lastAt };
+      if (had) await prisma.email_inquiries.updateMany({ where: { vendor_id: v, thread_id: t.id }, data: row });
+      else await prisma.email_inquiries.create({ data: { vendor_id: v, thread_id: t.id, ...row } });
       if (yes) {
         found++;
-        if (!firstRun) await prisma.notifications.create({ data: { vendor_id: v, type: 'email_inquiry', title: `📧 New email inquiry from ${from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || fromAddr}`, body: subject.slice(0, 200) } });
+        if (!quiet) await prisma.notifications.create({ data: { vendor_id: v, type: 'email_inquiry', title: `📧 New email inquiry from ${from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || fromAddr}`, body: subject.slice(0, 200) } });
       }
     }
     page = d.nextPageToken || '';
-  } while (page && firstRun);
+  } while (page && quiet);
   return { checked, found };
 }
 
@@ -142,4 +153,13 @@ export async function notAnInquiry(v, threadId) {
     }
   }
   return { ok: true, sender };
+}
+
+/** one-off: conversations the owner started were never judged on the client's replies — look at them again */
+export async function rejudgeOwnerStarted(v) {
+  const st = await status(v);
+  const me = String(st.email || '').toLowerCase();
+  const rows = await prisma.email_inquiries.findMany({ where: { vendor_id: Number(v), is_inquiry: false, source: 'none', from_addr: { contains: me, mode: 'insensitive' } } });
+  await prisma.email_inquiries.updateMany({ where: { id: { in: rows.map(r => r.id) } }, data: { last_at: new Date(0) } });   // "a new reply since" for every one of them
+  return rows.length;
 }
