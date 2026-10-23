@@ -2,7 +2,9 @@
  * 🧠 Inquiry detector (Raj, 2026-10-23): "I don't want to miss any inquiry at all."
  * Every new inbox conversation is looked at ONCE:
  *  - it matches the rules of a filter that has the detector switched on (e.g. "New Inquiry from…")  → inquiry, no AI
- *  - otherwise the AI reads sender + subject + opening and answers yes/no — told that when unsure, the answer is YES
+ *  - machine mail (payment notices, app notifications, receipts, codes, the owner's own mail) → not an inquiry, no AI
+ *  - otherwise the AI reads sender + subject + opening: a real person writing about THEIR event is an inquiry, and
+ *    when it is unsure about such a person it answers YES; other businesses' offers and marketing are not
  * Inquiries appear in that filter's chip, raise a 🔔 notification (which Tornado and Gale read out on waking),
  * and Smart reminders still nag about any left unanswered. The first run looks back 90 days.
  */
@@ -12,29 +14,40 @@ import { gmail, header, status, getFilters, filterQuery } from './inboxGmail.js'
 
 const FIRST_LOOKBACK = 'newer_than:90d', RECENT = 'newer_than:3d';
 
-async function aiSaysInquiry(from, subject, text) {
+const AUTOMATED_SENDER = /no-?reply|do-?not-?reply|notify@|notifications?@|mailer|@payments\.|interac|aftershoot|accounts\.google|google\.com|square|stripe|paypal|calendar|support@|billing@|news(letter)?@|marketing@|team@/i;
+const AUTOMATED_SUBJECT = /interac e-transfer|e-transfer|receipt|invoice|payment (received|sent)|your order|order confirm|verification code|security alert|left a review|has been (edited|culled)|your album|webinar|newsletter/i;
+const machineMail = (fromAddr, subject) => AUTOMATED_SENDER.test(fromAddr) || AUTOMATED_SUBJECT.test(subject);
+const KEYWORDS = /inquir|enquir|wedding|engagement|quote|pric|availab|book|package|photograph|videograph|shoot|our event|my event/i;
+const addrOf = (from) => ((String(from || '').match(/<([^>]+)>/) || [])[1] || from || '').toLowerCase().trim();
+
+/** the AI's answer: 'yes', 'no', or null when it could not be asked */
+async function aiVerdict(from, subject, text) {
   const key = await getSetting('agent_api_key', '');
-  if (!key) return /inquir|enquir|wedding|engagement|quote|pric|availab|book|package|photograph|videograph|shoot|event/i.test(`${subject} ${text}`);
+  if (!key) return null;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({ model: (await getSetting('agent_model', '')) || 'claude-haiku-5-5', max_tokens: 5, messages: [{ role: 'user', content:
-        `This email arrived at a wedding photography / videography / live-streaming business. Is it from a person (a possible or existing client, or someone on their behalf) asking about, arranging or following up on the business's services — an inquiry, quote, prices, availability, booking, packages, a shoot, a question about their event? Answer NO only for clearly unrelated mail: newsletters, marketing, companies selling to the business, receipts, payment notices, automated notifications. When unsure, answer YES. Answer only yes or no.\n\nFrom: ${from}\nSubject: ${subject}\n\n${String(text).slice(0, 1200)}` }] }),
+        `This email arrived at a wedding photography / videography / live-streaming business. Answer YES if a real person (a possible or existing client, or someone writing on their behalf) is asking about, arranging or following up on hiring the business for THEIR event — an inquiry, prices, packages, availability, a booking, a quote they want, a question about their shoot. Answer NO for: payment notifications (e-Transfers), app or software notifications, reviews, newsletters and marketing, and other businesses offering the business something (partnerships, referrals, leasing, products, services, quotes they are selling). If a person is writing about their own event and you are unsure, answer YES. Answer only yes or no.\n\nFrom: ${from}\nSubject: ${subject}\n\n${String(text).slice(0, 1200)}` }] }),
     });
-    const d = await r.json();
-    const a = (d.content || []).map(x => x.text || '').join('').trim().toLowerCase();
-    return !a.startsWith('no');   // anything but a clear "no" counts — never miss one
-  } catch { return true; }
+    const a = ((await r.json()).content || []).map(x => x.text || '').join('').trim().toLowerCase();
+    return a.startsWith('yes') ? 'yes' : a.startsWith('no') ? 'no' : null;
+  } catch { return null; }
+}
+/** decide a new conversation; without an AI answer the word rule decides (never "yes" to everything) */
+async function isInquiry(from, subject, text) {
+  const v = await aiVerdict(from, subject, text);
+  return v ? v === 'yes' : KEYWORDS.test(`${subject} ${text}`);
 }
 
 /** one vendor: look at conversations not seen before; keep each conversation's latest time up to date */
 export async function scanInquiries(v) {
   const st = await status(v);
-  if (!st.connected || st.sandbox) return { checked: 0 };
+  if (!st.connected || st.sandbox) return { checked: 0, found: 0 };
   const me = String(st.email || '').toLowerCase();
   const detecting = (await getFilters(v)).filter(f => f.ai);
-  if (!detecting.length) return { checked: 0 };
+  if (!detecting.length) return { checked: 0, found: 0 };
   const firstRun = !(await prisma.email_inquiries.count({ where: { vendor_id: v } }));
   const window = firstRun ? FIRST_LOOKBACK : RECENT;
 
@@ -62,11 +75,11 @@ export async function scanInquiries(v) {
       const had = known.get(t.id);
       if (had) { if (had.last_at.getTime() !== lastAt.getTime()) await prisma.email_inquiries.updateMany({ where: { vendor_id: v, thread_id: t.id }, data: { last_at: lastAt } }); continue; }
       const from = header(first, 'From'), subject = header(first, 'Subject') || '(no subject)';
-      const fromAddr = ((from.match(/<([^>]+)>/) || [])[1] || from).toLowerCase().trim();
+      const fromAddr = addrOf(from);
       let yes, source;
       if (byRule.has(t.id)) { yes = true; source = 'rule'; }
-      else if (fromAddr === me) { yes = false; source = 'none'; }                  // started by the owner himself
-      else { yes = await aiSaysInquiry(from, subject, first.snippet || ''); source = yes ? 'ai' : 'none'; checked++; }
+      else if (fromAddr === me || machineMail(fromAddr, subject)) { yes = false; source = 'none'; }   // the owner himself, or machine mail
+      else { yes = await isInquiry(from, subject, first.snippet || ''); source = yes ? 'ai' : 'none'; checked++; }
       await prisma.email_inquiries.create({ data: { vendor_id: v, thread_id: t.id, is_inquiry: yes, source, from_addr: from.slice(0, 200), subject: subject.slice(0, 300), last_at: lastAt } });
       if (yes) {
         found++;
@@ -76,6 +89,16 @@ export async function scanInquiries(v) {
     page = d.nextPageToken || '';
   } while (page && firstRun);
   return { checked, found };
+}
+
+/** look again at earlier AI picks with the current rules — only a clear "no" (or machine mail) removes one */
+export async function recheckInquiries(v) {
+  let removed = 0;
+  for (const r of await prisma.email_inquiries.findMany({ where: { vendor_id: Number(v), source: 'ai', is_inquiry: true } })) {
+    const no = machineMail(addrOf(r.from_addr), r.subject || '') || (await aiVerdict(r.from_addr, r.subject, '')) === 'no';
+    if (no) { await prisma.email_inquiries.update({ where: { id: r.id }, data: { is_inquiry: false, source: 'none' } }); removed++; }
+  }
+  return removed;
 }
 
 /** every vendor whose email is connected */
