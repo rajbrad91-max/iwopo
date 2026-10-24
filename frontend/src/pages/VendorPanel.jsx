@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
+import PreEvents from '../components/PreEvents';
 import { WEDDING_AGREEMENT } from '../lib/contractStarters';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
@@ -3543,6 +3544,9 @@ function LeadDetail({ lead, onBack, onSaved }) {
           </div>
         );
       })()}
+
+      {/* 🗓️ Pre-events — Mehndi, Jaggo, Reception… printed in the contract's schedule */}
+      <PreEvents key={lead.id} lead={lead} onSaved={onSaved} />
 
       {/* 📦 Packages — in the left column under the event details, since it's
           part of reading the enquiry rather than a side action */}

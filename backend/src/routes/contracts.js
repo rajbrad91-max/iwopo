@@ -112,7 +112,7 @@ function fmtContractDate(d) {
   if (!ymd) return '';
   const [y, mo, da] = ymd.split('-').map(Number);
   const utc = new Date(Date.UTC(y, mo - 1, da));
-  return utc.toLocaleDateString('en-GB', {
+  return utc.toLocaleDateString('en-US', {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   });
 }
@@ -217,6 +217,30 @@ function gettingReadyRows(lead) {
   return [];
 }
 
+/** "5.5 hours" between two "HH:MM" times (past midnight counts as the next day) */
+function hoursBetween(from, to) {
+  if (!from || !to) return '';
+  const [fh, fm] = from.split(':').map(Number), [th, tm] = to.split(':').map(Number);
+  let mins = (th * 60 + tm) - (fh * 60 + fm);
+  if (mins <= 0) mins += 24 * 60;
+  const h = Math.round(mins / 30) / 2;
+  return `${h} hour${h === 1 ? '' : 's'}`;
+}
+/** 🗓️ the lead's pre-events, in date order, under a gold heading — like the reference agreement */
+function preEventsHtml(lead, fmtTime, fmtDate) {
+  const list = (Array.isArray(lead.pre_events) ? lead.pre_events : []).filter(e => e && e.name)
+    .sort((x, y) => String(x.date || '9999').localeCompare(String(y.date || '9999')));
+  if (!list.length) return '';
+  return '<h2 class="ct-gold">Pre-Events</h2>' + list.map(e => `<h3>${escapeHtml(e.name)}</h3>` + kvTable('ct-kv', [
+    ['Date', e.date ? fmtDate(new Date(`${e.date}T12:00:00Z`)) : ''],
+    ['Time', e.from ? `${fmtTime(e.from)} – ${e.to ? fmtTime(e.to) : 'TBC'}` : ''],
+    ['Hours', hoursBetween(e.from, e.to)],
+    ['Location', e.location],
+    ['Est Guests', e.guests],
+    ['Service', e.service],
+  ])).join('');
+}
+
 function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   const main = kvTable('ct-kv', [
     ['Date', fmtDate(lead.event_date)],
@@ -229,7 +253,8 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   if (!main) return '';
   const getting = kvTable('ct-kv', gettingReadyRows(lead));
   return `<h3>Main Event — ${escapeHtml(lead.event_type || 'Event')}</h3>${main}`
-    + (getting ? `<h3>Getting Ready Coverage</h3>${getting}` : '');
+    + (getting ? `<h3>Getting Ready Coverage</h3>${getting}` : '')
+    + preEventsHtml(lead, fmtTime, fmtDate);
 }
 
 /** 📦 Package inclusions as the reference shows them: a package line ending in ":" ("Team & Staffing:") heads a

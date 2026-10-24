@@ -1,0 +1,12 @@
+/* 🗓️ Pre-events card on the lead page (PreEvents.jsx) */
+.pe-empty { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+.pe-row { display: flex; gap: 8px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+.pe-row:first-of-type { border-top: 0; }
+.pe-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }   /* boxes flow to fit the card */
+.pe-f { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.pe-f input { font: inherit; font-size: 13.5px; font-weight: 400; color: var(--text); padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2, #fff); min-width: 0; }
+.pe-wide { grid-column: 1 / -1; }
+.pe-remove { flex: none; margin-top: 18px; border: 0; background: transparent; font-size: 16px; cursor: pointer; }
+.pe-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.pe-save { font-weight: 700; }
+.pe-msg { font-size: 13px; color: var(--muted); }

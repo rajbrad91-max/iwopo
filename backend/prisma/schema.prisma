@@ -406,6 +406,8 @@ model leads {
   booking_notes           String?
   ceremony                String?
   client_token            String?              @unique @db.VarChar(64)
+  /// 🗓️ Mehndi, Jaggo, Reception… — [{ name, date, from, to, location, guests, service }] (Raj, 2026-10-24)
+  pre_events              Json                 @default("[]")
   custom_data             Json?                @default("{}")
   role                    String?              @db.VarChar(50)
   instagram               String?              @db.VarChar(120)

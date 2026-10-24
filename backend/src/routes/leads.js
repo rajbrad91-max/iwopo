@@ -466,6 +466,21 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/leads/:id → update (scoped)
+/** 🗓️ pre-events as typed on the lead page — named ones only, at most 20, each field trimmed to shape */
+function cleanPreEvents(v) {
+  if (!Array.isArray(v)) return [];
+  const t = (x, n) => String(x ?? '').trim().slice(0, n);
+  return v.slice(0, 20).map(e => ({
+    name: t(e?.name, 80),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(e?.date) ? e.date : '',
+    from: /^\d{2}:\d{2}$/.test(e?.from) ? e.from : '',
+    to: /^\d{2}:\d{2}$/.test(e?.to) ? e.to : '',
+    location: t(e?.location, 200),
+    guests: e?.guests === '' || e?.guests == null || Number.isNaN(Number(e.guests)) ? '' : String(Math.max(0, Math.round(Number(e.guests)))),
+    service: t(e?.service, 80),
+  })).filter(e => e.name);
+}
+
 router.put('/:id', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   const id = Number(req.params.id);
@@ -499,6 +514,7 @@ router.put('/:id', requireAuth, async (req, res) => {
          public form and lose the enquiry with no clue why. */
       data[f] = fitColumn(f, coerceLeadField(f, mapped[f]));
     }
+    if (b.pre_events !== undefined) data.pre_events = cleanPreEvents(b.pre_events);   // 🗓️
     if (!Object.keys(data).length) return res.json({ ok: true });
     data.updated_at = new Date();
     const lead = await prisma.leads.update({ where: { id }, data });
