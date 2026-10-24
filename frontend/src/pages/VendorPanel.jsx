@@ -5830,7 +5830,7 @@ function SettingsView({ user, onProfileChange }) {
 
         <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 18 }}>🔑 Change password</label>
         <PasswordInput style={box} value={pw.current} onChange={e => setPw({ ...pw, current: e.target.value })} placeholder="Current password" />
-        <PasswordInput style={box} value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} placeholder="New password (min 6)" />
+        <PasswordInput style={box} checklist value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} placeholder="New password" />
         <button className="refresh" onClick={savePw} style={{ marginTop: 8 }}>Change password</button>
       </div>
       )}

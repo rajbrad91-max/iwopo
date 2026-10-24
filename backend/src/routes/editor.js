@@ -12,6 +12,7 @@
  *    once. The vendor is always the editor's own row's vendor.
  */
 import express from 'express';
+import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.js';
@@ -58,7 +59,8 @@ router.post('/signup', authLimit, async (req, res) => {
   try {
     const email = norm(req.body?.email);
     const password = String(req.body?.password || '');
-    if (password.length < 8) return res.status(400).json({ error: 'Use at least 8 characters for the password' });
+    const weak = await checkPassword(password);   // 🔐 the shared password rules
+    if (weak.length) return res.status(400).json(weakAnswer(weak));
     const invites = await prisma.raw_editors.findMany({ where: { email, revoked_at: null } });
     // the same answer whether the email is unknown or already joined — nobody can probe who is an editor
     const open = invites.filter(r => !r.password_hash);

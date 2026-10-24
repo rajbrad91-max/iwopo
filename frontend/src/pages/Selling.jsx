@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { passwordReady } from '../lib/passwordRules';
 import VerifyCode from '../components/VerifyCode';
 import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
@@ -227,6 +228,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   async function handleSignup() {
     setError('');
     if (!form.businessName || !form.email || !form.password) { setError('Please fill in all fields'); return; }
+    if (!passwordReady(form.password, { email: form.email, business: form.businessName })) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
     setLoading(true);
     try {
       const r = await api.signup(form.businessName, form.email, form.password);
@@ -489,7 +491,7 @@ export default function Selling({ onSignup, onGoLogin }) {
                 <label htmlFor="sl-email">Email</label>
                 <input id="sl-email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@studio.com" />
                 <label htmlFor="sl-pass">Password</label>
-                <PasswordInput id="sl-pass" value={form.password} onChange={e => set('password', e.target.value)}
+                <PasswordInput id="sl-pass" checklist={{ email: form.email, business: form.businessName }} value={form.password} onChange={e => set('password', e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSignup()} placeholder="••••••••" />
                 {error && <div className="sl-err">{error}</div>}
                 <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>

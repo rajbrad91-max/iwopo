@@ -24,7 +24,7 @@ export async function issueCode(userId, purpose, { newEmail = null, to } = {}) {
   await prisma.email_codes.create({ data: { user_id: userId, purpose, code_hash: keyed(code, userId, purpose), new_email: newEmail, expires_at: new Date(Date.now() + TTL_MS) } });
   if (mailSandbox()) return { code, sandbox: true, sent: false };
   try {
-    const { subject, text, html } = codeMail(code, purpose);
+    const { subject, text, html } = codeMail(code, purpose, to);
     await sendPlatformEmail(to, subject, text, html);
     return { sent: true };
   } catch (e) { return { sent: false, error: e.code === 'no_platform_smtp' ? 'not_configured' : e.message }; }
@@ -63,12 +63,14 @@ function shell(title, body) {
 <tr><td><h1 style="margin:0 0 16px;font-size:20px">${esc(title)}</h1>${body}</td></tr>
 </table><p style="color:#9ca3af;font-size:12px;margin:14px 0 0">iwopo · sent automatically, please don't reply</p></td></tr></table></body></html>`;
 }
-function codeMail(code, purpose) {
+function codeMail(code, purpose, to) {
+  const link = `${process.env.APP_URL || 'https://iwopo.com'}/verify?email=${encodeURIComponent(to || '')}&code=${code}`;
   const subject = purpose === 'change' ? `${code} is your code to confirm your new email` : `${code} is your iwopo verification code`;
   const lead = purpose === 'change' ? 'Use this code to confirm your new email address on iwopo:' : 'Welcome to iwopo! Use this code to confirm your email address:';
-  const text = `${lead}\n\n${code}\n\nIt works for 15 minutes. If you didn't ask for this, you can ignore this email.\n\n— iwopo`;
+  const text = `${lead}\n\n${code}\n\n${purpose === 'change' ? '' : `Or open: ${link}\n\n`}It works for 15 minutes. If you didn't ask for this, you can ignore this email.\n\n— iwopo`;
   const html = shell(purpose === 'change' ? 'Confirm your new email' : 'Confirm your email', `<p style="margin:0 0 16px">${esc(lead)}</p>
 <p style="margin:0 0 16px;font-size:32px;font-weight:800;letter-spacing:8px">${code}</p>
+${purpose === 'change' ? '' : `<p style="margin:0 0 16px"><a href="${esc(link)}" style="display:inline-block;padding:12px 22px;border-radius:10px;background:#0d9488;color:#fff;font-weight:700;text-decoration:none">Confirm my email</a></p>`}
 <p style="margin:0;color:#6b7280;font-size:13px">It works for 15 minutes. If you didn't ask for this, you can ignore this email.</p>`);
   return { subject, text, html };
 }

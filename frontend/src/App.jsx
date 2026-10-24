@@ -22,6 +22,7 @@ const VendorGallery = lazy(() => import('./pages/VendorGallery'));
 const Vote = lazy(() => import('./pages/Vote'));
 const KnowledgeFill = lazy(() => import('./pages/KnowledgeFill'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const EditorPortal = lazy(() => import('./pages/EditorPortal'));
 import { getUser, sessionMismatch, clearSession, clearTabSession } from './lib/api';
 
@@ -82,6 +83,9 @@ function AppRoutes() {
     const token = new URLSearchParams(window.location.search).get('token') || '';
     return <ResetPassword token={token} />;
   }
+
+  // ✉️ Email confirmation: /verify?email=…&code=… (the button in the sign-up email)
+  if (window.location.pathname.match(/^\/verify\/?$/)) return <VerifyEmail />;
 
   // 🗳️ Voting page: /vote
   if (window.location.pathname.match(/^\/vote\/?$/)) return <Vote />;

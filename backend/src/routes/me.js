@@ -1,4 +1,5 @@
 import { LOGO_DIR as LOGO_DIR_CFG } from '../config/paths.js';
+import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
 import { issueCode, useCode, notice } from '../lib/emailCodes.js';
 import { phoneProblem } from '../lib/phone.js';
 import * as objects from '../lib/objectStore.js';
@@ -259,7 +260,8 @@ router.put('/email/confirm', requireAuth, async (req, res) => {
 router.put('/password', requireAuth, async (req, res) => {
   const { current, next } = req.body;
   if (!current || !next) return res.status(400).json({ error: 'Both passwords required' });
-  if (next.length < 6) return res.status(400).json({ error: 'New password too short (min 6)' });
+  const weak = await checkPassword(next);   // 🔐 the shared password rules
+  if (weak.length) return res.status(400).json(weakAnswer(weak));
   try {
     const me = await prisma.users.findUnique({ where: { id: req.user.id } });   // 🔒 own account only
     const ok = await bcrypt.compare(current, me.password_hash);

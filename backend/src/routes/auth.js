@@ -1,4 +1,5 @@
 import express from 'express';
+import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
 import { issueCode, useCode, notice, normEmail, emailOk } from '../lib/emailCodes.js';
 import { limit, forgive } from '../middleware/rateLimit.js';
 import bcrypt from 'bcryptjs';
@@ -88,6 +89,8 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
   const { businessName, name, email, password, plan } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
+  const weak = await checkPassword(password, { email, name, business: businessName });   // 🔐 the shared password rules
+  if (weak.length) return res.status(400).json(weakAnswer(weak));
 
   const isPaid = plan && plan !== 'trial';
   const ip = clientIp(req);
@@ -219,7 +222,8 @@ router.post('/forgot', limit({ name: 'forgot', max: 6, windowMs: 60 * 60_000 }),
 router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) return res.status(400).json({ error: 'Token and new password required' });
-  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  const weak = await checkPassword(password);   // 🔐 the shared password rules
+  if (weak.length) return res.status(400).json(weakAnswer(weak));
   try {
     const hash = crypto.createHash('sha256').update(token).digest('hex');
     const row = await prisma.password_reset_tokens.findFirst({

@@ -1,17 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 
 /**
  * ✉️ "Enter the 6-digit code we emailed you" — used by sign-up and by sign-in when an address isn't confirmed yet.
  * On staging the code is shown on screen (nothing is emailed there).
  */
-export default function VerifyCode({ email, sandboxCode, notSent, onVerified, onBack }) {
-  const [code, setCode] = useState('');
+export default function VerifyCode({ email, sandboxCode, notSent, onVerified, onBack, initialCode = '' }) {
+  const [code, setCode] = useState(initialCode);
   const [err, setErr] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
   const [wait, setWait] = useState(45);
   const [practice, setPractice] = useState(sandboxCode || '');
+  // opened from the email's button: the code is already here — check it once, straight away
+  const tried = useRef(false);
+  useEffect(() => {
+    if (tried.current || !/^\d{6}$/.test(initialCode)) return;
+    tried.current = true;
+    api.verifyEmail(email, initialCode).then(onVerified).catch(e => setErr(e.message));
+  }, [initialCode, email, onVerified]);
   useEffect(() => { if (wait <= 0) return undefined; const t = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
 
   async function verify() {

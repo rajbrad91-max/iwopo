@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { passwordReady } from '../lib/passwordRules';
 import { api } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 
@@ -12,7 +13,7 @@ export default function ResetPassword({ token }) {
   async function handleReset() {
     setError('');
     if (!password || !confirm) { setError('Fill in both fields'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (!passwordReady(password)) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
     if (password !== confirm) { setError('Passwords do not match'); return; }
     setLoading(true);
     try {
@@ -44,7 +45,7 @@ export default function ResetPassword({ token }) {
             <p className="login-sub">Choose a new password for your account</p>
 
             <label>New password</label>
-            <PasswordInput value={password} onChange={e => setPassword(e.target.value)}
+            <PasswordInput checklist value={password} onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleReset()} placeholder="At least 6 characters" />
 
             <label>Confirm password</label>
