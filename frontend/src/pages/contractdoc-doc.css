@@ -123,7 +123,7 @@
 .ct-doc .ct-kv td,
 .ct-doc .ct-kv tr:last-child th,
 .ct-doc .ct-kv tr:last-child td { border: 0; background: transparent; padding: 3px 0; font-size: 14px; }
-.ct-doc .ct-kv th { width: 26%; font-weight: 600; color: #374151; padding-right: 18px; }
+.ct-doc .ct-kv th { width: 170px; font-weight: 600; color: #374151; padding-right: 18px; }   /* label column like the reference (~125pt) */
 
 .ct-doc .ct-inc { font-weight: 700; color: #156434; }
 .ct-doc .ct-notinc { font-weight: 700; color: #9ca2ae; }

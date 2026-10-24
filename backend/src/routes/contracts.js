@@ -1076,7 +1076,7 @@ const DOC_ACTIONS = `
 const PDF_CSS = `
   body{max-width:none;margin:0;padding:0;font-size:11pt}
   .ct-doc h1,.ct-doc h2,.ct-doc h3{break-after:avoid;page-break-after:avoid}
-  .ct-doc .ct-init,.ct-doc tr,.ct-doc .ct-accept-doc .ct-details,.ct-doc .ct-signed-by,.ct-doc .ct-sig-img{break-inside:avoid;page-break-inside:avoid}
+  .ct-doc .ct-init,.ct-doc tr,.ct-doc .ct-accept-doc{break-inside:avoid;page-break-inside:avoid}   /* the whole Acceptance & Signature block stays on one page, like the reference */
 `;
 async function sendPdf(res, filename, title, inner) {
   const html = `<!doctype html><html><head><meta charset="utf-8"><base href="${process.env.APP_URL || 'https://iwopo.com'}/">
