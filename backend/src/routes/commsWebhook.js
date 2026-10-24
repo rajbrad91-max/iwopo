@@ -134,6 +134,11 @@ router.post('/', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) =>
       return res.json({ ok: true });
     }
 
+    /* 📇 Only calls and texts become timeline rows. Quo also signals contacts ("contact.created" / "contact.updated"):
+       when 862 Google contacts were copied into Quo (2026-10-23) each one was saved as an empty incoming text and the
+       Calls & Texts number showed 99+. Anything that is not a call or a message is acknowledged and ignored. */
+    if (!/^(call|message)\./.test(type)) return res.json({ ok: true, ignored: type });
+
     const ours = await ownNumbers(cfg.key).catch(() => new Set());
     const row = normalise(type, obj, ours);
     // a genuine delivery we cannot read is worth knowing about — its field names only, never its content
