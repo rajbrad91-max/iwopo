@@ -20,7 +20,6 @@ const REQUIRED = [
 // Not fatal, but worth flagging so nobody wonders why a feature is silent.
 const OPTIONAL = [
   ['APP_URL', 'used in emailed links (password reset, client portal)'],
-  ['PLATFORM_SMTP_HOST', 'platform email — password-reset emails will not send without it'],
 ];
 
 export function checkEnv() {

@@ -272,22 +272,22 @@ export async function notifyNewLead(lead) {
 }
 
 // 🏢 platform transporter (uses env PLATFORM_SMTP_* — set before launch)
-function platformTransporter() {
-  if (PLATFORM.host && PLATFORM.user) {
-    return nodemailer.createTransport({
-      host: PLATFORM.host, port: PLATFORM.port, secure: PLATFORM.port === 465,
-      auth: { user: PLATFORM.user, pass: PLATFORM.pass },
-    });
-  }
-  return null;
+/* 🏢 iwopo's own mail account, for sign-up codes, password resets and system notices. It reads the Super Admin
+   settings (platformMail — the server file only as a fallback), the same place "Send a test" reads: before
+   (2026-10-23) this read the server file alone, so saving the account in Super Admin made the test pass while
+   sign-up codes still could not be sent. */
+async function platformTransporter() {
+  const m = await platformMail();
+  if (!m.ready) return null;
+  return { m, t: nodemailer.createTransport({ host: m.host, port: m.port, secure: m.port === 465, auth: { user: m.user, pass: m.pass } }) };
 }
 
 // 📤 send a platform-level email (password resets, system notices).
 // Throws { code:'no_platform_smtp' } when env creds aren't set yet.
 export async function sendPlatformEmail(to, subject, text, html) {
-  const t = platformTransporter();
-  if (!t) { const e = new Error('Platform email is not configured yet.'); e.code = 'no_platform_smtp'; throw e; }
-  await t.sendMail({ from: `"iwopo" <${PLATFORM.from}>`, to, subject, text, html });
+  const p = await platformTransporter();
+  if (!p) { const e = new Error('Platform email is not configured yet.'); e.code = 'no_platform_smtp'; throw e; }
+  await p.t.sendMail({ from: `"${p.m.fromName}" <${p.m.from || p.m.user}>`, to, subject, text, html });
 }
 
 /**
