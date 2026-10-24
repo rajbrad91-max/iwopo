@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import VerifyCode from '../components/VerifyCode';
+import ResetPassword from './ResetPassword';
 
 export default function Login({ onLogin, onBack }) {
   const [mode, setMode] = useState('login'); // 'login' | 'forgot'
+  const [upgrade, setUpgrade] = useState(null);   // 🔐 ticket to replace an old weak password
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,6 +23,7 @@ export default function Login({ onLogin, onBack }) {
       onLogin(user);
     } catch (err) {
       if (err.data?.verify) { setVerify({ email: err.data.email, code: err.data.sandbox_code }); return; }
+      if (err.data?.upgrade) { setUpgrade(err.data.ticket); return; }   // 🔐 an old weak password: choose a stronger one first
       setError(err.message === 'Invalid credentials'
         ? 'That email or password is not right.'
         : err.message);
@@ -42,6 +45,12 @@ export default function Login({ onLogin, onBack }) {
       setLoading(false);
     }
   }
+
+  if (upgrade) return (
+    <ResetPassword token={upgrade} heading="Please choose a stronger password 🔐"
+      intro="Your password doesn't meet iwopo's new security rules. Choose a new one to continue — you'll go straight in."
+      onDone={async (pw) => { const { token, user } = await api.login(email, pw); setSession(token, user); onLogin(user); }} />
+  );
 
   return (
     <div className="login-wrap">

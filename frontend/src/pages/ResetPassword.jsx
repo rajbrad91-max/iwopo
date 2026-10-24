@@ -3,7 +3,8 @@ import { passwordReady } from '../lib/passwordRules';
 import { api } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 
-export default function ResetPassword({ token }) {
+/** token: a reset link's token, or the one-time ticket from signing in with a weak password (then heading / intro / onDone) */
+export default function ResetPassword({ token, heading = 'Set a new password', intro = 'Choose a new password for your account', onDone }) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
@@ -18,6 +19,7 @@ export default function ResetPassword({ token }) {
     setLoading(true);
     try {
       await api.resetPassword(token, password);
+      if (onDone) { await onDone(password); return; }   // signing in: straight into the panel
       setDone(true);
     } catch (err) {
       setError(err.message);
@@ -41,8 +43,8 @@ export default function ResetPassword({ token }) {
           </>
         ) : (
           <>
-            <h1>Set a new password</h1>
-            <p className="login-sub">Choose a new password for your account</p>
+            <h1>{heading}</h1>
+            <p className="login-sub">{intro}</p>
 
             <label>New password</label>
             <PasswordInput checklist value={password} onChange={e => setPassword(e.target.value)}

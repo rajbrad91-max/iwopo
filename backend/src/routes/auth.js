@@ -1,5 +1,5 @@
 import express from 'express';
-import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
+import { checkPassword, weakAnswer, passwordProblems, breachedCount } from '../lib/passwordPolicy.js';
 import { issueCode, useCode, notice, normEmail, emailOk } from '../lib/emailCodes.js';
 import { limit, forgive } from '../middleware/rateLimit.js';
 import bcrypt from 'bcryptjs';
@@ -71,6 +71,18 @@ router.post('/login',
   // should not be closer to a lockout than one who typed it right first time
   forgive('login-user', req, String(email).toLowerCase());
   forgive('login-ip', req);
+
+  /* 🔐 Passwords set before today's rules (Raj, 2026-10-23): the right password, but too weak or found in a data breach
+     → no session yet; a 15-minute one-time ticket to choose a stronger one, then straight in. The test site can switch
+     this off (PASSWORD_UPGRADE=off) so testers keep simple passwords there. */
+  if (process.env.PASSWORD_UPGRADE !== 'off') {
+    const weak = passwordProblems(password, { email: user.email, name: user.name });
+    if (weak.length || (await breachedCount(password)) > 0) {
+      const ticket = crypto.randomBytes(32).toString('hex');
+      await prisma.password_reset_tokens.create({ data: { user_id: user.id, token_hash: crypto.createHash('sha256').update(ticket).digest('hex'), expires_at: new Date(Date.now() + 15 * 60_000) } });
+      return res.status(403).json({ error: 'Please choose a stronger password to continue.', upgrade: true, ticket });
+    }
+  }
 
   res.json({
     token: signToken(user),
