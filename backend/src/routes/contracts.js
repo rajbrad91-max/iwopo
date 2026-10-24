@@ -1,4 +1,5 @@
 import express from 'express';
+import { htmlToPdf } from '../lib/pdf.js';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
@@ -134,7 +135,14 @@ function proseHtml(text) {
     .split(/\n\s*\n+/)
     .map(p => p.trim())
     .filter(Boolean)
-    .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+    .map((p) => {
+      // "Payment:" alone on the first line of a paragraph is that paragraph's sub-heading (like the reference agreement)
+      const [first, ...rest] = p.split('\n');
+      if (rest.length && first.trim().length < 80 && /:$/.test(first.trim())) {
+        return `<h3>${first.trim()}</h3><p>${rest.join('\n').trim().replace(/\n/g, '<br>')}</p>`;
+      }
+      return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+    })
     .join('');
 }
 
@@ -149,18 +157,34 @@ function kvTable(cls, rows) {
 }
 
 /** What was booked, at a glance. */
-function bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime) {
+/** a lead's answer to an inquiry-form question, found by the question's wording */
+function formAnswer(lead, re) {
+  const snap = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
+  const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
+  const f = snap.find(x => re.test(x.label || ''));
+  if (!f) return '';
+  const v = f.maps_to && lead[f.maps_to] != null ? lead[f.maps_to] : cd[f.id];
+  return v == null || v === '' || typeof v === 'object' ? '' : String(v);
+}
+const COUNT_WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+/** "Two Photographers" from the crew on the booking (nothing when nobody of that kind is booked) */
+function crewCount(crew, re, one, many) {
+  const n = (crew || []).filter(c => re.test(`${c.duty || ''} ${c.crew_members?.role || ''}`)).length;
+  return n ? `${COUNT_WORDS[n] || n} ${n === 1 ? one : many}` : '';
+}
+
+/** 🧾 Booking Details — the reference agreement's first table (Raj, 2026-10-24) */
+function bookingDetailsHtml(lead, pkgName, crew) {
   return kvTable('ct-details', [
     ['Client Name', lead.name],
     ['Phone', lead.phone],
     ['Email', lead.email],
-    ['Event Type', lead.event_type],
+    ['Event Type', formAnswer(lead, /type of event|event type/i) || lead.event_type],
     ['Package', pkgName === '—' ? '' : pkgName],
-    ['Date', fmtDate(lead.event_date)],
-    ['Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : ''],
-    ['Location', lead.location],
-    ['Guests', lead.guests],
-    ['Total', cash(money.final_total)],
+    ['Coverage Type', formAnswer(lead, /what do you need|coverage type|services? needed/i)],
+    ['Sides Covered', formAnswer(lead, /side/i)],
+    ['Photographers', crewCount(crew, /photo/i, 'Photographer', 'Photographers')],
+    ['Videographers', crewCount(crew, /video|cine/i, 'Videographer', 'Videographers')],
   ]);
 }
 
@@ -197,9 +221,10 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   const main = kvTable('ct-kv', [
     ['Date', fmtDate(lead.event_date)],
     ['Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : ''],
-    ['Hours', hoursLabel(lead)],
+    ['Hours', String(hoursLabel(lead) || '').replace(/\bhrs\b/g, 'hours').replace(/\bhr\b/g, 'hour')],
     ['Location', lead.location],
-    ['Guests', lead.guests],
+    ['Est Guests', lead.guests],
+    ['Service', formAnswer(lead, /what do you need|coverage type|services? needed/i)],
   ]);
   if (!main) return '';
   const getting = kvTable('ct-kv', gettingReadyRows(lead));
@@ -207,34 +232,20 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
     + (getting ? `<h3>Getting Ready Coverage</h3>${getting}` : '');
 }
 
-/**
- * One package inclusion → one open row, same shape as Main Event.
- * The right cell is the line the package already has. The left cell only
- * names which words that line uses. A line that is not in the package
- * is never added.
- */
-function inclusionRow(line) {
-  const text = String(line ?? '').replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ');
-  if (!text) return null;
-  const colon = text.match(/^([^:]{1,40}):\s+(.+)$/);
-  if (colon) return [colon[1].trim(), colon[2].trim()];
-  const named = [
-    [/\bdrone\b/i, 'Drone'],
-    [/\b(photographer|videographer|shooter)s?\b/i, 'Team'],
-    [/\b(deliver\w*|weeks?)\b/i, 'Delivery'],
-    [/\bhours?\b/i, 'Hours'],
-    [/\bphotos?\b/i, 'Photos'],
-    [/\b(videos?|4k|films?)\b/i, 'Video'],
-    [/\b(albums?|prints?|frames?|books?)\b/i, 'Prints'],
-    [/\b(galler(?:y|ies)|usbs?|sticks?)\b/i, 'Gallery'],
-  ].find(([re]) => re.test(text));
-  return [named ? named[1] : 'Included', text];
-}
-
-/** Package inclusion lines, in the same open table as Main Event. */
+/** 📦 Package inclusions as the reference shows them: a package line ending in ":" ("Team & Staffing:") heads a
+    group, the lines after it are its bullets; a package without such lines is one plain bullet list. */
 function deliverablesHtml(inclusions) {
-  const rows = (inclusions || []).map(inclusionRow).filter(Boolean);
-  return kvTable('ct-kv', rows);
+  const groups = []; let cur = null;
+  for (const raw of inclusions || []) {
+    const text = String(raw ?? '').replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ');
+    if (!text) continue;
+    const head = text.match(/^(.{2,60}):$/);
+    if (head) { cur = { head: head[1], items: [] }; groups.push(cur); continue; }
+    if (!cur) { cur = { head: '', items: [] }; groups.push(cur); }
+    cur.items.push(text);
+  }
+  return groups.filter(g => g.items.length)
+    .map(g => `${g.head ? `<h3>${escapeHtml(g.head)}</h3>` : ''}<ul>${g.items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`).join('');
 }
 
 function unescapeHtml(s) {
@@ -265,11 +276,9 @@ export function upgradeDeliverables(html) {
  */
 const OPTIONAL_SERVICES = [
   ['Drone Coverage', ['drone', 'aerial']],
-  ['Live Feed', ['live feed', 'live-feed']],
+  ['Live Feed Service', ['live feed', 'live-feed']],
   ['Live Streaming', ['live stream', 'live-stream', 'streaming']],
-  ['Next Day Edit', ['next day edit', 'nde']],
-  ['Album', ['album']],
-  ['Second Shooter', ['second shooter', '2nd shooter']],
+  ['Next Day Edit (NDE)', ['next day edit', 'nde']],
 ];
 function servicesSummaryHtml(inclusions) {
   const hay = inclusions.join(' ').toLowerCase();
@@ -290,9 +299,17 @@ function crewHtml(crew, fmtTime) {
   ]));
 }
 
-/** Logo beside the vendor's own header lines — a two-column band across the top. */
-function headbandHtml(headerText, logoPath) {
-  const lines = escapeHtml(headerText || '').split('\n').map(l => l.trim()).filter(Boolean);
+/** Logo beside the vendor's details — the business name, then the template's own header lines (tagline, address,
+    website… whatever the vendor typed), then phone | email unless a line already gives them. */
+function headbandHtml(headerText, logoPath, v = {}) {
+  const typed = String(headerText || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const contact = [v.phone, v.email].filter(Boolean);
+  const said = (x) => typed.some(l => l.includes(x));
+  const lines = [
+    ...(v.name && !typed.some(l => l.toLowerCase() === String(v.name).toLowerCase()) ? [v.name] : []),
+    ...typed,
+    ...(contact.length && !contact.some(said) ? [contact.join(' | ')] : []),
+  ].map(escapeHtml);
   const info = lines.length ? `<p>${lines.join('<br>')}</p>` : '';
   const logo = logoPath ? `<img class="ct-logo" src="/api/me/logo/${escapeHtml(logoPath)}" alt="" />` : '';
   if (!logo && !info) return '';
@@ -407,7 +424,7 @@ export async function buildContractBody(template, lead, businessName, opts = {})
       where: { vendor_id: lead.vendor_id }, select: { currency: true, time_format: true, timezone: true }, // 🔒 the lead's owner
     }),
     prisma.vendors.findUnique({
-      where: { id: lead.vendor_id }, select: { country: true, logo_path: true },
+      where: { id: lead.vendor_id }, select: { country: true, logo_path: true, phone: true, email: true },
     }),
   ]);
   const chosen = forceId
@@ -448,9 +465,11 @@ export async function buildContractBody(template, lead, businessName, opts = {})
     '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
     '{{today_date}}': today,
     '{{company_name}}': businessName || '—',
+    '{{company_phone}}': vrow?.phone || '',
+    '{{company_email}}': vrow?.email || '',
   };
   const blocks = {
-    booking_details: bookingDetailsHtml(lead, pkgName, money, cash, fmtDate, fmtTime),
+    booking_details: bookingDetailsHtml(lead, pkgName, crew),
     coverage_schedule: coverageScheduleHtml(lead, fmtTime, fmtDate),
     deliverables: deliverablesHtml(inclusions),
     services_summary: servicesSummaryHtml(inclusions),
@@ -465,13 +484,17 @@ export async function buildContractBody(template, lead, businessName, opts = {})
   const legalHtml = legal.trim()
     ? `<div class="ct-sec"><h2>Terms &amp; Conditions</h2>${proseHtml(substitute(legal, values))}</div>` : '';
 
-  return [
-    headbandHtml(substitute(template.header || '', values), vrow?.logo_path),
+  const doc = [
+    headbandHtml(substitute(template.header || '', values), vrow?.logo_path, { name: businessName, phone: vrow?.phone, email: vrow?.email }),
     `<h1 class="ct-doc-title">${escapeHtml(template.name || 'Service Agreement')}</h1>`,
     `<p class="ct-doc-for">FOR ${escapeHtml(lead.name || '')} — ${escapeHtml(lead.event_type || '')} on ${escapeHtml(fmtDate(lead.event_date))}</p>`,
     secHtml,
     legalHtml,
   ].filter(Boolean).join('');
+  // 🎨 the template's look travels inside the document, so preview, signing and the delivered copy all show it
+  const accent = CONTRACT_ACCENTS.includes(template.accent) ? template.accent : 'gold';
+  const fonts = CONTRACT_FONTS.includes(template.font_style) ? template.font_style : 'classic';
+  return `<div class="ct-theme ct-accent-${accent} ct-fonts-${fonts}">${doc}</div>`;
 }
 
 /**
@@ -534,17 +557,27 @@ router.get('/templates', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* 🎨 a template's look — the vendor's choice, from a fixed list (each one is a class in contractdoc-doc.css) */
+export const CONTRACT_ACCENTS = ['gold', 'navy', 'black', 'rose', 'emerald', 'plum'];
+export const CONTRACT_FONTS = ['classic', 'modern', 'traditional'];
+function lookOf({ accent, font_style }, onlyGiven = false) {
+  const out = {};
+  if (!onlyGiven || accent !== undefined) out.accent = CONTRACT_ACCENTS.includes(accent) ? accent : 'gold';
+  if (!onlyGiven || font_style !== undefined) out.font_style = CONTRACT_FONTS.includes(font_style) ? font_style : 'classic';
+  return out;
+}
+
 router.post('/templates', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
     if (!v) return res.status(400).json({ error: 'No vendor' });
-    const { name, event_type, header, body, legal_terms, sections } = req.body;
+    const { name, event_type, header, body, legal_terms, sections, accent, font_style } = req.body;
     const template = await prisma.contract_templates.create({
       data: {
         vendor_id: Number(v),                   // 🔒 tenancy
         name: name || 'My Contract',
         event_type: event_type || null,
-        header: header || '', body: body || '', legal_terms: legal_terms || '',
+        header: header || '', body: body || '', legal_terms: legal_terms || '', ...lookOf({ accent, font_style }),
         sections: cleanSections(sections),
       },
     });
@@ -565,13 +598,14 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    const { name, event_type, header, body, legal_terms, sections } = req.body;
+    const { name, event_type, header, body, legal_terms, sections, accent, font_style } = req.body;
     // COALESCE($n, col): only overwrite what was supplied (event_type is always set)
     const data = { event_type: event_type ?? null, updated_at: new Date() };
     if (name !== undefined && name !== null) data.name = name;
     if (header !== undefined && header !== null) data.header = header;
     if (body !== undefined && body !== null) data.body = body;
     if (legal_terms !== undefined && legal_terms !== null) data.legal_terms = legal_terms;
+    Object.assign(data, lookOf({ accent, font_style }, true));
     if (sections !== undefined) data.sections = cleanSections(sections);
     const template = await prisma.contract_templates.update({ where: { id }, data });
     res.json({ template });
@@ -966,7 +1000,8 @@ function esc(s) {
 /* 📜 the contract document's look comes from ONE file, also used by the app (Raj, 2026-10-24):
    frontend/src/pages/contractdoc-doc.css — so the delivered contract can never drift from what was previewed and signed */
 const SHARED_DOC_CSS = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../frontend/src/pages/contractdoc-doc.css'), 'utf8');
-const DOC_CSS = `
+const FONT_IMPORT = (SHARED_DOC_CSS.match(/^@import url\([^)]*\)[^;]*;/m) || [''])[0];   // the whole url(…) — the address itself contains ";"   // must be first, or the browser ignores it
+const DOC_CSS = `${FONT_IMPORT}
   body{font-family:Inter,"Segoe UI",system-ui,sans-serif;color:#1f2937;background:#fff;
        max-width:816px;margin:40px auto;padding:0 32px 48px;line-height:1.8;font-size:14.5px}
   .hd{text-align:center;border-bottom:2px solid #222;padding-bottom:18px;margin-bottom:28px}
@@ -974,7 +1009,7 @@ const DOC_CSS = `
   .biz{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#666;margin:0}
   h1{font-size:24px;margin:8px 0 0}
   .body{}
-  ${SHARED_DOC_CSS}
+  ${SHARED_DOC_CSS.replace(FONT_IMPORT, '')}
   .ct-signed-init{display:inline-block;line-height:1.2;padding:0 4px}
   .sig{margin-top:36px;border-top:1px solid #ccc;padding-top:22px}
   .sig img{max-height:90px;display:block;margin-bottom:6px}
@@ -1011,9 +1046,30 @@ const DOC_ACTIONS = `
   </style>
 `;
 
+/* 📄 the same document as a real PDF — Letter, the reference's margins, fonts embedded. Headings stay with what follows,
+   initials and the signature block are never split across pages. If the PDF can't be made, the web version is sent. */
+const PDF_CSS = `
+  body{max-width:none;margin:0;padding:0;font-size:11pt}
+  .ct-doc h1,.ct-doc h2,.ct-doc h3{break-after:avoid;page-break-after:avoid}
+  .ct-doc .ct-init,.ct-doc tr,.ct-doc .ct-accept-doc .ct-details,.ct-doc .ct-signed-by,.ct-doc .ct-sig-img{break-inside:avoid;page-break-inside:avoid}
+`;
+async function sendPdf(res, filename, title, inner) {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><base href="${process.env.APP_URL || 'https://iwopo.com'}/">
+<title>${esc(title)}</title><style>${DOC_CSS}${PDF_CSS}</style></head><body>${inner}</body></html>`;
+  try {
+    const pdf = await htmlToPdf(html);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf"`);
+    res.send(pdf);
+  } catch (e) {
+    console.error('[contracts] PDF failed, sending the web version:', e.message);
+    sendDoc(res, `${filename}.html`, title, inner);
+  }
+}
+
 function sendDoc(res, filename, title, inner) {
   const html = `<!doctype html><html><head><meta charset="utf-8">
-<title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${DOC_ACTIONS}${inner.includes('ct-doc-title') ? `<div class="ct-doc">${inner}</div>` : inner}</body></html>`;
+<title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${DOC_ACTIONS}${inner}</body></html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   // inline, not attachment: read it first, save it if you want it
   res.setHeader('Content-Disposition', `inline; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
@@ -1026,7 +1082,7 @@ router.get('/download/:token', async (req, res) => {
     const c = await prisma.contracts.findFirst({
       where: { token: req.params.token, status: 'signed' },   // token is the access key
       include: {
-        leads: { select: { name: true } },
+        leads: { select: { name: true, email: true } },
       },
     });
     if (!c) return res.status(404).send('Signed contract not found');
@@ -1050,21 +1106,41 @@ router.get('/download/:token', async (req, res) => {
       `<span class="ct-signed-init ct-hand">${esc(initials)}</span>`
     );
 
-    sendDoc(res, `contract-${c.leads?.name || c.id}-${String(c.signed_at).slice(0, 10)}.html`, c.title, `
-      <div class="ct-doc">${body}</div>
-      <div class="sig">
-        ${c.signature_data ? `<img src="${esc(c.signature_data)}" alt="Signature">` : ''}
-        <p class="meta">
-          <b>Signed by:</b> ${esc(c.signed_name || '—')}<br>
-          <b>Date:</b> ${c.signed_at ? new Date(c.signed_at).toUTCString() : '—'}<br>
-          <b>IP address:</b> ${esc(c.signed_ip || '—')}<br>
-          <b>Document fingerprint (SHA-256):</b> ${esc(c.doc_sha256 || '—')}
-        </p>
-      </div>
-      <p class="fine">Downloaded ${new Date().toUTCString()}. Keep this copy for your own records.</p>
+    const deliver = req.query.format === 'html' ? (rs, f, t, i) => sendDoc(rs, `${f}.html`, t, i) : sendPdf;
+    await deliver(res, `contract-${c.leads?.name || c.id}-${c.signed_at ? new Date(c.signed_at).toISOString().slice(0, 10) : 'signed'}`, c.title, `
+      <div class="ct-doc">${body}${acceptanceHtml(c, await signedZone(c.vendor_id))}</div>
     `);
   } catch (e) { res.status(500).send(e.message); }
 });
+
+/** the vendor's time zone, for the "Signed:" line (local time, like the reference — the certificate keeps UTC) */
+async function signedZone(vendorId) {
+  const [vs, v] = await Promise.all([
+    prisma.vendor_settings.findUnique({ where: { vendor_id: vendorId }, select: { timezone: true } }),
+    prisma.vendors.findUnique({ where: { id: vendorId }, select: { country: true, business_name: true } }),
+  ]);
+  return { tz: resolveTimezone(vs?.timezone, v?.country)?.tz || 'UTC', company: v?.business_name || '' };
+}
+/** ✍️ Acceptance & Signature, as in the reference agreement (Raj, 2026-10-24). The signer's IP stays on the certificate. */
+function acceptanceHtml(c, zone) {
+  const at = c.signed_at ? new Date(c.signed_at) : null;
+  const day = at ? at.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: zone.tz }) : '—';
+  const when = at ? at.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone.tz, timeZoneName: 'short' }) : '—';
+  return `<div class="ct-accept-doc">
+  <h2 class="ct-accept-title">Acceptance &amp; Signature</h2>
+  <p>By signing below, the Client confirms they have read, understood, and agreed to every section initialed above and all Terms &amp; Conditions set out in this Agreement.</p>
+  <table class="ct-details"><tbody>
+    <tr><th>Client Full Name</th><td>${esc(c.signed_name || '—')}</td></tr>
+    <tr><th>Authorized Company</th><td>${esc(zone.company || '—')}</td></tr>
+    <tr><th>Agreement Date</th><td>${esc(day)}</td></tr>
+  </tbody></table>
+  <p class="ct-signed-by">Signed electronically by the client:</p>
+  ${c.signature_data ? `<img class="ct-sig-img" src="${esc(c.signature_data)}" alt="Signature">` : ''}
+  <p class="ct-sig-name"><b>${esc(c.signed_name || '—')}</b>${c.leads?.email ? ` · ${esc(c.leads.email)}` : ''}</p>
+  <p class="ct-sig-when">Signed: ${esc(when)}</p>
+  <p class="ct-fingerprint">Document fingerprint (SHA-256): ${esc(c.doc_sha256 || '—')}</p>
+</div>`;
+}
 
 // PUBLIC: GET /api/contracts/certificate/:token/download → certificate as a file
 router.get('/certificate/:token/download', async (req, res) => {

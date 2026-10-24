@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
+import { WEDDING_AGREEMENT } from '../lib/contractStarters';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import FileFlyerView from './FileFlyerView';
@@ -4200,6 +4201,9 @@ function fillSample(text, overrides) {
 function esc(x) {
   return String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+/* 🎨 a contract template's look — the same choices the server accepts (contracts.js) */
+const CT_ACCENTS = [['gold', 'Gold'], ['navy', 'Navy'], ['black', 'Black'], ['rose', 'Rose'], ['emerald', 'Emerald'], ['plum', 'Plum']];
+const CT_FONTS = [['classic', 'Classic — Playfair Display + Inter'], ['modern', 'Modern — Inter'], ['traditional', 'Traditional — Georgia']];
 function templateAssembled(t) {
   const head = (t.header || '').trim();
   const headHtml = head
@@ -4362,6 +4366,16 @@ function ContractSetup() {
 
   const sections = sel?.sections?.length ? sel.sections : [];
 
+  /** 📝 a complete, ready-made wedding agreement — the vendor's own copy, fully editable */
+  async function addWedding() {
+    try {
+      const d = await api.addCtTemplate(WEDDING_AGREEMENT);
+      setSel(d.template);
+      setSelClean(JSON.stringify(d.template));
+      load();
+    } catch (e) { dialog.alert(e.message, { error: true }); }
+  }
+
   async function add() {
     try {
       const d = await api.addCtTemplate({ name: 'New Contract', sections: DEFAULT_SECTIONS() });
@@ -4513,6 +4527,18 @@ function ContractSetup() {
                   value={(sel.header || '').replace(/\n/g, ' · ')}
                   onChange={e => setSel({ ...sel, header: e.target.value.split(' · ').join('\n') })} />
               </div>
+              <div>
+                <label className="cs-label" htmlFor="cs-accent">Accent colour</label>
+                <select id="cs-accent" className="cs-input" value={sel.accent || 'gold'} onChange={e => setSel({ ...sel, accent: e.target.value })}>
+                  {CT_ACCENTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="cs-label" htmlFor="cs-fonts">Font style</label>
+                <select id="cs-fonts" className="cs-input" value={sel.font_style || 'classic'} onChange={e => setSel({ ...sel, font_style: e.target.value })}>
+                  {CT_FONTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -4609,7 +4635,9 @@ function ContractSetup() {
               ? 'Colours show where each detail will land. Clients never see these.'
               : 'Sample details — real bookings fill their own.'}
           </p>
-          <div className="cs-preview-doc ct-doc" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          <div className="cs-preview-doc ct-doc">
+            <div className={`ct-theme ct-accent-${sel.accent || 'gold'} ct-fonts-${sel.font_style || 'classic'}`} dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          </div>
         </aside>
       </div>
     </div>
@@ -4620,6 +4648,7 @@ function ContractSetup() {
       <div className="cs-head">
         <div className="cs-hint">🛠️ Build your own contracts — each term gets its own card, placeholders auto-fill</div>
         <button className="refresh cs-new" onClick={add}>+ New template</button>
+        <button className="refresh cs-new" onClick={addWedding} title="Your own copy of a complete wedding agreement — every word, colour and font stays editable">+ Wedding agreement</button>
       </div>
       {msg && <div className="err-banner">{msg}</div>}
       <div className="cs-grid">
