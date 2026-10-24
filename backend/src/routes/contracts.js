@@ -1,4 +1,7 @@
 import express from 'express';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -302,6 +305,19 @@ function headbandHtml(headerText, logoPath) {
  * Prose is escaped. A block token (alone or inside a sentence) is HTML this
  * server built, so it is not escaped. An empty block drops out.
  */
+/** a heading typed in ALL CAPS reads as Title Case, "AND" as "&" — headings typed normally are left alone */
+const SMALL_WORDS = new Set(['a', 'an', 'the', 'of', 'for', 'in', 'on', 'to', 'or', 'by', 'at', 'with']);
+function headingText(t) {
+  const s = String(t || '');
+  if (!/[A-Z]/.test(s) || s !== s.toUpperCase()) return s;
+  return s.toLowerCase().split(/(\s+)/).map((w, i) => {
+    if (/^\s+$/.test(w)) return w;
+    if (w === 'and') return '&';
+    if (i > 0 && SMALL_WORDS.has(w)) return w;
+    return w.replace(/^([^a-z]*)([a-z])/, (m, p, ch) => p + ch.toUpperCase());
+  }).join('');
+}
+
 const BLOCK_TOKEN = /\{\{(booking_details|coverage_schedule|deliverables|services_summary|crew)\}\}/;
 
 function renderSectionBody(rawText, values, blocks) {
@@ -331,7 +347,7 @@ function sectionHtml(section, values, blocks, initCounter) {
       + `<td class="ct-init-line"><span class="ct-init-tap" data-init-idx="${idx}">TAP TO INITIAL</span></td></tr></tbody></table>`;
   }
   const title = (section.title || '').trim();
-  return `<div class="ct-sec">${title ? `<h2>${escapeHtml(title)}</h2>` : ''}${bodyHtml}${initHtml}</div>`;
+  return `<div class="ct-sec">${title ? `<h2>${escapeHtml(headingText(title))}</h2>` : ''}${bodyHtml}${initHtml}</div>`;
 }
 
 function substitute(text, values) {
@@ -947,42 +963,19 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
+/* 📜 the contract document's look comes from ONE file, also used by the app (Raj, 2026-10-24):
+   frontend/src/pages/contractdoc-doc.css — so the delivered contract can never drift from what was previewed and signed */
+const SHARED_DOC_CSS = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../frontend/src/pages/contractdoc-doc.css'), 'utf8');
 const DOC_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
-  body{font-family:"Segoe UI",system-ui,sans-serif;color:#1f2937;background:#fff;
-       max-width:760px;margin:40px auto;padding:0 32px 48px;line-height:1.55;font-size:14.5px}
+  body{font-family:Inter,"Segoe UI",system-ui,sans-serif;color:#1f2937;background:#fff;
+       max-width:816px;margin:40px auto;padding:0 32px 48px;line-height:1.8;font-size:14.5px}
   .hd{text-align:center;border-bottom:2px solid #222;padding-bottom:18px;margin-bottom:28px}
   .hd img{max-height:52px;max-width:72px;object-fit:contain;margin-bottom:10px}
   .biz{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#666;margin:0}
   h1{font-size:24px;margin:8px 0 0}
   .body{}
-  .ct-headband{width:100%;border-collapse:collapse;margin:0 0 2px;border-bottom:1.5px solid #c4a35a}
-  .ct-hb-logo{width:88px;padding:0 16px 14px 0;vertical-align:middle}
-  .ct-logo{max-width:72px;max-height:52px;width:auto;height:auto;object-fit:contain;display:block}
-  .ct-hb-info{text-align:right;vertical-align:middle}
-  .ct-hb-info p{margin:0;font-size:12.5px;line-height:1.5;color:#4b5563}
-  .ct-doc-title{font-size:20px;font-weight:700;text-align:center;letter-spacing:.14em;text-transform:uppercase;margin:26px 0 8px;color:#1e293b}
-  .ct-doc-for{font-size:14.5px;text-align:center;color:#6b7280;margin:0 0 26px}
-  .ct-sec{margin:0 0 6px}
-  .ct-sec h2{font-size:16px;font-weight:700;border-bottom:1px solid #d1d5db;padding:0 0 6px;margin:22px 0 10px;color:#1e293b}
-  .ct-sec h3{font-size:14.5px;font-weight:700;color:#1f2937;margin:16px 0 4px}
-  .ct-sec p{margin:0 0 10px}
-  .ct-details,.ct-svc{width:100%;border-collapse:collapse;margin:8px 0 16px;border:1px solid #d1d5db;font-size:13.5px}
-  .ct-details th,.ct-svc th{background:#f3f4f6;font-weight:600;color:#374151;text-align:left;width:34%;
-    padding:8px 12px;border:1px solid #e5e7eb;font-size:13.5px;letter-spacing:normal;text-transform:none}
-  .ct-details td,.ct-svc td{padding:8px 12px;border:1px solid #e5e7eb}
-  .ct-kv{width:100%;border-collapse:collapse;margin:2px 0 12px;border:0}
-  .ct-kv th{width:168px;background:transparent;font-weight:600;color:#374151;text-align:left;
-    padding:3px 18px 3px 0;border:0;font-size:14px;letter-spacing:normal;text-transform:none}
-  .ct-kv td{padding:3px 0;border:0}
-  .ct-inc{font-weight:700;color:#166534}
-  .ct-notinc{font-weight:700;color:#9ca3af}
-  .ct-init{width:auto;border-collapse:collapse;margin:12px 0 4px}
-  .ct-init td{border:0;padding:0 8px 0 0;background:transparent}
-  .ct-init-label{font-size:12px;font-weight:700;color:#6b7280;white-space:nowrap}
-  .ct-init-line{min-width:90px}
-  .ct-signed-init{border-bottom:1px solid #333;padding:0 8px 2px;display:inline-block;line-height:1}
-  .ct-hand{font-family:"Great Vibes",cursive;font-weight:400;font-style:normal;font-size:32px;line-height:1;letter-spacing:0;text-transform:none;color:#1e293b}
+  ${SHARED_DOC_CSS}
+  .ct-signed-init{display:inline-block;line-height:1.2;padding:0 4px}
   .sig{margin-top:36px;border-top:1px solid #ccc;padding-top:22px}
   .sig img{max-height:90px;display:block;margin-bottom:6px}
   .meta{font-size:12.5px;color:#555;line-height:1.9}
@@ -1020,7 +1013,7 @@ const DOC_ACTIONS = `
 
 function sendDoc(res, filename, title, inner) {
   const html = `<!doctype html><html><head><meta charset="utf-8">
-<title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${DOC_ACTIONS}${inner}</body></html>`;
+<title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${DOC_ACTIONS}${inner.includes('ct-doc-title') ? `<div class="ct-doc">${inner}</div>` : inner}</body></html>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   // inline, not attachment: read it first, save it if you want it
   res.setHeader('Content-Disposition', `inline; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}"`);
