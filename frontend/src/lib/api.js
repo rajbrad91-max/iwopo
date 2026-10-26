@@ -373,8 +373,12 @@ async function request(path, options = {}) {
   const signingIn = path === '/auth/login' || path === '/auth/signup' || path === '/auth/verify' || path === '/auth/resend'
     || path === '/auth/forgot' || path === '/auth/reset';
   if (!signingIn && (res.status === 401 || (res.status === 403 && sessionMismatch()))) {
+    /* Reload only when there WAS a session to clear (2026-10-26). A page that asks the server before anyone has signed
+       in — /contract-preview left open for days — got a 401, reloaded, asked again, got a 401… for ever. With no
+       session there is nothing to clear and nothing to reload for: the error is shown once and the page stays put. */
+    const hadSession = !!(sessionStorage.getItem('iwopo_token') || localStorage.getItem('iwopo_token'));
     clearSession();
-    window.location.reload();
+    if (hadSession) window.location.reload();
     throw new Error('Your session expired — please log in again.');
   }
 

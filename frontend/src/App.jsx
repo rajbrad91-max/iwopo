@@ -98,7 +98,8 @@ function AppRoutes() {
   // A full page rather than a modal — a contract is a document, and judging one
   // through a scrolling box inside a dialog is not reviewing it.
   const cp = window.location.pathname.match(/^\/contract-preview\/(\d+)/);
-  if (cp) return <ContractPreview leadId={Number(cp[1])} />;
+  // signed out (or the session ran out while the tab sat open): sign in here, then the same preview opens
+  if (cp) return user ? <ContractPreview leadId={Number(cp[1])} /> : <Login onLogin={setUser} onBack={() => { window.location.href = '/panel'; }} />;
 
   // 📤 Public File Flyer share: /f/:token — the link a vendor hands a client
   const ff = window.location.pathname.match(/^\/f\/([A-Za-z0-9]+)/);
@@ -109,7 +110,7 @@ function AppRoutes() {
   // 👨‍💻 the photo editor's portal (Raw Selector) — its own sign-in, nothing else
   if (window.location.pathname.match(/^\/editor\/?$/)) return <EditorPortal />;
   // 👀 TEMPORARY (2026-10-11): the tester activity report — unlinked, Super Admin only
-  if (window.location.pathname.match(/^\/x\/tester-activity\/?$/)) return <Suspense fallback={null}><TesterActivity /></Suspense>;
+  if (window.location.pathname.match(/^\/x\/tester-activity\/?$/)) return user ? <Suspense fallback={null}><TesterActivity /></Suspense> : <Login onLogin={setUser} onBack={() => { window.location.href = '/panel'; }} />;
   const lv = window.location.pathname.match(/^\/live\/([A-Za-z0-9]+)/);
   if (lv) return <Suspense fallback={null}><LiveShootPublic token={lv[1]} /></Suspense>;
 
