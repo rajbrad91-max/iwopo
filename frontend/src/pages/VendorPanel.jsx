@@ -4963,6 +4963,27 @@ const FORM_PRESETS = {
     { type: 'checkbox', label: 'PA system provided by venue' },
     { type: 'text', label: 'Song requests' },
   ] },
+  /* 🚗 (Raj, 2026-10-26) a driver's "when and where" is a pick-up and a finish, not a venue — so this one spells out
+     its own core fields; they map to the same Bookings columns (date, timing, hours, location, guests = passengers) */
+  transportation: { label: '🚗 Transportation', fields: [
+    { type: 'dropdown', label: 'Type of Event', maps_to: 'event_type',
+      options: ['Wedding', 'Engagement', 'Reception', 'Prom / Graduation', 'Corporate', 'Airport transfer', 'Other'] },
+    { type: 'date', label: 'Date of Event', maps_to: 'event_date' },
+    { type: 'time', label: 'Pick-up Time', maps_to: 'timing_from' },
+    { type: 'time', label: 'Finish Time', maps_to: 'timing_to' },
+    { type: 'hours', label: 'Hours of Service', maps_to: 'hours' },
+    { type: 'location', label: 'Pick-up Address', maps_to: 'location' },
+    { type: 'text', label: 'Drop-off Address' },
+    { type: 'text', label: 'Stops along the way (ceremony, photos, reception…)' },
+    { type: 'number', label: 'Number of passengers', maps_to: 'guests' },
+    { type: 'number', label: 'Number of vehicles' },
+    { type: 'dropdown', label: 'Vehicle type',
+      options: ['Limousine', 'Stretch SUV', 'Luxury sedan', 'Vintage / classic car', 'Party bus', 'Shuttle / coach', 'Not sure yet'] },
+    { type: 'dropdown', label: 'Trip', options: ['One way', 'Return trip', 'Hourly (as directed)'] },
+    { type: 'checkbox', label: 'Decorations (ribbons, flowers)' },
+    { type: 'checkbox', label: 'Red carpet service' },
+    { type: 'text', label: 'Special requests' },
+  ] },
 };
 
 function FieldBuilder({ fields, setFields, onTrade }) {
