@@ -227,16 +227,15 @@
 
 /* 📊 Lead stat tiles */
 .lead-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.lead-stats { display: flex; flex-wrap: wrap; gap: 10px; }
+.lead-stats { display: grid; grid-template-columns: repeat(4, 118px); gap: 10px; }   /* four equal tiles (Raj, 2026-10-26) */
 .lead-stat {
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
-  padding: 13px 14px; background: var(--panel);
+  padding: 13px 14px; background: var(--panel); color: var(--text); text-align: left;
   border: 1px solid var(--line); border-radius: 18px;
-  cursor: pointer; min-width: 70px;
+  cursor: pointer; min-width: 0;
   transition: transform var(--dur) var(--ease), background var(--dur) ease,
               border-color var(--dur) ease;
 }
-.lead-stat:hover { transform: translateY(-3px); border-color: #2dd4bf3d; }
 .lead-stat:active { transform: scale(.97); }
 .lead-stat:hover { border-color: #2dd4bf88; transform: translateY(-1px); }
 .lead-stat.is-on { border-color: #2dd4bf; background: #2dd4bf14; }
@@ -2455,3 +2454,10 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 
 /* ⚙️ Settings sub-tabs: wrap onto a second line on narrow phones instead of running off the edge */
 .set-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* 📊 phones: the four Leads tiles share the full width equally; a long label may take two lines */
+@media (max-width: 600px) {
+  .lead-topbar > .lead-stats { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .lead-stat { padding: 12px 10px; }
+  .lead-stat-lbl { white-space: normal; line-height: 1.2; }
+}
