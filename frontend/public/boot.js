@@ -31,3 +31,18 @@
     }
   } catch (e) { /* storage blocked — the page still loads normally */ }
 })();
+
+/* 📲 iwopo as an installable app (2026-10-27): on iwopo's own addresses only — a vendor's own website domain must not
+   offer "Install iwopo". No service worker is added for this (one that handled page loads made every refresh flash). */
+(function () {
+  var host = location.hostname.replace(/^www\./, '').toLowerCase();
+  if (['iwopo.com', 'alphabetaone.com', 'localhost', '127.0.0.1'].indexOf(host) === -1) return;
+  var head = document.head;
+  var add = function (tag, attrs) { var el = document.createElement(tag); for (var k in attrs) el.setAttribute(k, attrs[k]); head.appendChild(el); };
+  add('link', { rel: 'manifest', href: '/iwopo.webmanifest' });
+  add('meta', { name: 'theme-color', content: '#0d9488' });
+  add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+  add('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+  add('meta', { name: 'apple-mobile-web-app-title', content: 'iwopo' });
+  add('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'default' });
+})();
