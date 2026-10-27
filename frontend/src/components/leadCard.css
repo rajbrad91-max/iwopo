@@ -1,0 +1,60 @@
+/* 📱 Lead card on phones (LeadCard.jsx) — the desktop table never shows it */
+.leads-table td.lc-cell { display: none; }
+@media (max-width: 720px) {
+  /* the card replaces the row's own cells on a phone */
+  .leads-table tr:has(> td.lc-cell) { display: block; padding: 0; border: 0; background: none; margin-bottom: 12px; position: relative; }
+  .leads-table tr:has(> td.lc-cell) > td:not(.lc-cell):not(.cell-check) { display: none; }
+  .leads-table td.lc-cell { display: block; padding: 0; border: 0; white-space: normal; overflow: visible; }
+}
+
+.lc {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px 16px 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+.lc-head { display: flex; align-items: baseline; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }   /* name, email and phone on one line */
+.lc-name { flex: 0 0 auto; max-width: 60%; margin: 0; font-size: 17px; font-weight: 800; line-height: 1.25; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lc-contact { flex: 1 1 auto; min-width: 0; margin: 0; display: flex; justify-content: flex-end; gap: 12px; font-size: 13.5px; color: var(--muted); }
+.lc-contact span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* a long email shortens with … */
+.lc-contact span:last-child { flex: none; }
+
+.lc-rows { margin: 0; }
+.lc-row {
+  display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: baseline; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.lc-row dt { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.lc-row dd { margin: 0; min-width: 0; text-align: right; font-size: 14px; color: var(--text); overflow-wrap: anywhere; }
+.lc-aside { display: block; margin-top: 1px; font-size: 12px; color: var(--muted); }
+
+.lc-status { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.lc-st-new { background: var(--teal-soft); color: var(--teal); }
+.lc-st-quoted { background: #fef3c7; color: #92400e; }
+.lc-st-booked { background: #dcfce7; color: #166534; }
+
+.lc-pick { font-weight: 700; }
+.lc-pick b { font-weight: 800; }
+
+/* status line: a small 📤 Send (or ↩️ Restore) beside the status pill */
+.lc-status-line { display: flex; align-items: center; gap: 8px; white-space: nowrap; }   /* Send and the status stay side by side */
+.lc-btn-slot { flex: 1; display: flex; justify-content: center; }   /* centres the button in the free space */
+.lc-send, .lc-restore {
+  height: 32px; padding: 0 16px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+.lc-send { border: 0; background: rgba(22, 163, 74, 0.12); color: #15803d; }   /* calm: pale green, green text */
+.lc-restore { border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
+.lc-rows .lc-row:last-child { border-bottom: 0; }
+
+/* 📏 phones: a slimmer Send so it and " Booking Confirmed\ still fit side by side */
+@media (max-width: 440px) {
+ .lc-send, .lc-restore { padding: 0 11px; font-size: 12px; }
+ .lc-contact { gap: 8px; }
+}
+
+/* 📏 the narrowest phones (≈360 px): a little less room for labels and padding, so everything stays inside the lines */
+@media (max-width: 374px) {
+  .lc-row { grid-template-columns: 60px minmax(0, 1fr); }
+  .lc-send, .lc-restore { padding: 0 9px; }
+  .lc-status { padding: 3px 8px; font-size: 11.5px; }
+  .lc-status-line { gap: 6px; }
+}

@@ -72,24 +72,41 @@ router.put('/mark-seen', requireAuth, async (req, res) => {
 });
 
 // GET /api/leads  → list (vendor-scoped 🔒, active only)
+/** 📱 the service a lead asked for ("Photos & Videos"), from the inquiry form's own question, if the form had one */
+function serviceAsked(l) {
+  const snap = Array.isArray(l.form_snapshot) ? l.form_snapshot : [];
+  const f = snap.find(x => /what do you need|coverage type|services? needed|service/i.test(x.label || ''));
+  if (!f) return null;
+  const v = f.maps_to && l[f.maps_to] != null ? l[f.maps_to] : (l.custom_data || {})[f.id];
+  return v == null || v === '' || typeof v === 'object' ? null : String(v);
+}
+
 router.get('/', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   try {
     const opt = await leadListing(prisma, vid, req.query);   // ⇅ optional sort / date range (vendor's own time zone)
+    // 🔒 Payment privacy on → the list carries no package amounts at all (the phone card then shows the name only)
+    const hideMoney = vid ? !!(await prisma.vendor_settings.findUnique({ where: { vendor_id: vid }, select: { hide_payments: true } }))?.hide_payments : false;
     const rows = await prisma.leads.findMany({
       where: scope(vid, { archived_at: null, ...opt.where }),
       orderBy: opt.orderBy || { created_at: 'desc' },
       include: {
         vendor_packages: { select: { name: true } },
-        package_templates: { select: { name: true } },
+        package_templates: { select: { name: true, vendor_packages: { select: { name: true, base_price: true }, orderBy: { sort_order: 'asc' } } } },
+        lead_packages: { select: { name: true, price: true, is_selected: true }, orderBy: { sort_order: 'asc' } },
       },
     });
     // keep the old shape: package_name flattened onto the lead, plus the folder
-    // name so the list can show what was sent before the client has picked
-    const leads = rows.map(({ vendor_packages, package_templates, ...l }) => ({
+    // name so the list can show what was sent before the client has picked.
+    // 📱 pkgs + service feed the phone card: the lead's own packages (the client's pick ticked), else the folder's
+    const leads = rows.map(({ vendor_packages, package_templates, lead_packages, ...l }) => ({
       ...l,
       package_name: vendor_packages?.name ?? null,
       template_name: package_templates?.name ?? null,
+      pkgs: lead_packages?.length
+        ? lead_packages.map(p => ({ name: p.name, price: hideMoney ? null : Number(p.price || 0), picked: !!p.is_selected }))
+        : (package_templates?.vendor_packages || []).map(p => ({ name: p.name, price: hideMoney ? null : Number(p.base_price || 0), picked: false })),
+      service: serviceAsked(l),
     }));
     res.json({ leads });
   } catch (e) { res.status(500).json({ error: e.message }); }

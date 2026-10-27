@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
+import LeadCard from '../components/LeadCard';
 import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter button
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
@@ -3200,6 +3201,8 @@ function LeadsView({ routeLead, onOpenLead }) {
                       </div>
                     : <span className="lead-restore" onClick={e => restore(l.id, e)}>↩️ Restore</span>}
                 </td>
+                {/* 📱 the phone card — hidden in the desktop table */}
+                <td className="lc-cell"><LeadCard lead={l} history={view !== 'active'} onSend={sendPkgs} onRestore={restore} /></td>
               </tr>
             ))}
           </tbody>
