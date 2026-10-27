@@ -246,7 +246,7 @@
 /* 📋 Leads list */
 .leads-tabs, .leads-actions { display: flex; gap: 8px; align-items: center; }
 .leads-actions { margin-bottom: 12px; }
-.leads-tabs .refresh.is-on { background: #2dd4bf; color: #06231f; }
+.leads-tabs .refresh.is-on { background: rgba(13, 148, 136, 0.2); border-color: rgba(13, 148, 136, 0.5); color: #0f766e; }   /* soft tint, not a solid fill (Raj, 2026-10-27) */
 .leads-msg { font-size: 13px; }
 .leads-msg.is-ok { color: #4ade80; }
 .leads-msg.is-err { color: #fb7185; }
@@ -2462,5 +2462,18 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
   .lead-stat-lbl { white-space: normal; line-height: 1.2; }
 }
 
-/* 📋 Leads: the chosen Active / History pill is a soft tint, not a solid fill (Raj, 2026-10-27 — less distracting) */
-.leads-tabs .refresh.is-on { background: rgba(13, 148, 136, 0.2); border-color: rgba(13, 148, 136, 0.5); color: #0f766e; }
+
+/* 📋 phones: the Leads toolbar spans the full width — icons on the left, Active · History against the right edge,
+   the spare room becomes the gap after the sort button (Raj, 2026-10-27) */
+@media (max-width: 720px) {
+  .lead-topbar > .leads-tabs { width: 100%; display: flex; align-items: center; }
+  .leads-tabs > .lsm-wrap { margin-right: 18px; }   /* with the 8px gap: 26px between the icons and Active · History */
+}
+
+/* 🖥️ wider screens: the toolbar sits under the four tiles at exactly their width — History's right edge lines up
+   with the last tile ("Booked"), the spare room sits after the sort button (Raj, 2026-10-27) */
+@media (min-width: 721px) {
+  .lead-topbar { display: grid; grid-template-columns: max-content; justify-content: start; }
+  .lead-topbar > .leads-tabs { width: 100%; }
+  .leads-tabs > .lsm-wrap { margin-right: auto; }
+}
