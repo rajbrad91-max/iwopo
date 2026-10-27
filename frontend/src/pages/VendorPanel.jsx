@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
+import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter button
+import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
 import { WEDDING_AGREEMENT } from '../lib/contractStarters';
 import { useInboxCounts } from '../lib/inboxCounts.js';
@@ -2974,11 +2976,17 @@ function LeadsView({ routeLead, onOpenLead }) {
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
 
-  useEffect(() => { load(); }, [view]);
+  // ⇅ sort & date filter — kept in this browser; "Newest first · All time" is the list exactly as before
+  const [listing, setListing] = useState(() => { try { return { ...DEFAULT_LISTING, ...JSON.parse(localStorage.getItem('leads_listing') || '{}') }; } catch { return { ...DEFAULT_LISTING }; } });
+  const [showListing, setShowListing] = useState(false);
+  const changeListing = (next) => { setListing(next); localStorage.setItem('leads_listing', JSON.stringify(next)); };
+  const listed = listing.sort !== 'newest' || listing.range !== 'all';
+
+  useEffect(() => { load(); }, [view, listing.sort, listing.range]);
   async function load() {
     setLoading(true); setChecked([]); setSelectMode(false);
     try {
-      const d = view === 'active' ? await api.leads() : await api.leadsHistory();
+      const d = view === 'active' ? await api.leads(undefined, listing) : await api.leadsHistory(listing);
       setLeads(d.leads || []);
     } catch {}
     finally { setLoading(false); }
@@ -3101,10 +3109,21 @@ function LeadsView({ routeLead, onOpenLead }) {
               : (view === 'history' ? 'Select to delete permanently' : 'Select to move to History')}>
             {selectMode && checked.length ? `🗑️ ${checked.length}` : '🗑️'}
           </button>
+          <span className="lsm-wrap">
+            <button type="button" className={`lead-ic-btn ${listed ? 'is-on' : ''}`} aria-haspopup="menu" aria-expanded={showListing}
+              onClick={() => setShowListing(s => !s)} title="Sort & filter" aria-label="Sort & filter"><MdSwapVert className="lsm-ic" aria-hidden="true" /></button>
+            {showListing && <LeadListingMenu listing={listing} onChange={changeListing} onClose={() => setShowListing(false)} />}
+          </span>
           <button className={`refresh ${view === 'active' ? 'is-on' : ''}`} onClick={() => setView('active')}>📋 Active</button>
           <button className={`refresh ${view === 'history' ? 'is-on' : ''}`} onClick={() => setView('history')}>📜 History</button>
         </div>
       </div>
+
+      {listing.range !== 'all' && !loading && (
+        <div className="lead-range-chip">📅 {rangeLabel(listing.range)} · {leads.length} lead{leads.length === 1 ? '' : 's'}
+          <button type="button" aria-label="Show all leads" onClick={() => changeListing({ ...listing, range: 'all' })}>✕</button>
+        </div>
+      )}
 
       {(msg || checked.length > 0) && (
         <div className="leads-actions">

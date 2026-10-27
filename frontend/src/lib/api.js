@@ -402,6 +402,17 @@ async function request(path, options = {}) {
   return data;
 }
 
+/** ⇅ the Leads list's sort / date range as a query string — defaults left out, so the plain list is unchanged */
+function listingQs(o = {}) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(o)) {
+    if (!v || (k === 'sort' && v === 'newest') || (k === 'range' && v === 'all')) continue;
+    p.set(k, v);
+  }
+  const s = p.toString();
+  return s ? `?${s}` : '';
+}
+
 export const api = {
   login: (email, password) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
@@ -679,7 +690,7 @@ export const api = {
   createReferral: (referrer_email, friend_email) =>
     request('/referrals', { method: 'POST', body: JSON.stringify({ referrer_email, friend_email }) }),
   createLead: (data) => request('/leads', { method: 'POST', body: JSON.stringify(data) }),
-  leads: (vendorId) => request(`/leads${vendorId ? `?vendor_id=${vendorId}` : ''}`),
+  leads: (vendorId, listing) => request(`/leads${listingQs({ vendor_id: vendorId, ...listing })}`),
   leadsUnreadCount: () => request('/leads/unread-count'),
   // pass a lead id to mark just that one read; omit it to clear them all
   markLeadsSeen: (id) => request('/leads/mark-seen', { method: 'PUT', body: JSON.stringify(id ? { id } : {}) }),
@@ -753,7 +764,7 @@ export const api = {
   createInvoice: (leadId, data) => request(`/invoices/lead/${leadId}`, { method: 'POST', body: JSON.stringify(data || {}) }),
   deleteInvoice: (id) => request(`/invoices/${id}`, { method: 'DELETE' }),
   viewInvoice: (token) => request(`/invoices/view/${token}`),
-  leadsHistory: () => request('/leads/history'),
+  leadsHistory: (listing) => request(`/leads/history${listingQs(listing)}`),
   bulkArchive: (ids) => request('/leads/bulk-archive', { method: 'POST', body: JSON.stringify({ ids }) }),
   bulkDeleteLeads: (ids) => request('/leads/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }),
   restoreLead: (id) => request(`/leads/${id}/restore`, { method: 'POST' }),

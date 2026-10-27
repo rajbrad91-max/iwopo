@@ -1,4 +1,5 @@
 import express from 'express';
+import { leadListing } from '../lib/leadListing.js';
 import { phoneProblem } from '../lib/phone.js';
 import { cleanInstagram } from '../lib/instagram.js';
 import prisma from '../config/prisma.js';
@@ -74,9 +75,10 @@ router.put('/mark-seen', requireAuth, async (req, res) => {
 router.get('/', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   try {
+    const opt = await leadListing(prisma, vid, req.query);   // ⇅ optional sort / date range (vendor's own time zone)
     const rows = await prisma.leads.findMany({
-      where: scope(vid, { archived_at: null }),
-      orderBy: { created_at: 'desc' },
+      where: scope(vid, { archived_at: null, ...opt.where }),
+      orderBy: opt.orderBy || { created_at: 'desc' },
       include: {
         vendor_packages: { select: { name: true } },
         package_templates: { select: { name: true } },
@@ -97,9 +99,10 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/history', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   try {
+    const opt = await leadListing(prisma, vid, req.query);   // ⇅ optional sort / date range (vendor's own time zone)
     const leads = await prisma.leads.findMany({
-      where: scope(vid, { archived_at: { not: null } }),
-      orderBy: { archived_at: 'desc' },
+      where: scope(vid, { archived_at: { not: null }, ...opt.where }),
+      orderBy: opt.orderBy || { archived_at: 'desc' },
     });
     res.json({ leads });
   } catch (e) { res.status(500).json({ error: e.message }); }

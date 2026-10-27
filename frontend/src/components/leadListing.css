@@ -1,0 +1,31 @@
+/* ⇅ Leads: sort & filter menu (LeadListingMenu.jsx) and the "Today · 3 leads" chip */
+.lsm-wrap { position: relative; display: inline-flex; }
+/* the sort icon: centred in its box, a touch bigger and bolder than a text arrow */
+.lsm-wrap > .lead-ic-btn { display: inline-flex; align-items: center; justify-content: center; }
+.lsm-ic { display: block; font-size: 19px; }
+.lsm {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+  min-width: 210px; padding: 8px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.lsm-h { margin: 6px 8px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.lsm-opt, .lsm-reset {
+  font: inherit; font-size: 13.5px; text-align: left; padding: 7px 10px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text); cursor: pointer;
+}
+.lsm-opt:hover, .lsm-reset:hover { background: var(--panel-2); }
+.lsm-opt.is-on { font-weight: 700; color: var(--teal); }
+.lsm-reset { margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 8px 8px; color: var(--muted); }
+.lead-range-chip {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 5px 6px 5px 12px;
+  border-radius: 999px; background: var(--teal-soft); color: var(--teal); font-size: 13px; font-weight: 600;
+}
+.lead-range-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 999px; }
+
+/* 📱 phones: the menu drops right under the button, lined up with its LEFT edge (there is room on that side), as wide
+   as its longest line — close to the button, no empty space, never past the screen's edges */
+@media (max-width: 600px) {
+  .lsm { left: 0; right: auto; width: max-content; max-width: calc(100vw - 24px); }
+  .lsm-opt, .lsm-reset { padding: 9px 12px; font-size: 14px; }
+}
