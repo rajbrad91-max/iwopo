@@ -404,7 +404,7 @@
 .bk-tog-btn { padding: 8px 16px; font-size: 13px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); cursor: pointer; }
 .bk-tog-btn:first-child { border-radius: 9px 0 0 9px; border-right: none; }
 .bk-tog-btn:last-child { border-radius: 0 9px 9px 0; }
-.bk-tog-btn.is-on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
+.bk-tog-btn.is-on { background: rgba(13, 148, 136, 0.2); border-color: rgba(13, 148, 136, 0.5); color: #0f766e; }   /* same soft tint as Leads Active / History */
 
 /* 🗓️ clickable calendar event card */
 .cal-side { padding: 16px; position: sticky; top: 14px; }
