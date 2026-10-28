@@ -649,7 +649,7 @@
 .sidebar-backdrop { display:none; }
 
 /* ── DESKTOP COLLAPSE → icons only ── */
-.dash .sidebar { transition:width .22s ease, margin-left .26s ease; overflow:hidden; }
+.dash .sidebar { transition: width .18s cubic-bezier(.32, .72, 0, 1); overflow:hidden; }   /* snappy (Raj, 2026-10-27) */
 /* keep the sidebar (and its Log out button) pinned to the viewport even when
    the main content is very tall (e.g. an album with hundreds of photos) */
 .dash .sidebar { position: sticky; top: 0; align-self: flex-start; height: 100vh; height: 100svh; overflow-y: auto; }
@@ -942,13 +942,19 @@
 @media (max-width:820px){
   .dash .sidebar {
     position:fixed; top:0; left:0; height:100vh; width:250px; z-index:60;
-    margin-left:-260px; box-shadow:4px 0 30px rgba(0,0,0,.4);
+    box-shadow:4px 0 30px rgba(0,0,0,.4);
+    transform: translateX(-105%); will-change: transform;
+    transition: transform .24s cubic-bezier(.32, .72, 0, 1);   /* smooth, native-feeling slide (Raj, 2026-10-27) */
   }
-  .dash.sidebar-collapsed .sidebar { width:250px; margin-left:-260px; }
-  .dash:not(.sidebar-collapsed) .sidebar { width:250px; margin-left:0; }
+  .dash.sidebar-collapsed .sidebar { width:250px; transform: translateX(-105%); }
+  .dash:not(.sidebar-collapsed) .sidebar { width:250px; transform: translateX(0); }
   .dash:not(.sidebar-collapsed) .nav-txt { display:inline; }
   .dash:not(.sidebar-collapsed) .nav-group { opacity:1; }
-  .sidebar-backdrop { display:block; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:55; }
+  .sidebar-backdrop {
+    display:block; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:55;
+    opacity:0; pointer-events:none; transition: opacity .24s ease;   /* fades with the drawer */
+  }
+  .sidebar-backdrop.is-open { opacity:1; pointer-events:auto; }
 
   .dash .main { padding:16px 12px; overflow-x:hidden; }
   .dash *, .dash *::before { box-sizing:border-box; }

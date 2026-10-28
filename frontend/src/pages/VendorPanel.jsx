@@ -148,6 +148,7 @@ export default function VendorPanel({ onLogout }) {
   const tab = route.tab;
   const setTab = (t) => navigate({ tab: t });
   const [collapsed, setCollapsed] = useState(() => window.innerWidth <= 820);
+  const swipeX = useRef(0);   // 👆 where a swipe on the phone drawer started
   const [profile, setProfile] = useState(null);
   const user = getUser();
   const dialog = useDialog();
@@ -289,8 +290,10 @@ export default function VendorPanel({ onLogout }) {
 
   return (
     <div ref={dashRef} className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
-      {!collapsed && <div className="sidebar-backdrop" onClick={() => setCollapsed(true)} />}
-      <aside className="sidebar">
+      <div className={`sidebar-backdrop ${collapsed ? '' : 'is-open'}`} onClick={() => setCollapsed(true)} />
+      <aside className="sidebar"
+        onTouchStart={e => { swipeX.current = e.touches[0].clientX; }}
+        onTouchEnd={e => { if (window.innerWidth <= 820 && swipeX.current - e.changedTouches[0].clientX > 60) setCollapsed(true); }}>
         {/* 🏠 the studio's logo + name lead home to the dashboard (Raj, 2026-10-23) */}
         <a href={navHref('dashboard')} className="brand" title="Dashboard" onClick={navClick('dashboard')}>
           {profile?.logo_path
