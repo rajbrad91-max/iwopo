@@ -1,4 +1,8 @@
 :root {
+  /* the chosen tab / filter / view button everywhere: a soft teal tint, not a solid fill (Raj, 2026-10-27) */
+  --sel-bg: rgba(13, 148, 136, 0.2);
+  --sel-line: rgba(13, 148, 136, 0.5);
+  --sel-ink: #0f766e;
   --bg:#0a1013; --panel:#141d21; --panel-2:#18242a; --line:#ffffff14;
   --muted:#8a9ba1; --text:#f1f7f8; --teal:#2dd4bf; --teal-2:#25b8a7;
   --teal-soft:#2dd4bf1f; --green:#4ade80; --amber:#fbbf24; --red:#fb7185;
@@ -214,3 +218,6 @@ tr:last-child td { border-bottom:none; }
 .vc-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: #0d9488; cursor: pointer; }
 .vc-link:disabled { color: #9ca3af; cursor: default; }
 .vc-overlay { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .55); }
+
+/* 🎨 sidebar icons: the same Fluent emoji artwork on every device, sized like the text emoji they replace */
+.nav-emo { display: block; width: 1.2em; height: 1.2em; }

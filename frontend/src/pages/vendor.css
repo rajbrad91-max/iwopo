@@ -246,7 +246,7 @@
 /* 📋 Leads list */
 .leads-tabs, .leads-actions { display: flex; gap: 8px; align-items: center; }
 .leads-actions { margin-bottom: 12px; }
-.leads-tabs .refresh.is-on { background: rgba(13, 148, 136, 0.2); border-color: rgba(13, 148, 136, 0.5); color: #0f766e; }   /* soft tint, not a solid fill (Raj, 2026-10-27) */
+.leads-tabs .refresh.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }   /* soft tint, not a solid fill (Raj, 2026-10-27) */
 .leads-msg { font-size: 13px; }
 .leads-msg.is-ok { color: #4ade80; }
 .leads-msg.is-err { color: #fb7185; }
@@ -362,7 +362,7 @@
 /* ➕🔍🗑️ lead action icons */
 .lead-ic-btn { width: 38px; height: 38px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .lead-ic-btn:hover { border-color: #2dd4bf88; }
-.lead-ic-btn.is-on { background: #2dd4bf; border-color: #2dd4bf; }
+.lead-ic-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .lead-ic-btn:disabled { opacity: .4; cursor: default; }
 .lead-ic-del:hover:not(:disabled) { border-color: #fb7185; }
 .lead-search { width: 100%; padding: 11px 15px; background: var(--panel); border: 1px solid var(--line); border-radius: 15px; color: var(--text); font-size: 14px; margin-bottom: 12px; box-sizing: border-box; }
@@ -404,7 +404,7 @@
 .bk-tog-btn { padding: 8px 16px; font-size: 13px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); cursor: pointer; }
 .bk-tog-btn:first-child { border-radius: 9px 0 0 9px; border-right: none; }
 .bk-tog-btn:last-child { border-radius: 0 9px 9px 0; }
-.bk-tog-btn.is-on { background: rgba(13, 148, 136, 0.2); border-color: rgba(13, 148, 136, 0.5); color: #0f766e; }   /* same soft tint as Leads Active / History */
+.bk-tog-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }   /* same soft tint as Leads Active / History */
 
 /* 🗓️ clickable calendar event card */
 .cal-side { padding: 16px; position: sticky; top: 14px; }
@@ -425,7 +425,7 @@
 /* 📄 Contracts & Invoices tab */
 .ct-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
 .ct-tab { background: var(--panel-2); color: var(--text); }
-.ct-tab.is-on { background: #2dd4bf; color: #06231f; }
+.ct-tab.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .ct-paid { color: #4ade80; }
 .ct-due { color: #fbbf24; }
 .ct-link { cursor: pointer; color: #2dd4bf; font-size: 12px; }
@@ -575,7 +575,7 @@
   background: var(--panel); border: none; color: var(--muted);
   font-size: 12px; font-weight: 700; padding: 0 9px; cursor: pointer; min-width: 28px;
 }
-.ms-deposit-toggle button.is-on { background: var(--teal); color: #06231f; }
+.ms-deposit-toggle button.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .ms-deposit-note { margin: 0; font-size: 10.5px; color: var(--muted); line-height: 1.3; }
 .ms-deposit-note-full { grid-column: 1 / -1; margin-top: -2px; }
 /* 💻 web payment toggle — compact chip next to status */
@@ -1187,7 +1187,7 @@
   transition: background .15s, color .15s;
 }
 .ad-events .pg-ev.on {
-  background: var(--teal); color: #06231f; border-color: var(--teal); font-weight: 700;
+  background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); font-weight: 700;
 }
 .ad-events .pg-ev.on .pg-ev-count { background: rgba(6,35,31,.18); color: #06231f; }
 .ad-head-actions { display: flex; align-items: center; gap: 10px; }
@@ -1286,7 +1286,7 @@
 .fp-frame-wrap { width: 100%; }
 .fp-toggle { display: inline-flex; gap: 4px; }
 .fp-tog { font-size: 12px; padding: 4px 9px; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 20px; cursor: pointer; line-height: 1; }
-.fp-tog.on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; font-weight: 700; }
+.fp-tog.on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); font-weight: 700; }
 .fp-frame { position: relative; width: 100%; background-size: cover; background-repeat: no-repeat; border-radius: 10px; border: 1px solid var(--line); cursor: crosshair; overflow: hidden; touch-action: none; }
 .fp-desktop { aspect-ratio: 16 / 7; }   /* matches the wide desktop cover band */
 .fp-mobile { aspect-ratio: 9 / 14; max-width: 170px; margin: 0 auto; }  /* tall mobile cover */
@@ -1364,7 +1364,7 @@
   padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer;
 }
 .ac-tab:hover { color: var(--text); }
-.ac-tab.is-on { background: var(--teal); border-color: var(--teal); color: #06231f; }
+.ac-tab.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 
 /* the visitor's name is the heading of a conversation card */
 .ac-card-who { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
@@ -1991,7 +1991,7 @@ tr:hover .bk-del { opacity: .8; }
   border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 600;
   font-family: inherit; cursor: pointer;
 }
-.cr-tab.is-on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
+.cr-tab.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .cr-note {
   margin: 0 0 12px; padding: 9px 12px; border-radius: 9px; font-size: 13px;
 }
@@ -2015,7 +2015,7 @@ tr:hover .bk-del { opacity: .8; }
 .cr-pill:first-child { border-radius: 8px 0 0 8px; }
 .cr-pill:last-child { border-radius: 0 8px 8px 0; }
 .cr-pill + .cr-pill { border-left: none; }
-.cr-pill.is-on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
+.cr-pill.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 
 .cr-totals {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -2477,4 +2477,9 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
   .lead-topbar { display: grid; grid-template-columns: max-content; justify-content: start; }
   .lead-topbar > .leads-tabs { width: 100%; }
   .leads-tabs > .lsm-wrap { margin-right: auto; }
+}
+
+/* 📱 phones only: a slightly bigger sidebar — easier to read and tap (desktop unchanged, Raj 2026-10-27) */
+@media (max-width: 720px) {
+  .dash .nav-item { font-size: 15.5px; padding-top: 11px; padding-bottom: 11px; }
 }

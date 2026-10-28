@@ -250,7 +250,7 @@
 .cb-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
 .cb-tab { background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .cb-tab:hover { color: var(--text); border-color: #2dd4bf66; }
-.cb-tab.on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
+.cb-tab.on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .cb-total { font-size: 15px; margin: 12px 0 16px; color: var(--muted); }
 .cb-total b { color: #2dd4bf; font-size: 18px; }
 .cb-api { padding: 18px; }
@@ -331,7 +331,7 @@
 .sa-compact-seg { display: flex; align-items: center; gap: 6px; }
 .sa-seg-btn { padding: 5px 12px; border-radius: 7px; cursor: pointer; font-weight: 700;
   font-size: 11.5px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
-.sa-seg-btn.is-on { background: #2dd4bf; color: #06231f; border-color: #2dd4bf; }
+.sa-seg-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 
 /* how much storage a package includes, edited beside its price */
 .pkg-storage { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 12px; }

@@ -14,7 +14,7 @@
   border: 1px solid var(--line); background: var(--panel); color: var(--muted); white-space: nowrap; }
 .cm-f:hover:not(:disabled) { color: var(--text); }
 .cm-f:disabled { opacity: .55; cursor: not-allowed; }
-.cm-f.is-on { background: var(--teal); border-color: var(--teal); color: #fff; }
+.cm-f.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .cm-f:focus-visible, .cm-person:focus-visible, .cm-link:focus-visible, .cm-play:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .cm-live { font-size: 11.5px; color: var(--teal); white-space: nowrap; }
 
