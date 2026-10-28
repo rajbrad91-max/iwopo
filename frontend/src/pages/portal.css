@@ -458,3 +458,10 @@
   color: var(--brandText, var(--brand, #b8922a));
 }
 
+
+/* 📱 phones: the summary strip sits inside the page margins, not against the screen edges (2026-10-28) */
+@media (max-width: 600px) {
+  .po-strip { margin-left: 16px; margin-right: 16px; }
+}
+/* no packages on this link yet */
+.po-empty { grid-column: 1 / -1; margin: 10px 0 0; text-align: center; color: var(--muted, #8a7a66); font-size: 15px; }

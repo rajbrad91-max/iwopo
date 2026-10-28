@@ -1,4 +1,5 @@
 import express from 'express';
+import { WEDDING_AGREEMENT } from '../../../frontend/src/lib/contractStarters.js';   // one source for the starter, shared with Contract setup
 import { htmlToPdf } from '../lib/pdf.js';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -32,12 +33,27 @@ export async function audit(contractId, event, ip, meta) {
  * otherwise the vendor's first. Shared by preview, creation and the portal's
  * regeneration path so all three draw from the same template.
  */
+/**
+ * 📝 A vendor with no contract template gets the ready-made Event Coverage Agreement as their default — their own copy,
+ * every word editable in Contract setup (2026-10-28). Before this a new vendor's first contract failed with
+ * "No contract template yet". Runs only when the vendor has none at all.
+ */
+export async function ensureStarterTemplate(vendorId) {
+  if (!vendorId) return null;
+  if (await prisma.contract_templates.count({ where: { vendor_id: vendorId } })) return null;   // 🔒 tenancy
+  const { name, event_type, header, accent, font_style, sections, legal_terms } = WEDDING_AGREEMENT;
+  return prisma.contract_templates.create({
+    data: { vendor_id: vendorId, name, event_type, header, accent, font_style, sections, legal_terms, is_default: true },
+  });
+}
+
 export async function templateForLead(lead, templateId = null) {
   if (templateId) {
     return prisma.contract_templates.findFirst({
       where: { id: Number(templateId), vendor_id: lead.vendor_id },   // 🔒 tenancy
     });
   }
+  await ensureStarterTemplate(lead.vendor_id);
   const tpls = await prisma.contract_templates.findMany({
     where: { vendor_id: lead.vendor_id },                             // 🔒 tenancy
     orderBy: { id: 'asc' },
@@ -217,6 +233,8 @@ function gettingReadyRows(lead) {
   return [];
 }
 
+/** a time column as "HH:MM" — Prisma hands TIME columns back as Dates on 1970-01-01 */
+const hhmm = (v) => (v instanceof Date ? v.toISOString().slice(11, 16) : String(v || '').slice(0, 5));
 /** "5.5 hours" between two "HH:MM" times (past midnight counts as the next day) */
 function hoursBetween(from, to) {
   if (!from || !to) return '';
@@ -245,7 +263,7 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   const main = kvTable('ct-kv', [
     ['Date', fmtDate(lead.event_date)],
     ['Time', lead.timing_from ? `${fmtTime(lead.timing_from)} – ${lead.timing_to ? fmtTime(lead.timing_to) : 'TBC'}` : ''],
-    ['Hours', String(hoursLabel(lead) || '').replace(/\bhrs\b/g, 'hours').replace(/\bhr\b/g, 'hour')],
+    ['Hours', String(hoursLabel(lead) || '').replace(/\bhrs\b/g, 'hours').replace(/\bhr\b/g, 'hour') || hoursBetween(hhmm(lead.timing_from), hhmm(lead.timing_to))],
     ['Location', lead.location],
     ['Est Guests', lead.guests],
     ['Service', formAnswer(lead, /what do you need|coverage type|services? needed/i)],
@@ -570,10 +588,14 @@ export function sectionApplies(section, inclusions) {
 
 
 /* ───────── 📑 TEMPLATES ───────── */
+// 🔢 an :id that isn't a number is simply not found — it never reaches the database as NaN (2026-10-28)
+router.param('id', (req, res, next, v) => (/^\d+$/.test(v) ? next() : res.status(404).json({ error: 'Not found' })));
+
 router.get('/templates', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
     if (!v) return res.status(400).json({ error: 'No vendor' });
+    await ensureStarterTemplate(Number(v));   // 📝 a vendor with none starts from the ready-made agreement
     const templates = await prisma.contract_templates.findMany({
       where: { vendor_id: Number(v) },          // 🔒 tenancy
       orderBy: { id: 'asc' },

@@ -204,14 +204,15 @@ router.get('/:token', async (req, res) => {
       // leads.package_id has a foreign key to vendor_packages so it can't hold
       // one of these ids — the chosen one is flagged on the row instead
       selectedId = leadPkgs.find(p => p.is_selected)?.id ?? null;
-    } else {
-      const tplWhere = { vendor_id: lead.vendor_id };           // 🔒 tenancy
-      if (lead.package_template_id) tplWhere.id = lead.package_template_id;
+    } else if (lead.package_template_id) {
+      // an older lead: the ONE folder it was given. A lead with no folder shows nothing — before 2026-10-28 it
+      // fell back to every package the vendor had, from every folder, packages this client was never sent
+      const tplWhere = { vendor_id: lead.vendor_id, id: lead.package_template_id };   // 🔒 tenancy
       templates = await prisma.package_templates.findMany({ where: tplWhere, orderBy: { id: 'asc' } });
       packages = await prisma.vendor_packages.findMany({
         where: {
           vendor_id: lead.vendor_id,                            // 🔒 tenancy
-          ...(lead.package_template_id ? { template_id: lead.package_template_id } : {}),
+          template_id: lead.package_template_id,
         },
         orderBy: { base_price: 'asc' },
       });

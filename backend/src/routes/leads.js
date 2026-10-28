@@ -27,6 +27,9 @@ function scope(vid, extra = {}) {
 // "Unread" is seen_at IS NULL, deliberately NOT status='new'. Status is the sales
 // pipeline (new → quoted → booked) and the panel filters and counts on it, so
 // marking a lead read must not move it out of the "New" filter.
+// 🔢 an :id that isn't a number is simply not found — it never reaches the database as NaN (2026-10-28)
+router.param('id', (req, res, next, v) => (/^\d+$/.test(v) ? next() : res.status(404).json({ error: 'Not found' })));
+
 router.get('/unread-count', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   try {

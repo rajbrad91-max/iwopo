@@ -108,6 +108,29 @@ async function transporterFor(s) {
   return null;
 }
 
+/**
+ * ✉️ Who an email sent on a vendor's behalf is from, and where the client's reply goes (Raj, 2026-10-28 — option B).
+ *   • the vendor's own mail account → their own name and address, as before
+ *   • no account yet → iwopo's platform address (Super Admin → Email), shown as "<Business> via iwopo", with
+ *     replies going to the vendor's own email — so a brand-new vendor's first send just works and the
+ *     conversation still lands in their inbox
+ */
+async function senderFor(vendorId, s) {
+  if (s.mode === 'smtp' && s.smtp_host && s.smtp_user) {
+    return { from: `"${s.from_name || 'iwopo'}" <${s.from_email || s.smtp_user}>`, replyTo: undefined };
+  }
+  const [p, v, owner] = await Promise.all([
+    platformMail(),
+    prisma.vendors.findUnique({ where: { id: vendorId }, select: { business_name: true, email: true } }),
+    prisma.users.findFirst({ where: { vendor_id: vendorId, role: 'vendor' }, orderBy: { id: 'asc' }, select: { email: true } }),
+  ]);
+  const name = String(v?.business_name || s.from_name || 'iwopo').replace(/["<>]/g, '');
+  return {
+    from: `"${name} via iwopo" <${p.from || p.user}>`,
+    replyTo: s.from_email || s.notify_email || v?.email || owner?.email || undefined,
+  };
+}
+
 /* ── 📑 EMAIL TEMPLATES ── */
 router.get('/templates', requireAuth, async (req, res) => {
   try {
@@ -228,10 +251,9 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     });
   }
 
-    const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
-    const fromName = s.from_name || 'iwopo';
+    const who = await senderFor(lead.vendor_id, s);   // ✉️ their address, or "<Business> via iwopo" with replies to them
     await t.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
+      from: who.from, replyTo: who.replyTo,
       to: lead.email,
       ...(ccEmail ? { cc: ccEmail } : {}),
       subject,
@@ -247,10 +269,9 @@ export async function sendLeadEmail(req, lead, subject, body) {
   const s = await getSettings(lead.vendor_id);
   if (s.mode === 'self') { const e = new Error('You are in self-receive mode — reply from your own inbox 📥'); e.code = 'self_mode'; throw e; }
   const t = await transporterFor(s);
-  if (!t) throw new Error('No email server configured yet. Add SMTP creds in Settings → Email ⚙️');
-  const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
-  const fromName = s.from_name || 'iwopo';
-  await t.sendMail({ from: `"${fromName}" <${fromEmail}>`, to: lead.email, subject, text: body });
+  if (!t) throw new Error('Email isn\u2019t available right now — please try again shortly, or add your own email under Settings → Email ⚙️');
+  const who = await senderFor(lead.vendor_id, s);   // ✉️ their address, or "<Business> via iwopo" with replies to them
+  await t.sendMail({ from: who.from, replyTo: who.replyTo, to: lead.email, subject, text: body });
   logEmail(lead.vendor_id, { to: lead.email, subject, kind: 'lead', leadId: lead.id });   // 📧 the email log
 }
 
@@ -262,7 +283,8 @@ export async function notifyNewLead(lead) {
     if (!to) return;
     const t = await transporterFor(s);
     if (!t) return;
-    const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : PLATFORM.from;
+    // the vendor's own address, else iwopo's platform address (Super Admin → Email), not the old server-file one
+    const fromEmail = s.mode === 'smtp' ? (s.from_email || s.smtp_user) : ((await platformMail()).from || (await platformMail()).user);
     await t.sendMail({
       from: `"iwopo" <${fromEmail}>`, to,
       subject: `🎉 New inquiry from ${lead.name || 'a client'}`,
@@ -315,14 +337,10 @@ export async function sendAsVendor(vendorId, { to, subject, html, text, replyTo 
           : 'No mail server is configured yet. Add your SMTP details under Settings → Email.',
       };
     }
-    // the vendor's own from-address when they have one, otherwise the platform's
-    const fromEmail = (s.mode === 'smtp' && s.from_email) || PLATFORM.from || PLATFORM.user;
-    const fromName = s.from_name || 'iwopo';
+    const who = await senderFor(vendorId, s);   // ✉️ their address, or "<Business> via iwopo" with replies to them
     await tx.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to, subject, text, html,
-      // a client replying should reach the vendor, not a platform mailbox
-      replyTo: replyTo || s.from_email || undefined,
+      from: who.from, to, subject, text, html,
+      replyTo: replyTo || who.replyTo,   // a client replying reaches the vendor, not a platform mailbox
     });
     logEmail(vendorId, { to, subject, kind: 'vendor' });   // 📧 the email log
     return { ok: true, via: s.mode === 'smtp' && s.smtp_host ? 'vendor' : 'platform' };

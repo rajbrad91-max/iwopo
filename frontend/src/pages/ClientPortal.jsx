@@ -435,6 +435,9 @@ export default function ClientPortal({ token }) {
             )}
 
             <div className="po-grid">
+              {packages.length === 0 && (
+                <p className="po-empty">Your packages are being prepared — you’ll get an email the moment they’re ready.</p>
+              )}
               {packages.map((p, i) => {
                 const isChosen = lead.package_id === p.id;
                 const inc = Array.isArray(p.inclusions) ? p.inclusions : [];
@@ -483,7 +486,8 @@ export default function ClientPortal({ token }) {
                               {m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
                               <span className="po-pkg-amt">{m.amount}</span>
                               {!m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
-                              <span className="po-pkg-code">{m.code}</span>
+                              {/* the code only when the symbol doesn't already say it (a bare "$") */}
+                              {m.code && !/[A-Za-z]/.test(m.symbol || '') && <span className="po-pkg-code">{m.code}</span>}
                             </>
                           );
                         })()}

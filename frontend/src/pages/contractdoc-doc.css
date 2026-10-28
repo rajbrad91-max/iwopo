@@ -114,7 +114,7 @@
 .ct-doc .ct-details tr:last-child td,
 .ct-doc .ct-svc tr:last-child th,
 .ct-doc .ct-svc tr:last-child td { border: 1px solid #d3d8e0; padding: 10px 12px; font-size: 14px; }
-.ct-doc .ct-details th { width: 32%; background: #f3f4f6; font-weight: 600; color: #374151; }
+.ct-doc .ct-details th { background: #f3f4f6; font-weight: 600; color: #374151; white-space: nowrap; width: 1%; }   /* labels on one line ("Client Name"), the column fits its words */
 .ct-doc .ct-svc th { width: 50%; background: #fff; font-weight: 400; color: #1f2937; }
 
 /* label / value lists (the schedule) */
@@ -187,3 +187,4 @@
   .ct-doc .ct-hb-logo { width: 84px; }
   .ct-doc .ct-logo { max-width: 72px; max-height: 60px; }
 }
+
