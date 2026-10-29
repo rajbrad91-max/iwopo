@@ -4897,6 +4897,12 @@ const CORE_EVENT = [
 ];
 
 const FORM_PRESETS = {
+  /* ✏️ (Raj, 2026-10-28) a vendor whose trade isn't listed starts blank and builds their own, instead of loading
+     someone else's trade and deleting it. Only the event date stays — every vendor needs it to quote — and the
+     background watermark is left as it is (this is not a trade). */
+  custom: { label: '✏️ Start blank — build my own', fields: [
+    { type: 'date', label: 'Date of Event', maps_to: 'event_date' },
+  ] },
   photographer: { label: '📷 Photographer', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
@@ -5123,7 +5129,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
         <select className="fb-preset-sel" value="" onChange={e => { loadPreset(e.target.value); e.target.value = ''; }}>
           <option value="">Choose your trade…</option>
           {Object.entries(FORM_PRESETS).map(([k, v]) => (
-            <option key={k} value={k}>{v.label} · {v.fields.length} questions</option>
+            <option key={k} value={k}>{v.label} · {v.fields.length} question{v.fields.length === 1 ? '' : 's'}</option>
           ))}
         </select>
         <span className="fb-preset-hint">then edit, reorder or remove anything</span>
