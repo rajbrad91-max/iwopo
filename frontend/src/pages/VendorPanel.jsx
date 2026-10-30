@@ -5344,7 +5344,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
           })()}
 
           {f.type !== 'heading' && (
-            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+            <label className="fb-required">
               <input type="checkbox" checked={f.required} onChange={e => upd(i, { required: e.target.checked })} /> Required
             </label>
           )}
