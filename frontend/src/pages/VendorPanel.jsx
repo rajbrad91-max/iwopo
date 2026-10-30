@@ -3181,7 +3181,7 @@ function LeadsView({ routeLead, onOpenLead }) {
                 )}
                 <td className="col-num" data-label="#">{seqOf(l.id)}</td>
                 {/* 📅 when it arrived — the list could not say (Muse leads comparison, 2026-10-30) */}
-                <td className="biz" data-label="Client">{l.name}{l.created_at && <span className="lead-received">📥 {fmtDateTime(l.created_at)}</span>}</td>
+                <td className="biz" data-label="Client">{l.name}{l.created_at && <span className="lead-received">📥 {fmtDateTime(l.created_at, { zone: true })}</span>}</td>
                 <td data-label="Event">{l.event_type}</td>
                 <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
                 <td data-label="Location">{l.location || '—'}</td>
@@ -3501,7 +3501,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
         {row('📞 Phone', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone)}
         {row('📷 Instagram', lead.instagram)}
         {row('🔎 Heard via', lead.heard)}
-        {row('📥 Received', lead.created_at ? fmtDateTime(lead.created_at) : null)}
+        {row('📥 Received', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null)}
       </div>
 
 

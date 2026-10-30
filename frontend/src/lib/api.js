@@ -23,7 +23,9 @@ export function fmtTime(t) {
 // checking their panel while travelling should still read times the way their
 // business runs, not the way the airport does. timeOnly is the clock on a
 // message or a notification; dateOnly is the calendar day of that same moment.
-export function fmtDateTime(ts, { dateOnly = false, timeOnly = false, timeZone, timeFormat } = {}) {
+/* zone: true adds the short time-zone name ("PDT", "EST") — whose clock a time is in is never a guess, and a
+   wrong zone setting shows on screen instead of hiding (Raj, 2026-10-30). */
+export function fmtDateTime(ts, { dateOnly = false, timeOnly = false, timeZone, timeFormat, zone = false } = {}) {
   if (!ts) return '';
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return String(ts);
@@ -40,6 +42,7 @@ export function fmtDateTime(ts, { dateOnly = false, timeOnly = false, timeZone, 
     opts.hour = hour12 ? 'numeric' : '2-digit';
     opts.minute = '2-digit';
     opts.hour12 = hour12;
+    if (zone) opts.timeZoneName = 'short';
   }
   try { return d.toLocaleString(undefined, opts); }
   catch { return d.toLocaleString(); }   // a bad saved timezone shouldn't blank the row

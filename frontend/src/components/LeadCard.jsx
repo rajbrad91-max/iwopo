@@ -26,7 +26,7 @@ export default function LeadCard({ lead: l, history = false, onSend, onRestore }
         )}
       </div>
       {/* 📅 when it arrived — its own line under the name, never squeezed into the name row */}
-      {l.created_at && <p className="lc-received">📥 Received {fmtDateTime(l.created_at)}</p>}
+      {l.created_at && <p className="lc-received">📥 Received {fmtDateTime(l.created_at, { zone: true })}</p>}
       <dl className="lc-rows">
         {l.event_type && (
           <div className="lc-row"><dt>Event</dt><dd>{l.event_type}{l.service && <span className="lc-aside">{l.service}</span>}</dd></div>
