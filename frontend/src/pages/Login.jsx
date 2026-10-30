@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import VerifyCode from '../components/VerifyCode';
@@ -13,8 +13,15 @@ export default function Login({ onLogin, onBack }) {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [verify, setVerify] = useState(null);   // ✉️ { email, sandbox_code } — the address still needs its code
+  /* 🛡️ one request at a time. A ref, not the `loading` state: repeated key events arrive before React re-renders,
+     so they would all still see loading === false. */
+  const busy = useRef(false);
+  /** Enter submits — once. A held or repeating key (phones send several) is ignored. */
+  const onEnter = (fn) => (e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); fn(); } };
 
   async function handleSubmit() {
+    if (busy.current) return;
+    busy.current = true;
     setError('');
     setLoading(true);
     try {
@@ -28,13 +35,16 @@ export default function Login({ onLogin, onBack }) {
         ? 'That email or password is not right.'
         : err.message);
     } finally {
+      busy.current = false;
       setLoading(false);
     }
   }
 
   async function handleForgot() {
+    if (busy.current) return;
     setError(''); setNotice('');
     if (!email) { setError('Enter your email first'); return; }
+    busy.current = true;
     setLoading(true);
     try {
       const r = await api.forgotPassword(email);
@@ -42,6 +52,7 @@ export default function Login({ onLogin, onBack }) {
     } catch (err) {
       setError(err.message);
     } finally {
+      busy.current = false;
       setLoading(false);
     }
   }
@@ -67,12 +78,12 @@ export default function Login({ onLogin, onBack }) {
             <p className="login-sub">Vendors &amp; admins</p>
 
             <label>Email</label>
-            <input value={email} onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
+            <input type="email" inputMode="email" name="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck="false" value={email} onChange={e => setEmail(e.target.value)}
+              onKeyDown={onEnter(handleSubmit)} />
 
             <label>Password</label>
-            <PasswordInput value={password} onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="Enter your password" />
+            <PasswordInput name="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)}
+              onKeyDown={onEnter(handleSubmit)} placeholder="Enter your password" />
 
             {error && <div className="login-error">⚠️ {error}</div>}
 
@@ -92,8 +103,8 @@ export default function Login({ onLogin, onBack }) {
             <p className="login-sub">We'll email you a reset link</p>
 
             <label>Email</label>
-            <input value={email} onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleForgot()} placeholder="you@studio.com" />
+            <input type="email" inputMode="email" name="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck="false" value={email} onChange={e => setEmail(e.target.value)}
+              onKeyDown={onEnter(handleForgot)} placeholder="you@studio.com" />
 
             {error && <div className="login-error">⚠️ {error}</div>}
             {notice && <div className="login-notice">✅ {notice}</div>}
