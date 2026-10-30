@@ -3828,6 +3828,11 @@ function MoneySection({ lead }) {
     try {
       const d = await api.confirmPaymentClaim(lead.id, dismiss ? { dismiss: true } : { amount, method: 'direct' });
       setData(d);
+      // F4 (2026-10-30): the deposit in books the lead on the server — show it now, not after a refresh
+      if (d.status && d.status !== status) {
+        setStatus(d.status);
+        if (d.status === 'booked') { setMsg('✅ Booking confirmed · invoice ready in Contracts & Invoices (not sent)'); setTimeout(() => setMsg(''), 5000); }
+      }
       setClaimed(false);
       setClaimModal(null);
     } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
