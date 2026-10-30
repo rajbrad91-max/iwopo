@@ -171,3 +171,20 @@
 .inq-at { position: relative; }
 .inq-at-sign { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6b7a86; font-weight: 600; pointer-events: none; }
 .inq-at input { padding-left: 32px; }
+
+/* 🔀 the builder's optional extras (2026-10-30) — a section title inside the questions, the "type your own" box,
+   and the pre-events block. They use the theme's own colours, so every theme carries them. */
+.iq-grid .iq-subhead { margin: 10px 0 0; padding-top: 14px; border-top: 1px solid var(--field-line); }
+.iq-grid > .iq-full:first-child .iq-subhead { margin-top: 0; padding-top: 0; border-top: 0; }
+.iq-card .iq-other { margin-top: 8px; }
+.iq-pe-card { border: 1px solid var(--field-line); border-radius: 12px; padding: 14px; margin: 0 0 12px; background: var(--field-bg); }
+.iq-pe-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.iq-pe-no { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
+.iq-card .iq-pe-remove { width: auto; padding: 4px 10px; background: none; border: 1px solid var(--field-line); border-radius: 8px;
+  color: var(--muted); font-size: 12px; font-family: inherit; cursor: pointer; }
+.iq-card .iq-pe-remove:hover { color: #b4433a; border-color: #b4433a; }
+.iq-card .iq-pe-add { width: 100%; padding: 12px; background: none; border: 1.5px dashed var(--brand, #C9A86A); border-radius: 10px;
+  color: var(--brand-strong, #a8874a); font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer; }
+.iq-card .iq-pe-add:hover { background: var(--field-bg); }
+.iq-pe-note { margin: 0; font-size: 13px; color: var(--muted); }
+@media (max-width: 560px) { .iq-pe-card { padding: 12px; } }

@@ -16,6 +16,7 @@ import { chime } from '../lib/chime';
 import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber } from './InquiryForm';
+import { OTHER } from '../lib/formRules';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import './contractdoc.css';
@@ -4833,6 +4834,70 @@ function BookingsView({ routeBooking, onOpenBooking }) {
   );
 }
 
+/**
+ * 🔀 "Show this question: Always / Only when…" (2026-10-30). Optional on every question — "Always" is how every
+ * form behaved before. The source can be an EARLIER dropdown or checkbox, or one of the built-in contact questions.
+ * The rules themselves live in lib/formRules.js (the server applies the same ones).
+ */
+const BUILTIN_SOURCES = [
+  { id: '@heard', label: 'How did you hear about us?', type: 'dropdown', options: ['Friend', 'Google Maps', 'Instagram', 'Facebook', 'Other'] },
+  { id: '@role', label: 'Your Role', type: 'dropdown', options: ['Bride', 'Groom', 'Planner', 'Other'] },
+];
+function ShowIfEditor({ f, index, fields, onChange }) {
+  const earlier = fields.slice(0, index).filter(x => (x.type === 'dropdown' || x.type === 'checkbox') && x.label);
+  const sources = [...BUILTIN_SOURCES, ...earlier.map(x => ({
+    id: x.id, label: x.label, type: x.type, options: [...(x.options || []), ...(x.allow_other ? [OTHER] : [])],
+  }))];
+  const rule = f.show_if?.field ? f.show_if : null;
+  const src = rule && sources.find(x => x.id === rule.field);
+  const values = rule?.values || [];
+  const set = (patch) => onChange({ ...rule, ...patch });
+  return (
+    <div className="fb-showif">
+      <label className="fb-label">👁️ Show this question</label>
+      <select className="fb-select" value={rule?.field || ''} onChange={e => {
+        const s2 = sources.find(x => x.id === e.target.value);
+        onChange(s2 ? { field: s2.id, op: 'in', values: s2.type === 'checkbox' ? [true] : [] } : null);
+      }}>
+        <option value="">Always</option>
+        {sources.map(x => <option key={x.id} value={x.id}>Only when “{x.label}”…</option>)}
+      </select>
+      {src?.type === 'checkbox' && (
+        <select className="fb-select fb-showif-op" value={rule.op} onChange={e => set({ op: e.target.value, values: [true] })}>
+          <option value="in">…is ticked</option>
+          <option value="not_in">…is not ticked</option>
+        </select>
+      )}
+      {src && src.type !== 'checkbox' && (<>
+        <select className="fb-select fb-showif-op" value={rule.op} onChange={e => set({ op: e.target.value })}>
+          <option value="in">…is one of</option>
+          <option value="not_in">…is not one of</option>
+        </select>
+        <div className="fb-showif-vals">
+          {src.options.map(o => (
+            <label key={o} className="fb-chip">
+              <input type="checkbox" checked={values.includes(o)}
+                onChange={e => set({ values: e.target.checked ? [...values, o] : values.filter(v => v !== o) })} />
+              {o === OTHER ? 'Other (typed)' : o}
+            </label>
+          ))}
+        </div>
+        {!values.length && <p className="fb-hint">💡 Tick at least one answer — until then this question always shows.</p>}
+      </>)}
+      {rule && !src && <p className="fb-hint">⚠️ The question this depended on was removed or moved below it — it now always shows.</p>}
+    </div>
+  );
+}
+
+/** A comma-separated list typed in one box — kept as typed until the box is left, so commas can be typed freely. */
+function ListInput({ value, placeholder, onChange }) {
+  const [text, setText] = useState((value || []).join(', '));
+  return (
+    <input className="fb-input" value={text} placeholder={placeholder} onChange={e => setText(e.target.value)}
+      onBlur={() => onChange(text.split(',').map(x => x.trim()).filter(Boolean))} />
+  );
+}
+
 // 🏗️ Section 2 custom field builder
 const FIELD_TYPES = [
   { t: 'dropdown', label: '📋 Dropdown' },
@@ -4846,7 +4911,14 @@ const FIELD_TYPES = [
   { t: 'hours', label: '⏱️ Hours' },
   { t: 'location', label: '📍 Location' },
   { t: 'checkbox', label: '☑️ Checkbox' },
+  // 🏷️ a title that groups the questions under it — asks nothing
+  { t: 'heading', label: '🏷️ Section title' },
+  // 🗓️ the client adds Mehndi, Jaggo, Reception… each with its own date, times and place → the lead's Pre-Events card
+  { t: 'pre_events', label: '🗓️ Pre-Events' },
 ];
+
+/** The event names a new Pre-Events question offers — the vendor edits them like dropdown options. */
+const PRE_EVENT_NAMES = ['Mehndi', 'Jaggo', 'Maiyan', 'Sangeet', 'Haldi', 'Reception'];
 
 /**
  * 🎉 One click that lays out the questions every event booking needs.
@@ -4996,6 +5068,32 @@ const FORM_PRESETS = {
   ] },
   /* 🚗 (Raj, 2026-10-26) a driver's "when and where" is a pick-up and a finish, not a venue — so this one spells out
      its own core fields; they map to the same Bookings columns (date, timing, hours, location, guests = passengers) */
+  /* ⭐ PPM Special (Raj, 2026-10-30): the full Perfect Poses Media inquiry — everything his old Laravel form asked,
+     rebuilt from the builder's own pieces, so any vendor can load it and change anything. Rules name their source
+     question by "key"; loading points them at the real question ids. */
+  ppm_special: { label: '⭐ PPM Special — Perfect Poses Media', fields: [
+    { type: 'text', label: "Friend's Name (who referred you)", show_if: { field: '@heard', op: 'in', values: ['Friend'] } },
+    { key: 'evt', type: 'dropdown', label: 'Type of Event', maps_to: 'event_type', required: true,
+      options: ['Wedding', 'Pre-wedding', 'Engagement', 'Birthday party', 'Commercial'], allow_other: true, other_label: 'Other (type your event)' },
+    { type: 'dropdown', label: 'Type of Service', required: true, options: ['Photos & Videos', 'Only Photos', 'Only Videos'] },
+    { type: 'date', label: 'Date of Event', maps_to: 'event_date', required: true },
+    { type: 'location', label: 'Location', maps_to: 'location', required: true, show_if: { field: 'evt', op: 'not_in', values: ['Pre-wedding'] } },
+    { type: 'time', label: 'Starting Time', maps_to: 'timing_from', required: true, show_if: { field: 'evt', op: 'not_in', values: ['Pre-wedding'] } },
+    { type: 'time', label: 'Ending Time', maps_to: 'timing_to', required: true, show_if: { field: 'evt', op: 'not_in', values: ['Pre-wedding'] } },
+    { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours', show_if: { field: 'evt', op: 'not_in', values: ['Pre-wedding'] } },
+    { type: 'number', label: 'Est. Guests', maps_to: 'guests', required: true },
+    { type: 'dropdown', label: 'Coverage — Sides', options: ['Both Sides', 'Groom Side', 'Bride Side'], show_if: { field: 'evt', op: 'in', values: ['Wedding'] } },
+    { type: 'heading', label: 'Pre-Wedding Shoot', show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
+    { type: 'dropdown', label: 'Pre-Wedding Shoot — Service', options: ['Photos & Videos', 'Only Photos', 'Only Videos'], show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
+    { type: 'date', label: 'Pre-Wedding Shoot — Date', show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
+    { type: 'heading', label: 'Getting Ready', show_if: { field: 'evt', op: 'in', values: ['Wedding'] } },
+    { key: 'grb', type: 'checkbox', label: 'Bride — Getting Ready', maps_to: 'gr_bride', show_if: { field: 'evt', op: 'in', values: ['Wedding'] } },
+    { type: 'location', label: 'Bride — Getting Ready Venue', maps_to: 'gr_bride_venue', show_if: { field: 'grb', op: 'in', values: [true] } },
+    { key: 'grg', type: 'checkbox', label: 'Groom — Getting Ready', maps_to: 'gr_groom', show_if: { field: 'evt', op: 'in', values: ['Wedding'] } },
+    { type: 'location', label: 'Groom — Getting Ready Venue', maps_to: 'gr_groom_venue', show_if: { field: 'grg', op: 'in', values: [true] } },
+    { type: 'pre_events', label: 'Jaggo, Maiyaan, Reception, Engagement, Proposal & more', options: ['Jaggo', 'Choora', 'Maiyan', 'Reception'],
+      pe_services: ['Photos & Videos', 'Only Photos', 'Only Videos'], show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
+  ] },
   transportation: { label: '🚗 Transportation', fields: [
     { type: 'dropdown', label: 'Type of Event', maps_to: 'event_type',
       options: ['Wedding', 'Engagement', 'Reception', 'Prom / Graduation', 'Corporate', 'Airport transfer', 'Other'] },
@@ -5038,7 +5136,8 @@ function FieldBuilder({ fields, setFields, onTrade }) {
       maps_to = !taken.has('timing_from') ? 'timing_from'
         : !taken.has('timing_to') ? 'timing_to' : '';
     }
-    setFields([...fields, { id: uid(), type: t, label: '', required: false, maps_to, options: t === 'dropdown' ? ['Option 1'] : [] }]);
+    const options = t === 'dropdown' ? ['Option 1'] : t === 'pre_events' ? [...PRE_EVENT_NAMES] : [];
+    setFields([...fields, { id: uid(), type: t, label: t === 'pre_events' ? 'Pre-Events' : '', required: false, maps_to, options }]);
   };
   const upd = (i, patch) => setFields(fields.map((f, idx) => idx === i ? { ...f, ...patch } : f));
 
@@ -5091,6 +5190,9 @@ function FieldBuilder({ fields, setFields, onTrade }) {
         required: p.required ?? (free && p.maps_to === 'event_date'),
         maps_to: free ? p.maps_to : '',
         options: p.options ? [...p.options] : [],
+        ...(p.allow_other ? { allow_other: true, other_label: p.other_label || '' } : {}),
+        ...(p.pe_services ? { pe_services: [...p.pe_services] } : {}),
+        ...(p.add_label ? { add_label: p.add_label } : {}),
       };
     });
     /* ⏱️ an Hours question works itself out from the start and end times —
@@ -5100,6 +5202,13 @@ function FieldBuilder({ fields, setFields, onTrade }) {
     const toId = loaded.find(f => f.maps_to === 'timing_to')?.id;
     for (const f of loaded) {
       if (f.type === 'hours' && fromId && toId) { f.from_field = fromId; f.to_field = toId; }
+    }
+    /* 🔀 a preset's "show only when…" names its source question by a key — point each rule at that question's id */
+    const idOfKey = Object.fromEntries(preset.fields.map((p, x) => [p.key, loaded[x].id]).filter(([k]) => k));
+    for (const [x, p] of preset.fields.entries()) {
+      if (!p.show_if) continue;
+      const src = String(p.show_if.field).startsWith('@') ? p.show_if.field : idOfKey[p.show_if.field];
+      if (src) loaded[x].show_if = { ...p.show_if, field: src, values: [...p.show_if.values] };
     }
     setFields(loaded);
     // The preset is a trade. The watermark is the same list of trades, so
@@ -5111,7 +5220,8 @@ function FieldBuilder({ fields, setFields, onTrade }) {
   const del = async (i) => {
     const name = fields[i]?.label?.trim();
     if (!await dialog.confirm(name ? `"${name}" will be removed from your form.` : 'This question will be removed from your form.', { title: 'Delete this question?', okLabel: 'Delete' })) return;
-    setFields(fields.filter((_, idx) => idx !== i));
+    const gone = fields[i]?.id;
+    setFields(fields.filter((_, idx) => idx !== i).map(o => (o.show_if?.field === gone ? { ...o, show_if: null } : o)));
   };
   const move = (i, dir) => {
     const j = i + dir; if (j < 0 || j >= fields.length) return;
@@ -5165,8 +5275,9 @@ function FieldBuilder({ fields, setFields, onTrade }) {
           <input style={box} placeholder="Field label (e.g. Event Type)" value={f.label} onChange={e => upd(i, { label: e.target.value })} />
 
           {/* dropdown options */}
-          {f.type === 'dropdown' && (
+          {(f.type === 'dropdown' || f.type === 'pre_events') && (
             <div style={{ marginTop: 8 }}>
+              {f.type === 'pre_events' && <p className="fb-hint">🗓️ The event names clients can pick — they can also type their own.</p>}
               {f.options.map((opt, oi) => (
                 <div key={oi} style={{ display: 'flex', gap: 6, marginBottom: 5 }}>
                   <input style={{ ...box, fontSize: 12 }} value={opt} onChange={e => upd(i, { options: f.options.map((o, x) => x === oi ? e.target.value : o) })} />
@@ -5174,6 +5285,28 @@ function FieldBuilder({ fields, setFields, onTrade }) {
                 </div>
               ))}
               <button className="refresh" onClick={() => upd(i, { options: [...f.options, 'Option ' + (f.options.length + 1)] })} style={{ padding: '4px 10px', fontSize: 11 }}>+ option</button>
+            </div>
+          )}
+
+          {/* ✍️ optional: the client may type an answer that isn't in the list */}
+          {f.type === 'dropdown' && (
+            <label className="fb-check">
+              <input type="checkbox" checked={!!f.allow_other} onChange={e => upd(i, { allow_other: e.target.checked })} />
+              ✍️ Let clients type their own answer (adds “Other — type your own”)
+            </label>
+          )}
+
+          {/* 🗓️ Pre-Events: an optional fixed list for each pre-event's Service, and the button's wording */}
+          {f.type === 'pre_events' && (
+            <div className="fb-pair">
+              <div>
+                <label className="fb-label">Service choices (optional) 🎬</label>
+                <ListInput value={f.pe_services} placeholder="Photos & Videos, Only Photos" onChange={v => upd(i, { pe_services: v })} />
+              </div>
+              <div>
+                <label className="fb-label">Button wording</label>
+                <input className="fb-input" value={f.add_label || ''} placeholder="Add Pre-Event" onChange={e => upd(i, { add_label: e.target.value })} />
+              </div>
             </div>
           )}
 
@@ -5210,9 +5343,13 @@ function FieldBuilder({ fields, setFields, onTrade }) {
             );
           })()}
 
-          <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <input type="checkbox" checked={f.required} onChange={e => upd(i, { required: e.target.checked })} /> Required
-          </label>
+          {f.type !== 'heading' && (
+            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              <input type="checkbox" checked={f.required} onChange={e => upd(i, { required: e.target.checked })} /> Required
+            </label>
+          )}
+
+          <ShowIfEditor f={f} index={i} fields={fields} onChange={rule => upd(i, { show_if: rule })} />
 
           {/* 📋 "Show on leads" — fills the EVENT column of the leads table.
               Only one field can, so ticking this unticks whichever field had it.

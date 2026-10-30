@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import ChatWidget from './ChatWidget';
 import './inquiry.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { shownFields, OTHER, BLANK_PRE_EVENT } from '../lib/formRules';
 
 // The list lives in lib/professions.js — the public page and the super panel
 // need the same one. Re-exported so existing imports keep working.
@@ -93,14 +94,20 @@ export default function InquiryForm({ handle, byHost = false }) {
     if (!p.phone.trim()) problems.push({ field: 'phone', message: 'Please enter your phone number' });
     else if (phoneProblem(p.phone)) problems.push({ field: 'phone', message: phoneProblem(p.phone) });
     if (instaProblem(p.instagram)) problems.push({ field: 'instagram', message: instaProblem(p.instagram) });
-    for (const x of allProblems(cfg.custom_fields || [], answers)) problems.push({ field: `f:${x.id}`, message: x.message });
+    // 🔀 only the questions the client can actually see are checked — and sent
+    const shown = shownFields(cfg.custom_fields || [], answers, p);
+    for (const x of allProblems(shown, answers)) problems.push({ field: `f:${x.id}`, message: x.message });
     if (problems.length) return fail(problems);
     setBusy(true);
     try {
       // An unticked box is an answer. Leaving it out of custom_data made the
       // lead look as if the question had never been asked.
-      const custom = { ...answers };
-      for (const f of cfg.custom_fields || []) {
+      const custom = {};
+      for (const f of shown) {
+        if (f.type === 'heading') continue;                    // a section title asks nothing
+        custom[f.id] = answers[f.id];
+        // 🗓️ the pre-events list, without the empty cards and the keys that only kept the cards apart on screen
+        if (f.type === 'pre_events') custom[f.id] = (answers[f.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim());
         if (f.type === 'checkbox') custom[f.id] = answers[f.id] === true;
         // 349.99 stays 349.99 — kept as the client wrote it, without commas or a $ sign
         if (f.type === 'number' && custom[f.id] !== undefined && custom[f.id] !== '') custom[f.id] = plainNumber(custom[f.id]);
@@ -197,6 +204,9 @@ export default function InquiryForm({ handle, byHost = false }) {
 /* The public form passes clientForm (+ the field an error is about); the
    panel's Add / Edit Lead do not — a vendor recording an old booking must be
    able to enter a past date. */
+/** Question types that take the whole row rather than half of it. */
+const FULL_WIDTH = new Set(['checkbox', 'paragraph', 'heading', 'pre_events']);
+
 export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, clientForm = false, errs = {} }) {
   const c = cfg || {};
   const box = (key, extra = '') => ({ 'data-field': key, className: `${extra} ${errs[key] ? 'iq-field-err' : ''}`.trim() || undefined });
@@ -251,8 +261,8 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
         <div className="iq-section">
           <div className="iq-section-title"><span className="iq-emoji">✨ </span>{c.details_heading || 'Inquiry Details'}</div>
           <div className="iq-grid">
-            {c.custom_fields.map(fld => (
-              <div key={fld.id} {...box(`f:${fld.id}`, fld.type === 'checkbox' || fld.type === 'paragraph' ? 'iq-full' : '')}>
+            {shownFields(c.custom_fields, answers, p).map(fld => (
+              <div key={fld.id} {...box(`f:${fld.id}`, FULL_WIDTH.has(fld.type) ? 'iq-full' : '')}>
                 <CustomField fld={fld} value={answers[fld.id]} onChange={v => setAns(fld.id, v)}
                   answers={answers} fields={c.custom_fields} clientForm={clientForm} />
                 {note(`f:${fld.id}`)}
@@ -343,12 +353,14 @@ export function checkAnswers(fields, answers, allFields = fields) {
   const fromF = allFields.find(f => f.maps_to === 'timing_from') || (hours && allFields.find(f => f.id === hours.from_field));
   const toF = allFields.find(f => f.maps_to === 'timing_to') || (hours && allFields.find(f => f.id === hours.to_field));
   for (const f of fields) {
+    if (f.type === 'heading') continue;
     const v = answers[f.id];
     // ⏱️ a time with only some of hour / minutes / AM-PM picked
     if (f.type === 'time' && v === PARTIAL_TIME) return { id: f.id, message: `Please pick the hour, minutes and AM/PM for "${f.label}"` };
-    const empty = v === undefined || v === null || v === '' || v === false;
+    const empty = v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && !v.length);
     if (f.required && empty) return { id: f.id, message: `"${f.label}" is required` };
     if (empty) continue;
+    if (f.type === 'pre_events') { const pe = preEventProblem(v, today); if (pe) return { id: f.id, message: pe }; continue; }
     if (f.type === 'date' && isEventDate(f, allFields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
     // decimals are fine — a price or a budget has cents (QA 2026-10-10: 349.99 was refused)
     if (f.type === 'number' && !/^\d+(\.\d{1,2})?$/.test(plainNumber(v))) return { id: f.id, message: `"${f.label}" needs a number, e.g. 350 or 349.99` };
@@ -364,6 +376,19 @@ export function checkAnswers(fields, answers, allFields = fields) {
 
 function CustomField({ fld, value, onChange, answers, fields, clientForm = false }) {
   const label = <label>{fld.label}{fld.required && ' *'}</label>;
+
+  if (fld.type === 'heading') return <div className="iq-section-title iq-subhead">{fld.label}</div>;
+
+  // 🗓️ the client adds as many as they need; the vendor's own panel adds them on the lead's Pre-Events card
+  if (fld.type === 'pre_events') return clientForm
+    ? <PreEventsField fld={fld} value={value} onChange={onChange} />
+    : <>{label}<p className="iq-pe-note">🗓️ Added on the lead&apos;s Pre-Events card.</p></>;
+
+  // ✍️ a dropdown that also lets the client type their own answer
+  if (fld.type === 'dropdown' && fld.allow_other) return (<>
+    {label}
+    <OtherSelect options={fld.options || []} value={value} onChange={onChange} otherLabel={fld.other_label} />
+  </>);
 
   if (fld.type === 'dropdown') return (<>
     {label}
@@ -524,5 +549,85 @@ function LocationField({ value, onChange }) {
       placeholder="Venue name and address"
       autoComplete="off"
     />
+  );
+}
+
+/** 🗓️ What a pre-events list must get right, or '' — each card named, times whole, dates not past, guests a number. */
+function preEventProblem(rows, today) {
+  for (const [i, r] of rows.entries()) {
+    const n = i + 1;
+    if (!String(r.name || '').trim()) return `Please choose the name of pre-event ${n} (or remove it)`;
+    if (r.from === PARTIAL_TIME || r.to === PARTIAL_TIME) return `Please pick the hour, minutes and AM/PM for pre-event ${n}`;
+    if (r.date && String(r.date) < today) return `The date of pre-event ${n} has already passed — please check it`;
+  }
+  return '';
+}
+
+/**
+ * ✍️ A dropdown with "Other (type your own)". Picking it opens a box under the list, and what the client types
+ * IS the answer — so a lead shows "Anand Karaj", not "Other".
+ */
+function OtherSelect({ options, value, onChange, otherLabel }) {
+  const typed = !!value && !options.includes(value);
+  const [typing, setTyping] = useState(typed);
+  return (<>
+    <select value={typing ? OTHER : (value || '')}
+      onChange={e => { const v = e.target.value; setTyping(v === OTHER); onChange(v === OTHER ? '' : v); }}>
+      <option value="">Select…</option>
+      {options.map((o, i) => <option key={i}>{o}</option>)}
+      <option value={OTHER}>{otherLabel || 'Other (type your own)'}</option>
+    </select>
+    {typing && <input className="iq-other" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="Type your own" autoFocus />}
+  </>);
+}
+
+/**
+ * 🗓️ Pre-events (Mehndi, Jaggo, Reception…) — the client adds as many as they need, each with its own date,
+ * times, place, guests and service. The list lands on the lead's 🗓️ Pre-Events card and in the contract.
+ * The event names offered are the vendor's own (the question's options), with "Other" to type one.
+ */
+let preEventKey = 0;
+function PreEventsField({ fld, value, onChange }) {
+  const rows = Array.isArray(value) ? value : [];
+  const set = (i, patch) => onChange(rows.map((r, x) => (x === i ? { ...r, ...patch } : r)));
+  const names = fld.options || [];
+  return (
+    <div className="iq-pe">
+      <label>{fld.label}{fld.required && ' *'}</label>
+      {rows.map((r, i) => (
+        <div className="iq-pe-card" key={r._k ?? i}>
+          <div className="iq-pe-top">
+            <span className="iq-pe-no">Pre-event {i + 1}</span>
+            <button type="button" className="iq-pe-remove" onClick={() => onChange(rows.filter((_, x) => x !== i))}
+              aria-label={`Remove pre-event ${i + 1}`}>✕ Remove</button>
+          </div>
+          <div className="iq-grid">
+            <div>
+              <label>Event *</label>
+              {names.length
+                ? <OtherSelect options={names} value={r.name} onChange={v => set(i, { name: v })} />
+                : <input value={r.name} onChange={e => set(i, { name: e.target.value })} placeholder="e.g. Mehndi" />}
+            </div>
+            <div><label>Date</label><input type="date" value={r.date} min={todayLocal()} onChange={e => set(i, { date: e.target.value })} /></div>
+            <div><label>Starting Time</label><TimeSelect value={r.from} onChange={v => set(i, { from: v })} /></div>
+            <div><label>Ending Time</label><TimeSelect value={r.to} onChange={v => set(i, { to: v })} /></div>
+            <div className="iq-full"><label>Location</label><LocationField value={r.location} onChange={v => set(i, { location: v })} /></div>
+            <div><label>Est. Guests</label><input type="text" inputMode="numeric" value={r.guests} placeholder="e.g. 150" onChange={e => set(i, { guests: e.target.value.replace(/\D/g, '') })} /></div>
+            <div>
+              <label>Service</label>
+              {(fld.pe_services || []).length
+                ? <select value={r.service} onChange={e => set(i, { service: e.target.value })}>
+                    <option value="">Select…</option>
+                    {fld.pe_services.map((o, x) => <option key={x}>{o}</option>)}
+                  </select>
+                : <input value={r.service} placeholder="e.g. Photos & Videos" onChange={e => set(i, { service: e.target.value })} />}
+            </div>
+          </div>
+        </div>
+      ))}
+      <button type="button" className="iq-pe-add" onClick={() => onChange([...rows, { ...BLANK_PRE_EVENT, _k: ++preEventKey }])}>
+        ✦ {fld.add_label || 'Add Pre-Event'}
+      </button>
+    </div>
   );
 }

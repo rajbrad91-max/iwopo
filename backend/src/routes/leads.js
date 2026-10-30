@@ -8,6 +8,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { notifyNewLead, sendLeadEmail } from './email.js';
 import { notify } from './notifications.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
+import { applyFormRules } from '../lib/formRules.js';
 
 const router = express.Router();
 
@@ -354,7 +355,7 @@ async function snapshotFormFields(vendorId, customData) {
     const claimed = new Set(fields.map(f => f.maps_to).filter(Boolean));
     const cd = customData && typeof customData === 'object' ? customData : {};
 
-    return fields.map(f => {
+    return fields.filter(f => f.type !== 'heading' && f.type !== 'pre_events').map(f => {
       let effective = f.maps_to || '';
       if (!effective) {
         const col = TYPE_TO_COLUMN[f.type];
@@ -414,6 +415,15 @@ router.post('/', async (req, res) => {
   if (!vendor_id) return res.status(400).json({ error: 'Which vendor is this for?' });
   if (phoneProblem(b.phone)) return res.status(400).json({ error: phoneProblem(b.phone), field: 'phone' });   // 📞 never letters
   if (b.instagram !== undefined) { const ig = cleanInstagram(b.instagram); if (ig.error) return res.status(400).json({ error: ig.error, field: 'instagram' }); b.instagram = ig.value; }   // 📸 "@name", Instagram's characters only
+  /* 🔀 the vendor's form rules (2026-10-30): an answer to a question that was hidden is dropped, and a Pre-Events
+     question's list is kept for the lead's own pre-events. A form without rules or new question types is untouched. */
+  let formPreEvents = [];
+  if (b.custom_data && typeof b.custom_data === 'object') {
+    const def = await prisma.inquiry_settings.findUnique({ where: { vendor_id: Number(vendor_id) }, select: { custom_fields: true } }).catch(() => null);   // 🔒 this vendor's form only
+    const ruled = applyFormRules(def?.custom_fields, b.custom_data, { heard: b.heard, role: b.role });
+    b.custom_data = ruled.custom_data;
+    formPreEvents = ruled.pre_events;
+  }
   { const np = await numberProblem(vendor_id, b.custom_data); if (np) return res.status(400).json({ error: np }); }   // 🔢 numbers only
 
   // This route is PUBLIC, so the body is untrusted. Without these checks an empty
@@ -475,6 +485,7 @@ router.post('/', async (req, res) => {
   // edits or rebuilds the form these answers came from
   const snap = await snapshotFormFields(vendor_id, b.custom_data);
   if (snap) data.form_snapshot = snap;
+  if (formPreEvents.length) data.pre_events = cleanPreEvents(formPreEvents);   // 🗓️ → the lead's Pre-Events card
 
   try {
     const lead = await prisma.leads.create({ data });
