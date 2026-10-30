@@ -4165,7 +4165,7 @@ const CT_BLOCKS = [
   '{{services_summary}}', '{{crew}}',
 ];
 
-const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
+const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{client_phone}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
 
 // 👁️ Stand-in values so a template can be previewed before any client exists.
 // Deliberately obvious rather than realistic, so nothing here is mistaken for a

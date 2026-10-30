@@ -11,7 +11,7 @@ export const WEDDING_AGREEMENT = {
   font_style: 'classic',
   sections: [
     { title: 'Booking Details', text: '{{booking_details}}', initial: false },
-    { title: 'Event Coverage Schedule', text: '{{coverage_schedule}}', initial: false },
+    { title: 'Event Coverage Schedule', text: '{{coverage_schedule}}', initial: true },
     { title: 'Services Summary', text: '{{services_summary}}', initial: true },
     { title: 'Package Inclusions & Deliverables', text: '{{deliverables}}', initial: true },
     { title: 'Cost & Payment', initial: true,
@@ -24,6 +24,8 @@ export const WEDDING_AGREEMENT = {
       text: 'Drone Policy: Usage is strictly conditional on weather (wind/rain) and local bylaws or restricted airspace. Drone coverage is scheduled only for specific events. No guarantees are made for drone footage due to these external safety factors.' },
     { title: 'Live Feed', initial: false, show_if: 'live feed|live-feed',
       text: 'Live-Feed Service: This is a technical service delivered with tested, professional equipment. No discounts or refunds apply in the event of unforeseen signal interference or venue-specific technical issues.' },
+    { title: 'Live Streaming', initial: false, show_if: 'live stream|livestream',
+      text: 'Live Streaming: {{company_name}} streams with tested equipment, but a stream depends on the venue\'s internet connection, bandwidth and local conditions outside our control. {{company_name}} is not liable for interruptions or lower quality caused by them, and they do not entitle the client to a discount or refund.' },
     { title: 'Next Day Edit', initial: false, show_if: 'next day edit|nde',
       text: '{{company_name}} is responsible only for the delivery of the Next Day Edit and pre-wedding videos via USB flash drive prior to the reception. While we ensure the files are functional upon delivery, we accept no responsibility for technical issues, audio/visual malfunctions, or playback sequencing errors caused by third-party equipment or venue operators.' },
     { title: 'Additional Policies', initial: false,

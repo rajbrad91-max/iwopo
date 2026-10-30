@@ -213,15 +213,15 @@ function bookingDetailsHtml(lead, pkgName, crew) {
 function gettingReadyRows(lead) {
   const snap = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
   const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
-  const yesNo = (on) => (on ? 'Yes' : 'No');
+  const yesNo = (on, venue) => (on ? (venue ? `Yes — ${venue}` : 'Yes') : 'No');   // B4: the venue the client gave
   const both = () => [
-    ['Bride Getting Ready', yesNo(lead.gr_bride)],
-    ['Groom Getting Ready', yesNo(lead.gr_groom)],
+    ['Bride Getting Ready', yesNo(lead.gr_bride, lead.gr_bride_venue)],
+    ['Groom Getting Ready', yesNo(lead.gr_groom, lead.gr_groom_venue)],
   ];
   if (!snap.length) return both();
   const rows = [];
-  if (snap.some(f => f.maps_to === 'gr_bride')) rows.push(['Bride Getting Ready', yesNo(lead.gr_bride)]);
-  if (snap.some(f => f.maps_to === 'gr_groom')) rows.push(['Groom Getting Ready', yesNo(lead.gr_groom)]);
+  if (snap.some(f => f.maps_to === 'gr_bride')) rows.push(['Bride Getting Ready', yesNo(lead.gr_bride, lead.gr_bride_venue)]);
+  if (snap.some(f => f.maps_to === 'gr_groom')) rows.push(['Groom Getting Ready', yesNo(lead.gr_groom, lead.gr_groom_venue)]);
   for (const f of snap) {
     if (f.type !== 'checkbox') continue;
     if (f.maps_to === 'gr_bride' || f.maps_to === 'gr_groom') continue;
@@ -259,6 +259,28 @@ function preEventsHtml(lead, fmtTime, fmtDate) {
   ])).join('');
 }
 
+/**
+ * 🗓️ Other dated parts of the booking the inquiry asked about (B5, 2026-10-30) — e.g. "Pre-Wedding Shoot — Date" and
+ * "Pre-Wedding Shoot — Service". Any form: a DATE question that is not the event date opens an item; questions
+ * named with the same start before " — " (or " - ") are its other rows. Only answered questions print, so a part
+ * the client did not ask for (or that was hidden for them) never appears.
+ */
+function extraScheduleHtml(lead, fmtDate) {
+  const snap = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
+  const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
+  const split = (label) => { const m = String(label || '').match(/^(.+?)\s+[—–-]\s+(.+)$/); return m ? [m[1].trim(), m[2].trim()] : [String(label || '').trim(), '']; };
+  const out = [];
+  for (const d of snap) {
+    if (d.type !== 'date' || d.maps_to === 'event_date' || !cd[d.id]) continue;
+    const [head] = split(d.label);
+    const rows = snap.filter(f => split(f.label)[0] === head && cd[f.id] !== undefined && cd[f.id] !== '' && cd[f.id] !== null)
+      .map(f => [split(f.label)[1] || f.label, f.type === 'date' ? fmtDate(new Date(`${cd[f.id]}T12:00:00Z`)) : (cd[f.id] === true ? 'Yes' : cd[f.id] === false ? 'No' : String(cd[f.id]))]);
+    const table = kvTable('ct-kv', rows);
+    if (table) out.push(`<h3>${escapeHtml(head)}</h3>${table}`);
+  }
+  return out.join('');
+}
+
 function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   const main = kvTable('ct-kv', [
     ['Date', fmtDate(lead.event_date)],
@@ -272,6 +294,7 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
   const getting = kvTable('ct-kv', gettingReadyRows(lead));
   return `<h3>Main Event — ${escapeHtml(lead.event_type || 'Event')}</h3>${main}`
     + (getting ? `<h3>Getting Ready Coverage</h3>${getting}` : '')
+    + extraScheduleHtml(lead, fmtDate)
     + preEventsHtml(lead, fmtTime, fmtDate);
 }
 
@@ -495,6 +518,7 @@ export async function buildContractBody(template, lead, businessName, opts = {})
   const values = {
     '{{client_name}}': lead.name || '—',
     '{{client_email}}': lead.email || '—',
+    '{{client_phone}}': lead.phone || '—',
     '{{event_type}}': lead.event_type || '—',
     '{{event_date}}': fmtDate(lead.event_date) || '—',
     '{{location}}': lead.location || '—',
@@ -562,7 +586,7 @@ export async function fillPlaceholders(text, lead, businessName) {
     catch { return `${Number(v || 0)} ${code}`; }
   };
   const values = {
-    '{{client_name}}': lead.name || '—', '{{client_email}}': lead.email || '—',
+    '{{client_name}}': lead.name || '—', '{{client_email}}': lead.email || '—', '{{client_phone}}': lead.phone || '—',
     '{{event_type}}': lead.event_type || '—', '{{event_date}}': fmtDate(lead.event_date) || '—',
     '{{location}}': lead.location || '—', '{{hours}}': lead.hours ?? 'agreed', '{{guests}}': lead.guests ?? 'the expected number of',
     '{{total_cost}}': cash(money.final_total), '{{deposit}}': cash(money.deposit_amount),
