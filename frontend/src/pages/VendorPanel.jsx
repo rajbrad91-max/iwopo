@@ -38,6 +38,7 @@ const AgentView = lazy(() => import('./AgentView.jsx'));
 const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private — part of Calls & messages
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
+import SecurityLog from '../components/SecurityLog';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -5917,7 +5918,7 @@ function SettingsView({ user, onProfileChange }) {
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="set-tabs">
-        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices']].map(([k, label]) => (
+        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security']].map(([k, label]) => (
           <button key={k} className="refresh" onClick={() => setSub(k)}
             style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
         ))}
@@ -6059,6 +6060,7 @@ function SettingsView({ user, onProfileChange }) {
 
       {sub === 'email' && <EmailSetup />}
       {sub === 'devices' && <DevicesSetup />}
+      {sub === 'security' && <SecurityLog />}
     </div>
   );
 }

@@ -884,6 +884,7 @@ export const api = {
   analytics: (days) => request('/analytics?days=' + (days || 30)),
   // 🔑 machines allowed to upload — the live shoot watcher
   devices: () => request('/devices'),
+  securityLog: () => request('/me/security'),   // 🛡️ this account's sign-ins and password changes
   addDevice: (name) => request('/devices', { method: 'POST', body: JSON.stringify({ name }) }),
   deleteDevice: (id) => request('/devices/' + id, { method: 'DELETE' }),
   // 📞 the timeline; 'since' is what keeps the open page live

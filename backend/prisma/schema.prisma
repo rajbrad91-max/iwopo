@@ -1619,3 +1619,17 @@ model email_inquiries {
   @@unique([vendor_id, thread_id])
   @@index([vendor_id, is_inquiry, last_at])
 }
+
+/// 🛡️ Sign-ins, wrong passwords, lock-outs, password changes and email confirmations per account (2026-10-30).
+/// Shown only to the account holder (Settings → Security). Kept 180 days (lib/securityLog.js).
+model security_events {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  vendor_id  Int?
+  event      String   @db.VarChar(40)
+  ip         String?  @db.VarChar(64)
+  device     String?  @db.VarChar(120)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id, created_at])
+}

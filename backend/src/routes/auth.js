@@ -10,6 +10,7 @@ import { signToken } from '../middleware/auth.js';
 import { sendPlatformEmail } from './email.js';
 import { revokeToken, revokeAllForUser } from '../lib/tokenRevocation.js';
 import { requireAuth } from '../middleware/auth.js';
+import { logSecurity } from '../lib/securityLog.js';
 
 const router = express.Router();
 const TRIAL_LIMIT = 2; // max trials per IP
@@ -47,11 +48,17 @@ router.get('/qa-session', limit({ name: 'qa-session', max: 30, windowMs: 60_000 
   res.json({ token: signToken(user), user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id } });
 });
 
+/** 🛡️ the account a paused sign-in was aimed at gets a line in its security log */
+async function lockedOut(req) {
+  const u = await prisma.users.findFirst({ where: { email: { equals: String(req.body?.email || '').trim(), mode: 'insensitive' } }, select: { id: true, vendor_id: true } }).catch(() => null);
+  logSecurity(req, u, 'login_locked');
+}
+
 router.post('/login',
   // per address, so one machine cannot grind through a password list
   limit({ name: 'login-ip', max: 20, windowMs: 15 * 60_000 }),
   // and per account, so a spread of addresses cannot gang up on one inbox
-  limit({ name: 'login-user', max: 8, windowMs: 15 * 60_000, key: r => String(r.body?.email || '').toLowerCase() }),
+  limit({ name: 'login-user', max: 8, windowMs: 15 * 60_000, key: r => String(r.body?.email || '').trim().toLowerCase(), perAccount: true, onBlock: lockedOut }),
   async (req, res) => {
   const { password } = req.body;
   const email = String(req.body.email || '').trim();   // ✉️ "Info@…" from a phone keyboard is the same address
@@ -61,7 +68,7 @@ router.post('/login',
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
   const ok = await bcrypt.compare(password, user.password_hash);
-  if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!ok) { logSecurity(req, user, 'login_failed'); return res.status(401).json({ error: 'Invalid credentials' }); }
   if (!user.email_verified_at) {   // ✉️ right password, address not confirmed yet: send (or re-send) the code
     const sent = await issueCode(user.id, 'verify', { to: user.email });
     return res.status(403).json({ error: 'Please confirm your email first — enter the code we sent you.', verify: true, email: user.email, ...(sent.code ? { sandbox_code: sent.code } : {}) });
@@ -69,7 +76,7 @@ router.post('/login',
 
   // getting in clears the count — a person who mistyped twice then succeeded
   // should not be closer to a lockout than one who typed it right first time
-  forgive('login-user', req, String(email).toLowerCase());
+  forgive('login-user', req, String(email).trim().toLowerCase());
   forgive('login-ip', req);
 
   /* 🔐 Passwords set before today's rules (Raj, 2026-10-23): the right password, but too weak or found in a data breach
@@ -84,6 +91,7 @@ router.post('/login',
     }
   }
 
+  logSecurity(req, user, 'login_ok');
   res.json({
     token: signToken(user),
     user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id }
@@ -254,7 +262,8 @@ router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), 
        working for another seven days defeats the point. PUT /me/password
        already did this; the reset path did not. */
     await revokeAllForUser(row.user_id);
-    const who = await prisma.users.findUnique({ where: { id: row.user_id }, select: { email: true } });
+    const who = await prisma.users.findUnique({ where: { id: row.user_id }, select: { email: true, vendor_id: true } });
+    logSecurity(req, { id: row.user_id, vendor_id: who?.vendor_id }, 'password_reset');
     notice(who?.email, 'Your iwopo password was changed', ['The password for your iwopo account was just reset, and every device was signed out.']);
     res.json({ ok: true, message: 'Password updated — you can log in now. ✅' });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -283,6 +292,7 @@ router.post('/verify', limit({ name: 'verify', max: 20, windowMs: 15 * 60_000 })
     if (user.email_verified_at) return res.status(400).json({ error: 'This email is already confirmed — sign in with your password.' });
     await useCode(user.id, 'verify', req.body.code);
     const done = await prisma.users.update({ where: { id: user.id }, data: { email_verified_at: new Date() } });
+    logSecurity(req, done, 'email_confirmed');
     res.json({ token: signToken(done), user: { id: done.id, name: done.name, email: done.email, role: done.role, vendor_id: done.vendor_id } });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

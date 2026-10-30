@@ -16,6 +16,7 @@ import { CURRENCIES, CURRENCY_CODES, currencyFor } from '../lib/currencies.js';
 import { resolveTimezone, timezoneToStore } from '../lib/timezones.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { revokeAllForUser } from '../lib/tokenRevocation.js';
+import { logSecurity } from '../lib/securityLog.js';
 
 const router = express.Router();
 const LOGO_DIR = LOGO_DIR_CFG;
@@ -272,8 +273,21 @@ router.put('/password', requireAuth, async (req, res) => {
        because you fear someone has it is pointless if their session survives
        the change — which is exactly what happened before. */
     await revokeAllForUser(req.user.id);
+    logSecurity(req, req.user, 'password_changed');
     notice(me.email, 'Your iwopo password was changed', ['The password for your iwopo account was just changed, and every other device was signed out.']);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 🛡️ GET /api/me/security → this account's own security log, newest first
+router.get('/security', requireAuth, async (req, res) => {
+  try {
+    const events = await prisma.security_events.findMany({
+      where: { user_id: req.user.id },                 // 🔒 own account only — the id comes from the token
+      orderBy: { created_at: 'desc' }, take: 50,
+      select: { event: true, ip: true, device: true, created_at: true },
+    });
+    res.json({ events });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
