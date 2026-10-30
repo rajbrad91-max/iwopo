@@ -22,6 +22,7 @@ const COUNTRY_ZONES = {
   ],
   CA: [
     ['America/Toronto', 'Toronto'],
+    ['America/Vancouver', 'Vancouver'],   // BC — missing until 2026-10-30, so BC vendors were moved to Toronto
     ['America/Winnipeg', 'Winnipeg'],
     ['America/Edmonton', 'Calgary'],
     ['America/Regina', 'Regina'],
