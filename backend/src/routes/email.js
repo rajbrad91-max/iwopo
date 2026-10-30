@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getAllSettings } from '../lib/settings.js';
+import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
 
@@ -93,14 +94,14 @@ async function transporterFor(s) {
   /* A vendor's own mail account first, so their clients see their address
      rather than ours. */
   if (s.mode === 'smtp' && s.smtp_host && s.smtp_user) {
-    return nodemailer.createTransport({
+    return nodemailer.createTransport({ name: EHLO_NAME, 
       host: s.smtp_host, port: s.smtp_port || 587, secure: (s.smtp_port || 587) === 465,
       auth: { user: s.smtp_user, pass: s.smtp_pass },
     });
   }
   const p = await platformMail();
   if (p.ready) {
-    return nodemailer.createTransport({
+    return nodemailer.createTransport({ name: EHLO_NAME, 
       host: p.host, port: p.port, secure: p.port === 465,
       auth: { user: p.user, pass: p.pass },
     });
@@ -301,7 +302,7 @@ export async function notifyNewLead(lead) {
 async function platformTransporter() {
   const m = await platformMail();
   if (!m.ready) return null;
-  return { m, t: nodemailer.createTransport({ host: m.host, port: m.port, secure: m.port === 465, auth: { user: m.user, pass: m.pass } }) };
+  return { m, t: nodemailer.createTransport({ name: EHLO_NAME,  host: m.host, port: m.port, secure: m.port === 465, auth: { user: m.user, pass: m.pass } }) };
 }
 
 // 📤 send a platform-level email (password resets, system notices).
@@ -309,7 +310,13 @@ async function platformTransporter() {
 export async function sendPlatformEmail(to, subject, text, html) {
   const p = await platformTransporter();
   if (!p) { const e = new Error('Platform email is not configured yet.'); e.code = 'no_platform_smtp'; throw e; }
-  await p.t.sendMail({ from: `"${p.m.fromName}" <${p.m.from || p.m.user}>`, to, subject, text, html });
+  try {
+    await p.t.sendMail({ from: `"${p.m.fromName}" <${p.m.from || p.m.user}>`, to, subject, text, html });
+  } catch (err) {
+    // the mail server's own words go to the log; the person sees what to do
+    console.error('platform email failed:', err.message);
+    const e = new Error('We could not send the email just now. Please try again in a minute.'); e.code = 'send_failed'; throw e;
+  }
 }
 
 /**

@@ -13,6 +13,7 @@ import { platformMail } from './email.js';
 import nodemailer from 'nodemailer';
 import { getSetting } from '../lib/settings.js';
 import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
+import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
 
@@ -142,7 +143,7 @@ router.post('/settings/platform/test-email', requireAuth, requireSuperAdmin, asy
       return res.status(400).json({ error: 'Set the mail host, username and password first.' });
     }
 
-    const t = nodemailer.createTransport({
+    const t = nodemailer.createTransport({ name: EHLO_NAME, 
       host: p.host, port: p.port, secure: p.port === 465,
       auth: { user: p.user, pass: p.pass },
     });
