@@ -402,7 +402,11 @@ router.post('/', async (req, res) => {
   }
   const auth = req.headers.authorization || '';
   let viaPanel = false;   // a vendor adding a lead by hand may enter a past event (an old wedding); the public form may not
-  if (auth.startsWith('Bearer ')) {
+  /* 🔗 A public form (it names its vendor by slug) ALWAYS delivers to that vendor. Whoever happens to be signed in
+     in the same browser is irrelevant — before 2026-10-30 a signed-in vendor filling another vendor's form filed the
+     inquiry in their OWN account, and the answers (keyed to the other form's questions) were lost. The sign-in only
+     decides the vendor for the panel's own "Add lead", which names no slug. */
+  if (!b.vendor_slug && auth.startsWith('Bearer ')) {
     try {
       const user = jwt.verify(auth.slice(7), process.env.JWT_SECRET || 'dev-secret-change-me');
       // 🎟️ a cancelled token falls back to the public path, same as a bad one
