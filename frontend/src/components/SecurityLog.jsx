@@ -14,6 +14,9 @@ const EVENTS = {
   password_changed: ['🔑', 'Password changed'],
   password_reset: ['🔑', 'Password reset with an email link'],
   email_confirmed: ['✉️', 'Email confirmed'],
+  two_step_sent: ['✉️', 'Sign-in code emailed'],
+  two_step_failed: ['⚠️', 'Wrong sign-in code'],
+  device_remembered: ['📱', 'Device remembered for 30 days'],
 };
 
 const when = (iso) => new Date(iso).toLocaleString(undefined, {

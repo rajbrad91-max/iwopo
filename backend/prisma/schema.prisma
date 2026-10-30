@@ -1633,3 +1633,16 @@ model security_events {
 
   @@index([user_id, created_at])
 }
+
+/// ✉️ Two-step sign-in: a device an account chose to remember for 30 days (2026-10-30). Only a hash of the device's
+/// token is kept. A password change or reset forgets them all (lib/tokenRevocation.js).
+model trusted_devices {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  token_hash String   @unique @db.VarChar(64)
+  device     String?  @db.VarChar(120)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  expires_at DateTime @db.Timestamptz(6)
+
+  @@index([user_id])
+}

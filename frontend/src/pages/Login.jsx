@@ -3,6 +3,7 @@ import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import VerifyCode from '../components/VerifyCode';
 import ResetPassword from './ResetPassword';
+import TwoStepCode from '../components/TwoStepCode';
 
 export default function Login({ onLogin, onBack }) {
   const [mode, setMode] = useState('login'); // 'login' | 'forgot'
@@ -13,6 +14,7 @@ export default function Login({ onLogin, onBack }) {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [verify, setVerify] = useState(null);   // ✉️ { email, sandbox_code } — the address still needs its code
+  const [twoStep, setTwoStep] = useState(null);   // ✉️ { ticket, email, sandbox_code } — a new device: the emailed sign-in code
   /* 🛡️ one request at a time. A ref, not the `loading` state: repeated key events arrive before React re-renders,
      so they would all still see loading === false. */
   const busy = useRef(false);
@@ -25,9 +27,10 @@ export default function Login({ onLogin, onBack }) {
     setError('');
     setLoading(true);
     try {
-      const { token, user } = await api.login(email, password);
-      setSession(token, user);
-      onLogin(user);
+      const r = await api.login(email, password);
+      if (r.two_step) { setTwoStep(r); return; }   // ✉️ a device this account hasn't trusted
+      setSession(r.token, r.user);
+      onLogin(r.user);
     } catch (err) {
       if (err.data?.verify) { setVerify({ email: err.data.email, code: err.data.sandbox_code }); return; }
       if (err.data?.upgrade) { setUpgrade(err.data.ticket); return; }   // 🔐 an old weak password: choose a stronger one first
@@ -60,7 +63,7 @@ export default function Login({ onLogin, onBack }) {
   if (upgrade) return (
     <ResetPassword token={upgrade} heading="Please choose a stronger password 🔐"
       intro="Your password doesn't meet iwopo's new security rules. Choose a new one to continue — you'll go straight in."
-      onDone={async (pw) => { const { token, user } = await api.login(email, pw); setSession(token, user); onLogin(user); }} />
+      onDone={async (pw) => { const r = await api.login(email, pw); if (r.two_step) { setUpgrade(null); setTwoStep(r); return; } setSession(r.token, r.user); onLogin(r.user); }} />
   );
 
   return (
@@ -69,7 +72,9 @@ export default function Login({ onLogin, onBack }) {
         {onBack && <div className="login-back" onClick={onBack}>← Back</div>}
         <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>
 
-        {verify ? (
+        {twoStep ? (
+          <TwoStepCode email={email} challenge={twoStep} onDone={(token, user) => { setSession(token, user); onLogin(user); }} onBack={() => setTwoStep(null)} />
+        ) : verify ? (
           <VerifyCode email={verify.email} sandboxCode={verify.code}
             onVerified={({ token, user }) => { setSession(token, user); onLogin(user); }} onBack={() => setVerify(null)} />
         ) : mode === 'login' ? (

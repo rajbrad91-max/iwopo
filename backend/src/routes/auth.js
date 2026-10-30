@@ -10,7 +10,27 @@ import { signToken } from '../middleware/auth.js';
 import { sendPlatformEmail } from './email.js';
 import { revokeToken, revokeAllForUser } from '../lib/tokenRevocation.js';
 import { requireAuth } from '../middleware/auth.js';
-import { logSecurity } from '../lib/securityLog.js';
+import { logSecurity, deviceOf } from '../lib/securityLog.js';
+import jwt from 'jsonwebtoken';
+
+/* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
+   short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
+   the last 15 minutes" — it opens nothing by itself. A trusted device sends its token and skips the code. */
+const TICKET_SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':two-step';
+const TRUST_DAYS = 30;
+const sha256 = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
+const twoStepTicket = (user) => jwt.sign({ uid: user.id }, TICKET_SECRET, { expiresIn: '15m' });
+function ticketUser(ticket) {
+  try { return jwt.verify(String(ticket || ''), TICKET_SECRET).uid; } catch { return null; }
+}
+/** "i••••@perfectposes.ca" — enough to know where to look, not a full address on the screen */
+const maskEmail = (e) => String(e).replace(/^(.)([^@]*)(@.*)$/, (m, a, b, c) => a + '•'.repeat(Math.min(Math.max(b.length, 3), 6)) + c);
+async function trusted(userId, token) {
+  if (!token) return false;
+  const row = await prisma.trusted_devices.findFirst({ where: { user_id: userId, token_hash: sha256(token), expires_at: { gt: new Date() } }, select: { id: true } }).catch(() => null);
+  return !!row;
+}
+const sessionFor = (user) => ({ token: signToken(user), user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id } });
 
 const router = express.Router();
 const TRIAL_LIMIT = 2; // max trials per IP
@@ -91,11 +111,50 @@ router.post('/login',
     }
   }
 
+  /* ✉️ a device this account hasn't trusted: the emailed code first.
+     🚨 Emergency switch: TWO_STEP=off in backend/.env (then restart) turns this off for everyone — for when email
+     can't be sent at all and no one could receive a code. Off only by choice; anything else leaves it on. */
+  if (process.env.TWO_STEP !== 'off' && !(await trusted(user.id, req.body.device_token))) {
+    const sent = await issueCode(user.id, 'login', { to: user.email });
+    if (sent.error) return res.status(502).json({ error: 'We could not send your sign-in code just now. Please try again in a minute.' });
+    if (!sent.tooSoon) logSecurity(req, user, 'two_step_sent');   // within 45 s the code already sent still works
+    return res.json({ two_step: true, ticket: twoStepTicket(user), email: maskEmail(user.email), ...(sent.code ? { sandbox_code: sent.code } : {}) });
+  }
   logSecurity(req, user, 'login_ok');
-  res.json({
-    token: signToken(user),
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id }
-  });
+  res.json(sessionFor(user));
+});
+
+/* ✉️ POST /api/auth/login/code { ticket, code, remember } — the emailed code finishes the sign-in */
+router.post('/login/code', limit({ name: 'login-code', max: 15, windowMs: 15 * 60_000 }), async (req, res) => {
+  const uid = ticketUser(req.body.ticket);
+  if (!uid) return res.status(400).json({ error: 'This sign-in has expired — please sign in again.' });
+  const user = await prisma.users.findUnique({ where: { id: uid } });
+  if (!user) return res.status(400).json({ error: 'This sign-in has expired — please sign in again.' });
+  try { await useCode(user.id, 'login', req.body.code); }
+  catch (e) { logSecurity(req, user, 'two_step_failed'); return res.status(400).json({ error: e.message }); }
+  let device_token;
+  if (req.body.remember) {
+    device_token = crypto.randomBytes(32).toString('hex');
+    await prisma.trusted_devices.create({ data: {
+      user_id: user.id, token_hash: sha256(device_token), device: deviceOf(req.headers['user-agent']).slice(0, 120),
+      expires_at: new Date(Date.now() + TRUST_DAYS * 864e5),
+    } });
+    logSecurity(req, user, 'device_remembered');
+  }
+  logSecurity(req, user, 'login_ok');
+  res.json({ ...sessionFor(user), ...(device_token ? { device_token } : {}) });
+});
+
+/* ✉️ POST /api/auth/login/resend { ticket } — a fresh sign-in code */
+router.post('/login/resend', limit({ name: 'login-resend', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
+  const uid = ticketUser(req.body.ticket);
+  const user = uid ? await prisma.users.findUnique({ where: { id: uid }, select: { id: true, email: true, vendor_id: true } }) : null;
+  if (!user) return res.status(400).json({ error: 'This sign-in has expired — please sign in again.' });
+  const sent = await issueCode(user.id, 'login', { to: user.email });
+  if (sent.tooSoon) return res.status(429).json({ error: 'Please wait a little before asking for another code.' });
+  if (sent.error) return res.status(502).json({ error: 'We could not send a new code just now. Please try again in a minute.' });
+  logSecurity(req, user, 'two_step_sent');
+  res.json({ ok: true, ...(sent.code ? { sandbox_code: sent.code } : {}) });
 });
 
 // GET /api/auth/trial-eligible  → tells frontend if this IP can still start a trial

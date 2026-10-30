@@ -233,6 +233,11 @@ export function getAuthToken() {
   return getToken();
 }
 
+/* ✉️ Two-step sign-in: a device the account chose to remember keeps a token per account, and sends it when signing in */
+const deviceKey = (email) => `iwopo_device:${String(email || '').trim().toLowerCase()}`;
+export const trustedDevice = (email) => localStorage.getItem(deviceKey(email)) || undefined;
+export const rememberDevice = (email, token) => localStorage.setItem(deviceKey(email), token);
+
 export function setSession(token, user) {
   sessionStorage.setItem('iwopo_token', token);          // this tab's identity
   sessionStorage.setItem('iwopo_user', JSON.stringify(user));
@@ -370,7 +375,7 @@ async function request(path, options = {}) {
   // A wrong password is also a 401, but it comes from the sign-in request
   // itself. Treating that like an expired session wiped the page and reloaded
   // the marketing site, so "that password is not right" never appeared.
-  const signingIn = path === '/auth/login' || path === '/auth/signup' || path === '/auth/verify' || path === '/auth/resend'
+  const signingIn = path === '/auth/login' || path.startsWith('/auth/login/') || path === '/auth/signup' || path === '/auth/verify' || path === '/auth/resend'
     || path === '/auth/forgot' || path === '/auth/reset';
   if (!signingIn && (res.status === 401 || (res.status === 403 && sessionMismatch()))) {
     /* Reload only when there WAS a session to clear (2026-10-26). A page that asks the server before anyone has signed
@@ -415,7 +420,9 @@ function listingQs(o = {}) {
 
 export const api = {
   login: (email, password) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, device_token: trustedDevice(email) }) }),
+  loginCode: (ticket, code, remember) => request('/auth/login/code', { method: 'POST', body: JSON.stringify({ ticket, code, remember }) }),
+  loginResend: (ticket) => request('/auth/login/resend', { method: 'POST', body: JSON.stringify({ ticket }) }),
   signup: (businessName, email, password) =>
     request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password }) }),
   verifyEmail: (email, code) => request('/auth/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),

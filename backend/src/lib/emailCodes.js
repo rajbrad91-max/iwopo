@@ -64,6 +64,18 @@ function shell(title, body) {
 </table><p style="color:#9ca3af;font-size:12px;margin:14px 0 0">iwopo · sent automatically, please don't reply</p></td></tr></table></body></html>`;
 }
 function codeMail(code, purpose, to) {
+  // ✉️ two-step sign-in: no link — the code must be typed where the password was
+  if (purpose === 'login') {
+    const lead = 'Use this code to finish signing in to iwopo:';
+    const warn = "It works for 15 minutes. If this wasn't you, someone knows your password — change it in iwopo → Settings → Account.";
+    return {
+      subject: `${code} is your iwopo sign-in code`,
+      text: `${lead}\n\n${code}\n\n${warn}\n\n— iwopo`,
+      html: shell('Your sign-in code', `<p style="margin:0 0 16px">${esc(lead)}</p>
+<p style="margin:0 0 16px;font-size:32px;font-weight:800;letter-spacing:8px">${code}</p>
+<p style="margin:0;color:#6b7280;font-size:13px">${esc(warn)}</p>`),
+    };
+  }
   const link = `${process.env.APP_URL || 'https://iwopo.com'}/verify?email=${encodeURIComponent(to || '')}&code=${code}`;
   const subject = purpose === 'change' ? `${code} is your code to confirm your new email` : `${code} is your iwopo verification code`;
   const lead = purpose === 'change' ? 'Use this code to confirm your new email address on iwopo:' : 'Welcome to iwopo! Use this code to confirm your email address:';

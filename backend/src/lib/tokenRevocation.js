@@ -99,6 +99,8 @@ export async function revokeToken(payload) {
 /** Cancel every token a user holds — password change, or locking an account. */
 export async function revokeAllForUser(userId) {
   const now = new Date();
+  // ✉️ remembered devices go too — whoever had the old password must face the emailed code again
+  await prisma.trusted_devices.deleteMany({ where: { user_id: Number(userId) } }).catch(() => {});
   try {
     await prisma.users.update({
       where: { id: Number(userId) }, data: { tokens_valid_from: now },
