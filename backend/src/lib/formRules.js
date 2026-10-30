@@ -54,6 +54,7 @@ export function shownFields(fields, answers, p) {
  */
 export function applyFormRules(fields, customData, p) {
   const cd = customData && typeof customData === 'object' && !Array.isArray(customData) ? { ...customData } : {};
+  for (const k of Object.keys(cd)) if (cd[k] === OTHER) cd[k] = '';   // "Other" picked, nothing typed: no answer
   const list = Array.isArray(fields) ? fields : [];
   const shown = new Set(shownFields(list, cd, p).map(f => f.id));
   const preEvents = [];

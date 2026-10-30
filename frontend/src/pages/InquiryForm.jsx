@@ -105,7 +105,7 @@ export default function InquiryForm({ handle, byHost = false }) {
       const custom = {};
       for (const f of shown) {
         if (f.type === 'heading') continue;                    // a section title asks nothing
-        custom[f.id] = answers[f.id];
+        custom[f.id] = answers[f.id] === OTHER ? '' : answers[f.id];   // "Other" with nothing typed is no answer
         // 🗓️ the pre-events list, without the empty cards and the keys that only kept the cards apart on screen
         if (f.type === 'pre_events') custom[f.id] = (answers[f.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim());
         if (f.type === 'checkbox') custom[f.id] = answers[f.id] === true;
@@ -360,6 +360,7 @@ export function checkAnswers(fields, answers, allFields = fields) {
     const v = answers[f.id];
     // ⏱️ a time with only some of hour / minutes / AM-PM picked
     if (f.type === 'time' && v === PARTIAL_TIME) return { id: f.id, message: `Please pick the hour, minutes and AM/PM for "${f.label}"` };
+    if (v === OTHER) { if (f.required) return { id: f.id, message: `Please type your answer for "${f.label}"` }; continue; }
     const empty = v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && !v.length);
     if (f.required && empty) return { id: f.id, message: `"${f.label}" is required` };
     if (empty) continue;
@@ -570,6 +571,7 @@ function peHours(r) {
 function preEventProblem(rows, today) {
   for (const [i, r] of rows.entries()) {
     const n = i + 1;
+    if (r.name === OTHER) return `Please type the name of pre-event ${n}`;
     if (!String(r.name || '').trim()) return `Please choose the name of pre-event ${n} (or remove it)`;
     if (r.from === PARTIAL_TIME || r.to === PARTIAL_TIME) return `Please pick the hour, minutes and AM/PM for pre-event ${n}`;
     if (r.date && String(r.date) < today) return `The date of pre-event ${n} has already passed — please check it`;
@@ -588,13 +590,15 @@ function OtherSelect({ options, value, onChange, otherLabel }) {
   const typed = !!value && !options.includes(value);
   const [typing, setTyping] = useState(typed);
   return (<>
+    {/* picking "Other" is itself the answer (OTHER) until words are typed, so questions that depend on "Other"
+        appear the moment it is picked — not only after typing (Muse, 2026-10-30) */}
     <select value={typing ? OTHER : (value || '')}
-      onChange={e => { const v = e.target.value; setTyping(v === OTHER); onChange(v === OTHER ? '' : v); }}>
+      onChange={e => { const v = e.target.value; setTyping(v === OTHER); onChange(v); }}>
       <option value="">Select…</option>
       {options.map((o, i) => <option key={i}>{o}</option>)}
       <option value={OTHER}>{otherLabel || 'Other (type your own)'}</option>
     </select>
-    {typing && <input className="iq-other" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="Type your own" autoFocus />}
+    {typing && <input className="iq-other" value={value === OTHER ? '' : (value || '')} onChange={e => onChange(e.target.value || OTHER)} placeholder="Type your own" autoFocus />}
   </>);
 }
 

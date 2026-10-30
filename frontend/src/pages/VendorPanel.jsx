@@ -5083,7 +5083,7 @@ const FORM_PRESETS = {
     { type: 'time', label: 'Ending Time', maps_to: 'timing_to', required: true, show_if: { field: 'evt', op: 'not_in', values: ['Pre-wedding'] } },
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours', show_if: { field: 'evt', op: 'not_in', values: ['Pre-wedding'] } },
     { type: 'number', label: 'Est. Guests', maps_to: 'guests', required: true, show_if: { field: 'evt', op: 'not_in', values: ['Pre-wedding'] } },
-    { type: 'dropdown', label: 'Coverage — Sides', options: ['Both Sides', 'Groom Side', 'Bride Side'], show_if: { field: 'evt', op: 'in', values: ['Wedding'] } },
+    { type: 'dropdown', label: 'Coverage — Sides', required: true, options: ['Both Sides', 'Groom Side', 'Bride Side'], show_if: { field: 'evt', op: 'in', values: ['Wedding'] } },
     { type: 'heading', label: 'Pre-Wedding Shoot', show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
     { type: 'dropdown', label: 'Pre-Wedding Shoot — Service', options: ['Photos & Videos', 'Only Photos', 'Only Videos'], show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
     { type: 'date', label: 'Pre-Wedding Shoot — Date', show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
