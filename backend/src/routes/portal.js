@@ -65,7 +65,17 @@ async function reconcileContract(lead, newPackageId, ip) {
   const vendor = await prisma.vendors.findUnique({
     where: { id: lead.vendor_id }, select: { business_name: true },
   });
-  const tpl = await templateForLead(fresh, latest?.template_id ?? null);
+  /* The lead's most recent contract — even one a portal reset voided — says which template the vendor chose for
+     this lead and whether they had already approved (released) it. Both carry over to the rebuilt contract:
+     before 2026-10-30 the rebuild fell back to the default template and waited for a second Release nobody knew
+     about, so the client sat on "On its way" for ever (Muse end-to-end test, B2/B3). */
+  const prev = latest || await prisma.contracts.findFirst({
+    where: { lead_id: lead.id },                                  // 🔒 tenancy via the lead
+    orderBy: { id: 'desc' },
+    select: { template_id: true, released_at: true },
+  });
+  const approved = !!prev?.released_at;
+  const tpl = await templateForLead(fresh, prev?.template_id ?? null);
   const body = tpl ? await buildContractBody(tpl, fresh, vendor?.business_name) : null;
   if (!body) return;                       // no template to build from — vendor raises one
 
@@ -78,9 +88,10 @@ async function reconcileContract(lead, newPackageId, ip) {
         token: crypto.randomBytes(24).toString('hex'),
         title: tpl.name, body, status: 'sent',
         package_id: newPackageId, template_id: tpl.id,
+        ...(approved ? { released_at: new Date() } : {}),   // the vendor already approved this lead's contract
       },
     });
-    await audit(created.id, 'created', ip, { reason: 'client_picked_package' });
+    await audit(created.id, 'created', ip, { reason: 'client_picked_package', released: approved });
     return;
   }
 
@@ -96,6 +107,7 @@ async function reconcileContract(lead, newPackageId, ip) {
         token: crypto.randomBytes(24).toString('hex'),
         title: latest.title, body, status: 'sent',
         package_id: newPackageId, template_id: latest.template_id,
+        ...(approved ? { released_at: new Date() } : {}),   // same template the vendor approved
       },
     });
     await audit(replacement.id, 'created', ip, { reason: 'package_changed', replaces: latest.id });
