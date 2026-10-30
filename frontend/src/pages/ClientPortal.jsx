@@ -378,9 +378,12 @@ export default function ClientPortal({ token }) {
   // Payment requires a SIGNED contract — full stop. A lead with no contract yet
   // isn't ready to pay either: it means the vendor hasn't raised one, and the
   // client would otherwise sail past the one step that must not be skippable.
-  const reached = !chosen ? 1 : (!signed ? 2 : 3);
+  // F5 (2026-10-30): the deposit in (whole cents) secures the date — PAY ticks; the balance still shows on step 3
+  const cents = (n) => Math.round(Number(n || 0) * 100);
+  const depositIn = signed && cents(money?.deposit_amount) > 0 && cents(money?.paid) >= cents(money?.deposit_amount);
+  const reached = !chosen ? 1 : (!signed ? 2 : (depositIn ? 4 : 3));
   // They can revisit a step they've already cleared, but never skip ahead.
-  const step = back && back < reached ? back : reached;
+  const step = back && back < reached ? back : Math.min(reached, 3);
 
   const eventDate = lead.event_date ? fmtEventDate(lead.event_date, { long: true }) : null;
 

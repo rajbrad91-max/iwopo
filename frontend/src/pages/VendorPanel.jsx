@@ -3889,7 +3889,7 @@ function MoneySection({ lead }) {
           Sits at the top because it's the one thing here that needs an action. */}
       {claimed && (
         <div className="ms-claim">
-          <p className="ms-claim-t">💰 {lead.name || 'The client'} says they&apos;ve paid</p>
+          <p className="ms-claim-t">💰 {lead.name || 'The client'} says they&apos;ve paid{sum && sum.deposit_amount > 0 && <> — deposit <b>{fmtMoney(sum.deposit_amount)}</b> of {fmtMoney(sum.final_total)}</>}</p>
           <p className="ms-claim-b">Confirm once the money is in your account — that&apos;s what records it.</p>
           <div className="ms-claim-acts">
             <button type="button" className="is-primary" onClick={() => openClaim(false)}>✅ Confirm received</button>
@@ -4021,7 +4021,9 @@ function MoneySection({ lead }) {
           </div>
         </div>
       )}
-      {sum && <div className="ms-deposit-line">🔐 Deposit due: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>}
+      {sum && (Math.round(sum.paid * 100) >= Math.round(sum.deposit_amount * 100) && sum.deposit_amount > 0
+        ? <div className="ms-deposit-line">✅ Deposit paid: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>
+        : <div className="ms-deposit-line">🔐 Deposit due: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>)}
 
       {/* manual payments */}
       <div className="ms-mp-head">Manual Payments</div>
@@ -4124,10 +4126,10 @@ function AllContracts() {
       </p>
       <div className="table-wrap">
         <table className="ct-table">
-        <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th className="ct-date">Signed</th><th>Documents</th></tr></thead>
+        <thead><tr><th className="ct-num">#</th><th>Client</th><th>Contract</th><th>Signed by</th><th className="ct-date">Signed</th><th>Booking</th><th>Documents</th></tr></thead>
         <tbody>
           {shown.length === 0 ? (
-            <tr><td colSpan="6" className="empty">
+            <tr><td colSpan="7" className="empty">
               No signed contracts yet. A contract appears here as soon as the client signs it ✍️
             </td></tr>
           ) : shown.map((c, n) => (
@@ -4137,6 +4139,8 @@ function AllContracts() {
               <td className="ct-title">{c.title}</td>
               <td className="ct-signer">{c.signed_name || '—'}</td>
               <td className="ct-date">{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
+              {/* F7: booked, or signed and still waiting for the deposit */}
+              <td className="ct-booking">{c.lead_status === 'booked' ? '✅ Booked' : '⏳ Awaiting payment'}</td>
               {/* Both open in a tab rather than landing on disk: saving a file
                   before you have looked at it is a guess. Each document carries
                   its own Save as PDF button once it's open. */}

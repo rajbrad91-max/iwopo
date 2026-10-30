@@ -49,8 +49,15 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
+    const invoice = await prisma.invoices.create({ data: await invoiceData(lead, req.body.items, req.body.notes) });
+    res.status(201).json({ invoice });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** The invoice for a lead: from its package and payments, or the items given. Shared by the button and by booking. */
+async function invoiceData(lead, givenItems, notes) {
     const money = await moneySummary(lead);
-    let items = req.body.items;
+    let items = givenItems;
     if (!Array.isArray(items) || !items.length) {
       let pkgName = 'Services';
       if (lead.package_snapshot) {
@@ -68,8 +75,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     const n = await prisma.invoices.count({ where: { vendor_id: lead.vendor_id } });
     const invoiceNumber = `INV-${lead.vendor_id}-${String(n + 1).padStart(4, '0')}`;
 
-    const invoice = await prisma.invoices.create({
-      data: {
+    return {
         vendor_id: lead.vendor_id,             // 🔒 stamped from the owning lead
         lead_id: lead.id,
         token: crypto.randomBytes(24).toString('hex'),
@@ -77,13 +83,25 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
         items,                                  // Json column — Prisma serializes it
         subtotal, discount, total, paid,
         balance: Math.max(total - paid, 0),
-        notes: req.body.notes || null,
+        notes: notes || null,
         status: paid >= total && total > 0 ? 'paid' : 'issued',
-      },
-    });
-    res.status(201).json({ invoice });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+      };
+}
+
+/**
+ * 🧾 F2 (Raj, 2026-10-30): a lead that becomes booked gets its invoice made automatically — ready in Contracts &
+ * Invoices — but it is NEVER sent: the vendor decides if and when the client gets it. One per lead; a lead that
+ * already has one (made by hand or before) is left alone. Never throws: a booking must not fail over its invoice.
+ */
+export async function ensureInvoice(leadId) {
+  try {
+    const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
+    if (!lead || lead.status !== 'booked') return null;
+    const has = await prisma.invoices.findFirst({ where: { lead_id: lead.id }, select: { id: true } });
+    if (has) return null;
+    return await prisma.invoices.create({ data: await invoiceData(lead, null, null) });
+  } catch (e) { console.error('auto-invoice failed for lead', leadId, e.message); return null; }
+}
 
 // DELETE /api/invoices/:id → void
 router.delete('/:id', requireAuth, async (req, res) => {

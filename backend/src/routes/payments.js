@@ -2,6 +2,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { templateForLead, buildContractBody } from './contracts.js';
+import { ensureInvoice } from './invoices.js';
 
 const router = express.Router();
 
@@ -110,11 +111,15 @@ async function markBooked(leadId) {
   const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
   if (!lead || lead.status === 'booked') return;
   const money = await moneySummary(lead);
-  if (money.deposit_amount > 0 && money.paid < money.deposit_amount) return;
+  // F4 (2026-10-30): whole cents — in floating point 35% of $3,200 is 1120.0000000000002, so a $1,120 deposit
+  // never counted as paid and the vendor had to confirm the booking by hand
+  const cents = (n) => Math.round(Number(n || 0) * 100);
+  if (cents(money.deposit_amount) > 0 && cents(money.paid) < cents(money.deposit_amount)) return;
   await prisma.leads.update({
     where: { id: lead.id },
     data: { status: 'booked', updated_at: new Date() },
   });
+  await ensureInvoice(lead.id);   // 🧾 ready, never sent
 }
 
 // POST /api/payments/lead/:leadId → add payment
@@ -184,7 +189,7 @@ router.put('/lead/:leadId/confirm-claim', requireAuth, async (req, res) => {
       orderBy: { paid_at: 'desc' },
     });
     const fresh = await prisma.leads.findUnique({ where: { id: lead.id } });
-    res.json({ payments, summary: await moneySummary(fresh) });
+    res.json({ payments, summary: await moneySummary(fresh), status: fresh.status });   // the panel shows a new booking at once
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

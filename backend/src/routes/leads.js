@@ -9,6 +9,7 @@ import { notifyNewLead, sendLeadEmail } from './email.js';
 import { notify } from './notifications.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { applyFormRules } from '../lib/formRules.js';
+import { ensureInvoice } from './invoices.js';
 
 const router = express.Router();
 
@@ -561,6 +562,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (!Object.keys(data).length) return res.json({ ok: true });
     data.updated_at = new Date();
     const lead = await prisma.leads.update({ where: { id }, data });
+    if (lead.status === 'booked') await ensureInvoice(lead.id);   // 🧾 F2: booked by hand — invoice ready, never sent
     res.json({ lead });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
