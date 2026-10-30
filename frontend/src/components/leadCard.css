@@ -58,3 +58,6 @@
   .lc-status { padding: 3px 8px; font-size: 11.5px; }
   .lc-status-line { gap: 6px; }
 }
+
+/* 📅 when the lead arrived (phone card) */
+.lc-received { margin: 2px 0 0; font-size: 12px; color: var(--muted); }

@@ -10,3 +10,6 @@
 .pe-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .pe-save { font-weight: 700; }
 .pe-msg { font-size: 13px; color: var(--muted); }
+
+/* ⏱️ a pre-event's hours, worked out from its times */
+.pe-f .pe-hours { color: var(--muted); cursor: default; }

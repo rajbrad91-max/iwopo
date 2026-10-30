@@ -39,6 +39,7 @@ const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private �
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
 import SecurityLog from '../components/SecurityLog';
+import { shownFields } from '../lib/formRules';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -3179,7 +3180,8 @@ function LeadsView({ routeLead, onOpenLead }) {
                   </td>
                 )}
                 <td className="col-num" data-label="#">{seqOf(l.id)}</td>
-                <td className="biz" data-label="Client">{l.name}</td>
+                {/* 📅 when it arrived — the list could not say (Muse leads comparison, 2026-10-30) */}
+                <td className="biz" data-label="Client">{l.name}{l.created_at && <span className="lead-received">📥 {fmtDateTime(l.created_at)}</span>}</td>
                 <td data-label="Event">{l.event_type}</td>
                 <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
                 <td data-label="Location">{l.location || '—'}</td>
@@ -3499,6 +3501,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
         {row('📞 Phone', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone)}
         {row('📷 Instagram', lead.instagram)}
         {row('🔎 Heard via', lead.heard)}
+        {row('📥 Received', lead.created_at ? fmtDateTime(lead.created_at) : null)}
       </div>
 
 
@@ -3554,7 +3557,13 @@ function LeadDetail({ lead, onBack, onSaved }) {
           return String(v);
         };
 
-        const rows = defs.map(f => [f.label, valueFor(f)]).filter(([, v]) => v !== null);
+        /* 🔀 only the questions this client was actually shown — the same rules the form used. A Birthday lead never
+           had Getting Ready, so it shows no "Getting Ready ❌ No"; a wedding where the box was left unticked still says No. */
+        const live = new Map((cfg?.custom_fields || []).map(f => [f.id, f]));   // older snapshots kept no rules
+        const withRules = defs.map(f => (f.show_if || !live.get(f.id) ? f
+          : { ...f, show_if: live.get(f.id).show_if, options: f.options || live.get(f.id).options, allow_other: f.allow_other ?? live.get(f.id).allow_other }));
+        const asked = shownFields(withRules, cd, { heard: lead.heard, role: lead.role });
+        const rows = asked.map(f => [f.label, valueFor(f)]).filter(([, v]) => v !== null);
         // notes aren't a form field — they're the free-text box every form has
         if (has(lead.notes)) rows.push(['📝 Notes', lead.notes]);
         if (!rows.length) return null;

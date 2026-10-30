@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 import './preevents.css';
+import { hoursBetween, formatHours } from '../pages/InquiryForm';
 
 /**
  * 🗓️ Pre-events on a lead (Raj, 2026-10-24): Mehndi, Jaggo, Sangeet, Reception… — each with its own date, time,
  * place, guests and service. They print in the contract's schedule under a gold "Pre-Events" heading.
  */
+/** ⏱️ a pre-event's hours from its own times (more than 16 means the end is before the start — shown as nothing) */
+function peHours(e) {
+  const span = hoursBetween(e.from, e.to);
+  return span !== null && span <= 16 ? formatHours(span) : '';
+}
+
 const BLANK = { name: '', date: '', from: '', to: '', location: '', guests: '', service: '' };
 
 export default function PreEvents({ lead, onSaved }) {
@@ -37,6 +44,8 @@ export default function PreEvents({ lead, onSaved }) {
             <label className="pe-f"><span>Date</span><input type="date" value={e.date} onChange={x => change(i, 'date', x.target.value)} /></label>
             <label className="pe-f"><span>From</span><input type="time" value={e.from} onChange={x => change(i, 'from', x.target.value)} /></label>
             <label className="pe-f"><span>To</span><input type="time" value={e.to} onChange={x => change(i, 'to', x.target.value)} /></label>
+            {/* ⏱️ worked out from its own times, as on the inquiry form — shown, not typed */}
+            <label className="pe-f"><span>Hours</span><input readOnly className="pe-hours" value={peHours(e)} placeholder="From the times" /></label>
             <label className="pe-f pe-wide"><span>Location</span><input value={e.location} placeholder="Venue or address" onChange={x => change(i, 'location', x.target.value)} /></label>
             <label className="pe-f"><span>Est guests</span><input type="number" min="0" value={e.guests} onChange={x => change(i, 'guests', x.target.value)} /></label>
             <label className="pe-f"><span>Service</span><input value={e.service} placeholder="Photos & Videos" onChange={x => change(i, 'service', x.target.value)} /></label>

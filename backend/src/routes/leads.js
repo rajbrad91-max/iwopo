@@ -369,6 +369,10 @@ async function snapshotFormFields(vendorId, customData) {
       return {
         id: f.id, label: f.label, type: f.type,
         ...(effective ? { maps_to: effective } : {}),
+        // 🔀 the rule and the choices it reads — so the lead shows only the questions this client was shown
+        ...(f.show_if ? { show_if: f.show_if } : {}),
+        ...(Array.isArray(f.options) && f.options.length ? { options: f.options } : {}),
+        ...(f.allow_other ? { allow_other: true } : {}),
       };
     });
   } catch { return undefined; }

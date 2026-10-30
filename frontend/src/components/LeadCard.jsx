@@ -1,4 +1,5 @@
 import './leadCard.css';
+import { fmtDateTime } from '../lib/api';
 
 /**
  * 📱 A lead as a card on phones (Raj, 2026-10-27, after his Perfect Poses reference): name, email and phone on one
@@ -20,6 +21,7 @@ export default function LeadCard({ lead: l, history = false, onSend, onRestore }
     <div className="lc">
       <div className="lc-head">
         <p className="lc-name">{l.name}</p>
+        {l.created_at && <p className="lc-received">📥 {fmtDateTime(l.created_at)}</p>}
         {(l.email || l.phone) && (
           <p className="lc-contact">{l.email && <span>{l.email}</span>}{l.phone && <span>{l.phone}</span>}</p>
         )}
