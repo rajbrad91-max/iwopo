@@ -101,6 +101,9 @@ async function reconcileContract(lead, newPackageId, ip) {
       data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
     });
     await audit(latest.id, 'voided', ip, { reason: 'package_changed_after_signing', from: latest.package_id, to: newPackageId });
+    /* R4 (2026-10-30): a claimed payment belonged to the cancelled contract; the vendor hears what happened */
+    await prisma.leads.update({ where: { id: lead.id }, data: { payment_claimed_at: null, updated_at: new Date() } });
+    notify(lead.vendor_id, `🔁 ${lead.name || 'Client'} changed package after signing`, 'The signed contract was cancelled — a new one for the new package is waiting for their signature', 'contract', { type: 'lead', id: lead.id });
     const replacement = await prisma.contracts.create({
       data: {
         vendor_id: lead.vendor_id, lead_id: lead.id,
@@ -427,11 +430,14 @@ router.post('/:token/pay-direct', async (req, res) => {
       data: { payment_claimed_at: new Date(), updated_at: new Date() },
     });
 
-    const amount = chosen?.price ?? null;
+    /* R3 (2026-10-30): the amount the client was asked to pay — the deposit — and the total for context */
+    const total = Number(chosen?.price ?? 0);
+    const deposit = lead.deposit_amount_override != null ? Number(lead.deposit_amount_override) : (Number(lead.deposit_percent) || 0) / 100 * total;
+    const money = (n) => `$${Math.round(n).toLocaleString('en')}`;
     notify(
       lead.vendor_id,
       `💰 ${lead.name || 'Client'} says they've paid`,
-      `${chosen?.name || 'Booking'}${amount ? ` · $${Number(amount).toFixed(0)}` : ''} · confirm when the funds arrive`,
+      `${chosen?.name || 'Booking'}${total ? ` · deposit ${money(deposit)} of ${money(total)}` : ''} · confirm when the funds arrive`,
       'payment',
       { type: 'lead', id: lead.id },   // the confirm/deny banner lives on the lead
     );

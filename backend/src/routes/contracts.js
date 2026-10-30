@@ -11,6 +11,7 @@ import { moneySummary, pickedOffer } from './payments.js';
 import { currencyFor } from '../lib/currencies.js';
 import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
+import { notify } from './notifications.js';
 
 const router = express.Router();
 
@@ -519,6 +520,7 @@ export async function buildContractBody(template, lead, businessName, opts = {})
     '{{client_name}}': lead.name || '—',
     '{{client_email}}': lead.email || '—',
     '{{client_phone}}': lead.phone || '—',
+    '{{deposit_percent}}': `${Number(lead.deposit_percent ?? 0)}%`,
     '{{event_type}}': lead.event_type || '—',
     '{{event_date}}': fmtDate(lead.event_date) || '—',
     '{{location}}': lead.location || '—',
@@ -586,7 +588,7 @@ export async function fillPlaceholders(text, lead, businessName) {
     catch { return `${Number(v || 0)} ${code}`; }
   };
   const values = {
-    '{{client_name}}': lead.name || '—', '{{client_email}}': lead.email || '—', '{{client_phone}}': lead.phone || '—',
+    '{{client_name}}': lead.name || '—', '{{client_email}}': lead.email || '—', '{{client_phone}}': lead.phone || '—', '{{deposit_percent}}': `${Number(lead.deposit_percent ?? 0)}%`,
     '{{event_type}}': lead.event_type || '—', '{{event_date}}': fmtDate(lead.event_date) || '—',
     '{{location}}': lead.location || '—', '{{hours}}': lead.hours ?? 'agreed', '{{guests}}': lead.guests ?? 'the expected number of',
     '{{total_cost}}': cash(money.final_total), '{{deposit}}': cash(money.deposit_amount),
@@ -832,7 +834,10 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
-    const t = await templateForLead(lead);
+    /* R1 (2026-10-30): the template THIS lead's contract was built from — not whichever one templateForLead would pick
+       for the event type. Before, the vendor previewed the default while the client signed the chosen one. */
+    const built = await prisma.contracts.findFirst({ where: { lead_id: lead.id }, orderBy: { id: 'desc' }, select: { template_id: true } });   // 🔒 the lead was checked above
+    const t = await templateForLead(lead, built?.template_id ?? null);
     if (!t) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
 
     const vendor = await prisma.vendors.findUnique({
@@ -1046,6 +1051,8 @@ router.post('/sign/:token', async (req, res) => {
       },
     });
     await audit(c.id, 'signed', ip, { signed_name: signed_name.trim(), sha256: docHash });
+    // ✍️ R2 (2026-10-30): the vendor is told straight away — signing used to leave no trace in the panel
+    if (c.lead_id) notify(c.vendor_id, `✍️ ${signed_name.trim()} signed the contract`, `${c.title || 'Contract'} · payment is next`, 'contract', { type: 'lead', id: c.lead_id });
     res.json({ contract: updated });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

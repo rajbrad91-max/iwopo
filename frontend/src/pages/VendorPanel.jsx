@@ -2876,7 +2876,7 @@ function DashHome({ goTab, openBooking }) {
                     <td className="biz">{l.name}</td>
                     <td>{l.event_type}</td>
                     <td>{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
-                    <td><span className={`badge ${SB[l.status] || 'trial'}`}>{l.status}</span></td>
+                    <td><span className={`badge ${SB[l.status] || 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -4111,7 +4111,7 @@ function AllContracts() {
   // A contract belongs here once it is signed AND the booking is confirmed.
   // Anything earlier is still being negotiated and is worked on from the lead;
   // voided ones never leave the API at all.
-  const shown = list.filter(c => c.status === 'signed' && c.lead_status === 'booked');
+  const shown = list.filter(c => c.status === 'signed');   // R2: every signed contract, booked or still awaiting payment
   return (
     <>
       {/* Above the table, not under it: it explains how these documents behave,
@@ -4128,7 +4128,7 @@ function AllContracts() {
         <tbody>
           {shown.length === 0 ? (
             <tr><td colSpan="6" className="empty">
-              No confirmed bookings yet. A contract appears here once it&apos;s signed and the booking is confirmed ✅
+              No signed contracts yet. A contract appears here as soon as the client signs it ✍️
             </td></tr>
           ) : shown.map((c, n) => (
             <tr key={c.id}>
@@ -4165,7 +4165,7 @@ const CT_BLOCKS = [
   '{{services_summary}}', '{{crew}}',
 ];
 
-const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{client_phone}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
+const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{client_phone}}', '{{deposit_percent}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
 
 // 👁️ Stand-in values so a template can be previewed before any client exists.
 // Deliberately obvious rather than realistic, so nothing here is mistaken for a

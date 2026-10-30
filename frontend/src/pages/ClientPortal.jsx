@@ -302,6 +302,11 @@ export default function ClientPortal({ token }) {
   }, []);
 
   async function pick(id) {
+    // R4 (2026-10-30): changing package after signing cancels that signature — say so first
+    const next = packages.find(p => p.id === id);
+    if (signed && chosen && id !== chosen.id && !await dialog.confirm(
+      `You signed the contract for ${chosen.name}. Choosing ${next?.name || 'another package'} cancels that signature — you\u2019ll read and sign a new contract for it.`,
+      { title: 'Change your package?', okLabel: 'Change package', danger: true })) return;
     setBusy(true); setMsg('');
     try {
       await api.portalPick(token, id);
@@ -426,7 +431,7 @@ export default function ClientPortal({ token }) {
             <h2 className="po-h">{chosen ? 'Your package' : 'Choose your package'}</h2>
             <p className="po-lead">
               {chosen
-                ? 'Pick a different one any time before you pay — your contract is rewritten to match.'
+                ? (signed ? `You signed for ${chosen.name}. Choosing another package cancels that signature and you\u2019ll sign again.` : 'Pick a different one any time before you pay — your contract is rewritten to match.')
                 : 'Tap the one you\u2019d like. Nothing is confirmed until you sign.'}
             </p>
 
