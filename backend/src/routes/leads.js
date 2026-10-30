@@ -284,6 +284,7 @@ async function numberProblem(vendorId, cd) {
     const v = cd[fld.id];
     if (v === undefined || v === null || v === '') continue;
     if (!/^\d+(\.\d{1,2})?$/.test(String(v).replace(/[,\s$]/g, ''))) return `"${fld.label}" needs a number, e.g. 150`;
+    if (fld.maps_to === 'guests' && Number(String(v).replace(/[,\s$]/g, '')) < 1) return `"${fld.label}" needs at least 1`;   // 👥 never 0 guests
   }
   return '';
 }

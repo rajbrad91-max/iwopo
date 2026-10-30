@@ -313,6 +313,9 @@ export function formatHours(dec) {
   return m ? `${hp} ${m} min` : hp;
 }
 
+/** The longest event the form believes; more is an end time typed before the start (overnight runs are fine). */
+const MAX_EVENT_HOURS = 16;
+
 /** Today as YYYY-MM-DD in the visitor's own time zone (what a date box shows). */
 function todayLocal() {
   const d = new Date();
@@ -364,11 +367,13 @@ export function checkAnswers(fields, answers, allFields = fields) {
     if (f.type === 'date' && isEventDate(f, allFields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
     // decimals are fine — a price or a budget has cents (QA 2026-10-10: 349.99 was refused)
     if (f.type === 'number' && !/^\d+(\.\d{1,2})?$/.test(plainNumber(v))) return { id: f.id, message: `"${f.label}" needs a number, e.g. 350 or 349.99` };
+    // 👥 a guest count is at least 1 — "0 guests" is a slip, not an event (Muse comparison, 2026-10-30)
+    if (f.maps_to === 'guests' && Number(plainNumber(v)) < 1) return { id: f.id, message: `"${f.label}" needs at least 1` };
     // hours typed by hand must say how many — words alone reached the lead as an empty Hours
     if (f.type === 'hours' && !/\d/.test(String(v))) return { id: f.id, message: `"${f.label}" needs a number of hours, e.g. 6 or 6 hrs 30 min` };
     if (toF && f.id === toF.id && fromF && answers[fromF.id]) {
       const span = hoursBetween(answers[fromF.id], v);
-      if (span !== null && span > 16) return { id: f.id, message: 'The ending time is before the starting time — please check both' };
+      if (span !== null && span > MAX_EVENT_HOURS) return { id: f.id, message: 'The ending time is before the starting time — please check both' };
     }
   }
   return null;
@@ -498,7 +503,10 @@ function HoursField({ fld, value, onChange, answers, fields }) {
   const toId = fld.to_field;
   const from = fromId ? answers?.[fromId] : null;
   const to = toId ? answers?.[toId] : null;
-  const auto = formatHours(hoursBetween(from, to));
+  /* ⏱️ more than 16 hours is an end time before the start, not a long day — the form refuses it on send, so the
+     box shows nothing rather than a misleading "20 hrs" (Muse comparison, 2026-10-30) */
+  const span = hoursBetween(from, to);
+  const auto = span !== null && span <= MAX_EVENT_HOURS ? formatHours(span) : '';
 
   // Fill from the times unless the client has typed their own figure.
   // `value` and `onChange` are deliberately not dependencies: including them
@@ -552,6 +560,12 @@ function LocationField({ value, onChange }) {
   );
 }
 
+/** ⏱️ A pre-event's hours from its own times — empty until both are picked, or when the end is before the start. */
+function peHours(r) {
+  const span = hoursBetween(r.from, r.to);
+  return span !== null && span <= MAX_EVENT_HOURS ? formatHours(span) : '';
+}
+
 /** 🗓️ What a pre-events list must get right, or '' — each card named, times whole, dates not past, guests a number. */
 function preEventProblem(rows, today) {
   for (const [i, r] of rows.entries()) {
@@ -559,6 +573,9 @@ function preEventProblem(rows, today) {
     if (!String(r.name || '').trim()) return `Please choose the name of pre-event ${n} (or remove it)`;
     if (r.from === PARTIAL_TIME || r.to === PARTIAL_TIME) return `Please pick the hour, minutes and AM/PM for pre-event ${n}`;
     if (r.date && String(r.date) < today) return `The date of pre-event ${n} has already passed — please check it`;
+    const span = hoursBetween(r.from, r.to);
+    if (span !== null && span > MAX_EVENT_HOURS) return `The ending time of pre-event ${n} is before its starting time — please check both`;
+    if (r.guests !== undefined && r.guests !== '' && Number(r.guests) < 1) return `Est. Guests for pre-event ${n} needs at least 1`;
   }
   return '';
 }
@@ -611,6 +628,8 @@ function PreEventsField({ fld, value, onChange }) {
             <div><label>Date</label><input type="date" value={r.date} min={todayLocal()} onChange={e => set(i, { date: e.target.value })} /></div>
             <div><label>Starting Time</label><TimeSelect value={r.from} onChange={v => set(i, { from: v })} /></div>
             <div><label>Ending Time</label><TimeSelect value={r.to} onChange={v => set(i, { to: v })} /></div>
+            {/* ⏱️ worked out from this pre-event's own times (the lead and the contract count it the same way) */}
+            <div><label>Hours <span className="iq-auto-tag">auto</span></label><input readOnly className="iq-pe-hours" value={peHours(r)} placeholder="From the times" /></div>
             <div className="iq-full"><label>Location</label><LocationField value={r.location} onChange={v => set(i, { location: v })} /></div>
             <div><label>Est. Guests</label><input type="text" inputMode="numeric" value={r.guests} placeholder="e.g. 150" onChange={e => set(i, { guests: e.target.value.replace(/\D/g, '') })} /></div>
             <div>

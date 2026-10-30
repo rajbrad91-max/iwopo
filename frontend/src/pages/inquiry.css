@@ -188,3 +188,5 @@
 .iq-card .iq-pe-add:hover { background: var(--field-bg); }
 .iq-pe-note { margin: 0; font-size: 13px; color: var(--muted); }
 @media (max-width: 560px) { .iq-pe-card { padding: 12px; } }
+/* ⏱️ a pre-event's hours, worked out from its times — shown, not typed */
+.iq-card .iq-pe-hours { color: var(--muted); cursor: default; }
