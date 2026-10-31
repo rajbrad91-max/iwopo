@@ -241,3 +241,14 @@ a.cm-leadnote:hover { text-decoration: underline; }
 /* calm toolbar (Raj, 2026-10-23): the chosen filter is a soft highlight, New text a plain button with teal text */
 .cm-bar .cm-f.is-on { background: var(--teal-soft); border-color: transparent; color: var(--teal); }
 .cm-start { color: var(--teal); font-weight: 700; }
+
+/* ── 📱 Phone: a conversation's header (Raj, 2026-10-30) — the number was crushed into pieces between the back
+      button and three buttons, and the round avatar squashed into an oval. Phones: who it is on one clean line,
+      the buttons on their own row underneath. ── */
+.cm-av { flex-shrink: 0; }                         /* always round, never squeezed */
+@media (max-width: 760px) {
+  .cm-chead { flex-wrap: wrap; row-gap: 10px; }
+  .cm-cname, .cm-cnum { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cm-cacts { flex: 1 1 100%; flex-wrap: wrap; gap: 8px; }
+  .cm-cacts .cm-f { min-height: 38px; }
+}
