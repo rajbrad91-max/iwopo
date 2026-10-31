@@ -4142,7 +4142,7 @@ function AllContracts() {
               <td className="ct-num">{n + 1}</td>
               <td className="biz">{c.client_name}</td>
               <td className="ct-title">{c.title}</td>
-              <td className="ct-signer">{c.signed_name || '—'}</td>
+              <td className={`ct-signer${(c.signed_name || '').trim().toLowerCase() === String(c.lead_name || c.client_name || c.lead?.name || '').trim().toLowerCase() ? ' is-same' : ''}`}>{c.signed_name || '—'}</td>
               <td className="ct-date">{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
               {/* F7: booked, or signed and still waiting for the deposit */}
               <td className="ct-booking">{c.lead_status === 'booked' ? '✅ Booked' : '⏳ Awaiting payment'}</td>
