@@ -123,4 +123,61 @@ export const INTL = {
       ['Y a-t-il un essai gratuit ?', 'Oui, sans carte bancaire et résiliable à tout moment.'],
     ],
   },
+
+  pt: {
+    path: '/pt', locale: 'pt_BR', name: 'Português',
+    title: 'Software para fotógrafos e videomakers de casamento | iwopo',
+    description: 'Orçamentos, contratos com assinatura eletrônica, sinal, agenda, galerias para clientes, equipe e site de portfólio: uma plataforma para fotógrafos de casamento no Brasil e em Portugal.',
+    h1: 'O software completo para fotógrafos de casamento',
+    lead: 'Pedidos de orçamento, contratos com assinatura eletrônica, sinal, agenda, galerias para os noivos e o seu site — tudo num só lugar, para que a parte administrativa de um casamento leve minutos, não noites.',
+    labels: { features: 'Recursos', pricing: 'Preços', login: 'Entrar', trial: 'Teste grátis', faq: 'Perguntas frequentes', cta: 'Todo o seu negócio de casamentos num só lugar', ctaSub: 'Teste grátis · Sem cartão · Cancele quando quiser', month: '/mês', storage: 'GB de armazenamento · todos os recursos incluídos', other: 'Outros idiomas' },
+    sections: [
+      { h2: 'Do orçamento à entrega das fotos', ul: [
+        'Os noivos preenchem o seu formulário com cada momento: making of, cerimônia, festa e ensaio pré-casamento.',
+        'Você envia uma pasta de pacotes e os noivos escolhem no próprio portal.',
+        'O contrato se preenche sozinho: data, horários, horas, local, convidados, pacote, total, sinal e saldo.',
+        'Os noivos rubricam as seções importantes, assinam e pagam o sinal.',
+        'A reserva entra na sua agenda com a equipe definida.',
+        'Depois do casamento você entrega uma galeria em que cada convidado encontra as próprias fotos.',
+      ] },
+      { h2: 'Contratos e sinal', p: [
+        'No Brasil, a assinatura eletrônica é reconhecida pela Medida Provisória 2.200-2/2001 e pela Lei 14.063/2020; em Portugal, pelo regulamento europeu eIDAS. O iwopo registra quem assinou, quando, de qual endereço IP e o que foi assinado, com um certificado de conclusão. É uma informação geral, não aconselhamento jurídico.',
+        'Os noivos pagam o sinal como já pagam — Pix no Brasil, MB WAY ou transferência em Portugal, ou em dinheiro — e marcam como pago no portal. Você confirma quando o valor chega e a data fica reservada.',
+      ] },
+      { h2: 'Tudo incluído', ul: ['Formulário com perguntas condicionais', 'Contratos com rubricas e assinatura eletrônica', 'Sinal, reservas e agenda', 'Gestão de segundo fotógrafo e assistentes', 'Galerias com reconhecimento facial', 'Envio de arquivos grandes', 'Site de portfólio com domínio próprio', 'Assistente de IA para pedidos'] },
+    ],
+    faq: [
+      ['O aplicativo do iwopo está em português?', 'Ainda não: a interface do iwopo está por enquanto em inglês. As perguntas do seu formulário, os pacotes e os contratos você escreve no seu idioma.'],
+      ['Posso usar reais ou euros e o meu fuso horário?', 'Sim. Cada negócio define a sua moeda e o seu fuso horário.'],
+      ['Há teste grátis?', 'Sim, sem cartão de crédito e pode cancelar quando quiser.'],
+    ],
+  },
+  nl: {
+    path: '/nl', locale: 'nl_NL', name: 'Nederlands',
+    title: 'Software voor trouwfotografen en trouwfilmers | iwopo',
+    description: 'Aanvragen, contracten met e-handtekening, aanbetalingen, boekingen, klantgalerijen, team en portfoliowebsite: één platform voor trouwfotografen in Nederland en België.',
+    h1: 'De alles-in-één software voor trouwfotografen',
+    lead: 'Aanvragen, contracten met elektronische handtekening, aanbetalingen, boekingen, galerijen voor het bruidspaar en je website — alles op één plek, zodat de administratie van een bruiloft minuten kost in plaats van avonden.',
+    labels: { features: 'Functies', pricing: 'Prijzen', login: 'Inloggen', trial: 'Gratis proberen', faq: 'Veelgestelde vragen', cta: 'Je hele trouwbedrijf op één plek', ctaSub: 'Gratis proefperiode · Geen creditcard · Altijd opzegbaar', month: '/maand', storage: 'GB opslag · alle functies inbegrepen', other: 'Andere talen' },
+    sections: [
+      { h2: 'Van aanvraag tot fotogalerij', ul: [
+        'Het bruidspaar vult je aanvraagformulier in, met elk onderdeel: aankleden, ceremonie, feest en loveshoot.',
+        'Je stuurt een map met pakketten; het paar kiest in het eigen klantportaal.',
+        'Het contract vult zichzelf in: datum, tijden, uren, locatie, gasten, pakket, totaal, aanbetaling en restbedrag.',
+        'Het paar parafeert de belangrijke onderdelen, tekent en doet de aanbetaling.',
+        'De boeking komt in je agenda, met je team erbij.',
+        'Na de bruiloft lever je een galerij waarin elke gast zijn eigen foto’s vindt.',
+      ] },
+      { h2: 'Contracten en aanbetalingen', p: [
+        'In Nederland en België is de elektronische handtekening erkend via de Europese eIDAS-verordening. iwopo legt vast wie wanneer vanaf welk IP-adres wat heeft getekend, met een afrondingscertificaat. Dit is algemene informatie, geen juridisch advies.',
+        'Het paar betaalt de aanbetaling zoals ze gewend zijn — via iDEAL, een overboeking of contant — en markeert die in het portaal als betaald. Jij bevestigt de ontvangst en de datum is geboekt.',
+      ] },
+      { h2: 'Alles inbegrepen', ul: ['Aanvraagformulier met voorwaardelijke vragen', 'Contracten met parafen en e-handtekening', 'Aanbetalingen, boekingen en agenda', 'Planning van second shooters en assistenten', 'Galerijen met gezichtsherkenning', 'Grote bestanden versturen', 'Portfoliowebsite met eigen domein', 'AI-assistent voor aanvragen'] },
+    ],
+    faq: [
+      ['Is de iwopo-app in het Nederlands?', 'Nog niet: de interface van iwopo is voorlopig in het Engels. De vragen van je formulier, je pakketten en contracten schrijf je zelf, in je eigen taal.'],
+      ['Kan ik euro’s en mijn tijdzone gebruiken?', 'Ja. Elk bedrijf stelt zijn eigen valuta en tijdzone in.'],
+      ['Is er een gratis proefperiode?', 'Ja, zonder creditcard en altijd opzegbaar.'],
+    ],
+  },
 };

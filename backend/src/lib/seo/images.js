@@ -31,6 +31,7 @@ export const IMAGES = {
   '/compare/honeybook-alternative': [LEADS, PORTAL],
   '/guides/wedding-photography-contract': [SCHEDULE],
   '/guides/wedding-photography-inquiry-form': [FORM],
-  '/it': [LEADS, PORTAL], '/de': [LEADS, PORTAL], '/es': [LEADS, PORTAL], '/fr': [LEADS, PORTAL],
+  '/it': [LEADS, PORTAL], '/de': [LEADS, PORTAL], '/es': [LEADS, PORTAL], '/fr': [LEADS, PORTAL], '/pt': [LEADS, PORTAL], '/nl': [LEADS, PORTAL],
+  '/guides/wedding-videography-contract': [SCHEDULE], '/guides/how-to-get-more-wedding-photography-inquiries': [FORM, PORTAL],
   '*': [PHONE_LEADS],
 };

@@ -170,4 +170,80 @@ export const GUIDES = {
     ],
     related: ['/features/crew', '/features/calendar', '/for/photo-and-video-studios'],
   },
+
+  'how-to-price-wedding-photography': {
+    title: 'How to price wedding photography: a simple method',
+    h1: 'How to price wedding photography',
+    lead: 'Price wedding photography from your real costs and time, not from what others charge: add up the hours a wedding really takes (including editing and admin), your yearly business costs and the income you need, then divide by the number of weddings you can realistically shoot.',
+    updated: '2026-10-31',
+    sections: [
+      { h2: '1. Count every hour, not just the wedding day', ul: [
+        'Meetings and messages before the booking.',
+        'Travel, the wedding day itself and any pre-events.',
+        'Culling, editing, album design and delivery — often two to three times the hours of the day itself.',
+      ] },
+      { h2: '2. Add your business costs', p: ['Equipment and its replacement, insurance, software, storage, marketing, accounting, second shooters and taxes. Divide the yearly total by the number of weddings you shoot to see what each wedding must cover before you earn anything.'] },
+      { h2: '3. Decide what you need to earn', p: ['Set a yearly income, divide it by your realistic number of weddings, and add it to the cost per wedding. That is your floor — below it, each booking loses money.'] },
+      { h2: '4. Build packages around that floor', ul: [
+        'A smallest package that still clears the floor.',
+        'A middle package most couples choose, with the most popular extras.',
+        'A complete package with everything — a second photographer, a film, an album.',
+        'Clear extra-hour rates for weddings that run late.',
+      ] },
+      { h2: '5. Check it against your market', p: ['Compare with photographers of similar experience in your area. If you are far below them, raise your floor; if you are far above, make sure your portfolio and service show why. This guide is general business information, not financial advice.'] },
+    ],
+    faq: [
+      ['How many hours does one wedding take?', 'Usually far more than the coverage hours: editing and admin often take two to three times as long as the wedding day itself.'],
+      ['Should I show prices on my website?', 'Many photographers show a starting price so couples know if you are in their range, and send full packages after an inquiry.'],
+    ],
+    related: ['/guides/wedding-photography-deposit', '/features/leads', '/pricing'],
+  },
+
+  'wedding-day-timeline-for-photographers': {
+    title: 'Wedding day timeline for photographers (with buffers)',
+    h1: 'A wedding day timeline for photographers',
+    lead: 'Build the wedding day timeline backwards from the ceremony: getting ready, details and first look before it; family photos straight after; couple portraits around golden hour; and the reception moments — entrances, speeches, first dance, cake — at times agreed in advance, with buffers between each.',
+    updated: '2026-10-31',
+    sections: [
+      { h2: 'Before the ceremony', ul: ['Getting ready for each side — and where.', 'Details: rings, invitations, attire.', 'A first look or family moments, if planned.', 'Travel time between venues, plus a buffer.'] },
+      { h2: 'Ceremony and family photos', p: ['Agree the family groupings in advance and ask one relative to gather people. A written list turns forty-five chaotic minutes into twenty calm ones.'] },
+      { h2: 'Portraits', p: ['Plan couple portraits for the softest light of the day, often the hour before sunset, and keep fifteen minutes in reserve.'] },
+      { h2: 'Reception', ul: ['Entrances, speeches, first dance and cake cutting at agreed times.', 'Meal breaks for the team on long days.', 'An agreed end time — and the rate if it runs late.'] },
+      { h2: 'Multi-day weddings', p: ['For weddings with pre-events — a Mehndi, Sangeet, rehearsal dinner or reception on another day — give each event its own timeline, start and end time and location, and put every one in the contract.'] },
+    ],
+    faq: [['How long should family photos take?', 'With a written list and someone gathering people, many photographers plan around 20 to 30 minutes.']],
+    related: ['/guides/wedding-photography-contract', '/for/south-asian-weddings', '/features/contracts'],
+  },
+
+  'how-to-get-more-wedding-photography-inquiries': {
+    title: 'How to get more wedding photography inquiries',
+    h1: 'How to get more wedding photography inquiries',
+    lead: 'Most wedding inquiries come from being easy to find, easy to trust and quick to reply: a clear website with your work and a short inquiry form, a complete Google Business Profile with reviews, listings where couples search, referrals from past couples and vendors — and replying within hours, not days.',
+    updated: '2026-10-31',
+    sections: [
+      { h2: 'Be easy to find', ul: ['A website that loads fast on a phone and says where you work.', 'A complete Google Business Profile with photos and your service area.', 'Listings on the wedding directories couples in your country use.'] },
+      { h2: 'Be easy to trust', ul: ['Full galleries, not just highlights.', 'Recent reviews — ask every happy couple, by name, soon after delivery.', 'A clear starting price or what is included.'] },
+      { h2: 'Make inquiring effortless', p: ['A short form that asks only what applies, works on a phone, and catches mistakes before they reach you. Long forms lose couples.'] },
+      { h2: 'Reply fast', p: ['Couples often contact several photographers at once. A quick, personal reply with your packages — and an easy way to book — wins many of them.'] },
+      { h2: 'Grow referrals', p: ['Planners, venues and fellow vendors refer photographers they enjoy working with. Deliver on time and share your best images with them.'] },
+    ],
+    faq: [['What is the fastest way to more inquiries?', 'Reply faster and make booking easy: many couples choose the first good photographer who answers clearly.']],
+    related: ['/features/leads', '/features/website', '/guides/wedding-photography-inquiry-form'],
+  },
+
+  'wedding-videography-contract': {
+    title: 'What to include in a wedding videography contract',
+    h1: 'What to include in a wedding videography contract',
+    lead: 'A wedding videography contract needs everything a photography contract has — schedule, price, deposit, changes and cancellations — plus the parts that are specific to film: what will be delivered and how long it runs, music licensing, drone and audio conditions, raw footage, and delivery times for each film.',
+    updated: '2026-10-31',
+    sections: [
+      { h2: 'The films, precisely', ul: ['Each film by name and approximate length: highlight, feature, full ceremony and speeches.', 'Delivery format and resolution.', 'A delivery time for each film.', 'How many rounds of changes are included.'] },
+      { h2: 'Music', p: ['Say who chooses the music and that it is licensed for the use you intend. Unlicensed music can get films muted or removed when couples share them online.'] },
+      { h2: 'Audio, drone and live streaming', ul: ['Microphones on the officiant and couple, and venue sound-system access.', 'Drone flights depend on weather and local airspace rules.', 'Live streaming depends on the venue’s internet connection.'] },
+      { h2: 'Raw footage and storage', p: ['State whether raw footage is included, for how long you keep files, and that couples should keep their own copies.'] },
+      { h2: 'The rest of the essentials', p: ['Schedule with every event’s times and hours, price, deposit and balance, overtime, cancellations and postponements, usage rights and signatures. This guide is general information, not legal advice.'] },
+    ],
+    faq: [['Should a videography contract mention music licensing?', 'Yes — say who chooses the music and that it is licensed for how the film will be shared.']],
+    related: ['/for/wedding-videographers', '/guides/wedding-photography-contract', '/features/fileflyer'],
+  },
 };
