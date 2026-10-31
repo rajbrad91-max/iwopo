@@ -31,7 +31,7 @@ function schema(page, pages) {
     ...(page.kind === 'guide' ? { author: { '@id': `${SITE}/#org` }, publisher: { '@id': `${SITE}/#org` }, datePublished: page.updated, mainEntityOfPage: url } : {}),
   };
   graph.push(webPage);
-  if (['feature', 'pricing', 'audience', 'location', 'intl'].includes(page.kind)) {
+  if (['feature', 'pricing', 'audience', 'location', 'intl', 'local'].includes(page.kind)) {
     graph.push({
       '@type': 'SoftwareApplication', name: 'iwopo', url: `${SITE}/`,
       applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
@@ -59,12 +59,13 @@ function schema(page, pages) {
 const EN = { features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
 const L = (page) => page.labels || EN;
 
-/** hreflang: a translated page names every language version (and x-default = English); any other page names itself. */
+/** hreflang: a translated page names every language version (+ x-default = English, unless the page says there is
+ *  no English version: xDefault false); any other page names itself in its own language. */
 function langLinks(page) {
   const url = SITE + page.path;
-  if (!page.alternates?.length) return [`<link rel="alternate" hreflang="en" href="${url}">`, `<link rel="alternate" hreflang="x-default" href="${url}">`];
+  if (!page.alternates?.length) return [`<link rel="alternate" hreflang="${page.lang || 'en'}" href="${url}">`, `<link rel="alternate" hreflang="x-default" href="${url}">`];
   return [...page.alternates.map(a => `<link rel="alternate" hreflang="${a.lang}" href="${SITE}${a.path}">`),
-    `<link rel="alternate" hreflang="x-default" href="${SITE}/">`];
+    ...(page.xDefault === false ? [] : [`<link rel="alternate" hreflang="x-default" href="${SITE}/">`])];
 }
 
 export function headTags(page, pages) {

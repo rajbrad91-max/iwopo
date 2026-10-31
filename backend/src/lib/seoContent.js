@@ -18,6 +18,7 @@ import { GUIDES } from './seo/guides.js';
 import { LOCATIONS } from './seo/locations.js';
 import { COMPARISONS } from './seo/compare.js';
 import { INTL } from './seo/intl.js';
+import { LOCAL } from './seo/localCountries.js';
 import { IMAGES } from './seo/images.js';
 
 const SITE = 'https://iwopo.com';
@@ -152,10 +153,13 @@ export async function allPages() {
   pages.push({
     path: '/locations', kind: 'hub', standalone: true,
     title: 'Wedding photography software around the world | iwopo',
-    description: 'iwopo for wedding photographers and videographers worldwide — North America, the UK and Ireland, Australia and New Zealand, South Asia, the Gulf, Southeast Asia and South Africa.',
+    description: 'iwopo for wedding photographers and videographers worldwide — North America, the UK and Ireland, Europe, Latin America, Australia and New Zealand, South Asia, the Gulf, Southeast Asia and South Africa.',
     h1: 'Wedding photography business software, wherever you work',
     lead: 'iwopo runs in any browser, in your own time zone and currency. Here is how it fits the weddings, payments and rules of each market.',
-    list: Object.entries(LOCATIONS).map(([slug, l]) => ({ name: l.country, text: l.lead, href: '/locations/' + slug })),
+    list: [
+      ...Object.entries(LOCATIONS).map(([slug, l]) => ({ name: l.country, text: l.lead, href: '/locations/' + slug })),
+      ...Object.entries(LOCAL).map(([path, l]) => ({ name: `${l.country} (${INTL[l.lang].name})`, text: l.lead, href: path })),
+    ],
     crumbs: crumb(['Home', '/'], ['Countries', '/locations']),
     priority: '0.7', changefreq: 'monthly',
   });
@@ -191,8 +195,24 @@ export async function allPages() {
       path: t.path, kind: 'intl', standalone: true, lang, locale: t.locale, labels: t.labels, langName: t.name,
       title: t.title, description: t.description, h1: t.h1, lead: t.lead, sections: t.sections, faq: t.faq,
       plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), storage: p.storage_gb })),
+      list: Object.entries(LOCAL).filter(([, l]) => l.lang === lang).map(([path, l]) => ({ name: l.h1, text: l.lead, href: path })),
       alternates: langSet,
       priority: '0.8', changefreq: 'monthly',
+    });
+  }
+
+  /* 🌍 Country pages in their own language (seo/localCountries.js). hreflang only links pages that are versions of
+     each other (es-ES ↔ es-MX); no x-default — there is no English version of "Deutschland". */
+  for (const [path, l] of Object.entries(LOCAL)) {
+    const t = INTL[l.lang];
+    pages.push({
+      path, kind: 'local', standalone: true, lang: l.hreflang, locale: l.locale, labels: t.labels, langName: t.name,
+      country: l.country, countryCode: l.code,
+      title: l.title, description: l.description, h1: l.h1, lead: l.lead, sections: l.sections, faq: l.faq,
+      alternates: Object.entries(LOCAL).filter(([, o]) => o.lang === l.lang).map(([p, o]) => ({ lang: o.hreflang, path: p })),
+      xDefault: false,
+      crumbs: crumb(['iwopo', t.path], [l.country, path]),
+      priority: '0.7', changefreq: 'monthly',
     });
   }
 

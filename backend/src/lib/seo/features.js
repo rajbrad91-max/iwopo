@@ -139,6 +139,7 @@ export const FEATURES = {
     faq: [
       ['Can I use my own domain?', 'Yes. Connect a domain you own and the site is served on it.'],
       ['Do I need technical skills?', 'No. Choosing a theme, adding photos and editing text is the whole job.'],
+      ['Do inquiries from my website go into iwopo?', 'Yes. The inquiry form on your site feeds straight into your lead list, so every inquiry is in one place with the couple’s own details already filled in.'],
     ],
     related: ['/features/leads', '/for/wedding-photographers', '/features/chatbot'],
   },
@@ -163,6 +164,7 @@ export const FEATURES = {
     faq: [
       ['Can crew see my whole client list?', 'No. Crew only see the bookings they are assigned to.'],
       ['Do crew need an iwopo account?', 'No. They use a personal link to see their jobs and check in.'],
+      ['How do I know my crew has arrived on the wedding day?', 'Each crew member checks in from their phone with their personal link, and you see who has arrived without calling anyone.'],
     ],
     related: ['/features/calendar', '/for/photo-and-video-studios', '/guides/managing-a-wedding-photography-team'],
   },
@@ -184,6 +186,8 @@ export const FEATURES = {
     ],
     faq: [
       ['When does a booking appear on the calendar?', 'As soon as it is confirmed — for example, when the client’s deposit is recorded.'],
+      ['Does the calendar show which crew are on each wedding?', 'Yes. Each booking carries its times, its venue and the crew assigned to it.'],
+      ['How does it help avoid double bookings?', 'Inquiries and bookings share the same record, so a date that is already taken is visible before you quote it to another couple.'],
     ],
     related: ['/features/crew', '/features/leads', '/for/photo-and-video-studios'],
   },
@@ -205,6 +209,8 @@ export const FEATURES = {
     ],
     faq: [
       ['Does the assistant make things up?', 'It answers from your packages and the answers you provide, and says it does not know rather than inventing.'],
+      ['What happens when it cannot answer a question?', 'It tells the visitor it does not know and points them to your inquiry form, so the question still reaches you.'],
+      ['Where does the assistant appear?', 'On your iwopo website, where it replies to visitors using your packages and the answers you give it.'],
     ],
     related: ['/features/website', '/features/leads'],
   },

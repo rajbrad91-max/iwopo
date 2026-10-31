@@ -44,7 +44,7 @@ export const LOCATIONS = {
     ],
     faq: [
       ['Can clients pay by Interac e-Transfer?', 'Yes. They send it as usual, mark it as paid in their portal, and you confirm it when it arrives.'],
-      ['Is iwopo available in French?', 'Not yet — iwopo’s app and pages are currently in English.'],
+      ['Is iwopo available in French?', 'The app is in English today. There is a French overview of iwopo at iwopo.com/fr, and your inquiry form, packages and contracts can be written in French.'],
     ],
   },
   'united-kingdom': {

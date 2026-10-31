@@ -85,7 +85,7 @@ async function llms(full) {
     '## Features', ...group('feature').map(line), '',
     '## Who it is for', ...group('audience').map(line), '',
     '## Guides', ...group('guide').map(line), '',
-    '## Countries', ...group('location').map(line), '',
+    '## Countries', ...group('location').map(line), ...group('local').map(p => `- [${p.h1}](${SITE}${p.path}) (${p.langName}): ${p.description}`), '',
     '## Comparisons', ...group('compare').map(line), '',
     '## Other languages', ...group('intl').map(p => `- [${p.langName}](${SITE}${p.path}): ${p.description}`), '',
     '## Pricing', line(pages.find(p => p.path === '/pricing')), '',
