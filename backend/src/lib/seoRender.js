@@ -43,13 +43,16 @@ export function seoMiddleware() {
   return async (req, res, next) => {
     try {
       if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-      if (!String(req.headers.accept || '').includes('text/html')) return next();
       if (!isMarketingHost(req)) return next();
 
       const reqPath = req.path.length > 1 ? req.path.replace(/\/+$/, '') : req.path;
       const pages = await allPages();
       const page = pages.find(p => p.path === reqPath);
       if (!page) return next();
+      /* Only the home address is shared with something that is not a person: a monitor asking for / wants the JSON
+         status. Every other marketing page answers however it is asked — Google's URL Inspection and several crawlers
+         send "Accept: *\/*", and until 2026-10-31 that got a 404 for /pricing, /features and every guide. */
+      if (!page.standalone && !String(req.headers.accept || '').includes('text/html')) return next();
 
       res.set('Cache-Control', 'public, max-age=300');
       if (page.standalone) return res.type('html').send(renderPage(page, pages));
