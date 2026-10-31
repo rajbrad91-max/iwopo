@@ -1,0 +1,80 @@
+/* 🔎 iwopo.com marketing pages (features, pricing, audiences, guides) — served whole by Express (seoPage.js).
+   Same brand as the landing (selling.css): warm background, ink text, orange accent. Phone-first. */
+:root {
+  --p: #E65C00; --p-deep: #C44D00; --ink: #1A120B; --text: #2C241C; --gray: #6E6258;
+  --line: #EDE4DA; --bg: #FFF7F0; --card: #FFFFFF; --radius: 16px; --maxw: 1080px;
+  --grad: linear-gradient(135deg, #C44D00 0%, #E65C00 42%, #FF8A3D 100%);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body.mk { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 'Outfit', 'Sora', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+.mk a { color: var(--p-deep); }
+.mk-wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px; }
+
+/* header */
+.mk-top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.mk-bar { display: flex; align-items: center; gap: 16px; min-height: 64px; }
+.mk-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink) !important; font-weight: 700; font-size: 1.15rem; letter-spacing: -.03em; }
+.mk-logo img { height: 32px; width: auto; }
+.mk-nav { margin-left: auto; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.mk-nav a { color: var(--gray); text-decoration: none; font-size: .95rem; font-weight: 500; }
+.mk-nav a:hover { color: var(--ink); }
+.mk-btn { display: inline-block; background: var(--grad); color: #fff !important; text-decoration: none; font-weight: 700; padding: 13px 22px; border-radius: 12px; box-shadow: 0 10px 24px -12px rgba(196, 77, 0, .7); }
+.mk-btn-sm { padding: 8px 14px; font-size: .9rem; }
+
+/* content */
+.mk-main { padding-top: 28px; padding-bottom: 40px; }
+.mk-crumbs { font-size: .85rem; color: var(--gray); margin-bottom: 18px; }
+.mk-crumbs a { color: var(--gray); }
+.mk h1 { font-size: clamp(1.9rem, 4.6vw, 3rem); line-height: 1.12; letter-spacing: -.03em; color: var(--ink); margin: 0 0 14px; max-width: 22ch; }
+.mk h2 { font-size: clamp(1.25rem, 2.6vw, 1.6rem); line-height: 1.25; color: var(--ink); margin: 36px 0 10px; letter-spacing: -.02em; }
+.mk h3 { color: var(--ink); margin: 0 0 6px; }
+.mk article { max-width: 760px; }
+.mk-lead { font-size: 1.2rem; color: var(--text); margin: 0 0 8px; }
+.mk-updated { color: var(--gray); font-size: .9rem; margin: -6px 0 12px; }
+.mk ul { padding-left: 1.2em; }
+.mk li { margin: 6px 0; }
+
+/* hub cards */
+.mk ul.mk-cards { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin: 26px 0; max-width: var(--maxw); }
+.mk-cards a { display: block; height: 100%; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; text-decoration: none; color: var(--text); }
+.mk-cards a:hover { border-color: var(--p); }
+.mk-cards h2 { margin: 0 0 6px; font-size: 1.12rem; }
+.mk-cards p { margin: 0; font-size: .95rem; color: var(--gray); }
+
+/* pricing */
+.mk-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 24px 0; }
+.mk-plan { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+.mk-price { font-size: 2.2rem; font-weight: 800; color: var(--ink); margin: 4px 0; }
+.mk-price span { font-size: 1rem; font-weight: 500; color: var(--gray); }
+
+/* FAQ */
+.mk-faq details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin: 10px 0; }
+.mk-faq summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.mk-faq details p { margin: 10px 0 0; }
+
+/* call to action + related */
+.mk-cta { margin: 44px 0 10px; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 30px 24px; text-align: center; }
+.mk-cta h2 { margin-top: 0; }
+.mk-cta p { color: var(--gray); }
+.mk-related { margin-top: 24px; }
+.mk-related ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+
+/* footer */
+.mk-foot { border-top: 1px solid var(--line); padding: 30px 0 22px; margin-top: 30px; font-size: .92rem; }
+.mk-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; }
+.mk-foot h2 { font-size: .95rem; margin: 0 0 8px; }
+.mk-foot ul { list-style: none; padding: 0; margin: 0; }
+.mk-foot a { color: var(--gray); text-decoration: none; }
+.mk-foot a:hover { color: var(--ink); }
+.mk-copy { color: var(--gray); margin-top: 18px; }
+
+@media (max-width: 640px) {
+  body.mk { font-size: 16px; }
+  .mk-nav { gap: 12px; }
+  .mk-nav a:not(.mk-btn) { font-size: .88rem; }
+  .mk-bar { gap: 10px; }
+  .mk-nav { flex-wrap: nowrap; gap: 12px; }
+  .mk-nav a[href="/guides"], .mk-nav a[href="/features"] { display: none; }   /* one tidy row on a phone; both are in the footer */
+  .mk-logo span { display: none; }
+}

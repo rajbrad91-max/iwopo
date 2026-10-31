@@ -1,66 +1,99 @@
 /**
- * 🔎 SEO for iwopo's own marketing site.
+ * 🔎 robots.txt, sitemap.xml and llms.txt for iwopo.com.
  *
- * ⚠️ Served by EXPRESS, before the SPA fallback. robots.txt and sitemap.xml
- * currently return the app's HTML — Google asks for a sitemap and gets a web
- * page, which is a crawl error rather than a missing file.
+ * ⚠️ Served by EXPRESS, before the SPA fallback (nginx sends these paths here).
  *
- * Only PUBLIC features appear. The private ones are not sold to anybody, so
- * ranking for them would bring people to a page that cannot help them.
+ * Staging (alphabetaone.com) is a full copy of iwopo.com. Until 2026-10-31 it told search engines to index it —
+ * duplicate content that splits ranking with the real site. Any host other than iwopo.com now says "Disallow: /"
+ * (nginx adds X-Robots-Tag: noindex there too).
  */
 import express from 'express';
 import { allPages, SITE } from '../lib/seoContent.js';
 
 const router = express.Router();
+const isLive = (req) => /^(www\.)?iwopo\.com$/i.test(String(req.hostname || ''));
 
 /**
- * GET /robots.txt
- *
- * The panel, the admin area and every client-facing link are disallowed: a
- * gallery is somebody's wedding and has no business in search results, and
- * indexing /panel would put a login page in front of people searching for
- * software.
+ * GET /robots.txt — the panel, admin area and every client-facing link stay out of search: a gallery or a portal
+ * is somebody's wedding. AI crawlers are welcome on the marketing pages (that is how assistants learn about iwopo).
  */
 router.get('/robots.txt', (req, res) => {
+  if (!isLive(req)) return res.type('text/plain').send('User-agent: *\nDisallow: /\n');
   res.type('text/plain').send(`User-agent: *
-Allow: /$
-Allow: /pricing
-Allow: /features
-
 Disallow: /panel
 Disallow: /admin
 Disallow: /api/
 Disallow: /g/
+Disallow: /gallery/
 Disallow: /live/
 Disallow: /f/
 Disallow: /portal
+Disallow: /sign/
+Disallow: /invoice/
+Disallow: /certificate/
+Disallow: /contract-preview
 Disallow: /checkin
 Disallow: /reset
+Disallow: /reset-password
+Disallow: /verify
+Disallow: /editor
+Disallow: /knowledge/
+Disallow: /x/
 
 Sitemap: ${SITE}/sitemap.xml
 `);
 });
 
-/** GET /sitemap.xml */
+/** GET /sitemap.xml — the same list the pages are built from, so it can never offer a URL that does not render. */
 router.get('/sitemap.xml', async (req, res) => {
   try {
-    /* The same list the pages themselves are built from, so the sitemap can
-       never offer a URL that does not render. */
     const all = await allPages();
-    const today = new Date().toISOString().slice(0, 10);
     const urls = all.map(p => `  <url>
     <loc>${SITE}${p.path}</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${p.updated}</lastmod>
     <changefreq>${p.changefreq}</changefreq>
     <priority>${p.priority}</priority>
   </url>`).join('\n');
-
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
 </urlset>
 `);
   } catch (e) { res.status(500).type('text/plain').send(e.message); }
+});
+
+/**
+ * GET /llms.txt — a short, plain map of iwopo for AI assistants (ChatGPT, Perplexity, Gemini, Claude), following
+ * the llms.txt convention. GET /llms-full.txt — the same pages with their full text.
+ */
+async function llms(full) {
+  const pages = await allPages();
+  const home = pages.find(p => p.path === '/');
+  const group = (kind) => pages.filter(p => p.kind === kind);
+  const line = (p) => `- [${p.h1}](${SITE}${p.path}): ${p.description}`;
+  const body = (p) => [
+    `## ${p.h1}`, `URL: ${SITE}${p.path}`, '', p.lead || '', ...(p.body || []),
+    ...(p.plans || []).map(x => `- ${x.name}: ${x.price}/month, ${x.storage} GB storage, every feature included`),
+    ...(p.sections || []).flatMap(s => [`### ${s.h2}`, ...(s.p || []), ...(s.ul || []).map(u => `- ${u}`)]),
+    ...(p.faq || []).flatMap(([q, a]) => [`Q: ${q}`, `A: ${a}`]), '',
+  ].join('\n');
+  const out = [
+    '# iwopo', '', `> ${home.description}`, '',
+    home.body.join(' '), '',
+    '## Features', ...group('feature').map(line), '',
+    '## Who it is for', ...group('audience').map(line), '',
+    '## Guides', ...group('guide').map(line), '',
+    '## Pricing', line(pages.find(p => p.path === '/pricing')), '',
+    '## Questions', ...home.faq.map(([q, a]) => `- ${q} ${a}`), '',
+  ];
+  if (full) out.push('---', '', ...pages.filter(p => p.standalone).map(body));
+  return out.join('\n');
+}
+router.get('/llms.txt', async (req, res) => {
+  try { res.type('text/plain; charset=utf-8').send(await llms(false)); } catch (e) { res.status(500).type('text/plain').send(e.message); }
+});
+router.get('/llms-full.txt', async (req, res) => {
+  try { res.type('text/plain; charset=utf-8').send(await llms(true)); } catch (e) { res.status(500).type('text/plain').send(e.message); }
 });
 
 export default router;

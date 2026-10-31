@@ -1,124 +1,68 @@
 /**
- * 🔎 Serving marketing pages with their content already in the HTML.
+ * 🔎 Serving iwopo.com's marketing pages.
  *
- * ⚠️ This is the part that actually matters. Meta tags describe a page;
- * Google ranks a page for the WORDS ON IT, and the words were in JavaScript
- * inside an empty div. A crawler saw nothing to rank.
+ * Standalone pages (features, pricing, audiences, guides) are sent whole by renderPage() — see seoPage.js for why.
+ * The home page stays the designed React landing: its head and crawlable copy are written into the app shell.
  *
- * So Express serves these routes itself, with the title, the description and
- * the body text written into the HTML before it leaves. React mounts over the
- * same div a moment later and the visitor never sees the difference — but the
- * crawler, which does not run JavaScript reliably, has a complete page.
+ * Fixed 2026-10-31: the shell's own tags were stripped AFTER this page's head was inserted, so the canonical and
+ * every og:/twitter: tag were deleted from the page again — Google saw no canonical anywhere. Strip first, then
+ * insert.
  *
- * Not full server-side rendering: the React app is unchanged and this is one
- * file. It is the smallest thing that puts real content in front of a
- * crawler, which is the whole problem.
+ * Falls through untouched if anything is wrong — a failure here must never take the site down.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { allPages, SITE } from './seoContent.js';
+import { allPages } from './seoContent.js';
+import { renderPage, headTags } from './seoPage.js';
 
-/* ⚠️ From this file, not from the working directory. pm2 starts the app in
-   backend/, so a cwd-relative path was one level off and every read failed
-   silently — the middleware fell through exactly as designed, which is why
-   nothing broke and nothing worked. */
+/* From this file, not from the working directory (pm2 starts the app in backend/). */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(HERE, '../../../frontend/dist/index.html');
 
-/** Anything a visitor types becomes text, never markup. */
 const esc = (s) => String(s || '')
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;');
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function headFor(page) {
-  const url = SITE + page.path;
-  const bits = [
-    `<title>${esc(page.title)}</title>`,
-    `<meta name="description" content="${esc(page.description)}">`,
-    `<link rel="canonical" href="${url}">`,
-    `<meta property="og:type" content="website">`,
-    `<meta property="og:site_name" content="iwopo">`,
-    `<meta property="og:title" content="${esc(page.title)}">`,
-    `<meta property="og:description" content="${esc(page.description)}">`,
-    `<meta property="og:url" content="${url}">`,
-    `<meta property="og:image" content="${SITE}/og-cover.jpg">`,
-    `<meta name="twitter:card" content="summary_large_image">`,
-  ];
-
-  /* A breadcrumb on a sub-page, which is what turns a result into a path
-     rather than a bare URL. */
-  if (page.path.startsWith('/features/')) {
-    bits.push(`<script type="application/ld+json">${JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'iwopo', item: SITE + '/' },
-        { '@type': 'ListItem', position: 2, name: 'Features', item: SITE + '/features' },
-        { '@type': 'ListItem', position: 3, name: page.h1, item: url },
-      ],
-    })}</script>`);
-  }
-
-  /* Questions and answers, which Google shows directly in results. */
+/** The home page's crawlable copy, inside the React root (React replaces it when it mounts). */
+function homeBody(page, pages) {
+  const parts = [`<h1>${esc(page.h1)}</h1>`, ...(page.body || []).map(p => `<p>${esc(p)}</p>`)];
+  const links = pages.filter(p => p.standalone && p.path !== page.path);
+  parts.push('<nav><ul>' + links.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('') + '</ul></nav>');
   if (page.faq?.length) {
-    bits.push(`<script type="application/ld+json">${JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: page.faq.map(([q, a]) => ({
-        '@type': 'Question', name: q,
-        acceptedAnswer: { '@type': 'Answer', text: a },
-      })),
-    })}</script>`);
-  }
-
-  return bits.join('\n  ');
-}
-
-function bodyFor(page) {
-  const parts = [`<h1>${esc(page.h1)}</h1>`];
-  for (const p of (page.body || [])) parts.push(`<p>${esc(p)}</p>`);
-  if (page.list?.length) {
-    parts.push('<ul>' + page.list.map(i =>
-      `<li><a href="${esc(i.href)}">${esc(i.name)}</a> — ${esc(i.description)}</li>`).join('') + '</ul>');
-  }
-  if (page.faq?.length) {
-    parts.push('<h2>Questions</h2>');
+    parts.push('<h2>Frequently asked questions</h2>');
     for (const [q, a] of page.faq) parts.push(`<h3>${esc(q)}</h3><p>${esc(a)}</p>`);
   }
   return parts.join('\n    ');
 }
 
-/**
- * Express middleware. Falls through untouched if anything is wrong — a
- * failure here must never take the site down, and a page without its
- * pre-rendered copy still works perfectly for a human.
- */
+/** Only iwopo.com itself serves marketing pages — never a vendor's own domain or staging. */
+const isMarketingHost = (req) => /^(www\.)?iwopo\.com$/i.test(String(req.hostname || ''))
+  || /^(www\.)?alphabetaone\.com$/i.test(String(req.hostname || ''));   // staging: same pages, but noindex (robots + nginx)
+
 export function seoMiddleware() {
   return async (req, res, next) => {
     try {
-      if (req.method !== 'GET') return next();
-      const accept = String(req.headers.accept || '');
-      if (!accept.includes('text/html')) return next();
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+      if (!String(req.headers.accept || '').includes('text/html')) return next();
+      if (!isMarketingHost(req)) return next();
 
+      const reqPath = req.path.length > 1 ? req.path.replace(/\/+$/, '') : req.path;
       const pages = await allPages();
-      const page = pages.find(p => p.path === req.path);
+      const page = pages.find(p => p.path === reqPath);
       if (!page) return next();
 
+      res.set('Cache-Control', 'public, max-age=300');
+      if (page.standalone) return res.type('html').send(renderPage(page, pages));
+
       let html;
-      try { html = fs.readFileSync(DIST, 'utf8'); }
-      catch { return next(); }                    // not built — let nginx answer
-
-      /* Replace the static head and fill the empty root. */
+      try { html = fs.readFileSync(DIST, 'utf8'); } catch { return next(); }   // not built — let nginx answer
       html = html
-        .replace(/<title>[\s\S]*?<\/title>/, headFor(page))
-        .replace(/<meta name="description"[^>]*>/g, '')
-        .replace(/<link rel="canonical"[^>]*>/g, '')
-        .replace(/<meta property="og:[^>]*>/g, '')
-        .replace(/<meta name="twitter:[^>]*>/g, '')
-        .replace('<div id="root"></div>',
-          `<div id="root">\n    ${bodyFor(page)}\n  </div>`);
-
+        .replace(/<meta name="description"[^>]*>\s*/g, '')
+        .replace(/<link rel="canonical"[^>]*>\s*/g, '')
+        .replace(/<meta property="og:[^>]*>\s*/g, '')
+        .replace(/<meta name="twitter:[^>]*>\s*/g, '')
+        .replace(/<title>[\s\S]*?<\/title>/, headTags(page, pages))
+        .replace('<div id="root"></div>', `<div id="root">\n    ${homeBody(page, pages)}\n  </div>`);
       res.type('html').send(html);
     } catch { next(); }
   };
