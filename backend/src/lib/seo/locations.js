@@ -11,6 +11,7 @@
  * vendor, galleries with face grouping, crew, calendar.
  */
 const esign = (law) => `Electronic signatures are generally recognized in ${law}. iwopo records who signed, when, from which IP address and exactly what they signed, with a completion certificate. This is general information, not legal advice — check the rules for your own business.`;
+const advance = (methods) => `Families can pay your advance (booking deposit) the way they already pay — ${methods} — and mark it as paid in their portal. You confirm it when it arrives, and the date is booked. Portal and gallery links open on any phone, so you can share them on WhatsApp.`;
 const pay = (methods) => `Couples can pay your deposit the way they already pay — ${methods} — and mark it as paid in their portal. You confirm it when the money arrives, and the date is booked.`;
 
 export const LOCATIONS = {
@@ -94,7 +95,7 @@ export const LOCATIONS = {
         'Indian weddings run across several days and venues, often with hundreds of guests. Couples add each function to their inquiry with its own date, start and end time, venue, guest count and service — photos, video or both.',
         'Hours are calculated from each function’s times, including ceremonies that end long after midnight, so quotes and overtime match the real schedule.',
       ] },
-      { h2: 'Payments the way families pay', p: [pay('UPI, a bank transfer (NEFT/IMPS) or cash'), 'Each business sets its own currency.'] },
+      { h2: 'Advances the way families pay', p: [advance('UPI, a bank transfer (NEFT/IMPS) or cash'), 'Each business sets its own currency, and the balance stays visible until the last payment.'] },
       { h2: 'Contracts with initials', p: [esign('India under the Information Technology Act, 2000'), 'Ask the family to initial the schedule of functions — the section most likely to be discussed later.'] },
       { h2: 'Galleries for very large weddings', p: ['Thousands of photos across many functions stay easy to browse in sections, and face grouping lets every relative find their own photographs.'] },
     ],
@@ -111,7 +112,7 @@ export const LOCATIONS = {
       { h2: 'Events hosted by different families', p: [
         'In a Pakistani wedding the Barat and the Walima are often hosted by different sides of the family, at different venues, on different days. Each event is recorded with its own date, times, venue, guests and service, and coverage can be set for the bride’s side, the groom’s side or both.',
       ] },
-      { h2: 'Payments and contracts', p: [pay('a bank transfer, JazzCash, Easypaisa or cash'), esign('Pakistan under the Electronic Transactions Ordinance, 2002')] },
+      { h2: 'Payments and contracts', p: [advance('a bank transfer, JazzCash, Easypaisa or cash'), esign('Pakistan under the Electronic Transactions Ordinance, 2002')] },
       { h2: 'Busy winter season', p: ['With so many weddings in the cooler months, dates are booked well ahead. One calendar for every inquiry and booking keeps double bookings away.'] },
     ],
     faq: [['Can I cover only one family’s events?', 'Yes. Coverage can be set to the bride’s side, the groom’s side or both, and each event is listed separately.']],
@@ -122,7 +123,7 @@ export const LOCATIONS = {
     lead: 'Paan Chini, Gaye Holud, the wedding and the Bou Bhat reception — every event of a Bangladeshi wedding in one platform, from inquiry to gallery delivery.',
     sections: [
       { h2: 'Several events, several venues', p: ['Bangladeshi weddings usually include separate holud ceremonies for each side, the wedding and a reception. Couples add each one to their inquiry with its own date, times, venue and guests, and every event appears in the contract.'] },
-      { h2: 'Payments and contracts', p: [pay('bKash, Nagad, a bank transfer or cash'), esign('Bangladesh under the Information and Communication Technology Act, 2006')] },
+      { h2: 'Payments and contracts', p: [advance('bKash, Nagad, a bank transfer or cash'), esign('Bangladesh under the Information and Communication Technology Act, 2006')] },
       { h2: 'Galleries families can share', p: ['Large weddings mean large galleries. Photos are grouped by face, so relatives in Dhaka, London or Toronto can each find their own pictures.'] },
     ],
     faq: [['Can each side’s Gaye Holud be booked separately?', 'Yes. Each is its own event with its own date, times, venue and coverage.']],
@@ -134,7 +135,7 @@ export const LOCATIONS = {
     sections: [
       { h2: 'Auspicious times, recorded exactly', p: ['Many Sri Lankan ceremonies follow auspicious times set in advance, down to the minute. Each event is booked with its exact start and end time, and the contract shows the schedule the family agreed.'] },
       { h2: 'Wedding and homecoming', p: ['The wedding and the homecoming are often separate days and venues. Each is its own event in the inquiry and contract, with its own hours and guest count.'] },
-      { h2: 'Payments and contracts', p: [pay('a bank transfer or cash'), esign('Sri Lanka under the Electronic Transactions Act, No. 19 of 2006')] },
+      { h2: 'Payments and contracts', p: [advance('a bank transfer or cash'), esign('Sri Lanka under the Electronic Transactions Act, No. 19 of 2006')] },
       { h2: 'Destination weddings', p: ['Couples flying in from abroad book from their own time zone; you see every time in yours, clearly labeled.'] },
     ],
     faq: [['Can I record a ceremony at an exact auspicious time?', 'Yes. Start and end times are set in five-minute steps for every event.']],
@@ -145,7 +146,7 @@ export const LOCATIONS = {
     lead: 'Multi-day Hindu and Buddhist weddings, auspicious dates and large family celebrations — one platform for Nepali wedding photographers and videographers.',
     sections: [
       { h2: 'Ceremonies across several days', p: ['Nepali weddings often include several rituals on different days and at different homes and venues. Each is recorded with its own date, times, venue, guests and service, and appears in the contract schedule.'] },
-      { h2: 'Payments and contracts', p: [pay('a bank transfer, eSewa, Khalti or cash'), esign('Nepal under the Electronic Transactions Act, 2063 (2008)')] },
+      { h2: 'Payments and contracts', p: [advance('a bank transfer, eSewa, Khalti or cash'), esign('Nepal under the Electronic Transactions Act, 2063 (2008)')] },
       { h2: 'Wedding seasons booked early', p: ['Weddings concentrate around auspicious dates, so the same days are requested by many families. One calendar of inquiries and bookings shows a taken date before you quote it.'] },
     ],
     faq: [['Can families abroad view the gallery?', 'Yes. Galleries open anywhere in a browser, and guests can find their own photos by face.']],

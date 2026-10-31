@@ -86,6 +86,7 @@ async function llms(full) {
     '## Who it is for', ...group('audience').map(line), '',
     '## Guides', ...group('guide').map(line), '',
     '## Countries', ...group('location').map(line), '',
+    '## Comparisons', ...group('compare').map(line), '',
     '## Pricing', line(pages.find(p => p.path === '/pricing')), '',
     '## Questions', ...home.faq.map(([q, a]) => `- ${q} ${a}`), '',
   ];

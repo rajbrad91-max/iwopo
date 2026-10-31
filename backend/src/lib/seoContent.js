@@ -16,6 +16,7 @@ import { FEATURES } from './seo/features.js';
 import { AUDIENCES } from './seo/audiences.js';
 import { GUIDES } from './seo/guides.js';
 import { LOCATIONS } from './seo/locations.js';
+import { COMPARISONS } from './seo/compare.js';
 
 const SITE = 'https://iwopo.com';
 const UPDATED = '2026-10-31';   // when the marketing copy last changed — the sitemap's lastmod
@@ -28,7 +29,7 @@ export const BLURB =
 const HOME_FAQ = [
   ['What is iwopo?', 'iwopo is an all-in-one platform for wedding photographers and videographers: inquiry forms, a lead list, contracts with e-signatures, deposits, bookings, a calendar, crew scheduling, client galleries, large-file delivery and a portfolio website.'],
   ['Who is iwopo for?', 'Wedding and event photographers, videographers and studios of every size — from a solo photographer to a team covering several weddings a weekend.'],
-  ['Does iwopo work outside North America?', 'Yes. It runs in any browser, and each business sets its own time zone and currency.'],
+  ['Which countries is iwopo available in?', 'Every country. iwopo runs in any browser, each business sets its own time zone and currency, and clients can pay deposits the way they already pay locally.'],
   ['Is there a free trial?', 'Yes. You can start a free trial without a card and cancel anytime.'],
   ['Is my data secure?', 'Accounts are protected by two-step sign-in on new devices, every business’s data is kept separate, and connections are encrypted.'],
 ];
@@ -104,6 +105,7 @@ export async function allPages() {
       ['Is there a free trial?', 'Yes. Start a free trial without a card.'],
       ['Can I cancel anytime?', 'Yes. There is no long-term contract.'],
       ['What is the difference between the plans?', 'Mainly storage. Every plan includes the features listed on this page.'],
+      ['Is iwopo available in my country?', 'Yes — iwopo is available worldwide, in your own time zone and currency.'],
     ],
     related: ['/features', '/for/wedding-photographers', '/for/photo-and-video-studios'],
     crumbs: crumb(['Home', '/'], ['Pricing', '/pricing']),
@@ -163,6 +165,18 @@ export async function allPages() {
       h1: l.h1, lead: l.lead, sections: l.sections, faq: l.faq,
       related: ['/features/contracts', '/features/leads', '/features/galleries', '/pricing'],
       crumbs: crumb(['Home', '/'], ['Countries', '/locations'], [l.country, '/locations/' + slug]),
+      priority: '0.7', changefreq: 'monthly',
+    });
+  }
+
+  /* ⚖️ Comparisons — verified facts only (see seo/compare.js). */
+  for (const [slug, c] of Object.entries(COMPARISONS)) {
+    pages.push({
+      path: '/compare/' + slug, kind: 'compare', standalone: true,
+      title: `${c.title} | iwopo`,
+      description: c.lead.slice(0, 158),
+      h1: c.h1, lead: c.lead, sections: c.sections, faq: c.faq, related: c.related,
+      crumbs: crumb(['Home', '/'], ['Compare', '/compare/' + slug], [c.h1, '/compare/' + slug]).slice(0, 1).concat(crumb([c.h1, '/compare/' + slug])),
       priority: '0.7', changefreq: 'monthly',
     });
   }

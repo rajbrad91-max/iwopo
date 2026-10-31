@@ -147,7 +147,7 @@ export function renderPage(page, pages) {
       <div><h2>Who it’s for</h2><ul>${auds.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>Guides</h2><ul>${guides.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>Countries</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
-      <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/login">Log in</a></li></ul></div>
+      <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/compare/honeybook-alternative">HoneyBook alternative</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>
     <p class="mk-wrap mk-copy">© ${new Date().getFullYear()} iwopo</p>
   </footer>
