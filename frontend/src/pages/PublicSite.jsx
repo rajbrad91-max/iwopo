@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import './site.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import InquiryForm from './InquiryForm';
 
 /**
  * The typefaces a vendor can choose. They have to be FETCHED, not just named:
@@ -146,6 +147,8 @@ export default function PublicSite({ slug, page = 'home', byHost = false, previe
   };
 
   if (state === 'loading') return <div className="st-loading">Loading…</div>;
+  // 🌐 a studio's own address with no published website yet: their inquiry form is the front door
+  if (state === 'missing' && byHost && page === 'home') return <InquiryForm byHost />;
   if (state === 'missing') {
     return (
       <div className="st-missing">

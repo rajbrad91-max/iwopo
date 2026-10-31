@@ -1,7 +1,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
-import { normalizeDomain } from '../lib/customDomain.js';
 import { requireAuth } from '../middleware/auth.js';
+import { resolveHost } from '../lib/vendorHosts.js';
 
 const router = express.Router();
 
@@ -45,14 +45,10 @@ const DEFAULTS = {
 // Declared before :handle, which would otherwise swallow "by-host".
 router.get('/by-host', async (req, res) => {
   try {
-    const host = normalizeDomain(req.headers['x-forwarded-host'] || req.headers.host);
-    if (!host) return res.status(404).json({ error: 'Vendor not found' });
-
-    const site = await prisma.vendor_sites.findFirst({
-      where: { custom_domain: host, domain_status: 'live' },
-      select: { vendor_id: true },
-    });
-    if (!site) return res.status(404).json({ error: 'Vendor not found' });
+    // 🌐 a live own domain or the vendor's subdomain (lib/vendorHosts.js)
+    const hv = await resolveHost(req.headers['x-forwarded-host'] || req.headers.host);
+    if (!hv) return res.status(404).json({ error: 'Vendor not found' });
+    const site = { vendor_id: hv.vendorId };
 
     const vendor = await prisma.vendors.findUnique({
       where: { id: site.vendor_id },

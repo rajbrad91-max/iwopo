@@ -53,7 +53,8 @@ export async function checkDomain(domain) {
   if (!ours.length) return { ok: false, reason: 'server_unknown', ours, root: [], www: [] };
 
   const lookup = async (h) => { try { return await dns.resolve4(h); } catch { return []; } };
-  const [root, www] = await Promise.all([lookup(domain), lookup('www.' + domain)]);
+  const { sub } = splitDomain(domain);
+  const [root, www] = await Promise.all([lookup(domain), sub ? Promise.resolve([]) : lookup('www.' + domain)]);   // www only for a main domain
 
   const hits = (list) => list.some(ip => ours.includes(ip));
   const rootOk = hits(root);
@@ -65,11 +66,26 @@ export async function checkDomain(domain) {
   return { ok: true, reason: 'ok', ours, root, www, rootOk, wwwOk };
 }
 
-/** What the vendor has to type into their registrar. */
+/* Two-part endings, so "studio.co.uk" counts as a main domain and "clients.studio.co.uk" as a subdomain. */
+const TWO_PART = new Set(['co.uk', 'org.uk', 'me.uk', 'com.au', 'net.au', 'org.au', 'co.nz', 'org.nz', 'co.in', 'net.in', 'org.in',
+  'com.pk', 'net.pk', 'com.bd', 'co.za', 'com.sg', 'com.my', 'com.ph', 'com.mx', 'com.br', 'com.ar', 'co.jp', 'com.np', 'com.lk', 'ae.org', 'co.ae', 'com.sa', 'com.tr', 'co.il']);
+
+/** The registrable part and the label in front of it: clients.studio.co.uk → { root: 'studio.co.uk', sub: 'clients' }. */
+export function splitDomain(domain) {
+  const parts = String(domain || '').split('.');
+  const tail = parts.slice(-2).join('.');
+  const rootLen = TWO_PART.has(tail) ? 3 : 2;
+  return { root: parts.slice(-rootLen).join('.'), sub: parts.slice(0, -rootLen).join('.') || null };
+}
+
+/** What the vendor types into their domain company: one record for a subdomain, two for a main domain. */
 export async function dnsInstructions(domain) {
-  const ips = await serverIps();
+  if (!domain) return [];
+  const ip = (await serverIps())[0] || '';
+  const { root, sub } = splitDomain(domain);
+  if (sub) return [{ type: 'A', name: sub, value: ip, note: `points ${domain} at iwopo (at your ${root} domain company)` }];
   return [
-    { type: 'A', name: '@', value: ips[0] || '', note: 'the domain itself' },
-    { type: 'A', name: 'www', value: ips[0] || '', note: 'so www works too' },
+    { type: 'A', name: '@', value: ip, note: 'the domain itself' },
+    { type: 'A', name: 'www', value: ip, note: 'so www works too' },
   ];
 }

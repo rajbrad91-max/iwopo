@@ -1,0 +1,35 @@
+/* 🌐 Settings → Web address (components/DomainSettings.jsx) — panel theme variables, so light and dark both work */
+.dm { max-width: 760px; padding: 20px 22px; }
+.dm-h { margin: 0 0 4px; }
+.dm-lead { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+.dm-now { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; }
+.dm-card { margin-top: 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); }
+.dm-h4 { margin: 0 0 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 15px; }
+.dm-text { margin: 6px 0; font-size: 13px; line-height: 1.5; }
+.dm-now b, .dm-text b { overflow-wrap: break-word; }
+.dm-small { color: var(--muted); font-size: 12px; }
+.dm-locked { color: var(--muted); }
+.dm-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.dm-input { flex: 1 1 240px; min-width: 0; }
+.dm-remove { opacity: .85; }
+.dm-chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.dm-chip-none { background: var(--panel-2); color: var(--muted); }
+.dm-chip-wait { background: rgba(217, 119, 6, .16); color: #d97706; }
+.dm-chip-live { background: rgba(22, 163, 74, .16); color: #16a34a; }
+.dm-chip-err { background: rgba(220, 38, 38, .14); color: #dc2626; }
+.dm-problem { margin: 8px 0; padding: 9px 12px; border-radius: 10px; font-size: 13px; background: rgba(217, 119, 6, .1); border: 1px solid rgba(217, 119, 6, .25); }
+.dm-dns { margin: 8px 0; border-radius: 12px; overflow-x: auto; border: 1px solid var(--line); }
+.dm-dns-r { display: grid; grid-template-columns: 60px minmax(90px, 1fr) minmax(120px, 1.4fr) 40px; gap: 8px; align-items: center;
+  padding: 9px 12px; font-size: 13px; border-top: 1px solid var(--line); }
+.dm-dns-r:first-child { border-top: 0; }
+.dm-dns-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--panel-2); }
+.dm-dns-t { font-weight: 700; }
+.dm-dns-v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.dm-copy { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+.dm-note { margin: 12px 0 0; font-size: 13px; }
+@media (max-width: 600px) {
+  .dm { padding: 16px 14px; }
+  .dm-dns-r { grid-template-columns: 50px 1fr 36px; }
+  .dm-dns-head span:nth-child(3), .dm-dns-r > span:nth-child(3) { grid-column: 1 / -1; order: 4; }
+}

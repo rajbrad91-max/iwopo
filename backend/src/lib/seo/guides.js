@@ -246,4 +246,35 @@ export const GUIDES = {
     faq: [['Should a videography contract mention music licensing?', 'Yes — say who chooses the music and that it is licensed for how the film will be shared.']],
     related: ['/for/wedding-videographers', '/guides/wedding-photography-contract', '/features/fileflyer'],
   },
+
+  'connect-your-own-domain': {
+    title: 'How to connect your own domain to iwopo',
+    h1: 'How to connect your own domain',
+    lead: 'To use your own domain for your client pages, add one DNS record at the company where you bought the domain: an A record whose name is the part you want to use (for example "clients" for clients.yourstudio.com) and whose value is the address shown in iwopo under Settings → Web address. iwopo checks it every few minutes, adds the padlock and emails you when it is live.',
+    updated: '2026-10-31',
+    sections: [
+      { h2: 'Before you start', ul: [
+        'Own domains are part of iwopo’s top plan.',
+        'Decide the address: a subdomain such as clients.yourstudio.com is easiest and keeps your main website untouched.',
+        'In iwopo, open Settings → Web address, type the address and press Connect. iwopo shows the exact record to add — keep that screen open.',
+      ] },
+      { h2: 'GoDaddy', ul: ['Sign in → My Products → next to your domain choose DNS.', 'Add New Record → Type: A.', 'Name: the first part (e.g. clients). Value: the address from iwopo. Save.'] },
+      { h2: 'Namecheap', ul: ['Domain List → Manage next to your domain → Advanced DNS.', 'Add New Record → A Record.', 'Host: the first part (e.g. clients). Value: the address from iwopo. Save (the green tick).'] },
+      { h2: 'Hostinger', ul: ['hPanel → Domains → your domain → DNS / Nameservers.', 'Under Manage DNS records choose Type: A.', 'Name: the first part (e.g. clients). Points to: the address from iwopo. Add Record.'] },
+      { h2: 'Squarespace Domains (including former Google Domains)', ul: ['Domains → your domain → DNS → DNS Settings.', 'Custom records → Add record → Type: A.', 'Host: the first part (e.g. clients). Data: the address from iwopo. Save.'] },
+      { h2: 'Cloudflare', ul: ['Your domain → DNS → Records → Add record → Type: A.', 'Name: the first part (e.g. clients). IPv4 address: the address from iwopo.', 'Set Proxy status to DNS only (grey cloud), then Save — iwopo fits the padlock itself.'] },
+      { h2: 'Any other company', p: ['Look for “DNS”, “DNS records” or “Zone editor” next to your domain and add an A record with the name and value iwopo shows. If you are using your main domain (yourstudio.com) rather than a subdomain, iwopo shows two records: one named @ and one named www.'] },
+      { h2: 'After you add the record', ul: [
+        'iwopo checks every few minutes — there is nothing else to press.',
+        'New records usually appear within minutes, sometimes a few hours.',
+        'When it is ready, iwopo adds the padlock (https), switches your domain on and emails you. From then on every link your clients receive uses your domain.',
+      ] },
+    ],
+    faq: [
+      ['Will this change my existing website?', 'Not if you use a subdomain such as clients.yourstudio.com — your main website stays exactly where it is.'],
+      ['Do I need to buy a security certificate?', 'No. iwopo adds and renews the padlock (https) for you, free.'],
+      ['What if it says it points somewhere else?', 'The record’s value doesn’t match yet: check it against the address in Settings → Web address, or remove an older record with the same name.'],
+    ],
+    related: ['/features/website', '/features/leads', '/pricing'],
+  },
 };

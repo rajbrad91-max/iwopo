@@ -70,6 +70,9 @@ import occasionRoutes from './routes/occasions.js';
 import { sweepOccasions } from './lib/occasionSweep.js';
 import seoRoutes from './routes/seo.js';
 import { seoMiddleware } from './lib/seoRender.js';
+import { hostContext, PLATFORM_HOST } from './lib/vendorHosts.js';
+import { hostGuard } from './lib/hostGuard.js';
+import domainRoutes from './routes/domain.js';
 
 dotenv.config();
 
@@ -104,6 +107,7 @@ const PLATFORM_ORIGINS = new Set([
   'https://alphabetaone.com', 'https://www.alphabetaone.com',
 ]);
 let vendorOrigins = new Set();
+const VENDOR_SUBDOMAIN_ORIGIN = new RegExp(`^https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.${PLATFORM_HOST.replace(/\./g, '\\.')}$`);
 let vendorOriginsAt = 0;
 async function refreshVendorOrigins() {
   if (Date.now() - vendorOriginsAt < 60_000) return;
@@ -139,7 +143,8 @@ app.use(cors({
     if (!origin) return cb(null, true);                 // not a browser
     if (PLATFORM_ORIGINS.has(origin)) return cb(null, true);
     await refreshVendorOrigins();
-    return cb(null, vendorOrigins.has(origin));
+    // 🌐 a vendor's own subdomain (<slug>.iwopo.com) is this app too
+    return cb(null, vendorOrigins.has(origin) || VENDOR_SUBDOMAIN_ORIGIN.test(origin));
   },
 }));
 /* 📞 Quo pushes calls and messages here. Mounted BEFORE express.json()
@@ -154,6 +159,11 @@ app.use('/api/rawsel/settings/logo', express.json({ limit: '5mb' }));
 app.use(express.json());
 
 app.use('/api', apiRoutes);
+/* 🌐 Which vendor this address belongs to (null on the platform), and on a vendor's address only that vendor's
+   client pages exist — lib/vendorHosts.js, lib/hostGuard.js */
+app.use(hostContext());
+app.use('/api', hostGuard());
+
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/leads', gate('leads'), leadRoutes);
@@ -215,6 +225,7 @@ app.use(seoMiddleware());
 app.use('/api/live', liveshootRoutes);
 app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
+app.use('/api/domain', domainRoutes);   // 🌐 the vendor's web address (free subdomain + own domain)
 
 /* ⚠️ Only answers the health check when nothing wants HTML. A browser or a
    crawler asking for / wants the marketing page; a monitor wants JSON. */

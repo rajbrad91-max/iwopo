@@ -40,6 +40,8 @@ const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
 import SecurityLog from '../components/SecurityLog';
 import { shownFields } from '../lib/formRules';
+import DomainSettings from '../components/DomainSettings';
+import { clientBase, inquiryUrl, setClientBase } from '../lib/clientBase';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -211,6 +213,7 @@ export default function VendorPanel({ onLogout }) {
     setError('');
     try {
       const [d, f, st] = await Promise.all([api.myServices(), api.myFeatures(), api.mySettings().catch(() => ({ settings: null }))]);
+      api.domainInfo().then(x => setClientBase(x.client_base_url)).catch(() => {});   // 🌐 where client links point
       setServices(d.services);
       const list = f.features || [];
       setFeatures(list);
@@ -866,7 +869,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
   }
 
   function copyGalleryUrl() {
-    const url = `${window.location.origin}/gallery/${galleryToken}`;
+    const url = `${clientBase()}/gallery/${galleryToken}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopiedGallery(true); setTimeout(() => setCopiedGallery(false), 2000);
     }).catch(() => { dialog.prompt('Select and copy this link:', url, { title: 'Your full gallery link', readOnly: true, okLabel: 'Done' }); });
@@ -1260,7 +1263,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
               <div className="gal-set-col">
                 <label className="lbl">🔗 Full gallery link (all albums — embed on your website)</label>
                 <div className="gal-set-link">
-                  <input className="gal-input" readOnly value={galleryToken ? `${window.location.origin}/gallery/${galleryToken}` : 'Loading…'} onFocus={e => e.target.select()} />
+                  <input className="gal-input" readOnly value={galleryToken ? `${clientBase()}/gallery/${galleryToken}` : 'Loading…'} onFocus={e => e.target.select()} />
                   <button className="refresh gal-copy-url" onClick={copyGalleryUrl} disabled={!galleryToken}>{copiedGallery ? '✅' : '🔗 Copy'}</button>
                 </div>
 
@@ -3152,7 +3155,7 @@ function LeadsView({ routeLead, onOpenLead }) {
       {sendFor && (
         <SendPackagesModal
           lead={sendFor}
-          link={`${window.location.origin}/portal/${sendFor.client_token}`}
+          link={`${clientBase()}/portal/${sendFor.client_token}`}
           onClose={() => setSendFor(null)}
           onSent={async () => {
             await api.sendPackages(sendFor.id).catch(() => {});
@@ -3656,7 +3659,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
       {emailOpen && (
         <SendPackagesModal
           lead={lead}
-          link={`${window.location.origin}/portal/${lead.client_token}`}
+          link={`${clientBase()}/portal/${lead.client_token}`}
           onClose={() => setEmailOpen(false)}
           onSent={afterSent}
         />
@@ -5481,7 +5484,7 @@ function InqFormSettings() {
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they
               last looked at may still be open in another tab. */}
-          <a href={`/inquiry/${handle}?v=${Date.now()}`} target="_blank" rel="noreferrer"
+          <a href={`${inquiryUrl(handle)}?v=${Date.now()}`} target="_blank" rel="noreferrer"
             className="inq-preview">
             👁️ Preview
           </a>
@@ -5936,7 +5939,7 @@ function SettingsView({ user, onProfileChange }) {
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="set-tabs">
-        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security']].map(([k, label]) => (
+        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security'], ['address', '🌐 Web address']].map(([k, label]) => (
           <button key={k} className="refresh" onClick={() => setSub(k)}
             style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
         ))}
@@ -6079,6 +6082,7 @@ function SettingsView({ user, onProfileChange }) {
       {sub === 'email' && <EmailSetup />}
       {sub === 'devices' && <DevicesSetup />}
       {sub === 'security' && <SecurityLog />}
+      {sub === 'address' && <DomainSettings />}
     </div>
   );
 }
@@ -6492,123 +6496,6 @@ const WS_FIELDS = [
   ['facebook', 'Facebook link', 'input', ''],
 ];
 
-/**
- * 🌐 A vendor's own domain.
- *
- * iwopo does not sell domains. The vendor already owns one; this is where they
- * tell us about it and we tell them the two records to add at their registrar.
- *
- * Nothing here switches anything on. The check reads DNS and reports what it
- * actually found — a vendor who mistyped a record needs to see the address
- * their domain currently points at, not just the word "failed".
- */
-function DomainBlock() {
-  const [d, setD] = useState(null);
-  const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState('');
-  const [found, setFound] = useState(null);
-  const [copied, setCopied] = useState('');
-
-  useEffect(() => {
-    api.myDomain()
-      .then(x => { setD(x); setDraft(x.domain || ''); })
-      .catch(() => setD({ domain: '', status: 'none', instructions: [] }));
-  }, []);
-
-  if (!d) return null;
-
-  const LABEL = {
-    none: ['Not set', 'ws-dom-none'],
-    pending: ['Waiting for DNS', 'ws-dom-pending'],
-    verified: ['DNS confirmed', 'ws-dom-verified'],
-    live: ['Live', 'ws-dom-live'],
-  };
-  const [label, cls] = LABEL[d.status] || LABEL.none;
-
-  async function save() {
-    const next = draft.trim();
-    if (next === (d.domain || '')) return;
-    setBusy(true); setNote(''); setFound(null);
-    try {
-      const x = await api.saveMyDomain(next);
-      setD(v => ({ ...v, ...x }));
-      setNote(next ? '✅ Saved. Now add the two records below at your registrar.' : '✅ Domain removed.');
-    } catch (e) { setNote('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
-
-  async function check() {
-    setBusy(true); setNote(''); setFound(null);
-    try {
-      const r = await api.checkMyDomain();
-      setFound(r);
-      setD(v => ({ ...v, status: r.status }));
-      if (r.ok) setNote("✅ Your domain points at us. We'll switch it on and fit the certificate.");
-      else if (r.reason === 'no_record') setNote('⏳ No record found yet. A new DNS change can take a few hours to spread.');
-      else if (r.reason === 'points_elsewhere') setNote('⚠️ Your domain answers, but it points somewhere else.');
-      else setNote("⚠️ Couldn't read our own address just now. Try again shortly.");
-    } catch (e) { setNote('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
-
-  // clipboard can be refused (an insecure origin, or the browser says no), and
-  // a silent no-op looks like a broken button
-  async function copy(v) {
-    try { await navigator.clipboard.writeText(v); setCopied(v); setTimeout(() => setCopied(''), 1400); }
-    catch { setNote('⚠️ Copying was blocked — select the value and copy it by hand.'); }
-  }
-
-  return (
-    <div className="table-wrap ws-block">
-      <h3 className="ws-h3">🌐 Your own domain <span className={`ws-dom-chip ${cls}`}>{label}</span></h3>
-      <p className="ws-hint">
-        Already own a domain? Point it here and your site answers on it instead.
-        We host and design it; the name stays yours. We don&apos;t sell domains —
-        keep yours wherever you registered it.
-      </p>
-
-      <div className="ws-dom-row">
-        <input className="ac-kb-input ws-dom-input" value={draft}
-          placeholder="yourstudio.com" disabled={busy}
-          onChange={e => setDraft(e.target.value)}
-          onBlur={save}
-          onKeyDown={e => e.key === 'Enter' && save()} />
-        {d.domain && (
-          <button className="refresh" disabled={busy} onClick={check}>
-            {busy ? 'Checking…' : 'Check DNS'}
-          </button>
-        )}
-      </div>
-
-      {d.domain && (
-        <>
-          <p className="ws-hint ws-dom-sub">Add these two records where you registered the domain:</p>
-          <div className="ws-dns">
-            {(d.instructions || []).map(r => (
-              <div className="ws-dns-r" key={r.name}>
-                <span className="ws-dns-t">{r.type}</span>
-                <span className="ws-dns-n">{r.name}</span>
-                <span className="ws-dns-v">{r.value || '—'}</span>
-                <button type="button" className="ws-dns-c" onClick={() => copy(r.value)}
-                  aria-label={`Copy the ${r.name} record`}>
-                  {copied === r.value ? '✅' : '📋'}
-                </button>
-                <span className="ws-dns-note">{r.note}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {found && !found.ok && found.root?.length > 0 && (
-        <p className="ws-dom-found">Right now it points at {found.root.join(', ')}.</p>
-      )}
-      {note && <p className="ws-dom-note">{note}</p>}
-    </div>
-  );
-}
-
 function WebsiteView() {
   const [site, setSite] = useState(null);
   const [themes, setThemes] = useState([]);
@@ -6966,7 +6853,7 @@ function WebsiteView() {
         {!site.slug && <p className="ws-warn">⚠️ Choose an address before you can publish.</p>}
       </div>
 
-      <DomainBlock />
+      <DomainSettings />
         </div>
       </aside>
       </div>

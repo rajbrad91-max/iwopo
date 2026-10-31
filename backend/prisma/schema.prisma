@@ -942,6 +942,10 @@ model vendor_sites {
   clients_heading    String?   @db.VarChar(160)
   custom_domain      String?   @unique(where: raw("(custom_domain IS NOT NULL)")) @db.VarChar(255)
   domain_verified_at DateTime? @db.Timestamptz(6)
+  /// 🌐 what the automatic setup last saw, and when the domain went live (lib/vendorHosts.js, scripts/domainProvisioner.js)
+  domain_error       String?   @db.VarChar(300)
+  domain_checked_at  DateTime? @db.Timestamptz(6)
+  domain_live_at     DateTime? @db.Timestamptz(6)
   domain_status      String    @default("none") @db.VarChar(20)
   gallery_heading    String?   @db.VarChar(160)
   gallery_body       String?

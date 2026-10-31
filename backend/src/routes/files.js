@@ -13,6 +13,7 @@ import { storageFor } from '../lib/storageQuota.js';
 import { sendAsVendor } from './email.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { hashSharePassword } from '../lib/sharePassword.js';
+import { clientBaseUrl } from '../lib/vendorHosts.js';
 
 const router = express.Router();
 
@@ -429,8 +430,8 @@ router.post('/:id/email', requireAuth, async (req, res) => {
       where: { id: own.vendor_id }, select: { business_name: true },
     });
     const vendorName = vendor?.business_name || 'Your photographer';
-    const origin = req.headers.origin || `https://${req.headers.host}`;
-    const url = `${origin}/f/${own.token}`;
+    // 🌐 the vendor's own address, not whichever host the request happened to come from
+    const url = `${await clientBaseUrl(own.vendor_id)}/f/${own.token}`;
     const message = String(req.body?.message || '').trim().slice(0, 1000) || null;
 
     const html = shareEmailHtml({

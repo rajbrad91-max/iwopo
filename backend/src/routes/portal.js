@@ -7,6 +7,7 @@ import { audit, templateForLead, buildContractBody, upgradeDeliverables } from '
 import { currencyFor } from '../lib/currencies.js';
 import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 import { limit } from '../middleware/rateLimit.js';
+import { ownDomainAllowed } from '../lib/vendorHosts.js';
 
 const router = express.Router();
 
@@ -157,6 +158,7 @@ router.get('/:token', async (req, res) => {
       return res.json({
         gated: true,
         business_name: vendor?.business_name,
+        white_label: await ownDomainAllowed(lead.vendor_id),
         lead: { name: lead.name },
         branding: {
           brand_color: brand?.brand_color || '#C9A86A',
@@ -283,6 +285,7 @@ router.get('/:token', async (req, res) => {
         timer_started_at: lead.timer_started_at, created_at: lead.created_at,
       },
       business_name: vendor?.business_name,
+      white_label: await ownDomainAllowed(lead.vendor_id),
       // the vendor's own currency, so a client in London isn't shown dollars
       currency: vendorCurrency,
       branding: {

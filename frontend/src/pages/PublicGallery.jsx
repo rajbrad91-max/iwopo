@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import PasswordInput from '../components/PasswordInput';
 import './gallery.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { useBrandIcon } from '../lib/useBrandIcon';
 
 const API = '/api/g';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Playfair+Display:wght@400;500;700&family=Jost:wght@300;400;500&family=Montserrat:wght@300;400;600&family=Poppins:wght@300;400;600&family=Lora:wght@400;600&family=Raleway:wght@300;400;600&display=swap';
@@ -42,6 +43,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
   const [authErr, setAuthErr] = useState('');
   const [session, setSession] = useState(null);
   useDocumentTitle(meta?.album?.title, { suffix: meta?.vendor?.name });
+  useBrandIcon(meta?.vendor?.logo ? `/api/me/logo/${meta.vendor.logo}` : null, !!meta?.vendor?.white_label);
 
   const [lightbox, setLightbox] = useState(null);
   const [zipBusy, setZipBusy] = useState('');
@@ -975,7 +977,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
         </div>
       )}
 
-      {!embedded && <footer className="pg-foot">Powered by iwopo</footer>}
+      {!embedded && !meta?.vendor?.white_label && <footer className="pg-foot">Powered by iwopo</footer>}
     </div>
   );
 }

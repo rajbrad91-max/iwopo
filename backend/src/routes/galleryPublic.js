@@ -21,6 +21,7 @@ import { naturalSort } from '../lib/naturalSort.js';
 import { checkSharePassword } from '../lib/sharePassword.js';
 import { recordEvent } from '../lib/siteEvents.js';
 import { notify } from './notifications.js';
+import { ownDomainAllowed } from '../lib/vendorHosts.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -185,7 +186,7 @@ router.get('/vendor/:token', async (req, res) => {
   try {
     const v = await prisma.vendors.findFirst({
       where: { gallery_token: req.params.token },
-      select: { id: true, business_name: true },
+      select: { id: true, business_name: true, logo_path: true },
     });
     if (!v) return res.status(404).json({ error: 'Gallery not found' });
     const albums = await prisma.albums.findMany({
@@ -202,7 +203,7 @@ router.get('/vendor/:token', async (req, res) => {
       },
     });
     res.json({
-      vendor: { name: v.business_name },
+      vendor: { name: v.business_name, logo: v.logo_path || null, white_label: await ownDomainAllowed(v.id) },
       theme: await getTheme(v.id),
       albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: a._count.photos })),
     });
@@ -248,12 +249,12 @@ router.get('/:token', async (req, res) => {
     const theme = await getTheme(a.vendor_id);
     // the studio's name, so the browser tab can say whose gallery a client is in
     const v = await prisma.vendors.findUnique({
-      where: { id: a.vendor_id }, select: { business_name: true },
+      where: { id: a.vendor_id }, select: { business_name: true, logo_path: true },
     });
     /* Counted apart. A gallery holding one film and no photographs announced
        itself as "1 photo" on the page a couple lands on. */
     const nVideo = await prisma.photos.count({ where: { album_id: a.id, kind: 'video' } });
-    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n - nVideo, video_count: nVideo, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null } });
+    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n - nVideo, video_count: nVideo, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null, logo: v?.logo_path || null, white_label: await ownDomainAllowed(a.vendor_id) } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -10,6 +10,7 @@ import { notify } from './notifications.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { applyFormRules } from '../lib/formRules.js';
 import { ensureInvoice } from './invoices.js';
+import { clientBaseUrl } from '../lib/vendorHosts.js';
 
 const router = express.Router();
 
@@ -625,10 +626,8 @@ router.post('/:id/send-packages', requireAuth, async (req, res) => {
       }
     }
 
-    // APP_URL, not a hard-coded domain: sending this from staging emailed the
-    // client a link to the live site, where their token doesn't exist. The same
-    // fault was already fixed on the invoice and contract copy-link buttons.
-    const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    // 🌐 the vendor's own address (their domain, their subdomain, or the platform) — lib/vendorHosts.js
+    const base = await clientBaseUrl(lead.vendor_id);
     const link = `${base}/portal/${lead.client_token}`;
     const subject = 'Your packages are ready 🎉';
     const body = `Hi ${lead.name},\n\nView your custom packages and book here:\n${link}\n\nThank you!`;

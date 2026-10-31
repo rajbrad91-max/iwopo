@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { sendAsVendor } from './email.js';
 import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
+import { clientBaseUrl } from '../lib/vendorHosts.js';
 
 const router = express.Router();
 function vid(req) {
@@ -363,8 +364,8 @@ router.post('/assignment/:id/remind', requireAuth, async (req, res) => {
       await prisma.lead_crew.update({ where: { id }, data: { checkin_token: token } });
     }
 
-    // Prefer APP_URL; else browser Origin (frontend host); else API host as last resort
-    const base = (process.env.APP_URL || req.get('origin') || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    // 🌐 the vendor's own address — the team sees the studio's brand too (lib/vendorHosts.js)
+    const base = await clientBaseUrl(req.user.vendor_id);
     const link = `${base}/checkin/${token}`;
     const email = row.crew_members?.email;
     const when = row.leads?.event_date ? String(row.leads.event_date).slice(0, 10) : 'TBC';

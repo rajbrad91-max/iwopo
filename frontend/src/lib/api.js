@@ -601,9 +601,10 @@ export const api = {
   publicSite: (slug) => request(`/sites/${slug}`),
   siteByHost: () => request('/sites/by-host'),
   inquirySettingsByHost: () => request('/inquiry-settings/by-host'),
-  myDomain: () => request('/sites/domain'),
-  saveMyDomain: (domain) => request('/sites/domain', { method: 'PUT', body: JSON.stringify({ domain }) }),
-  checkMyDomain: () => request('/sites/domain/check', { method: 'POST' }),
+  // 🌐 the vendor's web address: free subdomain + own domain (routes/domain.js)
+  domainInfo: () => request('/domain'),
+  saveDomain: (domain) => request('/domain', { method: 'PUT', body: JSON.stringify({ domain }) }),
+  checkDomain: () => request('/domain/check', { method: 'POST' }),
   uploadSiteCover: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/cover', { method: 'POST', body: fd }); },
   removeSiteCover: () => request('/sites/my/cover', { method: 'DELETE' }),
   setSiteCoverFocus: (cover_focus) => request('/sites/my/cover-focus', { method: 'PUT', body: JSON.stringify({ cover_focus }) }),

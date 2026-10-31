@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PublicGallery from './PublicGallery';
 import './gallery.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { useBrandIcon } from '../lib/useBrandIcon';
 
 const API = '/api/g';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Playfair+Display:wght@500;700&family=Jost:wght@400;600&family=Montserrat:wght@400;600&family=Poppins:wght@400;600&family=Lora:wght@400;600&family=Raleway:wght@400;600&display=swap';
@@ -18,6 +19,7 @@ export default function VendorGallery({ token }) {
   const [err, setErr] = useState('');
   const [openToken, setOpenToken] = useState(null);
   useDocumentTitle(data?.vendor?.name);
+  useBrandIcon(data?.vendor?.logo ? `/api/me/logo/${data.vendor.logo}` : null, !!data?.vendor?.white_label);
 
   useEffect(() => { ensureFonts(); }, []);
   useEffect(() => {
@@ -78,7 +80,7 @@ export default function VendorGallery({ token }) {
         </div>
       )}
 
-      <div className="pg-foot">Powered by iwopo</div>
+      {!data.vendor.white_label && <div className="pg-foot">Powered by iwopo</div>}
     </div>
   );
 }

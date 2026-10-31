@@ -18,6 +18,20 @@ const isLive = (req) => /^(www\.)?iwopo\.com$/i.test(String(req.hostname || ''))
  * is somebody's wedding. AI crawlers are welcome on the marketing pages (that is how assistants learn about iwopo).
  */
 router.get('/robots.txt', (req, res) => {
+  // 🌐 a vendor's own address: their website pages may be indexed, a couple's gallery, portal or contract never
+  if (req.hostVendor) return res.type('text/plain').send(`User-agent: *
+Disallow: /api/
+Disallow: /portal
+Disallow: /gallery
+Disallow: /g/
+Disallow: /sign/
+Disallow: /invoice/
+Disallow: /certificate/
+Disallow: /f/
+Disallow: /checkin
+Disallow: /live/
+Disallow: /contract-preview
+`);
   /* Staging: crawlers may come in — every answer carries X-Robots-Tag: noindex (nginx), and a crawler has to SEE
      that to drop pages it already knows. "Disallow: /" would hide the noindex and keep the old copies listed. */
   if (!isLive(req)) return res.type('text/plain').send('User-agent: *\nAllow: /\n');

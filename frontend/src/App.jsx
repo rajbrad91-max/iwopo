@@ -63,7 +63,10 @@ function AppRoutes() {
    * the URL has to carry a slug or an id. */
   const PLATFORM_HOSTS = ['iwopo.com', 'alphabetaone.com', 'localhost', '127.0.0.1'];
   const hostNow = window.location.hostname.replace(/^www\./, '').toLowerCase();
-  if (!PLATFORM_HOSTS.includes(hostNow)) {
+  /* …and their clients' pages: portal, gallery, contract, invoice, files. The server's host guard makes sure only
+     this vendor's links open here (lib/hostGuard.js), so these fall through to the normal routes below. */
+  const CLIENT_PAGE = /^\/(portal|gallery|g|sign|invoice|certificate|f|checkin|live|contract-preview)(\/|$)/;
+  if (!PLATFORM_HOSTS.includes(hostNow) && !CLIENT_PAGE.test(window.location.pathname)) {
     const p = (window.location.pathname.replace(/\/+$/, '') || '/');
     if (p === '/inquiry') return <InquiryForm byHost />;
     const SITE_PAGES = { '/': 'home', '/portfolio': 'portfolio', '/clients': 'clients',
