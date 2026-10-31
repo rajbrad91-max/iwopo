@@ -353,6 +353,10 @@ export function clearGetCache(prefix = '') {
   for (const k of [..._getCache.keys()]) if (k.startsWith(prefix)) _getCache.delete(k);
 }
 
+/** What a person reads when the server is restarting (a deploy) or can't be reached at all. */
+const UPDATING = 'iwopo is updating — please try again in a few seconds.';
+const UNREACHABLE = "Can't reach iwopo right now — check your connection, or try again in a few seconds.";
+
 async function request(path, options = {}) {
   // A file upload must NOT carry a JSON content-type — the browser has to set
   // multipart/form-data itself, boundary and all. Without this every upload had
@@ -368,7 +372,25 @@ async function request(path, options = {}) {
   }
   options = fetchOpts;
 
-  const res = await fetch(BASE + path, { ...options, headers });
+  /* 🔁 A deploy restarts the server and for ~10 seconds nginx answers 502 — a page loaded in that moment showed
+     "Request failed" (Raj, refreshing Galleries on his phone, 2026-10-31). Reading is safe to repeat, so a GET waits
+     and quietly tries again (about 12 s in all). Anything that saves or sends is NEVER repeated — it could be done
+     twice — it says plainly what happened instead. */
+  const method = String(options.method || 'GET').toUpperCase();
+  const readOnly = method === 'GET' && !isForm;
+  const restarting = (status) => status === 502 || status === 503 || status === 504;
+  let res;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(BASE + path, { ...options, headers });
+      if (!(readOnly && restarting(res.status) && attempt < 4)) break;
+    } catch {
+      if (!(readOnly && attempt < 4)) {
+        const err = new Error(UNREACHABLE); err.status = 0; err.code = 'unreachable'; throw err;
+      }
+    }
+    await new Promise(r => setTimeout(r, 1500 + attempt * 1000));
+  }
   const data = await res.json().catch(() => ({}));
 
   // 🔑 an expired/invalid token, or a role mismatch on an admin-only route,
@@ -401,7 +423,7 @@ async function request(path, options = {}) {
        The code is kept on .code rather than in the text, so anything that needs
        to branch on it can, without a UI matching against a string meant for a
        human. Nothing does today — checked before changing this. */
-    const err = new Error(data.message || data.error || 'Request failed');
+    const err = new Error(data.message || data.error || (restarting(res.status) ? UPDATING : 'Request failed'));
     err.code = data.error || null;
     err.status = res.status;
     err.data = data;           // e.g. { verify, email, sandbox_code } for the confirm-your-email step
