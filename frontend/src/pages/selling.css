@@ -721,3 +721,7 @@
   .sl-dash-side { display: none; }
   .sl-float { width: 140px; }
 }
+
+/* ⚖️ consent line under "Create account" (2026-10-31) */
+.sl-consent { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted, #8A7B6E); text-align: center; }
+.sl-consent a { color: inherit; text-decoration: underline; }

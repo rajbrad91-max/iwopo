@@ -114,7 +114,7 @@ export function renderPage(page, pages) {
     ? `<section class="mk-faq"><h2>${esc(L(page).faq)}</h2>${page.faq.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</section>` : '';
   const related = page.related?.length
     ? `<aside class="mk-related"><h2>Related</h2><ul>${page.related.map(r => `<li>${link(pages, r)}</li>`).join('')}</ul></aside>` : '';
-  const updated = page.kind === 'guide' ? `<p class="mk-updated">Updated ${new Date(page.updated + 'T12:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : '';
+  const updated = ['guide', 'legal'].includes(page.kind) ? `<p class="mk-updated">${page.kind === 'legal' ? 'Last updated' : 'Updated'} ${new Date(page.updated + 'T12:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : '';
 
   return `<!DOCTYPE html>
 <html lang="${page.lang || 'en'}">
@@ -161,6 +161,7 @@ export function renderPage(page, pages) {
       <div><h2>Who it’s for</h2><ul>${auds.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>Guides</h2><ul>${guides.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>${esc(L(page).other)}</h2><ul><li><a href="/" hreflang="en">English</a></li>${pages.filter(p => p.kind === 'intl' && p.path !== page.path).map(p => `<li><a href="${p.path}" hreflang="${p.lang}">${esc(p.langName)}</a></li>`).join('')}</ul></div>
+      <div><h2>Legal</h2><ul>${pages.filter(p => p.kind === 'legal').map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>Countries</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
       <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/compare/honeybook-alternative">HoneyBook alternative</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>

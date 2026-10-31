@@ -20,6 +20,7 @@ import { COMPARISONS } from './seo/compare.js';
 import { INTL } from './seo/intl.js';
 import { LOCAL } from './seo/localCountries.js';
 import { IMAGES } from './seo/images.js';
+import { LEGAL, LEGAL_UPDATED } from './seo/legal.js';
 
 const SITE = 'https://iwopo.com';
 const UPDATED = '2026-10-31';   // when the marketing copy last changed — the sitemap's lastmod
@@ -215,6 +216,9 @@ export async function allPages() {
       priority: '0.7', changefreq: 'monthly',
     });
   }
+
+  /* ⚖️ Terms, Privacy, Refunds, Cookies (lib/seo/legal.js) */
+  for (const l of Object.values(LEGAL)) pages.push({ ...l, kind: 'legal', standalone: true, updated: LEGAL_UPDATED, priority: '0.3', changefreq: 'yearly' });
 
   for (const p of pages) { p.updated = p.updated || UPDATED; p.images = IMAGES[p.path] || (p.path.startsWith('/locations/') ? IMAGES['/for/wedding-photographers'] : undefined); }
   return pages;

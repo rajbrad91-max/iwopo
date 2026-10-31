@@ -505,6 +505,7 @@ export default function Selling({ onSignup, onGoLogin }) {
                 <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>
                   {loading ? 'Creating…' : 'Create account'}
                 </button>
+                <p className="sl-consent">By creating an account you agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
                 <div className="sl-login-row">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
               </>
             ) : (
@@ -540,7 +541,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         </div>
         <div className="sl-foot-bottom">
           <span>© {new Date().getFullYear()} IWOPO, LLC · 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804</span>
-          <span className="sl-foot-legal"><a href="#faq">Privacy</a><a href="#faq">Terms</a></span>
+          <span className="sl-foot-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refund-policy">Refunds</a><a href="/cookies">Cookies</a></span>
         </div>
       </footer>
     </div>

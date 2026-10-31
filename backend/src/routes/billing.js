@@ -102,6 +102,8 @@ router.post('/checkout', async (req, res) => {
       subscription_data: { trial_end, metadata: { vendor_id: v, plan_id: plan.id, cycle } },
       metadata: { vendor_id: v, plan_id: plan.id, cycle },
       allow_promotion_codes: true,
+      // ⚖️ what they agree to, said where they pay (pages: /terms, /refund-policy)
+      custom_text: { submit: { message: `By subscribing you agree to iwopo’s Terms of Service (${APP_URL}/terms). Cancel any time in Manage billing; payments are not refunded (${APP_URL}/refund-policy).` } },
       success_url: `${APP_URL}/panel/plans?billing=done`,
       cancel_url: `${APP_URL}/panel/plans?billing=cancelled`,
     });
