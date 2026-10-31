@@ -26,12 +26,12 @@ function schema(page, pages) {
   const graph = [ORG, { '@type': 'WebSite', '@id': `${SITE}/#site`, url: `${SITE}/`, name: 'iwopo', publisher: { '@id': `${SITE}/#org` }, inLanguage: 'en' }];
   const webPage = {
     '@type': page.kind === 'guide' ? 'Article' : 'WebPage', '@id': `${url}#page`, url,
-    name: page.title, headline: page.h1, description: page.description, inLanguage: 'en',
+    name: page.title, headline: page.h1, description: page.description, inLanguage: page.lang || 'en',
     isPartOf: { '@id': `${SITE}/#site` }, dateModified: page.updated,
     ...(page.kind === 'guide' ? { author: { '@id': `${SITE}/#org` }, publisher: { '@id': `${SITE}/#org` }, datePublished: page.updated, mainEntityOfPage: url } : {}),
   };
   graph.push(webPage);
-  if (page.kind === 'feature' || page.kind === 'pricing' || page.kind === 'audience' || page.kind === 'location') {
+  if (['feature', 'pricing', 'audience', 'location', 'intl'].includes(page.kind)) {
     graph.push({
       '@type': 'SoftwareApplication', name: 'iwopo', url: `${SITE}/`,
       applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
@@ -55,6 +55,17 @@ function schema(page, pages) {
 }
 
 /** The <head> every marketing page shares. */
+const EN = { features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
+const L = (page) => page.labels || EN;
+
+/** hreflang: a translated page names every language version (and x-default = English); any other page names itself. */
+function langLinks(page) {
+  const url = SITE + page.path;
+  if (!page.alternates?.length) return [`<link rel="alternate" hreflang="en" href="${url}">`, `<link rel="alternate" hreflang="x-default" href="${url}">`];
+  return [...page.alternates.map(a => `<link rel="alternate" hreflang="${a.lang}" href="${SITE}${a.path}">`),
+    `<link rel="alternate" hreflang="x-default" href="${SITE}/">`];
+}
+
 export function headTags(page, pages) {
   const url = SITE + page.path;
   return [
@@ -62,15 +73,14 @@ export function headTags(page, pages) {
     `<meta name="description" content="${esc(page.description)}">`,
     `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">`,
     `<link rel="canonical" href="${url}">`,
-    `<link rel="alternate" hreflang="en" href="${url}">`,
-    `<link rel="alternate" hreflang="x-default" href="${url}">`,
+    ...langLinks(page),
     `<meta property="og:type" content="${page.kind === 'guide' ? 'article' : 'website'}">`,
     `<meta property="og:site_name" content="iwopo">`,
     `<meta property="og:title" content="${esc(page.title)}">`,
     `<meta property="og:description" content="${esc(page.description)}">`,
     `<meta property="og:url" content="${url}">`,
     `<meta property="og:image" content="${SITE}/og-cover.jpg">`,
-    `<meta property="og:locale" content="en_US">`,
+    `<meta property="og:locale" content="${page.locale || 'en_US'}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
     schema(page, pages),
   ].join('\n  ');
@@ -94,17 +104,17 @@ export function renderPage(page, pages) {
   const crumbs = page.crumbs?.length
     ? `<nav class="mk-crumbs" aria-label="Breadcrumb">${page.crumbs.map((c, i) => i === page.crumbs.length - 1 ? `<span>${esc(c.name)}</span>` : `<a href="${c.path}">${esc(c.name)}</a>`).join(' <span aria-hidden="true">›</span> ')}</nav>` : '';
   const plans = page.plans?.length
-    ? `<div class="mk-plans">${page.plans.map(p => `<div class="mk-plan"><h3>${esc(p.name)}</h3><p class="mk-price">${esc(p.price)}<span>/month</span></p><p>${esc(p.storage)} GB storage · every feature included</p><a class="mk-btn" href="/#signup">Start free trial</a></div>`).join('')}</div>` : '';
+    ? `<div class="mk-plans">${page.plans.map(p => `<div class="mk-plan"><h3>${esc(p.name)}</h3><p class="mk-price">${esc(p.price)}<span>${esc(L(page).month)}</span></p><p>${esc(p.storage)} ${esc(L(page).storage)}</p><a class="mk-btn" href="/#signup">${esc(L(page).trial)}</a></div>`).join('')}</div>` : '';
   const list = page.list?.length
     ? `<ul class="mk-cards">${page.list.map(i => `<li><a href="${i.href}"><h2>${esc(i.name)}</h2><p>${esc(i.text)}</p></a></li>`).join('')}</ul>` : '';
   const faq = page.faq?.length
-    ? `<section class="mk-faq"><h2>Frequently asked questions</h2>${page.faq.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</section>` : '';
+    ? `<section class="mk-faq"><h2>${esc(L(page).faq)}</h2>${page.faq.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</section>` : '';
   const related = page.related?.length
     ? `<aside class="mk-related"><h2>Related</h2><ul>${page.related.map(r => `<li>${link(pages, r)}</li>`).join('')}</ul></aside>` : '';
   const updated = page.kind === 'guide' ? `<p class="mk-updated">Updated ${new Date(page.updated + 'T12:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : '';
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${page.lang || 'en'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -118,8 +128,8 @@ export function renderPage(page, pages) {
     <div class="mk-wrap mk-bar">
       <a class="mk-logo" href="/"><img src="/iwopo-logo.png" alt="iwopo" width="32" height="32"><span>iwopo</span></a>
       <nav class="mk-nav" aria-label="Main">
-        <a href="/features">Features</a><a href="/pricing">Pricing</a><a href="/guides">Guides</a><a href="/login">Log in</a>
-        <a class="mk-btn mk-btn-sm" href="/#signup">Start free trial</a>
+        <a href="/features">${esc(L(page).features)}</a><a href="/pricing">${esc(L(page).pricing)}</a>${page.lang ? '' : '<a href="/guides">Guides</a>'}<a href="/login">${esc(L(page).login)}</a>
+        <a class="mk-btn mk-btn-sm" href="/#signup">${esc(L(page).trial)}</a>
       </nav>
     </div>
   </header>
@@ -135,9 +145,9 @@ export function renderPage(page, pages) {
       ${faq}
     </article>
     <section class="mk-cta">
-      <h2>Run your whole wedding business in one place</h2>
-      <p>Free trial · No card required · Cancel anytime</p>
-      <a class="mk-btn" href="/#signup">Start free trial</a>
+      <h2>${esc(L(page).cta)}</h2>
+      <p>${esc(L(page).ctaSub)}</p>
+      <a class="mk-btn" href="/#signup">${esc(L(page).trial)}</a>
     </section>
     ${related}
   </main>
@@ -146,6 +156,7 @@ export function renderPage(page, pages) {
       <div><h2>Features</h2><ul>${feats.map(p => `<li><a href="${p.path}">${esc(p.crumbs.at(-1).name)}</a></li>`).join('')}</ul></div>
       <div><h2>Who it’s for</h2><ul>${auds.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>Guides</h2><ul>${guides.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).other)}</h2><ul><li><a href="/" hreflang="en">English</a></li>${pages.filter(p => p.kind === 'intl' && p.path !== page.path).map(p => `<li><a href="${p.path}" hreflang="${p.lang}">${esc(p.langName)}</a></li>`).join('')}</ul></div>
       <div><h2>Countries</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
       <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/compare/honeybook-alternative">HoneyBook alternative</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>

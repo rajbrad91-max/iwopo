@@ -17,6 +17,7 @@ import { AUDIENCES } from './seo/audiences.js';
 import { GUIDES } from './seo/guides.js';
 import { LOCATIONS } from './seo/locations.js';
 import { COMPARISONS } from './seo/compare.js';
+import { INTL } from './seo/intl.js';
 
 const SITE = 'https://iwopo.com';
 const UPDATED = '2026-10-31';   // when the marketing copy last changed — the sitemap's lastmod
@@ -178,6 +179,19 @@ export async function allPages() {
       h1: c.h1, lead: c.lead, sections: c.sections, faq: c.faq, related: c.related,
       crumbs: crumb(['Home', '/'], ['Compare', '/compare/' + slug], [c.h1, '/compare/' + slug]).slice(0, 1).concat(crumb([c.h1, '/compare/' + slug])),
       priority: '0.7', changefreq: 'monthly',
+    });
+  }
+
+  /* 🌐 Translated landing pages — each names the English home and every other translation (hreflang). */
+  const langSet = [{ lang: 'en', path: '/' }, ...Object.entries(INTL).map(([lang, t]) => ({ lang, path: t.path }))];
+  pages.find(p => p.path === '/').alternates = langSet;
+  for (const [lang, t] of Object.entries(INTL)) {
+    pages.push({
+      path: t.path, kind: 'intl', standalone: true, lang, locale: t.locale, labels: t.labels, langName: t.name,
+      title: t.title, description: t.description, h1: t.h1, lead: t.lead, sections: t.sections, faq: t.faq,
+      plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), storage: p.storage_gb })),
+      alternates: langSet,
+      priority: '0.8', changefreq: 'monthly',
     });
   }
 

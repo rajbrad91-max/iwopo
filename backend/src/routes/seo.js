@@ -87,12 +87,20 @@ async function llms(full) {
     '## Guides', ...group('guide').map(line), '',
     '## Countries', ...group('location').map(line), '',
     '## Comparisons', ...group('compare').map(line), '',
+    '## Other languages', ...group('intl').map(p => `- [${p.langName}](${SITE}${p.path}): ${p.description}`), '',
     '## Pricing', line(pages.find(p => p.path === '/pricing')), '',
     '## Questions', ...home.faq.map(([q, a]) => `- ${q} ${a}`), '',
   ];
   if (full) out.push('---', '', ...pages.filter(p => p.standalone).map(body));
   return out.join('\n');
 }
+/* ⚡ IndexNow (Bing, Yandex, Seznam, Naver…): the key file proves the pings come from us. Key in .env INDEXNOW_KEY. */
+router.get(/^\/([a-f0-9]{32})\.txt$/, (req, res, next) => {
+  const key = process.env.INDEXNOW_KEY;
+  if (!key || req.params[0] !== key) return next();
+  res.type('text/plain').send(key);
+});
+
 router.get('/llms.txt', async (req, res) => {
   try { res.type('text/plain; charset=utf-8').send(await llms(false)); } catch (e) { res.status(500).type('text/plain').send(e.message); }
 });
