@@ -1,3 +1,7 @@
 node_modules/
 .env
 *.log
+
+# 🔒 settings backups and temp copies hold secrets too — never commit them (2026-10-31)
+.env.*
+!.env.example
