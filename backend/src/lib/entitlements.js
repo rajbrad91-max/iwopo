@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import prisma from '../config/prisma.js';
 import { tokenStillValid } from './tokenRevocation.js';
+import { billingAccess, currentSubscriptionWhere } from './billing.js';
 dotenv.config();
 
 const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -16,13 +17,19 @@ export async function getFeatures(vendorId) {
   const vid = Number(vendorId);
   const now = new Date();
 
-  // side A of the old UNION: features granted by an ACTIVE, unexpired plan
+  /* 💳 Billing (lib/billing.js): an owner, a paying vendor or one still in their free trial gets their plan's
+     features; when a trial ends unpaid they pause (nothing is deleted) and only super-admin overrides remain. */
+  const access = await billingAccess(vid);
+  if (!access.allowed) {
+    const set = new Set();
+    for (const o of await prisma.vendor_feature_overrides.findMany({ where: { vendor_id: vid, enabled: true }, select: { feature_key: true } })) set.add(o.feature_key);
+    return set;
+  }
+
+  // side A of the old UNION: features granted by an unexpired plan — one Stripe backs (active, trialing or in its
+  // payment-retry window), or the plan picked at sign-up while the trial or owner access holds
   const subs = await prisma.vendor_subscriptions.findMany({
-    where: {
-      vendor_id: vid,                                     // 🔒 tenancy
-      status: 'active',
-      OR: [{ ends_at: null }, { ends_at: { gt: now } }],
-    },
+    where: currentSubscriptionWhere(vid, now),            // 🔒 tenancy inside (lib/billing.js)
     select: { plans: { select: { plan_features: { select: { feature_key: true } } } } },
   });
 

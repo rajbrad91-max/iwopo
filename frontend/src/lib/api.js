@@ -693,6 +693,10 @@ export const api = {
   trialEligible: () => request('/auth/trial-eligible'),
   // 🎫 plans — what a subscription grants, including its storage
   plansList: () => request('/vendors/plans'),
+  // 💳 billing with Stripe (routes/billing.js)
+  billing: () => request('/billing'),
+  billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),
+  billingPortal: () => request('/billing/portal', { method: 'POST' }),
   // 📧 prove the platform mail settings actually work
   testPlatformEmail: (to) => request('/settings/platform/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
   // 📞 does the Quo key work? listing the numbers is the cheapest proof

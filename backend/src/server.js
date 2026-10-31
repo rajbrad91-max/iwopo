@@ -73,6 +73,8 @@ import { seoMiddleware } from './lib/seoRender.js';
 import { hostContext, PLATFORM_HOST } from './lib/vendorHosts.js';
 import { hostGuard } from './lib/hostGuard.js';
 import domainRoutes from './routes/domain.js';
+import billingRoutes, { billingWebhook } from './routes/billing.js';
+import { startTrialReminders } from './lib/trialReminders.js';
 
 dotenv.config();
 
@@ -152,6 +154,8 @@ app.use(cors({
    re-stringifying changes them — key order, whitespace — so the check would
    fail for reasons that look exactly like a wrong secret. */
 app.use('/api/comms/webhook', commsWebhookRoutes);
+// 💳 Stripe signs the raw bytes too — mounted before express.json() for the same reason
+app.use('/api/billing/webhook', billingWebhook);
 
 // 🎞️ the Raw Selector logo arrives as a data URL (up to 3 MB) — this one route
 // may send a bigger body; everything else keeps the 100 KB default below
@@ -225,7 +229,8 @@ app.use(seoMiddleware());
 app.use('/api/live', liveshootRoutes);
 app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
-app.use('/api/domain', domainRoutes);   // 🌐 the vendor's web address (free subdomain + own domain)
+app.use('/api/domain', domainRoutes);
+app.use('/api/billing', billingRoutes);   // 💳 plans, Stripe checkout and billing portal   // 🌐 the vendor's web address (free subdomain + own domain)
 
 /* ⚠️ Only answers the health check when nothing wants HTML. A browser or a
    crawler asking for / wants the marketing page; a monitor wants JSON. */
@@ -340,6 +345,7 @@ setInterval(() => { refreshBriefings().catch(() => {}); }, 5 * 60_000).unref();
 // 📇 Tornado's contact index, near real time: new or changed leads, calls, texts and payments every 10 s
 setInterval(() => { syncContactsQuick().catch(e => console.error('[agent] contact sync', e.message)); }, 10_000).unref();
 
+startTrialReminders();   // ⏳ 7-day, 1-day and trial-ended notices (lib/trialReminders.js)
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
 });

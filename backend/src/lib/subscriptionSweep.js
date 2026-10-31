@@ -20,7 +20,7 @@ import prisma from '../config/prisma.js';
 export async function sweepExpiredSubscriptions() {
   try {
     const { count } = await prisma.vendor_subscriptions.updateMany({
-      where: { status: 'active', ends_at: { not: null, lt: new Date() } },
+      where: { status: 'active', stripe_subscription_id: null, ends_at: { not: null, lt: new Date() } },   // Stripe ends its own
       data: { status: 'ended' },
     });
     if (count) console.log('[subscriptions] closed', count, 'that had expired');

@@ -17,6 +17,7 @@
  */
 import prisma from '../config/prisma.js';
 import { ledgerBytesFor } from './storageLedger.js';
+import { currentSubscriptionWhere } from './billing.js';
 
 /* A vendor on the free trial has no package — signup writes plan 'starter',
    which is not a package key. The trial's allowance therefore lives here rather
@@ -67,11 +68,7 @@ async function limitMbFor(vendorId) {
   /* The same conditions the feature gate uses, so a vendor cannot have the
      features of a plan without its storage or the other way round. */
   const sub = await prisma.vendor_subscriptions.findFirst({
-    where: {
-      vendor_id: v,                                           // 🔒 tenancy
-      status: 'active',
-      OR: [{ ends_at: null }, { ends_at: { gt: new Date() } }],
-    },
+    where: currentSubscriptionWhere(v),                       // 🔒 tenancy inside; same rule as the features (lib/billing.js)
     orderBy: { started_at: 'desc' },                          // the most recent one wins
     select: { plans: { select: { name: true, storage_gb: true } } },
   });

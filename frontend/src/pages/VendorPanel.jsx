@@ -42,6 +42,7 @@ import SecurityLog from '../components/SecurityLog';
 import { shownFields } from '../lib/formRules';
 import DomainSettings from '../components/DomainSettings';
 import { clientBase, inquiryUrl, setClientBase } from '../lib/clientBase';
+import BillingBanner from '../components/BillingBanner';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -357,6 +358,7 @@ export default function VendorPanel({ onLogout }) {
       </aside>
 
       <main className="main">
+        <BillingBanner onPlans={() => go('plans')} />
         <div className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>

@@ -134,7 +134,7 @@ router.put('/:id/plan', requireAuth, requireSuperAdmin, async (req, res) => {
 
     // whatever they were on stops now, in both cases
     await prisma.vendor_subscriptions.updateMany({
-      where: { vendor_id: id, status: 'active' },
+      where: { vendor_id: id, status: 'active', stripe_subscription_id: null },   // a Stripe subscription is changed in Stripe
       data: { status: 'ended', ends_at: new Date() },
     });
 
