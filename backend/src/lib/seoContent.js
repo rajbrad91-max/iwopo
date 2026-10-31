@@ -15,6 +15,7 @@ import prisma from '../config/prisma.js';
 import { FEATURES } from './seo/features.js';
 import { AUDIENCES } from './seo/audiences.js';
 import { GUIDES } from './seo/guides.js';
+import { LOCATIONS } from './seo/locations.js';
 
 const SITE = 'https://iwopo.com';
 const UPDATED = '2026-10-31';   // when the marketing copy last changed — the sitemap's lastmod
@@ -139,6 +140,29 @@ export async function allPages() {
       description: g.lead.slice(0, 158),
       h1: g.h1, lead: g.lead, sections: g.sections, faq: g.faq, related: g.related, updated: g.updated,
       crumbs: crumb(['Home', '/'], ['Guides', '/guides'], [g.h1, '/guides/' + slug]),
+      priority: '0.7', changefreq: 'monthly',
+    });
+  }
+
+  /* 🌍 Countries — each written for its own market (see seo/locations.js on doorway pages). */
+  pages.push({
+    path: '/locations', kind: 'hub', standalone: true,
+    title: 'Wedding photography software around the world | iwopo',
+    description: 'iwopo for wedding photographers and videographers in the United States, Canada, the UK, Australia, New Zealand, India, Pakistan, Bangladesh, Sri Lanka and Nepal.',
+    h1: 'Wedding photography business software, wherever you work',
+    lead: 'iwopo runs in any browser, in your own time zone and currency. Here is how it fits the weddings, payments and rules of each market.',
+    list: Object.entries(LOCATIONS).map(([slug, l]) => ({ name: l.country, text: l.lead, href: '/locations/' + slug })),
+    crumbs: crumb(['Home', '/'], ['Countries', '/locations']),
+    priority: '0.7', changefreq: 'monthly',
+  });
+  for (const [slug, l] of Object.entries(LOCATIONS)) {
+    pages.push({
+      path: '/locations/' + slug, kind: 'location', standalone: true, country: l.country, countryCode: l.code,
+      title: `Wedding photography software in ${l.country} | iwopo`,
+      description: l.lead.slice(0, 158),
+      h1: l.h1, lead: l.lead, sections: l.sections, faq: l.faq,
+      related: ['/features/contracts', '/features/leads', '/features/galleries', '/pricing'],
+      crumbs: crumb(['Home', '/'], ['Countries', '/locations'], [l.country, '/locations/' + slug]),
       priority: '0.7', changefreq: 'monthly',
     });
   }

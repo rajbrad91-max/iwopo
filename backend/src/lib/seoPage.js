@@ -31,12 +31,13 @@ function schema(page, pages) {
     ...(page.kind === 'guide' ? { author: { '@id': `${SITE}/#org` }, publisher: { '@id': `${SITE}/#org` }, datePublished: page.updated, mainEntityOfPage: url } : {}),
   };
   graph.push(webPage);
-  if (page.kind === 'feature' || page.kind === 'pricing' || page.kind === 'audience') {
+  if (page.kind === 'feature' || page.kind === 'pricing' || page.kind === 'audience' || page.kind === 'location') {
     graph.push({
       '@type': 'SoftwareApplication', name: 'iwopo', url: `${SITE}/`,
       applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
       description: pages.find(p => p.path === '/')?.description,
       publisher: { '@id': `${SITE}/#org` },
+      ...(page.country ? { areaServed: { '@type': 'Country', name: page.country, identifier: page.countryCode } } : {}),
     });
   }
   if (page.crumbs?.length) {
@@ -89,6 +90,7 @@ export function renderPage(page, pages) {
   const feats = pages.filter(p => p.kind === 'feature');
   const auds = pages.filter(p => p.kind === 'audience');
   const guides = pages.filter(p => p.kind === 'guide');
+  const places = pages.filter(p => p.kind === 'location');
   const crumbs = page.crumbs?.length
     ? `<nav class="mk-crumbs" aria-label="Breadcrumb">${page.crumbs.map((c, i) => i === page.crumbs.length - 1 ? `<span>${esc(c.name)}</span>` : `<a href="${c.path}">${esc(c.name)}</a>`).join(' <span aria-hidden="true">›</span> ')}</nav>` : '';
   const plans = page.plans?.length
@@ -144,6 +146,7 @@ export function renderPage(page, pages) {
       <div><h2>Features</h2><ul>${feats.map(p => `<li><a href="${p.path}">${esc(p.crumbs.at(-1).name)}</a></li>`).join('')}</ul></div>
       <div><h2>Who it’s for</h2><ul>${auds.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>Guides</h2><ul>${guides.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
+      <div><h2>Countries</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
       <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>
     <p class="mk-wrap mk-copy">© ${new Date().getFullYear()} iwopo</p>
