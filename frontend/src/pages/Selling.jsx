@@ -182,6 +182,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const [loading, setLoading] = useState(false);
   const [verify, setVerify] = useState(null);   // ✉️ { email, code } after sign-up: the emailed code comes next
   const [trialOk, setTrialOk] = useState(true);
+  const [open, setOpen] = useState(true);   // 🚧 false while sign-ups are paused before launch
   const [chosen, setChosen] = useState(null);
   const [faqOpen, setFaqOpen] = useState(0);
   const [heroSeen, setHeroSeen] = useState(false);
@@ -199,7 +200,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   useEffect(() => {
     api.services().then(d => setServices(d.services || [])).catch(() => {});
     api.packages().then(d => setPackages(d.packages || [])).catch(() => {});
-    api.trialEligible().then(d => setTrialOk(d.eligible)).catch(() => {});
+    api.trialEligible().then(d => { setTrialOk(d.eligible); setOpen(d.open !== false); }).catch(() => {});
     const t = setTimeout(() => setHeroSeen(true), 250);
     return () => clearTimeout(t);
   }, []);
@@ -269,7 +270,7 @@ export default function Selling({ onSignup, onGoLogin }) {
           </div>
           <div className="sl-nav-actions">
             <button type="button" className="sl-ghost" onClick={onGoLogin}>Log in</button>
-            <button type="button" className="sl-cta-sm" onClick={goSignup}>Start free trial</button>
+            <button type="button" className="sl-cta-sm" onClick={goSignup}>{open ? 'Start free trial' : 'Opening soon'}</button>
           </div>
         </div>
       </nav>
@@ -285,7 +286,7 @@ export default function Selling({ onSignup, onGoLogin }) {
             <h1>Run your wedding business in <em>one place.</em></h1>
             <p className="sl-lede">Galleries, bookings, contracts, payments and AI — built for wedding vendors who are done juggling six tools.</p>
             <div className="sl-hero-btns">
-              <button type="button" className="sl-cta" onClick={goSignup}>Start free trial</button>
+              <button type="button" className="sl-cta" onClick={goSignup}>{open ? 'Start free trial' : 'Opening soon'}</button>
               <button type="button" className="sl-ghost lg" onClick={goPackages}>See pricing</button>
             </div>
             <p className="sl-hero-trust">No card required · Live the same day · Cancel anytime</p>
@@ -471,8 +472,8 @@ export default function Selling({ onSignup, onGoLogin }) {
         <div className="sl-signup-inner">
           <Reveal className="sl-signup-copy">
             <p className="sl-brand-mark light">iwopo</p>
-            <h2>Start free. Be live today.</h2>
-            <p>Bring galleries, clients and bookings into one calm place. No card needed.</p>
+            <h2>{open ? 'Start free. Be live today.' : 'Opening very soon.'}</h2>
+            <p>{open ? 'Bring galleries, clients and bookings into one calm place. No card needed.' : 'We’re putting the finishing touches on iwopo. New studios can join very soon.'}</p>
           </Reveal>
           <Reveal className="sl-signup-box">
             {chosen && (
@@ -482,7 +483,14 @@ export default function Selling({ onSignup, onGoLogin }) {
                 <button type="button" className="sl-clear" onClick={() => setChosen(null)}>change</button>
               </div>
             )}
-            {trialOk ? (
+            {!open ? (
+              <>
+                <h3>Opening very soon</h3>
+                <p className="sl-signup-sub">We’re finishing up and will open iwopo to new studios very soon. Want to hear the moment we do?</p>
+                <a className="sl-cta full" href="mailto:info@iwopo.com?subject=Tell%20me%20when%20iwopo%20opens">Tell me when you open</a>
+                <div className="sl-login-row">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
+              </>
+            ) : trialOk ? (
               <>
                 <h3>Create your studio</h3>
                 <p className="sl-signup-sub">Free trial · cancel anytime</p>
@@ -525,7 +533,7 @@ export default function Selling({ onSignup, onGoLogin }) {
             <a href="#packages">Pricing</a>
             <a href="#industries">Solutions</a>
             <a href="#faq">FAQ</a>
-            <button type="button" onClick={goSignup}>Start free trial</button>
+            <button type="button" onClick={goSignup}>{open ? 'Start free trial' : 'Opening soon'}</button>
             <button type="button" onClick={onGoLogin}>Log in</button>
             <a href="mailto:sales@iwopo.com">sales@iwopo.com</a>
           </div>

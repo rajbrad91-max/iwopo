@@ -13,7 +13,7 @@ export const INTL = {
     description: 'Richieste, contratti con firma elettronica, acconti, prenotazioni, gallerie per i clienti, gestione della squadra e sito portfolio: un’unica piattaforma per fotografi di matrimonio.',
     h1: 'Il software tutto-in-uno per fotografi di matrimonio',
     lead: 'Richieste, contratti con firma elettronica, acconti, prenotazioni, gallerie per gli sposi e il tuo sito: tutto in un unico posto, così la parte amministrativa di un matrimonio richiede minuti, non serate.',
-    labels: { features: 'Funzioni', pricing: 'Prezzi', login: 'Accedi', trial: 'Prova gratis', faq: 'Domande frequenti', cta: 'Gestisci tutta la tua attività di matrimoni in un unico posto', ctaSub: 'Prova gratuita · Nessuna carta richiesta · Disdici quando vuoi', month: '/mese', storage: 'GB di spazio · tutte le funzioni incluse', other: 'Altre lingue' },
+    labels: { soon: 'Apertura a breve', soonSub: 'I nuovi studi potranno iscriversi a breve · Hai già un account? Accedi', features: 'Funzioni', pricing: 'Prezzi', login: 'Accedi', trial: 'Prova gratis', faq: 'Domande frequenti', cta: 'Gestisci tutta la tua attività di matrimoni in un unico posto', ctaSub: 'Prova gratuita · Nessuna carta richiesta · Disdici quando vuoi', month: '/mese', storage: 'GB di spazio · tutte le funzioni incluse', other: 'Altre lingue' },
     sections: [
       { h2: 'Dalla richiesta alla consegna delle foto', ul: [
         'Gli sposi compilano il tuo modulo di richiesta, con ogni evento: preparativi, cerimonia, ricevimento e servizio pre-matrimonio.',
@@ -42,7 +42,7 @@ export const INTL = {
     description: 'Anfragen, Verträge mit E-Signatur, Anzahlungen, Buchungen, Kundengalerien, Teamplanung und Portfolio-Website – eine Plattform für Hochzeitsfotografen.',
     h1: 'Die All-in-one-Software für Hochzeitsfotografen',
     lead: 'Anfragen, Verträge mit elektronischer Signatur, Anzahlungen, Buchungen, Galerien für das Brautpaar und deine Website – alles an einem Ort, damit die Büroarbeit für eine Hochzeit Minuten statt Abende dauert.',
-    labels: { features: 'Funktionen', pricing: 'Preise', login: 'Anmelden', trial: 'Kostenlos testen', faq: 'Häufige Fragen', cta: 'Dein ganzes Hochzeitsgeschäft an einem Ort', ctaSub: 'Kostenlose Testphase · Keine Kreditkarte · Jederzeit kündbar', month: '/Monat', storage: 'GB Speicher · alle Funktionen inklusive', other: 'Andere Sprachen' },
+    labels: { soon: 'Bald verfügbar', soonSub: 'Neue Studios können sich bald anmelden · Schon dabei? Anmelden', features: 'Funktionen', pricing: 'Preise', login: 'Anmelden', trial: 'Kostenlos testen', faq: 'Häufige Fragen', cta: 'Dein ganzes Hochzeitsgeschäft an einem Ort', ctaSub: 'Kostenlose Testphase · Keine Kreditkarte · Jederzeit kündbar', month: '/Monat', storage: 'GB Speicher · alle Funktionen inklusive', other: 'Andere Sprachen' },
     sections: [
       { h2: 'Von der Anfrage bis zur Galerie', ul: [
         'Das Paar füllt dein Anfrageformular aus – mit jedem Programmpunkt: Getting Ready, Trauung, Feier und Paarshooting.',
@@ -71,7 +71,7 @@ export const INTL = {
     description: 'Solicitudes, contratos con firma electrónica, anticipos, reservas, galerías para clientes, equipo y web de portafolio: una sola plataforma para fotógrafos de bodas en España, México y Latinoamérica.',
     h1: 'El software todo en uno para fotógrafos de bodas',
     lead: 'Solicitudes, contratos con firma electrónica, anticipos, reservas, galerías para los novios y tu web: todo en un solo lugar, para que la parte administrativa de una boda te lleve minutos y no noches enteras.',
-    labels: { features: 'Funciones', pricing: 'Precios', login: 'Iniciar sesión', trial: 'Prueba gratis', faq: 'Preguntas frecuentes', cta: 'Lleva todo tu negocio de bodas en un solo lugar', ctaSub: 'Prueba gratuita · Sin tarjeta · Cancela cuando quieras', month: '/mes', storage: 'GB de almacenamiento · todas las funciones incluidas', other: 'Otros idiomas' },
+    labels: { soon: 'Muy pronto', soonSub: 'Los nuevos estudios podrán unirse muy pronto · ¿Ya tienes cuenta? Inicia sesión', features: 'Funciones', pricing: 'Precios', login: 'Iniciar sesión', trial: 'Prueba gratis', faq: 'Preguntas frecuentes', cta: 'Lleva todo tu negocio de bodas en un solo lugar', ctaSub: 'Prueba gratuita · Sin tarjeta · Cancela cuando quieras', month: '/mes', storage: 'GB de almacenamiento · todas las funciones incluidas', other: 'Otros idiomas' },
     sections: [
       { h2: 'De la solicitud a la entrega de las fotos', ul: [
         'Los novios rellenan tu formulario de solicitud con cada momento: preparativos, ceremonia, banquete y sesión preboda.',
@@ -100,7 +100,7 @@ export const INTL = {
     description: 'Demandes, contrats avec signature électronique, acomptes, réservations, galeries clients, équipe et site portfolio : une seule plateforme pour les photographes de mariage.',
     h1: 'Le logiciel tout-en-un pour photographes de mariage',
     lead: 'Demandes, contrats avec signature électronique, acomptes, réservations, galeries pour les mariés et votre site : tout au même endroit, pour que l’administratif d’un mariage prenne des minutes, pas des soirées.',
-    labels: { features: 'Fonctionnalités', pricing: 'Tarifs', login: 'Connexion', trial: 'Essai gratuit', faq: 'Questions fréquentes', cta: 'Toute votre activité mariage au même endroit', ctaSub: 'Essai gratuit · Sans carte bancaire · Résiliable à tout moment', month: '/mois', storage: 'Go de stockage · toutes les fonctionnalités incluses', other: 'Autres langues' },
+    labels: { soon: 'Bientôt disponible', soonSub: 'Les nouveaux studios pourront s’inscrire très bientôt · Déjà inscrit ? Connexion', features: 'Fonctionnalités', pricing: 'Tarifs', login: 'Connexion', trial: 'Essai gratuit', faq: 'Questions fréquentes', cta: 'Toute votre activité mariage au même endroit', ctaSub: 'Essai gratuit · Sans carte bancaire · Résiliable à tout moment', month: '/mois', storage: 'Go de stockage · toutes les fonctionnalités incluses', other: 'Autres langues' },
     sections: [
       { h2: 'De la demande à la livraison des photos', ul: [
         'Les mariés remplissent votre formulaire de demande avec chaque moment : préparatifs, cérémonie, réception et séance engagement.',
@@ -130,7 +130,7 @@ export const INTL = {
     description: 'Orçamentos, contratos com assinatura eletrônica, sinal, agenda, galerias para clientes, equipe e site de portfólio: uma plataforma para fotógrafos de casamento no Brasil e em Portugal.',
     h1: 'O software completo para fotógrafos de casamento',
     lead: 'Pedidos de orçamento, contratos com assinatura eletrônica, sinal, agenda, galerias para os noivos e o seu site — tudo num só lugar, para que a parte administrativa de um casamento leve minutos, não noites.',
-    labels: { features: 'Recursos', pricing: 'Preços', login: 'Entrar', trial: 'Teste grátis', faq: 'Perguntas frequentes', cta: 'Todo o seu negócio de casamentos num só lugar', ctaSub: 'Teste grátis · Sem cartão · Cancele quando quiser', month: '/mês', storage: 'GB de armazenamento · todos os recursos incluídos', other: 'Outros idiomas' },
+    labels: { soon: 'Em breve', soonSub: 'Novos estúdios poderão entrar em breve · Já tem conta? Entre', features: 'Recursos', pricing: 'Preços', login: 'Entrar', trial: 'Teste grátis', faq: 'Perguntas frequentes', cta: 'Todo o seu negócio de casamentos num só lugar', ctaSub: 'Teste grátis · Sem cartão · Cancele quando quiser', month: '/mês', storage: 'GB de armazenamento · todos os recursos incluídos', other: 'Outros idiomas' },
     sections: [
       { h2: 'Do orçamento à entrega das fotos', ul: [
         'Os noivos preenchem o seu formulário com cada momento: making of, cerimônia, festa e ensaio pré-casamento.',
@@ -158,7 +158,7 @@ export const INTL = {
     description: 'Aanvragen, contracten met e-handtekening, aanbetalingen, boekingen, klantgalerijen, team en portfoliowebsite: één platform voor trouwfotografen in Nederland en België.',
     h1: 'De alles-in-één software voor trouwfotografen',
     lead: 'Aanvragen, contracten met elektronische handtekening, aanbetalingen, boekingen, galerijen voor het bruidspaar en je website — alles op één plek, zodat de administratie van een bruiloft minuten kost in plaats van avonden.',
-    labels: { features: 'Functies', pricing: 'Prijzen', login: 'Inloggen', trial: 'Gratis proberen', faq: 'Veelgestelde vragen', cta: 'Je hele trouwbedrijf op één plek', ctaSub: 'Gratis proefperiode · Geen creditcard · Altijd opzegbaar', month: '/maand', storage: 'GB opslag · alle functies inbegrepen', other: 'Andere talen' },
+    labels: { soon: 'Binnenkort', soonSub: 'Nieuwe studio’s kunnen zich binnenkort aanmelden · Al een account? Log in', features: 'Functies', pricing: 'Prijzen', login: 'Inloggen', trial: 'Gratis proberen', faq: 'Veelgestelde vragen', cta: 'Je hele trouwbedrijf op één plek', ctaSub: 'Gratis proefperiode · Geen creditcard · Altijd opzegbaar', month: '/maand', storage: 'GB opslag · alle functies inbegrepen', other: 'Andere talen' },
     sections: [
       { h2: 'Van aanvraag tot fotogalerij', ul: [
         'Het bruidspaar vult je aanvraagformulier in, met elk onderdeel: aankleden, ceremonie, feest en loveshoot.',

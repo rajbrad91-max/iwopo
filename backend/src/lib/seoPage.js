@@ -56,8 +56,9 @@ function schema(page, pages) {
 }
 
 /** The <head> every marketing page shares. */
-const EN = { features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
-const L = (page) => page.labels || EN;
+const EN = { soon: 'Opening soon', soonSub: 'New studios can join very soon · Already a member? Log in', features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
+/* 🚧 while sign-ups are paused, every "start" button says so (seoRender passes page.signupsOpen) */
+const L = (page) => { const l = { ...EN, ...(page.labels || {}) }; return page.signupsOpen === false ? { ...l, trial: l.soon || EN.soon, ctaSub: l.soonSub || EN.soonSub } : l; };
 
 /** hreflang: a translated page names every language version (+ x-default = English, unless the page says there is
  *  no English version: xDefault false); any other page names itself in its own language. */

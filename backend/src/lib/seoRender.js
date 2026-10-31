@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { allPages } from './seoContent.js';
 import { renderPage, headTags } from './seoPage.js';
+import { signupsOpen } from './signups.js';
 
 /* From this file, not from the working directory (pm2 starts the app in backend/). */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -55,7 +56,7 @@ export function seoMiddleware() {
       if (!page.standalone && !String(req.headers.accept || '').includes('text/html')) return next();
 
       res.set('Cache-Control', 'public, max-age=300');
-      if (page.standalone) return res.type('html').send(renderPage(page, pages));
+      if (page.standalone) return res.type('html').send(renderPage({ ...page, signupsOpen: await signupsOpen() }, pages));
 
       let html;
       try { html = fs.readFileSync(DIST, 'utf8'); } catch { return next(); }   // not built — let nginx answer

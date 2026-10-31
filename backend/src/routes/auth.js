@@ -12,6 +12,7 @@ import { revokeToken, revokeAllForUser } from '../lib/tokenRevocation.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logSecurity, deviceOf } from '../lib/securityLog.js';
 import jwt from 'jsonwebtoken';
+import { signupsOpen, SIGNUPS_CLOSED_MESSAGE } from '../lib/signups.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -160,11 +161,13 @@ router.post('/login/resend', limit({ name: 'login-resend', max: 6, windowMs: 60 
 // GET /api/auth/trial-eligible  → tells frontend if this IP can still start a trial
 router.get('/trial-eligible', async (req, res) => {
   const used = await trialCount(clientIp(req));
-  res.json({ eligible: used < TRIAL_LIMIT, used, limit: TRIAL_LIMIT });
+  res.json({ eligible: used < TRIAL_LIMIT, used, limit: TRIAL_LIMIT, open: await signupsOpen() });   // 🚧 sign-ups paused?
 });
 
 // POST /api/auth/signup  (public - from Selling Platform)
 router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
+  // 🚧 paused until launch — refused here, whatever the page shows (lib/signups.js)
+  if (!(await signupsOpen())) return res.status(403).json({ error: SIGNUPS_CLOSED_MESSAGE, code: 'signups_closed' });
   const { businessName, name, email, password, plan } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
