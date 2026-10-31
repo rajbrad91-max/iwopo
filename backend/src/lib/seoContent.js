@@ -18,6 +18,7 @@ import { GUIDES } from './seo/guides.js';
 import { LOCATIONS } from './seo/locations.js';
 import { COMPARISONS } from './seo/compare.js';
 import { INTL } from './seo/intl.js';
+import { IMAGES } from './seo/images.js';
 
 const SITE = 'https://iwopo.com';
 const UPDATED = '2026-10-31';   // when the marketing copy last changed — the sitemap's lastmod
@@ -195,7 +196,7 @@ export async function allPages() {
     });
   }
 
-  for (const p of pages) p.updated = p.updated || UPDATED;
+  for (const p of pages) { p.updated = p.updated || UPDATED; p.images = IMAGES[p.path] || (p.path.startsWith('/locations/') ? IMAGES['/for/wedding-photographers'] : undefined); }
   return pages;
 }
 

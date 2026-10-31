@@ -78,3 +78,11 @@ body.mk { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 
   .mk-nav a[href="/guides"], .mk-nav a[href="/features"] { display: none; }   /* one tidy row on a phone; both are in the footer */
   .mk-logo span { display: none; }
 }
+
+/* 🖼️ screenshots of the real app (demo studio) */
+.mk-shots { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin: 22px 0 8px; }
+.mk-shot { margin: 0; flex: 1 1 100%; }
+.mk-shot img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 18px 40px -24px rgba(26, 18, 11, .45); background: #fff; }
+.mk-shot.is-phone { flex: 0 1 230px; }
+.mk-shot figcaption { font-size: .82rem; color: var(--gray); margin-top: 8px; line-height: 1.4; }
+@media (min-width: 900px) { .mk article { max-width: 860px; } }

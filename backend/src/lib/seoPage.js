@@ -36,6 +36,7 @@ function schema(page, pages) {
       '@type': 'SoftwareApplication', name: 'iwopo', url: `${SITE}/`,
       applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
       description: pages.find(p => p.path === '/')?.description,
+      ...(page.images?.length ? { screenshot: page.images.map(i => SITE + i.src) } : {}),
       publisher: { '@id': `${SITE}/#org` },
       ...(page.country ? { areaServed: { '@type': 'Country', name: page.country, identifier: page.countryCode } } : {}),
     });
@@ -79,7 +80,7 @@ export function headTags(page, pages) {
     `<meta property="og:title" content="${esc(page.title)}">`,
     `<meta property="og:description" content="${esc(page.description)}">`,
     `<meta property="og:url" content="${url}">`,
-    `<meta property="og:image" content="${SITE}/og-cover.jpg">`,
+    `<meta property="og:image" content="${SITE}${page.images?.[0]?.src || '/og-cover.jpg'}">`,
     `<meta property="og:locale" content="${page.locale || 'en_US'}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
     schema(page, pages),
@@ -139,6 +140,7 @@ export function renderPage(page, pages) {
       <h1>${esc(page.h1)}</h1>
       ${updated}
       <p class="mk-lead">${esc(page.lead || page.description)}</p>
+      ${(page.images || []).length ? `<div class="mk-shots">${page.images.map((i, n) => `<figure class="mk-shot${i.phone ? ' is-phone' : ''}"><img src="${i.src}" alt="${esc(i.alt)}"${i.w ? ` width="${i.w}" height="${i.h}"` : ''} ${n === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"><figcaption>${esc(i.alt)}</figcaption></figure>`).join('')}</div>` : ''}
       ${plans}
       ${list}
       ${(page.sections || []).map(sectionHtml).join('\n    ')}
