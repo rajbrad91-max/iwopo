@@ -152,7 +152,7 @@ export async function allPages() {
   pages.push({
     path: '/locations', kind: 'hub', standalone: true,
     title: 'Wedding photography software around the world | iwopo',
-    description: 'iwopo for wedding photographers and videographers in the United States, Canada, the UK, Australia, New Zealand, India, Pakistan, Bangladesh, Sri Lanka and Nepal.',
+    description: 'iwopo for wedding photographers and videographers worldwide — North America, the UK and Ireland, Australia and New Zealand, South Asia, the Gulf, Southeast Asia and South Africa.',
     h1: 'Wedding photography business software, wherever you work',
     lead: 'iwopo runs in any browser, in your own time zone and currency. Here is how it fits the weddings, payments and rules of each market.',
     list: Object.entries(LOCATIONS).map(([slug, l]) => ({ name: l.country, text: l.lead, href: '/locations/' + slug })),

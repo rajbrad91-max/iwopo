@@ -151,4 +151,83 @@ export const LOCATIONS = {
     ],
     faq: [['Can families abroad view the gallery?', 'Yes. Galleries open anywhere in a browser, and guests can find their own photos by face.']],
   },
+
+  'united-arab-emirates': {
+    country: 'United Arab Emirates', code: 'AE',
+    h1: 'Wedding photography business software for the UAE',
+    lead: 'Emirati, Indian, Pakistani, Arab and destination weddings in Dubai, Abu Dhabi and across the Emirates — one platform for inquiries, contracts, deposits, bookings and galleries.',
+    sections: [
+      { h2: 'A wedding season shaped by the weather', p: ['Most weddings in the Emirates take place in the cooler months, so the same dates are requested again and again. One calendar of inquiries and bookings shows a taken date before you quote it.'] },
+      { h2: 'Separate events, separate schedules', p: ['Many weddings in the region hold separate celebrations for men and women, and large South Asian weddings run across several days. Each event is booked with its own date, times, venue, guest count and service, so you can plan the right team for each one.'] },
+      { h2: 'Payments and contracts', p: [pay('a bank transfer, a card in person or cash'), esign('the UAE under Federal Decree-Law No. 46 of 2021 on Electronic Transactions and Trust Services')] },
+      { h2: 'Couples from everywhere', p: ['Destination couples book from their own countries; every time is shown in your Gulf time zone, clearly labeled, and each business sets its own currency.'] },
+    ],
+    faq: [['Can I book separate men’s and women’s events?', 'Yes. Each is its own event with its own date, times, venue, guests and service.']],
+  },
+  'saudi-arabia': {
+    country: 'Saudi Arabia', code: 'SA',
+    h1: 'Wedding photography business software for Saudi Arabia',
+    lead: 'Inquiries, contracts, deposits, bookings and client galleries in one place — for wedding photographers and videographers across the Kingdom.',
+    sections: [
+      { h2: 'Each celebration with its own details', p: ['Weddings often include separate halls or celebrations for women and men, as well as engagement and family events. Each is booked with its own date, times, venue, guest count and service, and appears in the contract.'] },
+      { h2: 'Payments and contracts', p: [pay('mada, STC Pay or a bank transfer'), esign('Saudi Arabia under the Electronic Transactions Law')] },
+      { h2: 'Private galleries', p: ['Galleries are shared by private link and can be protected, so families decide who sees their photographs.'] },
+    ],
+    faq: [['Can families keep their gallery private?', 'Yes. Galleries are shared by private link and can be protected.']],
+  },
+  'ireland': {
+    country: 'Ireland', code: 'IE',
+    h1: 'Wedding photography business software for Ireland',
+    lead: 'From country-house weddings to city hotels — one place for enquiries, contracts, deposits, bookings and galleries, for wedding photographers and videographers across Ireland.',
+    sections: [
+      { h2: 'Long days, clearly agreed', p: ['Irish weddings often run from morning preparations to a late evening reception. Each part of the day can be recorded with its own times and hours, so coverage and overtime are clear in the contract.'] },
+      { h2: 'Deposits and contracts', p: [pay('a bank transfer or cash'), esign('Ireland under the Electronic Commerce Act 2000 and the EU eIDAS regulation')] },
+      { h2: 'Couples from abroad', p: ['Many couples living abroad come home to marry. They book from their own time zone; you see every time in yours, labeled.'] },
+    ],
+    faq: [['Can I charge for extra hours on the day?', 'Yes. Packages include an extra-hour rate, and the contract states your terms for overtime.']],
+  },
+  'singapore': {
+    country: 'Singapore', code: 'SG',
+    h1: 'Wedding photography business software for Singapore',
+    lead: 'Chinese, Malay, Indian and Western weddings — gate-crash mornings, tea ceremonies, solemnisations and banquets — one platform for Singapore wedding photographers and videographers.',
+    sections: [
+      { h2: 'Every ceremony, its own time', p: ['A Singapore wedding day can include a morning gate crash and tea ceremony, a solemnisation and an evening banquet — sometimes on different days. Each part is booked with its own times, venue and guests, and appears in the contract.'] },
+      { h2: 'Payments and contracts', p: [pay('PayNow, a bank transfer or cash'), esign('Singapore under the Electronic Transactions Act')] },
+      { h2: 'Galleries for big banquets', p: ['Hundreds of guests at a banquet means hundreds of requests for photos. Galleries group photos by face, so every guest finds their own.'] },
+    ],
+    faq: [['Can I book a morning tea ceremony and an evening banquet separately?', 'Yes. Each is its own event with its own times, venue and guests.']],
+  },
+  'malaysia': {
+    country: 'Malaysia', code: 'MY',
+    h1: 'Wedding photography business software for Malaysia',
+    lead: 'Akad nikah and bersanding, Chinese tea ceremonies and Indian weddings — one platform for Malaysian wedding photographers and videographers, from inquiry to gallery.',
+    sections: [
+      { h2: 'Several events, often several days', p: ['Malay weddings often hold the akad nikah and the bersanding receptions on different days and at different family homes or halls. Each event is booked with its own date, times, venue, guests and service.'] },
+      { h2: 'Payments and contracts', p: [pay('DuitNow, FPX online banking, a bank transfer or cash'), esign('Malaysia under the Electronic Commerce Act 2006')] },
+      { h2: 'Receptions for each side', p: ['When each family hosts its own reception, coverage can be set to the bride’s side, the groom’s side or both.'] },
+    ],
+    faq: [['Can I record receptions hosted by each family?', 'Yes. Each reception is its own event, and coverage can be set for either side or both.']],
+  },
+  'philippines': {
+    country: 'Philippines', code: 'PH',
+    h1: 'Wedding photography business software for the Philippines',
+    lead: 'Prenup shoots, church weddings, entourages and big receptions — one platform for Filipino wedding photographers and videographers, from inquiry to same-day edit.',
+    sections: [
+      { h2: 'Prenup shoot, wedding and same-day edit', p: ['A prenup shoot is part of many Filipino wedding packages. It is booked as its own item with its date and service, alongside getting-ready coverage, the ceremony and the reception — and optional clauses you add to your template — such as a same-day edit — appear in the contract only when the package includes them.'] },
+      { h2: 'Payments and contracts', p: [pay('GCash, Maya, a bank transfer or cash'), esign('the Philippines under the Electronic Commerce Act of 2000 (Republic Act No. 8792)')] },
+      { h2: 'Galleries the whole family can use', p: ['With large entourages and guest lists, galleries group photos by face so every relative finds their own pictures — at home or abroad.'] },
+    ],
+    faq: [['Can a prenup shoot be part of the booking?', 'Yes. It is recorded with its own date and service and appears in the contract schedule.']],
+  },
+  'south-africa': {
+    country: 'South Africa', code: 'ZA',
+    h1: 'Wedding photography business software for South Africa',
+    lead: 'Traditional ceremonies and white weddings, winelands venues and family homes — one platform for South African wedding photographers and videographers.',
+    sections: [
+      { h2: 'Traditional and white weddings', p: ['Many couples hold a traditional ceremony and a white wedding, often on different days and at different places. Each is booked with its own date, times, venue, guests and service, and both appear in the contract.'] },
+      { h2: 'Payments and contracts', p: [pay('an EFT bank transfer or cash'), esign('South Africa under the Electronic Communications and Transactions Act, 2002')] },
+      { h2: 'Destination weddings', p: ['Couples from abroad book from their own time zone; you see every time in South African time, clearly labeled.'] },
+    ],
+    faq: [['Can I book a traditional ceremony and a white wedding together?', 'Yes. Each is its own event with its own date, times and venue, in one booking and one contract.']],
+  },
 };
