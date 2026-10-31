@@ -82,8 +82,8 @@ ${www ? `    if ($host = ${www}) { return 301 ${target}; }\n` : ''}    root ${di
     location / {
         # a couple's gallery, portal or contract never belongs in search results ($iwopo_vendor_robots is set per
         # path in conf.d/iwopo-vendor-domains.conf; empty = no header). Set here, in the location that finally
-        # serves the page, because nginx drops headers from a location it only passes through.
-        add_header X-Robots-Tag $iwopo_vendor_robots always;
+        # serves the page, because nginx drops headers from a location it only passes through. Staging: never indexed.
+        add_header X-Robots-Tag ${ENV === 'staging' ? '"noindex, nofollow"' : '$iwopo_vendor_robots'} always;
         add_header Cache-Control "no-cache, must-revalidate" always;
         include snippets/iwopo-security.conf;
         try_files $uri $uri/ /index.html;
@@ -98,10 +98,11 @@ const domainBlock = (domain, withWww) => serverBlock({
   www: withWww ? `www.${domain}` : null,
 });
 
-/** Every vendor subdomain of the platform, on the one wildcard certificate. */
+/** Every vendor subdomain of the platform, on the one wildcard certificate. (Quoted: nginx needs quotes around a
+ *  regular expression that contains { } — {0,61} here.) */
 const subdomainBlock = (cert) => serverBlock({
   title: `vendor subdomains of ${PLATFORM_HOST}`,
-  names: `~^(?!www\\.)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.${PLATFORM_HOST.replace(/\./g, '\\.')}$`,
+  names: `"~^(?!www\\.)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.${PLATFORM_HOST.replace(/\./g, '\\.')}$"`,
   canonical: null, cert, www: null,
 });
 
