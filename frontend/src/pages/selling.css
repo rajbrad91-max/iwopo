@@ -602,12 +602,14 @@
 .sl-addons-lbl { font-size: 0.72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); margin-bottom: 8px; }
 .sl-addon-row { display: flex; justify-content: space-between; gap: 10px; font-size: 0.86rem; padding: 4px 0; }
 .sl-addon-price { color: var(--p-deep); font-weight: 650; white-space: nowrap; }
-.sl-pick {
+/* ".sl button" (0,1,1) reset every button and outranked .sl-pick (0,1,0): the non-featured plan's button
+   rendered as plain text. Scoped under .sl so the plan button wins (design review 2026-11-01). */
+.sl .sl-pick {
   width: 100%; padding: 13px; border-radius: 11px; font-weight: 650;
   border: 1px solid var(--ink); color: var(--ink); background: #fff;
   transition: background .18s, color .18s;
 }
-.sl-pick:hover, .sl-pick.solid { background: var(--grad); color: #fff; border-color: transparent; }
+.sl .sl-pick:hover, .sl .sl-pick.solid { background: var(--grad); color: #fff; border-color: transparent; }
 .sl-trial { text-align: center; margin-top: 10px; font-size: 0.82rem; color: var(--p-deep); font-weight: 600; }
 
 .sl-svc-row { max-width: var(--maxw); margin: 36px auto 0; }

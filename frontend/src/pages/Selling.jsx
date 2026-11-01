@@ -259,7 +259,7 @@ export default function Selling({ onSignup, onGoLogin }) {
       <nav className="sl-nav">
         <div className="sl-nav-inner">
           <a href="/" className="sl-logo" aria-label="iwopo home">
-            <img src="/iwopo-logo.png" alt="iwopo" className="sl-logo-img" />
+            <img src="/iwopo-mark.png" alt="" className="sl-logo-img" />
             <span className="sl-logo-word">iwopo</span>
           </a>
           <div className="sl-nav-links">
@@ -495,7 +495,7 @@ export default function Selling({ onSignup, onGoLogin }) {
                 <h3>Create your studio</h3>
                 <p className="sl-signup-sub">Free trial · cancel anytime</p>
                 <label htmlFor="sl-biz">Business name</label>
-                <input id="sl-biz" value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="Perfect Poses Media" />
+                <input id="sl-biz" value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="e.g. Rosewood Photography" />
                 <label htmlFor="sl-email">Email</label>
                 <input id="sl-email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@studio.com" />
                 <label htmlFor="sl-pass">Password</label>
@@ -524,7 +524,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         <div className="sl-foot-top">
           <div className="sl-foot-brand">
             <div className="sl-logo">
-              <img src="/iwopo-logo.png" alt="" className="sl-logo-img" />
+              <img src="/iwopo-mark.png" alt="" className="sl-logo-img" />
               <span className="sl-logo-word">iwopo</span>
             </div>
             <p>The operating system for wedding professionals.</p>
@@ -540,7 +540,7 @@ export default function Selling({ onSignup, onGoLogin }) {
           </div>
         </div>
         <div className="sl-foot-bottom">
-          <span>© {new Date().getFullYear()} IWOPO, LLC · 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804</span>
+          <span>{'© '}{new Date().getFullYear()} IWOPO, LLC · 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804</span>
           <span className="sl-foot-legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refund-policy">Refunds</a><a href="/cookies">Cookies</a></span>
         </div>
       </footer>

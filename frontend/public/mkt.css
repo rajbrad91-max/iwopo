@@ -86,3 +86,7 @@ body.mk { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 
 .mk-shot.is-phone { flex: 0 1 230px; }
 .mk-shot figcaption { font-size: .82rem; color: var(--gray); margin-top: 8px; line-height: 1.4; }
 @media (min-width: 900px) { .mk article { max-width: 860px; } }
+
+/* 🛠️ yearly price under the monthly one on /pricing (design review 2026-11-01) */
+.mk-annual { margin: -4px 0 8px; font-size: .9rem; color: var(--gray); }
+.mk-cta p a { color: inherit; text-decoration: underline; }

@@ -69,7 +69,7 @@ export default function Login({ onLogin, onBack }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        {onBack && <div className="login-back" onClick={onBack}>← Back</div>}
+        {onBack && mode !== 'forgot' && <div className="login-back" onClick={onBack}>← Back to iwopo.com</div>}
         <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>
 
         {twoStep ? (
@@ -98,13 +98,15 @@ export default function Login({ onLogin, onBack }) {
 
             <div className="login-forgot-row">
               <span className="login-forgot-link" onClick={() => { setMode('forgot'); setError(''); setNotice(''); }}>
-                Forgot password?
+                Forgot your password?
               </span>
             </div>
+            {/* a new visitor who lands here has a way in (design review 2026-11-01) */}
+            <p className="login-new">New to iwopo? <a href="/#signup">Create an account</a></p>
           </>
         ) : (
           <>
-            <h1>Reset password</h1>
+            <h1>Forgot your password?</h1>
             <p className="login-sub">We'll email you a reset link</p>
 
             <label>Email</label>

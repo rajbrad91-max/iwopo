@@ -107,7 +107,7 @@ export function renderPage(page, pages) {
   const crumbs = page.crumbs?.length
     ? `<nav class="mk-crumbs" aria-label="Breadcrumb">${page.crumbs.map((c, i) => i === page.crumbs.length - 1 ? `<span>${esc(c.name)}</span>` : `<a href="${c.path}">${esc(c.name)}</a>`).join(' <span aria-hidden="true">›</span> ')}</nav>` : '';
   const plans = page.plans?.length
-    ? `<div class="mk-plans">${page.plans.map(p => `<div class="mk-plan"><h3>${esc(p.name)}</h3><p class="mk-price">${esc(p.price)}<span>${esc(L(page).month)}</span></p><p>${esc(p.storage)} ${esc(L(page).storage)}</p><a class="mk-btn" href="/#signup">${esc(L(page).trial)}</a></div>`).join('')}</div>` : '';
+    ? `<div class="mk-plans">${page.plans.map(p => `<div class="mk-plan"><h3>${esc(p.name)}</h3><p class="mk-price">${esc(p.price)}<span>${esc(L(page).month)}</span></p>${p.annual && !page.lang ? `<p class="mk-annual">or ${esc(p.annual)}/year — save 20%</p>` : ''}<p>${esc(p.storage)} ${esc(L(page).storage)}</p><a class="mk-btn" href="/#signup">${esc(L(page).trial)}</a></div>`).join('')}</div>` : '';
   const list = page.list?.length
     ? `<ul class="mk-cards">${page.list.map(i => `<li><a href="${i.href}"><h2>${esc(i.name)}</h2><p>${esc(i.text)}</p></a></li>`).join('')}</ul>` : '';
   const faq = page.faq?.length
@@ -129,7 +129,7 @@ export function renderPage(page, pages) {
 <body class="mk">
   <header class="mk-top">
     <div class="mk-wrap mk-bar">
-      <a class="mk-logo" href="/"><img src="/iwopo-logo.png" alt="iwopo" width="32" height="32"><span>iwopo</span></a>
+      <a class="mk-logo" href="/"><img src="/iwopo-mark.png" alt="" width="32" height="32"><span>iwopo</span></a>
       <nav class="mk-nav" aria-label="Main">
         <a href="/features">${esc(L(page).features)}</a><a href="/pricing">${esc(L(page).pricing)}</a>${page.lang ? '' : '<a href="/guides">Guides</a>'}<a href="/login">${esc(L(page).login)}</a>
         <a class="mk-btn mk-btn-sm" href="/#signup">${esc(L(page).trial)}</a>
@@ -150,7 +150,7 @@ export function renderPage(page, pages) {
     </article>
     <section class="mk-cta">
       <h2>${esc(L(page).cta)}</h2>
-      <p>${esc(L(page).ctaSub)}</p>
+      <p>${esc(L(page).ctaSub).replace(esc(L(page).login), `<a href="/login">${esc(L(page).login)}</a>`)}</p>
       <a class="mk-btn" href="/#signup">${esc(L(page).trial)}</a>
     </section>
     ${related}
@@ -165,7 +165,7 @@ export function renderPage(page, pages) {
       <div><h2>Countries</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
       <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/compare/honeybook-alternative">HoneyBook alternative</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>
-    <p class="mk-wrap mk-copy">© ${new Date().getFullYear()} iwopo</p>
+    <p class="mk-wrap mk-copy">© ${new Date().getFullYear()} IWOPO, LLC · 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804 · <a href="mailto:sales@iwopo.com">sales@iwopo.com</a></p>
   </footer>
 </body>
 </html>`;

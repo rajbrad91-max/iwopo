@@ -48,7 +48,7 @@ export async function allPages() {
     orderBy: { name: 'asc' },
   });
   const plans = await prisma.plans.findMany({
-    select: { name: true, price_monthly: true, storage_gb: true },
+    select: { name: true, price_monthly: true, storage_gb: true , price_annual: true},
     orderBy: { price_monthly: 'asc' },
   });
 
@@ -100,7 +100,7 @@ export async function allPages() {
     description: 'One monthly subscription for inquiries, contracts, deposits, bookings, galleries, crew, file delivery and a website. Free trial, no card required.',
     h1: 'One price, not five subscriptions',
     lead: 'Most wedding businesses pay separately for galleries, a website, contracts, a CRM and file transfers. iwopo is one subscription for all of it.',
-    plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), storage: p.storage_gb })),
+    plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), annual: p.price_annual != null ? money(p.price_annual) : null, storage: p.storage_gb })),
     sections: [
       { h2: 'Every plan includes', ul: featureList.map(s => `${s.name} — ${FEATURES[s.feature_key].h1}`) },
       { h2: 'Start free', p: ['Try iwopo with a free trial. No card is required, and you can cancel anytime.'] },
@@ -195,7 +195,7 @@ export async function allPages() {
     pages.push({
       path: t.path, kind: 'intl', standalone: true, lang, locale: t.locale, labels: t.labels, langName: t.name,
       title: t.title, description: t.description, h1: t.h1, lead: t.lead, sections: t.sections, faq: t.faq,
-      plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), storage: p.storage_gb })),
+      plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), annual: p.price_annual != null ? money(p.price_annual) : null, storage: p.storage_gb })),
       list: Object.entries(LOCAL).filter(([, l]) => l.lang === lang).map(([path, l]) => ({ name: l.h1, text: l.lead, href: path })),
       alternates: langSet,
       priority: '0.8', changefreq: 'monthly',

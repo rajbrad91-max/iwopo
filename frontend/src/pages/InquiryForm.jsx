@@ -33,6 +33,13 @@ function initials(name) {
   return (w.slice(0, 2).map(x => x[0]).join('') || '·').toUpperCase();
 }
 
+/** A link worth showing: a real page, not just a site's front door (e.g. "https://youtube.com" sent couples to
+ *  YouTube's home page). Needs http(s), a host, and a path or query beyond "/". (Design review, 2026-11-01) */
+function usefulLink(url) {
+  try { const u = new URL(String(url || '')); return /^https?:$/.test(u.protocol) && !!u.hostname && (u.pathname.replace(/\/+$/, '') !== '' || !!u.search); }
+  catch { return false; }
+}
+
 export default function InquiryForm({ handle, byHost = false }) {
   /* On a vendor's own domain there is no handle in the URL — the Host header
    * names them. The server hands back their slug, which is what the lead is
@@ -177,7 +184,7 @@ export default function InquiryForm({ handle, byHost = false }) {
             : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
           <div className="iq-hd-text">
             <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
-            {c.intro_link
+            {usefulLink(c.intro_link)
               ? <a className="iq-sub iq-sub-link" href={c.intro_link} target="_blank" rel="noopener noreferrer">{c.intro_text || 'Tell us about your event'} ↗</a>
               : <p className="iq-sub">{c.intro_text || 'Tell us about your event'}</p>}
           </div>
