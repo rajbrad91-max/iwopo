@@ -70,7 +70,9 @@ export default function PlansView() {
         )}
         {sub && (
           <p>✅ <b>{b.plans.find(p => p.id === sub.plan_id)?.name || 'Your plan'}</b>, {sub.cycle === 'annual' ? 'yearly' : 'monthly'}
-            {sub.status === 'trialing' ? <> — free until {date(sub.renews_at)}, then billed</> : sub.cancels ? <> — ends {date(sub.renews_at)}</> : <> — renews {date(sub.renews_at)}</>}
+            {sub.status === 'trialing'
+              ? <> — free until {date(sub.renews_at)}, then {money(sub.cycle === 'annual' ? b.plans.find(p => p.id === sub.plan_id)?.annual : b.plans.find(p => p.id === sub.plan_id)?.monthly)}/{sub.cycle === 'annual' ? 'year' : 'month'}</>
+              : sub.cancels ? <> — ends {date(sub.renews_at)}</> : <> — renews {date(sub.renews_at)}</>}
             {sub.status === 'past_due' && <span className="pl-state-warn"> · ⚠️ last payment didn’t go through — please update your card</span>}
           </p>
         )}
@@ -117,7 +119,7 @@ export default function PlansView() {
         })}
       </div>
       {err && <p className="pl-banner is-bad">⚠️ {err}</p>}
-      <p className="pl-foot">Prices in USD — at checkout you can pay in your own currency. Cancel any time; you keep your plan until the end of the period.</p>
+      <p className="pl-foot">Prices in USD. Checkout may show your own currency — Stripe converts it and may add a small conversion fee; you can switch to USD on the payment page. Cancel any time; you keep your plan until the end of the period.</p>
     </div>
   );
 }

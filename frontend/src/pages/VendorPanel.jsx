@@ -432,12 +432,15 @@ export default function VendorPanel({ onLogout }) {
                 {services.map(s => (
                   <tr key={s.id}>
                     <td className="biz">{s.icon} {s.name}</td>
-                    <td>${s.price}/mo</td>
+                    {/* included by the vendor's plan → say so (not "$0/mo · Upgrade"); bought on its own → Active */}
+                    <td>{!s.enabled && has(s.feature_key) ? 'Included' : `$${s.price}/mo`}</td>
                     {/* "Off" told a vendor a feature was unavailable and left
                         them there. It now says what to do about it. */}
                     <td>{s.enabled
                       ? <span className="badge active">Active</span>
-                      : <button className="svc-upgrade" onClick={() => go('plans')}>Upgrade</button>}</td>
+                      : has(s.feature_key)
+                        ? <span className="badge active">✅ In your plan</span>
+                        : <button className="svc-upgrade" onClick={() => go('plans')}>Upgrade</button>}</td>
                   </tr>
                 ))}
               </tbody>

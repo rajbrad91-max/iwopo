@@ -34,7 +34,10 @@ export const currentSubscriptionWhere = (vendorId, now = new Date()) => ({
   ],
 });
 
-export const trialEnd = (v) => (v?.trial_ends_at ? new Date(v.trial_ends_at) : new Date(new Date(v?.created_at || Date.now()).getTime() + TRIAL_DAYS * DAY));
+/** End of that day (UTC): a trial that "ends November 30" runs to the end of November 30 — and Stripe, which counts
+ *  whole days left, then shows the same number as iwopo. */
+export const endOfDay = (d) => { const x = new Date(d); x.setUTCHours(23, 59, 59, 0); return x; };
+export const trialEnd = (v) => (v?.trial_ends_at ? new Date(v.trial_ends_at) : endOfDay(new Date(v?.created_at || Date.now()).getTime() + TRIAL_DAYS * DAY));
 export const annualOf = (monthly) => Math.round(Number(monthly) * 12 * (1 - ANNUAL_DISCOUNT) * 100) / 100;
 
 /** The Stripe-backed subscription that counts, if any. */

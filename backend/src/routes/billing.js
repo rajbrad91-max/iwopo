@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
       billingAccess(v), paidSubscription(v),
       prisma.plans.findMany({ orderBy: { price_monthly: 'asc' }, select: { id: true, code: true, name: true, price_monthly: true, price_annual: true, storage_gb: true, plan_features: { select: { feature_key: true } } } }),
     ]);
-    const daysLeft = access.trialEndsAt ? Math.max(0, Math.ceil((access.trialEndsAt - Date.now()) / DAY)) : 0;
+    const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
       ready: stripeReady(),
       state: access.reason,                              // owner | paid | trial | expired

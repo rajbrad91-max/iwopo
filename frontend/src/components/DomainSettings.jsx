@@ -92,9 +92,9 @@ export default function DomainSettings() {
       </section>
 
       <section className="dm-card">
-        <h4 className="dm-h4">💎 Your own domain {own.allowed && <span className={`dm-chip ${chip}`}>{label}</span>}</h4>
+        <h4 className="dm-h4">💎 Your own domain {own.allowed ? <span className={`dm-chip ${chip}`}>{label}</span> : <span className="dm-chip dm-chip-none">🔒 Locked</span>}</h4>
         {!own.allowed ? (
-          <p className="dm-text dm-locked">Part of our top plan: your clients see only your own domain (like <b>clients.yourstudio.com</b>) and your name — never iwopo.</p>
+          <p className="dm-text dm-locked">Available on our top plan once your free trial is over: your clients see only your own domain (like <b>clients.yourstudio.com</b>) and your name — never iwopo.</p>
         ) : (
           <>
             <p className="dm-text">Use a domain you already own, e.g. <b>clients.yourstudio.com</b>. Add one record at your domain company; we check it, fit the padlock and switch it on — then email you.</p>

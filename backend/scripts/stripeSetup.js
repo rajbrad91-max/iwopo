@@ -44,7 +44,8 @@ const portalParams = {
     payment_method_update: { enabled: true },
     customer_update: { enabled: true, allowed_updates: ['email', 'address', 'name'] },
     subscription_cancel: { enabled: true, mode: 'at_period_end' },
-    subscription_update: { enabled: products.length > 0, default_allowed_updates: ['price'], proration_behavior: 'create_prorations', products },
+    subscription_update: { enabled: products.length > 0, default_allowed_updates: ['price'], proration_behavior: 'create_prorations', products,
+      trial_update_behavior: 'continue_trial' },   // switching during the free trial keeps it: billing still starts when it ends
   },
 };
 const saved = await prisma.platform_settings.findUnique({ where: { key: 'stripe_portal_config' }, select: { value: true } });

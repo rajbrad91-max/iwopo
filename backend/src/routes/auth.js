@@ -221,7 +221,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
           role: 'vendor',
           vendor_id: vendor.id,
         },
-        select: { id: true, name: true, role: true, vendor_id: true },
+        select: { id: true, name: true, email: true, role: true, vendor_id: true },   // ✉️ the code is sent to this
       });
 
       /* 3. The subscription itself, for a paid signup.
@@ -256,8 +256,8 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
 
     // ✉️ the account works once the address is confirmed with the emailed code
     await prisma.users.update({ where: { id: created.id }, data: { email_verified_at: null } });
-    const sent = await issueCode(created.id, 'verify', { to: created.email });
-    res.status(201).json({ verify: true, email: created.email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
+    const sent = await issueCode(created.id, 'verify', { to: created.email || email });
+    res.status(201).json({ verify: true, email: created.email || email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
