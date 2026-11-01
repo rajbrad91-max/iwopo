@@ -348,3 +348,10 @@
 .sa-store-tag { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px;
   background: #1d3a3f; color: #2dd4bf; text-transform: uppercase; letter-spacing: .04em; }
 .sa-muted { color: var(--sa-muted, #7c9199); }
+
+/* 🔓 what a plan actually unlocks (PlanUnlocks in Dashboard.jsx) */
+.sa-unlock { border-top: 1px dashed var(--line, rgba(255, 255, 255, .12)); padding-top: 10px; }
+.sa-unlock-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; cursor: pointer; }
+.sa-unlock-save { margin-top: 8px; width: 100%; padding: 8px 12px; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; background: var(--teal, #2dd4bf); color: #06231f; }
+.sa-unlock-none { font-size: 12.5px; color: #d97706; padding: 2px 0; }
+.sa-unlock-msg { font-size: 12.5px; margin-top: 6px; }

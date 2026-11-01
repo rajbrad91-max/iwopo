@@ -420,6 +420,35 @@ router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) =
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* 🔓 What each plan UNLOCKS (2026-11-01). The package card is what the pricing page SAYS; plan_features is what a
+   vendor on that plan actually GETS. Until now only the database could change the second, so the two drifted apart
+   (Vendor Suite unlocked nothing). Super Admin now sets it. Plans and packages share their code (packages.key =
+   plans.code). Only public features can be chosen; private tools are never touched. */
+const unlockCatalog = () => prisma.services.findMany({
+  where: { feature_key: { not: null }, is_private: false }, orderBy: { id: 'asc' },
+  select: { feature_key: true, name: true, icon: true },
+});
+router.get('/admin/plan-unlocks', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const [catalog, plans] = await Promise.all([unlockCatalog(),
+      prisma.plans.findMany({ select: { code: true, name: true, plan_features: { select: { feature_key: true } } } })]);
+    res.json({ catalog, plans: plans.map(p => ({ code: p.code, name: p.name, features: p.plan_features.map(f => f.feature_key) })) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/admin/plan-unlocks/:code', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const plan = await prisma.plans.findUnique({ where: { code: String(req.params.code) }, select: { id: true } });
+    if (!plan) return res.status(404).json({ error: 'No plan with that code' });
+    const allowed = (await unlockCatalog()).map(s => s.feature_key);
+    const want = [...new Set((Array.isArray(req.body?.features) ? req.body.features : []).map(String))].filter(k => allowed.includes(k));
+    await prisma.$transaction([
+      prisma.plan_features.deleteMany({ where: { plan_id: plan.id, feature_key: { in: allowed } } }),   // only public ones
+      ...(want.length ? [prisma.plan_features.createMany({ data: want.map(feature_key => ({ plan_id: plan.id, feature_key })) })] : []),
+    ]);
+    res.json({ ok: true, features: want });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 🔒 Super admin: update a PACKAGE price
 router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
   const { price_monthly, price_annual, price_annual_regular, storage_gb } = req.body;

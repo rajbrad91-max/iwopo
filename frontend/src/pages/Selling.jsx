@@ -243,7 +243,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const standalone = services.filter(s => Number(s.price) > 0);
   const realPkgs = packages.filter(p => p.price_monthly != null);
   const priceOf = (p) => cycle === 'annual'
-    ? { big: Math.round(Number(p.price_annual)), unit: '/yr', sub: p.price_annual_regular ? `reg. $${Math.round(Number(p.price_annual_regular))}` : null }
+    ? { big: Number(p.price_annual).toFixed(2).replace(/\.00$/, ''), unit: '/yr', sub: p.price_annual_regular ? `reg. $${Number(p.price_annual_regular).toFixed(2).replace(/\.00$/, '')}` : null }
     : { big: Number(p.price_monthly).toFixed(2).replace(/\.00$/, ''), unit: '/mo', sub: null };
 
   return (

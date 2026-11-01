@@ -690,6 +690,9 @@ export const api = {
   packages: () => request('/packages'),
   adminServices: () => request('/admin/services'),
   adminPackages: () => request('/admin/packages'),
+  // 🔓 what each plan actually unlocks (Super Admin)
+  adminPlanUnlocks: () => request('/admin/plan-unlocks'),
+  saveAdminPlanUnlocks: (code, features) => request(`/admin/plan-unlocks/${code}`, { method: 'PUT', body: JSON.stringify({ features }) }),
   trialEligible: () => request('/auth/trial-eligible'),
   // 🎫 plans — what a subscription grants, including its storage
   plansList: () => request('/vendors/plans'),

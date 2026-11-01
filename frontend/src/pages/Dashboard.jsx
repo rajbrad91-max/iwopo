@@ -617,6 +617,50 @@ function PriceEditor({ item, isPackage, onSaved }) {
   );
 }
 
+/**
+ * 🔓 What vendors on this plan actually get (2026-11-01). Shown on every package card; checkboxes in Edit mode.
+ * Separate from "INCLUDED" above, which is only what the pricing page lists.
+ */
+function PlanUnlocks({ pkgKey, editMode }) {
+  const [d, setD] = useState(null);
+  const [sel, setSel] = useState([]);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.adminPlanUnlocks()
+      .then(x => { setD(x); setSel(x.plans.find(p => p.code === pkgKey)?.features || []); })
+      .catch(e => setMsg('⚠️ ' + e.message));
+  }, [pkgKey]);
+  if (!d) return msg ? <div className="sa-unlock-msg">{msg}</div> : null;
+  if (!d.plans.some(p => p.code === pkgKey)) return null;
+  const label = (k) => { const s = d.catalog.find(c => c.feature_key === k); return s ? `${s.icon || ''} ${s.name}` : k; };
+  const toggle = (k) => setSel(s => (s.includes(k) ? s.filter(x => x !== k) : [...s, k]));
+  async function save() {
+    setBusy(true); setMsg('');
+    try { const r = await api.saveAdminPlanUnlocks(pkgKey, sel); setSel(r.features); setMsg('✅ Saved — vendors on this plan now get exactly these.'); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="sa-pkg-sec sa-unlock">
+      <div className="sa-pkg-sec-label">🔓 UNLOCKS — what vendors on this plan actually get</div>
+      {editMode ? (
+        <>
+          {d.catalog.map(s => (
+            <label key={s.feature_key} className="sa-unlock-row">
+              <input type="checkbox" checked={sel.includes(s.feature_key)} onChange={() => toggle(s.feature_key)} disabled={busy} />
+              <span>{s.icon} {s.name}</span>
+            </label>
+          ))}
+          <button type="button" className="sa-unlock-save" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save what this plan unlocks'}</button>
+        </>
+      ) : sel.length ? sel.map(k => <div key={k} className="sa-pkg-item"><span>{label(k)}</span></div>)
+        : <div className="sa-unlock-none">Nothing — vendors on this plan get no features yet.</div>}
+      {msg && <div className="sa-unlock-msg">{msg}</div>}
+    </div>
+  );
+}
+
 function PackageCard({ pkg, editMode, onSaved }) {
   const hasAnnual = pkg.price_annual != null;
   return (
@@ -648,6 +692,8 @@ function PackageCard({ pkg, editMode, onSaved }) {
       )}
 
       <div className="sa-trial-pill">🎁 {pkg.trial_days}-day free trial</div>
+
+      <PlanUnlocks pkgKey={pkg.key} editMode={editMode} />
 
       {pkg.included?.length > 0 && (
         <div className="sa-pkg-sec">
