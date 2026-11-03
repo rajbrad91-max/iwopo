@@ -1,0 +1,20 @@
+/* 🛟 Help & Support (components/HelpView.jsx) — panel theme variables, light and dark */
+.hv { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.hv-card { padding: 18px 20px; }
+.hv-h { margin: 0 0 10px; }
+.hv-sub { margin: 0 0 12px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.hv-sub a, .hv-qa a { color: var(--teal); }
+.hv-qa { border-top: 1px solid var(--line); padding: 10px 2px; }
+.hv-qa:first-of-type { border-top: 0; }
+.hv-qa summary { cursor: pointer; font-weight: 600; font-size: 14px; list-style-position: outside; }
+.hv-qa p { margin: 8px 0 10px; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+.hv-link { display: inline-block; text-decoration: none; }
+.hv-lbl { display: block; margin: 12px 0 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.hv-msg { min-height: 140px; resize: vertical; font: inherit; }
+.hv-err { margin: 10px 0 0; font-size: 13px; color: #dc2626; }
+.hv-send { margin-top: 14px; width: 100%; padding: 12px 16px; border: 0; border-radius: 12px; font: inherit; font-weight: 700;
+  cursor: pointer; background: var(--teal); color: #06231f; }
+.hv-send:disabled { opacity: .55; cursor: default; }
+.hv-done { padding: 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; background: rgba(22, 163, 74, .1); border: 1px solid rgba(22, 163, 74, .3); }
+.hv-done .refresh { display: block; margin-top: 10px; }
+@media (max-width: 900px) { .hv { grid-template-columns: 1fr; } }

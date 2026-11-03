@@ -75,6 +75,7 @@ import { hostGuard } from './lib/hostGuard.js';
 import domainRoutes from './routes/domain.js';
 import billingRoutes, { billingWebhook } from './routes/billing.js';
 import { startTrialReminders } from './lib/trialReminders.js';
+import supportRoutes from './routes/support.js';
 
 dotenv.config();
 
@@ -230,7 +231,8 @@ app.use('/api/live', liveshootRoutes);
 app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
 app.use('/api/sites', gate('website'), siteRoutes);
 app.use('/api/domain', domainRoutes);
-app.use('/api/billing', billingRoutes);   // 💳 plans, Stripe checkout and billing portal   // 🌐 the vendor's web address (free subdomain + own domain)
+app.use('/api/billing', billingRoutes);
+app.use('/api/support', supportRoutes);   // 🛟 vendors' help messages   // 💳 plans, Stripe checkout and billing portal   // 🌐 the vendor's web address (free subdomain + own domain)
 
 /* ⚠️ Only answers the health check when nothing wants HTML. A browser or a
    crawler asking for / wants the marketing page; a monitor wants JSON. */

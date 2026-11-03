@@ -43,6 +43,7 @@ import { shownFields } from '../lib/formRules';
 import DomainSettings from '../components/DomainSettings';
 import { clientBase, inquiryUrl, setClientBase } from '../lib/clientBase';
 import BillingBanner from '../components/BillingBanner';
+import HelpView from '../components/HelpView';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -351,6 +352,7 @@ export default function VendorPanel({ onLogout }) {
         <div className="nav-group">ACCOUNT</div>
         <a href={navHref('refer')} className={`nav-item ${tab==='refer'?'active':''}`} aria-current={tab==='refer' ? 'page' : undefined} onClick={navClick('refer')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f465.svg" alt="" /></span><span className="nav-txt">Refer a Friend</span></a>
         <a href={navHref('settings')} className={`nav-item ${tab==='settings'?'active':''}`} aria-current={tab==='settings' ? 'page' : undefined} onClick={navClick('settings')}><span className="nav-ic"><img className="nav-emo" src="/emoji/2699.svg" alt="" /></span><span className="nav-txt">Settings</span></a>
+        <a href={navHref('help')} className={`nav-item ${tab==='help'?'active':''}`} aria-current={tab==='help' ? 'page' : undefined} onClick={navClick('help')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f6df.svg" alt="" /></span><span className="nav-txt">Help &amp; Support</span></a>
         {/* ⚠️ This went to 'packages', which is the vendor's own client-facing
             price list — nothing to do with their subscription. */}
         <StorageBar onUpgrade={() => go('plans')} />
@@ -363,7 +365,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               {tab !== 'fileflyer' && <div className="sub">Welcome back, {user?.name} 👋</div>}
             </div>
           </div>
@@ -378,7 +380,9 @@ export default function VendorPanel({ onLogout }) {
         {error && <div className="err-banner">⚠️ {error}</div>}
         {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) ? (
           <FeatureLocked goServices={() => setTab('services')} />
-        ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'refer' ? (
+        ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'help' ? (
+          <HelpView user={user} onGo={(t) => go(t)} />
+        ) : tab === 'refer' ? (
           <ReferForm user={user} />
         ) : tab === 'leads' ? (
           <LeadsView routeLead={route.lead} onOpenLead={(id) => navigate({ tab: 'leads', lead: id ? String(id) : null })} />

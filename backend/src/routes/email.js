@@ -307,11 +307,11 @@ async function platformTransporter() {
 
 // 📤 send a platform-level email (password resets, system notices).
 // Throws { code:'no_platform_smtp' } when env creds aren't set yet.
-export async function sendPlatformEmail(to, subject, text, html) {
+export async function sendPlatformEmail(to, subject, text, html, { replyTo } = {}) {
   const p = await platformTransporter();
   if (!p) { const e = new Error('Platform email is not configured yet.'); e.code = 'no_platform_smtp'; throw e; }
   try {
-    await p.t.sendMail({ from: `"${p.m.fromName}" <${p.m.from || p.m.user}>`, to, subject, text, html });
+    await p.t.sendMail({ from: `"${p.m.fromName}" <${p.m.from || p.m.user}>`, to, subject, text, html, ...(replyTo ? { replyTo } : {}) });
   } catch (err) {
     // the mail server's own words go to the log; the person sees what to do
     console.error('platform email failed:', err.message);

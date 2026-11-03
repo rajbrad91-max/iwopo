@@ -700,6 +700,8 @@ export const api = {
   billing: () => request('/billing'),
   billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),
   billingPortal: () => request('/billing/portal', { method: 'POST' }),
+  // 🛟 a help message to iwopo (routes/support.js)
+  supportMessage: (body) => request('/support/message', { method: 'POST', body: JSON.stringify(body) }),
   // 📧 prove the platform mail settings actually work
   testPlatformEmail: (to) => request('/settings/platform/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
   // 📞 does the Quo key work? listing the numbers is the cheapest proof
