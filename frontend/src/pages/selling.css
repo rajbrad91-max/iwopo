@@ -14,7 +14,8 @@
   --card: #FFFFFF;
   --radius: 16px;
   --shadow: 0 18px 40px -24px rgba(26, 18, 11, .35);
-  --grad: linear-gradient(135deg, #C44D00 0%, #E65C00 42%, #FF8A3D 100%);
+  /* white text stays readable across the whole gradient (≥ 4.5:1; the old light end was ~3.6:1) — design review 2026-11-01 */
+  --grad: linear-gradient(135deg, #A33C00 0%, #B84500 50%, #C44D00 100%);
   --maxw: 1120px;
 
   background: var(--bg);
@@ -631,15 +632,6 @@
   max-width: var(--maxw); margin: 0 auto;
   display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: start;
 }
-.sl-quotes-block h2, .sl-faq-block h2 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); margin-bottom: 22px; }
-.sl-quotes { display: grid; gap: 16px; }
-.sl-quote {
-  margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 16px;
-  padding: 20px 22px; box-shadow: var(--shadow);
-}
-.sl-quote blockquote { margin: 0 0 12px; font-size: 1.02rem; line-height: 1.5; color: var(--ink); }
-.sl-quote figcaption { font-size: 0.85rem; color: var(--gray); }
-.sl-quote figcaption b { color: var(--ink); }
 
 .sl-faq { display: grid; gap: 8px; }
 .sl-faq-item { background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
@@ -727,3 +719,6 @@
 /* ⚖️ consent line under "Create account" (2026-10-31) */
 .sl-consent { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted, #8A7B6E); text-align: center; }
 .sl-consent a { color: inherit; text-decoration: underline; }
+
+/* the proof section now holds only the FAQ: let it use the full width (design review 2026-11-01) */
+.sl-split > :only-child { grid-column: 1 / -1; }

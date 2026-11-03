@@ -56,7 +56,7 @@ function schema(page, pages) {
 }
 
 /** The <head> every marketing page shares. */
-const EN = { soon: 'Opening soon', soonSub: 'New studios can join very soon · Already a member? Log in', features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
+const EN = { fFeatures: 'Features', fWho: 'Who it’s for', fGuides: 'Guides', fLegal: 'Legal', fCountries: 'Countries', soon: 'Opening soon', soonSub: 'New studios can join very soon · Already a member? Log in', features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
 /* 🚧 while sign-ups are paused, every "start" button says so (seoRender passes page.signupsOpen) */
 const L = (page) => { const l = { ...EN, ...(page.labels || {}) }; return page.signupsOpen === false ? { ...l, trial: l.soon || EN.soon, ctaSub: l.soonSub || EN.soonSub } : l; };
 
@@ -100,6 +100,8 @@ function sectionHtml(s) {
 
 /** The complete page. */
 export function renderPage(page, pages) {
+  // a section can carry the words to use while sign-ups are closed (e.g. no trial promised) — chosen once, here
+  page = { ...page, sections: (page.sections || []).map(s => (page.signupsOpen === false && s.closed ? s.closed : s)) };
   const feats = pages.filter(p => p.kind === 'feature');
   const auds = pages.filter(p => p.kind === 'audience');
   const guides = pages.filter(p => p.kind === 'guide');
@@ -131,7 +133,7 @@ export function renderPage(page, pages) {
     <div class="mk-wrap mk-bar">
       <a class="mk-logo" href="/"><img src="/iwopo-mark.png" alt="" width="32" height="32"><span>iwopo</span></a>
       <nav class="mk-nav" aria-label="Main">
-        <a href="/features">${esc(L(page).features)}</a><a href="/pricing">${esc(L(page).pricing)}</a>${page.lang ? '' : '<a href="/guides">Guides</a>'}<a href="/login">${esc(L(page).login)}</a>
+        <a href="/features">${esc(L(page).features)}</a><a href="/pricing">${esc(L(page).pricing)}</a>${page.lang ? '' : '<a href="/guides">Guides</a><a href="/#faq">FAQ</a>'}<a href="/login">${esc(L(page).login)}</a>
         <a class="mk-btn mk-btn-sm" href="/#signup">${esc(L(page).trial)}</a>
       </nav>
     </div>
@@ -142,7 +144,7 @@ export function renderPage(page, pages) {
       <h1>${esc(page.h1)}</h1>
       ${updated}
       <p class="mk-lead">${esc(page.lead || page.description)}</p>
-      ${(page.images || []).length ? `<div class="mk-shots">${page.images.map((i, n) => `<figure class="mk-shot${i.phone ? ' is-phone' : ''}"><img src="${i.src}" alt="${esc(i.alt)}"${i.w ? ` width="${i.w}" height="${i.h}"` : ''} ${n === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"><figcaption>${esc(i.alt)}</figcaption></figure>`).join('')}</div>` : ''}
+      ${(page.images || []).length ? `<div class="mk-shots">${page.images.map((i, n) => `<figure class="mk-shot${i.phone ? ' is-phone' : ''}"><img src="${i.src}" alt="${esc(i.alt)}"${i.w ? ` width="${i.w}" height="${i.h}"` : ''} ${n === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">${page.lang ? '' : `<figcaption>${esc(i.alt)}</figcaption>`}</figure>`).join('')}</div>` : ''}
       ${plans}
       ${list}
       ${(page.sections || []).map(sectionHtml).join('\n    ')}
@@ -157,12 +159,12 @@ export function renderPage(page, pages) {
   </main>
   <footer class="mk-foot">
     <div class="mk-wrap mk-cols">
-      <div><h2>Features</h2><ul>${feats.map(p => `<li><a href="${p.path}">${esc(p.crumbs.at(-1).name)}</a></li>`).join('')}</ul></div>
-      <div><h2>Who it’s for</h2><ul>${auds.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
-      <div><h2>Guides</h2><ul>${guides.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).fFeatures)}</h2><ul>${feats.map(p => `<li><a href="${p.path}">${esc(p.crumbs.at(-1).name)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).fWho)}</h2><ul>${auds.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).fGuides)}</h2><ul>${guides.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>${esc(L(page).other)}</h2><ul><li><a href="/" hreflang="en">English</a></li>${pages.filter(p => p.kind === 'intl' && p.path !== page.path).map(p => `<li><a href="${p.path}" hreflang="${p.lang}">${esc(p.langName)}</a></li>`).join('')}</ul></div>
-      <div><h2>Legal</h2><ul>${pages.filter(p => p.kind === 'legal').map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
-      <div><h2>Countries</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).fLegal)}</h2><ul>${pages.filter(p => p.kind === 'legal').map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).fCountries)}</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
       <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/compare/honeybook-alternative">HoneyBook alternative</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>
     <p class="mk-wrap mk-copy">© ${new Date().getFullYear()} IWOPO, LLC · 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804 · <a href="mailto:sales@iwopo.com">sales@iwopo.com</a></p>

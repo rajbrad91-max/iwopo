@@ -103,7 +103,8 @@ export async function allPages() {
     plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), annual: p.price_annual != null ? money(p.price_annual) : null, storage: p.storage_gb })),
     sections: [
       { h2: 'Every plan includes', ul: featureList.map(s => `${s.name} — ${FEATURES[s.feature_key].h1}`) },
-      { h2: 'Start free', p: ['Try iwopo with a free trial. No card is required, and you can cancel anytime.'] },
+      { h2: 'Start free', p: ['Try iwopo with a free trial. No card is required, and you can cancel anytime.'],
+        closed: { h2: 'A free trial at launch', p: ['Sign-ups open very soon. Every new studio will start with a free trial, no card required. Existing studios can log in as usual.'] } },
     ],
     faq: [
       ['Is there a free trial?', 'Yes. Start a free trial without a card.'],
@@ -220,7 +221,7 @@ export async function allPages() {
   /* ⚖️ Terms, Privacy, Refunds, Cookies (lib/seo/legal.js) */
   for (const l of Object.values(LEGAL)) pages.push({ ...l, kind: 'legal', standalone: true, updated: LEGAL_UPDATED, priority: '0.3', changefreq: 'yearly' });
 
-  for (const p of pages) { p.updated = p.updated || UPDATED; p.images = IMAGES[p.path] || (p.path.startsWith('/locations/') ? IMAGES['/for/wedding-photographers'] : undefined); }
+  for (const p of pages) { p.updated = p.updated || UPDATED; p.images = IMAGES[p.path] || (['/locations/united-states', '/locations/canada'].includes(p.path) ? IMAGES['/for/wedding-photographers'] : undefined); }
   return pages;
 }
 

@@ -243,7 +243,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const standalone = services.filter(s => Number(s.price) > 0);
   const realPkgs = packages.filter(p => p.price_monthly != null);
   const priceOf = (p) => cycle === 'annual'
-    ? { big: Number(p.price_annual).toFixed(2).replace(/\.00$/, ''), unit: '/yr', sub: p.price_annual_regular ? `reg. $${Number(p.price_annual_regular).toFixed(2).replace(/\.00$/, '')}` : null }
+    ? { big: Number(p.price_annual).toFixed(2).replace(/\.00$/, ''), unit: '/yr', sub: `reg. $${Number(p.price_annual_regular || p.price_monthly * 12).toFixed(2).replace(/\.00$/, '')}` }
     : { big: Number(p.price_monthly).toFixed(2).replace(/\.00$/, ''), unit: '/mo', sub: null };
 
   return (
@@ -265,7 +265,7 @@ export default function Selling({ onSignup, onGoLogin }) {
           <div className="sl-nav-links">
             <a href="#features">Features</a>
             <a href="#packages">Pricing</a>
-            <a href="#industries">Solutions</a>
+            <a href="/guides">Guides</a>
             <a href="#faq">FAQ</a>
           </div>
           <div className="sl-nav-actions">
@@ -309,7 +309,7 @@ export default function Selling({ onSignup, onGoLogin }) {
                   </div>
                   <div className="sl-dash-main">
                     <div className="sl-dash-rev">
-                      <div className="sl-dash-rev-lbl">Revenue this season</div>
+                      <div className="sl-dash-rev-lbl">Revenue this season · demo</div>
                       <div className="sl-dash-rev-num">${revenue.toLocaleString()}</div>
                       <div className="sl-dash-bars">
                         {[42, 58, 40, 72, 64, 88, 76].map((h, i) => (
@@ -436,21 +436,8 @@ export default function Selling({ onSignup, onGoLogin }) {
       {/* Proof + FAQ side by side on wide screens */}
       <section className="sl-section" id="proof">
         <div className="sl-split">
-          <Reveal className="sl-quotes-block">
-            <h2>Studios run calmer seasons on iwopo.</h2>
-            <div className="sl-quotes">
-              {[
-                { q: 'I replaced four subscriptions. Galleries, contracts and payments finally live in one place.', n: 'Aria M.', r: 'Wedding photographer' },
-                { q: 'Leads used to sit for days. Now the assistant replies in seconds and I walk into calls already booked.', n: 'Devon R.', r: 'Wedding DJ' },
-              ].map((t, i) => (
-                <figure key={t.n} className="sl-quote" style={{ transitionDelay: `${i * 90}ms` }}>
-                  <blockquote>“{t.q}”</blockquote>
-                  <figcaption><b>{t.n}</b> · {t.r}</figcaption>
-                </figure>
-              ))}
-            </div>
-          </Reveal>
-
+          {/* Testimonials removed until real, attributable ones exist (design review 2026-11-01): initials-only
+              quotes read as invented on a pre-launch site. */}
           <Reveal className="sl-faq-block" id="faq">
             <h2>Quick answers</h2>
             <div className="sl-faq">

@@ -54,14 +54,12 @@ function serverBlock({ title, names, canonical, cert, www }) {
   return `# 🌐 ${title} — written by scripts/domainProvisioner.js (${ENV}). Do not edit by hand: it is rewritten.
 server {
     listen 80;
-    listen [::]:80;
     server_name ${names};
     location /.well-known/acme-challenge/ { root ${ACME_ROOT}; }
     location / { return 301 ${target}; }
 }
 server {
     listen 443 ssl;
-    listen [::]:443 ssl;
     server_name ${names};
     ssl_certificate ${cert}/fullchain.pem;
     ssl_certificate_key ${cert}/privkey.pem;
