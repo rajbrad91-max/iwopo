@@ -149,9 +149,12 @@ export default function InquiryForm({ handle, byHost = false }) {
       <div className="iq-wrap" style={themeStyleObject(b, cfg?.theme, cfg?.font || 'Inter')}>
         <div className={`iq-card iq-theme-${cfg?.theme || DEFAULT_THEME}`}>
           <div className="iq-hd">
-            {cfg?.logo_path && logoOk
-              ? <img className="iq-logo" src={`/api/me/logo/${cfg.logo_path}`} alt="" onError={() => setLogoOk(false)} />
-              : <div className="iq-mono" aria-hidden="true">{initials(cfg?.brand_name)}</div>}
+            <div className="iq-band" aria-hidden="true" />
+            <div className="iq-badge">
+              {cfg?.logo_path && logoOk
+                ? <img className="iq-logo" src={`/api/me/logo/${cfg.logo_path}`} alt="" onError={() => setLogoOk(false)} />
+                : <div className="iq-mono" aria-hidden="true">{initials(cfg?.brand_name)}</div>}
+            </div>
             <div className="iq-hd-text"><div className="iq-brand">{cfg?.brand_name || 'Booking Inquiry'}</div></div>
           </div>
           <div className="iq-done">
@@ -178,10 +181,14 @@ export default function InquiryForm({ handle, byHost = false }) {
       <div className={`iq-card iq-theme-${theme}`}>
         {/* header: logo (or initials) on top, brand + intro under it — every theme */}
         <div className="iq-hd">
+          {/* 🎨 a soft wash of the studio's colour, the logo in a white circle overlapping it (design 3, 2026-11-03) */}
+          <div className="iq-band" aria-hidden="true" />
           {/* a logo that fails to load is never an empty box — the studio's initials in a circle instead */}
-          {c.logo_path && logoOk
-            ? <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={() => setLogoOk(false)} />
-            : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
+          <div className="iq-badge">
+            {c.logo_path && logoOk
+              ? <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={() => setLogoOk(false)} />
+              : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
+          </div>
           <div className="iq-hd-text">
             <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
             {usefulLink(c.intro_link)

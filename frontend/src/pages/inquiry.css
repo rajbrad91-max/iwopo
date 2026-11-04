@@ -47,22 +47,27 @@
 
 /* header, every theme: the logo (or the studio's initials) centred on top, the name and intro under it
    (tester report 2026-10-16: the logo only showed in Ivory) */
-.iq-hd { position: relative; z-index: 2; padding: 26px 32px 22px; background: var(--brand); border-bottom: 1px solid var(--brand); display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--on-brand);
-}
+.iq-hd { position: relative; z-index: 2; padding: 0 0 20px; background: var(--card, #fff); border-bottom: 1px solid rgba(15, 23, 42, .07);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text); }
+/* 🎨 design 3: a pale wash of the studio's colour, and the logo in a white circle that overlaps it */
+.iq-band { align-self: stretch; height: 66px; background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 38%, #fff), color-mix(in srgb, var(--brand) 12%, #fff)); }
+.iq-badge { width: 82px; height: 82px; margin-top: -42px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px -10px rgba(15, 23, 42, .4), 0 0 0 1px rgba(15, 23, 42, .04); }
+.iq-badge .iq-logo { width: 56px; height: 56px; object-fit: contain; border-radius: 0; }
 .iq-logo { width: 60px; height: 60px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
-.iq-hd-text { width: 100%; text-align: center; }
+.iq-hd-text { width: 100%; text-align: center; padding: 0 32px; box-sizing: border-box; }
 .iq-brand { font-size: 24px; font-weight: 800; color: inherit; display:flex; align-items:center; justify-content:center; gap:8px; }
 .iq-sub { color: var(--muted); font-size: 14px; margin: 5px 0 0; }
 
 /* ⚠️ The header sits ON the brand colour in every theme, so its text must use
    the on-brand pair — which flips dark or light with the brand's lightness.
    --muted is a mid-tone and disappeared on neon yellow and on pale grey. */
-.iq-hd-text .iq-brand { color: var(--on-brand, #F5F0EA); }
-.iq-hd-text .iq-sub { color: var(--on-brand-soft, #F5F0EA); }
+.iq-hd-text .iq-brand { color: var(--text); font-size: 23px; font-weight: 700; letter-spacing: -.01em; }
+.iq-hd-text .iq-sub { color: var(--muted); }
 .iq-sub-link { display: inline-block; text-decoration: underline; cursor: pointer; }
 /* hovering used to turn it the header's own colour, so it vanished; it now
    only loses its underline, staying readable on the brand colour */
-.iq-sub-link:hover { color: var(--on-brand-soft, #F5F0EA); text-decoration-color: transparent; }
+.iq-sub-link:hover { color: var(--text); text-decoration-color: transparent; }
 
 .iq-body { position: relative; z-index: 2; padding: 24px 32px 32px; }
 
@@ -128,7 +133,8 @@
 
 @media (max-width: 620px) {
   .iq-grid { grid-template-columns: 1fr; }
-  .iq-hd, .iq-body { padding-left: 20px; padding-right: 20px; }
+  .iq-body { padding-left: 20px; padding-right: 20px; }
+  .iq-hd-text { padding: 0 20px; }
 }
 
 /* ── 🤍 Ivory ───────────────────────────────────────────────────────────
@@ -137,11 +143,14 @@
    (not a line) below it, small-caps section titles in the brand colour, plain
    boxed fields, and the brand colour on the button. The brand colour setting
    shifts the button, the accents and the page shade together. */
-.iq-mono { display: flex; width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid var(--on-brand, #F5F0EA); color: var(--on-brand, #F5F0EA); align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; flex-shrink: 0; }
+.iq-mono { display: flex; width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid var(--brand); color: var(--brand); align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; flex-shrink: 0; }
 .iq-req-note { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
 .iq-card.iq-theme-ivory { max-width: 820px; border-radius: 4px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(40, 32, 24, 0.05); }
 .iq-theme-ivory .iq-hd { flex-direction: column; gap: 14px; padding: 38px 28px 6px; background: transparent; border-bottom: none; color: var(--text); }
 .iq-theme-ivory .iq-logo { width: 72px; height: 72px; border-radius: 50%; }
+.iq-theme-ivory .iq-band { display: none; }
+.iq-theme-ivory .iq-badge { width: auto; height: auto; margin: 0; background: none; box-shadow: none; }
+.iq-theme-ivory .iq-hd-text { padding: 0; }
 .iq-theme-ivory .iq-mono { display: flex; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--brand); color: var(--brand); align-items: center; justify-content: center; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; letter-spacing: 1px; }
 .iq-theme-ivory .iq-hd-text .iq-brand { color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 34px; letter-spacing: .5px; line-height: 1.15; }
 .iq-theme-ivory .iq-hd-text .iq-sub { margin-top: 16px; color: var(--label); font-weight: 500; font-size: 15px; line-height: 1.55; }
