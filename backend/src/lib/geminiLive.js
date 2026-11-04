@@ -19,7 +19,7 @@ import { pcAllowed } from './pcAgent.js';
    works out where everything is. The voice model keeps the reads, texts, reminders, memory and the PC. */
 const OPERATOR_DOES = new Set(['gallery', 'lead_quick', 'propose_create_lead', 'propose_update_lead', 'gallery_password', 'propose_create_gallery', 'propose_add_gallery_folder', 'propose_delete_gallery', 'propose_mark_selection']);
 import { zoneOf } from './agentReminders.js';
-import { knowledgeText, briefingText, recentConversations } from './agentKnowledge.js';
+import { knowledgeText, recentConversations } from './agentKnowledge.js';
 import prisma from '../config/prisma.js';
 import { waitingForYou } from './agentWaiting.js';
 import { SHORT, shortParams, PANEL_PAGES, PANEL_TOOL, MERGED_AWAY, MERGED_TOOLS } from './tornadoLean.js';

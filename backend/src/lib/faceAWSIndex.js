@@ -8,7 +8,6 @@
 //      matches to it, so one "person" is a parent face plus its matches
 //
 // Grouping costs ONE AWS call per distinct person, not N² comparisons.
-import fs from 'fs';
 import path from 'path';
 import { GALLERIES_ROOT } from '../config/paths.js';
 import prisma from '../config/prisma.js';

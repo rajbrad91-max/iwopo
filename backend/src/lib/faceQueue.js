@@ -13,7 +13,6 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 //                         the backlog is deep (local can't keep up).
 
 import os from 'os';
-import fs from 'fs';
 import path from 'path';
 import prisma from '../config/prisma.js';
 import { getFaceDescriptors } from './faceEngine.js';

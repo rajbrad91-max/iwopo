@@ -43,7 +43,7 @@ const NEVER = [
   /\/features(\/|$)/i,
 ];
 const CONTRACT_OUT = [/contracts?\/[^/]+\/(send|release|resend|email|deliver)/i, /send-contract|release-contract/i];
-export function verdict(method, p, body) {
+export function verdict(method, p) {
   const m = String(method || 'GET').toUpperCase();
   if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(m)) return 'never';
   if (!String(p).startsWith('/') || String(p).includes('..')) return 'never';

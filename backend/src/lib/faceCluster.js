@@ -1,4 +1,3 @@
-import { GALLERIES_ROOT } from '../config/paths.js';
 // 🧑‍🤝‍🧑 Face clustering — group the same person across an album's photos.
 //
 // Runs AFTER indexing, using whatever engine the album was locked to.
@@ -8,13 +7,10 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 // The output feeds the gallery's face circles: one cluster per person, sorted
 // by how many photos they appear in.
 
-import fs from 'fs';
-import path from 'path';
 import prisma from '../config/prisma.js';
 import { portraitScore, isUsableFace, boxSize, presentable, coverReady } from './portraitScore.js';
 import { DIST, DESCRIPTOR_LENGTH, faceDistance } from './faceEngine.js';
 
-const ROOT = GALLERIES_ROOT;
 
 // A face must be at least this confident to be clustered — weak detections
 // (blurry background heads) would otherwise create junk circles.

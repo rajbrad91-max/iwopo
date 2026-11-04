@@ -2,7 +2,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
 import { wouldExceed } from '../lib/storageQuota.js';
 import { orderEvents, VIDEO_FOLDER } from '../lib/albumEvents.js';
-import { writeMaster, writeCrops, SHAPES } from '../lib/coverImage.js';
+import { writeMaster, writeCrops } from '../lib/coverImage.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
