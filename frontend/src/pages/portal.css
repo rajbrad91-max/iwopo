@@ -118,12 +118,12 @@
 .po-msg.is-err { background: #fbeeee; color: #a83a30; }
 
 /* ── packages ─────────────────────────────────────────────── */
-/* each card is its own height. Stretching them to match only reads well when
-   the packages carry similar amounts of detail; with seven inclusions against
-   two it left a white crater above the shorter cards' buttons. */
+/* the cards in a row share one height and every Choose button sits at the bottom, so the buttons line up
+   across the row; a package with fewer inclusions has its spare room between the list and its button
+   (Raj, 2026-11-04 — aligned buttons over cards that each fit their own content). */
 .po-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-  gap: 22px; align-items: start;
+  gap: 22px; align-items: stretch;   /* the cards in a row share one height, so their Choose buttons line up */
 }
 /* larger, softer cards that lift — from the reference layout */
 .po-pkg {
@@ -156,6 +156,7 @@
    and is 26px tall, so it reaches +16px into the card — the name starts below
    that. Horizontal padding matches the body's 24px so the two line up. */
 .po-pkg-hd { display: block; padding: 26px 24px 0; }
+.po-pkg-hd:has(+ .po-pkg-cta) { padding-bottom: 22px; }   /* a package with no inclusions still keeps its space above the button */
 /* sized against Perfect Poses' own tier label: 17px, .2em tracking */
 .po-pkg-name {
   margin: 0 0 6px; font-size: 30px; font-weight: 400;
@@ -442,7 +443,9 @@
 /* the obvious place to press. The card still takes a click anywhere, so this
    is an affordance rather than the only way in. */
 .po-pkg-cta {
-  width: 100%; margin-top: 22px; padding: 14px;
+  /* pinned to the bottom of the card: the extra height of a shorter card sits between its inclusions and the
+     button, never above it — every Choose button in a row at one height (Raj, 2026-11-04) */
+  width: 100%; margin-top: auto; padding: 14px;
   border: none; border-radius: 15px;
   background: var(--ink); color: #fff;
   font: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
