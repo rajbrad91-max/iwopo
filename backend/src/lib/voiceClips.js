@@ -18,6 +18,7 @@ import crypto from 'node:crypto';
 import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
 import { getSetting } from './settings.js';
+import { quiet } from './quiet.js';
 
 const BASE = process.env.STORAGE_BASE || '/var/www/iwopo/storage';
 const TZ = 'America/Vancouver';
@@ -241,7 +242,7 @@ export async function whatsNew(vendorId, { record = true, markSeen = false } = {
     const now = new Date();
     if (told.leads.length) await prisma.leads.updateMany({ where: { vendor_id: v, id: { in: told.leads } }, data: { seen_at: now } });
     if (told.bell.length) await prisma.notifications.updateMany({ where: { vendor_id: v, id: { in: told.bell } }, data: { seen_at: now } });
-    if (told.comms.length) await privateDb.comms_notices.updateMany({ where: { vendor_id: v, id: { in: told.comms } }, data: { seen_at: now } }).catch(() => {});
+    if (told.comms.length) await privateDb.comms_notices.updateMany({ where: { vendor_id: v, id: { in: told.comms } }, data: { seen_at: now } }).catch(quiet('voiceClips · comms_notices.updateMany'));
   }
   const m = clipManifest(v);
   const text = seq.filter(k => k !== 'beep').map(k => m?.lines?.[k] || k).join(' ').replace(/ ([.?])/g, '$1');

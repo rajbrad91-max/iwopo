@@ -11,6 +11,7 @@ import prisma from '../config/prisma.js';
 import { deviceOf, pcAllowed, logDelivery, pcCameOnline, registerDevice } from '../lib/pcAgent.js';
 import { getSetting, setSetting } from '../lib/settings.js';
 import { signToken } from '../middleware/auth.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 
@@ -34,12 +35,12 @@ async function device(req, res, next) {
   if (role) {
     let info; try { info = JSON.parse(d.info || '{}'); } catch { info = {}; }
     info[`${role}_at`] = Date.now();
-    await prisma.pc_devices.update({ where: { id: d.id }, data: { info: JSON.stringify(info).slice(0, 4000) } }).catch(() => {});
+    await prisma.pc_devices.update({ where: { id: d.id }, data: { info: JSON.stringify(info).slice(0, 4000) } }).catch(quiet('pc · pc_devices.update'));
     d.info = JSON.stringify(info);
   }
   // ⏻ while a shutdown / restart / sleep counts down, its check-ins don't make it "on" again
   const off = await prisma.pc_jobs.findFirst({ where: { device_id: d.id, action: 'power', status: 'done', updated_at: { gt: new Date(Date.now() - 120_000) } }, orderBy: { id: 'desc' }, select: { params: true } });
-  if (!off || !/shutdown|restart|sleep|off|reboot/i.test(off.params || '')) await prisma.pc_devices.update({ where: { id: d.id }, data: { last_seen: new Date() } }).catch(() => {});
+  if (!off || !/shutdown|restart|sleep|off|reboot/i.test(off.params || '')) await prisma.pc_devices.update({ where: { id: d.id }, data: { last_seen: new Date() } }).catch(quiet('pc · pc_devices.update'));
   next();
 }
 
@@ -61,8 +62,8 @@ router.post('/claim', async (req, res) => {
 /** The agent says hello (every ~30 s) with what it can see: drives, free space, Resolve running… */
 router.post('/hello', device, async (req, res) => {
   let prev; try { prev = JSON.parse(req.device.info || '{}'); } catch { prev = {}; }
-  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { info: JSON.stringify({ ...(req.body?.helper ? {} : req.body || {}), helper_at: prev.helper_at, agent_at: prev.agent_at, version: req.body?.helper ? prev.version : (req.body?.version || prev.version), helper_version: req.body?.helper ? req.body?.version : prev.helper_version }).slice(0, 4000) } }).catch(() => {});
-  await pcCameOnline(req.device.id).catch(() => {});        // ⏰ a wake that was waiting for it
+  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { info: JSON.stringify({ ...(req.body?.helper ? {} : req.body || {}), helper_at: prev.helper_at, agent_at: prev.agent_at, version: req.body?.helper ? prev.version : (req.body?.version || prev.version), helper_version: req.body?.helper ? req.body?.version : prev.helper_version }).slice(0, 4000) } }).catch(quiet('pc · pc_devices.update'));
+  await pcCameOnline(req.device.id).catch(quiet('pc · pcCameOnline'));        // ⏰ a wake that was waiting for it
   res.json({ ok: true, agent_version: agentFile()?.version || null });
 });
 
@@ -107,7 +108,7 @@ router.get('/next', device, async (req, res) => {
     if (req.socket.destroyed) return undefined;
     await new Promise(r => setTimeout(r, 1000));
   }
-  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { last_seen: new Date() } }).catch(() => {});
+  await prisma.pc_devices.update({ where: { id: req.device.id }, data: { last_seen: new Date() } }).catch(quiet('pc · pc_devices.update'));
   return res.status(204).end();
 });
 
@@ -118,7 +119,7 @@ router.post('/jobs/:id', device, async (req, res) => {
   if (!job) return res.status(404).json({ error: 'Not found' });
   const status = ['running', 'done', 'failed'].includes(req.body?.status) ? req.body.status : job.status;
   if (job.action === 'power' && req.body?.status === 'done' && /shutdown|restart|sleep|off|reboot/i.test(job.params || '')) {
-    await prisma.pc_devices.update({ where: { id: req.device.id }, data: { last_seen: new Date(Date.now() - 10 * 60_000) } }).catch(() => {});
+    await prisma.pc_devices.update({ where: { id: req.device.id }, data: { last_seen: new Date(Date.now() - 10 * 60_000) } }).catch(quiet('pc · pc_devices.update'));
   }
   await prisma.pc_jobs.update({
     where: { id },

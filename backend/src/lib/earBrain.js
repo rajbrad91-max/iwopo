@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 import prisma from '../config/prisma.js';
 import { getSetting } from './settings.js';
 import { liveSetup, voiceToolList } from './geminiLive.js';
+import { quiet } from './quiet.js';
 
 const SESSIONS = new Map();                          // session id → { messages, system, tools, at }
 const TTL = 30 * 60_000;
@@ -173,7 +174,7 @@ async function record(vendorId, cost) {
     where: { vendor_id_day: { vendor_id: Number(vendorId), day } },
     create: { vendor_id: Number(vendorId), day, in_text: BigInt(cost.in + cost.cache_read + cost.cache_write + (cost.s_in || 0) + (cost.s_cache_read || 0) + (cost.s_cache_write || 0)), in_audio: 0n, out_text: BigInt(cost.out + (cost.s_out || 0)), out_audio: BigInt(cost.tts_out), cost_micro: BigInt(micro) },
     update: { in_text: { increment: BigInt(cost.in + cost.cache_read + cost.cache_write + (cost.s_in || 0) + (cost.s_cache_read || 0) + (cost.s_cache_write || 0)) }, out_text: { increment: BigInt(cost.out + (cost.s_out || 0)) }, out_audio: { increment: BigInt(cost.tts_out) }, cost_micro: { increment: BigInt(micro) }, updated_at: new Date() },
-  }).catch(() => {});
+  }).catch(quiet('earBrain · agent_voice_usage.upsert'));
   return micro / 1e6;
 }
 
@@ -269,7 +270,7 @@ export async function earTurn({ vendorId, auth, sessionId, text, send }) {
     const t = sentence.trim();
     if (!t) return;
     const job = { chunks: [], done: false, wake: null };
-    speakAny(t, (pcm) => { job.chunks.push(pcm); job.wake?.(); }, send, cost).catch(() => {}).finally(() => { job.done = true; job.wake?.(); });
+    speakAny(t, (pcm) => { job.chunks.push(pcm); job.wake?.(); }, send, cost).catch(quiet('earBrain · speakAny')).finally(() => { job.done = true; job.wake?.(); });
     voice = voice.then(async () => {
       for (;;) {
         while (job.chunks.length) { if (!tm.sound) tm.sound = Date.now() - tm.t0; send('audio', { pcm: job.chunks.shift() }); }
@@ -277,7 +278,7 @@ export async function earTurn({ vendorId, auth, sessionId, text, send }) {
         await new Promise((res) => { job.wake = res; });
         job.wake = null;
       }
-    }).catch(() => {});
+    }).catch(quiet('earBrain · voice.then'));
   };
 
   for (let round = 0; round < 6; round++) {

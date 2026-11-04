@@ -8,6 +8,7 @@
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { sendPlatformEmail } from '../routes/email.js';
+import { quiet } from './quiet.js';
 
 const TTL_MS = 15 * 60_000, MAX_TRIES = 5, RESEND_GAP_MS = 45_000;
 export const mailSandbox = () => process.env.MAIL_SANDBOX === '1';
@@ -50,7 +51,7 @@ export async function notice(to, subject, lines) {
   if (mailSandbox() || !to) return;
   const text = `${lines.join('\n\n')}\n\nIf this wasn't you, reset your password straight away and contact iwopo support.\n\n— iwopo`;
   await sendPlatformEmail(to, subject, text, shell(subject, lines.map(l => `<p style="margin:0 0 14px">${esc(l)}</p>`).join('') +
-    '<p style="margin:0;color:#6b7280;font-size:13px">If this wasn\'t you, reset your password straight away and contact iwopo support.</p>')).catch(() => {});
+    '<p style="margin:0;color:#6b7280;font-size:13px">If this wasn\'t you, reset your password straight away and contact iwopo support.</p>')).catch(quiet('emailCodes · sendPlatformEmail'));
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

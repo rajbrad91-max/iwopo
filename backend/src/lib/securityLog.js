@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { clientIp } from './clientIp.js';
+import { quiet } from './quiet.js';
 
 /**
  * 🛡️ Security log (2026-10-30): sign-ins, wrong passwords, lock-outs, password changes and email confirmations for
@@ -36,5 +37,5 @@ export function logSecurity(req, user, event) {
     .then(() => (Math.random() < 0.02
       ? prisma.security_events.deleteMany({ where: { created_at: { lt: new Date(Date.now() - KEEP_DAYS * 864e5) } } })
       : null))
-    .catch(() => {});
+    .catch(quiet('securityLog · .then'));
 }

@@ -37,6 +37,7 @@ import { runTraining, undoLastTraining } from '../lib/agentTraining.js';
 import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
 import { serverError } from '../lib/httpError.js';
+import { quiet } from '../lib/quiet.js';
 
 const ALL_TOOLS = [...TOOLS, ...ACTION_TOOLS];
 const ACTIONS = new Set(ACTION_TOOLS.map(t => t.name));
@@ -301,7 +302,7 @@ router.get('/inbox', requireAuth, async (req, res) => {
     if (comms.length || leads.length) {
       const now = new Date();
       if (leads.length) await prisma.leads.updateMany({ where: { vendor_id: v, id: { in: leads.map(l => l.id) } }, data: { seen_at: now } });
-      if (comms.length) await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null, created_at: { gt: since } }, data: { seen_at: now } }).catch(() => {});
+      if (comms.length) await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null, created_at: { gt: since } }, data: { seen_at: now } }).catch(quiet('agent · comms_notices.updateMany'));
     }
     res.json({ items, now: Date.now() });
   } catch (e) { serverError(res, e); }
@@ -546,7 +547,7 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
     else if (ACTIONS.has(name)) out = await runActionTool(name, input, v, req.headers.authorization);
     else return res.status(400).json({ error: `Unknown tool ${name}` });
     // 🧰 for the self-training only (never sent to Tornado) — kept 28 days
-    prisma.agent_tool_log.create({ data: { vendor_id: v, tool: name.slice(0, 60), args: JSON.stringify(input).slice(0, 600), result: JSON.stringify(out ?? {}).slice(0, 600), error: Boolean(out?.error) } }).catch(() => {});
+    prisma.agent_tool_log.create({ data: { vendor_id: v, tool: name.slice(0, 60), args: JSON.stringify(input).slice(0, 600), result: JSON.stringify(out ?? {}).slice(0, 600), error: Boolean(out?.error) } }).catch(quiet('agent · agent_tool_log.create'));
     // ⚡ a small internal change is done straight away — Tornado just says it's done
     if (out?.proposal && isSmallChange(out.proposal.id)) {
       const done = await confirmAction(out.proposal.id, v, req.headers.authorization);

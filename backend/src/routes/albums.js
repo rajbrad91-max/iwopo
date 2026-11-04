@@ -30,6 +30,7 @@ import { renderTiers } from '../lib/photoSizes.js';
 import { enqueuePhotos } from '../lib/photoProcessor.js';
 import { recordObject } from '../lib/storageLedger.js';
 import { serverError } from '../lib/httpError.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -775,7 +776,7 @@ async function cleanupAlbumObjects(vendorId, albumId) {
     const keys = await objects.listAll(objects.PRIVATE, prefix);
     for (let i = 0; i < keys.length; i += 20) {
       await Promise.all(keys.slice(i, i + 20).map(o =>
-        objects.deleteObject(objects.PRIVATE, o.key).catch(() => {})));
+        objects.deleteObject(objects.PRIVATE, o.key).catch(quiet('albums · objects.deleteObject'))));
     }
     if (keys.length) console.log('[album] removed', keys.length, 'objects under', prefix);
   } catch (e) { console.error('[album] R2 cleanup failed:', e.message); }
@@ -991,12 +992,12 @@ router.post('/:id/photos/complete', requireAuth, async (req, res) => {
       const size = Number(head.size || 0);
       const over = await wouldExceed(v, size);                         // measured, not claimed
       if (over) {
-        await objects.deleteObject(objects.PRIVATE, it.key).catch(() => {});
+        await objects.deleteObject(objects.PRIVATE, it.key).catch(quiet('albums · objects.deleteObject'));
         errors.push('over_quota'); continue;
       }
       /* 📒 the storage ledger only hears about objects this server writes —
          a direct upload has to be entered by hand, or the quota under-counts it */
-      await recordObject(objects.PRIVATE, it.key, size).catch(() => {});
+      await recordObject(objects.PRIVATE, it.key, size).catch(quiet('albums · recordObject'));
       const base = name.replace(/_orig\.[^.]+$/, '');
       const row = await prisma.photos.create({
         data: {

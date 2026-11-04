@@ -17,6 +17,7 @@ import { isRaw, stemOf, rawKey, pairAlbum, albumStatus, deleteRaws } from '../li
 import sharp from 'sharp';
 import { withLogo, LOGO_DEFAULTS } from '../lib/rawDelivery.js';
 import { serverError } from '../lib/httpError.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -77,8 +78,8 @@ router.post('/albums/:albumId/complete', requireAuth, async (req, res) => {
       if (!head) { errors.push(`${String(it.name || leaf).slice(0, 80)} did not arrive`); continue; }
       const size = Number(head.size || 0);
       const over = await wouldExceed(v, size);
-      if (over) { await objects.deleteObject(objects.PRIVATE, it.key).catch(() => {}); errors.push('over_quota'); continue; }
-      await recordObject(objects.PRIVATE, it.key, size).catch(() => {});
+      if (over) { await objects.deleteObject(objects.PRIVATE, it.key).catch(quiet('rawsel · objects.deleteObject')); errors.push('over_quota'); continue; }
+      await recordObject(objects.PRIVATE, it.key, size).catch(quiet('rawsel · recordObject'));
       const filename = path.basename(String(it.name || leaf)).slice(0, 200);
       const stem = stemOf(filename);
       // the same RAW uploaded again replaces the old copy rather than doubling it
@@ -221,7 +222,7 @@ router.post('/settings/logo', requireAuth, async (req, res) => {
     await objects.putObject(objects.PRIVATE, key, png, 'image/png', png.length);
     const old = await prisma.rawsel_settings.findUnique({ where: { vendor_id: vid(req) } });
     await prisma.rawsel_settings.upsert({ where: { vendor_id: vid(req) }, create: { vendor_id: vid(req), logo_key: key, ...LOGO_DEFAULTS }, update: { logo_key: key, updated_at: new Date() } });
-    if (old?.logo_key && old.logo_key !== key) await objects.deleteObject(objects.PRIVATE, old.logo_key).catch(() => {});
+    if (old?.logo_key && old.logo_key !== key) await objects.deleteObject(objects.PRIVATE, old.logo_key).catch(quiet('rawsel · objects.deleteObject'));
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

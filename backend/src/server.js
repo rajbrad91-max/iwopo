@@ -77,6 +77,7 @@ import billingRoutes, { billingWebhook } from './routes/billing.js';
 import { startTrialReminders } from './lib/trialReminders.js';
 import supportRoutes from './routes/support.js';
 import { serverError } from './lib/httpError.js';
+import { quiet } from './lib/quiet.js';
 
 dotenv.config();
 
@@ -270,80 +271,80 @@ app.use((err, req, res, _next) => {
 /* 🧹 A revocation row is pointless once the token it names would have expired
    anyway. Without this the table grows by one row per logout and never shrinks.
    Hourly is plenty for something whose rows live at most seven days. */
-setInterval(() => { sweepRevoked().catch(() => {}); }, 60 * 60_000).unref();
-sweepRevoked().catch(() => {});
+setInterval(() => { sweepRevoked().catch(quiet('server · sweepRevoked')); }, 60 * 60_000).unref();
+sweepRevoked().catch(quiet('server · sweepRevoked'));
 
 /* 🧹 And uploads that were begun and abandoned — same cadence, same reason:
    a row nobody will ever finish, and parts still costing storage. */
-setInterval(() => { sweepAbandonedUploads().catch(() => {}); }, 60 * 60_000).unref();
-sweepAbandonedUploads().catch(() => {});
+setInterval(() => { sweepAbandonedUploads().catch(quiet('server · sweepAbandonedUploads')); }, 60 * 60_000).unref();
+sweepAbandonedUploads().catch(quiet('server · sweepAbandonedUploads'));
 
 /* 🧹 Gallery files no photo row names any more — an upload stopped half way,
    a restart mid-batch. Hourly, and once shortly after boot; it never touches
    anything younger than an hour, so an upload in progress is safe. */
-setInterval(() => { sweepGalleryOrphans().catch(() => {}); }, 60 * 60_000).unref();
-setTimeout(() => { sweepGalleryOrphans().catch(() => {}); }, 2 * 60_000).unref();
+setInterval(() => { sweepGalleryOrphans().catch(quiet('server · sweepGalleryOrphans')); }, 60 * 60_000).unref();
+setTimeout(() => { sweepGalleryOrphans().catch(quiet('server · sweepGalleryOrphans')); }, 2 * 60_000).unref();
 
 /* 🖼️ Photos that reached R2 but whose screen sizes were not made yet — a
    restart mid-upload — and face work that only lived in memory. Picked up
    again a few seconds after boot. */
 setTimeout(() => {
-  resumePending().catch(() => {});
-  resumeFaces().catch(() => {});
+  resumePending().catch(quiet('server · resumePending'));
+  resumeFaces().catch(quiet('server · resumeFaces'));
 }, 5_000).unref();
 
 /* 📒 Rebuild the storage ledger from the buckets, nightly.
    The ledger is written best-effort inside putObject — it must never break an
    upload — so it can drift: a failed insert, an object removed outside the app.
    This is the cure, and it is cheap enough at this size to simply redo. */
-setInterval(() => { reconcile(objects).catch(() => {}); }, 24 * 60 * 60_000).unref();
+setInterval(() => { reconcile(objects).catch(quiet('server · reconcile')); }, 24 * 60 * 60_000).unref();
 
 /* 🎫 Close subscriptions whose end date has passed. The quota already ignores
    them, so this is about the record being honest rather than the allowance. */
-setInterval(() => { sweepExpiredSubscriptions().catch(() => {}); }, 60 * 60_000).unref();
-sweepExpiredSubscriptions().catch(() => {});
+setInterval(() => { sweepExpiredSubscriptions().catch(quiet('server · sweepExpiredSubscriptions')); }, 60 * 60_000).unref();
+sweepExpiredSubscriptions().catch(quiet('server · sweepExpiredSubscriptions'));
 
 /* 📊 Visitor events older than a year. Long enough to compare this season with
    last, and no longer — a table that only grows is a bill nobody decided to
    pay, and old visitor data is a liability rather than an asset. */
-setInterval(() => { sweepOldEvents().catch(() => {}); }, 24 * 60 * 60_000).unref();
+setInterval(() => { sweepOldEvents().catch(quiet('server · sweepOldEvents')); }, 24 * 60 * 60_000).unref();
 
 /* 🎉 Once a day. The reminder IS the feature — without it Raj has to
    remember to look, which is the thing he said he cannot do. */
-setInterval(() => { sweepOccasions().catch(() => {}); }, 24 * 60 * 60_000).unref();
+setInterval(() => { sweepOccasions().catch(quiet('server · sweepOccasions')); }, 24 * 60 * 60_000).unref();
 // 🧠 Tornado's self-training: Sunday 3 AM Vancouver, checked hourly; logs older than 28 days are cleared
 setInterval(() => { weeklyTraining().catch(e => console.error('[agent] weekly training', e.message)); }, 60 * 60_000).unref();
 // 📄 the knowledge base → the owner's Google Doc: checked every minute, written only when something changed
 setInterval(() => { syncDocs().catch(e => console.error('[agent] google doc', e.message)); }, 60_000).unref();
-setTimeout(() => { sweepOccasions().catch(() => {}); }, 30_000).unref();
+setTimeout(() => { sweepOccasions().catch(quiet('server · sweepOccasions')); }, 30_000).unref();
 
 /* 📞 The net behind the webhook. Every minute, in-process — Perfect Poses used
    a fifteen-minute cron in a hosting panel that nobody could see running, and
    the result was calls that "hardly get updated". */
-setInterval(() => { pollComms().catch(() => {}); }, 60_000).unref();
-pollComms().catch(() => {});
+setInterval(() => { pollComms().catch(quiet('server · pollComms')); }, 60_000).unref();
+pollComms().catch(quiet('server · pollComms'));
 /* 🧹 Once a day: drop what Quo has deleted, and calls & texts older than a
    year that are not leads or bookings (lib/commsTidy.js). First run a quarter
    of an hour after boot, so a restart never starts with it. */
-setInterval(() => { tidyComms().catch(() => {}); }, 24 * 60 * 60_000).unref();
-setTimeout(() => { tidyComms().catch(() => {}); }, 15 * 60_000).unref();
+setInterval(() => { tidyComms().catch(quiet('server · tidyComms')); }, 24 * 60 * 60_000).unref();
+setTimeout(() => { tidyComms().catch(quiet('server · tidyComms')); }, 15 * 60_000).unref();
 // ⏰ smart reminders: who is waiting more than a day for a reply — every 15 minutes
-setInterval(() => { scanFollowups().catch(() => {}); }, 15 * 60_000).unref();
+setInterval(() => { scanFollowups().catch(quiet('server · scanFollowups')); }, 15 * 60_000).unref();
 // 🧠 email inquiry detector: every new inbox conversation looked at once — every 15 minutes
-setInterval(() => { scanAllInquiries().catch(() => {}); }, 15 * 60_000).unref();
+setInterval(() => { scanAllInquiries().catch(quiet('server · scanAllInquiries')); }, 15 * 60_000).unref();
 // 📇 new Google contacts → Quo, every 15 minutes
-setInterval(() => { syncAllContacts().catch(() => {}); }, 15 * 60_000).unref();
-setTimeout(() => { scanAllInquiries().catch(() => {}); }, 3 * 60_000).unref();
-setTimeout(() => { scanFollowups().catch(() => {}); }, 2 * 60_000).unref();
+setInterval(() => { syncAllContacts().catch(quiet('server · syncAllContacts')); }, 15 * 60_000).unref();
+setTimeout(() => { scanAllInquiries().catch(quiet('server · scanAllInquiries')); }, 3 * 60_000).unref();
+setTimeout(() => { scanFollowups().catch(quiet('server · scanFollowups')); }, 2 * 60_000).unref();
 // 🎞️ Raw Selector: RAWs whose photo was deleted, and RAWs 30 days past delivery
-setInterval(() => { sweepRaws().catch(() => {}); }, 10 * 60_000).unref();
-setTimeout(() => { sweepRaws().catch(() => {}); }, 2 * 60_000).unref();
+setInterval(() => { sweepRaws().catch(quiet('server · sweepRaws')); }, 10 * 60_000).unref();
+setTimeout(() => { sweepRaws().catch(quiet('server · sweepRaws')); }, 2 * 60_000).unref();
 // 🤖 alt text for delivered photos — catches up by itself once an AI key is saved
-setInterval(() => { writeAltTexts().catch(() => {}); }, 60 * 60_000).unref();
+setInterval(() => { writeAltTexts().catch(quiet('server · writeAltTexts')); }, 60 * 60_000).unref();
 // ⏰ AI Agent reminders: alerts that fall due go on the bell (the phone app also rings by itself)
-setInterval(() => { sweepReminders().catch(() => {}); }, 15 * 60_000).unref();
+setInterval(() => { sweepReminders().catch(quiet('server · sweepReminders')); }, 15 * 60_000).unref();
 // 🧠 AI Agent: the business briefing, rebuilt from the live tables every 5 minutes (Raj, 2026-10-11)
-setInterval(() => { refreshBriefings().catch(() => {}); }, 5 * 60_000).unref();
+setInterval(() => { refreshBriefings().catch(quiet('server · refreshBriefings')); }, 5 * 60_000).unref();
 // 📇 Tornado's contact index, near real time: new or changed leads, calls, texts and payments every 10 s
 setInterval(() => { syncContactsQuick().catch(e => console.error('[agent] contact sync', e.message)); }, 10_000).unref();
 

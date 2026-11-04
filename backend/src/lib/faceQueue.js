@@ -22,6 +22,7 @@ import { clusterAlbum } from './faceCluster.js';
 import { indexAlbumAWS, groupAlbumFacesAWS } from './faceAWSIndex.js';
 import * as objects from './objectStore.js';
 import { withLocalFile, galleryKeyFromRel } from './localFile.js';
+import { quiet } from './quiet.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -357,7 +358,7 @@ async function indexOneAlbum(albumId) {
      runs. Recorded in the database — not only in a timer — so a restart in
      between still knows this album has to be grouped (see resumeFaces). */
   if (photos.length) {
-    await prisma.albums.update({ where: { id: Number(albumId) }, data: { faces_clustered: false } }).catch(() => {});
+    await prisma.albums.update({ where: { id: Number(albumId) }, data: { faces_clustered: false } }).catch(quiet('faceQueue · albums.update'));
   }
   const notReady = await prisma.photos.count({ where: { album_id: Number(albumId), ready: false } }).catch(() => 0);
   if (uploadsDone.has(String(albumId)) && !notReady) {

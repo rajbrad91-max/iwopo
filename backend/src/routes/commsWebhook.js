@@ -18,6 +18,7 @@ import { enrichCall, CALL_FIELDS } from '../lib/commsEnrich.js';
 import { announce } from '../lib/commsNotify.js';
 import { ringScreens } from '../lib/commsPop.js';
 import { processLeadRequests } from '../lib/callLeads.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 
@@ -128,8 +129,8 @@ router.post('/', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) =>
         select: CALL_FIELDS,
       });
       if (ev) {
-        await enrichCall(cfg.key, ev).catch(() => {});
-        await processLeadRequests(cfg.vendorId).catch(() => {});   // 📋 a lead Raj asked for can be made now
+        await enrichCall(cfg.key, ev).catch(quiet('commsWebhook · enrichCall'));
+        await processLeadRequests(cfg.vendorId).catch(quiet('commsWebhook · processLeadRequests'));   // 📋 a lead Raj asked for can be made now
       }
       return res.json({ ok: true });
     }

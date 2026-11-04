@@ -29,6 +29,7 @@ import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 const SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':raw-editor';
@@ -236,7 +237,7 @@ router.post('/clients/:albumId/deliver/complete', requireEditor, async (req, res
       // ®️ the vendor's logo, printed before any preview is made from it
       const stamped = await stampLogo(v, it.key).catch(e => { console.error('[rawsel] logo', e.message); return false; });
       const size = Number(stamped || (await objects.headObject(objects.PRIVATE, it.key))?.size || 0);
-      if (!stamped) await recordObject(objects.PRIVATE, it.key, size).catch(() => {});
+      if (!stamped) await recordObject(objects.PRIVATE, it.key, size).catch(quiet('editor · recordObject'));
       const base = leaf.replace(/_orig\.[^.]+$/, '');
       const row = await prisma.photos.create({
         data: {
@@ -283,7 +284,7 @@ router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) 
         text: `Hi,\n\n${count} edited photo${count === 1 ? ' is' : 's are'} now in your gallery, in the "${name}" tab:\n${link}\n\n${studio}`,
       }).then(() => true).catch(() => false);
     }
-    writeAltTexts().catch(() => {});
+    writeAltTexts().catch(quiet('editor · writeAltTexts'));
     res.json({ ok: true, emailed });
   } catch (e) { serverError(res, e); }
 });

@@ -13,6 +13,7 @@ import prisma from '../config/prisma.js';
 import * as objects from './objectStore.js';
 import { recordObject } from './storageLedger.js';
 import { getSetting } from './settings.js';
+import { quiet } from './quiet.js';
 import { DEFAULT_MODEL } from './wopoAssistant.js';   // the same model the rest of the app uses
 
 const POS = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br'];
@@ -56,7 +57,7 @@ export async function stampLogo(vendorId, key) {
   const [photo, logo] = await Promise.all([readAll(key), readAll(s.logo_key)]);
   const out = await withLogo(photo, logo, s);
   await objects.putObject(objects.PRIVATE, key, out, 'image/jpeg', out.length);
-  await recordObject(objects.PRIVATE, key, out.length).catch(() => {});
+  await recordObject(objects.PRIVATE, key, out.length).catch(quiet('rawDelivery · recordObject'));
   return out.length;
 }
 

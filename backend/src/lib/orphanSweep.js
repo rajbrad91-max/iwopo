@@ -28,6 +28,7 @@ import path from 'node:path';
 import prisma from '../config/prisma.js';
 import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from './objectStore.js';
+import { quiet } from './quiet.js';
 
 const GRACE_MS = 60 * 60_000;              // 1 hour
 const TMP_GRACE_MS = 6 * 60 * 60_000;      // a 4 GB film at 1.6 MB/s is ~45 minutes; 6 h is ample
@@ -81,7 +82,7 @@ export async function sweepGalleryOrphans({ dryRun = false } = {}) {
         if (isOwned(album, parts[parts.length - 1])) continue;
         if (k.at && now - new Date(k.at).getTime() < GRACE_MS) continue;
         out.r2++; out.r2Bytes += k.size || 0;
-        if (!dryRun) await objects.deleteObject(objects.PRIVATE, k.key).catch(() => {});
+        if (!dryRun) await objects.deleteObject(objects.PRIVATE, k.key).catch(quiet('orphanSweep · objects.deleteObject'));
       }
     }
   }

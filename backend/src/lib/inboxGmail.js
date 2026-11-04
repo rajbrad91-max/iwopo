@@ -13,6 +13,7 @@ import crypto from 'crypto';
 import { inquiryPage } from './inquiryDetector.js';
 import prisma from '../config/prisma.js';
 import { secretKey, seal, unseal } from './secretBox.js';
+import { quiet } from './quiet.js';
 
 // Gmail: read, mark read/unread, compose and send · Contacts: the Google Contacts ↔ Quo sync (Raj, 2026-10-23)
 const SCOPE = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/contacts';
@@ -91,7 +92,7 @@ export async function finishConnect(state, code, redirectUri) {
 
 export async function disconnect(v) {
   const link = await linkOf(v);
-  if (link?.refresh_token) fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(link.refresh_token)}`, { method: 'POST' }).catch(() => {});
+  if (link?.refresh_token) fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(link.refresh_token)}`, { method: 'POST' }).catch(quiet('inboxGmail · fetch'));
   await prisma.platform_settings.deleteMany({ where: { key: linkKey(v) } });
   tokens.delete(Number(v));
 }
@@ -291,7 +292,7 @@ export async function getThread(v, id) {
   if ((await status(v)).sandbox) { const t = PRACTICE.find(x => x.id === id); if (!t) throw new Error('Not found'); t.unread = false; return { id, subject: t.subject, messages: t.messages }; }
   const th = await gmail(v, `/threads/${encodeURIComponent(id)}?format=full`);
   if ((th.messages || []).some(m => (m.labelIds || []).includes('UNREAD'))) forgetUnread(v);
-  if ((th.messages || []).some(m => (m.labelIds || []).includes('UNREAD'))) gmail(v, `/threads/${encodeURIComponent(id)}/modify`, { method: 'POST', body: JSON.stringify({ removeLabelIds: ['UNREAD'] }) }).catch(() => {});
+  if ((th.messages || []).some(m => (m.labelIds || []).includes('UNREAD'))) gmail(v, `/threads/${encodeURIComponent(id)}/modify`, { method: 'POST', body: JSON.stringify({ removeLabelIds: ['UNREAD'] }) }).catch(quiet('inboxGmail · gmail'));
   return { id, subject: header(th.messages[0], 'Subject') || '(no subject)',
     messages: th.messages.map(m => ({ id: m.id, from: header(m, 'From'), to: header(m, 'To'), date: new Date(Number(m.internalDate)).toISOString(),
       messageId: header(m, 'Message-ID'), references: header(m, 'References'), body: bodyOf(m.payload).trim() })) };

@@ -14,6 +14,7 @@ import webpush from 'web-push';
 import prisma from '../config/prisma.js';
 import { getSetting, setSetting } from './settings.js';
 import { getFeatures } from './entitlements.js';
+import { quiet } from './quiet.js';
 
 let ready = null;
 /** The VAPID key pair — created on first use, then reused forever. */
@@ -52,7 +53,7 @@ export async function pushToVendor(vendorId, title, body, url = '/panel/agent?vo
         sent++;
       } catch (e) {
         // 404 / 410: that browser threw the subscription away — forget it
-        if (e.statusCode === 404 || e.statusCode === 410) await prisma.push_subscriptions.delete({ where: { id: s.id } }).catch(() => {});
+        if (e.statusCode === 404 || e.statusCode === 410) await prisma.push_subscriptions.delete({ where: { id: s.id } }).catch(quiet('agentPush · push_subscriptions.delete'));
       }
     }
     return sent;

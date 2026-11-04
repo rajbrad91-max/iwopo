@@ -22,6 +22,7 @@ import { lookupContacts } from './agentContacts.js';
 import { emailWarning } from './emailCheck.js';
 import { searchKb, leadPrices, SECTIONS } from './agentKb.js';
 import { runOnPc, wakePc, PC_ACTIONS, pcAllowed, deliveriesFor } from './pcAgent.js';
+import { quiet } from './quiet.js';
 
 /** 🐧 shell commands that delete, erase, overwrite or format — these wait for Raj's yes (everything else runs at once) */
 const DESTRUCTIVE = /(^|[\s;&|(])(sudo\s+)?(rm|rmdir|shred|wipefs|mkfs(\.\w+)?|dd|fdisk|parted|sgdisk|truncate|unlink|find\b[^;|&]*-delete|git\s+(clean|reset\s+--hard)|apt(-get)?\s+(remove|purge|autoremove)|snap\s+remove|systemctl\s+(disable|mask))\b|>\s*[/~\w]|\bmv\b[^;|&]*\s\/dev\/null/;
@@ -443,7 +444,7 @@ export async function runTool(name, input, vendorId) {
     }
     case 'mark_seen': {
       const what = String(input.what || 'all'), now = new Date(), done = [];
-      if (what === 'messages' || what === 'all') await markCommsSeen(v, 'all').catch(() => {});   // 👁️ the calls & texts list too
+      if (what === 'messages' || what === 'all') await markCommsSeen(v, 'all').catch(quiet('agentTools · markCommsSeen'));   // 👁️ the calls & texts list too
       if (what === 'messages' || what === 'all') { const r = await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }).catch(() => ({ count: 0 })); done.push(`${r.count} message${r.count === 1 ? '' : 's'}`); }
       if (what === 'notifications' || what === 'all') { const r = await prisma.notifications.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }); done.push(`${r.count} notification${r.count === 1 ? '' : 's'}`); }
       if (what === 'leads' || what === 'all') { const r = await prisma.leads.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: now } }); done.push(`${r.count} lead${r.count === 1 ? '' : 's'}`); }

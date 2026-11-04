@@ -11,6 +11,7 @@
  * eight plain 401s and nothing slowed down.
  */
 import { clientIp } from '../lib/clientIp.js';
+import { quiet } from '../lib/quiet.js';
 
 const buckets = new Map();
 /** when each bucket last refused — so onBlock fires once per lock, not on every refused try */
@@ -46,7 +47,7 @@ export function limit({ max, windowMs, name, key, perAccount = false, onBlock })
     if (hits.length >= max) {
       const retry = Math.ceil((hits[0] + windowMs - now) / 1000);
       res.set('Retry-After', String(retry));
-      if (onBlock && !((blockedAt.get(id) || 0) > now - windowMs)) { blockedAt.set(id, now); Promise.resolve(onBlock(req)).catch(() => {}); }
+      if (onBlock && !((blockedAt.get(id) || 0) > now - windowMs)) { blockedAt.set(id, now); Promise.resolve(onBlock(req)).catch(quiet('rateLimit · Promise.resolve')); }
       // deliberately vague: naming the limit tells someone probing exactly how
       // long to wait between attempts
       return res.status(429).json({ error: 'Too many attempts. Please try again shortly.' });

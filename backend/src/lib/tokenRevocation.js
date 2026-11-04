@@ -27,6 +27,7 @@
  */
 import crypto from 'node:crypto';
 import prisma from '../config/prisma.js';
+import { quiet } from './quiet.js';
 
 const CACHE_MS = 5_000;
 
@@ -100,7 +101,7 @@ export async function revokeToken(payload) {
 export async function revokeAllForUser(userId) {
   const now = new Date();
   // ✉️ remembered devices go too — whoever had the old password must face the emailed code again
-  await prisma.trusted_devices.deleteMany({ where: { user_id: Number(userId) } }).catch(() => {});
+  await prisma.trusted_devices.deleteMany({ where: { user_id: Number(userId) } }).catch(quiet('tokenRevocation · trusted_devices.deleteMany'));
   try {
     await prisma.users.update({
       where: { id: Number(userId) }, data: { tokens_valid_from: now },

@@ -34,6 +34,7 @@ import prisma from '../config/prisma.js';
 import { getFaceDescriptors, faceDistance, selfieLimit } from '../lib/faceEngine.js';
 import { isUsableFace } from '../lib/portraitScore.js';
 import { serverError } from '../lib/httpError.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 } });
@@ -298,7 +299,7 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
     serverError(res, e);
   } finally {
     /* Always, on every path. The selfie does not outlive the request. */
-    if (tmp) await fs.unlink(tmp).catch(() => {});
+    if (tmp) await fs.unlink(tmp).catch(quiet('liveshoot · fs.unlink'));
   }
 });
 

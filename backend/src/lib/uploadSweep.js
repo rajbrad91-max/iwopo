@@ -25,6 +25,7 @@
  */
 import prisma from '../config/prisma.js';
 import * as objects from './objectStore.js';
+import { quiet } from './quiet.js';
 
 const ABANDONED_AFTER_MS = 2 * 24 * 60 * 60 * 1000;
 
@@ -44,7 +45,7 @@ export async function sweepAbandonedUploads() {
            nothing left to charge for, and the row should still go. */
         alreadyGone++;
       }
-      await prisma.pending_uploads.delete({ where: { id: u.id } }).catch(() => {});
+      await prisma.pending_uploads.delete({ where: { id: u.id } }).catch(quiet('uploadSweep · pending_uploads.delete'));
       swept++;
     }
 

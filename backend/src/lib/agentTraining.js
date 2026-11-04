@@ -21,6 +21,7 @@
 import prisma from '../config/prisma.js';
 import { getSetting } from './settings.js';
 import { rulesFor } from './agentRules.js';
+import { quiet } from './quiet.js';
 
 const DAYS = 28;
 const TZ = 'America/Vancouver';
@@ -264,8 +265,8 @@ export async function weeklyTraining() {
   const local = new Date(now.toLocaleString('en-US', { timeZone: TZ }));
   const since = new Date(Date.now() - DAYS * 86400e3);
   // clean-up: tool log and full transcripts older than four weeks (the short summaries stay for Tornado's memory)
-  await prisma.agent_tool_log.deleteMany({ where: { at: { lt: since } } }).catch(() => {});
-  await prisma.agent_conversations.updateMany({ where: { created_at: { lt: since }, transcript: { not: null } }, data: { transcript: null } }).catch(() => {});
+  await prisma.agent_tool_log.deleteMany({ where: { at: { lt: since } } }).catch(quiet('agentTraining · agent_tool_log.deleteMany'));
+  await prisma.agent_conversations.updateMany({ where: { created_at: { lt: since }, transcript: { not: null } }, data: { transcript: null } }).catch(quiet('agentTraining · agent_conversations.updateMany'));
   if (local.getDay() !== 0 || local.getHours() !== 3) return;
   const vendors = await prisma.agent_conversations.groupBy({ by: ['vendor_id'], where: { created_at: { gte: since } } });
   for (const { vendor_id } of vendors) {

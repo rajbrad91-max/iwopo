@@ -12,6 +12,7 @@ import crypto from 'node:crypto';
 import dgram from 'node:dgram';
 import { getSetting } from './settings.js';
 import prisma from '../config/prisma.js';
+import { quiet } from './quiet.js';
 
 /** 🛡️ The PC features are the owner's private tools — only vendors on this allow-list
     (platform setting pc_agent_vendors, e.g. "1") ever see or use them. Vendors buying
@@ -63,7 +64,7 @@ export async function runOnPc(vendorId, action, params, waitMs = 8_000) {
   // 🌙 an app / file job while it is asleep: wake it now, and say so — instead of waiting for a PC that can't answer
   const needsUser = !['power', 'setup_wake'].includes(action);
   if (needsUser && !state.agentOnline && state.helperOnline) {
-    await wakePc(vendorId, { force: true }).catch(() => {});
+    await wakePc(vendorId, { force: true }).catch(quiet('pcAgent · wakePc'));
     return { status: 'done', result: { summary: 'Your PC is asleep — I sent a wake signal. Ask again in a minute (if it shows the sign-in screen, sign in first).' } };
   }
   if (!online && !cancelling && !(state.helperOnline && ['power', 'setup_wake'].includes(action))) return { error: `${device.name} is off or the PC agent isn't running (last seen ${device.last_seen ? new Date(device.last_seen).toLocaleString('en-US', { timeZone: 'America/Vancouver' }) : 'never'}).` };

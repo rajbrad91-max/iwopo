@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { clientIp } from './clientIp.js';
+import { quiet } from './quiet.js';
 
 /** A token and its hash. The plain one is shown once and never stored. */
 export function mintToken() {
@@ -63,7 +64,7 @@ export async function deviceOrAuth(req, res, next) {
     prisma.device_tokens.update({
       where: { id: row.id },
       data: { last_used: new Date(), last_ip: ip },
-    }).catch(() => {});
+    }).catch(quiet('deviceAuth · device_tokens.update'));
 
     return next();
   } catch {

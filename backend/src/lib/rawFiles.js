@@ -11,6 +11,7 @@ import path from 'node:path';
 import prisma from '../config/prisma.js';
 import * as objects from './objectStore.js';
 import { forgetObject } from './storageLedger.js';
+import { quiet } from './quiet.js';
 
 /** Camera RAW formats: Sony, Canon (new + old), Nikon, Fujifilm, Adobe DNG, Panasonic, Olympus. */
 export const RAW_EXT = ['.arw', '.cr3', '.cr2', '.nef', '.raf', '.dng', '.rw2', '.orf'];
@@ -67,8 +68,8 @@ export async function albumStatus(albumId, vendorId) {
 export async function deleteRaws(where) {
   const rows = await prisma.raw_files.findMany({ where, select: { id: true, object_key: true } });
   for (const r of rows) {
-    await objects.deleteObject(objects.PRIVATE, r.object_key).catch(() => {});
-    await forgetObject(objects.PRIVATE, r.object_key).catch(() => {});
+    await objects.deleteObject(objects.PRIVATE, r.object_key).catch(quiet('rawFiles · objects.deleteObject'));
+    await forgetObject(objects.PRIVATE, r.object_key).catch(quiet('rawFiles · forgetObject'));
   }
   await prisma.raw_files.deleteMany({ where: { id: { in: rows.map(r => r.id) } } });
   return rows.length;
@@ -97,8 +98,8 @@ export async function sweepRaws() {
     const known = new Set((await prisma.raw_files.findMany({ where: { vendor_id: v }, select: { object_key: true } })).map(r => r.object_key));
     for (const k of keys) {
       if (known.has(k.key) || Date.now() - new Date(k.at).getTime() < GRACE_MS) continue;
-      await objects.deleteObject(objects.PRIVATE, k.key).catch(() => {});
-      await forgetObject(objects.PRIVATE, k.key).catch(() => {});
+      await objects.deleteObject(objects.PRIVATE, k.key).catch(quiet('rawFiles · objects.deleteObject'));
+      await forgetObject(objects.PRIVATE, k.key).catch(quiet('rawFiles · forgetObject'));
       orphans++;
     }
   }

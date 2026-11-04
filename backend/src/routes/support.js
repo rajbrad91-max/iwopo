@@ -13,6 +13,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { limit } from '../middleware/rateLimit.js';
 import { sendPlatformEmail } from './email.js';
 import { billingAccess } from '../lib/billing.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'sales@iwopo.com';
@@ -52,7 +53,7 @@ router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 
       sendPlatformEmail(user.email, 'We got your message — iwopo',
         `Hi ${user.name || who},\n\nThanks — we got your message and will reply to this email address.\n\nYour message:\n${message}\n\n— iwopo`,
         `<p>Hi ${esc(user.name || who)},</p><p>Thanks — we got your message and will reply to this email address.</p><p><b>Your message:</b></p><p style="white-space:pre-wrap">${esc(message)}</p><p>— iwopo</p>`,
-      ).catch(() => {});
+      ).catch(quiet('support · sendPlatformEmail'));
     }
     res.json({ ok: true, reply_to: user?.email || null });
   } catch {

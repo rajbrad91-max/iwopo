@@ -20,6 +20,7 @@ import { badgesFor, leadBadges, tenDigits } from '../lib/commsBadges.js';
 import { commsBus } from '../lib/commsPop.js';
 import { requestLead, answerBooking } from '../lib/callLeads.js';
 import { serverError } from '../lib/httpError.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -148,7 +149,7 @@ router.post('/contact', requireAuth, async (req, res) => {
     const e164 = raw.startsWith('+') ? `+${raw.replace(/\D/g, '')}` : `+1${key10}`;
     const saved = await saveContact(cfg.key, { existingId: existing?.id, firstName, lastName, email, number: e164 });
     forgetContacts();
-    addToGoogle(v, { firstName, lastName, email, number: e164 }).catch(() => {});   // 📇 saved once → in Google too
+    addToGoogle(v, { firstName, lastName, email, number: e164 }).catch(quiet('comms · addToGoogle'));   // 📇 saved once → in Google too
 
     const name = [firstName, lastName].filter(Boolean).join(' ');
     await privateDb.$executeRawUnsafe(

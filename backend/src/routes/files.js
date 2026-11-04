@@ -16,6 +16,7 @@ import { hashSharePassword } from '../lib/sharePassword.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 
@@ -337,7 +338,7 @@ router.post('/item/:itemId/poster', requireAuth, posterUpload.single('poster'), 
       .toFile(path.join(dir, it.stored_name + SIZES.thumb.suffix));
     res.json({ ok: true });
   } catch { res.status(400).json({ error: 'That picture could not be read.' }); }
-  finally { if (tmp) fs.promises.unlink(tmp).catch(() => {}); }
+  finally { if (tmp) fs.promises.unlink(tmp).catch(quiet('files · fs.promises.unlink')); }
 });
 
 // GET /api/files/item/:itemId/thumb
@@ -964,7 +965,7 @@ router.get('/big/pending', requireAuth, async (req, res) => {
         /* R2 has forgotten it — its own rule clears abandoned parts after seven
            days. The row is stale, so it goes rather than offering the vendor a
            resume that cannot work. */
-        await prisma.pending_uploads.delete({ where: { id: r.id } }).catch(() => {});
+        await prisma.pending_uploads.delete({ where: { id: r.id } }).catch(quiet('files · pending_uploads.delete'));
         continue;
       }
       out.push({
@@ -1001,7 +1002,7 @@ router.post('/big/resume', requireAuth, async (req, res) => {
     try {
       parts = await objects.listParts(objects.PRIVATE, row.object_key, row.upload_id);
     } catch {
-      await prisma.pending_uploads.delete({ where: { id: row.id } }).catch(() => {});
+      await prisma.pending_uploads.delete({ where: { id: row.id } }).catch(quiet('files · pending_uploads.delete'));
       return res.status(410).json({ error: 'expired', message: 'This upload is too old to resume — please start it again.' });
     }
 
