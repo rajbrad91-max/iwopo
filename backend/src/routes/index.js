@@ -345,17 +345,6 @@ router.get('/admin/messages', requireAuth, requireSuperAdmin, async (req, res) =
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 📨 public: submit a support message
-router.post('/support', async (req, res) => {
-  const { from_email, subject, body, vendor_id } = req.body;
-  if (!from_email || !body) return res.status(400).json({ error: 'Email + message required' });
-  try {
-    await prisma.support_messages.create({
-      data: { vendor_id: vendor_id ? Number(vendor_id) : null, from_email, subject: subject || null, body },
-    });
-    res.status(201).json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
 
 // 🔒 Super admin: full services incl. country_prices (for editor)
 router.get('/admin/services', requireAuth, requireSuperAdmin, async (req, res) => {

@@ -1,9 +1,10 @@
 /**
  * 🛟 /api/support — a vendor asks iwopo for help (2026-11-03).
  *
- * POST /api/support/message { topic, subject, message, page } — emails SUPPORT_EMAIL (sales@iwopo.com) with who is
- * asking (studio, account, plan state, page they were on) and Reply-To set to the vendor, so answering is one click;
- * the vendor gets a short "we got it" copy. Signed-in vendors only, 5 messages an hour per account. Who is asking
+ * POST /api/support/message { topic, subject, message, page } — files the message in Super Admin's Messages inbox
+ * (support_messages), then emails SUPPORT_EMAIL (sales@iwopo.com) with who is asking (studio, account, plan state,
+ * page they were on) and Reply-To set to the vendor, so answering is one click; the vendor gets a short "we got it"
+ * copy. Filed first: a message is never lost because an email could not be sent. Signed-in vendors only, 5 messages an hour per account. Who is asking
  * comes from the token, never from the request.
  */
 import express from 'express';
@@ -41,7 +42,11 @@ router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 
     ];
     const text = `${message}\n\n— — —\n${facts.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nReply to this email to answer them.`;
     const html = `<p style="white-space:pre-wrap">${esc(message)}</p><hr><table>${facts.map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td>${esc(v)}</td></tr>`).join('')}</table><p>Reply to this email to answer them.</p>`;
-    await sendPlatformEmail(SUPPORT_EMAIL, head, text, html, { replyTo: user?.email || undefined });
+    await prisma.support_messages.create({
+      data: { vendor_id: vendorId, from_email: user?.email || null, subject: `${TOPICS[topic]}${subject ? `: ${subject}` : ''}`.slice(0, 200), body: message },
+    });
+    try { await sendPlatformEmail(SUPPORT_EMAIL, head, text, html, { replyTo: user?.email || undefined }); }
+    catch (e) { console.warn(`🛟 help message from vendor ${vendorId} filed, but not emailed: ${e.message}`); }
 
     if (user?.email) {                                                         // the vendor's copy (best effort)
       sendPlatformEmail(user.email, 'We got your message — iwopo',
@@ -51,7 +56,7 @@ router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 
     }
     res.json({ ok: true, reply_to: user?.email || null });
   } catch (e) {
-    res.status(e.code === 'no_platform_smtp' ? 503 : 500).json({ error: e.code ? e.message : 'We could not send your message just now — please email sales@iwopo.com.' });
+    res.status(500).json({ error: 'We could not send your message just now — please email sales@iwopo.com.' });
   }
 });
 
