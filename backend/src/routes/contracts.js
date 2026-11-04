@@ -15,6 +15,7 @@ import { notify } from './notifications.js';
 import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { limit } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
@@ -977,7 +978,7 @@ router.get('/sign/:token', async (req, res) => {
 });
 
 // sign: typed name + drawn signature (base64) + initials array
-router.post('/sign/:token', async (req, res) => {
+router.post('/sign/:token', limit({ name: 'contract-sign', max: 20, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   const { signed_name, signature_data, initials } = req.body;
   if (!signed_name || signed_name.trim().length < 2) return res.status(400).json({ error: 'Type your full name to sign' });
   if (!signature_data) return res.status(400).json({ error: 'Please draw your signature' });

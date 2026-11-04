@@ -9,6 +9,7 @@ import { resolveTimezone } from '../lib/timezones.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { mine, mineVia } from '../lib/tenancy.js';
+import { limit } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 function vid(req) {
@@ -557,7 +558,7 @@ router.get('/checkin/:token', async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-router.post('/checkin/:token', async (req, res) => {
+router.post('/checkin/:token', limit({ name: 'crew-checkin', max: 30, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const { action, declarations, lat, lng } = req.body; // in | out
     const a = await prisma.lead_crew.findFirst({

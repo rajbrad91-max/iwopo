@@ -2,6 +2,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
+import { limit } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ router.get('/', async (req, res) => {
 });
 
 // 🗳️ cast a vote — one per IP, enforced by unique index
-router.post('/', async (req, res) => {
+router.post('/', limit({ name: 'poll-vote', max: 30, windowMs: 60 * 60_000 }), async (req, res) => {
   try {
     const ip = clientIp(req);
     const choice = (req.body.choice || '').toString();
@@ -50,7 +51,7 @@ router.post('/', async (req, res) => {
 });
 
 // 📊 password-gated results
-router.post('/results', async (req, res) => {
+router.post('/results', limit({ name: 'poll-results', max: 30, windowMs: 60 * 60_000 }), async (req, res) => {
   try {
     if ((req.body.password || '') !== RESULTS_PASSWORD) return res.status(401).json({ error: 'Wrong password' });
     const grouped = await prisma.poll_votes.groupBy({ by: ['choice'], _count: { _all: true } });

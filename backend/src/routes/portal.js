@@ -328,7 +328,7 @@ router.post('/:token/verify',
 });
 
 /* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package */
-router.post('/:token/pick', async (req, res) => {
+router.post('/:token/pick', limit({ name: 'portal-pick', max: 30, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   const { package_id } = req.body;
   try {
     const lead = await leadByToken(req.params.token);
@@ -396,7 +396,7 @@ router.post('/:token/pick', async (req, res) => {
  * this endpoint is public, so without the check a client could skip straight
  * past the agreement by posting to it directly.
  */
-router.post('/:token/pay-direct', async (req, res) => {
+router.post('/:token/pay-direct', limit({ name: 'portal-pay', max: 30, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });

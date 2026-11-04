@@ -35,6 +35,7 @@ import { getFaceDescriptors, faceDistance, selfieLimit } from '../lib/faceEngine
 import { isUsableFace } from '../lib/portraitScore.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
+import { limit } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 } });
@@ -198,7 +199,7 @@ router.get('/:token', async (req, res) => {
 /**
  * POST /api/live/:token/match → a selfie in, that person's photographs out.
  */
-router.post('/:token/match', upload.single('selfie'), async (req, res) => {
+router.post('/:token/match', limit({ name: 'liveshoot-selfie', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), upload.single('selfie'), async (req, res) => {
   const tmp = req.file?.path;
   try {
     if (!tmp) return res.status(400).json({ error: 'Send a photo of yourself.' });

@@ -661,7 +661,7 @@ function requireAdmin(vt, albumId) {
 }
 
 // admin sends their selection → replace this album's saved selection
-router.post('/:token/selection', async (req, res) => {
+router.post('/:token/selection', limit({ name: 'gallery-selection', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
@@ -709,7 +709,7 @@ router.post('/:token/selection', async (req, res) => {
 });
 
 // admin deletes a photo (all 3 file tiers + DB row; cascades favorites/selections)
-router.delete('/:token/photo/:photoId', async (req, res) => {
+router.delete('/:token/photo/:photoId', limit({ name: 'gallery-photo-remove', max: 120, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
@@ -764,7 +764,7 @@ router.get('/:token/favorites', async (req, res) => {
 });
 
 // add a favorite (idempotent via the unique constraint)
-router.post('/:token/favorites', async (req, res) => {
+router.post('/:token/favorites', limit({ name: 'gallery-favorite', max: 600, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
@@ -785,7 +785,7 @@ router.post('/:token/favorites', async (req, res) => {
 });
 
 // remove a favorite
-router.delete('/:token/favorites/:photoId', async (req, res) => {
+router.delete('/:token/favorites/:photoId', limit({ name: 'gallery-unfavorite', max: 600, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });

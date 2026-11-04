@@ -361,7 +361,7 @@ async function shareForUpload(req, res) {
   return share;
 }
 
-router.post('/:token/big/begin', async (req, res) => {
+router.post('/:token/big/begin', limit({ name: 'share-big-begin', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const share = await shareForUpload(req, res);
     if (!share) return;
@@ -398,7 +398,7 @@ router.post('/:token/big/begin', async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-router.post('/:token/big/sign', async (req, res) => {
+router.post('/:token/big/sign', limit({ name: 'share-big-sign', max: 3000, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const share = await shareForUpload(req, res);
     if (!share) return;
@@ -416,7 +416,7 @@ router.post('/:token/big/sign', async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-router.post('/:token/big/complete', async (req, res) => {
+router.post('/:token/big/complete', limit({ name: 'share-big-complete', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const share = await shareForUpload(req, res);
     if (!share) return;
@@ -462,7 +462,7 @@ router.post('/:token/big/complete', async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-router.post('/:token/big/abort', async (req, res) => {
+router.post('/:token/big/abort', limit({ name: 'share-big-abort', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   try {
     const share = await shareForUpload(req, res);
     if (!share) return;
@@ -476,7 +476,7 @@ router.post('/:token/big/abort', async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
+router.post('/:token/upload', limit({ name: 'share-upload', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), upload.array('files', 30), async (req, res) => {
   const tmp = (req.files || []).map(f => f.path);
   const cleanup = () => tmp.forEach(p => { try { fs.unlinkSync(p); } catch { /* already gone */ } });
   try {
