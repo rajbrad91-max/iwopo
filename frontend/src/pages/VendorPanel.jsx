@@ -3,6 +3,7 @@ import LeadCard from '../components/LeadCard';
 import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter button
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
+import EventCards from '../components/EventCards';
 import { WEDDING_AGREEMENT } from '../lib/contractStarters';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
@@ -3272,9 +3273,13 @@ function PackageEditor({ pkg, onSave, onCancel }) {
   );
 }
 
+/** 🗓️ Answers the main event card shows (EventCards), so Event Details doesn't list them twice. */
+const IN_EVENT_CARD = new Set(['event_type', 'event_date', 'timing_from', 'timing_to', 'hours', 'location', 'guests']);
+
 function LeadDetail({ lead, onBack, onSaved }) {
   const dialog = useDialog();
   const [edit, setEdit] = useState(false);
+  const [peEditing, setPeEditing] = useState(false);   // 🗓️ the pre-event editor in place of the event cards
   const [cfg, setCfg] = useState(null);
   const [ep, setEp] = useState({
     role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '',
@@ -3511,6 +3516,17 @@ function LeadDetail({ lead, onBack, onSaved }) {
     </div>
   );
 
+  /* 🗓️ The main event for the event cards — the lead's own columns, and the times from the form's
+     Starting/Ending Time questions (they map to timing_from / timing_to and live in the answers). */
+  const formFields = (Array.isArray(lead.form_snapshot) && lead.form_snapshot.length) ? lead.form_snapshot : (cfg?.custom_fields || []);
+  const answerFor = (key) => { const f = formFields.find(x => x.maps_to === key); return f ? (lead.custom_data || {})[f.id] : undefined; };
+  const mainEvent = (lead.event_date || lead.event_type) ? {
+    name: lead.event_type || 'Main event', date: lead.event_date,
+    from: answerFor('timing_from') || '', to: answerFor('timing_to') || '',
+    hours: answerFor('hours') || (lead.hours ? `${lead.hours} hrs` : ''),
+    location: lead.location || '', guests: lead.guests || '',
+  } : null;
+
   // ---- VIEW MODE ----
   return (
     <div className="ld-view">
@@ -3593,7 +3609,8 @@ function LeadDetail({ lead, onBack, onSaved }) {
         const live = new Map((cfg?.custom_fields || []).map(f => [f.id, f]));   // older snapshots kept no rules
         const withRules = defs.map(f => (f.show_if || !live.get(f.id) ? f
           : { ...f, show_if: live.get(f.id).show_if, options: f.options || live.get(f.id).options, allow_other: f.allow_other ?? live.get(f.id).allow_other }));
-        const asked = shownFields(withRules, cd, { heard: lead.heard, role: lead.role });
+        const asked = shownFields(withRules, cd, { heard: lead.heard, role: lead.role })
+          .filter(f => !(mainEvent && IN_EVENT_CARD.has(f.maps_to)));   // shown on the main event card already
         const rows = asked.map(f => [f.label, valueFor(f)]).filter(([, v]) => v !== null);
         // notes aren't a form field — they're the free-text box every form has
         if (has(lead.notes)) rows.push(['📝 Notes', lead.notes]);
@@ -3612,8 +3629,11 @@ function LeadDetail({ lead, onBack, onSaved }) {
         );
       })()}
 
-      {/* 🗓️ Pre-events — Mehndi, Jaggo, Reception… printed in the contract's schedule */}
-      <PreEvents key={`${lead.id}:${lead.updated_at}`} lead={lead} onSaved={onSaved} />
+      {/* 🗓️ The main event and the pre-events as cards (EventCards); the pre-event editor opens in their place.
+          Pre-events print in the contract's schedule. */}
+      {peEditing
+        ? <PreEvents key={`${lead.id}:${lead.updated_at}`} lead={lead} onSaved={onSaved} onDone={() => setPeEditing(false)} />
+        : <EventCards main={mainEvent} preEvents={lead.pre_events} onEditMain={openEdit} onEditPre={() => setPeEditing(true)} />}
 
       {/* 📦 Packages — in the left column under the event details, since it's
           part of reading the enquiry rather than a side action */}

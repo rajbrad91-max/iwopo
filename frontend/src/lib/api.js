@@ -120,14 +120,16 @@ export function fmtEventDate(v, { long = false } = {}) {
     : { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** Day number, short month and weekday for an event date — no timezone shift. */
+/** Day number, short month, weekday (long and short) and year for an event date — no timezone shift. */
 export function eventDateParts(v) {
   const d = ymd(v);
-  if (!d) return { day: '—', mon: '', dow: '' };
+  if (!d) return { day: '—', mon: '', dow: '', dowShort: '', year: '' };
   return {
     day: d.getDate(),
     mon: d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase(),
     dow: d.toLocaleDateString(undefined, { weekday: 'long' }),
+    dowShort: d.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase(),
+    year: d.getFullYear(),
   };
 }
 

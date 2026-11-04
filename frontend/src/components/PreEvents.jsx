@@ -15,7 +15,7 @@ function peHours(e) {
 
 const BLANK = { name: '', date: '', from: '', to: '', location: '', guests: '', service: '' };
 
-export default function PreEvents({ lead, onSaved }) {
+export default function PreEvents({ lead, onSaved, onDone }) {
   const [list, setList] = useState(() => (Array.isArray(lead.pre_events) ? lead.pre_events : []).map(e => ({ ...BLANK, ...e })));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -54,6 +54,8 @@ export default function PreEvents({ lead, onSaved }) {
       <div className="pe-actions">
         <button type="button" className="refresh" onClick={add}>＋ Add pre-event</button>
         {dirty && <button type="button" className="refresh pe-save" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save pre-events'}</button>}
+        {/* back to the event cards — offered only once everything is saved, so nothing typed is lost */}
+        {onDone && !dirty && <button type="button" className="refresh" onClick={onDone}>Done</button>}
         {msg && <span className="pe-msg">{msg}</span>}
       </div>
     </div>
