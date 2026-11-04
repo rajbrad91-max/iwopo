@@ -1,6 +1,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const MAX_PACKAGES = 3;   // per template
@@ -26,7 +27,7 @@ router.get('/templates', requireAuth, async (req, res) => {
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     });
     res.json({ templates: tpls.map(t => ({ ...t, packages: pkgs.filter(p => p.template_id === t.id) })) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/vendor-packages/templates → add template (max 6)
@@ -41,7 +42,7 @@ router.post('/templates', requireAuth, async (req, res) => {
       data: { vendor_id: Number(v), name: req.body.name || 'New Event', sort_order: n + 1 }, // 🔒 tenancy
     });
     res.status(201).json({ template });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/vendor-packages/templates/:id → rename
@@ -55,7 +56,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });    // 🔒 tenancy
     const template = await prisma.package_templates.update({ where: { id }, data: { name: req.body.name } });
     res.json({ template });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/vendor-packages/templates/:id (keeps at least 1)
@@ -71,7 +72,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
     if (n <= 1) return res.status(400).json({ error: 'Keep at least 1 template' });
     await prisma.package_templates.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/vendor-packages → my packages
@@ -84,7 +85,7 @@ router.get('/', requireAuth, async (req, res) => {
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     });
     res.json({ packages });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/vendor-packages → add (max 3 per template)
@@ -109,7 +110,7 @@ router.post('/', requireAuth, async (req, res) => {
       },
     });
     res.status(201).json({ package: pkg });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/vendor-packages/:id → rename / pricing / inclusions
@@ -132,7 +133,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (inclusions !== undefined && inclusions !== null) data.inclusions = inclusions;  // Json column
     const pkg = await prisma.vendor_packages.update({ where: { id }, data });
     res.json({ package: pkg });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/vendor-packages/:id (not the default one)
@@ -147,7 +148,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (own.is_default) return res.status(400).json({ error: "Can't delete the default package" });
     await prisma.vendor_packages.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

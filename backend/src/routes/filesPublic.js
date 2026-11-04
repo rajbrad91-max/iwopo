@@ -12,6 +12,7 @@ import { checkSharePassword } from '../lib/sharePassword.js';
 import * as objects from '../lib/objectStore.js';
 import { recordEvent } from '../lib/siteEvents.js';
 import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
+import { serverError } from '../lib/httpError.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -105,7 +106,7 @@ router.get('/:token', async (req, res) => {
       ...publicShare(share, vendor),
       items: items.map(i => ({ ...i, size_bytes: Number(i.size_bytes) })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -176,7 +177,7 @@ router.get('/:token/browse', async (req, res) => {
       folders: folders.map(f => ({ ...f, file_count: byFolder[f.id] || 0 })),
       items: items.map(i => ({ ...i, size_bytes: Number(i.size_bytes) })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Everything under a folder, rebuilt inside the archive. */
@@ -239,7 +240,7 @@ router.get('/:token/zip', async (req, res) => {
     archive.pipe(res);
     await zipInto(archive, share.vendor_id, rootId, '');
     archive.finalize();
-  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+  } catch (e) { if (!res.headersSent) serverError(res, e); }
 });
 
 // GET /api/f/:token/thumb/:itemId → preview for a client browsing in grid view
@@ -279,7 +280,7 @@ router.post('/:token/unlock', limit({ name: 'share-unlock', max: 12, windowMs: 1
       maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax', httpOnly: true, secure: true,
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/f/:token/download/:itemId → one file
@@ -321,7 +322,7 @@ router.get('/:token/download/:itemId', async (req, res) => {
     const full = path.join(vendorDir(share.vendor_id), item.stored_name);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
     res.download(full, item.filename);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -394,7 +395,7 @@ router.post('/:token/big/begin', async (req, res) => {
 
     res.json({ upload_id: uploadId, key, stored_name: stored,
       part_size: BIG_PART_SIZE, min_part_size: BIG_MIN_PART_SIZE });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/:token/big/sign', async (req, res) => {
@@ -412,7 +413,7 @@ router.post('/:token/big/sign', async (req, res) => {
       return res.status(403).json({ error: 'Not your key' });
     }
     res.json({ url: await objects.signPart(objects.PRIVATE, key, uploadId, part) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/:token/big/complete', async (req, res) => {
@@ -458,7 +459,7 @@ router.post('/:token/big/complete', async (req, res) => {
       },
     });
     res.status(201).json({ added: 1, id: row.id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/:token/big/abort', async (req, res) => {
@@ -472,7 +473,7 @@ router.post('/:token/big/abort', async (req, res) => {
     }
     await objects.abortMultipart(objects.PRIVATE, key, uploadId);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
@@ -541,7 +542,7 @@ router.post('/:token/upload', upload.array('files', 30), async (req, res) => {
       n++;
     }
     res.status(201).json({ ok: true, added: n });
-  } catch (e) { cleanup(); res.status(500).json({ error: e.message }); }
+  } catch (e) { cleanup(); serverError(res, e); }
 });
 
 export default router;

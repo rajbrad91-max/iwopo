@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import * as gm from '../lib/inboxGmail.js';
 import { unreadCalls } from '../lib/commsSeen.js';
 import privateDb from '../config/privateDb.js';
+import { serverError } from '../lib/httpError.js';
 
 /* 📧 /api/inbox — the owner's private inbox (mounted behind the 'comms' feature gate, like Calls & Messages). */
 const router = express.Router();
@@ -18,7 +19,7 @@ router.get('/counts', requireAuth, async (req, res) => {
     const [calls, email] = await Promise.all([unreadCalls(v, privateDb).catch(() => 0), gm.unreadCount(v).catch(() => 0)]);
     const c = { calls, email, instagram: 0, whatsapp: 0 };
     res.json({ ...c, total: c.calls + c.email + c.instagram + c.whatsapp });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/gmail/status', requireAuth, async (req, res) => { try { res.json(await gm.status(vid(req))); } catch (e) { fail(res, e); } });

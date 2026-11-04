@@ -1,6 +1,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { clientIp } from '../lib/clientIp.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.get('/', async (req, res) => {
       select: { choice: true },
     });
     res.json({ title: POLL_TITLE, options: OPTIONS, hints: HINTS, myVote: vote?.choice || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🗳️ cast a vote — one per IP, enforced by unique index
@@ -45,7 +46,7 @@ router.post('/', async (req, res) => {
       await prisma.poll_votes.create({ data: { choice, ip } });
     } catch { /* ON CONFLICT (ip) DO NOTHING — a racing vote already landed */ }
     res.json({ ok: true, myVote: choice });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📊 password-gated results
@@ -58,7 +59,7 @@ router.post('/results', async (req, res) => {
     for (const r of grouped) if (counts[r.choice] !== undefined) counts[r.choice] = r._count._all;
     const total = Object.values(counts).reduce((s, n) => s + n, 0);
     res.json({ counts, total, options: OPTIONS });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

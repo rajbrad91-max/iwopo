@@ -13,6 +13,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { normalizeDomain, checkDomain, dnsInstructions } from '../lib/customDomain.js';
 import { ownDomainAllowed, subdomainsLive, subdomainFor, slugIsSubdomainSafe, clientBaseUrl, forgetHosts } from '../lib/vendorHosts.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -47,7 +48,7 @@ async function snapshot(v) {
 router.get('/', async (req, res) => {
   const v = vendorOf(req);
   if (!v) return res.status(400).json({ error: 'Not a vendor account' });
-  try { res.json(await snapshot(v)); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await snapshot(v)); } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/domain { domain } → connect a domain (or clear it with an empty value). Only records the intent; the
@@ -76,7 +77,7 @@ router.put('/', async (req, res) => {
     await prisma.vendor_sites.upsert({ where: { vendor_id: v }, update: fields, create: { ...fields, vendor_id: v } });   // 🔒
     forgetHosts();
     res.json(await snapshot(v));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/domain/check → read DNS now and say what was found. When it points here, the provisioner is asked to act
@@ -95,7 +96,7 @@ router.post('/check', async (req, res) => {
       });
     }
     res.json({ ...result, ...(await snapshot(v)) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

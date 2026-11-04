@@ -29,6 +29,7 @@ import { getFeatures } from '../lib/entitlements.js';
 import { renderTiers } from '../lib/photoSizes.js';
 import { enqueuePhotos } from '../lib/photoProcessor.js';
 import { recordObject } from '../lib/storageLedger.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -131,7 +132,7 @@ router.get('/requests', requireAuth, async (req, res) => {
       new Date(b.sent_at || 0) - new Date(a.sent_at || 0));
 
     res.json({ requests });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -156,7 +157,7 @@ router.delete('/requests/:albumId', requireAuth, async (req, res) => {
     await prisma.selection_notes.deleteMany({ where: { album_id: id } });
 
     res.json({ ok: true, removed: count });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -176,7 +177,7 @@ router.put('/requests/:albumId', requireAuth, async (req, res) => {
       create: { album_id: id, note: '', updated_at: new Date(), completed_at: done ? new Date() : null },
     });
     res.json({ ok: true, done });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/', requireAuth, async (req, res) => {
@@ -227,7 +228,7 @@ router.get('/', requireAuth, async (req, res) => {
       };
     });
     res.json({ albums: rows.map(publicAlbum) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 create album
@@ -290,7 +291,7 @@ router.post('/', requireAuth, async (req, res) => {
       },
     });
     res.status(201).json({ album: publicAlbum(album) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 confirmed bookings (for auto-fill name + phone) — status 'booked'
@@ -304,7 +305,7 @@ router.get('/booking-options', requireAuth, async (req, res) => {
       orderBy: { name: 'asc' },
     });
     res.json({ bookings });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 update album
@@ -323,7 +324,7 @@ router.put('/settings', requireAuth, async (req, res) => {
       create: { vendor_id: v, ...data },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 album settings GET — per vendor
@@ -341,7 +342,7 @@ router.get('/settings', requireAuth, async (req, res) => {
     const settings = row || { pw_prefix: '', spw_prefix: '', instructions_template: null };
     settings.gallery_token = vendor?.gallery_token || null;
     res.json({ settings });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 const THEME_DEFAULTS = {
@@ -357,7 +358,7 @@ router.get('/theme', requireAuth, async (req, res) => {
   try {
     const theme = await prisma.gallery_theme.findUnique({ where: { vendor_id: v } }); // 🔒 tenancy
     res.json({ theme: theme || { ...THEME_DEFAULTS } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🎨 gallery theme PUT — per vendor
@@ -377,7 +378,7 @@ router.put('/theme', requireAuth, async (req, res) => {
       create: { vendor_id: v, ...data },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
@@ -421,7 +422,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (!count) return res.status(404).json({ error: 'Not found' });
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album: publicAlbum(album) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -444,7 +445,7 @@ router.get('/:id/passwords', requireAuth, async (req, res) => {
       guest: openPassword(a.guest_password_enc), guest_set: !!a.guest_password,
       admin: openPassword(a.admin_password_enc), admin_set: !!a.admin_password,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 email gallery instructions to client
@@ -484,7 +485,7 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     const { sendLeadEmail } = await import('./email.js');
     await sendLeadEmail(req, lead, 'Your Photos Are Ready 📸', body);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 const DEFAULT_INSTRUCTIONS = `Dear {client_name},
@@ -532,7 +533,7 @@ router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) 
     });
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album: publicAlbum(album) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -625,7 +626,7 @@ router.put('/:id/cover-focus', requireAuth, async (req, res) => {
     } catch (e) { console.error('[cover] re-crop failed:', e.message); }
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album: publicAlbum(album) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🌐 public cover image
@@ -671,7 +672,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     });
     res.json({ album: publicAlbum(album), photos, events: orderEvents(events) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 events CRUD (per-client mode)
@@ -692,7 +693,7 @@ router.post('/:id/events', requireAuth, async (req, res) => {
       select: { id: true, name: true, sort_order: true },
     });
     res.status(201).json({ event });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
   const v = vid(req);
@@ -706,7 +707,7 @@ router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
     if (!count) return res.status(404).json({ error: 'Not found' });
     const event = await prisma.album_events.findFirst({ where, select: { id: true, name: true } });
     res.json({ event });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 /**
  * 🗑️ Delete a folder AND everything in it.
@@ -757,7 +758,7 @@ router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
     }
     void dir;
     res.json({ ok: true, deleted_photos: doomed.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -803,7 +804,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
        what is left is housekeeping. */
     res.json({ ok: true });
     cleanupAlbumObjects(v, Number(req.params.id));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 upload photos → 3-tier pipeline (thumb 800 / full 2200 webp / original)
@@ -900,7 +901,7 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
        leave every remaining upload of the batch sitting in /tmp. The sweep in
        lib/orphanSweep.js catches anything else that slips through. */
     for (const f of req.files || []) { try { fs.unlinkSync(f.path); } catch { /* moved or gone */ } }
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -961,7 +962,7 @@ router.post('/:id/photos/begin', requireAuth, async (req, res) => {
       items.push({ key, url: await objects.signPut(objects.PRIVATE, key, Number(f.size)) });
     }
     res.json({ items });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/:id/photos/complete', requireAuth, async (req, res) => {
@@ -1019,7 +1020,7 @@ router.post('/:id/photos/complete', requireAuth, async (req, res) => {
     if (own.kind !== 'liveshoot') noteUpload(id);
     if (errors.includes('over_quota')) return res.status(413).json({ error: 'over_quota', message: 'That would go over your storage limit.', created: created.length });
     res.status(created.length ? 201 : 400).json({ created: created.length, errors });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1159,7 +1160,7 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
       },
     });
     res.status(201).json({ photo: { ...photo, size_bytes: photo.size_bytes == null ? null : Number(photo.size_bytes) } });
-  } catch (e) { cleanup(); res.status(500).json({ error: e.message }); }
+  } catch (e) { cleanup(); serverError(res, e); }
 });
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1212,7 +1213,7 @@ router.post('/:id/videos/begin', requireAuth, async (req, res) => {
       part_size: 64 * 1024 * 1024,
       min_part_size: 5 * 1024 * 1024,               // anything smaller will be rejected on completion
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // sign — one part at a time, so a resumed upload only re-signs what it needs
@@ -1236,7 +1237,7 @@ router.post('/:id/videos/sign', requireAuth, async (req, res) => {
     }
 
     res.json({ url: await objects.signPart(objects.PRIVATE, key, uploadId, part) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // complete — stitch the parts, then record the film
@@ -1314,7 +1315,7 @@ router.post('/:id/videos/complete', requireAuth, uploadVideo.single('poster'), a
       },
     });
     res.status(201).json({ photo: { ...photo, size_bytes: Number(photo.size_bytes) } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // abandon — a vendor who cancels should not leave parts costing storage
@@ -1329,7 +1330,7 @@ router.post('/:id/videos/abort', requireAuth, async (req, res) => {
     if (key !== galleryKey(v, id, path.basename(key))) return res.status(403).json({ error: 'Not your key' });  // 🔒
     await objects.abortMultipart(objects.PRIVATE, key, uploadId);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1344,7 +1345,7 @@ router.post('/:id/uploads-done', requireAuth, async (req, res) => {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });  // 🔒
     if (!own) return res.status(404).json({ error: 'Album not found' });
     res.json(await uploadsFinished(id));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1470,7 +1471,7 @@ router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
       }
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 serve a gallery file — token via header OR ?token= (for <img src>). type = thumb|preview|orig
@@ -1531,7 +1532,7 @@ router.get('/file/:photoId/:type', async (req, res) => {
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
     res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🧠 index faces for an album (runs detection on all un-indexed photos)
@@ -1544,7 +1545,7 @@ router.post('/:id/index-faces', requireAuth, async (req, res) => {
     // run one throttled pass via the shared queue worker (single-worker, yields between photos)
     const r = await indexAlbumNow(id);
     res.json({ requested: r.requested, remaining: r.remaining });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔍 search album by selfie → returns matching photo IDs (vendor preview/testing)
@@ -1588,7 +1589,7 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
       for (const m of matches) { if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); } }
     }
     res.json({ matches: ids.length, photo_ids: ids, engine });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ⭐ favorites a vendor received for one of their albums, grouped by client email.
@@ -1625,7 +1626,7 @@ router.get('/:id/favorites', requireAuth, async (req, res) => {
       return { event_id: ev.event_id, event_name: ev.event_name, count, lists };
     });
     res.json({ total: rows.length, events });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📩 the selection the client's admin sent to the studio, grouped by event.
@@ -1665,7 +1666,7 @@ router.get('/:id/selection', requireAuth, async (req, res) => {
       sent_at: note?.updated_at || null,
       completed_at: note?.completed_at || null,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ✅ mark the client's selection as handled (or clear that flag)
@@ -1683,7 +1684,7 @@ router.put('/:id/selection/complete', requireAuth, async (req, res) => {
       create: { album_id: id, completed_at: stamp },
     });
     res.json({ ok: true, completed_at: stamp });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🗑️ clear the sent selection and its note — the photos themselves are untouched
@@ -1696,7 +1697,7 @@ router.delete('/:id/selection', requireAuth, async (req, res) => {
     await prisma.selections.deleteMany({ where: { album_id: id } });
     await prisma.selection_notes.deleteMany({ where: { album_id: id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📦 download the client's selected photos as a zip (token via header or ?token= for links)
@@ -1746,7 +1747,7 @@ router.get('/:id/selection.zip', async (req, res) => {
       if (fs.existsSync(full)) archive.file(full, { name });
     }
     archive.finalize();
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

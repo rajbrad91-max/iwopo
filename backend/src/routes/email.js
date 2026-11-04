@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getAllSettings } from '../lib/settings.js';
+import { serverError } from '../lib/httpError.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -35,7 +36,7 @@ router.get('/settings', requireAuth, async (req, res) => {
     const s = await getSettings(v);
     if (s.smtp_pass) s.smtp_pass = '••••••';  // never send real pass back
     res.json({ settings: s });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/email/settings
@@ -62,7 +63,7 @@ router.put('/settings', requireAuth, async (req, res) => {
       create: { vendor_id: Number(v), ...data },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -140,7 +141,7 @@ router.get('/templates', requireAuth, async (req, res) => {
       orderBy: { id: 'asc' },
     });
     res.json({ templates });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/templates', requireAuth, async (req, res) => {
@@ -152,7 +153,7 @@ router.post('/templates', requireAuth, async (req, res) => {
       data: { vendor_id: Number(v), name, subject, body },   // 🔒 tenancy
     });
     res.status(201).json({ template });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/templates/:id', requireAuth, async (req, res) => {
@@ -170,7 +171,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     if (body !== undefined && body !== null) data.body = body;
     const template = await prisma.email_templates.update({ where: { id }, data });
     res.json({ template });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/templates/:id', requireAuth, async (req, res) => {
@@ -182,7 +183,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     await prisma.email_templates.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/email/lead/:leadId → send email to the lead's client
@@ -262,7 +263,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     });
     logEmail(lead.vendor_id, { to: lead.email, subject, kind: 'lead_reply', leadId: lead.id });   // 📧 the email log
     res.json({ ok: true, sent_to: lead.email, cc: ccEmail || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📤 shared helper: send an email to a lead using vendor's email settings

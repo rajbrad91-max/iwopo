@@ -76,6 +76,7 @@ import domainRoutes from './routes/domain.js';
 import billingRoutes, { billingWebhook } from './routes/billing.js';
 import { startTrialReminders } from './lib/trialReminders.js';
 import supportRoutes from './routes/support.js';
+import { serverError } from './lib/httpError.js';
 
 dotenv.config();
 
@@ -258,8 +259,7 @@ app.use((err, req, res, _next) => {
   if (err?.type === 'entity.too.large') {
     return res.status(413).json({ error: 'Request body too large' });
   }
-  console.error('[api] unhandled error:', err?.message || err);
-  return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  return serverError(res, err);
 });
 
 // 🔒 127.0.0.1 only. Without a host Node binds every interface, so the API

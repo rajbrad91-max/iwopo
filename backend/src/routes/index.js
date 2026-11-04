@@ -15,6 +15,7 @@ import { getSetting } from '../lib/settings.js';
 import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
 import { clientIp } from '../lib/clientIp.js';
 import { limit } from '../middleware/rateLimit.js';
+import { serverError } from '../lib/httpError.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -22,7 +23,7 @@ const router = express.Router();
 // 🧵 Super admin: live face-queue status (backlog, load, concurrency, aws mode)
 router.get('/face-queue/status', requireAuth, requireSuperAdmin, async (req, res) => {
   try { res.json(await queueStatus()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: platform settings (face engine + AWS creds)
@@ -45,7 +46,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
       if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
     }
     res.json({ settings: s });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔄 Super admin: reset ALL face indexing (for engine switch → re-index)
@@ -120,7 +121,7 @@ router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req,
       albums_queued: albumsWithPhotos.length,
       note: `Cleared ${r.count} photo(s) and queued ${albumsWithPhotos.length} album(s) for re-indexing. This runs in the background — watch the backlog counter.`,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -277,7 +278,7 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
     }
 
     res.json({ ok: true, cleared: clear.filter(k => allowed.includes(k)) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🌍 currency symbol per country
@@ -324,7 +325,7 @@ router.get('/admin/counts', requireAuth, requireSuperAdmin, async (req, res) => 
       prisma.vendors.count({ where: { status: 'trial', seen_by_admin: false } }),
     ]);
     res.json({ messages, paid, trials });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔔 mark a group seen: 'messages' | 'paid' | 'trials'
@@ -334,7 +335,7 @@ router.put('/admin/counts/:group/seen', requireAuth, requireSuperAdmin, async (r
     else if (req.params.group === 'paid') await prisma.vendors.updateMany({ where: { status: 'active' }, data: { seen_by_admin: true } });
     else if (req.params.group === 'trials') await prisma.vendors.updateMany({ where: { status: 'trial' }, data: { seen_by_admin: true } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📨 support messages list (super admin)
@@ -342,7 +343,7 @@ router.get('/admin/messages', requireAuth, requireSuperAdmin, async (req, res) =
   try {
     const messages = await prisma.support_messages.findMany({ orderBy: { created_at: 'desc' } });
     res.json({ messages });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 
@@ -354,7 +355,7 @@ router.get('/admin/services', requireAuth, requireSuperAdmin, async (req, res) =
        particular vendor. */
     const services = await prisma.services.findMany({ where: { is_private: false }, orderBy: { id: 'asc' } });
     res.json({ services });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // Public: list all services (legacy) — geo-priced
@@ -368,7 +369,7 @@ router.get('/services', async (req, res) => {
       return { ...pub, price: gp.m, price_annual: gp.y ?? s.price_annual, currency: geo.currency, geo_code: geo.code };
     });
     res.json({ services, geo: geo.code, currency: geo.currency });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // Public: packages (3 tiers) with their items nested
@@ -392,7 +393,7 @@ router.get('/packages', async (req, res) => {
     });
     res.json({ packages: result });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -408,7 +409,7 @@ router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) =
       standalone: items.filter(i => i.package_id === p.id && !i.is_included && !i.is_addon),
     }));
     res.json({ packages: result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* 🔓 What each plan UNLOCKS (2026-11-01). The package card is what the pricing page SAYS; plan_features is what a
@@ -424,7 +425,7 @@ router.get('/admin/plan-unlocks', requireAuth, requireSuperAdmin, async (req, re
     const [catalog, plans] = await Promise.all([unlockCatalog(),
       prisma.plans.findMany({ select: { code: true, name: true, plan_features: { select: { feature_key: true } } } })]);
     res.json({ catalog, plans: plans.map(p => ({ code: p.code, name: p.name, features: p.plan_features.map(f => f.feature_key) })) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.put('/admin/plan-unlocks/:code', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
@@ -437,7 +438,7 @@ router.put('/admin/plan-unlocks/:code', requireAuth, requireSuperAdmin, async (r
       ...(want.length ? [prisma.plan_features.createMany({ data: want.map(feature_key => ({ plan_id: plan.id, feature_key })) })] : []),
     ]);
     res.json({ ok: true, features: want });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: update a PACKAGE price
@@ -462,7 +463,7 @@ router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, re
       },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: update a PACKAGE ITEM price
@@ -478,7 +479,7 @@ router.put('/package-items/:id/price', requireAuth, requireSuperAdmin, async (re
       },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: update a STANDALONE SERVICE price
@@ -494,7 +495,7 @@ router.put('/services/:id/price', requireAuth, requireSuperAdmin, async (req, re
       },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: update a service's tiers (jsonb array)
@@ -506,7 +507,7 @@ router.put('/services/:id/tiers', requireAuth, requireSuperAdmin, async (req, re
       data: { tiers: tiers || [] },              // Json column — no manual stringify
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: set country-specific prices (services or packages)
@@ -521,7 +522,7 @@ router.put('/country-prices/:type/:id', requireAuth, requireSuperAdmin, async (r
     if (type === 'package') await prisma.packages.update({ where, data });
     else await prisma.services.update({ where, data });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🎁 OFFERS
@@ -531,7 +532,7 @@ router.get('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const offers = await prisma.offers.findMany({ orderBy: { created_at: 'desc' } });
     res.json({ offers });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Create offer
@@ -552,7 +553,7 @@ router.post('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
     res.status(201).json({ offer });
   } catch (e) {
     if (e.code === 'P2002' || e.code === '23505') return res.status(409).json({ error: 'Code already exists' });
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -578,7 +579,7 @@ router.get('/offers/validate/:code', async (req, res) => {
       return res.status(400).json({ valid: false, error: 'Code not valid for this item' });
     }
     res.json({ valid: true, code: offer.code, percent_off: offer.percent_off, applies_to: offer.applies_to });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Toggle / delete offer
@@ -589,13 +590,13 @@ router.put('/offers/:id/toggle', requireAuth, requireSuperAdmin, async (req, res
     if (!cur) return res.status(404).json({ error: 'Not found' });
     await prisma.offers.update({ where: { id }, data: { active: !cur.active } });   // active = NOT active
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.delete('/offers/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     await prisma.offers.deleteMany({ where: { id: Number(req.params.id) } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 👥 REFERRALS — a signed-in vendor refers a friend's email; both get a free month when the friend joins on a paid
@@ -626,7 +627,7 @@ router.get('/referrals', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const referrals = await prisma.referrals.findMany({ orderBy: { created_at: 'desc' } });
     res.json({ referrals });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🌍 Real seller stats for the super-admin dashboard.
@@ -676,7 +677,7 @@ router.get('/admin/vendor-stats', requireAuth, requireSuperAdmin, async (req, re
       professions_unset: Math.max(0, profUnset),
       statuses: byStatus.map(s => ({ status: s.status || 'unknown', count: s._count._all })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

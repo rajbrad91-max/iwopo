@@ -12,6 +12,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -95,7 +96,7 @@ router.get('/', requireAuth, async (req, res) => {
       referrers: referrers.map(r => ({ referrer: r.referrer, count: r._count })),
       recent: recent.map(r => ({ ...r, created_at: r.created_at })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

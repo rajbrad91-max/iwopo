@@ -24,6 +24,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { getSetting } from '../lib/settings.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 // 🚫 switched off unless this server is the one Raj tracks his tester on (staging)
@@ -50,7 +51,7 @@ router.post('/ping', requireAuth, async (req, res) => {
       await prisma.tester_activity.create({ data: { user_id: uid, path, started_at: now, ended_at: now, source: 'live' } });
     }
     res.json({ track: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** A page path as a person reads it: /panel/leads/97 → "Leads › lead #97". */
@@ -95,7 +96,7 @@ router.get('/report', requireAuth, requireSuperAdmin, async (req, res) => {
       out.push({ user: u, days: list });
     }
     res.json({ timezone: TZ, people: out });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

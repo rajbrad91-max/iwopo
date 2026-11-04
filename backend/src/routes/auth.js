@@ -14,6 +14,7 @@ import { logSecurity, deviceOf } from '../lib/securityLog.js';
 import jwt from 'jsonwebtoken';
 import { signupsOpen, SIGNUPS_CLOSED_MESSAGE } from '../lib/signups.js';
 import { clientIp } from '../lib/clientIp.js';
+import { serverError } from '../lib/httpError.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -254,7 +255,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
     await prisma.users.update({ where: { id: created.id }, data: { email_verified_at: null } });
     const sent = await issueCode(created.id, 'verify', { to: created.email || email });
     res.status(201).json({ verify: true, email: created.email || email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/auth/forgot  → email a reset link (always responds ok, to avoid leaking which emails exist)
@@ -293,7 +294,7 @@ router.post('/forgot', limit({ name: 'forgot', max: 6, windowMs: 60 * 60_000 }),
       }
     }
     res.json({ ok: true, message: 'If that email exists, a reset link is on its way. 📬' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/auth/reset  → set a new password using a valid token
@@ -324,7 +325,7 @@ router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), 
     logSecurity(req, { id: row.user_id, vendor_id: who?.vendor_id }, 'password_reset');
     notice(who?.email, 'Your iwopo password was changed', ['The password for your iwopo account was just reset, and every device was signed out.']);
     res.json({ ok: true, message: 'Password updated — you can log in now. ✅' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // Password changes live at PUT /api/me/password. This file used to carry a
@@ -364,7 +365,7 @@ router.post('/resend', limit({ name: 'resend', max: 6, windowMs: 60 * 60_000 }),
     const sent = await issueCode(user.id, 'verify', { to: user.email });
     if (sent.tooSoon) return res.status(429).json({ error: 'Please wait a little before asking for another code.' });
     res.json({ ok: true, message, ...(sent.code ? { sandbox_code: sent.code } : {}) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/logout', requireAuth, async (req, res) => {

@@ -4,6 +4,7 @@ import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { tenantScope } from '../middleware/tenant.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { storageFor } from '../lib/storageQuota.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -54,7 +55,7 @@ router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
       } catch { return { ...v, storage: null }; }
     }));
     res.json({ vendors: withStorage });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -77,7 +78,7 @@ router.get('/plans', requireAuth, requireSuperAdmin, async (req, res) => {
       orderBy: { id: 'asc' },
     });
     res.json({ plans });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -110,7 +111,7 @@ router.put('/plans/:planId/storage', requireAuth, requireSuperAdmin, async (req,
     res.json({ plan });
   } catch (e) {
     if (e?.code === 'P2025') return res.status(404).json({ error: 'Plan not found' });
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -147,7 +148,7 @@ router.put('/:id/plan', requireAuth, requireSuperAdmin, async (req, res) => {
       data: { vendor_id: id, plan_id: plan.id, status: 'active', started_at: new Date() },
     });
     res.json({ ok: true, plan_id: plan.id, plan_name: plan.name });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/:id/storage', requireAuth, requireSuperAdmin, async (req, res) => {
@@ -173,7 +174,7 @@ router.put('/:id/storage', requireAuth, requireSuperAdmin, async (req, res) => {
       create: { vendor_id: id, storage_limit_mb: Math.round(mb) },
     });
     res.json({ ok: true, storage_limit_mb: Math.round(mb) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/vendors/:id/detail → super admin: full vendor profile
@@ -237,7 +238,7 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
       : [];
 
     res.json({ vendor, users, services, subscriptions, storage, referredBy: referral[0] || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/vendors/me/services → a vendor's own services (tenant-scoped)
@@ -256,7 +257,7 @@ router.get('/me/services', requireAuth, tenantScope, async (req, res) => {
     });
     const enabledBy = new Map(mine.map(r => [r.service_id, r.enabled]));
     res.json({ services: services.map(s => ({ ...s, enabled: enabledBy.get(s.id) ?? false })) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/vendors/:vendorId/services/:serviceId/toggle → super admin toggles
@@ -272,7 +273,7 @@ router.post('/:vendorId/services/:serviceId/toggle',
       create: { vendor_id: vendorId, service_id: serviceId, enabled },
     });
     res.json({ ok: true, vendorId, serviceId, enabled });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/vendors/:id/features → super admin: every toggleable feature + whether
@@ -298,7 +299,7 @@ router.get('/:id/features', requireAuth, requireSuperAdmin, async (req, res) => 
       overridden: f.key in overrideMap,
     }));
     res.json({ features });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/vendors/:id/features/:key → super admin: force a feature ON or OFF for
@@ -332,7 +333,7 @@ router.put('/:id/features/:key', requireAuth, requireSuperAdmin, async (req, res
       });
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

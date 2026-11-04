@@ -28,6 +28,7 @@ import { stampLogo, writeAltTexts } from '../lib/rawDelivery.js';
 import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { resolveTimezone } from '../lib/timezones.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':raw-editor';
@@ -49,7 +50,7 @@ async function requireEditor(req, res, next) {
     if (!feats.has('*') && !feats.has('rawsel')) return res.status(401).json({ error: 'Your access has ended' });
     req.editor = ed;
     next();
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 }
 
 const authLimit = limit({ name: 'raw-editor-auth', max: 10, windowMs: 15 * 60_000 });
@@ -68,7 +69,7 @@ router.post('/signup', authLimit, async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     await prisma.raw_editors.updateMany({ where: { id: { in: open.map(r => r.id) } }, data: { password_hash: hash, joined_at: new Date(), last_login_at: new Date() } });
     res.json({ token: sign(open[0]) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/login', authLimit, async (req, res) => {
@@ -82,7 +83,7 @@ router.post('/login', authLimit, async (req, res) => {
       }
     }
     res.status(401).json({ error: 'Email or password is not right' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/me', requireEditor, async (req, res) => {
@@ -133,7 +134,7 @@ router.get('/clients', requireEditor, async (req, res) => {
       });
     }
     res.json({ clients: out });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** One client's RAW files — only those of photos the client picked. */
@@ -144,7 +145,7 @@ router.get('/clients/:albumId', requireEditor, async (req, res) => {
     if (!album) return res.status(404).json({ error: 'Not found' });
     const { selected, raws } = await selectedRaws(album.id, v);
     res.json({ id: album.id, name: album.title, selected, files: raws.map(r => ({ id: r.id, name: r.filename, size: Number(r.size_bytes || 0) })) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** A 15-minute link that downloads one RAW straight from storage. */
@@ -156,7 +157,7 @@ router.get('/raws/:id/link', requireEditor, limit({ name: 'raw-editor-link', max
     const picked = r && await prisma.selections.findFirst({ where: { album_id: r.album_id, photo_id: r.photo_id } });
     if (!r || !picked) return res.status(404).json({ error: 'Not found' });
     res.json({ url: await objects.signGet(objects.PRIVATE, r.object_key, r.filename), name: r.filename });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── ⬆️ delivering EDITED photos ────────────────────────────────────────
@@ -182,7 +183,7 @@ router.get('/clients/:albumId/tabs', requireEditor, async (req, res) => {
     const a = await editorAlbum(req, res); if (!a) return;
     const tabs = await prisma.album_events.findMany({ where: { album_id: a.id, delivery: true }, select: { id: true, name: true, _count: { select: { photos: true } } }, orderBy: { sort_order: 'asc' } });
     res.json({ tabs: tabs.map(t => ({ id: t.id, name: t.name, photos: t._count.photos })) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Upload addresses for edited photos — straight from the editor's browser to storage. */
@@ -207,7 +208,7 @@ router.post('/clients/:albumId/deliver/begin', requireEditor, async (req, res) =
       items.push({ name: f.name, key, url: await objects.signPut(objects.PRIVATE, key, Number(f.size)) });
     }
     res.json({ items });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Record edited photos that have landed: logo on, into the tab, previews made next. */
@@ -254,7 +255,7 @@ router.post('/clients/:albumId/deliver/complete', requireEditor, async (req, res
     }
     enqueuePhotos(created);
     res.status(created.length ? 201 : 400).json({ created: created.length, errors, tab: { id: tab.id, name: tab.name } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -284,7 +285,7 @@ router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) 
     }
     writeAltTexts().catch(() => {});
     res.json({ ok: true, emailed });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

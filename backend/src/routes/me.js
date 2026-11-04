@@ -17,6 +17,7 @@ import { resolveTimezone, timezoneToStore } from '../lib/timezones.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { revokeAllForUser } from '../lib/tokenRevocation.js';
 import { logSecurity } from '../lib/securityLog.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const LOGO_DIR = LOGO_DIR_CFG;
@@ -29,7 +30,7 @@ router.get('/features', requireAuth, async (req, res) => {
   try {
     const set = await getFeatures(req.user.vendor_id);
     res.json({ features: [...set] });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/me/currencies → the list the preferences dropdown offers.
@@ -52,7 +53,7 @@ router.get('/storage', requireAuth, async (req, res) => {
        database query on every storage call whose answer nobody read. The same
        comparison lives in /me/plans, where it is actually used. */
     res.json(await storageFor(v));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -126,7 +127,7 @@ router.get('/plans', requireAuth, async (req, res) => {
         overridden: st.limit_source === 'override',
       },
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/currencies', requireAuth, (req, res) => {
@@ -164,7 +165,7 @@ router.get('/settings', requireAuth, async (req, res) => {
       chosen_currency: settings.currency,     // null = following the country
       country: vendor?.country || null,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/me/settings
@@ -199,7 +200,7 @@ router.put('/settings', requireAuth, async (req, res) => {
       create: { vendor_id: vid, ...data },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/me/email
@@ -223,7 +224,7 @@ router.put('/email', requireAuth, async (req, res) => {
     if (sent.tooSoon) return res.status(429).json({ error: 'A code was just sent — please wait a little before asking again.' });
     if (sent.error === 'not_configured') return res.status(503).json({ error: "iwopo can't send email yet, so the address can't be confirmed. Please try again later." });
     res.json({ ok: true, pending: true, email, ...(sent.code ? { sandbox_code: sent.code } : {}) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -241,7 +242,7 @@ router.put('/account', requireAuth, async (req, res) => {
   try {
     await prisma.users.update({ where: { id: req.user.id }, data: { name } });  // 🔒 own account only
     res.json({ ok: true, name });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ✉️ PUT /api/me/email/confirm { code } — the code from the new address switches the account over */
@@ -276,7 +277,7 @@ router.put('/password', requireAuth, async (req, res) => {
     logSecurity(req, req.user, 'password_changed');
     notice(me.email, 'Your iwopo password was changed', ['The password for your iwopo account was just changed, and every other device was signed out.']);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🛡️ GET /api/me/security → this account's own security log, newest first
@@ -288,7 +289,7 @@ router.get('/security', requireAuth, async (req, res) => {
       select: { event: true, ip: true, device: true, created_at: true },
     });
     res.json({ events });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/me/profile → vendor business info
@@ -301,7 +302,7 @@ router.get('/profile', requireAuth, async (req, res) => {
       select: { id: true, business_name: true, phone: true, email: true, country: true, logo_path: true, slug: true },
     });
     res.json({ profile: profile || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/me/profile → update business info
@@ -315,7 +316,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     if (business_name) data.business_name = business_name;   // COALESCE($1,business_name)
     await prisma.vendors.update({ where: { id: vid }, data }); // 🔒 tenancy
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/me/logo → upload company logo (single source, used everywhere)
@@ -341,7 +342,7 @@ router.post('/logo', requireAuth, upload.single('logo'), async (req, res) => {
     }
     await prisma.vendors.update({ where: { id: vid }, data: { logo_path: fname } }); // 🔒 tenancy
     res.json({ ok: true, logo_path: fname });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**

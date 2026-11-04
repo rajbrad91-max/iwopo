@@ -24,6 +24,7 @@ import { SITES_DIR } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
 import { recordEvent } from '../lib/siteEvents.js';
 import { resolveHost } from '../lib/vendorHosts.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -173,7 +174,7 @@ router.get('/my', requireAuth, async (req, res) => {
       select: { business_name: true, logo_path: true, slug: true },
     });
     res.json({ site, vendor: meta, themes: THEMES, fonts: [...FONTS] });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/sites/my → save. Only the fields sent are written, so editing one
@@ -198,7 +199,7 @@ router.put('/my', requireAuth, async (req, res) => {
       create: { ...data, vendor_id: v },                                           // 🔒 from the token
     });
     res.json({ site });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/sites/my/slug → claim a web address. Refused if taken, so two vendors
@@ -217,7 +218,7 @@ router.put('/my/slug', requireAuth, async (req, res) => {
       where: { vendor_id: v }, data: { slug, updated_at: new Date() },              // 🔒 own row
     });
     res.json({ site });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/sites/my/publish → { published: bool }. A site needs an address
@@ -235,7 +236,7 @@ router.put('/my/publish', requireAuth, async (req, res) => {
       data: { published: on, published_at: on ? new Date() : null, updated_at: new Date() },
     });
     res.json({ site });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ───────────────────────────── public site ─────────────────────────────── */
@@ -277,7 +278,7 @@ router.get('/by-host', async (req, res) => {
 
     recordEvent(req, site.vendor_id, 'site_view', { label: host });
     res.json({ site: shapePublicSite(site) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🌐 A vendor's own domain is managed in routes/domain.js (/api/domain) since 2026-10-31.
@@ -296,7 +297,7 @@ router.get('/:slug', async (req, res) => {
 
     recordEvent(req, site.vendor_id, 'site_view', { label: req.params.slug });
     res.json({ site: shapePublicSite(site) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 
@@ -389,7 +390,7 @@ router.post('/my/cover', requireAuth, upload.single('photo'), async (req, res) =
     res.json({ site });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -405,7 +406,7 @@ router.delete('/my/cover', requireAuth, async (req, res) => {
     });
     removeSitePhoto(v, cur?.cover_photo);
     res.json({ site });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/sites/my/cover-focus → which part of the cover stays visible when
@@ -420,7 +421,7 @@ router.put('/my/cover-focus', requireAuth, async (req, res) => {
       where: { vendor_id: v }, data: { cover_focus: f, updated_at: new Date() },   // 🔒 own row
     });
     res.json({ site });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -440,7 +441,7 @@ router.post('/my/photo', requireAuth, upload.single('photo'), async (req, res) =
     res.json({ image });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -551,7 +552,7 @@ router.post('/my/portfolio', requireAuth, upload.single('photo'), async (req, re
     res.json({ site });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -589,7 +590,7 @@ router.post('/my/portfolio/:id/replace', requireAuth, upload.single('photo'), as
     res.json({ site });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch { /* already gone */ }
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -611,7 +612,7 @@ router.delete('/my/portfolio/:id', requireAuth, async (req, res) => {
     // fails leaves a portfolio entry with nothing behind it
     removeSitePhoto(v, gone.file);
     res.json({ site });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -642,7 +643,7 @@ router.put('/my/portfolio', requireAuth, async (req, res) => {
     const keptFiles = new Set(kept.map(p => p.file));
     for (const p of before) if (!keptFiles.has(p.file)) removeSitePhoto(v, p.file);
     res.json({ site });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

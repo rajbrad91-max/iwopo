@@ -36,6 +36,7 @@ import { proposeOperatorCall } from '../lib/agentActions.js';
 import { runTraining, undoLastTraining } from '../lib/agentTraining.js';
 import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
+import { serverError } from '../lib/httpError.js';
 
 const ALL_TOOLS = [...TOOLS, ...ACTION_TOOLS];
 const ACTIONS = new Set(ACTION_TOOLS.map(t => t.name));
@@ -109,7 +110,7 @@ router.get('/usage', requireAuth, async (req, res) => {
     const cfg = await config();
     const s = await spent(vid(req));
     res.json({ month: month(), spentUsd: Number(s.usd.toFixed(4)), requests: s.requests, capUsd: cfg.capUsd, ready: !!cfg.apiKey, model: cfg.model });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -176,7 +177,7 @@ router.post('/chat', requireAuth, limit({ name: 'agent-chat', max: 30, windowMs:
     }
     await record(v, inTok, outTok, cfg);
     res.json({ proposals, reply: 'That needed more looking up than I can do in one go — could you ask it in smaller parts?', looked, usage: { inTok, outTok } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 🌪️ Tornado on Gemini Live (lib/geminiLive.js) — a single-use token + the locked setup ── */
@@ -194,7 +195,7 @@ router.get('/knowledge', requireAuth, async (req, res) => {
     const talks = await prisma.agent_conversations.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, take: 15, select: { id: true, summary: true, created_at: true } });
     const reminders = await prisma.agent_reminders.findMany({ where: { vendor_id: v, done_at: null }, orderBy: { due_at: 'asc' }, take: 30, select: { id: true, title: true, kind: true, due_at: true } });
     res.json({ items: rows.map(r => ({ id: r.id, kind: r.kind, text: r.text, at: r.created_at })), briefing: b?.text || await briefingText(v), briefingAt: b?.updated_at || new Date(), conversations: talks, reminders });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.post('/knowledge', requireAuth, async (req, res) => {
   try {
@@ -202,25 +203,25 @@ router.post('/knowledge', requireAuth, async (req, res) => {
     if (!text) return res.status(400).json({ error: 'Write something first' });
     const r = await prisma.agent_memory.create({ data: { vendor_id: vid(req), kind: 'fact', text } });
     res.json({ id: r.id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.delete('/knowledge/:id', requireAuth, async (req, res) => {
   try {
     const { count } = await prisma.agent_memory.deleteMany({ where: { id: Number(req.params.id), vendor_id: vid(req) } });   // 🔒
     res.status(count ? 200 : 404).json(count ? { ok: true } : { error: 'Not found' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.delete('/conversations/:id', requireAuth, async (req, res) => {
   try { const { count } = await prisma.agent_conversations.deleteMany({ where: { id: Number(req.params.id), vendor_id: vid(req) } }); res.status(count ? 200 : 404).json({ ok: !!count }); }   // 🔒
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 router.delete('/reminders/:id', requireAuth, async (req, res) => {
   try { const { count } = await prisma.agent_reminders.updateMany({ where: { id: Number(req.params.id), vendor_id: vid(req), done_at: null }, data: { done_at: new Date() } }); res.status(count ? 200 : 404).json({ ok: !!count }); }   // 🔒
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 router.post('/knowledge/refresh', requireAuth, async (req, res) => {
   try { res.json({ briefing: await buildBriefing(vid(req)), briefingAt: new Date() }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 /** 🧠 A conversation just ended — remember what it was about (summary for the next one). */
@@ -229,7 +230,7 @@ router.post('/conversations', requireAuth, async (req, res) => {
     const turns = Array.isArray(req.body?.turns) ? req.body.turns.slice(-120) : [];
     const row = await saveConversation(vid(req), turns, req.body?.startedAt);
     res.json({ saved: !!row, summary: row?.summary || null });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 💵 Tornado's voice cost ─────────────────────────────────────────────
@@ -267,11 +268,11 @@ router.post('/voice-usage', requireAuth, async (req, res) => {
       });
     }
     res.json({ added_usd: micro / 1e6, ...(await voiceTotals(v)) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.get('/voice-usage', requireAuth, async (req, res) => {
   try { res.json({ ...(await voiceTotals(vid(req))), prices: await voicePrices() }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 /** 📥 New texts, calls and leads since `since` — the app polls this during a conversation. */
@@ -303,12 +304,12 @@ router.get('/inbox', requireAuth, async (req, res) => {
       if (comms.length) await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null, created_at: { gt: since } }, data: { seen_at: now } }).catch(() => {});
     }
     res.json({ items, now: Date.now() });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 🎙️ the greeting and "what's new", played by the app from Tornado's recorded lines (lib/voiceClips.js) ── */
 router.get('/whats-new', requireAuth, async (req, res) => {
-  try { res.json(await whatsNew(vid(req), { markSeen: true })); } catch (e) { res.status(500).json({ error: e.message }); }   // read out = seen
+  try { res.json(await whatsNew(vid(req), { markSeen: true })); } catch (e) { serverError(res, e); }   // read out = seen
 });
 router.get('/voice-clips', requireAuth, (req, res) => {
   const m = clipManifest(vid(req));
@@ -321,7 +322,7 @@ router.get('/voice-clips/:key', requireAuth, (req, res) => {
 });
 router.post('/voice-clips/record', requireAuth, async (req, res) => {
   const key = req.body?.key ? String(req.body.key) : null;      // one line again, or all missing ones
-  try { res.json(await recordClips(vid(req), { force: req.body?.force === true || !!key, only: key ? [key] : null })); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await recordClips(vid(req), { force: req.body?.force === true || !!key, only: key ? [key] : null })); } catch (e) { serverError(res, e); }
 });
 router.get('/voice-bank', requireAuth, (req, res) => res.json(voiceBank(vid(req))));
 
@@ -349,7 +350,7 @@ router.post('/app-log', requireAuth, async (req, res) => {
     const merged = [...old, `— ${new Date().toISOString()} —`, ...lines].filter(Boolean).slice(-3000);
     await fs.promises.writeFile(file, merged.join('\n') + '\n');
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 🎧 ear mode: the phone heard him (Google speech, on the phone) — Haiku thinks, Gemini speaks (lib/earBrain.js) ── */
@@ -365,21 +366,21 @@ router.post('/ear/turn', requireAuth, limit({ name: 'agent-ear', max: 60, window
 /* ── 🧭 project stages, outside messages, email log (lib/projectStages.js). Reached only here, so only by
    vendors with the AI Agent; the vendor always comes from the login, never the body. ── */
 /* ⏰ smart reminders */
-router.get('/followups', requireAuth, async (req, res) => { try { res.json({ followups: await openFollowups(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); } });
-router.post('/followups/scan', requireAuth, async (req, res) => { try { await scanVendor(vid(req)); res.json({ followups: await openFollowups(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+router.get('/followups', requireAuth, async (req, res) => { try { res.json({ followups: await openFollowups(vid(req)) }); } catch (e) { serverError(res, e); } });
+router.post('/followups/scan', requireAuth, async (req, res) => { try { await scanVendor(vid(req)); res.json({ followups: await openFollowups(vid(req)) }); } catch (e) { serverError(res, e); } });
 router.post('/followups/:id', requireAuth, async (req, res) => {
   try {
     const action = ['done', 'mute', 'snooze'].includes(req.body?.action) ? req.body.action : 'done';
     res.json(await actOnFollowup(vid(req), { id: req.params.id, action, hours: req.body?.hours }));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/stages', requireAuth, async (req, res) => {
-  try { res.json({ bookings: await listStages(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json({ bookings: await listStages(vid(req)) }); } catch (e) { serverError(res, e); }
 });
 router.get('/stages/:leadId', requireAuth, async (req, res) => {
   try { const s = await stagesFor(vid(req), req.params.leadId); return s ? res.json(s) : res.status(404).json({ error: 'No such booking' }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 router.put('/stages/:leadId', requireAuth, async (req, res) => {
   try { const s = await setStages(vid(req), req.params.leadId, req.body || {}); return s ? res.json(s) : res.status(404).json({ error: 'No such booking' }); }
@@ -391,7 +392,7 @@ router.post('/stages/:leadId/messages', requireAuth, async (req, res) => {
 });
 router.delete('/stages/messages/:id', requireAuth, async (req, res) => {
   try { return (await deleteOutsideMessage(vid(req), req.params.id)) ? res.json({ ok: true }) : res.status(404).json({ error: 'Not found' }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 /** 🧠 panel tasks that finished after Tornado stopped waiting — handed over with the next [Update] */
@@ -410,7 +411,7 @@ router.get('/ear/deepgram-token', requireAuth, dgLimit, async (req, res) => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.access_token) return res.status(502).json({ error: j.err_msg || `Deepgram ${r.status}` });
     res.json({ token: j.access_token, expires_in: j.expires_in });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 /* 💵 seconds of speech the phone sent to Deepgram → the same daily cost record the cost bar reads */
 /* 🎙️ Gale (Raj, 2026-10-16): is the PC voice up, and its recorded greeting (made once, kept, saved on the phone) */
@@ -432,7 +433,7 @@ router.get('/ear/gale-greeting', requireAuth, async (req, res) => {
       pcm = g.pcm; version = g.version;
     }
     res.set('X-Version', version).type('application/octet-stream').send(pcm);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/ear/deepgram-usage', requireAuth, dgLimit, async (req, res) => {
@@ -449,7 +450,7 @@ router.post('/ear/deepgram-usage', requireAuth, dgLimit, async (req, res) => {
       update: { cost_micro: { increment: BigInt(micro) }, updated_at: new Date() },
     });
     res.json({ ok: true, added_usd: micro / 1e6 });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 📜 the Rules tab: exactly what Tornado reads at the start (and re-reads every reply) ── */
@@ -465,15 +466,15 @@ router.get('/rules', requireAuth, async (req, res) => {
     const history = await prisma.agent_rule_history.findMany({ where: { vendor_id: v }, orderBy: { id: 'desc' }, take: 20, select: { at: true, title: true, action: true, reason: true, run_id: true } });
     const rulesTokens = tok(setup.systemInstruction.parts[0].text), toolsTokens = tok(JSON.stringify(setup.tools));
     res.json({ rules, tools, runs, history, rules_tokens: rulesTokens, tools_tokens: toolsTokens, total_tokens: rulesTokens + toolsTokens });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 /** 🧠 Train now (the same run the weekly schedule does). */
 router.post('/rules/train', requireAuth, async (req, res) => {
-  try { res.json(await runTraining(vid(req), { manual: true })); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await runTraining(vid(req), { manual: true })); } catch (e) { serverError(res, e); }
 });
 /** ↩️ Undo the last training. */
 router.post('/rules/undo', requireAuth, async (req, res) => {
-  try { res.json(await undoLastTraining(vid(req))); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await undoLastTraining(vid(req))); } catch (e) { serverError(res, e); }
 });
 
 /* ── 📚 the knowledge base, as tabs on the Knowledge page ── */
@@ -481,7 +482,7 @@ router.get('/kb/sections', requireAuth, async (req, res) => {
   try {
     const counts = await prisma.agent_kb.groupBy({ by: ['section'], where: { vendor_id: vid(req) }, _count: { _all: true } });
     res.json({ sections: SECTIONS.map(([key, label]) => ({ key, label, count: counts.find(c => c.section === key)?._count._all || 0 })) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.get('/kb', requireAuth, async (req, res) => {
   try {
@@ -492,16 +493,16 @@ router.get('/kb', requireAuth, async (req, res) => {
       orderBy: { updated_at: 'desc' }, take: 400, select: { id: true, section: true, text: true, updated_at: true },
     });
     res.json({ rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.post('/kb/refresh', requireAuth, async (req, res) => {
-  try { res.json(await kbSync(vid(req))); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json(await kbSync(vid(req))); } catch (e) { serverError(res, e); }
 });
 
 /** ⏰ The alerts still to come — the phone app schedules them as alarms that ring with the app closed. */
 router.get('/reminders/alerts', requireAuth, async (req, res) => {
   try { res.json({ alerts: await alertsFor(vid(req), { from: new Date(), days: 45 }) }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 /**
@@ -561,12 +562,12 @@ router.post('/tool', requireAuth, limit({ name: 'agent-tool', max: 120, windowMs
       });
     }
     res.json({ result: compactResult(out) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 🔔 pop-ups on the vendor's devices (lib/agentPush.js) ── */
 router.get('/push/key', requireAuth, async (req, res) => {
-  try { res.json({ key: await vapid() }); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { res.json({ key: await vapid() }); } catch (e) { serverError(res, e); }
 });
 router.post('/push/subscribe', requireAuth, async (req, res) => {
   try {
@@ -576,17 +577,17 @@ router.post('/push/subscribe', requireAuth, async (req, res) => {
     // 🔒 the device is this vendor's — a browser re-subscribing moves to whoever is signed in
     await prisma.push_subscriptions.upsert({ where: { endpoint }, create: { vendor_id: vid(req), endpoint, p256dh, auth }, update: { vendor_id: vid(req), p256dh, auth } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.post('/push/unsubscribe', requireAuth, async (req, res) => {
   try { await prisma.push_subscriptions.deleteMany({ where: { endpoint: String(req.body?.endpoint || ''), vendor_id: vid(req) } }); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 
 /** ✅ The vendor pressed Yes on a proposed action. */
 router.post('/confirm', requireAuth, async (req, res) => {
   try { res.json(await confirmAction(req.body?.id, vid(req), req.headers.authorization)); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { serverError(res, e); }
 });
 /** ❌ The vendor pressed No. */
 router.post('/cancel', requireAuth, (req, res) => { cancelAction(req.body?.id, vid(req)); res.json({ ok: true }); });

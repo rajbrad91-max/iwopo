@@ -9,6 +9,7 @@ import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 import { limit } from '../middleware/rateLimit.js';
 import { ownDomainAllowed } from '../lib/vendorHosts.js';
 import { clientIp } from '../lib/clientIp.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -294,7 +295,7 @@ router.get('/:token', async (req, res) => {
       },
       templates, packages, money, contract,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -323,7 +324,7 @@ router.post('/:token/verify',
       maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax', httpOnly: true, secure: true,
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package */
@@ -382,7 +383,7 @@ router.post('/:token/pick', async (req, res) => {
     await reconcileContract(lead, p.id, clientIp(req));
     notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${p.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
     res.json({ ok: true, money: await moneySummary(updated) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* 🌐 PUBLIC: POST /api/portal/:token/pay-direct
@@ -443,7 +444,7 @@ router.post('/:token/pay-direct', async (req, res) => {
       { type: 'lead', id: lead.id },   // the confirm/deny banner lives on the lead
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

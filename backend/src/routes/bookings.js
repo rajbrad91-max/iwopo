@@ -2,6 +2,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -55,7 +56,7 @@ router.get('/', requireAuth, async (req, res) => {
     }
 
     res.json({ bookings });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -115,7 +116,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
     }));
 
     res.json({ booking: lead, money, packages, payments, contract, invoices, crew, roster });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/bookings/:leadId/status → new | contacted | quoted | booked | completed | cancelled
@@ -134,7 +135,7 @@ router.put('/:leadId/status', requireAuth, async (req, res) => {
       data: { status, updated_at: new Date() },
     });
     res.json({ lead });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

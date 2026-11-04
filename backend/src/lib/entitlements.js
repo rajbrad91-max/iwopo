@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import prisma from '../config/prisma.js';
 import { tokenStillValid } from './tokenRevocation.js';
 import { billingAccess, currentSubscriptionWhere } from './billing.js';
+import { serverError } from './httpError.js';
 dotenv.config();
 
 const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -90,6 +91,6 @@ export function gate(featureKey) {
         feature: featureKey,
         message: 'This feature is not part of your current plan. Upgrade or add it in My Services. ✨',
       });
-    } catch (e) { return res.status(500).json({ error: e.message }); }
+    } catch (e) { return serverError(res, e); }
   };
 }

@@ -13,6 +13,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { sendAsVendor } from './email.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -180,7 +181,7 @@ router.get('/', requireAuth, async (req, res) => {
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     res.json({ occasions: await upcomingFor(v), notify_days: NOTIFY_DAYS, ahead_days: AHEAD_DAYS });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -206,7 +207,7 @@ router.get('/draft', requireAuth, async (req, res) => {
       subject: fill(t.subject, o, vendor?.business_name),
       body: fill(t.body, o, vendor?.business_name),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** GET/PUT /api/occasions/template?kind= → the wording Raj can edit. */
@@ -215,7 +216,7 @@ router.get('/template', requireAuth, async (req, res) => {
   try {
     const kind = req.query.kind === 'birthday' ? 'birthday' : 'anniversary';
     res.json({ kind, template: await templateFor(v, kind), defaults: DEFAULTS[kind] });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/template', requireAuth, async (req, res) => {
@@ -234,7 +235,7 @@ router.put('/template', requireAuth, async (req, res) => {
     if (existing) await prisma.email_templates.update({ where: { id: existing.id }, data: { subject, body } });
     else await prisma.email_templates.create({ data: { vendor_id: v, name, subject, body } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -278,7 +279,7 @@ router.post('/send', requireAuth, async (req, res) => {
     });
 
     res.json({ ok: true, to: lead.email });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export { NOTIFY_DAYS };

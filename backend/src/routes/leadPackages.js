@@ -11,6 +11,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -39,7 +40,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     });
     res.json({ packages, locked: !!lead.packages_sent_at, sent_at: lead.packages_sent_at });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/lead-packages/:leadId/load → copy a folder's packages onto the lead.
@@ -91,7 +92,7 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     });
     res.json({ packages, folder: tpl.name });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/lead-packages/:leadId/:id → edit one package for this client
@@ -119,7 +120,7 @@ router.put('/:leadId/:id', requireAuth, async (req, res) => {
 
     const pkg = await prisma.lead_packages.findUnique({ where: { id: Number(req.params.id) } });
     res.json({ package: pkg });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/lead-packages/:leadId/:id → drop one package from the offer
@@ -135,7 +136,7 @@ router.delete('/:leadId/:id', requireAuth, async (req, res) => {
     });
     if (!count) return res.status(404).json({ error: 'Package not found' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/lead-packages/:leadId/lock → lock or unlock the offer.
@@ -159,7 +160,7 @@ router.put('/:leadId/lock/set', requireAuth, async (req, res) => {
       },
     });
     res.json({ ok: true, locked: !!locked });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

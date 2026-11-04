@@ -13,6 +13,7 @@ import { ensureInvoice } from './invoices.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { limit } from '../middleware/rateLimit.js';
 import { getSetting } from '../lib/settings.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -42,7 +43,7 @@ router.get('/unread-count', requireAuth, async (req, res) => {
       where: scope(vid, { archived_at: null, seen_at: null }),   // 🔒 tenancy
     });
     res.json({ count });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/leads/mappable-columns → what a form field can be linked to.
@@ -76,7 +77,7 @@ router.put('/mark-seen', requireAuth, async (req, res) => {
       data: { seen_at: new Date() },
     });
     res.json({ ok: true, cleared: count });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/leads  → list (vendor-scoped 🔒, active only)
@@ -117,7 +118,7 @@ router.get('/', requireAuth, async (req, res) => {
       service: serviceAsked(l),
     }));
     res.json({ leads });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/leads/history → archived leads 📜
@@ -130,7 +131,7 @@ router.get('/history', requireAuth, async (req, res) => {
       orderBy: opt.orderBy || { archived_at: 'desc' },
     });
     res.json({ leads });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/leads/bulk-archive  { ids: [] } 🗑️ (archive, not hard delete)
@@ -149,7 +150,7 @@ router.post('/bulk-archive', requireAuth, async (req, res) => {
     // same answer the lead-packages routes give.
     if (!count) return res.status(404).json({ error: 'No matching leads' });
     res.json({ archived: count });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/leads/bulk-delete  { ids: [] } 🗑️ (hard delete)
@@ -163,7 +164,7 @@ router.post('/bulk-delete', requireAuth, async (req, res) => {
     });
     if (!count) return res.status(404).json({ error: 'No matching leads' });
     res.json({ deleted: count });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/leads/:id/restore ↩️
@@ -176,7 +177,7 @@ router.post('/:id/restore', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && own.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' });
     await prisma.leads.update({ where: { id }, data: { archived_at: null } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/leads/:id/flags → billed / delivered toggles + booking notes + ceremony
@@ -196,7 +197,7 @@ router.put('/:id/flags', requireAuth, async (req, res) => {
     if (ceremony !== undefined && ceremony !== null) data.ceremony = ceremony;
     const lead = await prisma.leads.update({ where: { id }, data });
     res.json({ lead });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/leads/:id → single lead (scoped)
@@ -208,7 +209,7 @@ router.get('/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && lead.vendor_id !== vid)
       return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
     res.json({ lead });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 const FIELDS = ['name','email','phone','event_type','event_date','timing_from','timing_to',
@@ -589,7 +590,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     const lead = await prisma.leads.update({ where: { id }, data });
     if (lead.status === 'booked') await ensureInvoice(lead.id);   // 🧾 F2: booked by hand — invoice ready, never sent
     res.json({ lead });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 toggle Secure Login (client portal gate)
@@ -605,7 +606,7 @@ router.put('/:id/gateway', requireAuth, async (req, res) => {
       data: { gateway_enabled: !!req.body.enabled, updated_at: new Date() },
     });
     res.json({ ok: true, gateway_enabled: !!req.body.enabled });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📤 Send Packages — emails the client portal link (reuses email settings)
@@ -661,7 +662,7 @@ router.post('/:id/send-packages', requireAuth, async (req, res) => {
       await prisma.leads.update({ where: { id: lead.id }, data: { timer_started_at: new Date() } });
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ⏳ Save offer countdown settings (vendor sets hours + on/off)
@@ -684,7 +685,7 @@ router.put('/:id/timer', requireAuth, async (req, res) => {
       select: { timer_enabled: true, timer_hours: true, timer_started_at: true },
     });
     res.json(up);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -17,6 +17,7 @@ import { stripe, stripeReady, verifyWebhook } from '../lib/stripe.js';
 import { billingAccess, paidSubscription, stripePriceFor, stripeCustomerFor, recordSubscription, annualOf, trialEnd } from '../lib/billing.js';
 import { forgetHosts } from '../lib/vendorHosts.js';
 import { notify } from './notifications.js';
+import { serverError } from '../lib/httpError.js';
 
 const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '');
 const DAY = 86_400_000;
@@ -74,7 +75,7 @@ router.get('/', async (req, res) => {
         own_domain: p.plan_features.some(f => f.feature_key === 'custom_domain'),
       })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/checkout', async (req, res) => {
@@ -121,7 +122,7 @@ router.post('/portal', async (req, res) => {
       customer: await stripeCustomerFor(v), return_url: `${APP_URL}/panel/plans`, configuration: config?.value || undefined,
     });
     res.json({ url: portal.url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

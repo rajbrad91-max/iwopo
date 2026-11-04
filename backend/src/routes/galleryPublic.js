@@ -22,6 +22,7 @@ import { checkSharePassword } from '../lib/sharePassword.js';
 import { recordEvent } from '../lib/siteEvents.js';
 import { notify } from './notifications.js';
 import { ownDomainAllowed } from '../lib/vendorHosts.js';
+import { serverError } from '../lib/httpError.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -207,7 +208,7 @@ router.get('/vendor/:token', async (req, res) => {
       theme: await getTheme(v.id),
       albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: a._count.photos })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🌐 cover for an album in the index (by album token, public — no password)
@@ -255,7 +256,7 @@ router.get('/:token', async (req, res) => {
        itself as "1 photo" on the page a couple lands on. */
     const nVideo = await prisma.photos.count({ where: { album_id: a.id, kind: 'video' } });
     res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n - nVideo, video_count: nVideo, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null, logo: v?.logo_path || null, white_label: await ownDomainAllowed(a.vendor_id) } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🌐 public cover image
@@ -297,7 +298,7 @@ router.get('/:token/session', async (req, res) => {
       photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0,
         kind: p.kind || 'photo', duration_s: p.duration_s || null })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔑 authenticate with guest/admin password → returns photo list + view token
@@ -340,7 +341,7 @@ router.post('/:token/auth',
       photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0,
         kind: p.kind || 'photo', duration_s: p.duration_s || null })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🖼️ serve a photo (thumb|full|orig) — needs valid view token
@@ -453,7 +454,7 @@ router.get('/:token/download-all', async (req, res) => {
       if (fs.existsSync(full)) archive.file(full, { name });
     }
     archive.finalize();
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🤳 selfie search → returns matching photo IDs (public, needs view token)
@@ -500,7 +501,7 @@ router.post('/:token/selfie', limit({ name: 'selfie', max: 20, windowMs: 15 * 60
       for (const m of matches) if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); }
     }
     res.json({ matches: ids.length, photo_ids: ids });
-  } catch (e) { if (req.file) fs.unlink(req.file.path, () => {}); res.status(500).json({ error: e.message }); }
+  } catch (e) { if (req.file) fs.unlink(req.file.path, () => {}); serverError(res, e); }
 });
 
 // 🧑‍🤝‍🧑 face circles for this album — one per person, most photos first
@@ -526,7 +527,7 @@ router.get('/:token/faces', async (req, res) => {
     res.json({
       faces: clusters.map(c => ({ id: c.id, count: c.photo_count })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🖼️ the circular thumbnail for one person — the face cropped out of its photo.
@@ -649,7 +650,7 @@ router.get('/:token/face/:clusterId/photos', async (req, res) => {
       ? await photoIdsForPersonAWS(a.id, req.params.clusterId)
       : await clusterPhotoIds(a.id, req.params.clusterId);
     res.json({ photo_ids: ids });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📩 admin-only: save the admin's selection to the studio, and delete photos.
@@ -704,7 +705,7 @@ router.post('/:token/selection', async (req, res) => {
     );
 
     res.json({ ok: true, count: keep.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // admin deletes a photo (all 3 file tiers + DB row; cascades favorites/selections)
@@ -737,7 +738,7 @@ router.delete('/:token/photo/:photoId', async (req, res) => {
       }
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ⭐ favorites — clients mark photos, saved server-side keyed by album + email.
@@ -759,7 +760,7 @@ router.get('/:token/favorites', async (req, res) => {
       select: { photo_id: true },
     });
     res.json({ photo_ids: rows.map(r => r.photo_id) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // add a favorite (idempotent via the unique constraint)
@@ -780,7 +781,7 @@ router.post('/:token/favorites', async (req, res) => {
       skipDuplicates: true,                        // ON CONFLICT DO NOTHING
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // remove a favorite
@@ -794,7 +795,7 @@ router.delete('/:token/favorites/:photoId', async (req, res) => {
     if (!validEmail(email) || !photoId) return res.status(400).json({ error: 'email and photo_id required' });
     await prisma.favorites.deleteMany({ where: { album_id: a.id, photo_id: photoId, email } }); // 🔒 tenancy
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

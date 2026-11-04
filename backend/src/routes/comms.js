@@ -19,6 +19,7 @@ import { limit } from '../middleware/rateLimit.js';
 import { badgesFor, leadBadges, tenDigits } from '../lib/commsBadges.js';
 import { commsBus } from '../lib/commsPop.js';
 import { requestLead, answerBooking } from '../lib/callLeads.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -91,7 +92,7 @@ router.get('/', requireAuth, async (req, res) => {
        call that arrives while somebody is watching joins its thread at once
        instead of waiting for a full reload. */
     res.json({ events, badges: await leadBadges(v, events), seen: await seenMap(v), now: new Date().toISOString() });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 
@@ -106,7 +107,7 @@ router.post('/badges', requireAuth, async (req, res) => {
   try {
     const numbers = Array.isArray(req.body?.numbers) ? req.body.numbers.map(String) : [];
     res.json({ badges: await badgesFor(v, numbers) });                 // 🔒 this vendor's leads only
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -253,23 +254,23 @@ router.get('/status', requireAuth, async (req, res) => {
       from = pick?.number || pick?.phoneNumber || pick?.formattedNumber || null;
     } catch { /* the number is a nicety; connected is what matters */ }
     res.json({ connected: true, from });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 const NOT_CONNECTED = 'Calls & messages are not connected for this account yet.';
 
 /* ⚙️ Calls & Texts → settings: this vendor's own Quo connection (the API key and secrets are write-only) */
 /* 📇 Google Contacts → Quo sync: its last run, and "Sync now" */
-router.get('/contacts-sync', requireAuth, async (req, res) => { try { res.json({ state: await syncState(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+router.get('/contacts-sync', requireAuth, async (req, res) => { try { res.json({ state: await syncState(vid(req)) }); } catch (e) { serverError(res, e); } });
 router.post('/contacts-sync', requireAuth, async (req, res) => {
-  try { const r = await syncGoogleToQuo(vid(req)); res.json({ ...r, state: await syncState(vid(req)) }); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { const r = await syncGoogleToQuo(vid(req)); res.json({ ...r, state: await syncState(vid(req)) }); } catch (e) { serverError(res, e); }
 });
 router.get('/quo-settings', requireAuth, async (req, res) => {
   try {
     const c = await quoConfig(vid(req));
     const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0];
     res.json({ has_key: !!c.key, key_hint: c.key ? `••••${c.key.slice(-4)}` : '', secrets: c.webhookSecrets.length, phone_number_id: c.phoneNumberId || '', webhook_url: `https://${host}/api/comms/webhook` });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.post('/quo-settings/numbers', requireAuth, async (req, res) => {
   try {
@@ -290,10 +291,10 @@ router.put('/quo-settings', requireAuth, async (req, res) => {
     if (phoneNumberId && !isQuoNumberId(phoneNumberId)) return res.status(400).json({ error: 'Pick the number from the list (press "List my numbers").' });
     await saveQuo(v, { key, webhookSecrets, phoneNumberId });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.delete('/quo-settings', requireAuth, async (req, res) => {
-  try { await saveQuo(vid(req), null); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+  try { await saveQuo(vid(req), null); res.json({ ok: true }); } catch (e) { serverError(res, e); }
 });
 
 /* 👁️ POST /api/comms/seen { key } — the owner opened this conversation (key = last 10 digits, or 'all'). */
@@ -301,7 +302,7 @@ router.post('/seen', requireAuth, async (req, res) => {
   try {
     const k = String(req.body?.key || '');
     res.json({ seen: await markSeen(vid(req), k === 'all' ? 'all' : [k.replace(/\D/g, '').slice(-10)]) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 const SANDBOX_FROM = '+15550100100';   // a 555 number: practice mode only
 
@@ -325,7 +326,7 @@ router.post('/sync', requireAuth, async (req, res) => {
     if (r.error) return res.status(400).json({ error: r.error });
     const note = r.failed ? `⚠️ ${r.added || 0} synced, but Quo refused ${r.failed} request(s) — some calls or messages may be missing.` : undefined;
     res.json({ ok: true, added: r.added || 0, filled: r.filled || 0, ...(note ? { note } : {}) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -359,7 +360,7 @@ router.get('/:id/recording', requireAuth, async (req, res) => {
     }
     res.setHeader('Cache-Control', 'private, no-store');
     Readable.fromWeb(upstream.body).pipe(res);
-  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+  } catch (e) { if (!res.headersSent) serverError(res, e); }
 });
 
 /**
@@ -393,7 +394,7 @@ router.post('/lead-request', requireAuth, async (req, res) => {
     const r = await requestLead(v, ev.id);
     if (r.error) return res.status(404).json(r);
     res.json({ ...r, event_id: Number(ev.id) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -406,7 +407,7 @@ router.post('/:id/booking', requireAuth, async (req, res) => {
     const r = await answerBooking(vid(req), req.params.id, req.body?.approve === true);   // 🔒 vendor from the token
     if (r.error) return res.status(400).json(r);
     res.json(r);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

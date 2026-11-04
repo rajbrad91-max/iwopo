@@ -13,6 +13,7 @@ import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { notify } from './notifications.js';
 import { clientIp } from '../lib/clientIp.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -625,7 +626,7 @@ router.get('/templates', requireAuth, async (req, res) => {
       orderBy: { id: 'asc' },
     });
     res.json({ templates });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* 🎨 a template's look — the vendor's choice, from a fixed list (each one is a class in contractdoc-doc.css) */
@@ -653,7 +654,7 @@ router.post('/templates', requireAuth, async (req, res) => {
       },
     });
     res.status(201).json({ template });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/templates/:id', requireAuth, async (req, res) => {
@@ -680,7 +681,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     if (sections !== undefined) data.sections = cleanSections(sections);
     const template = await prisma.contract_templates.update({ where: { id }, data });
     res.json({ template });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/templates/:id', requireAuth, async (req, res) => {
@@ -692,7 +693,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     await prisma.contract_templates.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ───────── 📄 CONTRACTS (vendor side) ───────── */
@@ -720,7 +721,7 @@ router.put('/templates/:id/default', requireAuth, async (req, res) => {
       prisma.contract_templates.update({ where: { id }, data: { is_default: true } }),
     ]);
     res.json({ ok: true, default_id: id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/', requireAuth, async (req, res) => {
@@ -743,7 +744,7 @@ router.get('/', requireAuth, async (req, res) => {
       lead_status: leads?.status ?? null,
     }));
     res.json({ contracts });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.get('/lead/:leadId', requireAuth, async (req, res) => {
@@ -759,7 +760,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
       orderBy: { created_at: 'desc' },
     });
     res.json({ contracts });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // create from raw text OR template (template_id) — placeholders auto-filled
@@ -822,7 +823,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     });
     await audit(contract.id, 'created', clientIp(req));
     res.status(201).json({ contract });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 👁️ Preview a contract for a lead — auto-picks template, fills placeholders, no save
@@ -912,7 +913,7 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
       })),
       active_package_id: active?.id ?? null,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/:id', requireAuth, async (req, res) => {
@@ -924,7 +925,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (c.status === 'signed') return res.status(400).json({ error: 'Signed contracts cannot be deleted (audit)' });
     await prisma.contracts.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // audit trail for a contract
@@ -939,7 +940,7 @@ router.get('/:id/audit', requireAuth, async (req, res) => {
       orderBy: { created_at: 'asc' },
     });
     res.json({ audit: auditRows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ───────── ✍️ PUBLIC SIGNING ───────── */
@@ -971,7 +972,7 @@ router.get('/sign/:token', async (req, res) => {
     const { leads, vendors, ...rest } = c;
     rest.body = upgradeDeliverables(rest.body);
     res.json({ contract: { ...rest, client_name: leads?.name ?? null, business_name: vendors?.business_name ?? null, logo_path: vendors?.logo_path ?? null, brand_color: brand?.brand_color ?? null } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // sign: typed name + drawn signature (base64) + initials array
@@ -1052,7 +1053,7 @@ router.post('/sign/:token', async (req, res) => {
     // ✍️ R2 (2026-10-30): the vendor is told straight away — signing used to leave no trace in the panel
     if (c.lead_id) notify(c.vendor_id, `✍️ ${signed_name.trim()} signed the contract`, `${c.title || 'Contract'} · payment is next`, 'contract', { type: 'lead', id: c.lead_id });
     res.json({ contract: updated });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1297,7 +1298,7 @@ router.get('/certificate/:token', async (req, res) => {
       },
       audit: trail,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1324,7 +1325,7 @@ router.put('/:id/release', requireAuth, async (req, res) => {
       ? await prisma.contracts.findUnique({ where: { id } })
       : await prisma.contracts.update({ where: { id }, data: { released_at: new Date() } });
     res.json({ contract: updated });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -14,6 +14,7 @@ import { sendAsVendor } from './email.js';
 import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { hashSharePassword } from '../lib/sharePassword.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -128,7 +129,7 @@ router.get('/', requireAuth, async (req, res) => {
       });
     }
     res.json({ shares: out, storage: await storageFor(v) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/files → create a share
@@ -157,7 +158,7 @@ router.get('/search', requireAuth, async (req, res) => {
         share: shareOf[f.id] ? { id: shareOf[f.id].id, token: shareOf[f.id].token, has_password: !!shareOf[f.id].password, allow_upload: !!shareOf[f.id].allow_upload, expires_at: shareOf[f.id].expires_at } : null })),
       items: items.map(i => ({ ...i, size_bytes: Number(i.size_bytes), in_folder: i.folder_id ? nameOf[i.folder_id] || null : null })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* 📁 GET /api/files/folders/all — every folder (id, name, parent) for the "Move to…" picker. */
@@ -166,7 +167,7 @@ router.get('/folders/all', requireAuth, async (req, res) => {
     const v = Number(vid(req));
     const folders = await prisma.file_folders.findMany({ where: { vendor_id: v }, select: { id: true, name: true, parent_id: true }, orderBy: { name: 'asc' } });   // 🔒
     res.json({ folders });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** The target folder, only if it is this vendor's (null = My files). */
@@ -186,7 +187,7 @@ router.put('/item/:itemId/move', requireAuth, async (req, res) => {
     if (!to.ok) return res.status(404).json({ error: 'Folder not found' });
     await prisma.file_share_items.update({ where: { id: it.id }, data: { folder_id: to.id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ↪️ PUT /api/files/folder/:folderId/move { parent_id } — a folder into another (never into itself or its own sub-folders). */
@@ -203,7 +204,7 @@ router.put('/folder/:folderId/move', requireAuth, async (req, res) => {
     }
     await prisma.file_folders.update({ where: { id: f.id }, data: { parent_id: to.id, updated_at: new Date() } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
@@ -226,7 +227,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     const share = await prisma.file_shares.update({ where: { id }, data });
     res.json({ share: { ...share, password: undefined, has_password: !!share.password } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/files/:id → the share and everything in it
@@ -244,7 +245,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
 
     await prisma.file_shares.delete({ where: { id } });   // items cascade
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 
@@ -452,7 +453,7 @@ router.post('/:id/email', requireAuth, async (req, res) => {
     // reporting a failure the vendor cannot act on
     if (!sent.ok) return res.status(502).json({ error: sent.error, message: sent.message });
     res.json({ ok: true, sent_to: to.length, via: sent.via });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ───────── 🗜️ ZIP ───────── */
@@ -512,7 +513,7 @@ router.get('/zip', requireAuth, async (req, res) => {
     archive.pipe(res);
     await zipInto(archive, v, rootId, '');
     archive.finalize();
-  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+  } catch (e) { if (!res.headersSent) serverError(res, e); }
 });
 
 // GET /api/files/folder/:folderId/zip → one folder and everything under it
@@ -529,7 +530,7 @@ router.get('/folder/:folderId/zip', requireAuth, async (req, res) => {
     archive.pipe(res);
     await zipInto(archive, f.vendor_id, fid, '');
     archive.finalize();
-  } catch (e) { if (!res.headersSent) res.status(500).json({ error: e.message }); }
+  } catch (e) { if (!res.headersSent) serverError(res, e); }
 });
 
 /* ───────── 📁 FOLDERS ───────── */
@@ -634,7 +635,7 @@ router.get('/drive', requireAuth, async (req, res) => {
       share: own ? { ...own, password: undefined, has_password: !!own.password } : null,
       storage: await storageFor(v),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/files/:id/folders → create one
@@ -659,7 +660,7 @@ router.post('/folders', requireAuth, async (req, res) => {
   } catch (e) {
     // the unique index enforces "no two things with one name here"
     if (e.code === 'P2002') return res.status(409).json({ error: 'Something here already has that name' });
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -681,7 +682,7 @@ router.put('/folder/:folderId', requireAuth, async (req, res) => {
     res.json({ folder });
   } catch (e) {
     if (e.code === 'P2002') return res.status(409).json({ error: 'Something here already has that name' });
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -712,7 +713,7 @@ router.delete('/folder/:folderId', requireAuth, async (req, res) => {
       catch { /* already gone from disk */ }
     }
     res.json({ ok: true, removed_files: doomed.length, storage: await storageFor(f.vendor_id) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** A folder and every folder beneath it, so a delete can find all the files. */
@@ -787,7 +788,7 @@ router.post('/upload', requireAuth, upload.array('files', 30), async (req, res) 
     }
     await prisma.file_share_items.createMany({ data: rows });
     res.status(201).json({ added: rows.length, storage: await storageFor(v) });
-  } catch (e) { cleanup(); res.status(500).json({ error: e.message }); }
+  } catch (e) { cleanup(); serverError(res, e); }
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -856,7 +857,7 @@ router.post('/big/begin', requireAuth, async (req, res) => {
       upload_id: uploadId, key, stored_name: stored,
       part_size: PART_SIZE, min_part_size: MIN_PART_SIZE,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** One presigned URL per part, so a resumed upload re-signs only what it needs. */
@@ -875,7 +876,7 @@ router.post('/big/sign', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Not your key' });
     }
     res.json({ url: await objects.signPart(objects.PRIVATE, key, uploadId, part) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Stitch the parts and record the file. */
@@ -919,7 +920,7 @@ router.post('/big/complete', requireAuth, async (req, res) => {
     });
     await prisma.pending_uploads.deleteMany({ where: { object_key: key } });   // finished
     res.status(201).json({ item: { ...row, size_bytes: Number(row.size_bytes) }, storage: await storageFor(v) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Throw away a cancelled upload, so its parts stop costing storage. */
@@ -932,7 +933,7 @@ router.post('/big/abort', requireAuth, async (req, res) => {
     await objects.abortMultipart(objects.PRIVATE, key, uploadId);
     await prisma.pending_uploads.deleteMany({ where: { object_key: key } });   // abandoned
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -976,7 +977,7 @@ router.get('/big/pending', requireAuth, async (req, res) => {
       });
     }
     res.json({ pending: out });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1010,7 +1011,7 @@ router.post('/big/resume', requireAuth, async (req, res) => {
       folder_id: row.folder_id,
       done_parts: parts.map(p => p.PartNumber).sort((a, b) => a - b),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Throw one away without finishing it. */
@@ -1024,7 +1025,7 @@ router.delete('/big/pending/:id', requireAuth, async (req, res) => {
     try { await objects.abortMultipart(objects.PRIVATE, row.object_key, row.upload_id); } catch { /* already gone */ }
     await prisma.pending_uploads.delete({ where: { id: row.id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1056,7 +1057,7 @@ router.get('/shares/:id/recipients', requireAuth, async (req, res) => {
         sent_at: r.sent_at, opened_at: r.opened_at,
       })),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** PUT /api/files/shares/:id/recipients — set who it is for. */
@@ -1092,7 +1093,7 @@ router.put('/shares/:id/recipients', requireAuth, async (req, res) => {
       });
     }
     res.json({ ok: true, count: allowed.length, ignored: ids.length - allowed.length });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -1141,7 +1142,7 @@ router.post('/folder/:folderId/share', requireAuth, async (req, res) => {
           },
         });
     res.json({ share: { ...share, password: undefined, has_password: !!share.password } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** DELETE /api/files/folder/:folderId/share → stop sharing, keep the folder. */
@@ -1153,7 +1154,7 @@ router.delete('/folder/:folderId/share', requireAuth, async (req, res) => {
     if (!f || f.vendor_id !== v) return res.status(404).json({ error: 'Not found' });  // 🔒 tenancy
     await prisma.file_shares.deleteMany({ where: { vendor_id: v, folder_id: fid } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/files/item/:itemId → remove one file
@@ -1167,7 +1168,7 @@ router.delete('/item/:itemId', requireAuth, async (req, res) => {
     await purgeFileItem(item.vendor_id, item.stored_name);
     await prisma.file_share_items.delete({ where: { id: itemId } });
     res.json({ ok: true, storage: await storageFor(item.vendor_id) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/files/item/:itemId/download → the vendor's own copy
@@ -1191,7 +1192,7 @@ router.get('/item/:itemId/download', requireAuth, async (req, res) => {
     const full = path.join(vendorDir(item.vendor_id), item.stored_name);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing from storage' });
     res.download(full, item.filename);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

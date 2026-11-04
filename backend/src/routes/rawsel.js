@@ -16,6 +16,7 @@ import { recordObject } from '../lib/storageLedger.js';
 import { isRaw, stemOf, rawKey, pairAlbum, albumStatus, deleteRaws } from '../lib/rawFiles.js';
 import sharp from 'sharp';
 import { withLogo, LOGO_DEFAULTS } from '../lib/rawDelivery.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -33,7 +34,7 @@ router.get('/albums/:albumId', requireAuth, async (req, res) => {
   try {
     const a = await ownAlbum(req, res); if (!a) return;
     res.json(await albumStatus(a.id, vid(req)));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Upload addresses for RAW files â€” straight from the browser to the private bucket. */
@@ -58,7 +59,7 @@ router.post('/albums/:albumId/begin', requireAuth, async (req, res) => {
       items.push({ name: f.name, key, url: await objects.signPut(objects.PRIVATE, key, Number(f.size)) });
     }
     res.json({ items });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Record RAWs that have landed, and pair them with their JPEGs. */
@@ -92,7 +93,7 @@ router.post('/albums/:albumId/complete', requireAuth, async (req, res) => {
     }
     await pairAlbum(a.id, v);
     res.json({ saved, errors });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Delete one RAW. */
@@ -102,7 +103,7 @@ router.delete('/albums/:albumId/raws/:rawId', requireAuth, async (req, res) => {
     const n = await deleteRaws({ id: Number(req.params.rawId), album_id: a.id, vendor_id: vid(req) });
     if (!n) return res.status(404).json({ error: 'Not found' });
     res.json({ deleted: n });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Delete every RAW in the album (the panel asks first). */
@@ -110,7 +111,7 @@ router.delete('/albums/:albumId', requireAuth, async (req, res) => {
   try {
     const a = await ownAlbum(req, res); if (!a) return;
     res.json({ deleted: await deleteRaws({ album_id: a.id, vendor_id: vid(req) }) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 👨‍💻 editors ────────────────────────────────────────────────────────
@@ -122,7 +123,7 @@ router.get('/editors', requireAuth, async (req, res) => {
   try {
     const rows = await prisma.raw_editors.findMany({ where: { vendor_id: vid(req) }, orderBy: { created_at: 'asc' } });
     res.json({ editors: rows.map(r => ({ id: r.id, email: r.email, name: r.name || '', joined: !!r.password_hash, joinedAt: r.joined_at, lastLoginAt: r.last_login_at })) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/editors', requireAuth, async (req, res) => {
@@ -136,7 +137,7 @@ router.post('/editors', requireAuth, async (req, res) => {
       update: { name, revoked_at: null },
     });
     res.json({ id: row.id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/editors/:id', requireAuth, async (req, res) => {
@@ -144,7 +145,7 @@ router.delete('/editors/:id', requireAuth, async (req, res) => {
     const { count } = await prisma.raw_editors.deleteMany({ where: { id: Number(req.params.id), vendor_id: vid(req) } });   // 🔒
     if (!count) return res.status(404).json({ error: 'Not found' });
     res.json({ deleted: count });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** Every album with RAWs or a client selection: where each client stands. */
@@ -175,7 +176,7 @@ router.get('/overview', requireAuth, async (req, res) => {
       });
     }
     res.json({ clients: out });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── ®️ the logo printed on delivered photos ────────────────────────── */
@@ -190,7 +191,7 @@ router.get('/settings', requireAuth, async (req, res) => {
     let logo = null;
     if (s.logo_key) logo = `data:image/png;base64,${(await sharp(await readAll(s.logo_key)).resize({ width: 240, withoutEnlargement: true }).png().toBuffer()).toString('base64')}`;
     res.json({ pos: s.logo_pos, size: s.logo_size, opacity: s.logo_opacity, margin: s.logo_margin, logo });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/settings', requireAuth, async (req, res) => {
@@ -205,7 +206,7 @@ router.put('/settings', requireAuth, async (req, res) => {
     };
     await prisma.rawsel_settings.upsert({ where: { vendor_id: vid(req) }, create: { vendor_id: vid(req), ...data }, update: data });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** The logo itself — sent as a data URL (PNG, JPEG or WebP, up to 3 MB), kept as a PNG. */
@@ -222,7 +223,7 @@ router.post('/settings/logo', requireAuth, async (req, res) => {
     await prisma.rawsel_settings.upsert({ where: { vendor_id: vid(req) }, create: { vendor_id: vid(req), logo_key: key, ...LOGO_DEFAULTS }, update: { logo_key: key, updated_at: new Date() } });
     if (old?.logo_key && old.logo_key !== key) await objects.deleteObject(objects.PRIVATE, old.logo_key).catch(() => {});
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** How a delivered photo will look: the vendor's own latest photo with the logo as set (or as being tried). */
@@ -244,7 +245,7 @@ router.post('/settings/preview', requireAuth, async (req, res) => {
     if (!base) base = await sharp({ create: { width: 1800, height: 1200, channels: 3, background: '#b8b2a8' } }).jpeg().toBuffer();
     const out = await sharp(await withLogo(base, await readAll(s.logo_key), trial)).resize({ width: 900 }).jpeg({ quality: 80 }).toBuffer();
     res.json({ image: `data:image/jpeg;base64,${out.toString('base64')}` });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -14,6 +14,7 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -50,7 +51,7 @@ router.get('/', requireAuth, async (req, res) => {
       take: 500,
     });
     res.json({ contacts: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** POST /api/contacts — add one. */
@@ -72,7 +73,7 @@ router.post('/', requireAuth, async (req, res) => {
       data: { ...c, vendor_id: v },
     });
     res.status(201).json({ contact: row });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** PUT /api/contacts/:id */
@@ -89,7 +90,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     });
     if (!count) return res.status(404).json({ error: 'Contact not found' });
     res.json({ contact: await prisma.contacts.findUnique({ where: { id: Number(req.params.id) } }) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** DELETE /api/contacts/:id — the share history goes with it (cascade). */
@@ -101,7 +102,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     });
     if (!count) return res.status(404).json({ error: 'Contact not found' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

@@ -22,6 +22,7 @@ function vid(req) {
  * every notification raised before this column existed will do.
  */
 import { pushToVendor } from '../lib/agentPush.js';
+import { serverError } from '../lib/httpError.js';
 
 export async function notify(vendorId, title, body, type = 'info', link = null) {
   try {
@@ -73,7 +74,7 @@ router.get('/', requireAuth, async (req, res) => {
       unseen += mineUnseen;
     }
     res.json({ notifications, unseen });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/seen', requireAuth, async (req, res) => {
@@ -87,7 +88,7 @@ router.post('/seen', requireAuth, async (req, res) => {
       await privateDb.comms_notices.updateMany({ where: { vendor_id: v, seen_at: null }, data: { seen_at: new Date() } });
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

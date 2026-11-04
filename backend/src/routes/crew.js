@@ -7,6 +7,7 @@ import { sendAsVendor } from './email.js';
 import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 function vid(req) {
@@ -123,7 +124,7 @@ router.get('/', requireAuth, async (req, res) => {
       orderBy: { name: 'asc' },
     });
     res.json({ crew });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -209,7 +210,7 @@ router.get('/schedule', requireAuth, async (req, res) => {
       assignments: list,
       totals: [...totalsMap.values()].sort((a, b) => a.member_name.localeCompare(b.member_name)),
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/', requireAuth, async (req, res) => {
@@ -224,7 +225,7 @@ router.post('/', requireAuth, async (req, res) => {
       },
     });
     res.status(201).json({ member });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
@@ -240,7 +241,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (name !== undefined && name !== null) data.name = name;   // COALESCE($1,name)
     const member = await prisma.crew_members.update({ where: { id }, data });
     res.json({ member });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/:id', requireAuth, async (req, res) => {
@@ -252,7 +253,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     await prisma.crew_members.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /* ── 📅 EVENT CREW (assign to lead + schedule) ── */
@@ -280,7 +281,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
       phone: crew_members?.phone ?? null, email: crew_members?.email ?? null,
     }));
     res.json({ assignments });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/lead/:leadId', requireAuth, async (req, res) => {
@@ -316,7 +317,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       return res.status(409).json({ error: 'This person is already assigned to this booking' });
     }
     res.status(201).json({ assignment });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/assignment/:id', requireAuth, async (req, res) => {
@@ -330,7 +331,7 @@ router.delete('/assignment/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && row.leads?.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     await prisma.lead_crew.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -420,7 +421,7 @@ router.post('/assignment/:id/remind', requireAuth, async (req, res) => {
     }
 
     res.json({ ok: true, link, emailed: mailed, email: email || null, error: mailed ? null : mailError });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 function esc(s) {
@@ -552,7 +553,7 @@ router.get('/checkin/:token', async (req, res) => {
         : null,
       venue_error: venue.error || null,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.post('/checkin/:token', async (req, res) => {
@@ -615,7 +616,7 @@ router.post('/checkin/:token', async (req, res) => {
       distance_enforced: !!(!skipped && venue.precise && venue.lat != null),
       location_skipped: skipped,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

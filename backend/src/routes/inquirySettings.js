@@ -2,6 +2,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { resolveHost } from '../lib/vendorHosts.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -74,7 +75,7 @@ router.get('/by-host', async (req, res) => {
       },
       slug: vendor?.slug || '',
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // VENDOR: GET /api/inquiry-settings/my → my own settings, from the token.
@@ -96,7 +97,7 @@ router.get('/my', requireAuth, async (req, res) => {
       settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor?.business_name, logo_path: vendor?.logo_path || '', time_format: await timeFormat(vid) },
       slug: vendor?.slug || '',
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUBLIC: GET /api/inquiry-settings/:handle → used by the public form.
@@ -135,7 +136,7 @@ router.get('/:handle', async (req, res) => {
     });
 
     res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(vendorId), time_format: await timeFormat(vendorId) } });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // VENDOR: PUT /api/inquiry-settings → save my form settings
@@ -164,7 +165,7 @@ router.put('/', requireAuth, async (req, res) => {
       create: { vendor_id: v, ...data },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

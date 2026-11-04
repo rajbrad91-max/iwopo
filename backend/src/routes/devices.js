@@ -11,6 +11,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { mintToken, deviceOrAuth } from '../lib/deviceAuth.js';
 import crypto from 'node:crypto';
 import { getFeatures } from '../lib/entitlements.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -37,7 +38,7 @@ router.get('/albums', deviceOrAuth, async (req, res) => {
       take: 50,
     });
     res.json({ albums });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -77,7 +78,7 @@ router.post('/albums', deviceOrAuth, async (req, res) => {
       select: { id: true, title: true, public_token: true },
     });
     res.status(201).json({ album });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** GET /api/devices — what is connected, and whether it is alive. */
@@ -93,7 +94,7 @@ router.get('/', requireAuth, async (req, res) => {
       orderBy: { created_at: 'desc' },
     });
     res.json({ devices: rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -116,7 +117,7 @@ router.post('/', requireAuth, async (req, res) => {
       select: { id: true, name: true, created_at: true },
     });
     res.status(201).json({ device: row, token: plain, note: 'Copy this now — it cannot be shown again.' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -135,7 +136,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     });
     if (!count) return res.status(404).json({ error: 'Device not found' });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

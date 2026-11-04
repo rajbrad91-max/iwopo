@@ -5,6 +5,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { generateReply, isActiveSubscriber } from '../lib/wopoAssistant.js';
 import { clientIp } from '../lib/clientIp.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ router.get('/subscribers', requireAuth, requireSuperAdmin, async (req, res) => {
       has_knowledge: knownSet.has(s.vendor_id),
     }));
     res.json({ subscribers });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ➕ add a subscriber (vendor subscribes to the chatbot)
@@ -81,7 +82,7 @@ router.post('/subscribers', requireAuth, requireSuperAdmin, async (req, res) => 
       create: { vendor_id: Number(vendor_id), share_token: crypto.randomBytes(8).toString('hex') },
     });
     res.status(201).json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔌 toggle active / inactive
@@ -93,7 +94,7 @@ router.put('/subscribers/:vendorId/active', requireAuth, requireSuperAdmin, asyn
     });
     if (!count) return res.status(404).json({ error: 'Not a subscriber' });
     res.json({ active: !!req.body.active });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🗑️ remove a subscriber
@@ -101,7 +102,7 @@ router.delete('/subscribers/:vendorId', requireAuth, requireSuperAdmin, async (r
   try {
     await prisma.chatbot_subscribers.deleteMany({ where: { vendor_id: Number(req.params.vendorId) } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔑 set the access code for the shareable fill-in link
@@ -118,7 +119,7 @@ router.put('/subscribers/:vendorId/code', requireAuth, requireSuperAdmin, async 
       select: { access_code: true, share_token: true },
     });
     res.json({ access_code: s.access_code, share_token: s.share_token });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📚 knowledge — read (super admin)
@@ -136,7 +137,7 @@ router.get('/knowledge/:vendorId', requireAuth, requireSuperAdmin, async (req, r
       knowledge: knowledge || emptyKnowledge(vendorId),
       subscriber: { ...subRest, business_name: vendors?.business_name ?? null },
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📚 knowledge — save (super admin edit)
@@ -144,7 +145,7 @@ router.put('/knowledge/:vendorId', requireAuth, requireSuperAdmin, async (req, r
   try {
     await saveKnowledge(req.params.vendorId, req.body);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // shared upsert used by both super-admin edit and the public fill-in form
@@ -189,7 +190,7 @@ router.get('/fill/:token', async (req, res) => {
     });
     if (!s) return res.status(404).json({ error: 'Link not found' });
     res.json({ business_name: s.vendors?.business_name ?? null, needs_code: !!s.access_code });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // unlock with the access code → returns the current knowledge to edit
@@ -207,7 +208,7 @@ router.post('/fill/:token/unlock', limit({ name: 'fill-unlock', max: 12, windowM
     forgive('fill-unlock', req, req.params.token);
     const k = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: s.vendor_id } });
     res.json({ knowledge: k || emptyKnowledge(s.vendor_id), fields: KNOWLEDGE_FIELDS });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // vendor submits their filled knowledge
@@ -227,7 +228,7 @@ router.post('/fill/:token', limit({ name: 'fill-unlock', max: 12, windowMs: 15 *
     forgive('fill-unlock', req, req.params.token);
     await saveKnowledge(s.vendor_id, req.body);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 💰 cost + usage per vendor (super admin)
@@ -258,7 +259,7 @@ router.get('/costs', requireAuth, requireSuperAdmin, async (req, res) => {
       .sort((a, b) => Number(b.cost_usd) - Number(a.cost_usd));
     const total = vendors.reduce((s, r) => s + Number(r.cost_usd || 0), 0);
     res.json({ vendors, total_usd: Number(total.toFixed(4)) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ❓ pending (unanswered) questions for a vendor
@@ -269,7 +270,7 @@ router.get('/pending/:vendorId', requireAuth, requireSuperAdmin, async (req, res
       orderBy: { id: 'desc' },
     });
     res.json({ pending });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.put('/pending/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
@@ -278,7 +279,7 @@ router.put('/pending/:id', requireAuth, requireSuperAdmin, async (req, res) => {
       data: { answer: req.body.answer || null, status: req.body.dismiss ? 'dismissed' : 'answered' },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📨 visitor messages left for a vendor
@@ -290,7 +291,7 @@ router.get('/messages/:vendorId', requireAuth, requireSuperAdmin, async (req, re
       take: 100,
     });
     res.json({ messages });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 router.put('/messages/:id/read', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
@@ -299,7 +300,7 @@ router.put('/messages/:id/read', requireAuth, requireSuperAdmin, async (req, res
       data: { status: 'read' },
     });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // ── 🌐 PUBLIC CHAT (the widget talks to this) ──
@@ -349,7 +350,7 @@ router.get('/my/status', requireAuth, async (req, res) => {
       select: { active: true },
     });
     res.json({ subscribed: !!sub, active: !!sub?.active });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 💬 my chat history — grouped into conversations (last 30 days only)
@@ -382,7 +383,7 @@ router.get('/my/history', requireAuth, async (req, res) => {
     }
     const conversations = [...bySession.values()].sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
     res.json({ conversations });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // 📚 MY knowledge — the vendor editing their own assistant from their panel.
@@ -399,7 +400,7 @@ router.get('/my/knowledge', requireAuth, async (req, res) => {
     if (!sub) return res.status(403).json({ error: 'Not subscribed' });
     const knowledge = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: v } });
     res.json({ knowledge: knowledge || emptyKnowledge(v), fields: KNOWLEDGE_FIELDS });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/my/knowledge', requireAuth, async (req, res) => {
@@ -414,7 +415,7 @@ router.put('/my/knowledge', requireAuth, async (req, res) => {
     // write their own knowledge no matter what they post
     await saveKnowledge(v, req.body);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

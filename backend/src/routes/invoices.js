@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
 import { currencyFor } from '../lib/currencies.js';
 import { resolveTimezone } from '../lib/timezones.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.get('/', requireAuth, async (req, res) => {
     });
     const invoices = rows.map(({ leads, ...i }) => ({ ...i, client_name: leads?.name ?? null }));
     res.json({ invoices });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // GET /api/invoices/lead/:leadId
@@ -39,7 +40,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
       orderBy: { created_at: 'desc' },
     });
     res.json({ invoices });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // POST /api/invoices/lead/:leadId → generate (auto from package + payments, or custom items)
@@ -51,7 +52,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
 
     const invoice = await prisma.invoices.create({ data: await invoiceData(lead, req.body.items, req.body.notes) });
     res.status(201).json({ invoice });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /** The invoice for a lead: from its package and payments, or the items given. Shared by the button and by booking. */
@@ -112,7 +113,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && inv.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     await prisma.invoices.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUBLIC: GET /api/invoices/view/:token → client view
@@ -154,7 +155,7 @@ router.get('/view/:token', async (req, res) => {
         logo_path: vendors?.logo_path ?? null,
       },
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

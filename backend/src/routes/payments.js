@@ -3,6 +3,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { templateForLead, buildContractBody } from './contracts.js';
 import { ensureInvoice } from './invoices.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 
@@ -94,7 +95,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
       orderBy: { paid_at: 'desc' },
     });
     res.json({ payments, summary: await moneySummary(lead) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -144,7 +145,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       orderBy: { paid_at: 'desc' },
     });
     res.status(201).json({ payments, summary: await moneySummary(lead) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // DELETE /api/payments/:id
@@ -190,7 +191,7 @@ router.put('/lead/:leadId/confirm-claim', requireAuth, async (req, res) => {
     });
     const fresh = await prisma.leads.findUnique({ where: { id: lead.id } });
     res.json({ payments, summary: await moneySummary(fresh), status: fresh.status });   // the panel shows a new booking at once
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 router.delete('/:id', requireAuth, async (req, res) => {
@@ -202,7 +203,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
     await prisma.payments.delete({ where: { id } });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -293,7 +294,7 @@ router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
     const rebuilt = await rebuildUnsignedContract(updated);
 
     res.json({ lead: updated, summary: await moneySummary(updated), contract_rebuilt: rebuilt });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/payments/lead/:leadId/web-payment → toggle online card payment
@@ -306,7 +307,7 @@ router.put('/lead/:leadId/web-payment', requireAuth, async (req, res) => {
       data: { web_payment_enabled: !!req.body.enabled, updated_at: new Date() },
     });
     res.json({ web_payment_enabled: updated.web_payment_enabled });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 export default router;

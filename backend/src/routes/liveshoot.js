@@ -33,6 +33,7 @@ import multer from 'multer';
 import prisma from '../config/prisma.js';
 import { getFaceDescriptors, faceDistance, selfieLimit } from '../lib/faceEngine.js';
 import { isUsableFace } from '../lib/portraitScore.js';
+import { serverError } from '../lib/httpError.js';
 
 const router = express.Router();
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 } });
@@ -190,7 +191,7 @@ router.get('/:token', async (req, res) => {
          would read as "you are in none of them". */
       still_indexing: !a.faces_clustered,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -294,7 +295,7 @@ router.post('/:token/match', upload.single('selfie'), async (req, res) => {
       photos: photos.map(p => ({ id: p.id, filename: p.filename })),
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   } finally {
     /* Always, on every path. The selfie does not outlive the request. */
     if (tmp) await fs.unlink(tmp).catch(() => {});
@@ -355,7 +356,7 @@ router.post('/:token/signout', async (req, res) => {
     res.clearCookie('live_pass_' + a.id, { httpOnly: true, sameSite: 'lax', secure: true });
     res.cookie('live_pass_' + a.id, '', { httpOnly: true, sameSite: 'lax', secure: true, maxAge: 0 });
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
@@ -385,7 +386,7 @@ router.get('/:token/mine', async (req, res) => {
       orderBy: { filename: 'asc' },
     });
     res.json({ count: photos.length, photos, expires: pass.exp });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { serverError(res, e); }
 });
 
 /**
