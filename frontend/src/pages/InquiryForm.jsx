@@ -234,6 +234,13 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
   const c = cfg || {};
   const box = (key, extra = '') => ({ 'data-field': key, className: `${extra} ${errs[key] ? 'iq-field-err' : ''}`.trim() || undefined });
   const note = (key) => (errs[key] ? <div className="iq-field-msg" role="alert">⚠️ {errs[key]}</div> : null);
+  /* 🗓️ The client's form follows the vendor's rules exactly. In the panel a Pre-Events question that already holds
+     pre-events always shows: they are the lead's own list, and Edit details is where one is changed or removed. */
+  const fieldsShown = () => {
+    const shown = new Set(shownFields(c.custom_fields, answers, p).map(f => f.id));
+    return (c.custom_fields || []).filter(f => shown.has(f.id)
+      || (!clientForm && f.type === 'pre_events' && Array.isArray(answers?.[f.id]) && answers[f.id].length > 0));
+  };
   return (
     <TimeFormat.Provider value={c.time_format === '24h' ? '24h' : '12h'}>
       {/* Section 1: Contact Details */}
@@ -284,7 +291,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
         <div className="iq-section">
           <div className="iq-section-title"><span className="iq-emoji">✨ </span>{c.details_heading || 'Inquiry Details'}</div>
           <div className="iq-grid">
-            {shownFields(c.custom_fields, answers, p).map(fld => (
+            {fieldsShown().map(fld => (
               <div key={fld.id} {...box(`f:${fld.id}`, FULL_WIDTH.has(fld.type) ? 'iq-full' : '')}>
                 <CustomField fld={fld} value={answers[fld.id]} onChange={v => setAns(fld.id, v)}
                   answers={answers} fields={c.custom_fields} clientForm={clientForm} />
@@ -408,10 +415,9 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
 
   if (fld.type === 'heading') return <div className="iq-section-title iq-subhead">{fld.label}</div>;
 
-  // 🗓️ the client adds as many as they need; the vendor's own panel adds them on the lead's Pre-Events card
-  if (fld.type === 'pre_events') return clientForm
-    ? <PreEventsField fld={fld} value={value} onChange={onChange} />
-    : <>{label}<p className="iq-pe-note">🗓️ Added on the lead&apos;s Pre-Events card.</p></>;
+  // 🗓️ the client adds as many as they need; in the panel, Add Lead and Edit details use the same editor — Edit
+  // details works on the lead's own list (VendorPanel LeadDetail), which is where a pre-event is removed
+  if (fld.type === 'pre_events') return <PreEventsField fld={fld} value={value} onChange={onChange} />;
 
   // ✍️ a dropdown that also lets the client type their own answer
   if (fld.type === 'dropdown' && fld.allow_other) return (<>
@@ -625,6 +631,10 @@ function preEventProblem(rows, today) {
  * ✍️ A dropdown with "Other (type your own)". Picking it opens a box under the list, and what the client types
  * IS the answer — so a lead shows "Anand Karaj", not "Other".
  */
+/** 🗓️ The vendor's service choices for a pre-event — plus a value already saved that isn't among them (an older
+ *  answer, or one typed on the lead page), so it shows as itself instead of looking like the first choice. */
+const peServiceChoices = (list, current) => (current && !list.includes(current) ? [current, ...list] : list);
+
 function OtherSelect({ options, value, onChange, otherLabel }) {
   const typed = !!value && !options.includes(value);
   const [typing, setTyping] = useState(typed);
@@ -680,7 +690,7 @@ function PreEventsField({ fld, value, onChange }) {
               {(fld.pe_services || []).length
                 ? <select value={r.service} onChange={e => set(i, { service: e.target.value })}>
                     <option value="" disabled hidden>Select…</option>
-                    {fld.pe_services.map((o, x) => <option key={x}>{o}</option>)}
+                    {peServiceChoices(fld.pe_services, r.service).map((o, x) => <option key={x}>{o}</option>)}
                   </select>
                 : <input value={r.service} placeholder="e.g. Photos & Videos" onChange={e => set(i, { service: e.target.value })} />}
             </div>

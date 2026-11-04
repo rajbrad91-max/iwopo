@@ -22,7 +22,6 @@ export default function PreEvents({ lead, onSaved }) {
   const [dirty, setDirty] = useState(false);
   const change = (i, k, v) => { setList(l => l.map((e, j) => (j === i ? { ...e, [k]: v } : e))); setDirty(true); setMsg(''); };
   const add = () => { setList(l => [...l, { ...BLANK }]); setDirty(true); };
-  const remove = (i) => { setList(l => l.filter((_, j) => j !== i)); setDirty(true); };
   async function save() {
     setBusy(true); setMsg('');
     try {
@@ -50,7 +49,6 @@ export default function PreEvents({ lead, onSaved }) {
             <label className="pe-f"><span>Est guests</span><input type="number" min="0" value={e.guests} onChange={x => change(i, 'guests', x.target.value)} /></label>
             <label className="pe-f"><span>Service</span><input value={e.service} placeholder="Photos & Videos" onChange={x => change(i, 'service', x.target.value)} /></label>
           </div>
-          <button type="button" className="pe-remove" onClick={() => remove(i)} aria-label={`Remove ${e.name || 'this pre-event'}`}>🗑️</button>
         </div>
       ))}
       <div className="pe-actions">

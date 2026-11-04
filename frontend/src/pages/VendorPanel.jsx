@@ -3426,10 +3426,22 @@ function LeadDetail({ lead, onBack, onSaved }) {
     } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
   }
 
+  /* 🗓️ A lead has ONE list of pre-events — the one on its Pre-Events card, which the contract's schedule uses.
+     The form's Pre-Events question holds the client's original answer; Edit details shows and saves the lead's
+     own list through it, so a pre-event changed or removed here is changed everywhere. */
+  const preEventsField = () => (cfg?.custom_fields || []).find(f => f.type === 'pre_events');
+  function openEdit() {
+    const pf = preEventsField();
+    if (pf) setEAnswers(s => ({ ...s, [pf.id]: (Array.isArray(lead.pre_events) ? lead.pre_events : []).map((e, k) => ({ ...e, _k: `saved-${k}` })) }));
+    setEdit(true);
+  }
+
   async function save() {
     setBusy(true); setMsg('');
+    const pf = preEventsField();
     try {
       const d = await api.updateLead(lead.id, {
+        ...(pf ? { pre_events: (eAnswers[pf.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim()) } : {}),
         name: ep.name, email: ep.email, phone: ep.phone,
         role: ep.role, instagram: ep.instagram, heard: ep.heard,
         notes: eNotes, custom_data: eAnswers,
@@ -3504,7 +3516,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
     <div className="ld-view">
       <div className="ld-topbar">
         <button className="refresh" onClick={onBack} title="Return to your leads list">← Back to leads</button>
-        <button className="refresh ld-edit-btn" onClick={() => setEdit(true)} title="Edit contact details, event answers, and notes">✏️ Edit Details</button>
+        <button className="refresh ld-edit-btn" onClick={openEdit} title="Edit contact details, event answers, pre-events and notes">✏️ Edit Details</button>
       </div>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
 
@@ -3601,7 +3613,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
       })()}
 
       {/* 🗓️ Pre-events — Mehndi, Jaggo, Reception… printed in the contract's schedule */}
-      <PreEvents key={lead.id} lead={lead} onSaved={onSaved} />
+      <PreEvents key={`${lead.id}:${lead.updated_at}`} lead={lead} onSaved={onSaved} />
 
       {/* 📦 Packages — in the left column under the event details, since it's
           part of reading the enquiry rather than a side action */}
