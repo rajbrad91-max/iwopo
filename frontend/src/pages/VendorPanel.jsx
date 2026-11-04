@@ -2931,7 +2931,7 @@ function AddLeadModal({ vendorId, onClose, onSaveDone }) {
     if (!p.name || !p.email) { setErr('Name and email are required'); return; }
     const custom = { ...answers };
     for (const fld of (cfg?.custom_fields || [])) {
-      if (fld.type === 'time' && answers[fld.id] === PARTIAL_TIME) { setErr(`Pick the hour, minutes and AM/PM for "${fld.label}"`); return; }
+      if (fld.type === 'time' && answers[fld.id] === PARTIAL_TIME) { setErr(`Finish the time for "${fld.label}"`); return; }
       if (fld.required && !answers[fld.id]) { setErr(`"${fld.label}" is required`); return; }
       if (fld.type === 'number' && has(custom[fld.id])) custom[fld.id] = plainNumber(custom[fld.id]);
     }
@@ -5025,7 +5025,7 @@ const FORM_PRESETS = {
   photo_video: { label: '🎬 Photo & Video', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
-    { type: 'dropdown', label: 'What do you need?', options: ['Photo only', 'Video only', 'Photo & Video'] },
+    { type: 'dropdown', label: 'What do you need?', options: ['Photos only', 'Videos only', 'Photos & Videos'] },
     { type: 'checkbox', label: 'Drone footage' },
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
   ] },

@@ -88,9 +88,16 @@
 .iq-grid .iq-full { grid-column: 1 / -1; }
 
 .iq-card label { display: block; font-size: 12px; color: var(--label); font-weight: 700; margin: 0 0 5px; }
-.iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 12px 14px; background: var(--field-bg);
+.iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 12px 14px; background-color: var(--field-bg);
   border: 1px solid var(--field-line); border-radius: 10px; color: var(--text); font-size: 14px; font-family: inherit; box-sizing: border-box; }
-.iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, #C9A86A); background: #fff; }
+.iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, #C9A86A); background-color: #fff; }
+/* 🔽 Dropdowns draw their own arrow. The browser's arrow sat against the right edge (padding moves only the text)
+   and kept its own size when the page was zoomed. This chevron is sized in em, so it scales exactly with the text,
+   and is inset from the right edge by --dd-inset; the text stops short of it. */
+.iq-card select { --dd-inset: 1em; appearance: none; -webkit-appearance: none; cursor: pointer;
+  padding-right: calc(var(--dd-inset) + 1.4em);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%234b5563' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right var(--dd-inset) center; background-size: .8em auto; }
 .iq-card input::placeholder { color: var(--muted); }
 
 /* Matched at the same depth as the rules above rather than shouted over them:
@@ -155,7 +162,7 @@
 .iq-theme-ivory .iq-section-title { font-size: 13px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: var(--text); margin-bottom: 14px; }
 .iq-theme-ivory .iq-emoji { display: none; }
 .iq-card.iq-theme-ivory label { font-size: 13px; font-weight: 500; color: var(--label); margin-bottom: 6px; }
-.iq-card.iq-theme-ivory input, .iq-card.iq-theme-ivory select, .iq-card.iq-theme-ivory textarea { min-height: 46px; border: 1px solid var(--field-line); border-radius: 4px; background: #fffdfa; font-size: 15px; }
+.iq-card.iq-theme-ivory input, .iq-card.iq-theme-ivory select, .iq-card.iq-theme-ivory textarea { min-height: 46px; border: 1px solid var(--field-line); border-radius: 4px; background-color: #fffdfa; font-size: 15px; }
 .iq-card.iq-theme-ivory textarea { min-height: 90px; }
 .iq-card.iq-theme-ivory .iq-check-row input { min-height: 0; }
 .iq-theme-ivory .iq-btn { height: 52px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500; box-shadow: none; }
@@ -167,7 +174,8 @@
 
 /* 🕐 time as hour · minutes · AM/PM */
 .iq-time { display: grid; grid-template-columns: 1fr 1fr minmax(96px, 1.2fr); gap: 6px; }
-.iq-card .iq-time select { min-width: 0; padding-left: 10px; padding-right: 26px; text-overflow: clip; }
+.iq-time-24 { grid-template-columns: 1fr 1fr; }   /* 24-hour: no AM/PM box */
+.iq-card .iq-time select { --dd-inset: .75em; min-width: 0; padding-left: 10px; text-overflow: clip; }
 /* the chat bubble must never sit over the last questions or the send button */
 .iq-wrap { padding-bottom: 96px; }
 

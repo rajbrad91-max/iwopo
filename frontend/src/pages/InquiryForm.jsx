@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { firstName } from '../lib/firstName';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import { instaHandle, instaProblem } from '../lib/instagram';
@@ -226,7 +226,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
   const box = (key, extra = '') => ({ 'data-field': key, className: `${extra} ${errs[key] ? 'iq-field-err' : ''}`.trim() || undefined });
   const note = (key) => (errs[key] ? <div className="iq-field-msg" role="alert">⚠️ {errs[key]}</div> : null);
   return (
-    <>
+    <TimeFormat.Provider value={c.time_format === '24h' ? '24h' : '12h'}>
       {/* Section 1: Contact Details */}
       <div className="iq-section">
         <div className="iq-section-title"><span className="iq-emoji">📇 </span>Contact Details</div>
@@ -234,7 +234,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
           <div {...box('role')}>
             <label>Your Role *</label>
             <select value={p.role} onChange={e => setPI('role', e.target.value)}>
-              <option value="">Select…</option>
+              <option value="" disabled hidden>Select…</option>
               <option>Bride</option><option>Groom</option><option>Planner</option><option>Other</option>
             </select>
             {note('role')}
@@ -263,7 +263,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
           <div>
             <label>How did you hear about us?</label>
             <select value={p.heard} onChange={e => setPI('heard', e.target.value)}>
-              <option value="">Select…</option>
+              <option value="" disabled hidden>Select…</option>
               <option>Friend</option><option>Google Maps</option><option>Instagram</option><option>Facebook</option><option>Other</option>
             </select>
           </div>
@@ -292,7 +292,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
         <label>Anything else?</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" placeholder="Tell us more…" />
       </div>
-    </>
+    </TimeFormat.Provider>
   );
 }
 
@@ -373,7 +373,7 @@ export function checkAnswers(fields, answers, allFields = fields) {
     if (f.type === 'heading') continue;
     const v = answers[f.id];
     // ⏱️ a time with only some of hour / minutes / AM-PM picked
-    if (f.type === 'time' && v === PARTIAL_TIME) return { id: f.id, message: `Please pick the hour, minutes and AM/PM for "${f.label}"` };
+    if (f.type === 'time' && v === PARTIAL_TIME) return { id: f.id, message: `Please finish the time for "${f.label}"` };
     if (v === OTHER) { if (f.required) return { id: f.id, message: `Please type your answer for "${f.label}"` }; continue; }
     const empty = v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && !v.length);
     if (f.required && empty) return { id: f.id, message: `"${f.label}" is required` };
@@ -413,7 +413,7 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
   if (fld.type === 'dropdown') return (<>
     {label}
     <select value={value || ''} onChange={e => onChange(e.target.value)}>
-      <option value="">Select…</option>
+      <option value="" disabled hidden>Select…</option>
       {(fld.options || []).map((o, i) => <option key={i}>{o}</option>)}
     </select>
   </>);
@@ -464,43 +464,58 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
 /** A time where only some of hour / minutes / AM-PM is picked — caught before sending. */
 export const PARTIAL_TIME = 'partial';
 
+/** 🕐 12h or 24h — the vendor's own setting, given to every time picker in the form by LeadFormBody. */
+const TimeFormat = createContext('12h');
+const HOURS_12 = ['12', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
+const HOURS_24 = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0'));
+const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
+
 /**
- * 🕐 Time — hour, minutes, AM/PM as three plain dropdowns.
+ * 🕐 Time — hour and minutes (plus AM/PM on a 12-hour form) as plain dropdowns.
  *
  * QA 2026-10-10: start and end times never reached a single lead. A browser's
- * time box stays EMPTY until hour, minutes and AM/PM are all filled, and
- * typing "4 PM" leaves it blank without a word — so the time, and the Hours
- * worked out from it, silently vanished. Three dropdowns have no half-filled
- * state the client can't see: picking the hour fills :00, AM/PM must be
- * chosen, and anything still missing is pointed out before sending.
- * The value stays "HH:MM" (24-hour), exactly what the lead has always stored.
+ * time box stays EMPTY until every part is filled, and typing "4 PM" leaves it
+ * blank without a word — so the time, and the Hours worked out from it,
+ * silently vanished. Dropdowns have no half-filled state the client can't see:
+ * picking the hour fills :00, and anything still missing is pointed out before
+ * sending. "Hour", "Min" and "AM/PM" label the empty boxes but are not choices.
+ * The value stays "HH:MM" (24-hour) on both formats, exactly what the lead has
+ * always stored.
  */
 function TimeSelect({ value, onChange }) {
+  const is24 = useContext(TimeFormat) === '24h';
   const m = /^(\d{1,2}):(\d{2})$/.exec(value || '');
-  const [part, setPart] = useState(() => (m ? { h: String(+m[1] % 12 || 12), mi: m[2], ap: +m[1] >= 12 ? 'PM' : 'AM' } : { h: '', mi: '', ap: '' }));
+  const [part, setPart] = useState(() => {
+    if (!m) return { h: '', mi: '', ap: '' };
+    const h = +m[1];
+    return is24 ? { h: String(h).padStart(2, '0'), mi: m[2], ap: '' }
+      : { h: String(h % 12 || 12), mi: m[2], ap: h >= 12 ? 'PM' : 'AM' };
+  });
   const put = (next) => {
     const t = { ...part, ...next };
     if (next.h && !t.mi) t.mi = '00';
     setPart(t);
-    if (t.h && t.mi && t.ap) {
-      const h24 = (+t.h % 12) + (t.ap === 'PM' ? 12 : 0);
+    if (t.h && t.mi && (is24 || t.ap)) {
+      const h24 = is24 ? +t.h : (+t.h % 12) + (t.ap === 'PM' ? 12 : 0);
       onChange(`${String(h24).padStart(2, '0')}:${t.mi}`);
     } else onChange(t.h || t.mi || t.ap ? PARTIAL_TIME : '');
   };
   return (
-    <div className="iq-time">
+    <div className={`iq-time${is24 ? ' iq-time-24' : ''}`}>
       <select aria-label="Hour" value={part.h} onChange={e => put({ h: e.target.value })}>
-        <option value="">Hour</option>
-        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => <option key={h} value={String(h)}>{h}</option>)}
+        <option value="" disabled hidden>Hour</option>
+        {(is24 ? HOURS_24 : HOURS_12).map(h => <option key={h} value={h}>{h}</option>)}
       </select>
       <select aria-label="Minutes" value={part.mi} onChange={e => put({ mi: e.target.value })}>
-        <option value="">Min</option>
-        {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(x => <option key={x} value={x}>:{x}</option>)}
+        <option value="" disabled hidden>Min</option>
+        {MINUTES.map(x => <option key={x} value={x}>:{x}</option>)}
       </select>
-      <select aria-label="AM or PM" value={part.ap} onChange={e => put({ ap: e.target.value })}>
-        <option value="">AM/PM</option>
-        <option>AM</option><option>PM</option>
-      </select>
+      {!is24 && (
+        <select aria-label="AM or PM" value={part.ap} onChange={e => put({ ap: e.target.value })}>
+          <option value="" disabled hidden>AM/PM</option>
+          <option>AM</option><option>PM</option>
+        </select>
+      )}
     </div>
   );
 }
@@ -587,7 +602,7 @@ function preEventProblem(rows, today) {
     const n = i + 1;
     if (r.name === OTHER) return `Please type the name of pre-event ${n}`;
     if (!String(r.name || '').trim()) return `Please choose the name of pre-event ${n} (or remove it)`;
-    if (r.from === PARTIAL_TIME || r.to === PARTIAL_TIME) return `Please pick the hour, minutes and AM/PM for pre-event ${n}`;
+    if (r.from === PARTIAL_TIME || r.to === PARTIAL_TIME) return `Please finish the times for pre-event ${n}`;
     if (r.date && String(r.date) < today) return `The date of pre-event ${n} has already passed — please check it`;
     const span = hoursBetween(r.from, r.to);
     if (span !== null && span > MAX_EVENT_HOURS) return `The ending time of pre-event ${n} is before its starting time — please check both`;
@@ -608,7 +623,7 @@ function OtherSelect({ options, value, onChange, otherLabel }) {
         appear the moment it is picked — not only after typing (Muse, 2026-10-30) */}
     <select value={typing ? OTHER : (value || '')}
       onChange={e => { const v = e.target.value; setTyping(v === OTHER); onChange(v); }}>
-      <option value="">Select…</option>
+      <option value="" disabled hidden>Select…</option>
       {options.map((o, i) => <option key={i}>{o}</option>)}
       <option value={OTHER}>{otherLabel || 'Other (type your own)'}</option>
     </select>
@@ -654,7 +669,7 @@ function PreEventsField({ fld, value, onChange }) {
               <label>Service</label>
               {(fld.pe_services || []).length
                 ? <select value={r.service} onChange={e => set(i, { service: e.target.value })}>
-                    <option value="">Select…</option>
+                    <option value="" disabled hidden>Select…</option>
                     {fld.pe_services.map((o, x) => <option key={x}>{o}</option>)}
                   </select>
                 : <input value={r.service} placeholder="e.g. Photos & Videos" onChange={e => set(i, { service: e.target.value })} />}

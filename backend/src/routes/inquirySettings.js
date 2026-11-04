@@ -12,6 +12,11 @@ async function chatOn(vendorId) {
   const sub = await prisma.chatbot_subscribers.findUnique({ where: { vendor_id: Number(vendorId) }, select: { active: true } }).catch(() => null);
   return !!sub?.active;
 }
+/** 🕐 The vendor's 12h / 24h choice (Settings → Preferences), so the form's time pickers match it. */
+async function timeFormat(vendorId) {
+  const vs = await prisma.vendor_settings.findUnique({ where: { vendor_id: Number(vendorId) }, select: { time_format: true } }).catch(() => null);
+  return vs?.time_format === '24h' ? '24h' : '12h';
+}
 /** A #rgb or #rrggbb value, and nothing else. */
 const looksLikeColour = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v || ''));
 
@@ -65,6 +70,7 @@ router.get('/by-host', async (req, res) => {
         brand_name: s.brand_name || vendor?.business_name,
         logo_path: vendor?.logo_path || '',
         bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(site.vendor_id),
+        time_format: await timeFormat(site.vendor_id),
       },
       slug: vendor?.slug || '',
     });
@@ -87,7 +93,7 @@ router.get('/my', requireAuth, async (req, res) => {
     const s = await prisma.inquiry_settings.findUnique({ where: { vendor_id: vid } }) || DEFAULTS;
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({
-      settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor?.business_name, logo_path: vendor?.logo_path || '' },
+      settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor?.business_name, logo_path: vendor?.logo_path || '', time_format: await timeFormat(vid) },
       slug: vendor?.slug || '',
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -128,7 +134,7 @@ router.get('/:handle', async (req, res) => {
       where: { vendor_id: vendorId }, select: { bot_name: true },
     });
 
-    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(vendorId) } });
+    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(vendorId), time_format: await timeFormat(vendorId) } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
