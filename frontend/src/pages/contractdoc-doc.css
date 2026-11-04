@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@600;700&family=Open+Sans:wght@400;600;700&family=Caveat:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@600;700&family=Open+Sans:wght@400;600;700&family=Caveat:wght@500&display=swap');
 /*
  * 📜 THE contract document's look — the ONE source for every place a contract appears (Raj, 2026-10-24):
  * Contract setup preview, Lead → Preview Contract, the client's signing view, and the delivered file
@@ -62,7 +62,7 @@
 .ct-accept-title {
   font-family: var(--ct-head);
   font-size: 21px;
-  font-weight: 700;
+  font-weight: 600;          /* a touch lighter than bold (Raj, 2026-11-04) */
   color: #1f2937;
   letter-spacing: normal;
   text-transform: none;
@@ -74,7 +74,7 @@
 .ct-doc .ct-sec h3 {
   font-family: var(--ct-head);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: #1f2937;
   margin: 18px 0 4px;
   line-height: 1.4;
@@ -155,7 +155,7 @@
 .ct-doc .ct-init-tap.ct-hand {
   /* ✍️ initials read as hand-written, and stay legible as letters (Caveat — Raj, 2026-11-04) */
   font-family: Caveat, "Segoe Script", cursive;
-  font-weight: 600;
+  font-weight: 500;
   font-style: normal;
   font-size: 25px;
   line-height: 1.2;
