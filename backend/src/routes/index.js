@@ -13,6 +13,7 @@ import { platformMail } from './email.js';
 import nodemailer from 'nodemailer';
 import { getSetting } from '../lib/settings.js';
 import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
+import { clientIp } from '../lib/clientIp.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -283,7 +284,7 @@ const CURRENCY = { US:'$', CA:'C$', GB:'£', IN:'₹', AU:'A$', EU:'€' };
 
 // resolve a visitor's geo → { code, currency }
 function geoFrom(req) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+  const ip = clientIp(req);
   const g = geoip.lookup(ip);
   if (!g) return { code: 'default', region: null, currency: '$' };
   // British Columbia exception → CA-BC

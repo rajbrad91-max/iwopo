@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { generateReply, isActiveSubscriber } from '../lib/wopoAssistant.js';
+import { clientIp } from '../lib/clientIp.js';
 
 const router = express.Router();
 
@@ -322,7 +323,7 @@ router.post('/chat/:handle', async (req, res) => {
     const session = (req.body.session || '').toString().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || 'anon';
     const history = Array.isArray(req.body.history) ? req.body.history.slice(-40) : [];
 
-    const ip = (req.ip || 'unknown').toString();
+    const ip = clientIp(req) || 'unknown';
     if (rateLimited(`${ip}:${session}:${vendorId}`)) {
       return res.json({ reply: "Thanks for all the questions! For anything more, please reach out to the team directly.", done: true });
     }

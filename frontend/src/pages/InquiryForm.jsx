@@ -41,6 +41,9 @@ function usefulLink(url) {
 }
 
 export default function InquiryForm({ handle, byHost = false }) {
+  // 🍯 spam guards: a box people never see, and when the form opened (routes/leads.js)
+  const [trap, setTrap] = useState('');
+  const [openedAt] = useState(() => Date.now());
   /* On a vendor's own domain there is no handle in the URL — the Host header
    * names them. The server hands back their slug, which is what the lead is
    * filed against and what the chat widget talks to. */
@@ -125,6 +128,7 @@ export default function InquiryForm({ handle, byHost = false }) {
         role: p.role, instagram: p.instagram ? `@${p.instagram}` : '', heard: p.heard,
         notes, custom_data: custom,
         client_today: todayLocal(),   // 📅 the client's own date: the server refuses event dates before it
+        website: trap, form_ms: Date.now() - openedAt,   // 🍯 spam guards (routes/leads.js)
       });
       setDone(true);
     } catch (e) { setErr(e.message); }
@@ -202,6 +206,11 @@ export default function InquiryForm({ handle, byHost = false }) {
             clientForm errs={errs} />
 
           {err && <div className="iq-err">⚠️ {err}</div>}
+          {/* 🍯 people never see or reach this box; scripts fill every field they find */}
+          <div className="iq-hp" aria-hidden="true">
+            <label htmlFor="iq-hp-field">Leave this empty</label>
+            <input id="iq-hp-field" name="website" type="text" tabIndex={-1} autoComplete="off" value={trap} onChange={e => setTrap(e.target.value)} />
+          </div>
           <button className="iq-btn" onClick={submit} disabled={busy}>
             {busy ? 'Sending…' : <><span className="iq-emoji">📨 </span>Send Inquiry</>}
           </button>

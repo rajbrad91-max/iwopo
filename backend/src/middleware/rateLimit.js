@@ -10,6 +10,7 @@
  * share-link password was unlimited: eight wrong attempts in a row returned
  * eight plain 401s and nothing slowed down.
  */
+import { clientIp } from '../lib/clientIp.js';
 
 const buckets = new Map();
 /** when each bucket last refused — so onBlock fires once per lock, not on every refused try */
@@ -24,11 +25,7 @@ setInterval(() => {
   }
 }, 600_000).unref();
 
-/** The address the request really came from, since nginx is in front. */
-export function callerIp(req) {
-  const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return fwd || req.ip || req.socket?.remoteAddress || 'unknown';
-}
+
 
 /**
  * @param {object} opts
@@ -42,7 +39,7 @@ export function callerIp(req) {
    tries over many addresses gets the whole allowance on each. onBlock(req): called once when the lock closes. */
 export function limit({ max, windowMs, name, key, perAccount = false, onBlock }) {
   return (req, res, next) => {
-    const id = perAccount && key ? `${name}::${key(req)}` : `${name}:${callerIp(req)}:${key ? key(req) : ''}`;
+    const id = perAccount && key ? `${name}::${key(req)}` : `${name}:${clientIp(req) || 'unknown'}:${key ? key(req) : ''}`;
     const now = Date.now();
     const hits = (buckets.get(id) || []).filter(t => t > now - windowMs);
 
@@ -63,6 +60,6 @@ export function limit({ max, windowMs, name, key, perAccount = false, onBlock })
 
 /** A successful attempt should not count against the caller. */
 export function forgive(name, req, key = '') {
-  buckets.delete(`${name}:${callerIp(req)}:${key}`);
+  buckets.delete(`${name}:${clientIp(req) || 'unknown'}:${key}`);
   buckets.delete(`${name}::${key}`);   // the per-account count (perAccount: true)
 }

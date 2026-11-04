@@ -13,6 +13,7 @@
 import crypto from 'node:crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { clientIp } from './clientIp.js';
 
 /** A token and its hash. The plain one is shown once and never stored. */
 export function mintToken() {
@@ -58,7 +59,7 @@ export async function deviceOrAuth(req, res, next) {
 
     /* Last seen, best effort. A vendor looking at the list wants to know the
        watcher is alive, and a write failing here must not fail an upload. */
-    const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || null;
+    const ip = clientIp(req) || null;
     prisma.device_tokens.update({
       where: { id: row.id },
       data: { last_used: new Date(), last_ip: ip },

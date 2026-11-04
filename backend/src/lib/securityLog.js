@@ -1,5 +1,5 @@
 import prisma from '../config/prisma.js';
-import { callerIp } from '../middleware/rateLimit.js';
+import { clientIp } from './clientIp.js';
 
 /**
  * 🛡️ Security log (2026-10-30): sign-ins, wrong passwords, lock-outs, password changes and email confirmations for
@@ -28,7 +28,7 @@ export function logSecurity(req, user, event) {
       user_id: user.id,
       vendor_id: user.vendor_id ?? null,
       event,
-      ip: String(callerIp(req) || '').slice(0, 64) || null,
+      ip: clientIp(req).slice(0, 64) || null,
       device: deviceOf(req.headers?.['user-agent']).slice(0, 120),
     },
   })

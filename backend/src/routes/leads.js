@@ -11,6 +11,7 @@ import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { applyFormRules } from '../lib/formRules.js';
 import { ensureInvoice } from './invoices.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
+import { limit } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
@@ -393,7 +394,22 @@ const fitColumn = (key, value) => {
   return max && value.length > max ? value.slice(0, max) : value;
 };
 
-router.post('/', async (req, res) => {
+/* 🍯 Spam guards for the PUBLIC form only (2026-11-04) — it names its studio by slug; a vendor adding a lead by
+   hand in the panel never meets them. Per visitor address: 6 an hour to one studio, 20 an hour to all of them.
+   A submission no person could make — the hidden box filled, or sent faster than anyone can fill the form — is
+   answered "ok" and dropped, so a script learns nothing to adapt to. */
+const publicForm = (guard) => (req, res, next) => (req.body?.vendor_slug ? guard(req, res, next) : next());
+const perStudio = limit({ name: 'inquiry-studio', max: 6, windowMs: 60 * 60_000, key: (r) => String(r.body?.vendor_slug || '').toLowerCase() });
+const perVisitor = limit({ name: 'inquiry-any', max: 20, windowMs: 60 * 60_000 });
+const MIN_FORM_MS = 2500;
+function looksAutomated(b) {
+  if (String(b.website || '').trim()) return 'hidden box filled';
+  const ms = Number(b.form_ms);
+  if (b.form_ms !== undefined && Number.isFinite(ms) && ms >= 0 && ms < MIN_FORM_MS) return 'sent too fast';
+  return null;
+}
+
+router.post('/', publicForm(perVisitor), publicForm(perStudio), async (req, res) => {
   const b = req.body;
 
   // 🔗 The public form names its vendor by slug now. The row id is never sent
@@ -424,6 +440,10 @@ router.post('/', async (req, res) => {
   }
 
   if (!vendor_id) return res.status(400).json({ error: 'Which vendor is this for?' });
+  if (b.vendor_slug) {
+    const why = looksAutomated(b);
+    if (why) { console.warn(`🍯 inquiry to vendor ${vendor_id} dropped: ${why}`); return res.json({ ok: true }); }
+  }
   if (phoneProblem(b.phone)) return res.status(400).json({ error: phoneProblem(b.phone), field: 'phone' });   // 📞 never letters
   if (b.instagram !== undefined) { const ig = cleanInstagram(b.instagram); if (ig.error) return res.status(400).json({ error: ig.error, field: 'instagram' }); b.instagram = ig.value; }   // 📸 "@name", Instagram's characters only
   /* 🔀 the vendor's form rules (2026-10-30): an answer to a question that was hidden is dropped, and a Pre-Events

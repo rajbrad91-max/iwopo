@@ -8,6 +8,7 @@ import { currencyFor } from '../lib/currencies.js';
 import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 import { limit } from '../middleware/rateLimit.js';
 import { ownDomainAllowed } from '../lib/vendorHosts.js';
+import { clientIp } from '../lib/clientIp.js';
 
 const router = express.Router();
 
@@ -26,10 +27,7 @@ function gateOpen(req, lead) {
     String(lead.email || '').trim().toLowerCase());
 }
 
-function ipOf(req) {
-  const fwd = req.headers['x-forwarded-for'];
-  return (fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress || '').replace('::ffff:', '');
-}
+
 
 /**
  * 📄 Keep the contract honest about which package it is for.
@@ -193,7 +191,7 @@ router.get('/:token', async (req, res) => {
             where: { id: active.id },
             data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
           });
-          await audit(active.id, 'voided', ipOf(req), { reason: 'portal_reopened_before_payment' });
+          await audit(active.id, 'voided', clientIp(req), { reason: 'portal_reopened_before_payment' });
         }
         await prisma.lead_packages.updateMany({
           where: { lead_id: lead.id },                           // 🔒 tenancy via the lead
@@ -357,7 +355,7 @@ router.post('/:token/pick', async (req, res) => {
         }),
       ]);
       const updated = await prisma.leads.findUnique({ where: { id: lead.id } });
-      await reconcileContract(lead, own.id, ipOf(req));
+      await reconcileContract(lead, own.id, clientIp(req));
       notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${own.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
       return res.json({ lead: updated, money: await moneySummary(updated) });
     }
@@ -381,7 +379,7 @@ router.post('/:token/pick', async (req, res) => {
       where: { id: lead.id },
       data: { package_id: p.id, package_snapshot: snapshot, updated_at: new Date() },
     });
-    await reconcileContract(lead, p.id, ipOf(req));
+    await reconcileContract(lead, p.id, clientIp(req));
     notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${p.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
     res.json({ ok: true, money: await moneySummary(updated) });
   } catch (e) { res.status(500).json({ error: e.message }); }

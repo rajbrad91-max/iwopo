@@ -1,5 +1,6 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
+import { clientIp } from '../lib/clientIp.js';
 
 const router = express.Router();
 
@@ -17,10 +18,6 @@ const HINTS = {
 const RESULTS_PASSWORD = 'xyz.123';
 // ─────────────────────────────────────────────────────
 
-function clientIp(req) {
-  // trust proxy is on → req.ip is the real client IP behind nginx
-  return (req.ip || req.headers['x-forwarded-for'] || 'unknown').toString().split(',')[0].trim();
-}
 
 // 🗳️ poll config + whether THIS ip already voted (and for what)
 router.get('/', async (req, res) => {

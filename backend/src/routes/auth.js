@@ -13,6 +13,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { logSecurity, deviceOf } from '../lib/securityLog.js';
 import jwt from 'jsonwebtoken';
 import { signupsOpen, SIGNUPS_CLOSED_MESSAGE } from '../lib/signups.js';
+import { clientIp } from '../lib/clientIp.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -37,11 +38,6 @@ const router = express.Router();
 const TRIAL_LIMIT = 2; // max trials per IP
 const APP_URL = process.env.APP_URL || 'https://iwopo.com';
 
-// Get the real client IP (behind nginx proxy)
-function clientIp(req) {
-  const fwd = req.headers['x-forwarded-for'];
-  return (fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress || '').replace('::ffff:', '');
-}
 
 // How many trials this IP has already used
 async function trialCount(ip) {

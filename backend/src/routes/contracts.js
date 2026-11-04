@@ -12,6 +12,7 @@ import { currencyFor } from '../lib/currencies.js';
 import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { notify } from './notifications.js';
+import { clientIp } from '../lib/clientIp.js';
 
 const router = express.Router();
 
@@ -19,10 +20,7 @@ function vid(req) {
   if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
   return req.user.vendor_id;
 }
-function ipOf(req) {
-  const fwd = req.headers['x-forwarded-for'];
-  return (fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress || '').replace('::ffff:', '');
-}
+
 export async function audit(contractId, event, ip, meta) {
   await prisma.contract_audit.create({
     data: { contract_id: contractId, event, ip: ip || null, meta: meta ?? null },
@@ -822,7 +820,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
         template_id: tplId,
       },
     });
-    await audit(contract.id, 'created', ipOf(req));
+    await audit(contract.id, 'created', clientIp(req));
     res.status(201).json({ contract });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -968,7 +966,7 @@ router.get('/sign/:token', async (req, res) => {
       : null;
     if (!c.viewed_at) {
       await prisma.contracts.update({ where: { id: c.id }, data: { viewed_at: new Date() } });
-      await audit(c.id, 'viewed', ipOf(req));
+      await audit(c.id, 'viewed', clientIp(req));
     }
     const { leads, vendors, ...rest } = c;
     rest.body = upgradeDeliverables(rest.body);
@@ -1026,7 +1024,7 @@ router.post('/sign/:token', async (req, res) => {
     if (needed > 0 && given < needed)
       return res.status(400).json({ error: `Please tap all ${needed} initial boxes ✍️` });
 
-    const ip = ipOf(req);
+    const ip = clientIp(req);
     // 🔐 document hash: body + signer + signature + timestamp
     const stamp = new Date().toISOString();
     const docHash = crypto.createHash('sha256')

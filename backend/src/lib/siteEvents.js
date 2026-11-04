@@ -16,12 +16,8 @@
  */
 import geoip from 'geoip-lite';
 import prisma from '../config/prisma.js';
+import { clientIp } from './clientIp.js';
 
-/** nginx sits in front, so the real address is in the forwarded header. */
-function callerIp(req) {
-  const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return fwd || req.socket?.remoteAddress || '';
-}
 
 /** Drop the part that identifies one household. */
 export function truncateIp(ip) {
@@ -52,7 +48,7 @@ export function recordEvent(req, vendorId, kind, extra = {}) {
   const vid = Number(vendorId);
   if (!vid || !kind) return;
 
-  const ip = callerIp(req);
+  const ip = clientIp(req);
   const geo = ip ? geoip.lookup(ip) : null;
   const ref = String(req.headers.referer || req.headers.referrer || '').slice(0, 300) || null;
 

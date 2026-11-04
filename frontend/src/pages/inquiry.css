@@ -202,3 +202,6 @@
 @media (max-width: 560px) { .iq-pe-card { padding: 12px; } }
 /* ⏱️ a pre-event's hours, worked out from its times — shown, not typed */
 .iq-card .iq-pe-hours { color: var(--muted); cursor: default; }
+
+/* 🍯 the spam trap box (InquiryForm): off-screen, out of the tab order, hidden from screen readers */
+.iq-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
