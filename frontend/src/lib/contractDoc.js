@@ -30,7 +30,7 @@ export function useContractInitials(docRef, initialed, setInitialed, name, { pre
     };
     el.addEventListener('click', onClick);
     return () => el.removeEventListener('click', onClick);
-  }, [preview, initialed]);
+  }, [docRef, setInitialed, preview, initialed]);
 
   // 🔁 keeps every box's text, colour, and which one is "up next" matching
   // state — the html was set once, so this is the only thing that updates it
@@ -48,7 +48,7 @@ export function useContractInitials(docRef, initialed, setInitialed, name, { pre
       tap.classList.toggle('is-next', !preview && !doneHere && idx === nextDue);
       tap.textContent = doneHere ? initials : 'TAP TO INITIAL';
     });
-  }, [initialed, name, preview]);
+  }, [docRef, initialed, name, preview]);
 }
 
 /** How many gold boxes a built contract body actually has. */

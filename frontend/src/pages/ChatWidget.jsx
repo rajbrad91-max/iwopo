@@ -17,6 +17,7 @@ export default function ChatWidget({ handle, businessName, botName }) {
     if (open && msgs.length === 0) {
       setMsgs([{ role: 'assistant', content: `Hi! I'm ${bot} from ${businessName || 'the team'} — how can I help?` }]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the greeting is written once, when the chat first opens
   }, [open]);
 
   useEffect(() => {

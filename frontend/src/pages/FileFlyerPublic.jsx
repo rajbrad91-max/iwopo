@@ -38,6 +38,7 @@ export default function FileFlyerPublic({ token }) {
   const [browse, setBrowse] = useState(null);
   const [zipping, setZipping] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, [token]);
   /* ⚠️ The dependency is a BOOLEAN that actually changes. Depending on
      data?.gated looked right and never fired: on an unlocked share the key is
@@ -45,6 +46,7 @@ export default function FileFlyerPublic({ token }) {
      the folder contents were never fetched — a share rendered with its files
      missing and no error anywhere. */
   const ready = !!data && !data.gated;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { if (ready) loadFolder(folderId); }, [ready, folderId]);
 
   async function load() {

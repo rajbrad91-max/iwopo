@@ -10,7 +10,7 @@ import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import PublicSite from './PublicSite';
-import { api, getUser, clearSession, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue, applyVendorClock, vendorDayKey } from '../lib/api';
+import { api, getUser, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue, applyVendorClock, vendorDayKey } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
 import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
@@ -185,6 +185,7 @@ export default function VendorPanel({ onLogout }) {
     const onVis = () => { if (!document.hidden) refreshLeadCount(); };
     document.addEventListener('visibilitychange', onVis);
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVis); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- has() is rebuilt on every render; features is what it reads
   }, [features]);
 
   // 📱 nav → also close sidebar on mobile.
@@ -783,7 +784,7 @@ function AiChatVendorView({ goServices }) {
 
 // 🎯 Cover focal-point picker: click or drag to set where the cover centers.
 // The same point is used on desktop AND mobile, so covers frame well at any aspect ratio.
-function FocalPicker({ src, focus, onFocus, view, onView }) {
+function FocalPicker({ src, focus, onFocus, view }) {
   const ref = useRef(null);
   const dragging = useRef(false);
   const [fx, fy] = (focus || '50% 50%').split(' ').map(s => parseFloat(s));
@@ -941,6 +942,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
       setGalleryToken(s.gallery_token || '');
     }).catch(() => {});
     api.galleryTheme().then(d => setTheme(d.theme || {})).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   }, []);
   function load() { setLoading(true); api.albums(kind).then(d => setAlbums(d.albums || [])).catch(() => {}).finally(() => setLoading(false)); }
 
@@ -1530,8 +1532,9 @@ function AlbumDetail({ albumId, onBack }) {
   // On open we push a history entry; Back pops it and closes the viewer. Closing
   // via X/Esc/click goes back once to consume that entry, keeping history clean.
   const lbHistRef = useRef(false); // did WE push a history entry for the current lightbox?
+  const lightboxOpen = lightbox !== null;
   useEffect(() => {
-    if (lightbox === null) return;
+    if (!lightboxOpen) return;
     window.history.pushState({ adLightbox: true }, '');
     lbHistRef.current = true;
     const onPop = () => { lbHistRef.current = false; setLightbox(null); };
@@ -1541,8 +1544,9 @@ function AlbumDetail({ albumId, onBack }) {
       // if the viewer was closed by something other than Back, consume our entry
       if (lbHistRef.current) { lbHistRef.current = false; window.history.back(); }
     };
-  }, [lightbox === null]);
+  }, [lightboxOpen]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, [albumId]);
   function load() { api.album(albumId).then(d => {
     setAlbum(d.album); setPhotos(d.photos || []); setEvents(d.events || []);
@@ -3001,6 +3005,7 @@ function LeadsView({ routeLead, onOpenLead }) {
   const changeListing = (next) => { setListing(next); localStorage.setItem('leads_listing', JSON.stringify(next)); };
   const listed = listing.sort !== 'newest' || listing.range !== 'all';
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, [view, listing.sort, listing.range]);
   async function load() {
     setLoading(true); setChecked([]); setSelectMode(false);
@@ -3027,6 +3032,7 @@ function LeadsView({ routeLead, onOpenLead }) {
     if (!sel || sel.seen_at) return;
     setLeads(ls => ls.map(x => x.id === sel.id ? { ...x, seen_at: new Date().toISOString() } : x));
     api.markLeadsSeen(sel.id).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- marks a lead seen once, when it is opened
   }, [sel?.id]);
 
   function toggleCheck(id, e) {
@@ -3369,6 +3375,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
     // folders to choose from, and whatever is already loaded onto this lead
     api.pkgTemplates().then(d => setTpls(d.templates || [])).catch(() => {});
     refreshLeadPkgs();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- LeadDetail is keyed by the lead, so this runs once per lead
   }, []);
 
   function refreshLeadPkgs() {
@@ -3793,6 +3800,7 @@ function MoneySection({ lead }) {
   const [webPay, setWebPay] = useState(lead.web_payment_enabled !== false);
   const [msg, setMsg] = useState('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, []);
   async function load() {
     try { const d = await api.leadPayments(lead.id); setData(d); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
@@ -5577,8 +5585,8 @@ function PackagesView() {
   const [selTpl, setSelTpl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, []);
   async function load() {
     setLoading(true);
@@ -6248,6 +6256,7 @@ function BookingDetail({ id, onBack }) {
   const [gateway, setGateway] = useState(false);
   const [timer, setTimer] = useState({ enabled: false, hours: 72, started_at: null });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, [id]);
   async function load() {
     try {

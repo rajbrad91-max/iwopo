@@ -49,7 +49,7 @@ function useReveal(key, instant = false) {
     }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
     els.forEach(el => io.observe(el));
     return () => io.disconnect();
-  }, [key]);
+  }, [key, instant]);
 }
 
 /**

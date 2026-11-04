@@ -51,6 +51,7 @@ export default function SignContract({ token, previewLeadId, onRelease, onLoaded
     }).catch(e => { if (!dead) setErr(e.message); })
       .finally(() => { if (!dead) setSwitching(false); });
     return () => { dead = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onLoaded is the parent's notifier — a new function each render must not fetch the contract again
   }, [token, previewLeadId, preview, ver]);
 
   useEffect(() => {

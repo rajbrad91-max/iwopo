@@ -554,6 +554,7 @@ function HoursField({ fld, value, onChange, answers, fields }) {
     if (manual) return;
     if (auto && auto !== value) onChange(auto);
     if (!auto && value) onChange('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- follows the worked-out hours only; the value and handler from the parent must not re-trigger it
   }, [auto, manual]);
 
   const fromLabel = fields?.find(f => f.id === fromId)?.label;

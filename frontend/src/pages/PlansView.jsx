@@ -34,7 +34,7 @@ export default function PlansView() {
     // Stripe tells iwopo a moment after the vendor lands back here — look again shortly
     if (back === 'done') { const t = setTimeout(load, 4000); return () => clearTimeout(t); }
     return undefined;
-  }, []);
+  }, [back]);
 
   if (err) return <div className="pl-quiet">Could not load plans — {err}</div>;
   if (!d || !b) return <div className="pl-quiet">Loading…</div>;

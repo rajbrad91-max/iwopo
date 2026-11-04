@@ -498,8 +498,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // On open we push a history entry; Back pops it and closes the viewer. Closing
   // any other way goes back once to consume that entry, keeping history clean.
   const lbHistRef = useRef(false);
+  const lightboxOpen = lightbox !== null;
   useEffect(() => {
-    if (lightbox === null) return;
+    if (!lightboxOpen) return;
     window.history.pushState({ pgLightbox: true }, '');
     lbHistRef.current = true;
     const onPop = () => { lbHistRef.current = false; setLightbox(null); setSlideshow(false); };
@@ -508,7 +509,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
       window.removeEventListener('popstate', onPop);
       if (lbHistRef.current) { lbHistRef.current = false; window.history.back(); }
     };
-  }, [lightbox === null]);
+  }, [lightboxOpen]);
 
   useEffect(() => {
     if (!slideshow || lightbox === null) return;
@@ -528,6 +529,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
     [lightbox + 1, lightbox + 2, lightbox + 3, lightbox - 1]
       .filter(i => i >= 0 && i < n)
       .forEach(i => { const im = new Image(); im.src = photoUrl(photos[i].id, 'full'); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- preloads around the photo being viewed; the photo list is rebuilt on every render
   }, [lightbox, session]);
 
   // 👆 swipe the full-screen photo: left/right to move, down to close

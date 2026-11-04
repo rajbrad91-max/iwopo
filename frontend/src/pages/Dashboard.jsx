@@ -1594,6 +1594,7 @@ function ChatbotInbox({ vendorId }) {
   const [messages, setMessages] = useState([]);
   const [answers, setAnswers] = useState({});
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, [vendorId]);
   function load() {
     api.chatbotPending(vendorId).then(d => setPending(d.pending || [])).catch(() => {});
@@ -1659,6 +1660,7 @@ function KnowledgePage({ vendorId, onBack }) {
   const [code, setCode] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, [vendorId]);
   function load() {
     api.chatbotKnowledge(vendorId).then(d => {

@@ -286,6 +286,7 @@ export default function ClientPortal({ token }) {
     const fresh = !sessionStorage.getItem(key);
     sessionStorage.setItem(key, '1');
     load(fresh);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   }, [token]);
   function load(fresh) {
     api.portal(token, fresh).then(setData).catch(e => setErr(e.message));

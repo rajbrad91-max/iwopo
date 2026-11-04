@@ -44,6 +44,7 @@ export default function DomainSettings() {
     clearInterval(poll.current);
     if (d && ['pending', 'issuing'].includes(d.own.status)) poll.current = setInterval(() => api.domainInfo().then(apply).catch(() => {}), 30_000);
     return () => clearInterval(poll.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- re-arms the poll only when the status changes; apply() reads the latest answer
   }, [d?.own.status]);
 
   if (!d) return note ? <p className="dm-note">{note}</p> : null;
