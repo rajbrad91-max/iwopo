@@ -188,3 +188,11 @@
   .ct-doc .ct-logo { max-width: 72px; max-height: 60px; }
 }
 
+
+/* ✍️ the initial box the client is sent to when they press Sign with it still empty (guideToMissing) */
+.ct-doc .ct-init-tap.is-attention { animation: ct-attention .85s ease-in-out 3; }
+@keyframes ct-attention {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); background: #fff7e6; }
+  50% { box-shadow: 0 0 0 7px rgba(217, 119, 6, .35); background: #fde7b8; }
+}
+@media (prefers-reduced-motion: reduce) { .ct-doc .ct-init-tap.is-attention { animation: none; box-shadow: 0 0 0 3px rgba(217, 119, 6, .55); } }

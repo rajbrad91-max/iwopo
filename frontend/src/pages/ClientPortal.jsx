@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { firstName } from '../lib/firstName';
 import { api, fmtEventDate, fmtMoney, moneyParts } from '../lib/api';
-import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
+import { useContractInitials, countInitBoxes, guideToMissing } from '../lib/contractDoc';
 import { useDialog } from '../lib/dialog.jsx';
 import './portal.css';
 import './contractdoc.css';
@@ -151,12 +151,14 @@ function ContractStep({ contract, clientName, onSigned }) {
 
   const left = initialed.filter(v => !v).length;
   const ready = !!name.trim() && left === 0 && hasInk;
+  // ✍️ what to do next, shown for a few seconds where the client is looking (lib/contractDoc.js guideToMissing)
+  const [guide, setGuide] = useState('');
+  useEffect(() => { if (!guide) return undefined; const t = setTimeout(() => setGuide(''), 7000); return () => clearTimeout(t); }, [guide]);
 
   async function sign() {
     setErr('');
-    if (!name.trim()) return setErr('Type your full name');
-    if (left > 0) return setErr(`Tap all ${needed} initial box${needed > 1 ? 'es' : ''}`);
-    if (!hasInk) return setErr('Draw your signature in the box');
+    const missing = guideToMissing({ docRef, initialed, name, hasInk, nameId: 'po-name', padId: 'po-pad' });
+    if (missing) return setGuide(missing);
     setBusy(true);
     try {
       await api.signContract(contract.token, name.trim(), canvasRef.current.toDataURL('image/png'), initialed);
@@ -196,7 +198,8 @@ function ContractStep({ contract, clientName, onSigned }) {
         </section>
 
         {err && <div className="ct-err">{err}</div>}
-        <button type="button" className="ct-sign-btn" onClick={sign} disabled={busy || !ready}>
+        {guide && <div className="ct-guide" role="alert">{guide}</div>}
+        <button type="button" className={`ct-sign-btn ${ready ? '' : 'is-waiting'}`} onClick={sign} disabled={busy}>
           {busy ? 'Signing…' : 'Sign contract'}
         </button>
         <p className="ct-fine">Your name, signature, IP address and the time are recorded with this agreement.</p>

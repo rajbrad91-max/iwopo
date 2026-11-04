@@ -55,3 +55,33 @@ export function useContractInitials(docRef, initialed, setInitialed, name, { pre
 export function countInitBoxes(bodyHtml) {
   return (String(bodyHtml || '').match(/data-init-idx="\d+"/g) || []).length;
 }
+
+/**
+ * ✍️ Take the client to what is still missing before signing (2026-11-04).
+ *
+ * The Sign button used to grey out and the only hint was "1 initial left" — with no way to tell which box. Now the
+ * button stays pressable and this sends them to the first thing to do: the first empty initial box (scrolled to
+ * the middle of the screen and glowing for a moment), the name field, or the signature pad. It returns the
+ * sentence to show them, or '' when everything is done.
+ */
+export function guideToMissing({ docRef, initialed, name, hasInk, nameId, padId }) {
+  const go = (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const left = initialed.filter(v => !v).length;
+  if (left > 0) {
+    const tap = docRef.current?.querySelector('.ct-init-tap:not(.is-done)');
+    if (tap) {
+      go(tap);
+      tap.classList.remove('is-attention'); void tap.offsetWidth; tap.classList.add('is-attention');   // restart the glow
+      setTimeout(() => tap.classList.remove('is-attention'), 2600);
+    }
+    return left === 1
+      ? '✍️ One initial is still missing — we’ve taken you to it. Tap the glowing box to add your initials.'
+      : `✍️ ${left} initials are still missing — we’ve taken you to the first one. Tap each glowing box to add your initials.`;
+  }
+  if (!String(name || '').trim()) {
+    const el = document.getElementById(nameId); go(el); el?.focus({ preventScroll: true });
+    return '✍️ Please type your full legal name — it goes on the agreement.';
+  }
+  if (!hasInk) { go(document.getElementById(padId)); return '✍️ Please draw your signature in the box.'; }
+  return '';
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
-import { useContractInitials, countInitBoxes } from '../lib/contractDoc';
+import { useContractInitials, countInitBoxes, guideToMissing } from '../lib/contractDoc';
 import './contractdoc.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
@@ -31,6 +31,9 @@ export default function SignContract({ token, previewLeadId, onRelease, onLoaded
   const docRef = useRef(null);
   const pageRef = useRef(null);
   const [hasInk, setHasInk] = useState(false);
+  // ✍️ what to do next, shown for a few seconds where the client is looking (lib/contractDoc.js guideToMissing)
+  const [guide, setGuide] = useState('');
+  useEffect(() => { if (!guide) return undefined; const t = setTimeout(() => setGuide(''), 7000); return () => clearTimeout(t); }, [guide]);
   useDocumentTitle(c?.business_name);
 
   useEffect(() => {
@@ -111,9 +114,8 @@ export default function SignContract({ token, previewLeadId, onRelease, onLoaded
 
   async function sign() {
     setErr('');
-    if (!name.trim()) return setErr('Type your full name');
-    if (initialed.some(v => !v)) return setErr('Initial each marked section');
-    if (!hasInk) return setErr('Draw your signature in the box');
+    const missing = guideToMissing({ docRef, initialed, name, hasInk, nameId: 'ct-sign-name', padId: 'ct-sign-pad' });
+    if (missing) return setGuide(missing);
     setBusy(true);
     try {
       const sig = canvasRef.current.toDataURL('image/png');
@@ -203,8 +205,9 @@ export default function SignContract({ token, previewLeadId, onRelease, onLoaded
           ) : (
             <>
               {err && <div className="ct-err">{err}</div>}
+              {guide && <div className="ct-guide" role="alert">{guide}</div>}
               <button type="button" className="ct-sign-btn" onClick={sign}
-                disabled={busy || !name.trim() || initialsLeft > 0 || !hasInk}>
+                disabled={busy}>
                 {busy ? 'Signing…' : 'Sign contract'}
               </button>
               <p className="ct-fine">Your name, signature, IP address and the time are recorded with this agreement.</p>

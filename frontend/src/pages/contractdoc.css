@@ -203,3 +203,12 @@
   .ct-doc .ct-svc th,
   .ct-doc .ct-kv th { width: 42%; }
 }
+
+/* ✍️ the "what's still missing" note, floating where the client is looking (guideToMissing) */
+.ct-guide { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60;
+  width: max-content; max-width: min(560px, calc(100vw - 32px)); padding: 14px 18px; border-radius: 14px;
+  background: #1f2937; color: #fff; font-size: 14.5px; line-height: 1.45; box-shadow: 0 14px 40px rgba(17, 24, 39, .3);
+  animation: ct-guide-in .25s ease-out; }
+@keyframes ct-guide-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+/* Sign stays pressable while something is missing — it just looks not-quite-ready */
+.ct-sign-btn.is-waiting { opacity: .78; }
