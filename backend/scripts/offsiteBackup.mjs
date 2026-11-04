@@ -4,7 +4,8 @@
  * /usr/local/bin/iwopo-backup.sh dumps both databases and the uploaded files to /var/backups/iwopo — on this
  * server, so they protect against a mistake in the data but not against losing the server itself. This sends
  * that night's files to the PRIVATE R2 bucket (Cloudflare — a different company from the server's) under
- * _backups/<YYYY-MM-DD>/, checks each copy's size, and removes copies there older than KEEP_DAYS.
+ * _backups/<YYYY-MM-DD>/, checks each copy's size, and removes old copies there: the databases (every lead,
+ * contract and booking) after 30 days, the uploaded media (logos, website photos) after 15.
  *
  * _backups/ sits outside every vendor/<id>/ prefix, so no vendor's storage meter counts it and no cleanup job
  * (orphan sweep, raw-file sweep, ledger reconcile — all scoped to vendor/) can touch it.
@@ -18,7 +19,13 @@ import * as objects from '../src/lib/objectStore.js';
 import prisma from '../src/config/prisma.js';
 
 const PREFIX = '_backups/';
-const KEEP_DAYS = 30;
+/** How long each kind of copy is kept off-site, by file name. Anything unrecognised keeps the longest. */
+const KEEP_DAYS = [
+  { kind: 'media', match: /\/storage-[^/]*\.tar\.gz$/, days: 15 },
+  { kind: 'databases', match: /\.sql\.gz$/, days: 30 },
+];
+const LONGEST = Math.max(...KEEP_DAYS.map(k => k.days));
+const keepDays = (key) => (KEEP_DAYS.find(k => k.match.test(key)) || { days: LONGEST }).days;
 const DAY_MS = 864e5;
 
 async function main(files) {
@@ -35,10 +42,10 @@ async function main(files) {
     console.log(`ok ${key} ${size}`);
   }
 
-  const cutoff = Date.now() - KEEP_DAYS * DAY_MS;
-  const old = (await objects.listAll(objects.PRIVATE, PREFIX)).filter(o => new Date(o.at).getTime() < cutoff);
+  const now = Date.now();
+  const old = (await objects.listAll(objects.PRIVATE, PREFIX)).filter(o => now - new Date(o.at).getTime() > keepDays(o.key) * DAY_MS);
   for (const o of old) await objects.deleteObject(objects.PRIVATE, o.key);
-  console.log(`pruned ${old.length} copies older than ${KEEP_DAYS} days`);
+  console.log(`pruned ${old.length} old copies (${KEEP_DAYS.map(k => `${k.kind} ${k.days} days`).join(', ')})`);
 }
 
 main(process.argv.slice(2))

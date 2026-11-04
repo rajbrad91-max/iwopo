@@ -6,8 +6,8 @@
 # business, and staging lost a table's contents this week for reasons nobody
 # established.
 #
-# Local copies protect against the likely failure — a mistake in the data. They
-# do NOT protect against losing the server itself; that needs an off-site copy.
+# Local copies protect against the likely failure — a mistake in the data; the off-site copy below (since
+# 2026-11-04) protects against losing the server itself.
 set -euo pipefail
 
 DEST=/var/backups/iwopo
@@ -33,6 +33,14 @@ done
 tar -czf "$DEST/storage-$STAMP.tar.gz" \
   -C /var/www/iwopo storage 2>/dev/null || true
 echo "$(date -Is) ok storage $(numfmt --to=iec $(stat -c%s "$DEST/storage-$STAMP.tar.gz"))" >> "$DEST/backup.log"
+
+# off-site: tonight's files to the private R2 bucket (Cloudflare — a different company from this server's),
+# kept 30 days there (scripts/offsiteBackup.mjs). A failure is logged and does not undo tonight's local copies.
+if ( cd /var/www/iwopo/backend && node scripts/offsiteBackup.mjs "$DEST"/*-"$STAMP".* ) >> "$DEST/backup.log" 2>&1; then
+  echo "$(date -Is) ok off-site copy" >> "$DEST/backup.log"
+else
+  echo "$(date -Is) OFF-SITE COPY FAILED" >> "$DEST/backup.log"
+fi
 
 # keep two weeks; older copies are rarely the ones you want and cost disk
 find "$DEST" -name '*.gz' -mtime +$KEEP_DAYS -delete
