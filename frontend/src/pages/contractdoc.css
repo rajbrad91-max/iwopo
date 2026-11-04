@@ -1,5 +1,4 @@
 @import './contractdoc-doc.css';   /* 📜 the contract document itself — shared with the delivered file */
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
 
 /* One contract layout, shared by the vendor preview, the client sign page,
    the portal signing step, and the template editor.

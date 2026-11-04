@@ -1,15 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@600;700&family=Open+Sans:wght@400;600;700&family=Caveat:wght@600&display=swap');
 /*
  * 📜 THE contract document's look — the ONE source for every place a contract appears (Raj, 2026-10-24):
  * Contract setup preview, Lead → Preview Contract, the client's signing view, and the delivered file
  * (backend/src/routes/contracts.js reads this very file). Matches the Perfect Poses reference agreement:
- * Playfair Display for the title and headings, Inter for everything else, a gold rule under the header.
+ * Lora for the title and headings, Open Sans for everything else, Caveat for initials, a gold rule under the header.
  */
 .ct-doc,
 .ct-theme {
   --ct-accent: #b8922a;
-  --ct-head: "Playfair Display", Georgia, serif;
-  --ct-body: Inter, "Segoe UI", system-ui, sans-serif;
+  --ct-head: Lora, Georgia, serif;                                   /* Classic (Raj, 2026-11-04: Lora + Open Sans) */
+  --ct-body: "Open Sans", "Segoe UI", system-ui, sans-serif;
   font-family: var(--ct-body);
 }
 .ct-doc {
@@ -30,7 +30,7 @@
 .ct-accent-rose { --ct-accent: #b4536a; }
 .ct-accent-emerald { --ct-accent: #1f7a5a; }
 .ct-accent-plum { --ct-accent: #6b3f7a; }
-.ct-fonts-classic { --ct-head: "Playfair Display", Georgia, serif; --ct-body: Inter, "Segoe UI", system-ui, sans-serif; }
+.ct-fonts-classic { --ct-head: Lora, Georgia, serif; --ct-body: "Open Sans", "Segoe UI", system-ui, sans-serif; }
 .ct-fonts-modern { --ct-head: Inter, "Segoe UI", system-ui, sans-serif; --ct-body: Inter, "Segoe UI", system-ui, sans-serif; }
 .ct-fonts-traditional { --ct-head: Georgia, "Times New Roman", serif; --ct-body: Georgia, "Times New Roman", serif; }
 
@@ -153,10 +153,11 @@
 .ct-doc .ct-init-tap.is-done { background: transparent; border-bottom-color: transparent; color: #111827; }
 .ct-hand,
 .ct-doc .ct-init-tap.ct-hand {
-  font-family: var(--ct-head);
-  font-weight: 700;
-  font-style: italic;
-  font-size: 19px;
+  /* ✍️ initials read as hand-written, and stay legible as letters (Caveat — Raj, 2026-11-04) */
+  font-family: Caveat, "Segoe Script", cursive;
+  font-weight: 600;
+  font-style: normal;
+  font-size: 25px;
   line-height: 1.2;
   letter-spacing: 0;
   text-transform: none;

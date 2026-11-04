@@ -4284,7 +4284,7 @@ function esc(x) {
 }
 /* 🎨 a contract template's look — the same choices the server accepts (contracts.js) */
 const CT_ACCENTS = [['gold', 'Gold'], ['navy', 'Navy'], ['black', 'Black'], ['rose', 'Rose'], ['emerald', 'Emerald'], ['plum', 'Plum']];
-const CT_FONTS = [['classic', 'Classic — Playfair Display + Inter'], ['modern', 'Modern — Inter'], ['traditional', 'Traditional — Georgia']];
+const CT_FONTS = [['classic', 'Classic — Lora + Open Sans'], ['modern', 'Modern — Inter'], ['traditional', 'Traditional — Georgia']];
 function templateAssembled(t) {
   const head = (t.header || '').trim();
   const headHtml = head
