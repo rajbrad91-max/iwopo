@@ -12,6 +12,7 @@ import { applyFormRules } from '../lib/formRules.js';
 import { ensureInvoice } from './invoices.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { limit } from '../middleware/rateLimit.js';
+import { getSetting } from '../lib/settings.js';
 
 const router = express.Router();
 
@@ -395,10 +396,13 @@ const fitColumn = (key, value) => {
 };
 
 /* 🍯 Spam guards for the PUBLIC form only (2026-11-04) — it names its studio by slug; a vendor adding a lead by
-   hand in the panel never meets them. Per visitor address: 6 an hour to one studio, 20 an hour to all of them.
+   hand in the panel never meets them. Per visitor address: 6 an hour to one studio, 20 an hour to all of them —
+   while platform_settings.inquiry_rate_limits is 'on' (parked 'off' during testing, so Muse can fill forms freely).
    A submission no person could make — the hidden box filled, or sent faster than anyone can fill the form — is
    answered "ok" and dropped, so a script learns nothing to adapt to. */
 const publicForm = (guard) => (req, res, next) => (req.body?.vendor_slug ? guard(req, res, next) : next());
+const limitsOn = async () => (await getSetting('inquiry_rate_limits', 'off')) === 'on';
+const whenLimitsOn = (guard) => async (req, res, next) => ((await limitsOn()) ? guard(req, res, next) : next());
 const perStudio = limit({ name: 'inquiry-studio', max: 6, windowMs: 60 * 60_000, key: (r) => String(r.body?.vendor_slug || '').toLowerCase() });
 const perVisitor = limit({ name: 'inquiry-any', max: 20, windowMs: 60 * 60_000 });
 const MIN_FORM_MS = 2500;
@@ -409,7 +413,7 @@ function looksAutomated(b) {
   return null;
 }
 
-router.post('/', publicForm(perVisitor), publicForm(perStudio), async (req, res) => {
+router.post('/', publicForm(whenLimitsOn(perVisitor)), publicForm(whenLimitsOn(perStudio)), async (req, res) => {
   const b = req.body;
 
   // 🔗 The public form names its vendor by slug now. The row id is never sent
