@@ -55,7 +55,7 @@ router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 
       ).catch(() => {});
     }
     res.json({ ok: true, reply_to: user?.email || null });
-  } catch (e) {
+  } catch {
     res.status(500).json({ error: 'We could not send your message just now — please email sales@iwopo.com.' });
   }
 });
