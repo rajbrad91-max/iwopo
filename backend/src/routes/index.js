@@ -14,6 +14,7 @@ import nodemailer from 'nodemailer';
 import { getSetting } from '../lib/settings.js';
 import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
 import { clientIp } from '../lib/clientIp.js';
+import { limit } from '../middleware/rateLimit.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -608,20 +609,27 @@ router.delete('/offers/:id', requireAuth, requireSuperAdmin, async (req, res) =>
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// 👥 REFERRALS (email-based, reward on paid signup)
-// Public: create a referral (existing user refers a friend's email)
-router.post('/referrals', async (req, res) => {
-  const { referrer_email, friend_email } = req.body;
-  if (!referrer_email || !friend_email) return res.status(400).json({ error: 'Both emails required' });
-  if (referrer_email.toLowerCase() === friend_email.toLowerCase())
-    return res.status(400).json({ error: "Can't refer yourself" });
+// 👥 REFERRALS — a signed-in vendor refers a friend's email; both get a free month when the friend joins on a paid
+// plan (rewarded at sign-up, routes/auth.js). The referrer is the account in the token, never an email from the
+// request: until 2026-11-04 anyone, signed in or not, could file a referral in any vendor's name. 10 an hour each.
+const referralLimit = limit({ name: 'referral', max: 10, windowMs: 60 * 60_000, perAccount: true, key: (r) => String(r.user?.id) });
+router.post('/referrals', requireAuth, referralLimit, async (req, res) => {
+  const friend_email = String(req.body?.friend_email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(friend_email)) return res.status(400).json({ error: "Enter your friend's email address" });
   try {
-    // friend must be NEW (not already a user)
-    const exists = await prisma.users.findFirst({ where: { email: friend_email }, select: { id: true } });
-    if (exists) return res.status(409).json({ error: 'That email already has an account' });
+    const me = await prisma.users.findUnique({ where: { id: Number(req.user.id) }, select: { email: true } });
+    if (!me?.email) return res.status(401).json({ error: 'Please sign in again' });
+    const referrer_email = me.email.trim().toLowerCase();
+    if (referrer_email === friend_email) return res.status(400).json({ error: "You can't refer yourself" });
+    // the friend must be NEW
+    const exists = await prisma.users.findFirst({ where: { email: { equals: friend_email, mode: 'insensitive' } }, select: { id: true } });
+    if (exists) return res.status(409).json({ error: 'That email already has an iwopo account' });
+    // the same friend twice is the same referral
+    const already = await prisma.referrals.findFirst({ where: { referrer_email, friend_email } });
+    if (already) return res.json({ referral: already });
     const referral = await prisma.referrals.create({ data: { referrer_email, friend_email } });
     res.status(201).json({ referral });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch { res.status(500).json({ error: 'Could not save the referral — please try again.' }); }
 });
 
 // 🔒 Super admin: list all referrals

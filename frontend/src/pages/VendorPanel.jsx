@@ -383,7 +383,7 @@ export default function VendorPanel({ onLogout }) {
         ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'help' ? (
           <HelpView user={user} onGo={(t) => go(t)} />
         ) : tab === 'refer' ? (
-          <ReferForm user={user} />
+          <ReferForm />
         ) : tab === 'leads' ? (
           <LeadsView routeLead={route.lead} onOpenLead={(id) => navigate({ tab: 'leads', lead: id ? String(id) : null })} />
         ) : tab === 'bookings' ? (
@@ -6191,7 +6191,7 @@ function EmailSetup() {
   );
 }
 
-function ReferForm({ user }) {
+function ReferForm() {
   const [friend, setFriend] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -6202,8 +6202,9 @@ function ReferForm({ user }) {
     if (!friend) return setErr('Enter your friend\'s email');
     setBusy(true);
     try {
-      await api.createReferral(user?.email || '', friend);
-      setMsg(`🎉 Invite sent to ${friend}! You'll both get a free month when they join on a paid plan.`);
+      await api.createReferral(friend);
+      // no email goes to the friend yet — say what actually happened
+      setMsg(`✅ Saved. When ${friend} signs up with this email on a paid plan, you both get a free month.`);
       setFriend('');
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }

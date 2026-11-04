@@ -729,8 +729,8 @@ export const api = {
   toggleOffer: (id) => request(`/offers/${id}/toggle`, { method: 'PUT' }),
   deleteOffer: (id) => request(`/offers/${id}`, { method: 'DELETE' }),
   referrals: () => request('/referrals'),
-  createReferral: (referrer_email, friend_email) =>
-    request('/referrals', { method: 'POST', body: JSON.stringify({ referrer_email, friend_email }) }),
+  // 👥 the referrer is the signed-in account (routes/index.js) — only the friend is sent
+  createReferral: (friend_email) => request('/referrals', { method: 'POST', body: JSON.stringify({ friend_email }) }),
   createLead: (data) => request('/leads', { method: 'POST', body: JSON.stringify(data) }),
   leads: (vendorId, listing) => request(`/leads${listingQs({ vendor_id: vendorId, ...listing })}`),
   leadsUnreadCount: () => request('/leads/unread-count'),
