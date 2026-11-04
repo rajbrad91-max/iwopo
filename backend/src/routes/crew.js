@@ -8,6 +8,7 @@ import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
+import { mine, mineVia } from '../lib/tenancy.js';
 
 const router = express.Router();
 function vid(req) {
@@ -239,7 +240,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (phoneProblem(phone)) return res.status(400).json({ error: phoneProblem(phone), field: 'phone' });   // 📞 never letters
     const data = { role: role ?? null, phone: phone ?? null, email: email ?? null };
     if (name !== undefined && name !== null) data.name = name;   // COALESCE($1,name)
-    const member = await prisma.crew_members.update({ where: { id }, data });
+    const member = await prisma.crew_members.update({ where: { id, ...mine(v) }, data });
     res.json({ member });
   } catch (e) { serverError(res, e); }
 });
@@ -251,7 +252,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     const own = await prisma.crew_members.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    await prisma.crew_members.delete({ where: { id } });
+    await prisma.crew_members.delete({ where: { id, ...mine(v) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -329,7 +330,7 @@ router.delete('/assignment/:id', requireAuth, async (req, res) => {
     });
     if (!row) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && row.leads?.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    await prisma.lead_crew.delete({ where: { id } });
+    await prisma.lead_crew.delete({ where: { id, ...mineVia('crew_members', vid(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -362,7 +363,7 @@ router.post('/assignment/:id/remind', requireAuth, async (req, res) => {
     let token = row.checkin_token;
     if (!token) {
       token = crypto.randomBytes(16).toString('hex');
-      await prisma.lead_crew.update({ where: { id }, data: { checkin_token: token } });
+      await prisma.lead_crew.update({ where: { id, ...mineVia('crew_members', vid(req)) }, data: { checkin_token: token } });
     }
 
     // 🌐 the vendor's own address — the team sees the studio's brand too (lib/vendorHosts.js)

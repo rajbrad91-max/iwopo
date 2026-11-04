@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { templateForLead, buildContractBody } from './contracts.js';
 import { ensureInvoice } from './invoices.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -181,7 +182,7 @@ router.put('/lead/:leadId/confirm-claim', requireAuth, async (req, res) => {
     }
 
     await prisma.leads.update({
-      where: { id: lead.id },
+      where: { id: lead.id, ...mine(vid(req)) },
       data: { payment_claimed_at: null, updated_at: new Date() },
     });
 
@@ -201,7 +202,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (!pay) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && pay.vendor_id !== vid(req))
       return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
-    await prisma.payments.delete({ where: { id } });
+    await prisma.payments.delete({ where: { id, ...mine(vid(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -275,7 +276,7 @@ router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
     if (price_override !== undefined) {
       data.price_override = (price_override === null || price_override === '') ? null : Number(price_override);
     }
-    const updated = await prisma.leads.update({ where: { id: lead.id }, data });
+    const updated = await prisma.leads.update({ where: { id: lead.id, ...mine(vid(req)) }, data });
 
     /**
      * 💸 Redraw any unsigned contract, because its figures are now wrong.
@@ -303,7 +304,7 @@ router.put('/lead/:leadId/web-payment', requireAuth, async (req, res) => {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
     const updated = await prisma.leads.update({
-      where: { id: lead.id },
+      where: { id: lead.id, ...mine(vid(req)) },
       data: { web_payment_enabled: !!req.body.enabled, updated_at: new Date() },
     });
     res.json({ web_payment_enabled: updated.web_payment_enabled });

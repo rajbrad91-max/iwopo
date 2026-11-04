@@ -6,6 +6,7 @@ import { moneySummary } from './payments.js';
 import { currencyFor } from '../lib/currencies.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -111,7 +112,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     const inv = await prisma.invoices.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!inv) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && inv.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    await prisma.invoices.delete({ where: { id } });
+    await prisma.invoices.delete({ where: { id, ...mine(vid(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

@@ -3,6 +3,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -131,7 +132,7 @@ router.put('/:leadId/status', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && own.vendor_id !== vid(req))
       return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
     const lead = await prisma.leads.update({
-      where: { id },
+      where: { id, ...mine(vid(req)) },
       data: { status, updated_at: new Date() },
     });
     res.json({ lead });

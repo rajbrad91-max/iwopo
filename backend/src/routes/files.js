@@ -15,6 +15,7 @@ import { withLocalFile, dropLocal } from '../lib/localFile.js';
 import { hashSharePassword } from '../lib/sharePassword.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -185,7 +186,7 @@ router.put('/item/:itemId/move', requireAuth, async (req, res) => {
     if (!it) return res.status(404).json({ error: 'File not found' });
     const to = await ownFolder(v, req.body?.folder_id);
     if (!to.ok) return res.status(404).json({ error: 'Folder not found' });
-    await prisma.file_share_items.update({ where: { id: it.id }, data: { folder_id: to.id } });
+    await prisma.file_share_items.update({ where: { id: it.id, ...mine(v) }, data: { folder_id: to.id } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -202,7 +203,7 @@ router.put('/folder/:folderId/move', requireAuth, async (req, res) => {
       if (cur === f.id) return res.status(400).json({ error: 'A folder cannot go inside itself.' });
       cur = (await prisma.file_folders.findFirst({ where: { id: cur, vendor_id: v }, select: { parent_id: true } }))?.parent_id || null;
     }
-    await prisma.file_folders.update({ where: { id: f.id }, data: { parent_id: to.id, updated_at: new Date() } });
+    await prisma.file_folders.update({ where: { id: f.id, ...mine(v) }, data: { parent_id: to.id, updated_at: new Date() } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -225,7 +226,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (allow_upload !== undefined) data.allow_upload = !!allow_upload;
     if (expires_at !== undefined) data.expires_at = expires_at ? new Date(expires_at) : null;
 
-    const share = await prisma.file_shares.update({ where: { id }, data });
+    const share = await prisma.file_shares.update({ where: { id, ...mine(vid(req)) }, data });
     res.json({ share: { ...share, password: undefined, has_password: !!share.password } });
   } catch (e) { serverError(res, e); }
 });
@@ -243,7 +244,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     // a share is only a link now — deleting it revokes access and leaves the
     // vendor's folder and files exactly where they were
 
-    await prisma.file_shares.delete({ where: { id } });   // items cascade
+    await prisma.file_shares.delete({ where: { id, ...mine(vid(req)) } });   // items cascade
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -677,7 +678,7 @@ router.put('/folder/:folderId', requireAuth, async (req, res) => {
     if (/[\\/]/.test(name)) return res.status(400).json({ error: 'A folder name cannot contain / or \\' });
 
     const folder = await prisma.file_folders.update({
-      where: { id: fid }, data: { name, updated_at: new Date() },
+      where: { id: fid, ...mine(vid(req)) }, data: { name, updated_at: new Date() },
     });
     res.json({ folder });
   } catch (e) {
@@ -706,7 +707,7 @@ router.delete('/folder/:folderId', requireAuth, async (req, res) => {
       where: { folder_id: { in: ids } },
       select: { stored_name: true },
     });
-    await prisma.file_folders.delete({ where: { id: fid } });     // children cascade
+    await prisma.file_folders.delete({ where: { id: fid, ...mine(vid(req)) } });     // children cascade
     for (const d of doomed) {
       await purgeFileItem(f.vendor_id, d.stored_name);
       try { fs.unlinkSync(path.join(vendorDir(f.vendor_id), d.stored_name)); }
@@ -1131,7 +1132,7 @@ router.post('/folder/:folderId/share', requireAuth, async (req, res) => {
     });
     const share = existing
       ? await prisma.file_shares.update({
-          where: { id: existing.id },
+          where: { id: existing.id, ...mine(v) },
           data: { ...patch, title: f.name, updated_at: new Date() },
         })
       : await prisma.file_shares.create({
@@ -1166,7 +1167,7 @@ router.delete('/item/:itemId', requireAuth, async (req, res) => {
     if (item.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
 
     await purgeFileItem(item.vendor_id, item.stored_name);
-    await prisma.file_share_items.delete({ where: { id: itemId } });
+    await prisma.file_share_items.delete({ where: { id: itemId, ...mine(vid(req)) } });
     res.json({ ok: true, storage: await storageFor(item.vendor_id) });
   } catch (e) { serverError(res, e); }
 });

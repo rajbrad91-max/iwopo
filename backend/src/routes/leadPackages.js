@@ -12,6 +12,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -69,7 +70,7 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
 
     // one transaction: the lead never sits with half an offer on it
     await prisma.$transaction([
-      prisma.lead_packages.deleteMany({ where: { lead_id: lead.id } }),
+      prisma.lead_packages.deleteMany({ where: { lead_id: lead.id, ...mine(vid(req)) } }),
       prisma.lead_packages.createMany({
         data: masters.map((m, i) => ({
           lead_id: lead.id,
@@ -82,7 +83,7 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
         })),
       }),
       prisma.leads.update({
-        where: { id: lead.id },
+        where: { id: lead.id, ...mine(vid(req)) },
         data: { package_template_id: tpl.id, package_id: null, package_snapshot: null, updated_at: new Date() },
       }),
     ]);
@@ -113,7 +114,7 @@ router.put('/:leadId/:id', requireAuth, async (req, res) => {
 
     // scoped by lead_id too, so an id from another lead can't be edited here
     const { count } = await prisma.lead_packages.updateMany({
-      where: { id: Number(req.params.id), lead_id: lead.id },          // 🔒 tenancy on the write
+      where: { id: Number(req.params.id), lead_id: lead.id, ...mine(vid(req)) },          // 🔒 tenancy on the write
       data,
     });
     if (!count) return res.status(404).json({ error: 'Package not found' });
@@ -132,7 +133,7 @@ router.delete('/:leadId/:id', requireAuth, async (req, res) => {
       return res.status(423).json({ error: 'These packages have been sent. Unlock them first to make changes.' });
     }
     const { count } = await prisma.lead_packages.deleteMany({
-      where: { id: Number(req.params.id), lead_id: lead.id },          // 🔒 tenancy on the write
+      where: { id: Number(req.params.id), lead_id: lead.id, ...mine(vid(req)) },          // 🔒 tenancy on the write
     });
     if (!count) return res.status(404).json({ error: 'Package not found' });
     res.json({ ok: true });
@@ -148,7 +149,7 @@ router.put('/:leadId/lock/set', requireAuth, async (req, res) => {
     const lead = await ownedLead(req, req.params.leadId);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
     await prisma.leads.update({
-      where: { id: lead.id },
+      where: { id: lead.id, ...mine(vid(req)) },
       data: {
         packages_sent_at: locked ? new Date() : null,
         // Sending the offer moves the lead along the pipeline. Only from 'new':

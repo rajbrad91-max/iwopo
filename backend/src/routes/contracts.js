@@ -14,6 +14,7 @@ import { resolveTimezone } from '../lib/timezones.js';
 import { notify } from './notifications.js';
 import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -679,7 +680,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     if (legal_terms !== undefined && legal_terms !== null) data.legal_terms = legal_terms;
     Object.assign(data, lookOf({ accent, font_style }, true));
     if (sections !== undefined) data.sections = cleanSections(sections);
-    const template = await prisma.contract_templates.update({ where: { id }, data });
+    const template = await prisma.contract_templates.update({ where: { id, ...mine(v) }, data });
     res.json({ template });
   } catch (e) { serverError(res, e); }
 });
@@ -691,7 +692,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
     const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    await prisma.contract_templates.delete({ where: { id } });
+    await prisma.contract_templates.delete({ where: { id, ...mine(v) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -718,7 +719,7 @@ router.put('/templates/:id/default', requireAuth, async (req, res) => {
       prisma.contract_templates.updateMany({
         where: { vendor_id: vid, is_default: true }, data: { is_default: false },
       }),
-      prisma.contract_templates.update({ where: { id }, data: { is_default: true } }),
+      prisma.contract_templates.update({ where: { id, ...mine(vid(req)) }, data: { is_default: true } }),
     ]);
     res.json({ ok: true, default_id: id });
   } catch (e) { serverError(res, e); }
@@ -923,7 +924,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (!c) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && c.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     if (c.status === 'signed') return res.status(400).json({ error: 'Signed contracts cannot be deleted (audit)' });
-    await prisma.contracts.delete({ where: { id } });
+    await prisma.contracts.delete({ where: { id, ...mine(vid(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -1323,7 +1324,7 @@ router.put('/:id/release', requireAuth, async (req, res) => {
     // releasing twice is not an error — it just keeps the first approval time
     const updated = ct.released_at
       ? await prisma.contracts.findUnique({ where: { id } })
-      : await prisma.contracts.update({ where: { id }, data: { released_at: new Date() } });
+      : await prisma.contracts.update({ where: { id, ...mine(v) }, data: { released_at: new Date() } });
     res.json({ contract: updated });
   } catch (e) { serverError(res, e); }
 });

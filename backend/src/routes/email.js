@@ -5,6 +5,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getAllSettings } from '../lib/settings.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -169,7 +170,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     if (name !== undefined && name !== null) data.name = name;
     if (subject !== undefined && subject !== null) data.subject = subject;
     if (body !== undefined && body !== null) data.body = body;
-    const template = await prisma.email_templates.update({ where: { id }, data });
+    const template = await prisma.email_templates.update({ where: { id, ...mine(v) }, data });
     res.json({ template });
   } catch (e) { serverError(res, e); }
 });
@@ -181,7 +182,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
     const own = await prisma.email_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    await prisma.email_templates.delete({ where: { id } });
+    await prisma.email_templates.delete({ where: { id, ...mine(v) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

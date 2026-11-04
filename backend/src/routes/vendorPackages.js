@@ -2,6 +2,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 const MAX_PACKAGES = 3;   // per template
@@ -54,7 +55,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v)
       return res.status(403).json({ error: 'Forbidden' });    // 🔒 tenancy
-    const template = await prisma.package_templates.update({ where: { id }, data: { name: req.body.name } });
+    const template = await prisma.package_templates.update({ where: { id, ...mine(v) }, data: { name: req.body.name } });
     res.json({ template });
   } catch (e) { serverError(res, e); }
 });
@@ -70,7 +71,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });    // 🔒 tenancy
     const n = await prisma.package_templates.count({ where: { vendor_id: own.vendor_id } });
     if (n <= 1) return res.status(400).json({ error: 'Keep at least 1 template' });
-    await prisma.package_templates.delete({ where: { id } });
+    await prisma.package_templates.delete({ where: { id, ...mine(v) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -131,7 +132,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (included_hours !== undefined && included_hours !== null) data.included_hours = Number(included_hours);
     if (per_hour_price !== undefined && per_hour_price !== null) data.per_hour_price = Number(per_hour_price);
     if (inclusions !== undefined && inclusions !== null) data.inclusions = inclusions;  // Json column
-    const pkg = await prisma.vendor_packages.update({ where: { id }, data });
+    const pkg = await prisma.vendor_packages.update({ where: { id, ...mine(v) }, data });
     res.json({ package: pkg });
   } catch (e) { serverError(res, e); }
 });
@@ -146,7 +147,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && own.vendor_id !== v)
       return res.status(403).json({ error: 'Forbidden' });    // 🔒 tenancy
     if (own.is_default) return res.status(400).json({ error: "Can't delete the default package" });
-    await prisma.vendor_packages.delete({ where: { id } });
+    await prisma.vendor_packages.delete({ where: { id, ...mine(v) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

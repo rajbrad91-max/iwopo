@@ -14,6 +14,7 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { sendAsVendor } from './email.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -232,7 +233,7 @@ router.put('/template', requireAuth, async (req, res) => {
     const existing = await prisma.email_templates.findFirst({
       where: { vendor_id: v, name }, select: { id: true },              // 🔒 tenancy
     });
-    if (existing) await prisma.email_templates.update({ where: { id: existing.id }, data: { subject, body } });
+    if (existing) await prisma.email_templates.update({ where: { id: existing.id, ...mine(v) }, data: { subject, body } });
     else await prisma.email_templates.create({ data: { vendor_id: v, name, subject, body } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }

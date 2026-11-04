@@ -14,6 +14,7 @@ import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { limit } from '../middleware/rateLimit.js';
 import { getSetting } from '../lib/settings.js';
 import { serverError } from '../lib/httpError.js';
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -175,7 +176,7 @@ router.post('/:id/restore', requireAuth, async (req, res) => {
     const own = await prisma.leads.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' });
-    await prisma.leads.update({ where: { id }, data: { archived_at: null } });
+    await prisma.leads.update({ where: { id, ...mine(vid) }, data: { archived_at: null } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -195,7 +196,7 @@ router.put('/:id/flags', requireAuth, async (req, res) => {
     if (delivered !== undefined && delivered !== null) data.delivered = delivered;
     if (booking_notes !== undefined && booking_notes !== null) data.booking_notes = booking_notes;
     if (ceremony !== undefined && ceremony !== null) data.ceremony = ceremony;
-    const lead = await prisma.leads.update({ where: { id }, data });
+    const lead = await prisma.leads.update({ where: { id, ...mine(vid) }, data });
     res.json({ lead });
   } catch (e) { serverError(res, e); }
 });
@@ -587,7 +588,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (b.pre_events !== undefined) data.pre_events = cleanPreEvents(b.pre_events);   // 🗓️
     if (!Object.keys(data).length) return res.json({ ok: true });
     data.updated_at = new Date();
-    const lead = await prisma.leads.update({ where: { id }, data });
+    const lead = await prisma.leads.update({ where: { id, ...mine(vid) }, data });
     if (lead.status === 'booked') await ensureInvoice(lead.id);   // 🧾 F2: booked by hand — invoice ready, never sent
     res.json({ lead });
   } catch (e) { serverError(res, e); }
@@ -602,7 +603,7 @@ router.put('/:id/gateway', requireAuth, async (req, res) => {
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     await prisma.leads.update({
-      where: { id },
+      where: { id, ...mine(vendorIdFor(req)) },
       data: { gateway_enabled: !!req.body.enabled, updated_at: new Date() },
     });
     res.json({ ok: true, gateway_enabled: !!req.body.enabled });
@@ -659,7 +660,7 @@ router.post('/:id/send-packages', requireAuth, async (req, res) => {
     await sendLeadEmail(req, lead, subject, body);
     // ⏳ auto-start the offer countdown if enabled and not yet started
     if (lead.timer_enabled && !lead.timer_started_at) {
-      await prisma.leads.update({ where: { id: lead.id }, data: { timer_started_at: new Date() } });
+      await prisma.leads.update({ where: { id: lead.id, ...mine(vendorIdFor(req)) }, data: { timer_started_at: new Date() } });
     }
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
@@ -680,7 +681,7 @@ router.put('/:id/timer', requireAuth, async (req, res) => {
     if (restart) data.timer_started_at = new Date();
     else if (!enabled) data.timer_started_at = null;
     const up = await prisma.leads.update({
-      where: { id },
+      where: { id, ...mine(vendorIdFor(req)) },
       data,
       select: { timer_enabled: true, timer_hours: true, timer_started_at: true },
     });
