@@ -19,6 +19,7 @@ model album_events {
   delivery   Boolean?  @default(false)
   albums     albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos     photos[]
+  @@index([vendor_id])
 }
 
 model album_settings {
@@ -101,6 +102,7 @@ model chatbot_messages {
   session    String?   @db.VarChar(64)
   created_at DateTime? @default(now()) @db.Timestamp(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@index([vendor_id])
 }
 
 model chatbot_pending {
@@ -112,6 +114,7 @@ model chatbot_pending {
   session    String?   @db.VarChar(64)
   created_at DateTime? @default(now()) @db.Timestamp(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@index([vendor_id])
 }
 
 model chatbot_subscribers {
@@ -219,6 +222,7 @@ model contracts {
 
   @@index([lead_id], map: "idx_ct_lead")
   @@index([token], map: "idx_ct_token")
+  @@index([vendor_id])
 }
 
 model crew_members {
@@ -279,6 +283,7 @@ model face_clusters {
 
   @@index([album_id, photo_count(sort: Desc)], map: "idx_fc_album")
   @@index([album_id, event_id], map: "idx_fc_album_event")
+  @@index([vendor_id])
 }
 
 model favorites {
@@ -694,6 +699,7 @@ model support_messages {
   status     String?   @default("open") @db.VarChar(20)
   seen       Boolean?  @default(false)
   created_at DateTime? @default(now()) @db.Timestamp(6)
+  @@index([vendor_id])
 }
 
 model trial_signups {
@@ -705,6 +711,7 @@ model trial_signups {
   vendors    vendors?  @relation(fields: [vendor_id], references: [id], onUpdate: NoAction)
 
   @@index([ip_address], map: "idx_trial_ip")
+  @@index([vendor_id])
 }
 
 model users {
@@ -1087,6 +1094,7 @@ model share_recipients {
 
   @@unique([share_id, contact_id], map: "idx_share_recipient")
   @@index([contact_id], map: "idx_recipient_contact")
+  @@index([vendor_id])
 }
 
 model storage_objects {
@@ -1480,6 +1488,7 @@ model pc_devices {
   created_at DateTime  @default(now()) @db.Timestamp(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pc_jobs    pc_jobs[]
+  @@index([vendor_id])
 }
 
 /// 🖥️ One task for the PC: queued → running → done / failed.
@@ -1502,6 +1511,7 @@ model pc_jobs {
   pc_devices pc_devices @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([device_id, status], map: "idx_pc_jobs_device_status")
+  @@index([vendor_id])
 }
 
 /// 📦 What was delivered to which client (Raj, 2026-10-12) — one short row per delivery,
@@ -1650,6 +1660,7 @@ model security_events {
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([user_id, created_at])
+  @@index([vendor_id])
 }
 
 /// ✉️ Two-step sign-in: a device an account chose to remember for 30 days (2026-10-30). Only a hash of the device's
