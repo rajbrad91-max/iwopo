@@ -103,7 +103,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
       prisma.crew_members.findMany({
         where: { vendor_id: lead.vendor_id },                       // 🔒 tenancy
         orderBy: { name: 'asc' },
-        select: { id: true, name: true, role: true },
+        select: { id: true, name: true, role: true, phone: true },   // 📞 the team card's call link
       }),
       moneySummary(lead),
     ]);
@@ -114,6 +114,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
       ...a,
       name: byId.get(a.crew_member_id)?.name ?? 'Removed member',
       member_role: byId.get(a.crew_member_id)?.role ?? null,
+      member_phone: byId.get(a.crew_member_id)?.phone ?? null,
     }));
 
     res.json({ booking: lead, money, packages, payments, contract, invoices, crew, roster });

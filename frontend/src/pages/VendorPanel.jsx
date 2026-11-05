@@ -3,12 +3,12 @@ import LeadCard from '../components/LeadCard';
 import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter button
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
-import { ContactStrip, MainEventCard, PreEventCards, NotesCard } from '../components/LeadCards';
+import { LeadContact, LeadEvents } from '../components/LeadOverview';
 import AutoReleaseToggle from '../components/AutoReleaseToggle';
 import { useAutoRelease } from '../lib/useAutoRelease';
 import { contractSampleFor } from '../lib/contractSamples';
 import { useInboxCounts } from '../lib/inboxCounts.js';
-import { phoneChars, phoneProblem } from '../lib/phone';
+import { phoneChars } from '../lib/phone';
 import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
@@ -19,7 +19,7 @@ import { chime } from '../lib/chime';
 import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber, InquiryShell, formProblems, formAnswers, focusFirstProblem, BOOKING_FIELDS } from './InquiryForm';
-import { OTHER, leadQuestions } from '../lib/formRules';
+import { OTHER } from '../lib/formRules';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import './contractdoc.css';
@@ -3276,13 +3276,10 @@ function PackageEditor({ pkg, onSave, onCancel }) {
   );
 }
 
-/** 🗓️ Answers the main event card shows on its first lines (LeadCards), so its details list doesn't repeat them. */
-const IN_EVENT_CARD = new Set(['event_type', 'event_date', 'timing_from', 'timing_to', 'hours', 'location', 'guests']);
 
 function LeadDetail({ lead, onBack, onSaved }) {
   const dialog = useDialog();
   const [edit, setEdit] = useState(false);
-  const [peEditing, setPeEditing] = useState(false);   // 🗓️ the pre-event editor in place of the event cards
   const [cfg, setCfg] = useState(null);
   const [ep, setEp] = useState({
     role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '',
@@ -3498,81 +3495,6 @@ function LeadDetail({ lead, onBack, onSaved }) {
     </div>
   );
 
-  /* 🗓️ The main event for the event cards — the lead's own columns, and the times from the form's
-     Starting/Ending Time questions (they map to timing_from / timing_to and live in the answers). */
-  const formFields = leadQuestions(lead.form_snapshot, cfg?.custom_fields, lead.custom_data);   // 🧾 the same questions Edit Details shows
-  const answerFor = (key) => { const f = formFields.find(x => x.maps_to === key); return f ? (lead.custom_data || {})[f.id] : undefined; };
-  const mainEvent = (lead.event_date || lead.event_type) ? {
-    name: lead.event_type || 'Main event', date: lead.event_date,
-    from: answerFor('timing_from') || '', to: answerFor('timing_to') || '',
-    hours: answerFor('hours') || (lead.hours ? `${lead.hours} hrs` : ''),
-    location: lead.location || '', guests: lead.guests || '',
-  } : null;
-
-  /* 🎉 The main event card's details — driven entirely by the vendor's own inquiry form.
-  A fixed list of rows meant a DJ saw "Bride Getting Ready ❌ No" for a
-  question their form never asked. Rows use the vendor's own wording.
-  An empty text answer stays hidden. A checkbox is always shown,
-  because leaving it unticked is an answer. */
-  function answerRows() {
-    const cd = lead.custom_data || {};
-    const has = (v) => v !== '' && v !== null && v !== undefined && v !== false;
-
-    // The calendar day and the clock the client typed. The date column
-    // arrives as "2027-03-14T00:00:00.000Z" and a time column as "16:00"
-    // or "16:00:00". The day is read off the string so no timezone can
-    // move it. The time follows this vendor's 12h/24h preference and is
-    // not shifted either.
-    const ymd = (v) => {
-      const m = String(v).match(/(\d{4})-(\d{2})-(\d{2})/);
-      return m ? `${m[1]}-${m[2]}-${m[3]}` : String(v);
-    };
-
-    const valueFor = (f) => {
-      const col = f.maps_to && lead[f.maps_to];
-      const raw = cd[f.id];
-      // Unticked is "No". A mapped yes/no column is used only when the
-      // form never stored the tick itself.
-      if (f.type === 'checkbox') {
-        const on = raw === true || raw === false ? raw : col === true;
-        return on ? '✅ Yes' : '❌ No';
-      }
-      // Hours is stored twice: the sentence the client saw ("6 hrs",
-      // "6 hrs 30 min") and a whole-number column for bookings. The
-      // column drops the words and rounds the minutes away, so the lead
-      // shows the sentence.
-      if (f.type === 'hours') {
-        if (has(raw)) return String(raw);
-        if (has(col) || col === 0) {
-          const n = Number(col);
-          if (!n) return '0 min';
-          return `${n} hr${n === 1 ? '' : 's'}`;
-        }
-        return null;
-      }
-      const v = has(col) ? col : raw;
-      if (!has(v)) return null;
-      if (v === true) return '✅ Yes';
-      if (f.type === 'date') return ymd(v);
-      if (f.type === 'time') return fmtTime(v);
-      return String(v);
-    };
-
-    /* 🔀 only the questions this client was actually shown — the same rules the form used. A Birthday lead never
-       had Getting Ready, so it shows no "Getting Ready ❌ No"; a wedding where the box was left unticked still says No. */
-    return shownFields(formFields, cd, { heard: lead.heard, role: lead.role })
-      .filter(f => !(mainEvent && IN_EVENT_CARD.has(f.maps_to)))   // shown on the main event card already
-      .filter(f => f.type !== 'pre_events')   // the pre-events have their own card
-      .map(f => ({ f, row: [f.label, valueFor(f)] }))
-      .filter(({ row }) => row[1] !== null);
-  }
-  /* 👤 a question that follows on from how they found you or who they are (Friend → "Friend's name") sits with the
-     contact; every other answer with the main event */
-  const aboutContact = (f) => ['@heard', '@role'].includes(f.show_if?.field);
-  const answered = answerRows();
-  const contactAnswers = answered.filter(({ f }) => aboutContact(f)).map(({ row }) => row);
-  const eventDetails = answered.filter(({ f }) => !aboutContact(f)).map(({ row }) => row);
-  const showMainCard = !!mainEvent || eventDetails.length > 0;
 
   // ---- VIEW MODE ----
   return (
@@ -3585,23 +3507,11 @@ function LeadDetail({ lead, onBack, onSaved }) {
 
       {/* 🗂️ The contact as one strip across the top; under it the main event leads the left column (with every
           other answer about it), then the pre-events and the notes, while Payments and the contract sit beside it on
-          the right — components/LeadCards. ✏️ Edit Details edits everything; ＋ Add on the Pre-events card opens the
-          pre-event editor in place. */}
-      <ContactStrip name={lead.name} role={lead.role} answers={contactAnswers}
-        items={[['1f4e7', lead.email],
-          ['1f4de', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone],
-          ['1f4f7', lead.instagram]]}
-        meta={[['1f50e', lead.heard && `via ${lead.heard}`], ['1f4e5', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null]]} />
+          the right — components/LeadOverview (shared with the booking page). ✏️ Edit Details edits everything. */}
+      <LeadContact lead={lead} cfg={cfg} />
       <div className="lead-grid">
       <div className="lead-left">
-      {showMainCard && <MainEventCard ev={mainEvent} details={eventDetails} />}
-
-
-
-      {peEditing
-        ? <PreEvents key={`${lead.id}:${lead.updated_at}`} lead={lead} onSaved={onSaved} onDone={() => setPeEditing(false)} />
-        : <PreEventCards preEvents={lead.pre_events} onAdd={() => setPeEditing(true)} />}
-      <NotesCard notes={String(lead.notes || '').trim()} />
+      <LeadEvents lead={lead} cfg={cfg} onSaved={onSaved} />
 
 
       {/* 📦 Packages — in the left column under the event details, since it's
@@ -6282,6 +6192,7 @@ function BookingDetail({ id, onBack }) {
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [cfg, setCfg] = useState(null);   // 🧾 the vendor's inquiry form — which questions this client was asked
   const [assign, setAssign] = useState({ crew_member_id: '', duty: '', arrive_time: '', leave_time: '' });
   const assignLock = useRef(false);
 
@@ -6291,6 +6202,7 @@ function BookingDetail({ id, onBack }) {
     try {
       const data = await api.booking(id);
       setD(data);
+      if (!cfg) api.myInquirySettings(data.booking?.vendor_id).then(x => setCfg(x.settings)).catch(() => setCfg({}));
     } catch (e) { setErr(e.message); }
   }
   function flash(m) { setMsg(m); setTimeout(() => setMsg(''), 2000); }
@@ -6338,24 +6250,13 @@ function BookingDetail({ id, onBack }) {
       </div>
       {msg && <div className={`ld-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
 
+      {/* 👤 the contact strip, as on the lead page */}
+      <LeadContact lead={b} cfg={cfg} />
       <div className="lead-grid">
         <div className="lead-left">
           {/* ── details, read-only: the deal is agreed, so nothing here is a form ── */}
-          <div className="ld-card">
-            <div className="ld-card-h">📋 Details</div>
-            <div className="ld-client-name"><span className="ld-client-lbl">Name:</span> {b.name || '—'}</div>
-            <dl className="bd-dl">
-              <div><dt>Email</dt><dd>{b.email || '—'}</dd></div>
-              <div><dt>Phone</dt><dd>{b.phone || '—'}</dd></div>
-              <div><dt>Event</dt><dd>{b.event_type || '—'}</dd></div>
-              <div><dt>Date</dt><dd>{b.event_date ? fmtEventDate(b.event_date, { long: true }) : '—'}</dd></div>
-              <div><dt>Timing</dt><dd>{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</dd></div>
-              <div><dt>Location</dt><dd>{b.location || '—'}</dd></div>
-              <div><dt>Guests</dt><dd>{b.guests || '—'}</dd></div>
-              <div><dt>Hours</dt><dd>{b.hours || '—'}</dd></div>
-            </dl>
-            {b.notes && <><h4 className="bd-h4">Notes</h4><p className="bd-notes">{b.notes}</p></>}
-          </div>
+          {/* 🗂️ the main event, pre-events and notes — exactly as the lead page shows them (components/LeadOverview) */}
+          <LeadEvents lead={b} cfg={cfg} onSaved={load} />
 
           {/* ── packages: everything that was offered, with the chosen one marked ── */}
           <div className="ld-card">
@@ -6417,44 +6318,50 @@ function BookingDetail({ id, onBack }) {
           {/* ── crew ── */}
           <div className="bd-side">
             <div className="ld-card-h">👥 Team on the day</div>
-            {d.crew.length > 0 && (
-              <ul className="bd-list">
+            {/* 👥 one card per person: who, what they do, when they're there, how to reach them */}
+            {d.crew.length > 0 ? (
+              <div className="bd-crew">
                 {d.crew.map(c => (
-                  <li key={c.id}>
-                    <span>
-                      <strong>{c.name}</strong>{c.duty ? ` · ${c.duty}` : ''}
-                      {c.arrive_time ? ` · ${fmtTime(c.arrive_time)}` : ''}{c.leave_time ? ` – ${fmtTime(c.leave_time)}` : ''}
-                    </span>
-                    <span className="bd-list-right">
-                      {c.checked_in_at && <span className="bd-when">checked in</span>}
+                  <div className="bd-crew-card" key={c.id}>
+                    <div className="bd-crew-top">
+                      <span className="bd-crew-name">{c.name}</span>
+                      {c.checked_in_at && <span className="bd-crew-in">✅ Checked in</span>}
                       <button className="bd-x" onClick={() => removeCrew(c.id)} disabled={busy} title="Unassign this team member from the day">✕</button>
-                    </span>
-                  </li>
+                    </div>
+                    {(c.duty || c.member_role) && <div className="bd-crew-line">🎬 {[c.duty, c.member_role].filter(Boolean).join(' · ')}</div>}
+                    {(c.arrive_time || c.leave_time) && (
+                      <div className="bd-crew-line">🕐 {[c.arrive_time, c.leave_time].filter(Boolean).map(fmtTime).join(' – ')}</div>
+                    )}
+                    {c.member_phone && <div className="bd-crew-line">📞 <a href={`tel:${c.member_phone}`}>{c.member_phone}</a></div>}
+                  </div>
                 ))}
-              </ul>
-            )}
+              </div>
+            ) : <p className="bd-empty">No one assigned yet.</p>}
             <h4 className="bd-h4">Assign someone</h4>
-            <div className="bd-pay-row">
-              <select className="bd-input" value={assign.crew_member_id}
-                onChange={e => setAssign(a => ({ ...a, crew_member_id: e.target.value }))}>
-                <option value="">Team member…</option>
-                {d.roster.map(r => <option key={r.id} value={r.id}>{r.name}{r.role ? ` (${r.role})` : ''}</option>)}
-              </select>
-              <input className="bd-input" placeholder="Duty (e.g. Lead photographer)"
-                value={assign.duty} onChange={e => setAssign(a => ({ ...a, duty: e.target.value }))} />
-              <label className="bd-time">
-                <span>Arrive</span>
-                <input className="bd-input bd-input-time" type="time" aria-label="Arrive" value={assign.arrive_time}
-                  onChange={e => setAssign(a => ({ ...a, arrive_time: e.target.value }))} />
-              </label>
-              <label className="bd-time">
-                <span>Leave</span>
-                <input className="bd-input bd-input-time" type="time" aria-label="Leave" value={assign.leave_time}
-                  onChange={e => setAssign(a => ({ ...a, leave_time: e.target.value }))} />
-              </label>
-              <button className="refresh" onClick={addCrew} disabled={busy} title="Assign this team member to the booking">Assign</button>
-            </div>
-            {d.roster.length === 0 && <p className="bd-fine">No team members yet — add them under Crew.</p>}
+            {d.roster.length === 0 ? <p className="bd-fine">No team members yet — add them under Crew.</p> : (
+              <div className="bd-assign">
+                <label className="bd-assign-wide"><span>Team member</span>
+                  <select className="bd-input" value={assign.crew_member_id}
+                    onChange={e => setAssign(a => ({ ...a, crew_member_id: e.target.value }))}>
+                    <option value="" disabled hidden>Choose…</option>
+                    {d.roster.map(r => <option key={r.id} value={r.id}>{r.name}{r.role ? ` (${r.role})` : ''}</option>)}
+                  </select>
+                </label>
+                <label className="bd-assign-wide"><span>Duty</span>
+                  <input className="bd-input" placeholder="e.g. Lead photographer"
+                    value={assign.duty} onChange={e => setAssign(a => ({ ...a, duty: e.target.value }))} />
+                </label>
+                <label><span>Arrive</span>
+                  <input className="bd-input" type="time" value={assign.arrive_time}
+                    onChange={e => setAssign(a => ({ ...a, arrive_time: e.target.value }))} />
+                </label>
+                <label><span>Leave</span>
+                  <input className="bd-input" type="time" value={assign.leave_time}
+                    onChange={e => setAssign(a => ({ ...a, leave_time: e.target.value }))} />
+                </label>
+                <button className="refresh bd-assign-wide bd-assign-btn" onClick={addCrew} disabled={busy} title="Assign this team member to the booking">＋ Assign</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
