@@ -9,30 +9,34 @@
 /* the Pre-events title row: the title, and ＋ Add beside it */
 .ldc-head { display: flex; align-items: flex-start; gap: 8px; }
 .ldc-head .ld-card-h { flex: 1; }
-.ldc-line { font-size: 12.5px; color: var(--text); opacity: .9; margin: 4px 0; overflow-wrap: anywhere; }
+.ldc-line { font-size: 13px; line-height: 1.45; color: var(--text); opacity: .9; margin: 6px 0; overflow-wrap: anywhere; }
+/* a row with chips: they wrap with even gaps, never a cramped margin */
+.ldc-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .ldc-nowrap { white-space: nowrap; }
 /* an icon stays beside its text when a long email or address wraps */
-.ldc-iconline { display: flex; gap: 6px; }
+.ldc-iconline { display: flex; gap: 8px; font-size: 14px; margin: 8px 0; }   /* the contact's details: a touch larger */
 .ldc-iconline > span:first-child { flex: none; }
 .ldc-iconline > span:last-child { min-width: 0; }
 
 /* 👤 contact */
-.ldc-person { font-size: 17px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.ldc-person { font-size: 18px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
 .ldc-role { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--teal); margin: 2px 0 8px; }
-.ldc-meta { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+.ldc-meta { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); line-height: 1.7; }
 
 /* 💍 the main event: tile, name, the key facts as pills, then every other answer */
 .ldc-main { border-color: color-mix(in srgb, var(--teal) 60%, transparent); }
 .ldc-event { display: flex; gap: 14px; }
 .ldc-event-body { flex: 1; min-width: 0; }
-.ldc-name { flex: 1; min-width: 0; font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; overflow-wrap: anywhere; }
+.ldc-name { flex: 1; min-width: 0; font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; overflow-wrap: anywhere; }
 .ldc-main .ldc-name { font-size: 17px; }
 .ldc-badge { display: inline-block; white-space: nowrap; margin-left: 7px; padding: 2px 7px; border-radius: 999px; font-size: 9.5px;
   font-weight: 700; letter-spacing: .08em; vertical-align: 2px; background: var(--teal); color: #06231f; }
 .ldc-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .ldc-pill { font-size: 12px; padding: 4px 9px; border-radius: 9px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
-.ldc-details { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
-.ldc-detail { display: grid; grid-template-columns: minmax(110px, 40%) 1fr; gap: 12px; padding: 4px 0; font-size: 12.5px; }
+/* every question shares one label column, only as wide as the longest — answers sit close and aligned */
+.ldc-details { display: grid; grid-template-columns: minmax(0, max-content) 1fr; gap: 7px 28px; margin: 12px 0 0;
+  padding-top: 12px; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; }
+.ldc-detail { display: contents; }
 .ldc-detail dt { color: var(--muted); }
 .ldc-detail dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
 
@@ -47,8 +51,8 @@
 
 /* 🗓️ pre-events */
 .ldc-pre-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-.ldc-pre { display: flex; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
-.ldc-chip { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px;
+.ldc-pre { display: flex; gap: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+.ldc-chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px;
   background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
 .ldc-svc { background: color-mix(in srgb, #a78bfa 18%, transparent); color: #a78bfa; }
 .ldc-add { flex: none; padding: 3px 10px; font-size: 12px; }

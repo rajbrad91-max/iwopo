@@ -90,10 +90,10 @@ function PreEventCard({ ev }) {
       <DateTile date={ev.date} />
       <div className="ldc-event-body">
         <div className="ldc-name">{ev.name}</div>
-        {(time || hours) && <div className="ldc-line"><span className="ldc-nowrap">🕐 {time}</span>{hours && <span className="ldc-chip">{hours}</span>}</div>}
+        {(time || hours) && <div className="ldc-line ldc-wrap"><span className="ldc-nowrap">🕐 {time}</span>{hours && <span className="ldc-chip">{hours}</span>}</div>}
         {ev.location && <div className="ldc-line">📍 {ev.location}</div>}
         {(ev.guests || ev.service) && (
-          <div className="ldc-line">{ev.guests ? `👥 ${ev.guests} guests` : ''}{ev.service && <span className="ldc-chip ldc-svc">{ev.service}</span>}</div>
+          <div className="ldc-line ldc-wrap">{ev.guests ? <span className="ldc-nowrap">👥 {ev.guests} guests</span> : null}{ev.service && <span className="ldc-chip ldc-svc">{ev.service}</span>}</div>
         )}
       </div>
     </div>
