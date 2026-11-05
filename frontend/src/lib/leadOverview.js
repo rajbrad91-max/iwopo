@@ -86,6 +86,8 @@ export function leadOverview(lead, cfg) {
   // 🤝 the question shown when they heard from a friend (or a referral) reads simply "Referred by"
   const referral = (f) => f.show_if?.field === '@heard' && (f.show_if.values || []).some(v => /friend|refer/i.test(String(v)));
   const contactAnswers = answered.filter(({ f }) => aboutContact(f)).map(({ f, row }) => [referral(f) ? 'Referred by' : row[0], row[1]]);
+  // "Referred by …" already says how they found you, so "via Friend" is not repeated beside it
+  const referredBy = answered.some(({ f }) => aboutContact(f) && referral(f));
   const eventDetails = answered.filter(({ f }) => !aboutContact(f)).map(({ row }) => row);
   const showMainCard = !!mainEvent || eventDetails.length > 0;
 
@@ -94,6 +96,6 @@ export function leadOverview(lead, cfg) {
     contactItems: [['1f4e7', lead.email],
       ['1f4de', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone],
       ['1f4f7', lead.instagram]],
-    contactMeta: [['1f50e', lead.heard && `via ${lead.heard}`], ['1f4e5', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null]],
+    contactMeta: [['1f50e', lead.heard && !referredBy && `via ${lead.heard}`], ['1f4e5', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null]],
   };
 }
