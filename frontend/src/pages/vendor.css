@@ -455,7 +455,9 @@
 .ld-wrap { padding: 24px; max-width: 640px; }
 /* .dash .main h2 is 15px for list pages — keep the lead title readable */
 .ld-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
-.ld-edit-btn { background: #2dd4bf; color: #06231f; }
+/* the main action on a card: a soft tint, not a solid bright fill */
+.ld-edit-btn, .bx-primary, .ctb-preview { background: var(--teal-soft); border-color: transparent; color: var(--teal-2); }
+.ld-edit-btn:hover, .bx-primary:hover, .ctb-preview:hover { border-color: var(--teal-2); }
 .ld-msg { padding: 10px 12px; border-radius: 9px; margin: 0 0 14px; font-size: 13px; }
 .ld-msg.is-ok { background: #4ade8018; color: #4ade80; }
 .ld-msg.is-err { background: #fb718518; color: #fb7185; }
@@ -495,7 +497,7 @@
 .ld-view { padding: 2px 0 24px; max-width: 1180px; }
 .ld-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
 .ld-card-h {
-  font-size: 12.5px; font-weight: 800; color: #2dd4bf; letter-spacing: .2px;
+  font-size: 12.5px; font-weight: 700; color: var(--text); letter-spacing: .2px;
   margin: 0 0 10px; padding-bottom: 7px; border-bottom: 1px solid var(--line);
   display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
 }
@@ -519,7 +521,6 @@
 .ld-timer-status { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
 /* 📦 Booking extras */
-.bx-primary { background: #2dd4bf; color: #06231f; }
 .bx-del { cursor: pointer; }
 
 /* 🧾 Invoice box */
@@ -563,22 +564,19 @@
 .ms-top-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .ms-top-row .ms-status-row { flex: 1; margin-bottom: 0; min-width: 160px; align-items: center; }
 .ms-webpay-chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px; color: var(--muted); font-size: 12px; font-weight: 600; padding: 0 12px; height: 34px; display: inline-flex; align-items: center; cursor: pointer; white-space: nowrap; transition: all .15s; }
-.ms-webpay-chip:hover { border-color: #2dd4bf88; }
-.ms-webpay-chip.is-on { background: #4ade8022; border-color: #4ade8066; color: #4ade80; }
+.ms-webpay-chip:hover { border-color: var(--teal-2); }
+.ms-webpay-chip.is-on { color: var(--green); }
 
 /* 3 money tiles */
 .ms-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
-.ms-tile { border: 1px solid var(--line); border-radius: 10px; padding: 9px 6px; text-align: center; background: var(--panel); }
+.ms-tile { border: 1px solid var(--line); border-radius: 10px; padding: 9px 6px; text-align: center; background: var(--panel-2); }
 .ms-tile-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); }
 .ms-tile-val { font-size: clamp(13px, 1.5vw, 16px); font-weight: 800; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .ms-tile-note { font-size: 10px; color: var(--muted); margin-top: 1px; }
-.ms-tile-total { background: #3b5bdb14; border-color: #3b5bdb44; }
-.ms-tile-total .ms-tile-val { color: #6b8afd; }
-.ms-tile-recv { background: #4ade8014; border-color: #4ade8044; }
-.ms-tile-recv .ms-tile-val { color: #4ade80; }
-.ms-tile-pend { background: #fb718514; border-color: #fb718544; }
-.ms-tile-pend .ms-tile-val { color: #fb7185; }
-.ms-tile-clear { background: var(--panel); }
+/* plain boxes; only the amounts carry a quiet colour — what's still owed in amber, not alarm red */
+.ms-tile-total .ms-tile-val { color: var(--text); }
+.ms-tile-recv .ms-tile-val { color: var(--green); }
+.ms-tile-pend .ms-tile-val { color: var(--amber); }
 .ms-deposit-line { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
 
 /* manual payments — amount | method | add on one line */
@@ -594,7 +592,7 @@
 .ms-status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .ms-status-lbl { font-size: 12px; color: var(--muted); font-weight: 600; }
 .ms-status-sel { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px; color: var(--text); padding: 0 14px; height: 34px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.ms-status-sel:focus { outline: none; border-color: #2dd4bf; }
+.ms-status-sel:focus { outline: none; border-color: var(--teal-2); }
 
 /* 📄 contract box — title + Preview stay together; Secure/Timer sit aside */
 .ctb-wrap { margin-top: 0; }
@@ -606,12 +604,10 @@
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0;
 }
 .ctb-h3 {
-  margin: 0; font-size: 13px; font-weight: 800; color: #2dd4bf; letter-spacing: .25px;
+  margin: 0; font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .25px;
 }
 .ctb-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
-.ctb-preview { background: #2dd4bf; color: #06231f; height: 32px; padding: 0 12px; }
-
-/* contract preview modal */
+.ctb-preview { height: 32px; padding: 0 12px; }
 
 /* ═══════════ 🍔 MENU BUTTON + COLLAPSE ═══════════ */
 

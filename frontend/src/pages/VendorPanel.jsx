@@ -3951,7 +3951,7 @@ function MoneySection({ lead }) {
             <div className="ms-tile-lbl">Received</div>
             <div className="ms-tile-val">{fmtMoney(sum.paid)}</div>
           </div>
-          <div className={`ms-tile ${pending > 0 ? 'ms-tile-pend' : 'ms-tile-clear'}`}>
+          <div className={`ms-tile${pending > 0 ? ' ms-tile-pend' : ''}`}>
             <div className="ms-tile-lbl">Pending</div>
             <div className="ms-tile-val">{fmtMoney(pending)}</div>
           </div>

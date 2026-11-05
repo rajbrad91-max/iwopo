@@ -31,7 +31,7 @@
 .ldc-name { font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; overflow-wrap: anywhere; }
 .ldc-main .ldc-name { font-size: 17px; }
 .ldc-badge { display: inline-block; white-space: nowrap; margin-left: 7px; padding: 2px 7px; border-radius: 999px; font-size: 9.5px;
-  font-weight: 700; letter-spacing: .08em; vertical-align: 2px; background: var(--teal); color: #06231f; }
+  font-weight: 700; letter-spacing: .08em; vertical-align: 2px; background: var(--teal-2); color: #fff; }
 .ldc-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .ldc-main .ldc-pill { font-size: 12.5px; padding: 4px 9px; border-radius: 9px; }
 /* every question shares one label column, only as wide as the longest — answers sit close and aligned */
@@ -50,7 +50,7 @@
 /* the slim calendar tile */
 .ldc-tile { flex: none; align-self: flex-start; width: 50px; display: flex; flex-direction: column; align-items: center;
   border-radius: 10px; padding: 6px 0 7px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
-.ldc-tile.is-main { width: 58px; background: var(--teal); color: #06231f; }
+.ldc-tile.is-main { width: 58px; background: var(--teal-2); color: #fff; }
 .ldc-tile-sm { font-size: 10px; font-weight: 700; letter-spacing: .1em; opacity: .85; }
 .ldc-tile-day { font-size: 20px; font-weight: 800; line-height: 1.15; }
 .ldc-tile.is-main .ldc-tile-day { font-size: 24px; }
@@ -69,5 +69,4 @@
 .ldc-notes { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* light theme: white on the deeper teal, and a readable purple */
-[data-theme="light"] .ldc-tile.is-main, [data-theme="light"] .ldc-badge { color: #fff; }
 [data-theme="light"] .ldc-svc { color: #6d28d9; }
