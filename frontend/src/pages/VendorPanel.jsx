@@ -4,6 +4,8 @@ import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter bu
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
 import { ContactStrip, MainEventCard, PreEventCards, NotesCard } from '../components/LeadCards';
+import AutoReleaseToggle from '../components/AutoReleaseToggle';
+import { useAutoRelease } from '../lib/useAutoRelease';
 import { WEDDING_AGREEMENT } from '../lib/contractStarters';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
@@ -4412,23 +4414,20 @@ function ContractSetup() {
   // which section the cursor was last in, so the shared palette knows where to
   // insert. One palette that follows you beats a copy of it in every card.
   const [focused, setFocused] = useState(0);
-  // 🔓 account-wide, read alongside the templates
-  const [autoRelease, setAutoRelease] = useState(false);
+  // 🔓 account-wide (lib/useAutoRelease — the contract preview shares it)
+  const autoRelease = useAutoRelease();
 
   useEffect(() => { load(); }, []);
   async function load() {
     try { const d = await api.ctTemplates(); setTpls(d.templates || []); } catch { /* list stays */ }
-    try { const s = await api.mySettings(); setAutoRelease(!!s?.settings?.auto_release_contract); } catch { /* leave off */ }
     setLoading(false);
   }
   async function saveAutoRelease(on) {
-    setAutoRelease(on);                                  // optimistic: the box responds at once
     try {
-      const cur = (await api.mySettings())?.settings || {};
-      await api.saveSettings({ ...cur, auto_release_contract: on });
+      await autoRelease.save(on);
       setMsg(on ? '🔓 Contracts will send without review' : '🔒 Contracts need releasing first');
       setTimeout(() => setMsg(''), 2200);
-    } catch (e) { setAutoRelease(!on); setMsg('⚠️ ' + e.message); }
+    } catch (e) { setMsg('⚠️ ' + e.message); }
   }
 
   const sections = sel?.sections?.length ? sel.sections : [];
@@ -4558,10 +4557,7 @@ function ContractSetup() {
           {/* 🔓 Account-wide, not per template: it answers "do I want to read my
               contracts before they go out", which is a habit rather than a
               property of one document. */}
-          <label className="cs-auto" title="Skip the review step — contracts are approved as soon as they're built">
-            <input type="checkbox" checked={autoRelease} onChange={e => saveAutoRelease(e.target.checked)} />
-            🔓 Auto Release
-          </label>
+          <AutoReleaseToggle className="cs-auto" on={autoRelease.on} disabled={!autoRelease.ready} onChange={saveAutoRelease} />
           <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
           <button className="refresh cs-save-top" onClick={save} disabled={saving}>
             {saving ? '⏳ Saving…' : '💾 Save contract'}

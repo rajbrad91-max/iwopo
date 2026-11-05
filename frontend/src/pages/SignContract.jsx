@@ -15,7 +15,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle';
  * after it lands: a click finds which one was tapped, and a second effect
  * keeps each box in sync with state.
  */
-export default function SignContract({ token, previewLeadId, onRelease, onLoaded }) {
+export default function SignContract({ token, previewLeadId, previewActions, onLoaded }) {
   const preview = !!previewLeadId;
   const [c, setC] = useState(null);
   const [err, setErr] = useState('');
@@ -146,11 +146,8 @@ export default function SignContract({ token, previewLeadId, onRelease, onLoaded
       {preview && (
         <div className="ct-prev-bar">
           <span className="ct-prev-tag">Preview — this is what your client will see</span>
-          {c.released_at
-            ? <span className="ct-prev-ok">Released {String(c.released_at).slice(0, 10)} · your client gets it through the packages link you send them</span>
-            : <button type="button" className="ct-prev-release" onClick={() => onRelease && onRelease(c.id)}>
-                Release contract
-              </button>}
+          {/* the vendor's controls for this contract (ContractPreview): Auto Release and Release contract */}
+          {previewActions && previewActions(c)}
         </div>
       )}
 

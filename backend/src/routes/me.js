@@ -178,11 +178,11 @@ router.put('/settings', requireAuth, async (req, res) => {
       prisma.vendor_settings.findUnique({ where: { vendor_id: vid }, select: { timezone: true } }),
       prisma.vendors.findUnique({ where: { id: vid }, select: { country: true } }),
     ]);
-    const data = {
-      time_format: time_format || '12h',
-      timezone: timezoneToStore(timezone, existing?.timezone, vendor?.country),
-      theme: theme || 'dark',
-    };
+    // 🧩 only what was sent changes — a save of one setting (the Auto Release toggle) leaves the others as they
+    //    are; an absent time zone keeps the saved one (timezoneToStore)
+    const data = { timezone: timezoneToStore(timezone, existing?.timezone, vendor?.country) };
+    if (time_format !== undefined) data.time_format = time_format || '12h';
+    if (theme !== undefined) data.theme = theme || 'dark';
     // only write a currency we actually support; an empty string means "go back
     // to following my country" rather than "store a blank"
     if (currency !== undefined) {
@@ -197,7 +197,7 @@ router.put('/settings', requireAuth, async (req, res) => {
     await prisma.vendor_settings.upsert({
       where: { vendor_id: vid },                  // 🔒 tenancy
       update: { ...data, updated_at: new Date() },
-      create: { vendor_id: vid, ...data },
+      create: { vendor_id: vid, time_format: '12h', theme: 'dark', ...data },   // a first save starts from the defaults
     });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }

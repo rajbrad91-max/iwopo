@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import SignContract from './SignContract';
 import './contractpreview.css';
+import AutoReleaseToggle from '../components/AutoReleaseToggle';
+import { useAutoRelease } from '../lib/useAutoRelease';
 
 /**
  * 👁️ A vendor reading their own contract before it goes to a client.
@@ -77,6 +79,31 @@ export default function ContractPreview({ leadId }) {
     finally { setBusy(false); }
   }
 
+  /* 🔓 Auto Release — the same account-wide switch as Contract setup (lib/useAutoRelease). Turning it on approves
+     this contract too, as it would have been approved had the switch been on when it was built; otherwise its
+     Release button would be greyed out with the contract still held back. */
+  const autoRelease = useAutoRelease();
+  async function toggleAutoRelease(on, ct) {
+    setMsg('');
+    try { await autoRelease.save(on); }
+    catch (e) { setMsg('⚠️ ' + e.message); return; }
+    if (on && ct?.id && !ct.released_at) await release(ct.id);
+    else setMsg(on ? '🔓 Auto Release is on — contracts are approved as soon as they are built' : '🔒 Auto Release is off — you release each contract after reading it');
+  }
+  /* the controls in the preview's bar: the switch, and Release contract — greyed out once the contract is released.
+     With Auto Release on, contracts are released as they are built, so the button is greyed out; a contract built
+     before the switch went on still has its Release button, or it could never reach the client. */
+  const previewActions = (ct) => (
+    <div className="ct-prev-actions">
+      <AutoReleaseToggle className="ct-prev-auto" on={autoRelease.on} disabled={!autoRelease.ready || busy}
+        onChange={(on) => toggleAutoRelease(on, ct)} />
+      <button type="button" className="ct-prev-release" onClick={() => release(ct?.id)}
+        disabled={busy || !ct?.id || !!ct?.released_at}>
+        {ct?.released_at ? `✓ Released ${String(ct.released_at).slice(0, 10)}` : 'Release contract'}
+      </button>
+    </div>
+  );
+
   return (
     <div className="cp-page">
       <header className="cp-top">
@@ -110,7 +137,7 @@ export default function ContractPreview({ leadId }) {
           )}
 
       <div className="cp-doc">
-        <SignContract key={docKey} previewLeadId={leadId} onRelease={release} onLoaded={onLoaded} />
+        <SignContract key={docKey} previewLeadId={leadId} previewActions={previewActions} onLoaded={onLoaded} />
       </div>
     </div>
   );
