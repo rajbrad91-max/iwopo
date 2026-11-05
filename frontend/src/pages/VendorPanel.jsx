@@ -3,7 +3,7 @@ import LeadCard from '../components/LeadCard';
 import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter button
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
-import EventCards from '../components/EventCards';
+import { ContactCard, MainEventCard, PreEventCards, NotesCard } from '../components/LeadCards';
 import { WEDDING_AGREEMENT } from '../lib/contractStarters';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
@@ -3273,7 +3273,7 @@ function PackageEditor({ pkg, onSave, onCancel }) {
   );
 }
 
-/** 🗓️ Answers the main event card shows (EventCards), so Event Details doesn't list them twice. */
+/** 🗓️ Answers the main event card shows on its first lines (LeadCards), so its details list doesn't repeat them. */
 const IN_EVENT_CARD = new Set(['event_type', 'event_date', 'timing_from', 'timing_to', 'hours', 'location', 'guests']);
 
 function LeadDetail({ lead, onBack, onSaved }) {
@@ -3462,12 +3462,6 @@ function LeadDetail({ lead, onBack, onSaved }) {
     finally { setBusy(false); }
   }
 
-  const row = (label, value) => (
-    <div className="ld-row">
-      <div className="ld-label">{label}</div>
-      <div>{value || '—'}</div>
-    </div>
-  );
 
   // ---- EDIT MODE ----
   if (edit) return (
@@ -3527,6 +3521,72 @@ function LeadDetail({ lead, onBack, onSaved }) {
     location: lead.location || '', guests: lead.guests || '',
   } : null;
 
+  /* 🎉 The main event card's details — driven entirely by the vendor's own inquiry form.
+  A fixed list of rows meant a DJ saw "Bride Getting Ready ❌ No" for a
+  question their form never asked. Rows use the vendor's own wording.
+  An empty text answer stays hidden. A checkbox is always shown,
+  because leaving it unticked is an answer. */
+  function eventDetailRows() {
+    const defs = (Array.isArray(lead.form_snapshot) && lead.form_snapshot.length)
+      ? lead.form_snapshot
+      : (cfg?.custom_fields || []);
+    const cd = lead.custom_data || {};
+    const has = (v) => v !== '' && v !== null && v !== undefined && v !== false;
+
+    // The calendar day and the clock the client typed. The date column
+    // arrives as "2027-03-14T00:00:00.000Z" and a time column as "16:00"
+    // or "16:00:00". The day is read off the string so no timezone can
+    // move it. The time follows this vendor's 12h/24h preference and is
+    // not shifted either.
+    const ymd = (v) => {
+      const m = String(v).match(/(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[1]}-${m[2]}-${m[3]}` : String(v);
+    };
+
+    const valueFor = (f) => {
+      const col = f.maps_to && lead[f.maps_to];
+      const raw = cd[f.id];
+      // Unticked is "No". A mapped yes/no column is used only when the
+      // form never stored the tick itself.
+      if (f.type === 'checkbox') {
+        const on = raw === true || raw === false ? raw : col === true;
+        return on ? '✅ Yes' : '❌ No';
+      }
+      // Hours is stored twice: the sentence the client saw ("6 hrs",
+      // "6 hrs 30 min") and a whole-number column for bookings. The
+      // column drops the words and rounds the minutes away, so the lead
+      // shows the sentence.
+      if (f.type === 'hours') {
+        if (has(raw)) return String(raw);
+        if (has(col) || col === 0) {
+          const n = Number(col);
+          if (!n) return '0 min';
+          return `${n} hr${n === 1 ? '' : 's'}`;
+        }
+        return null;
+      }
+      const v = has(col) ? col : raw;
+      if (!has(v)) return null;
+      if (v === true) return '✅ Yes';
+      if (f.type === 'date') return ymd(v);
+      if (f.type === 'time') return fmtTime(v);
+      return String(v);
+    };
+
+    /* 🔀 only the questions this client was actually shown — the same rules the form used. A Birthday lead never
+       had Getting Ready, so it shows no "Getting Ready ❌ No"; a wedding where the box was left unticked still says No. */
+    const live = new Map((cfg?.custom_fields || []).map(f => [f.id, f]));   // older snapshots kept no rules
+    const withRules = defs.map(f => (f.show_if || !live.get(f.id) ? f
+      : { ...f, show_if: live.get(f.id).show_if, options: f.options || live.get(f.id).options, allow_other: f.allow_other ?? live.get(f.id).allow_other }));
+    const asked = shownFields(withRules, cd, { heard: lead.heard, role: lead.role })
+      .filter(f => !(mainEvent && IN_EVENT_CARD.has(f.maps_to)));   // shown on the main event card already
+    const rows = asked.map(f => [f.label, valueFor(f)]).filter(([, v]) => v !== null);
+    // notes aren't a form field — they're the free-text box every form has
+    return rows;
+  }
+  const eventDetails = eventDetailRows();
+  const showMainCard = !!mainEvent || eventDetails.length > 0;
+
   // ---- VIEW MODE ----
   return (
     <div className="ld-view">
@@ -3536,104 +3596,29 @@ function LeadDetail({ lead, onBack, onSaved }) {
       </div>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
 
+      {/* 🗂️ Contact beside the main event (which carries every other answer about it) across the full width; the
+          pre-events and the notes lead the left column below — components/LeadCards. ✏️ Edit Details edits everything;
+          ＋ Add on the Pre-events card opens the pre-event editor in place. */}
+      <div className="ldc-top-wrap">
+        <div className={`ldc-top${showMainCard ? '' : ' is-single'}`}>
+          <ContactCard name={lead.name} role={lead.role}
+            items={[['📧', lead.email],
+              ['📞', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone],
+              ['📷', lead.instagram]]}
+            meta={[['🔎 via', lead.heard], ['📥', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null]]} />
+          {showMainCard && <MainEventCard ev={mainEvent} details={eventDetails} />}
+        </div>
+      </div>
       <div className="lead-grid">
       <div className="lead-left">
 
-      {/* 👤 Contact Details */}
-      <div className="ld-card">
-        <div className="ld-card-h">👤 Contact Details</div>
-        <div className="ld-client-name"><span className="ld-client-lbl">Name:</span> {lead.name || '—'}</div>
-        {row('🙋 Role', lead.role)}
-        {row('📧 Email', lead.email)}
-        {row('📞 Phone', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone)}
-        {row('📷 Instagram', lead.instagram)}
-        {row('🔎 Heard via', lead.heard)}
-        {row('📥 Received', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null)}
-      </div>
 
 
-      {/* 🎉 Event Details — driven entirely by the vendor's own inquiry form.
-          A fixed list of rows meant a DJ saw "Bride Getting Ready ❌ No" for a
-          question their form never asked. Rows use the vendor's own wording.
-          An empty text answer stays hidden. A checkbox is always shown,
-          because leaving it unticked is an answer. */}
-      {(() => {
-        const defs = (Array.isArray(lead.form_snapshot) && lead.form_snapshot.length)
-          ? lead.form_snapshot
-          : (cfg?.custom_fields || []);
-        const cd = lead.custom_data || {};
-        const has = (v) => v !== '' && v !== null && v !== undefined && v !== false;
-
-        // The calendar day and the clock the client typed. The date column
-        // arrives as "2027-03-14T00:00:00.000Z" and a time column as "16:00"
-        // or "16:00:00". The day is read off the string so no timezone can
-        // move it. The time follows this vendor's 12h/24h preference and is
-        // not shifted either.
-        const ymd = (v) => {
-          const m = String(v).match(/(\d{4})-(\d{2})-(\d{2})/);
-          return m ? `${m[1]}-${m[2]}-${m[3]}` : String(v);
-        };
-
-        const valueFor = (f) => {
-          const col = f.maps_to && lead[f.maps_to];
-          const raw = cd[f.id];
-          // Unticked is "No". A mapped yes/no column is used only when the
-          // form never stored the tick itself.
-          if (f.type === 'checkbox') {
-            const on = raw === true || raw === false ? raw : col === true;
-            return on ? '✅ Yes' : '❌ No';
-          }
-          // Hours is stored twice: the sentence the client saw ("6 hrs",
-          // "6 hrs 30 min") and a whole-number column for bookings. The
-          // column drops the words and rounds the minutes away, so the lead
-          // shows the sentence.
-          if (f.type === 'hours') {
-            if (has(raw)) return String(raw);
-            if (has(col) || col === 0) {
-              const n = Number(col);
-              if (!n) return '0 min';
-              return `${n} hr${n === 1 ? '' : 's'}`;
-            }
-            return null;
-          }
-          const v = has(col) ? col : raw;
-          if (!has(v)) return null;
-          if (v === true) return '✅ Yes';
-          if (f.type === 'date') return ymd(v);
-          if (f.type === 'time') return fmtTime(v);
-          return String(v);
-        };
-
-        /* 🔀 only the questions this client was actually shown — the same rules the form used. A Birthday lead never
-           had Getting Ready, so it shows no "Getting Ready ❌ No"; a wedding where the box was left unticked still says No. */
-        const live = new Map((cfg?.custom_fields || []).map(f => [f.id, f]));   // older snapshots kept no rules
-        const withRules = defs.map(f => (f.show_if || !live.get(f.id) ? f
-          : { ...f, show_if: live.get(f.id).show_if, options: f.options || live.get(f.id).options, allow_other: f.allow_other ?? live.get(f.id).allow_other }));
-        const asked = shownFields(withRules, cd, { heard: lead.heard, role: lead.role })
-          .filter(f => !(mainEvent && IN_EVENT_CARD.has(f.maps_to)));   // shown on the main event card already
-        const rows = asked.map(f => [f.label, valueFor(f)]).filter(([, v]) => v !== null);
-        // notes aren't a form field — they're the free-text box every form has
-        if (has(lead.notes)) rows.push(['📝 Notes', lead.notes]);
-        if (!rows.length) return null;
-
-        return (
-          <div className="ld-card">
-            <div className="ld-card-h">🎉 Event Details</div>
-            {rows.map(([label, value], i) => (
-              <div className="ld-row" key={i}>
-                <div className="ld-label">{label}</div>
-                <div className="ld-val">{value}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* 🗓️ The main event and the pre-events as cards (EventCards); the pre-event editor opens in their place.
-          Pre-events print in the contract's schedule. */}
       {peEditing
         ? <PreEvents key={`${lead.id}:${lead.updated_at}`} lead={lead} onSaved={onSaved} onDone={() => setPeEditing(false)} />
-        : <EventCards main={mainEvent} preEvents={lead.pre_events} onEditMain={openEdit} onEditPre={() => setPeEditing(true)} />}
+        : <PreEventCards preEvents={lead.pre_events} onAdd={() => setPeEditing(true)} />}
+      <NotesCard notes={String(lead.notes || '').trim()} />
+
 
       {/* 📦 Packages — in the left column under the event details, since it's
           part of reading the enquiry rather than a side action */}
