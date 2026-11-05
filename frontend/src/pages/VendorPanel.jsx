@@ -3559,6 +3559,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
        had Getting Ready, so it shows no "Getting Ready ❌ No"; a wedding where the box was left unticked still says No. */
     return shownFields(formFields, cd, { heard: lead.heard, role: lead.role })
       .filter(f => !(mainEvent && IN_EVENT_CARD.has(f.maps_to)))   // shown on the main event card already
+      .filter(f => f.type !== 'pre_events')   // the pre-events have their own card
       .map(f => ({ f, row: [f.label, valueFor(f)] }))
       .filter(({ row }) => row[1] !== null);
   }
