@@ -221,6 +221,8 @@ tr:last-child td { border-bottom:none; }
 
 /* 🎨 sidebar icons: the same Fluent emoji artwork on every device, sized like the text emoji they replace */
 .nav-emo { display: block; width: 1.2em; height: 1.2em; }
+/* 🎨 the same artwork beside text in the panel's cards (components/Emo.jsx) */
+.emo { display: inline-block; flex: none; width: 1.15em; height: 1.15em; margin-right: .4em; vertical-align: -.2em; }
 
 /* " New to iwopo? Create an account\ under the sign-in form (design review 2026-11-01) */
 .login-new { margin: 14px 0 0; text-align: center; font-size: 13px; color: var(--muted, #6b7280); }

@@ -3,7 +3,7 @@ import LeadCard from '../components/LeadCard';
 import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter button
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
-import { ContactCard, MainEventCard, PreEventCards, NotesCard } from '../components/LeadCards';
+import { ContactStrip, MainEventCard, PreEventCards, NotesCard } from '../components/LeadCards';
 import { WEDDING_AGREEMENT } from '../lib/contractStarters';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
@@ -3596,21 +3596,18 @@ function LeadDetail({ lead, onBack, onSaved }) {
       </div>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
 
-      {/* 🗂️ Contact beside the main event (which carries every other answer about it) across the full width; the
-          pre-events and the notes lead the left column below — components/LeadCards. ✏️ Edit Details edits everything;
-          ＋ Add on the Pre-events card opens the pre-event editor in place. */}
-      <div className="ldc-top-wrap">
-        <div className={`ldc-top${showMainCard ? '' : ' is-single'}`}>
-          <ContactCard name={lead.name} role={lead.role}
-            items={[['📧', lead.email],
-              ['📞', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone],
-              ['📷', lead.instagram]]}
-            meta={[['🔎 via', lead.heard], ['📥', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null]]} />
-          {showMainCard && <MainEventCard ev={mainEvent} details={eventDetails} />}
-        </div>
-      </div>
+      {/* 🗂️ The contact as one strip across the top; under it the main event leads the left column (with every
+          other answer about it), then the pre-events and the notes, while Payments and the contract sit beside it on
+          the right — components/LeadCards. ✏️ Edit Details edits everything; ＋ Add on the Pre-events card opens the
+          pre-event editor in place. */}
+      <ContactStrip name={lead.name} role={lead.role}
+        items={[['1f4e7', lead.email],
+          ['1f4de', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone],
+          ['1f4f7', lead.instagram]]}
+        meta={[['1f50e', lead.heard && `via ${lead.heard}`], ['1f4e5', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null]]} />
       <div className="lead-grid">
       <div className="lead-left">
+      {showMainCard && <MainEventCard ev={mainEvent} details={eventDetails} />}
 
 
 

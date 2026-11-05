@@ -1,44 +1,50 @@
 /* 🗂️ The lead page as cards (components/LeadCards.jsx) — the panel's own colours, so Light and Dark both work */
 
-/* contact beside the main event when the column has room; one above the other when it doesn't */
-.ldc-top-wrap { container-type: inline-size; margin-bottom: 16px; }   /* the same gap the columns below keep */
-.ldc-top { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 12px; align-items: stretch; }   /* side by side, one height */
-.ldc-top.is-single { grid-template-columns: 1fr; }   /* no event yet — the contact takes the row */
-@container (max-width: 600px) { .ldc-top { grid-template-columns: 1fr; } }
-
-/* the Pre-events title row: the title, and ＋ Add beside it */
+/* a card's title row: the title, and ＋ Add beside it (Pre-events) */
 .ldc-head { display: flex; align-items: flex-start; gap: 8px; }
 .ldc-head .ld-card-h { flex: 1; }
-.ldc-line { font-size: 13px; line-height: 1.45; color: var(--text); opacity: .9; margin: 6px 0; overflow-wrap: anywhere; }
-/* a row with chips: they wrap with even gaps, never a cramped margin */
-.ldc-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.ldc-nowrap { white-space: nowrap; }
-/* an icon stays beside its text when a long email or address wraps */
-.ldc-iconline { display: flex; gap: 8px; font-size: 14px; margin: 8px 0; }   /* the contact's details: a touch larger */
-.ldc-iconline > span:first-child { flex: none; }
-.ldc-iconline > span:last-child { min-width: 0; }
+.ldc-add { flex: none; padding: 3px 10px; font-size: 12px; }
+.ldc-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
+.ldc-line { display: flex; gap: 2px; font-size: 13px; line-height: 1.45; color: var(--text); opacity: .9; margin: 6px 0; overflow-wrap: anywhere; }
+.ldc-line .emo { margin-top: .08em; }
 
-/* 👤 contact */
+/* 👤 the contact strip: name and role, then each detail as a pill; where from and when at the end */
+.ldc-strip-card { margin-bottom: 16px; container-type: inline-size; }   /* the same gap the columns below keep */
+.ldc-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ldc-who { display: flex; align-items: baseline; gap: 8px; margin-right: 6px; }
 .ldc-person { font-size: 18px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
-.ldc-role { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--teal); margin: 2px 0 8px; }
-.ldc-meta { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+.ldc-role { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--teal); }
+.ldc-pill { display: inline-flex; align-items: center; padding: 6px 11px; border-radius: 999px; font-size: 13.5px; color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent); max-width: 100%; overflow-wrap: anywhere; }
+.ldc-meta { margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); }
+@container (max-width: 640px) {
+  .ldc-who { width: 100%; }
+  .ldc-pill { font-size: 12.5px; padding: 5px 10px; }
+  .ldc-meta { margin-left: 0; width: 100%; }
+}
 
 /* 💍 the main event: tile, name, the key facts as pills, then every other answer */
-.ldc-main { border-color: color-mix(in srgb, var(--teal) 60%, transparent); }
+.ldc-main { border-color: color-mix(in srgb, var(--teal) 60%, transparent); container-type: inline-size; }
 .ldc-event { display: flex; gap: 14px; }
 .ldc-event-body { flex: 1; min-width: 0; }
-.ldc-name { flex: 1; min-width: 0; font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; overflow-wrap: anywhere; }
+.ldc-name { font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; overflow-wrap: anywhere; }
 .ldc-main .ldc-name { font-size: 17px; }
 .ldc-badge { display: inline-block; white-space: nowrap; margin-left: 7px; padding: 2px 7px; border-radius: 999px; font-size: 9.5px;
   font-weight: 700; letter-spacing: .08em; vertical-align: 2px; background: var(--teal); color: #06231f; }
-.ldc-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-.ldc-pill { font-size: 12px; padding: 4px 9px; border-radius: 9px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.ldc-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.ldc-main .ldc-pill { font-size: 12.5px; padding: 4px 9px; border-radius: 9px; }
 /* every question shares one label column, only as wide as the longest — answers sit close and aligned */
 .ldc-details { display: grid; grid-template-columns: minmax(0, max-content) 1fr; gap: 7px 28px; margin: 12px 0 0;
   padding-top: 12px; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; }
+.ldc-details.is-first { margin-top: 0; padding-top: 0; border-top: 0; }
 .ldc-detail { display: contents; }
 .ldc-detail dt { color: var(--muted); }
 .ldc-detail dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+/* a narrow card (a phone): each question above its answer */
+@container (max-width: 460px) {
+  .ldc-details { grid-template-columns: 1fr; gap: 2px 0; }
+  .ldc-detail dd { margin-bottom: 8px; }
+}
 
 /* the slim calendar tile */
 .ldc-tile { flex: none; align-self: flex-start; width: 50px; display: flex; flex-direction: column; align-items: center;
@@ -49,14 +55,14 @@
 .ldc-tile.is-main .ldc-tile-day { font-size: 24px; }
 .ldc-tile-year { font-size: 10px; opacity: .7; }
 
-/* 🗓️ pre-events */
+/* 🗓️ pre-events: time, place, then hours · guests · service as chips along the bottom */
 .ldc-pre-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
 .ldc-pre { display: flex; gap: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
-.ldc-chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px;
+.ldc-time { display: flex; align-items: center; font-size: 14px; font-weight: 600; color: var(--text); margin: 2px 0 4px; }
+.ldc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--line); }
+.ldc-chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; overflow-wrap: anywhere;
   background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
 .ldc-svc { background: color-mix(in srgb, #a78bfa 18%, transparent); color: #a78bfa; }
-.ldc-add { flex: none; padding: 3px 10px; font-size: 12px; }
-.ldc-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
 
 /* 📝 notes keep the client's own line breaks */
 .ldc-notes { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
