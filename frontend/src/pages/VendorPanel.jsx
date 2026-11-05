@@ -5001,6 +5001,11 @@ const CORE_EVENT = [
   { type: 'location', label: 'Venue / Location', maps_to: 'location' },
 ];
 
+/** 🖼️ The background watermark a preset brings (Raj, 2026-11-05 — one way: a preset sets the watermark; choosing a
+ *  watermark never touches the questions). A preset names its own (`trade`, e.g. PPM Special → Photo & Video), else a
+ *  preset named after a trade brings that trade's drawing, else ("Start blank") the watermark is left as it is. */
+const presetTrade = (key) => FORM_PRESETS[key]?.trade ?? (key !== 'none' && PROFESSIONS[key] ? key : null);
+
 const FORM_PRESETS = {
   /* ✏️ (Raj, 2026-10-28) a vendor whose trade isn't listed starts blank and builds their own, instead of loading
      someone else's trade and deleting it. Only the event date stays — every vendor needs it to quote — and the
@@ -5104,7 +5109,7 @@ const FORM_PRESETS = {
   /* ⭐ PPM Special (Raj, 2026-10-30): the full Perfect Poses Media inquiry — everything his old Laravel form asked,
      rebuilt from the builder's own pieces, so any vendor can load it and change anything. Rules name their source
      question by "key"; loading points them at the real question ids. */
-  ppm_special: { label: '⭐ PPM Special — Perfect Poses Media', fields: [
+  ppm_special: { label: '⭐ PPM Special — Perfect Poses Media', trade: 'photo_video', fields: [
     { type: 'text', label: "Friend's Name (who referred you)", show_if: { field: '@heard', op: 'in', values: ['Friend'] } },
     { key: 'evt', type: 'dropdown', label: 'Type of Event', maps_to: 'event_type', required: true,
       options: ['Wedding', 'Pre-wedding', 'Engagement', 'Birthday party', 'Commercial'], allow_other: true, other_label: 'Other (type your event)' },
@@ -5206,7 +5211,8 @@ function FieldBuilder({ fields, setFields, onTrade }) {
   const loadPreset = async (key) => {
     const preset = FORM_PRESETS[key];
     if (!preset) return;
-    const trade = PROFESSIONS[key]?.label;
+    const tradeKey = presetTrade(key);
+    const trade = tradeKey && PROFESSIONS[tradeKey]?.label;
     if (fields.length && !await dialog.confirm(
       `This replaces the ${fields.length} question${fields.length === 1 ? '' : 's'} you have now. You can edit everything afterwards.${trade ? ` The background watermark becomes ${trade}.` : ''} The Section 2 heading goes back to the default.`,
       { title: `Load the ${preset.label} questions?`, okLabel: 'Load them', danger: false }
@@ -5244,10 +5250,9 @@ function FieldBuilder({ fields, setFields, onTrade }) {
       if (src) loaded[x].show_if = { ...p.show_if, field: src, values: [...p.show_if.values] };
     }
     setFields(loaded);
-    // The preset is a trade. The watermark is the same list of trades, so
-    // loading "Florist" leaves the florist drawing behind the form rather
-    // than whatever trade was selected last time.
-    if (onTrade && PROFESSIONS[key]) onTrade(key);
+    // 🖼️ the preset's own drawing goes behind the form (presetTrade) — loading "Florist" or PPM Special leaves
+    // their drawing, not whatever trade was chosen last time
+    if (onTrade && tradeKey) onTrade(tradeKey);
   };
 
   const del = async (i) => {
