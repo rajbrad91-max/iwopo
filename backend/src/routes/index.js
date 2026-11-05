@@ -16,6 +16,7 @@ import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
 import { clientIp } from '../lib/clientIp.js';
 import { limit } from '../middleware/rateLimit.js';
 import { serverError } from '../lib/httpError.js';
+import { adminOverview } from '../lib/adminOverview.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -636,6 +637,11 @@ router.get('/referrals', requireAuth, requireSuperAdmin, async (req, res) => {
 // US 38 and so on — which read as real and was not. This returns what is
 // actually in the table, including how many sellers have not set a country at
 // all, so an empty platform looks empty instead of looking successful.
+// 📊 GET /api/admin/overview — every Super Admin figure from the database (lib/adminOverview.js)
+router.get('/admin/overview', requireAuth, requireSuperAdmin, async (req, res) => {
+  try { res.json(await adminOverview()); } catch (e) { serverError(res, e); }
+});
+
 router.get('/admin/vendor-stats', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const rows = await prisma.vendors.groupBy({

@@ -462,6 +462,7 @@ export const api = {
   vendors: () => request('/vendors'),
   adminCounts: () => request('/admin/counts'),
   adminVendorStats: () => request('/admin/vendor-stats'),
+  adminOverview: () => request('/admin/overview'),   // 📊 every Super Admin figure (lib/adminOverview.js)
   markCountSeen: (group) => request(`/admin/counts/${group}/seen`, { method: 'PUT' }),
   adminMessages: () => request('/admin/messages'),
   platformSettings: () => request('/settings/platform'),

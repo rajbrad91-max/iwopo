@@ -27,6 +27,7 @@ export default function Dashboard({ onLogout }) {
   const [view, setView] = useState('dashboard');
   const [vendors, setVendors] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [overview, setOverview] = useState(null);   // 📊 the real figures (GET /admin/overview)
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('vf_sa_collapsed') === '1');
@@ -41,15 +42,14 @@ export default function Dashboard({ onLogout }) {
   async function load() {
     setLoading(true);
     try {
-      const [v, p] = await Promise.all([api.vendors(), api.adminPackages()]);
+      const [v, p, o] = await Promise.all([api.vendors(), api.adminPackages(), api.adminOverview().catch(() => null)]);
       setVendors(v.vendors || []);
       setPackages(p.packages || []);
+      setOverview(o);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
   function logout() { apiLogout(); onLogout(); }
-
-  const trials = vendors.filter(v => v.status === 'trial').length;
 
   return (
     <div className={`sa-wrap ${collapsed ? 'sa-collapsed' : ''}`} data-sa-theme={saTheme}>
@@ -89,12 +89,12 @@ export default function Dashboard({ onLogout }) {
 
         {loading ? <div className="sa-loading">Loading…</div> : (
           <>
-            {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} trials={trials} />}
+            {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} overview={overview} />}
             {view === 'services' && <ServicesView packages={packages} onReload={load} />}
             {view === 'manage' && <ManageServicesView />}
-            {view === 'buyers' && <BuyersView vendors={vendors} />}
+            {view === 'buyers' && <BuyersView vendors={vendors} overview={overview} />}
             {view === 'referrals' && <ReferralsView />}
-            {view === 'billing' && <BillingView packages={packages} />}
+            {view === 'billing' && <BillingView packages={packages} overview={overview} />}
             {view === 'aichat' && <AiChatView vendors={vendors} />}
             {view === 'support' && <SupportView />}
             {view === 'settings' && <SettingsView saTheme={saTheme} setSaTheme={setSaTheme} user={user} />}
@@ -139,13 +139,10 @@ function AdminBells({ goView }) {
 }
 
 /* ---------- DASHBOARD ---------- */
-function DashboardView({ vendors, packages, trials }) {
-  const growth = [
-    { m: 'Nov', mrr: 4.1, sellers: 6 }, { m: 'Dec', mrr: 4.6, sellers: 8 },
-    { m: 'Jan', mrr: 5.0, sellers: 7 }, { m: 'Feb', mrr: 5.3, sellers: 9 },
-    { m: 'Mar', mrr: 5.7, sellers: 8 }, { m: 'Apr', mrr: 6.0, sellers: 11 },
-    { m: 'May', mrr: 6.2, sellers: 9 }, { m: 'Jun', mrr: 6.4, sellers: 12 },
-  ];
+function DashboardView({ vendors, packages, overview }) {
+  /* 📈 new sellers per month and the plans in use come from GET /admin/overview. Both used to be invented — an
+     MRR line from $4.1k to $6.4k and a 'Service Performance' of 88% down to 28% — on a platform with six sellers. */
+  const growth = overview?.growth || [];
   // 🌍 Where sellers actually are. This used to be a hardcoded list that read as
   // real — Canada 52, US 38 — on a platform with three sellers. It now comes
   // from the vendors table, and says so plainly when there's nothing to show.
@@ -169,42 +166,33 @@ function DashboardView({ vendors, packages, trials }) {
   const countries = (geo?.countries || []).map(c => [cName(c.code), c.count]);
   const maxC = Math.max(1, ...countries.map(c => c[1]));
 
-  // Sellable items — packages + standalone services (as sold)
+  // 📦 sellers on each plan, as they stand
   const palette = ['#2dd4bf','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'];
-  const sellables = [
-    '🎬 Studio Special', '🏢 Vendor Suite', '📸 Galleries',
-    '🤖 AI Chatbot', '💬 Non-AI Chatbot', '☁️ File & Cloud', '🌐 Website Builder',
-  ];
-  const svcData = sellables.map((name, i) => ({
-    name, v: 88 - i * 10, c: palette[i % palette.length],
-  }));
+  const planData = (overview?.plans || []).filter(p => p.sellers > 0).map((p, i) => ({ name: p.name, v: p.sellers, c: palette[i % palette.length] }));
+  const onPlans = planData.reduce((a, p) => a + p.v, 0);
 
   return (
     <>
       <div className="sa-stats">
-        {/* Real counts, and nothing invented. These carried fallbacks — 128
-            sellers, 19 trials, $6.4k MRR with a "▲ 8.2%" trend — which meant an
-            empty platform reported a healthy one. MRR is left out entirely
-            rather than guessed: there is no billing figure in the database to
-            compute it from yet. */}
+        {/* Real counts, and nothing invented (GET /admin/overview, lib/billing.js's rules). "Paid" used to be every
+            seller not on a trial — the owner account and expired trials included. */}
         <StatCard label="Total Sellers" value={vendors.length} trend={`${geo?.unset ?? 0} without a country set`} cls="up" />
-        <StatCard label="Active Trials" value={trials} trend={vendors.length ? `${Math.round(trials / vendors.length * 100)}% of sellers` : 'No sellers yet'} cls="warn" />
-        <StatCard label="Paid Sellers" value={Math.max(0, vendors.length - trials)} trend="Converted from trial" cls="up" />
+        <StatCard label="Active Trials" value={overview?.trial ?? '—'} trend={overview ? `${overview.trials_ending_soon} ending within 7 days` : 'Loading…'} cls="warn" />
+        <StatCard label="Paying Sellers" value={overview?.paying_total ?? '—'} trend={overview ? `${money(overview.mrr) || '$0'} a month` : 'Loading…'} cls="up" />
         <StatCard label="Packages" value={packages.length} trend="Live tiers" cls="up" />
       </div>
 
       <div className="sa-grid-2">
         <div className="sa-box">
-          <h3>Revenue & Seller Growth</h3><div className="sa-box-sub">MRR vs new sellers — last 8 months</div>
+          <h3>📈 Seller Growth</h3><div className="sa-box-sub">New sellers each month — last 8 months</div>
           <div style={{ height: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={growth}>
                 <CartesianGrid stroke="#223238" />
-                <XAxis dataKey="m" tick={{ fill: '#7c9199', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#7c9199', fontSize: 11 }} />
+                <XAxis dataKey="label" tick={{ fill: '#7c9199', fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fill: '#7c9199', fontSize: 11 }} />
                 <Tooltip contentStyle={{ background: '#1a282d', border: '1px solid #223238', borderRadius: 8, color: '#e6f0f2' }} />
-                <Bar dataKey="sellers" fill="#14b8a655" stroke="#14b8a6" radius={[6,6,0,0]} />
-                <Line type="monotone" dataKey="mrr" stroke={TEAL} strokeWidth={3} dot={{ fill: TEAL, r: 4 }} />
+                <Bar dataKey="sellers" name="New sellers" fill="#14b8a655" stroke="#14b8a6" radius={[6,6,0,0]} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -236,24 +224,25 @@ function DashboardView({ vendors, packages, trials }) {
 
       <div className="sa-grid-2eq">
         <div className="sa-box">
-          <h3>📊 Service Performance</h3><div className="sa-box-sub">Adoption across your services</div>
+          <h3>📦 Plans in Use</h3><div className="sa-box-sub">Sellers on each plan</div>
+          {planData.length === 0 ? <div className="sa-cty-empty">{overview ? 'No seller is on a plan yet.' : 'Loading…'}</div> : (
           <div style={{ minHeight: 180, display: 'flex', alignItems: 'center' }}>
             <ResponsiveContainer width="50%" height={210}>
               <PieChart>
-                <Pie data={svcData} dataKey="v" nameKey="name" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {svcData.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
+                <Pie data={planData} dataKey="v" nameKey="name" innerRadius={45} outerRadius={70} paddingAngle={2}>
+                  {planData.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
             <div className="sa-adopt">
-              {svcData.slice(0, 7).map((s, i) => (
+              {planData.map((s, i) => (
                 <div key={i}>
-                  <div className="sa-ad-top"><span>{s.name}</span><span className="cnt">{s.v}%</span></div>
-                  <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ width: `${s.v}%`, background: s.c }} /></div>
+                  <div className="sa-ad-top"><span>{s.name}</span><span className="cnt">{s.v} seller{s.v === 1 ? '' : 's'}</span></div>
+                  <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ width: `${s.v / onPlans * 100}%`, background: s.c }} /></div>
                 </div>
               ))}
             </div>
-          </div>
+          </div>)}
         </div>
 
         <div className="sa-box">
@@ -1185,29 +1174,26 @@ function StorageLimit({ vendorId, storage }) {
 }
 
 /* ---------- BUYERS ---------- */
-function BuyersView({ vendors }) {
+/** 🏷️ a seller's billing state (lib/adminOverview.js) as a badge: its words and its colour */
+const BILLING_STATE = {
+  owner: ['👑 Owner', 'active'], paying: ['Paying', 'active'], past_due: ['Past due', 'past'], trial: ['Trial', 'trial'], expired: ['Trial ended', 'past'],
+};
+
+function BuyersView({ vendors, overview }) {
   const [openId, setOpenId] = useState(null);
   const [refCount, setRefCount] = useState(0);
   useEffect(() => {
     api.referrals().then(d => setRefCount((d.referrals || []).filter(r => r.status === 'rewarded').length)).catch(() => {});
   }, []);
 
-  const paid = vendors.filter(v => v.status === 'active').length;
-  const trials = vendors.filter(v => v.status === 'trial').length;
-  const now = new Date();
-  const newThisMonth = vendors.filter(v => {
-    if (!v.created_at) return false;
-    const d = new Date(v.created_at);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
 
   return (
     <>
       <div className="sa-stats">
-        <StatCard label="💰 Paid Users" value={paid} trend="Active subscriptions" cls="up" />
-        <StatCard label="🎁 Users on Trials" value={trials} trend="Not yet paying" cls="warn" />
+        <StatCard label="💰 Paying Users" value={overview?.paying_total ?? '—'} trend="Stripe subscriptions" cls="up" />
+        <StatCard label="🎁 Users on Trials" value={overview?.trial ?? '—'} trend="Not yet paying" cls="warn" />
         <StatCard label="👥 Referrals" value={refCount} trend="Paid · with discount" cls="up" />
-        <StatCard label="🆕 New This Month" value={newThisMonth} trend="Signed up this month" cls="neutral" />
+        <StatCard label="🆕 New This Month" value={overview?.new_this_month ?? '—'} trend="Signed up this month" cls="neutral" />
       </div>
       <div className="sa-section-title">All Buyers</div>
       <div className="sa-table-wrap">
@@ -1225,7 +1211,7 @@ function BuyersView({ vendors }) {
                 <td>{v.storage?.limit_source === 'plan' ? v.storage.plan_name
                    : v.storage?.limit_source === 'override' ? <span className="sa-muted">Override</span>
                    : <span className="sa-muted">Trial</span>}</td>
-                <td><span className={`sa-badge ${v.status}`}>{v.status}</span></td>
+                {(() => { const [word, cls] = BILLING_STATE[overview?.states?.[v.id]] || [v.status, v.status]; return <td><span className={`sa-badge ${cls}`}>{word}</span></td>; })()}
                 {/* Storage in the LIST, not only behind Manage. This is where a
                     super admin notices someone is nearly full, and a number
                     that needs a click is a number nobody looks at. */}
@@ -1275,16 +1261,33 @@ function fmtMb(mb) {
 }
 
 /* ---------- BILLING ---------- */
-function BillingView({ packages }) {
+/* ---------- BILLING ----------
+   💳 Real figures (GET /admin/overview): what paying sellers bring in at today's plan prices, the trials, and who is
+   past due. They used to be invented — $6.4k MRR, $76.8k ARR, 19 trials, 3 past due with "▲ 8.2%". */
+function BillingView({ packages, overview }) {
+  const o = overview;
   return (
     <>
       <div className="sa-stats">
-        <StatCard label="MRR" value="$6.4k" trend="▲ 8.2%" cls="up" />
-        <StatCard label="ARR" value="$76.8k" trend="▲ 8.2%" cls="up" />
-        <StatCard label="Active Trials" value="19" trend="7 ending soon" cls="warn" />
-        <StatCard label="Past Due" value="3" trend="$210 owed" cls="neutral" />
+        <StatCard label="MRR" value={o ? (money(o.mrr) || '$0') : '—'} trend="At today's plan prices" cls="up" />
+        <StatCard label="ARR" value={o ? (money(o.arr) || '$0') : '—'} trend="MRR × 12" cls="up" />
+        <StatCard label="Active Trials" value={o?.trial ?? '—'} trend={o ? `${o.trials_ending_soon} ending within 7 days` : 'Loading…'} cls="warn" />
+        <StatCard label="Past Due" value={o?.past_due ?? '—'} trend={o ? `${money(o.owed) || '$0'} owed` : 'Loading…'} cls="neutral" />
       </div>
-      <div className="sa-section-title" style={{ marginTop: 6 }}>Package Revenue</div>
+      <div className="sa-section-title">Revenue by Plan</div>
+      <div className="sa-table-wrap">
+        <table>
+          <thead><tr><th>Plan</th><th>Sellers on it</th><th>Paying</th><th>MRR</th></tr></thead>
+          <tbody>
+            {!o ? <tr><td colSpan="4" className="sa-empty">Loading…</td></tr> : o.plans.map(p => (
+              <tr key={p.id}>
+                <td className="biz">{p.name}</td><td>{p.sellers}</td><td>{p.paying}</td><td>{money(p.mrr) || '$0'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="sa-section-title">Package Prices</div>
       <div className="sa-table-wrap">
         <table>
           <thead><tr><th>Package</th><th>Monthly</th><th>Annual</th><th>Trial</th></tr></thead>
@@ -1304,27 +1307,29 @@ function BillingView({ packages }) {
   );
 }
 
-/* ---------- SUPPORT ---------- */
+/* ---------- SUPPORT ----------
+   🎧 The messages vendors send from Help & Support (support_messages — filed here before any email goes). This
+   used to list three invented tickets (BeatDrop DJ, Glow by Mona, 360 Spin Co). */
 function SupportView() {
-  const tickets = [
-    ['BeatDrop DJ', "Can't upload setlist", 'High', 'past', 'Open', 'trial'],
-    ['Glow by Mona', 'Billing question', 'Low', 'trial', 'Resolved', 'active'],
-    ['360 Spin Co', 'Gallery link broken', 'High', 'past', 'Open', 'trial'],
-  ];
+  const [messages, setMessages] = useState(null);
+  useEffect(() => { api.adminMessages().then(d => setMessages(d.messages || [])).catch(() => setMessages([])); }, []);
   return (
     <>
-      <div className="sa-section-title">Support Tickets</div>
+      <div className="sa-section-title">Support Messages</div>
       <div className="sa-table-wrap">
         <table>
-          <thead><tr><th>Buyer</th><th>Issue</th><th>Priority</th><th>Status</th></tr></thead>
+          <thead><tr><th>From</th><th>Subject</th><th>Received</th><th>Status</th></tr></thead>
           <tbody>
-            {tickets.map((t, i) => (
-              <tr key={i}>
-                <td className="biz">{t[0]}</td><td>{t[1]}</td>
-                <td><span className={`sa-badge ${t[3]}`}>{t[2]}</span></td>
-                <td><span className={`sa-badge ${t[5]}`}>{t[4]}</span></td>
-              </tr>
-            ))}
+            {messages === null ? <tr><td colSpan="4" className="sa-empty">Loading…</td></tr>
+              : messages.length === 0 ? <tr><td colSpan="4" className="sa-empty">No support messages yet.</td></tr>
+              : messages.map(m => (
+                <tr key={m.id}>
+                  <td className="biz">{m.from_email || '—'}</td>
+                  <td>{m.subject || String(m.body || '').slice(0, 80) || '—'}</td>
+                  <td>{m.created_at ? new Date(m.created_at).toLocaleString() : '—'}</td>
+                  <td><span className={`sa-badge ${m.status === 'open' ? 'trial' : 'active'}`}>{m.status || 'open'}</span></td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
