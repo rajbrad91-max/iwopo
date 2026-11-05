@@ -91,17 +91,18 @@ function EditForm({ lead, cfg, onSaved, onClose }) {
 
   return (
     <div className="ld-view">
-      <div className="ld-topbar">
-        <button className="refresh" onClick={() => onClose()} title="Leave without saving">← Cancel</button>
-      </div>
       <InquiryShell cfg={cfg} embedded>
         <div className="iq-body">
           <LeadFormBody cfg={cfg} p={ep} setPI={setEpi} answers={eAnswers} setAns={setEAns} notes={eNotes} setNotes={setENotes}
             errs={errs} bookingKeys={bookingKeys} />
           {msg && <div className="iq-err">{msg}</div>}
-          <button className="iq-btn" onClick={save} disabled={busy}>
-            {busy ? 'Saving…' : <><span className="iq-emoji">💾 </span>Save changes</>}
-          </button>
+          {/* 💾 Save changes, and a small Cancel beside it — no bar above the form, which sits 16px under the header */}
+          <div className="iq-actions">
+            <button className="iq-btn" onClick={save} disabled={busy}>
+              {busy ? 'Saving…' : <><span className="iq-emoji">💾 </span>Save changes</>}
+            </button>
+            <button type="button" className="iq-btn-cancel" onClick={() => onClose()} disabled={busy} title="Leave without saving">Cancel</button>
+          </div>
           <p className="iq-req-note">Fields marked * are required</p>
         </div>
       </InquiryShell>

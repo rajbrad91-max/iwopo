@@ -454,7 +454,6 @@
 /* 📋 Lead detail — view + edit */
 .ld-wrap { padding: 24px; max-width: 640px; }
 /* .dash .main h2 is 15px for list pages — keep the lead title readable */
-.ld-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
 /* the main action on a card: a soft tint, not a solid bright fill */
 .ld-edit-btn, .bx-primary, .ctb-preview { background: var(--teal-soft); border-color: transparent; color: var(--teal-2); }
 .ld-edit-btn:hover, .bx-primary:hover, .ctb-preview:hover { border-color: var(--teal-2); }

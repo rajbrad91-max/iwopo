@@ -132,6 +132,13 @@
 .iq-btn { width: 100%; margin-top: 20px; padding: 14px; background: var(--brand); color: var(--on-brand); border: none; border-radius: 11px; font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; }   /* the form's own font (a button does not inherit it by itself) */
 .iq-btn:hover { background: var(--brand-strong); }
 .iq-btn:disabled { opacity: 0.6; }
+/* ✏️ Edit Details (a lead's form, opened by the vendor): Save changes, and a small Cancel beside it at a fifth of the row */
+.iq-actions { display: flex; gap: 10px; margin-top: 20px; }
+.iq-actions .iq-btn { flex: 4; margin-top: 0; }
+.iq-btn-cancel { flex: 1; min-width: 0; padding: 14px 8px; background: transparent; color: var(--brand); border: 1.5px solid var(--brand);
+  border-radius: 11px; font-family: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+.iq-btn-cancel:hover { color: var(--brand-strong); border-color: var(--brand-strong); }
+.iq-btn-cancel:disabled { opacity: 0.6; }
 
 .iq-done { text-align: center; padding: 40px 32px; }
 /* the vendor's own colour where the page carries one (the thank-you does now);

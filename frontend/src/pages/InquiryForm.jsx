@@ -675,27 +675,30 @@ function preEventProblem(rows, today) {
   return '';
 }
 
-/**
- * ✍️ A dropdown with "Other (type your own)". Picking it opens a box under the list, and what the client types
- * IS the answer — so a lead shows "Anand Karaj", not "Other".
- */
 /** 🗓️ The vendor's service choices for a pre-event — plus a value already saved that isn't among them (an older
  *  answer, or one typed on the lead page), so it shows as itself instead of looking like the first choice. */
 const peServiceChoices = (list, current) => (current && !list.includes(current) ? [current, ...list] : list);
 
+/**
+ * ✍️ A dropdown with "Other (type your own)". Picking it opens a box under the list, and what the client types
+ * IS the answer — so a lead shows "Anand Karaj", not "Other".
+ * The box takes the cursor only when "Other" is picked there and then — a form opened with a typed answer already
+ * in it (Edit Details) stays where it is (Raj, 2026-11-05: it jumped to a pre-event named Mehndi).
+ */
 function OtherSelect({ options, value, onChange, otherLabel }) {
   const typed = !!value && !options.includes(value);
   const [typing, setTyping] = useState(typed);
+  const [picked, setPicked] = useState(false);   // "Other" was just chosen here
   return (<>
     {/* picking "Other" is itself the answer (OTHER) until words are typed, so questions that depend on "Other"
         appear the moment it is picked — not only after typing (Muse, 2026-10-30) */}
     <select value={typing ? OTHER : (value || '')}
-      onChange={e => { const v = e.target.value; setTyping(v === OTHER); onChange(v); }}>
+      onChange={e => { const v = e.target.value; setTyping(v === OTHER); setPicked(v === OTHER); onChange(v); }}>
       <option value="" disabled hidden>Select…</option>
       {options.map((o, i) => <option key={i}>{o}</option>)}
       <option value={OTHER}>{otherLabel || 'Other (type your own)'}</option>
     </select>
-    {typing && <input className="iq-other" value={value === OTHER ? '' : (value || '')} onChange={e => onChange(e.target.value || OTHER)} placeholder="Type your own" autoFocus />}
+    {typing && <input className="iq-other" value={value === OTHER ? '' : (value || '')} onChange={e => onChange(e.target.value || OTHER)} placeholder="Type your own" autoFocus={picked} />}
   </>);
 }
 

@@ -4,6 +4,7 @@ import SignContract from './SignContract';
 import './contractpreview.css';
 import AutoReleaseToggle from '../components/AutoReleaseToggle';
 import { useAutoRelease } from '../lib/useAutoRelease';
+import SendPackagesButton from '../components/SendPackages';
 
 /**
  * 👁️ A vendor reading their own contract before it goes to a client.
@@ -31,6 +32,15 @@ export default function ContractPreview({ leadId }) {
   useEffect(() => {
     api.ctTemplates().then(d => setTemplates(d.templates || [])).catch(() => {});
   }, []);
+
+  /* 📤 the lead and its packages, for Send Packages at the foot of the contract */
+  const [lead, setLead] = useState(null);
+  const [pkgCount, setPkgCount] = useState(0);
+  const [sendMsg, setSendMsg] = useState('');
+  useEffect(() => {
+    api.lead(leadId).then(d => setLead(d.lead || null)).catch(() => {});
+    api.leadPackages(leadId).then(d => setPkgCount((d.packages || []).length)).catch(() => {});
+  }, [leadId]);
 
   useEffect(() => {
     if (!templates.length) return;
@@ -139,6 +149,15 @@ export default function ContractPreview({ leadId }) {
       <div className="cp-doc">
         <SignContract key={docKey} previewLeadId={leadId} previewActions={previewActions} onLoaded={onLoaded} />
       </div>
+
+      {/* 📤 read the contract, then send the packages from here — the same Send Packages as the lead page */}
+      {lead && (
+        <div className="cp-send">
+          <p className="cp-send-note">Happy with the contract? Send {lead.name || 'your client'} their packages.</p>
+          <SendPackagesButton lead={lead} packageCount={pkgCount} className="cp-build-btn cp-send-btn" onMessage={setSendMsg} />
+          {sendMsg && <div className={`cp-msg ${sendMsg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{sendMsg}</div>}
+        </div>
+      )}
     </div>
   );
 }

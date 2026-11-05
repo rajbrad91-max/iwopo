@@ -25,6 +25,7 @@ import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import './contractdoc.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
+import SendPackagesButton, { markPackagesSent } from '../components/SendPackages';
 import PlansView from './PlansView.jsx';
 import RequestsView from './RequestsView.jsx';
 
@@ -3176,8 +3177,7 @@ function LeadsView({ routeLead, onOpenLead }) {
           link={`${clientBase()}/portal/${sendFor.client_token}`}
           onClose={() => setSendFor(null)}
           onSent={async () => {
-            await api.sendPackages(sendFor.id).catch(() => {});
-            await api.setPackagesLock(sendFor.id, true).catch(() => {});
+            await markPackagesSent(sendFor.id);
             setMsg(`📤 Sent to ${sendFor.email}`);
             setTimeout(() => setMsg(''), 2500);
             load();
@@ -3317,26 +3317,8 @@ function LeadDetail({ lead, onSaved }) {
     try { await api.setGateway(lead.id, next); setPkgMsg(next ? '🔒 Secure login ON' : '🔓 Secure login OFF'); setTimeout(() => setPkgMsg(''), 1500); }
     catch (e) { setGateway(!next); setPkgMsg('⚠️ ' + e.message); }
   }
-  // 📤 Opens the compose modal rather than sending straight away — a vendor
-  // should see and adjust what their client receives.
-  const [emailOpen, setEmailOpen] = useState(false);
-  function openSendPackages() {
-    if (!lead.email) { setPkgMsg('⚠️ This lead has no email address'); setTimeout(() => setPkgMsg(''), 3000); return; }
-    if (!leadPkgs.length) { setPkgMsg('⚠️ Load a package folder first'); setTimeout(() => setPkgMsg(''), 3000); return; }
-    setEmailOpen(true);
-  }
-
-  // called once the modal reports a successful send: lock the offer and start
-  // the countdown, the same things the old direct-send path did
-  async function afterSent() {
-    try {
-      await api.sendPackages(lead.id).catch(() => {});   // marks quoted + starts the timer
-      await api.setPackagesLock(lead.id, true).catch(() => {});
-      setPkgLocked(true);
-      setPkgMsg(`📤 Sent to ${lead.email}`);
-      setTimeout(() => setPkgMsg(''), 2500);
-    } catch { /* the email already went — don't alarm the vendor */ }
-  }
+  // 📤 a message under the packages for a few seconds (components/SendPackages and the package tools use it)
+  const flashPkg = (m) => { setPkgMsg(m); setTimeout(() => setPkgMsg(''), 3000); };
 
   useEffect(() => {
     // folders to choose from, and whatever is already loaded onto this lead
@@ -3474,19 +3456,12 @@ function LeadDetail({ lead, onSaved }) {
             title="Preview the contract before you send packages"
             onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}
           >👁️ Preview Contract</button>
-          <button className="refresh bx-primary ld-btn-sm" onClick={openSendPackages} disabled={pkgBusy} title="Email these packages to the client">📤 Send Packages</button>
+          <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh bx-primary ld-btn-sm" disabled={pkgBusy}
+            onMessage={flashPkg} onSent={() => setPkgLocked(true)} />
         </div>
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
       </div>
 
-      {emailOpen && (
-        <SendPackagesModal
-          lead={lead}
-          link={`${clientBase()}/portal/${lead.client_token}`}
-          onClose={() => setEmailOpen(false)}
-          onSent={afterSent}
-        />
-      )}
 
       </div>
 
