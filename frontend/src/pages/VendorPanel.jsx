@@ -6259,8 +6259,9 @@ function BookingDetail({ id, onBack }) {
           <LeadEvents lead={b} cfg={cfg} onSaved={load} />
 
           {/* ── packages: everything that was offered, with the chosen one marked ── */}
-          <div className="ld-card">
-            <div className="ld-card-h">📦 Packages offered</div>
+          {/* 📦 folded until wanted (Raj, 2026-11-05) — the title says how many were offered */}
+          <details className="ld-card bd-fold">
+            <summary className="ld-card-h">📦 Packages offered{d.packages.length > 0 && <span className="bd-fold-count">{d.packages.length}</span>}</summary>
             {d.packages.length === 0 ? (
               <p className="bd-empty">No packages were sent for this booking.</p>
             ) : (
@@ -6282,7 +6283,7 @@ function BookingDetail({ id, onBack }) {
                 })}
               </div>
             )}
-          </div>
+          </details>
         </div>
 
         <div className="lead-right">

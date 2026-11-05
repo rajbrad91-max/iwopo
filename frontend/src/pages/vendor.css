@@ -1427,6 +1427,14 @@
 }
 .bd-input:focus { outline: none; border-color: var(--teal); }
 
+/* 📦 a card folded until wanted (<details>): its title opens it, ▸ turns to ▾ */
+.bd-fold > summary { cursor: pointer; list-style: none; user-select: none; }
+.bd-fold > summary::-webkit-details-marker { display: none; }
+.bd-fold > summary::after { content: '▸'; margin-left: auto; padding-left: 10px; color: var(--muted); }
+.bd-fold[open] > summary::after { content: '▾'; }
+.bd-fold:not([open]) > summary { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.bd-fold-count { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: var(--panel-2); color: var(--muted); }
+
 /* 👥 team on the day: a card per person, then a labelled form to assign someone */
 .bd-crew { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 14px; }
 .bd-crew-card { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
