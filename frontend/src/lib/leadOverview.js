@@ -83,7 +83,9 @@ export function leadOverview(lead, cfg) {
      contact; every other answer with the main event */
   const aboutContact = (f) => ['@heard', '@role'].includes(f.show_if?.field);
   const answered = answerRows();
-  const contactAnswers = answered.filter(({ f }) => aboutContact(f)).map(({ row }) => row);
+  // 🤝 the question shown when they heard from a friend (or a referral) reads simply "Referred by"
+  const referral = (f) => f.show_if?.field === '@heard' && (f.show_if.values || []).some(v => /friend|refer/i.test(String(v)));
+  const contactAnswers = answered.filter(({ f }) => aboutContact(f)).map(({ f, row }) => [referral(f) ? 'Referred by' : row[0], row[1]]);
   const eventDetails = answered.filter(({ f }) => !aboutContact(f)).map(({ row }) => row);
   const showMainCard = !!mainEvent || eventDetails.length > 0;
 

@@ -28,6 +28,7 @@
 .ldc-main { border-color: color-mix(in srgb, var(--teal) 60%, transparent); container-type: inline-size; }
 .ldc-event { display: flex; gap: 14px; }
 .ldc-event-body { flex: 1; min-width: 0; }
+.ldc-edit { flex: none; align-self: flex-start; }   /* ✏️ Edit Details at the main event card's top right */
 .ldc-name { font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; overflow-wrap: anywhere; }
 .ldc-main .ldc-name { font-size: 17px; }
 .ldc-badge { display: inline-block; white-space: nowrap; margin-left: 7px; padding: 2px 7px; border-radius: 999px; font-size: 9.5px;

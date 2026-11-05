@@ -3068,7 +3068,6 @@ function LeadsView({ routeLead, onOpenLead }) {
     <LeadDetail
       key={sel.id}
       lead={sel}
-      onBack={() => { onOpenLead(null); load(); }}
       onSaved={(row) => setLeads(ls => ls.map(x => x.id === row.id ? { ...x, ...row } : x))}
     />
   );
@@ -3277,7 +3276,7 @@ function PackageEditor({ pkg, onSave, onCancel }) {
 }
 
 
-function LeadDetail({ lead, onBack, onSaved }) {
+function LeadDetail({ lead, onSaved }) {
   const dialog = useDialog();
   const [edit, setEdit] = useState(false);
   const [cfg, setCfg] = useState(null);
@@ -3499,10 +3498,6 @@ function LeadDetail({ lead, onBack, onSaved }) {
   // ---- VIEW MODE ----
   return (
     <div className="ld-view">
-      <div className="ld-topbar">
-        <button className="refresh" onClick={onBack} title="Return to your leads list">← Back to leads</button>
-        <button className="refresh ld-edit-btn" onClick={openEdit} title="Edit contact details, event answers, pre-events and notes">✏️ Edit Details</button>
-      </div>
       {msg && <div className="ld-msg is-ok">{msg}</div>}
 
       {/* 🗂️ The contact as one strip across the top; under it the main event leads the left column (with every
@@ -3511,7 +3506,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
       <LeadContact lead={lead} cfg={cfg} />
       <div className="lead-grid">
       <div className="lead-left">
-      <LeadEvents lead={lead} cfg={cfg} onSaved={onSaved} />
+      <LeadEvents lead={lead} cfg={cfg} onSaved={onSaved} onEdit={openEdit} />
 
 
       {/* 📦 Packages — in the left column under the event details, since it's

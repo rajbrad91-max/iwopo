@@ -58,10 +58,14 @@ export function ContactStrip({ name, role, items, meta, answers = [] }) {
   );
 }
 
-/** 💍 The main event and every other answer about it (`details`: [label, value] pairs). */
-export function MainEventCard({ ev, details }) {
+/** 💍 The main event and every other answer about it (`details`: [label, value] pairs). `onEdit`, where given, puts
+ *  ✏️ Edit Details at the card's top right. */
+export function MainEventCard({ ev, details, onEdit }) {
   const hours = ev && (ev.hours || spanHours(ev.from, ev.to));
   const time = ev && timeRange(ev.from, ev.to);
+  const edit = onEdit && (
+    <button className="refresh ld-edit-btn ldc-edit" onClick={onEdit} title="Edit contact details, event answers, pre-events and notes">✏️ Edit Details</button>
+  );
   return (
     <div className="ld-card ldc-main">
       {ev && (
@@ -76,9 +80,11 @@ export function MainEventCard({ ev, details }) {
             </div>
             {ev.location && <div className="ldc-line"><Emo cp="1f4cd" /><span>{ev.location}</span></div>}
           </div>
+          {edit}
         </div>
       )}
-      {!ev && <div className="ld-card-h">🎉 Event details</div>}
+      {!ev && <div className="ldc-head"><div className="ld-card-h">🎉 Event details</div>{edit}</div>}
+      {!ev && !details.length && <p className="ldc-empty">No event details yet.</p>}
       {details.length > 0 && (
         <dl className={`ldc-details${ev ? '' : ' is-first'}`}>
           {details.map(([label, value], i) => <div className="ldc-detail" key={i}><dt>{label}</dt><dd>{value}</dd></div>)}
