@@ -8,6 +8,7 @@
  * each behind a yes/no confirmation.
  */
 import prisma from '../config/prisma.js';
+import { questionsForLead } from './leadQuestions.js';
 import { savedContactMatches } from './contactMatch.js';
 import { seenMap, markSeen, unreadCalls } from './commsSeen.js';
 import { openFollowups, actOnFollowup, waitedLabel } from './followups.js';
@@ -318,7 +319,7 @@ export async function runTool(name, input, vendorId) {
       const l = await prisma.leads.findFirst({ where: { id: Number(input.id), vendor_id: v } });   // 🔒 only this vendor's
       if (!l) return { error: 'No lead with that id' };
       const answers = [];
-      for (const f of Array.isArray(l.form_snapshot) ? l.form_snapshot : []) {
+      for (const f of await questionsForLead(l, v)) {
         const a = l.custom_data?.[f.id];
         if (a !== undefined && a !== null && a !== '' && a !== false) answers.push({ question: f.label, answer: a === true ? 'Yes' : a });
       }

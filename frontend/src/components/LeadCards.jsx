@@ -34,9 +34,10 @@ function DateTile({ date, main = false }) {
   );
 }
 
-/** 👤 The client in one strip: name and role, how to reach them, where they came from and when.
- *  `items` and `meta` are [Fluent code point, text] pairs; empty ones are left out. */
-export function ContactStrip({ name, role, items, meta }) {
+/** 👤 The client in one strip: name and role, how to reach them, the answers that follow on from those (a friend's
+ *  name when they heard from a friend), where they came from and when.
+ *  `items` and `meta` are [Fluent code point, text] pairs, `answers` [label, value]; empty ones are left out. */
+export function ContactStrip({ name, role, items, meta, answers = [] }) {
   const shown = (list) => list.filter(([, t]) => t);
   return (
     <div className="ld-card ldc-strip-card">
@@ -46,6 +47,7 @@ export function ContactStrip({ name, role, items, meta }) {
           {role && <span className="ldc-role">{role}</span>}
         </div>
         {shown(items).map(([cp, text], i) => <span className="ldc-pill" key={i}><Emo cp={cp} />{text}</span>)}
+        {answers.map(([label, value], i) => <span className="ldc-pill" key={`a${i}`}><span className="ldc-pill-label">{label}</span>{value}</span>)}
         {shown(meta).length > 0 && (
           <div className="ldc-meta">
             {shown(meta).map(([cp, text], i) => <span key={i}><Emo cp={cp} />{text}</span>)}

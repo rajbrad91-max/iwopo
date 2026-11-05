@@ -67,3 +67,20 @@ export function applyFormRules(fields, customData, p) {
   }
   return { custom_data: cd, pre_events: preEvents };
 }
+
+/**
+ * 🧾 The questions a lead's answers belong to (Raj, 2026-11-05): the vendor's form as it is now — its order,
+ * wording and rules, which is exactly what Edit Details shows — followed by any question the client answered that
+ * has since left the form, so no answer is ever lost. With no current form to read, the lead's own snapshot.
+ * The lead page, contracts, the leads list and the AI agent all read a lead's answers through this.
+ * (The same function lives in backend/src/lib/formRules.js and frontend/src/lib/formRules.js.)
+ */
+export function leadQuestions(snapshot, current, answers) {
+  const now = Array.isArray(current) ? current : [];
+  const snap = Array.isArray(snapshot) ? snapshot : [];
+  if (!now.length) return snap;
+  const cd = answers && typeof answers === 'object' ? answers : {};
+  const answered = (f) => { const v = cd[f.id]; return v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length); };
+  const onForm = new Set(now.map(f => f.id));
+  return [...now, ...snap.filter(f => !onForm.has(f.id) && answered(f))];
+}

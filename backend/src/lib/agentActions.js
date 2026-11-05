@@ -17,6 +17,7 @@
 import crypto from 'node:crypto';
 import { verdict } from './panelOperator.js';
 import prisma from '../config/prisma.js';
+import { questionsForLead } from './leadQuestions.js';
 import { day } from './agentTools.js';
 import privateDb from '../config/privateDb.js';
 
@@ -310,7 +311,7 @@ export async function runActionTool(name, input, vendorId, auth) {
           venue: lead.location, times: [lead.timing_from, lead.timing_to].filter(Boolean).join(' to ') || null,
           hours: lead.hours, guests: lead.guests, package_chosen: lead.package_snapshot?.name || null,
           package_price: lead.package_snapshot?.price ?? lead.package_snapshot?.base_price ?? null, client_notes: lead.notes,
-          form_answers: (Array.isArray(lead.form_snapshot) ? lead.form_snapshot : []).map(f => ({ q: f.label, a: lead.custom_data?.[f.id] })).filter(x => x.a !== undefined && x.a !== null && x.a !== '' && x.a !== false),
+          form_answers: (await questionsForLead(lead, v)).map(f => ({ q: f.label, a: lead.custom_data?.[f.id] })).filter(x => x.a !== undefined && x.a !== null && x.a !== '' && x.a !== false),
         },
         vendor_packages: (await prisma.vendor_packages.findMany({ where: { vendor_id: v }, select: { name: true, base_price: true, included_hours: true } })).map(p => ({ name: p.name, price: p.base_price ? Number(p.base_price) : null, hours: p.included_hours })),
         would_read: preview?.error ? { error: preview.error } : { title: preview?.contract?.title, text: text.slice(0, 12000) },

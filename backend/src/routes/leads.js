@@ -8,7 +8,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { notifyNewLead, sendLeadEmail } from './email.js';
 import { notify } from './notifications.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
-import { applyFormRules } from '../lib/formRules.js';
+import { applyFormRules, leadQuestions } from '../lib/formRules.js';
+import { formsByVendor } from '../lib/leadQuestions.js';
 import { ensureInvoice } from './invoices.js';
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { limit } from '../middleware/rateLimit.js';
@@ -83,12 +84,13 @@ router.put('/mark-seen', requireAuth, async (req, res) => {
 
 // GET /api/leads  → list (vendor-scoped 🔒, active only)
 /** 📱 the service a lead asked for ("Photos & Videos"), from the inquiry form's own question, if the form had one */
-function serviceAsked(l) {
-  const snap = Array.isArray(l.form_snapshot) ? l.form_snapshot : [];
-  const f = snap.find(x => /what do you need|coverage type|services? needed|service/i.test(x.label || ''));
-  if (!f) return null;
-  const v = f.maps_to && l[f.maps_to] != null ? l[f.maps_to] : (l.custom_data || {})[f.id];
-  return v == null || v === '' || typeof v === 'object' ? null : String(v);
+function serviceAsked(questions, l) {
+  // the first question so worded that this lead ANSWERED — a form can word several that way
+  for (const f of questions.filter(x => /what do you need|coverage type|services? needed|service/i.test(x.label || ''))) {
+    const v = f.maps_to && l[f.maps_to] != null ? l[f.maps_to] : (l.custom_data || {})[f.id];
+    if (v != null && v !== '' && typeof v !== 'object') return String(v);
+  }
+  return null;
 }
 
 router.get('/', requireAuth, async (req, res) => {
@@ -109,6 +111,7 @@ router.get('/', requireAuth, async (req, res) => {
     // keep the old shape: package_name flattened onto the lead, plus the folder
     // name so the list can show what was sent before the client has picked.
     // 📱 pkgs + service feed the phone card: the lead's own packages (the client's pick ticked), else the folder's
+    const forms = await formsByVendor(rows.map(r => r.vendor_id));   // 🧾 one query for the whole list
     const leads = rows.map(({ vendor_packages, package_templates, lead_packages, ...l }) => ({
       ...l,
       package_name: vendor_packages?.name ?? null,
@@ -116,7 +119,7 @@ router.get('/', requireAuth, async (req, res) => {
       pkgs: lead_packages?.length
         ? lead_packages.map(p => ({ name: p.name, price: hideMoney ? null : Number(p.price || 0), picked: !!p.is_selected }))
         : (package_templates?.vendor_packages || []).map(p => ({ name: p.name, price: hideMoney ? null : Number(p.base_price || 0), picked: false })),
-      service: serviceAsked(l),
+      service: serviceAsked(leadQuestions(l.form_snapshot, forms.get(l.vendor_id), l.custom_data), l),
     }));
     res.json({ leads });
   } catch (e) { serverError(res, e); }

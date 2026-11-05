@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
+import { questionsForLead } from '../lib/leadQuestions.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary, pickedOffer } from './payments.js';
 import { currencyFor } from '../lib/currencies.js';
@@ -137,9 +138,9 @@ function fmtContractDate(d) {
 
 /** "6 hrs" from the inquiry when the client typed that; otherwise the column. */
 function hoursLabel(lead) {
-  const snap = Array.isArray(lead?.form_snapshot) ? lead.form_snapshot : [];
+  const qs = lead?.questions || [];
   const cd = lead?.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
-  const f = snap.find(x => x.maps_to === 'hours' || x.type === 'hours');
+  const f = qs.find(x => x.maps_to === 'hours' || x.type === 'hours');
   const raw = f ? cd[f.id] : null;
   if (raw != null && String(raw).trim() !== '') return String(raw).trim();
   const n = Number(lead?.hours);
@@ -177,12 +178,14 @@ function kvTable(cls, rows) {
 /** What was booked, at a glance. */
 /** a lead's answer to an inquiry-form question, found by the question's wording */
 function formAnswer(lead, re) {
-  const snap = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
+  const qs = lead.questions || [];
   const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
-  const f = snap.find(x => re.test(x.label || ''));
-  if (!f) return '';
-  const v = f.maps_to && lead[f.maps_to] != null ? lead[f.maps_to] : cd[f.id];
-  return v == null || v === '' || typeof v === 'object' ? '' : String(v);
+  // the first question so worded that this lead ANSWERED — a form can word several that way
+  for (const f of qs.filter(x => re.test(x.label || ''))) {
+    const v = f.maps_to && lead[f.maps_to] != null ? lead[f.maps_to] : cd[f.id];
+    if (v != null && v !== '' && typeof v !== 'object') return String(v);
+  }
+  return '';
 }
 const COUNT_WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 /** "Two Photographers" from the crew on the booking (nothing when nobody of that kind is booked) */
@@ -209,22 +212,22 @@ function bookingDetailsHtml(lead, pkgName, crew) {
 /**
  * Getting-ready rows for what this inquiry asked.
  * A "Getting-ready coverage" tick is the answer — bride and groom rows
- * are not printed under it. No snapshot still prints both rows. A snapshot
+ * are not printed under it. A lead with no questions still prints both rows. A form
  * that never asked, with a Yes already stored, prints both rows too.
  */
 function gettingReadyRows(lead) {
-  const snap = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
+  const qs = lead.questions || [];
   const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
   const yesNo = (on, venue) => (on ? (venue ? `Yes — ${venue}` : 'Yes') : 'No');   // B4: the venue the client gave
   const both = () => [
     ['Bride Getting Ready', yesNo(lead.gr_bride, lead.gr_bride_venue)],
     ['Groom Getting Ready', yesNo(lead.gr_groom, lead.gr_groom_venue)],
   ];
-  if (!snap.length) return both();
+  if (!qs.length) return both();
   const rows = [];
-  if (snap.some(f => f.maps_to === 'gr_bride')) rows.push(['Bride Getting Ready', yesNo(lead.gr_bride, lead.gr_bride_venue)]);
-  if (snap.some(f => f.maps_to === 'gr_groom')) rows.push(['Groom Getting Ready', yesNo(lead.gr_groom, lead.gr_groom_venue)]);
-  for (const f of snap) {
+  if (qs.some(f => f.maps_to === 'gr_bride')) rows.push(['Bride Getting Ready', yesNo(lead.gr_bride, lead.gr_bride_venue)]);
+  if (qs.some(f => f.maps_to === 'gr_groom')) rows.push(['Groom Getting Ready', yesNo(lead.gr_groom, lead.gr_groom_venue)]);
+  for (const f of qs) {
     if (f.type !== 'checkbox') continue;
     if (f.maps_to === 'gr_bride' || f.maps_to === 'gr_groom') continue;
     if (!/getting[- ]?ready/i.test(f.label || '')) continue;
@@ -268,14 +271,14 @@ function preEventsHtml(lead, fmtTime, fmtDate) {
  * the client did not ask for (or that was hidden for them) never appears.
  */
 function extraScheduleHtml(lead, fmtDate) {
-  const snap = Array.isArray(lead.form_snapshot) ? lead.form_snapshot : [];
+  const qs = lead.questions || [];
   const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
   const split = (label) => { const m = String(label || '').match(/^(.+?)\s+[—–-]\s+(.+)$/); return m ? [m[1].trim(), m[2].trim()] : [String(label || '').trim(), '']; };
   const out = [];
-  for (const d of snap) {
+  for (const d of qs) {
     if (d.type !== 'date' || d.maps_to === 'event_date' || !cd[d.id]) continue;
     const [head] = split(d.label);
-    const rows = snap.filter(f => split(f.label)[0] === head && cd[f.id] !== undefined && cd[f.id] !== '' && cd[f.id] !== null)
+    const rows = qs.filter(f => split(f.label)[0] === head && cd[f.id] !== undefined && cd[f.id] !== '' && cd[f.id] !== null)
       .map(f => [split(f.label)[1] || f.label, f.type === 'date' ? fmtDate(new Date(`${cd[f.id]}T12:00:00Z`)) : (cd[f.id] === true ? 'Yes' : cd[f.id] === false ? 'No' : String(cd[f.id]))]);
     const table = kvTable('ct-kv', rows);
     if (table) out.push(`<h3>${escapeHtml(head)}</h3>${table}`);
@@ -474,7 +477,8 @@ function moneyForPackage(lead, price, money) {
  * the first two, and every one of them would have had to remember the third.
  * They all call this instead.
  */
-export async function buildContractBody(template, lead, businessName, opts = {}) {
+export async function buildContractBody(template, leadRow, businessName, opts = {}) {
+  const lead = { ...leadRow, questions: await questionsForLead(leadRow) };   // 🧾 the form's questions now, plus any answered one since removed
   const forceId = Number(opts?.packageId) || null;
   const [offeredPkgs, crew, moneyRaw, vset, vrow] = await Promise.all([
     prisma.lead_packages.findMany({

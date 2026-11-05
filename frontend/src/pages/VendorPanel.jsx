@@ -17,7 +17,7 @@ import { chime } from '../lib/chime';
 import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
 import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber, InquiryShell, formProblems, formAnswers, focusFirstProblem, BOOKING_FIELDS } from './InquiryForm';
-import { OTHER } from '../lib/formRules';
+import { OTHER, leadQuestions } from '../lib/formRules';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
 import './contractdoc.css';
@@ -3497,7 +3497,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
 
   /* 🗓️ The main event for the event cards — the lead's own columns, and the times from the form's
      Starting/Ending Time questions (they map to timing_from / timing_to and live in the answers). */
-  const formFields = (Array.isArray(lead.form_snapshot) && lead.form_snapshot.length) ? lead.form_snapshot : (cfg?.custom_fields || []);
+  const formFields = leadQuestions(lead.form_snapshot, cfg?.custom_fields, lead.custom_data);   // 🧾 the same questions Edit Details shows
   const answerFor = (key) => { const f = formFields.find(x => x.maps_to === key); return f ? (lead.custom_data || {})[f.id] : undefined; };
   const mainEvent = (lead.event_date || lead.event_type) ? {
     name: lead.event_type || 'Main event', date: lead.event_date,
@@ -3511,10 +3511,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
   question their form never asked. Rows use the vendor's own wording.
   An empty text answer stays hidden. A checkbox is always shown,
   because leaving it unticked is an answer. */
-  function eventDetailRows() {
-    const defs = (Array.isArray(lead.form_snapshot) && lead.form_snapshot.length)
-      ? lead.form_snapshot
-      : (cfg?.custom_fields || []);
+  function answerRows() {
     const cd = lead.custom_data || {};
     const has = (v) => v !== '' && v !== null && v !== undefined && v !== false;
 
@@ -3560,16 +3557,17 @@ function LeadDetail({ lead, onBack, onSaved }) {
 
     /* 🔀 only the questions this client was actually shown — the same rules the form used. A Birthday lead never
        had Getting Ready, so it shows no "Getting Ready ❌ No"; a wedding where the box was left unticked still says No. */
-    const live = new Map((cfg?.custom_fields || []).map(f => [f.id, f]));   // older snapshots kept no rules
-    const withRules = defs.map(f => (f.show_if || !live.get(f.id) ? f
-      : { ...f, show_if: live.get(f.id).show_if, options: f.options || live.get(f.id).options, allow_other: f.allow_other ?? live.get(f.id).allow_other }));
-    const asked = shownFields(withRules, cd, { heard: lead.heard, role: lead.role })
-      .filter(f => !(mainEvent && IN_EVENT_CARD.has(f.maps_to)));   // shown on the main event card already
-    const rows = asked.map(f => [f.label, valueFor(f)]).filter(([, v]) => v !== null);
-    // notes aren't a form field — they're the free-text box every form has
-    return rows;
+    return shownFields(formFields, cd, { heard: lead.heard, role: lead.role })
+      .filter(f => !(mainEvent && IN_EVENT_CARD.has(f.maps_to)))   // shown on the main event card already
+      .map(f => ({ f, row: [f.label, valueFor(f)] }))
+      .filter(({ row }) => row[1] !== null);
   }
-  const eventDetails = eventDetailRows();
+  /* 👤 a question that follows on from how they found you or who they are (Friend → "Friend's name") sits with the
+     contact; every other answer with the main event */
+  const aboutContact = (f) => ['@heard', '@role'].includes(f.show_if?.field);
+  const answered = answerRows();
+  const contactAnswers = answered.filter(({ f }) => aboutContact(f)).map(({ row }) => row);
+  const eventDetails = answered.filter(({ f }) => !aboutContact(f)).map(({ row }) => row);
   const showMainCard = !!mainEvent || eventDetails.length > 0;
 
   // ---- VIEW MODE ----
@@ -3585,7 +3583,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
           other answer about it), then the pre-events and the notes, while Payments and the contract sit beside it on
           the right — components/LeadCards. ✏️ Edit Details edits everything; ＋ Add on the Pre-events card opens the
           pre-event editor in place. */}
-      <ContactStrip name={lead.name} role={lead.role}
+      <ContactStrip name={lead.name} role={lead.role} answers={contactAnswers}
         items={[['1f4e7', lead.email],
           ['1f4de', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone],
           ['1f4f7', lead.instagram]]}
