@@ -4,8 +4,10 @@
 // Claude API call, token+cost tracking per vendor.
 
 import prisma from '../config/prisma.js';
+import { mine } from './tenancy.js';
 import { getSetting } from './settings.js';
 import { notify } from '../routes/notifications.js';
+import { TRADE_WORDS, PHOTO_VIDEO_TRADES } from './professions.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 export const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -27,13 +29,57 @@ export async function isActiveSubscriber(vendorId) {
   return !!s?.active;
 }
 
-/** Build the system prompt from this vendor's knowledge (safety rules stay locked in code). */
-export function buildSystemPrompt(k, businessName) {
+/** The vendor's own inquiry-form questions worth asking in a chat — not the contact ones (the chat asks those itself), not
+ *  headings. At most twelve. */
+function formQuestions(fields) {
+  const CONTACT = new Set(['name', 'email', 'phone', 'role', 'instagram', 'heard']);
+  const seen = new Set();
+  return (Array.isArray(fields) ? fields : [])
+    .filter(f => f && f.label && f.type !== 'heading' && !CONTACT.has(f.maps_to) && !String(f.show_if?.field || '').startsWith('@'))
+    .map(f => String(f.label).trim())
+    .filter(l => l && !seen.has(l) && seen.add(l))
+    .slice(0, 12);
+}
+
+/** 📸 The detail questions for a photo / video vendor (what Perfect Poses' chat has always asked). */
+const PHOTO_VIDEO_ORDER = `Ask in roughly this order:
+1. NAME.
+2. EVENT TYPE (Wedding, Pre-wedding, Engagement, Birthday, Commercial, or other).
+3. SERVICE TYPE (Photos & Videos, Only Photos, or Only Videos - adapt to the services above).
+4. EVENT DATE.
+5. LOCATION / venue (city is fine).
+6. Rough TIMING (start/end or roughly how many hours).
+7. Approximate GUEST count.
+
+WEDDING-ONLY (ask only if event type is a Wedding):
+8. COVERAGE - Both Sides, Groom Side, or Bride Side?
+9. GETTING READY - getting-ready coverage for bride and/or groom, at which venue(s)?
+10. PRE-EVENTS - any pre-wedding events to cover? If yes, get each one's name, date and venue.`;
+
+/**
+ * 📋 The detail questions for every other trade (Raj, 2026-11-05: a florist's or a DJ's assistant asked about photos and
+ * getting-ready coverage, and with nothing filled in it told visitors the business did photos and videos). It follows
+ * the vendor's own inquiry form — set up for their trade by its preset — and is only ever a list of things to ASK.
+ */
+function generalOrder(questions) {
+  const own = questions.length
+    ? `\n\nThe questions our own inquiry form asks (a guide — ask only what fits, one or two at a time):\n${questions.map(q => `- ${q}`).join('\n')}`
+    : '';
+  return `Ask in roughly this order:\n1. NAME.\n2. What they are planning (the event) and what they would like from us.\n3. EVENT DATE.\n4. LOCATION / venue (city is fine).\n5. Rough TIMING.\n6. Approximate GUEST count.${own}`;
+}
+
+/**
+ * Build the system prompt from this vendor's knowledge (safety rules stay locked in code). `ctx`: the vendor's trade
+ * (`trade`: a profession key) and their inquiry form's question labels (`questions`).
+ */
+export function buildSystemPrompt(k, businessName, ctx = {}) {
   const biz = (k.business_name || businessName || 'our studio').trim();
   // The vendor names their own assistant. "Wopo Assistant" stays the default so every
   // existing subscriber reads exactly as before until they choose otherwise.
   const bot = (k.bot_name || '').trim() || 'Wopo Assistant';
   const sec = (title, val) => (val && String(val).trim() ? `${title}:\n${String(val).trim()}\n\n` : '');
+  const trade = TRADE_WORDS[ctx.trade] || '';
+  const order = PHOTO_VIDEO_TRADES.has(ctx.trade) ? PHOTO_VIDEO_ORDER : generalOrder(ctx.questions || []);
 
   let kb = '';
   kb += sec('ABOUT US', k.tagline);
@@ -50,8 +96,10 @@ export function buildSystemPrompt(k, businessName) {
   kb += sec('OTHER NOTES', k.notes);
   kb += sec('THINGS TO AVOID', k.avoid_topics);
   kb += sec('TONE / PERSONALITY', k.tone_notes);
+  // nothing filled in yet: the assistant must not fill the gap itself
+  if (!kb) kb = "KNOWLEDGE: The team hasn't added any details about the business here yet. Do NOT describe our services, prices, areas or anything else about the business — say the team will share the details, and offer to take their name and phone.\n\n";
 
-  return `Your name is ${bot}, part of the ${biz} team, chatting with visitors on the website. Speak naturally in first person ("we", "us", "I") - warm, friendly, relaxed and human, like a kind, down-to-earth person from the business.
+  return `Your name is ${bot}, part of the ${biz} team${trade ? ` (a ${trade} business)` : ''}, chatting with visitors on the website. Speak naturally in first person ("we", "us", "I") - warm, friendly, relaxed and human, like a kind, down-to-earth person from the business.
 
 VOICE:
 - Be human and personable - everyday language, light warmth, real reactions ("Oh lovely!", "Congratulations!"). Never robotic, scripted or corporate; avoid stiff phrases like "How may I assist you".
@@ -70,6 +118,7 @@ GOAL: Be genuinely helpful, answer using the knowledge below, and gently help in
 ${kb}STRICT RULES:
 - NEVER state, estimate or hint at any prices, package costs or deposits unless the knowledge above explicitly provides them. If asked and prices aren't given, say pricing depends on the details and warmly offer to collect their info for a personalized quote.
 - NEVER invent facts (availability, team names, awards, contact info). If unsure, say you'll have the team confirm and offer to take their details.
+- The questions under COLLECTING DETAILS are things to ASK, never facts about what we offer. Describe only the services written in the knowledge above.
 - Never say yes or no to a specific date being available. Say you'd love to check and offer to collect their details + date so the team can confirm.
 - ANSWER THE ACTUAL QUESTION - don't pattern-match to nearby info.
 
@@ -81,19 +130,7 @@ In your VERY FIRST reply, before answering questions or discussing details, warm
 - The MOMENT you have name + phone, immediately call save_lead, then continue gathering details below.
 When a visitor shows booking interest, gently take their details - only ONE or TWO questions per message, warm and conversational, never a rigid form.
 
-Ask in roughly this order:
-1. NAME.
-2. EVENT TYPE (Wedding, Pre-wedding, Engagement, Birthday, Commercial, or other).
-3. SERVICE TYPE (Photos & Videos, Only Photos, or Only Videos - adapt to the services above).
-4. EVENT DATE.
-5. LOCATION / venue (city is fine).
-6. Rough TIMING (start/end or roughly how many hours).
-7. Approximate GUEST count.
-
-WEDDING-ONLY (ask only if event type is a Wedding):
-8. COVERAGE - Both Sides, Groom Side, or Bride Side?
-9. GETTING READY - getting-ready coverage for bride and/or groom, at which venue(s)?
-10. PRE-EVENTS - any pre-wedding events to cover? If yes, get each one's name, date and venue.
+${order}
 
 CONTACT PREFERENCE (near the end): Ask how they'd like to be reached - email or phone. If phone, get the best time to call.
 
@@ -177,6 +214,9 @@ export function chatTools() {
 }
 
 /** Save a lead into the vendor's leads table. */
+/** how a lead from the website chat begins its notes — and how a later save finds it again */
+const CHAT_NOTE = '— From the website chat —';
+
 export async function saveLeadFromChat(vendorId, input) {
   const name = (input.name || '').trim();
   if (!name) return;
@@ -201,7 +241,32 @@ export async function saveLeadFromChat(vendorId, input) {
   add('Best time to call', input.callback_time);
   if (input.event_date && !eventDate) add('Event date (as stated)', input.event_date);
   add('Notes', input.notes);
-  const notes = ['— From the website chat —', ...extras].join('\n');
+  /* 📋 One lead per visitor (Raj, 2026-11-05): the assistant saves again as a chat goes on, and every save used to
+     make a new lead — two or three per chat, each with part of the details and its own notification. A save from
+     the same phone number within a day now adds to that lead: what is new is filled in, what was corrected replaces
+     the old, and a detail line in the notes is replaced by its newer version. */
+  const digits = String(input.phone || '').replace(/\D/g, '');
+  const prev = digits && (await prisma.leads.findMany({
+    where: { vendor_id: Number(vendorId), created_at: { gte: new Date(Date.now() - 86_400_000) }, notes: { startsWith: CHAT_NOTE } },   // 🔒 this vendor
+    select: { id: true, phone: true, notes: true },
+    orderBy: { id: 'desc' },
+    take: 25,
+  })).find(l => String(l.phone || '').replace(/\D/g, '') === digits);
+  if (prev) {
+    const lines = new Map(String(prev.notes || '').split('\n').slice(1).filter(Boolean).map(l => [l.split(':')[0], l]));
+    for (const l of extras) lines.set(l.split(':')[0], l);
+    const given = (v) => (v === null || v === undefined || v === '' ? undefined : v);
+    await prisma.leads.update({
+      where: { id: prev.id, ...mine(vendorId) },                                                                    // 🔒 the second lock
+      data: {
+        name, email: given(input.email), event_type: given(input.event_type), event_date: given(eventDate),
+        location: given(input.location), guests: given(guests), instagram: given(input.instagram),
+        notes: [CHAT_NOTE, ...lines.values()].join('\n'),
+      },
+    });
+    return;                                                                                // the vendor was told once already
+  }
+  const notes = [CHAT_NOTE, ...extras].join('\n');
 
   const lead = await prisma.leads.create({
     data: {
@@ -330,7 +395,12 @@ export async function generateReply(vendorId, businessName, text, history = [], 
   }
   const model = (await getSetting('anthropic_model', '')) || DEFAULT_MODEL;
 
-  const k = await getKnowledge(vendorId);
+  const [k, vendor, form] = await Promise.all([
+    getKnowledge(vendorId),
+    prisma.vendors.findUnique({ where: { id: Number(vendorId) }, select: { profession: true } }),           // 🔒 this vendor
+    prisma.inquiry_settings.findUnique({ where: { vendor_id: Number(vendorId) }, select: { custom_fields: true } }),
+  ]);
+  const ctx = { trade: vendor?.profession, questions: formQuestions(form?.custom_fields) };
   const messages = [];
   for (const h of history.slice(-40)) {
     const role = h.role === 'assistant' ? 'assistant' : 'user';
@@ -339,7 +409,11 @@ export async function generateReply(vendorId, businessName, text, history = [], 
   }
   messages.push({ role: 'user', content: text });
 
-  try {
+  /* 🔁 One request to the assistant. After a tool step (saving the lead, a message, an unanswered question) the result
+     goes back to it so it can carry on — ask the next detail — instead of the turn ending on an empty reply (Raj,
+     2026-11-05: chats stopped after the name and phone). At most two more rounds, so a turn can never loop. */
+  const system = buildSystemPrompt(k, businessName, ctx);
+  async function ask(msgs) {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -347,42 +421,49 @@ export async function generateReply(vendorId, businessName, text, history = [], 
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: 500,
-        system: buildSystemPrompt(k, businessName),
-        tools: chatTools(),
-        messages,
-      }),
+      body: JSON.stringify({ model, max_tokens: 500, system, tools: chatTools(), messages: msgs }),
     });
-
     if (!res.ok) {
-      const body = await res.text();
-      console.error('Wopo Assistant API error', res.status, body.slice(0, 300));
+      console.error('Wopo Assistant API error', res.status, (await res.text()).slice(0, 300));
+      return null;
+    }
+    const body = await res.json();
+    await recordUsage(vendorId, session, body.usage);
+    return body;
+  }
+
+  try {
+    let body = await ask(messages);
+    if (!body) {
       return { reply: "Sorry, I'm having a little trouble right now. Could you leave your name and phone, and the team will reach out?", lead_saved: false };
     }
 
-    const body = await res.json();
-    await recordUsage(vendorId, session, body.usage);
-
-    let reply = '';
+    const said = [];
     let leadSaved = false;
-    for (const block of (body.content || [])) {
-      if (block.type === 'text') reply += block.text;
-      else if (block.type === 'tool_use') {
-        if (block.name === 'save_lead') {
-          await saveLeadFromChat(vendorId, block.input || {});
-          await nameSession(vendorId, session, block.input?.name);
-          leadSaved = true;
+    for (let round = 0; body; round++) {
+      const results = [];
+      for (const block of (body.content || [])) {
+        if (block.type === 'text' && block.text.trim()) said.push(block.text.trim());
+        else if (block.type === 'tool_use') {
+          if (block.name === 'save_lead') {
+            await saveLeadFromChat(vendorId, block.input || {});
+            await nameSession(vendorId, session, block.input?.name);
+            leadSaved = true;
+          }
+          else if (block.name === 'log_unanswered') await logUnanswered(vendorId, block.input?.question, session);
+          else if (block.name === 'leave_message') {
+            await leaveMessage(vendorId, block.input || {}, session);
+            await nameSession(vendorId, session, block.input?.name);
+          }
+          else if (block.name === 'flag_issue') await flagIssue(vendorId, block.input || {});
+          results.push({ type: 'tool_result', tool_use_id: block.id, content: 'Done.' });
         }
-        else if (block.name === 'log_unanswered') await logUnanswered(vendorId, block.input?.question, session);
-        else if (block.name === 'leave_message') {
-          await leaveMessage(vendorId, block.input || {}, session);
-          await nameSession(vendorId, session, block.input?.name);
-        }
-        else if (block.name === 'flag_issue') await flagIssue(vendorId, block.input || {});
       }
+      if (!results.length || body.stop_reason !== 'tool_use' || round >= 2) break;
+      messages.push({ role: 'assistant', content: body.content }, { role: 'user', content: results });
+      body = await ask(messages);
     }
+    let reply = said.join('\n\n');
     reply = reply.trim();
 
     // hidden marker fallback

@@ -12,6 +12,7 @@ export default function ChatWidget({ handle, businessName, botName }) {
   const [busy, setBusy] = useState(false);
   const [session] = useState(() => Math.random().toString(36).slice(2) + Date.now().toString(36));
   const bodyRef = useRef(null);
+  const inputRef = useRef(null);   // ⌨️ the cursor stays in the box, message after message
 
   useEffect(() => {
     if (open && msgs.length === 0) {
@@ -42,7 +43,7 @@ export default function ChatWidget({ handle, businessName, botName }) {
       setMsgs(m => [...m, { role: 'assistant', content: d.reply || "Sorry, I couldn't respond just now." }]);
     } catch {
       setMsgs(m => [...m, { role: 'assistant', content: "Sorry, something went wrong. Please try again." }]);
-    } finally { setBusy(false); }
+    } finally { setBusy(false); inputRef.current?.focus(); }
   }
 
   if (!open) {
@@ -69,15 +70,17 @@ export default function ChatWidget({ handle, businessName, botName }) {
       </div>
 
       <form className="cw-input-row" onSubmit={send}>
+        {/* never disabled while a reply comes: a disabled box loses the cursor (Raj, 2026-11-05) — the next message can be
+            typed meanwhile, and Enter waits until the reply is in */}
         <input
+          ref={inputRef}
           className="cw-input"
           placeholder="Type a message…"
           value={input}
           onChange={e => setInput(e.target.value)}
-          disabled={busy}
           autoFocus
         />
-        <button className="cw-send" type="submit" disabled={busy || !input.trim()}>➤</button>
+        <button className="cw-send" type="submit" disabled={busy || !input.trim()} onMouseDown={e => e.preventDefault()} title="Send">➤</button>
       </form>
     </div>
   );
