@@ -4,6 +4,7 @@ import { MdSwapVert } from 'react-icons/md';   // ⇅ the Leads sort & filter bu
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../components/LeadListingMenu';
 import PreEvents from '../components/PreEvents';
 import { LeadContact, LeadEvents } from '../components/LeadOverview';
+import LeadEditor from '../components/LeadEditor';
 import AutoReleaseToggle from '../components/AutoReleaseToggle';
 import { useAutoRelease } from '../lib/useAutoRelease';
 import { contractSampleFor } from '../lib/contractSamples';
@@ -18,7 +19,7 @@ import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
 import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
 import { COUNTRIES } from '../lib/countries';
-import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber, InquiryShell, formProblems, formAnswers, focusFirstProblem, BOOKING_FIELDS } from './InquiryForm';
+import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber, InquiryShell, BOOKING_FIELDS } from './InquiryForm';
 import { OTHER } from '../lib/formRules';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
@@ -42,7 +43,6 @@ const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private �
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
 import './vendor.css';
 import SecurityLog from '../components/SecurityLog';
-import { shownFields } from '../lib/formRules';
 import DomainSettings from '../components/DomainSettings';
 import { clientBase, inquiryUrl, setClientBase } from '../lib/clientBase';
 import BillingBanner from '../components/BillingBanner';
@@ -3280,24 +3280,7 @@ function LeadDetail({ lead, onSaved }) {
   const dialog = useDialog();
   const [edit, setEdit] = useState(false);
   const [cfg, setCfg] = useState(null);
-  const [ep, setEp] = useState({
-    role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '',
-    instagram: String(lead.instagram || '').replace(/^@/, ''), heard: lead.heard || '',   // the form shows the @ itself
-    event_date: lead.event_date ? String(lead.event_date).slice(0, 10) : '',
-    location: lead.location || '',
-    timing_from: lead.timing_from ? String(lead.timing_from).slice(0, 5) : '',
-    timing_to: lead.timing_to ? String(lead.timing_to).slice(0, 5) : '',
-    guests: lead.guests ?? '',
-  });
-  const [eAnswers, setEAnswers] = useState(lead.custom_data || {});
-  const [eNotes, setENotes] = useState(lead.notes || '');
-  /* ✏️ Edit Details is the client's own inquiry form (InquiryShell + LeadFormBody), checked by the same rules. */
-  const [errs, setErrs] = useState({});
-  const clearErr = (k) => setErrs(e => { if (!e[k]) return e; const n = { ...e }; delete n[k]; return n; });
-  const setEpi = (k, v) => { setEp(s => ({ ...s, [k]: v })); clearErr(k); clearErr(`booking:${k}`); };
-  const setEAns = (id, v) => { setEAnswers(s => ({ ...s, [id]: v })); clearErr(`f:${id}`); };
   const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
   // 📦 The vendor loads a FOLDER; its packages are copied onto this lead so they
   // can be tailored for this client without touching the master list. Locked
   // once sent, so a client can't have the offer change under them.
@@ -3410,90 +3393,8 @@ function LeadDetail({ lead, onSaved }) {
     } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
   }
 
-  /* 🗓️ A lead has ONE list of pre-events — the one on its Pre-Events card, which the contract's schedule uses.
-     The form's Pre-Events question holds the client's original answer; Edit details shows and saves the lead's
-     own list through it, so a pre-event changed or removed here is changed everywhere. */
-  const preEventsField = () => (cfg?.custom_fields || []).find(f => f.type === 'pre_events');
-  /* ✏️ A question that maps to one of the lead's own columns (date, venue, times, guests, hours, event type, getting
-     ready…) starts from that column when its answer is empty — a lead added by hand, imported or older keeps those
-     facts on the lead, not in the answers, and the form must open with them, as the lead page shows them. */
-  const fromColumn = (f) => {
-    const v = lead[f.maps_to];
-    if (v === null || v === undefined || v === '') return undefined;
-    if (f.type === 'checkbox') return v === true;
-    if (f.maps_to === 'event_date') return String(v).slice(0, 10);
-    if (f.type === 'time') return String(v).slice(0, 5);
-    if (f.type === 'hours') return `${v} hr${Number(v) === 1 ? '' : 's'}`;
-    return String(v);
-  };
-  function openEdit() {
-    const pf = preEventsField();
-    setEAnswers(s => {
-      const next = { ...s };
-      for (const f of cfg?.custom_fields || []) {
-        const empty = next[f.id] === undefined || next[f.id] === null || next[f.id] === '';
-        if (f.maps_to && f.type !== 'pre_events' && empty) { const v = fromColumn(f); if (v !== undefined) next[f.id] = v; }
-      }
-      if (pf) next[pf.id] = (Array.isArray(lead.pre_events) ? lead.pre_events : []).map((e, k) => ({ ...e, _k: `saved-${k}` }));
-      return next;
-    });
-    setEdit(true);
-  }
-
-  // 📅 the booking facts the vendor's form does not ask — Edit Details asks them itself (the contract needs them)
-  const bookingKeys = BOOKING_FIELDS.map(b => b.key).filter(k => !(cfg?.custom_fields || []).some(f => f.maps_to === k));
-
-  async function save() {
-    setMsg(''); setErrs({});
-    const problems = formProblems(cfg, ep, eAnswers, { editing: true, bookingKeys });
-    if (problems.length) {
-      setErrs(Object.fromEntries(problems.map(x => [x.field, x.message])));
-      return focusFirstProblem(problems[0].field);
-    }
-    setBusy(true);
-    const pf = preEventsField();
-    try {
-      // the answers the lead already had stay; the questions on the form are written exactly as the client's form
-      // writes them, and the server maps them onto the lead's date, venue, guests… (routes/leads.js)
-      const custom = { ...(lead.custom_data || {}), ...formAnswers(shownFields(cfg.custom_fields || [], eAnswers, ep), eAnswers) };
-      const preEvents = pf ? (eAnswers[pf.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim()) : null;
-      if (pf) custom[pf.id] = preEvents;
-      const booking = Object.fromEntries(bookingKeys.map(k => [k, ep[k] === '' || ep[k] == null ? null : ep[k]]));
-      const d = await api.updateLead(lead.id, {
-        name: ep.name, email: ep.email, phone: ep.phone, role: ep.role,
-        instagram: ep.instagram ? `@${ep.instagram}` : '', heard: ep.heard,
-        notes: eNotes, custom_data: custom, ...booking,
-        ...(pf ? { pre_events: preEvents } : {}),
-      });
-      if (onSaved && d?.lead) onSaved(d.lead);
-      setMsg('✅ Saved'); setEdit(false);
-    } catch (e) { setMsg('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
-
-
-  // ---- EDIT MODE: the client's own inquiry form — same theme, colours, font and questions — editable ----
-  if (edit) return (
-    <div className="ld-view">
-      <div className="ld-topbar">
-        <button className="refresh" onClick={() => { setEdit(false); setErrs({}); setMsg(''); }} title="Leave without saving">← Cancel</button>
-      </div>
-      {!cfg ? <div className="loading">Loading…</div> : (
-        <InquiryShell cfg={cfg} embedded>
-          <div className="iq-body">
-            <LeadFormBody cfg={cfg} p={ep} setPI={setEpi} answers={eAnswers} setAns={setEAns} notes={eNotes} setNotes={setENotes}
-              errs={errs} bookingKeys={bookingKeys} />
-            {msg && <div className="iq-err">{msg}</div>}
-            <button className="iq-btn" onClick={save} disabled={busy}>
-              {busy ? 'Saving…' : <><span className="iq-emoji">💾 </span>Save changes</>}
-            </button>
-            <p className="iq-req-note">Fields marked * are required</p>
-          </div>
-        </InquiryShell>
-      )}
-    </div>
-  );
-
+  // ✏️ Edit Details — the client's own inquiry form, editable (components/LeadEditor, shared with the booking page)
+  if (edit) return <LeadEditor lead={lead} cfg={cfg} onSaved={onSaved} onClose={(m) => { setEdit(false); setMsg(m || ''); }} />;
 
   // ---- VIEW MODE ----
   return (
@@ -3506,7 +3407,7 @@ function LeadDetail({ lead, onSaved }) {
       <LeadContact lead={lead} cfg={cfg} />
       <div className="lead-grid">
       <div className="lead-left">
-      <LeadEvents lead={lead} cfg={cfg} onSaved={onSaved} onEdit={openEdit} />
+      <LeadEvents lead={lead} cfg={cfg} onSaved={onSaved} onEdit={() => setEdit(true)} />
 
 
       {/* 📦 Packages — in the left column under the event details, since it's
@@ -4724,7 +4625,7 @@ function BookingsView({ routeBooking, onOpenBooking }) {
 
   // a booking opens as its own page, not the lead editor — the sale is done, so
   // the details are shown rather than offered up for editing
-  if (routeBooking) return <BookingDetail key={routeBooking} id={routeBooking} onBack={() => onOpenBooking(null)} />;
+  if (routeBooking) return <BookingDetail key={routeBooking} id={routeBooking} />;   // Bookings in the sidebar goes back
 
   const now = new Date();
   const inMonth = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
@@ -6182,12 +6083,13 @@ function ReferForm() {
  * one marked, and the only things you can change are the ones that genuinely
  * move after a booking — money in, and who is working the day.
  */
-function BookingDetail({ id, onBack }) {
+function BookingDetail({ id }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const [cfg, setCfg] = useState(null);   // 🧾 the vendor's inquiry form — which questions this client was asked
+  const [cfg, setCfg] = useState(null);
+  const [edit, setEdit] = useState(false);   // ✏️ Edit Details open   // 🧾 the vendor's inquiry form — which questions this client was asked
   const [assign, setAssign] = useState({ crew_member_id: '', duty: '', arrive_time: '', leave_time: '' });
   const assignLock = useRef(false);
 
@@ -6223,13 +6125,12 @@ function BookingDetail({ id, onBack }) {
 
   if (err) return (
     <div className="ld-view">
-      <div className="ld-topbar">
-        <button className="refresh" onClick={onBack} title="Return to your bookings list">← Back to bookings</button>
-      </div>
       <div className="err-banner">⚠️ {err}</div>
     </div>
   );
   if (!d) return <div className="loading">Loading…</div>;
+  // ✏️ Edit Details — the same editor as the lead page (components/LeadEditor); the booking reloads after a save
+  if (edit) return <LeadEditor lead={d.booking} cfg={cfg} onSaved={load} onClose={(m) => { setEdit(false); if (m) flash(m); }} />;
 
   const b = d.booking;
   const chosenId = b.package_id;
@@ -6239,10 +6140,6 @@ function BookingDetail({ id, onBack }) {
     // this. A booking page that invented its own wrapper, back button and card
     // styling read as a different product bolted on beside the panel.
     <div className="ld-view">
-      <div className="ld-topbar">
-        <button className="refresh" onClick={onBack} title="Return to your bookings list">← Back to bookings</button>
-        <span className="badge active">✅ Booking Confirmed</span>
-      </div>
       {msg && <div className={`ld-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</div>}
 
       {/* 👤 the contact strip, as on the lead page */}
@@ -6251,7 +6148,7 @@ function BookingDetail({ id, onBack }) {
         <div className="lead-left">
           {/* ── details, read-only: the deal is agreed, so nothing here is a form ── */}
           {/* 🗂️ the main event, pre-events and notes — exactly as the lead page shows them (components/LeadOverview) */}
-          <LeadEvents lead={b} cfg={cfg} onSaved={load} />
+          <LeadEvents lead={b} cfg={cfg} onSaved={load} onEdit={() => setEdit(true)} />
 
           {/* ── packages: everything that was offered, with the chosen one marked ── */}
           {/* 📦 folded until wanted (Raj, 2026-11-05) — the title says how many were offered */}
