@@ -561,7 +561,7 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
   const doc = [
     headbandHtml(substitute(template.header || '', values), vrow?.logo_path, { name: businessName, phone: vrow?.phone, email: vrow?.email }),
     `<h1 class="ct-doc-title">${escapeHtml(template.name || 'Service Agreement')}</h1>`,
-    `<p class="ct-doc-for">FOR ${escapeHtml(lead.name || '')} — ${escapeHtml(lead.event_type || '')} on ${escapeHtml(fmtDate(lead.event_date))}</p>`,
+    `<p class="ct-doc-for">For ${escapeHtml(lead.name || '')} — ${escapeHtml(lead.event_type || '')} on ${escapeHtml(fmtDate(lead.event_date))}</p>`,
     secHtml,
     legalHtml,
   ].filter(Boolean).join('');
