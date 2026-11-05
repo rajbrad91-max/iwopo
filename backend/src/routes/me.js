@@ -18,6 +18,7 @@ import { storageFor } from '../lib/storageQuota.js';
 import { revokeAllForUser } from '../lib/tokenRevocation.js';
 import { logSecurity } from '../lib/securityLog.js';
 import { serverError } from '../lib/httpError.js';
+import { PROFESSION_KEYS } from '../lib/professions.js';
 
 const router = express.Router();
 const LOGO_DIR = LOGO_DIR_CFG;
@@ -299,9 +300,23 @@ router.get('/profile', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.vendors.findUnique({
       where: { id: vid },                         // 🔒 tenancy — own vendor row
-      select: { id: true, business_name: true, phone: true, email: true, country: true, logo_path: true, slug: true },
+      select: { id: true, business_name: true, phone: true, email: true, country: true, logo_path: true, slug: true, profession: true },
     });
     res.json({ profile: profile || null });
+  } catch (e) { serverError(res, e); }
+});
+
+/**
+ * 🧑‍💼 PUT /api/me/profession { profession } — the vendor's trade. The inquiry form sends it when a preset is loaded
+ * and the form saved; Contract setup's sample follows it.
+ */
+router.put('/profession', requireAuth, async (req, res) => {
+  const vid = req.user.vendor_id;
+  if (!vid) return res.status(400).json({ error: 'No vendor' });
+  if (!PROFESSION_KEYS.has(String(req.body.profession || ''))) return res.status(400).json({ error: 'Unknown trade' });
+  try {
+    await prisma.vendors.update({ where: { id: vid }, data: { profession: String(req.body.profession) } });   // 🔒 own vendor row
+    res.json({ ok: true, profession: String(req.body.profession) });
   } catch (e) { serverError(res, e); }
 });
 

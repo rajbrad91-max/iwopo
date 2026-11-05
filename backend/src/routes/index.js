@@ -654,18 +654,15 @@ router.get('/admin/vendor-stats', requireAuth, requireSuperAdmin, async (req, re
     const total = counted.reduce((n, c) => n + c.count, 0);
     const byStatus = await prisma.vendors.groupBy({ by: ['status'], _count: { _all: true } });
 
-    /* 🏷️ Vendors per profession, from inquiry_settings.background — which is
-       what a vendor actually picks, so it is the only honest source. A vendor
-       who has not chosen one, or picked "None", is counted as unset rather than
-       guessed at. The panel drew invented figures here (Photographer 61,
-       Editor 14) on a platform with three vendors. */
-    const byProf = await prisma.inquiry_settings.groupBy({
-      by: ['background'],
+    /* 🏷️ Vendors per profession — the trade each vendor chose (vendors.profession: at sign-up, or by loading a
+       preset in their inquiry form). A vendor with none is counted as unset rather than guessed at. */
+    const byProf = await prisma.vendors.groupBy({
+      by: ['profession'],
       _count: { _all: true },
     });
     const professions = byProf
-      .filter(p => p.background && p.background !== 'none')
-      .map(p => ({ key: p.background, count: p._count._all }))
+      .filter(p => p.profession)
+      .map(p => ({ key: p.profession, count: p._count._all }))
       .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
     const profUnset = total - professions.reduce((n, p) => n + p.count, 0);
 

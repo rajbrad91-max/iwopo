@@ -438,6 +438,9 @@
 .cs-empty { color: var(--muted); }
 .cs-card { padding: 18px; cursor: pointer; }
 .cs-card-ic { font-size: 30px; }
+/* 📖 the trade's sample contract — set apart from the vendor's own templates */
+.cs-card.is-sample { border-style: dashed; }
+.cs-sample-note { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 .cs-card-name { font-weight: 700; margin-top: 6px; }
 .cs-card-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
 .cs-msg { font-size: 13px; }
@@ -1432,7 +1435,6 @@
 
 /* right-column panels already get card chrome from .lead-right > * */
 .bd-side { min-width: 0; }
-.bd-contract-head { margin: 0; }
 .lead-right .bd-input,
 .lead-right .bd-doc { background: var(--panel); }
 

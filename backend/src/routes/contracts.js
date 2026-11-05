@@ -1,5 +1,4 @@
 import express from 'express';
-import { WEDDING_AGREEMENT } from '../../../frontend/src/lib/contractStarters.js';   // one source for the starter, shared with Contract setup
 import { htmlToPdf } from '../lib/pdf.js';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -36,27 +35,12 @@ export async function audit(contractId, event, ip, meta) {
  * otherwise the vendor's first. Shared by preview, creation and the portal's
  * regeneration path so all three draw from the same template.
  */
-/**
- * 📝 A vendor with no contract template gets the ready-made Event Coverage Agreement as their default — their own copy,
- * every word editable in Contract setup (2026-10-28). Before this a new vendor's first contract failed with
- * "No contract template yet". Runs only when the vendor has none at all.
- */
-export async function ensureStarterTemplate(vendorId) {
-  if (!vendorId) return null;
-  if (await prisma.contract_templates.count({ where: { vendor_id: vendorId } })) return null;   // 🔒 tenancy
-  const { name, event_type, header, accent, font_style, sections, legal_terms } = WEDDING_AGREEMENT;
-  return prisma.contract_templates.create({
-    data: { vendor_id: vendorId, name, event_type, header, accent, font_style, sections, legal_terms, is_default: true },
-  });
-}
-
 export async function templateForLead(lead, templateId = null) {
   if (templateId) {
     return prisma.contract_templates.findFirst({
       where: { id: Number(templateId), vendor_id: lead.vendor_id },   // 🔒 tenancy
     });
   }
-  await ensureStarterTemplate(lead.vendor_id);
   const tpls = await prisma.contract_templates.findMany({
     where: { vendor_id: lead.vendor_id },                             // 🔒 tenancy
     orderBy: { id: 'asc' },
@@ -626,7 +610,6 @@ router.get('/templates', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
     if (!v) return res.status(400).json({ error: 'No vendor' });
-    await ensureStarterTemplate(Number(v));   // 📝 a vendor with none starts from the ready-made agreement
     const templates = await prisma.contract_templates.findMany({
       where: { vendor_id: Number(v) },          // 🔒 tenancy
       orderBy: { id: 'asc' },
@@ -843,7 +826,8 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
        for the event type. Before, the vendor previewed the default while the client signed the chosen one. */
     const built = await prisma.contracts.findFirst({ where: { lead_id: lead.id }, orderBy: { id: 'desc' }, select: { template_id: true } });   // 🔒 the lead was checked above
     const t = await templateForLead(lead, built?.template_id ?? null);
-    if (!t) return res.status(400).json({ error: 'No contract template yet. Create one in Contracts & Invoices → Contract setup.' });
+    // 📖 no contract is made for a vendor (Raj, 2026-11-05): they copy their trade's sample, or write their own
+    if (!t) return res.status(400).json({ error: 'No contract yet. In Contracts & Invoices → Contract setup, open the sample for your trade and choose "Make my own copy" — or create a new template.' });
 
     const vendor = await prisma.vendors.findUnique({
       where: { id: lead.vendor_id },

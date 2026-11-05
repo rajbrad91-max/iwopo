@@ -6,7 +6,7 @@ import PreEvents from '../components/PreEvents';
 import { ContactStrip, MainEventCard, PreEventCards, NotesCard } from '../components/LeadCards';
 import AutoReleaseToggle from '../components/AutoReleaseToggle';
 import { useAutoRelease } from '../lib/useAutoRelease';
-import { WEDDING_AGREEMENT } from '../lib/contractStarters';
+import { contractSampleFor } from '../lib/contractSamples';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import FileFlyerView from './FileFlyerView';
@@ -47,6 +47,7 @@ import DomainSettings from '../components/DomainSettings';
 import { clientBase, inquiryUrl, setClientBase } from '../lib/clientBase';
 import BillingBanner from '../components/BillingBanner';
 import HelpView from '../components/HelpView';
+import { professionLabel } from '../lib/professions';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -4226,8 +4227,7 @@ const CT_SAMPLE = {
   client_name: 'Priya & Arjun', client_email: 'priya@example.com',
   event_type: 'Wedding', event_date: '29 October 2028',
   location: 'Abbotsford, BC', hours: '8', guests: '150',
-  package_name: 'Standard Package', total_cost: '$4,200',
-  deposit: '$1,260', balance: '$2,940',
+  package_name: 'Standard Package',
   /* ⚠️ en-GB, to match the event_date sample above. Leaving this to the
      browser's locale meant a contract showed "29 October 2028" and
      "October 7, 2026" in the same breath. */
@@ -4248,7 +4248,8 @@ function fillSample(text, overrides) {
   /* ⚠️ The template's OWN settings win over the sample. CT_SAMPLE stands in
      for a client's details — it must not contradict what this template says
      it is for, which is how a Reception template previewed as a Wedding. */
-  const values = { ...CT_SAMPLE, ...(overrides || {}) };
+  // 💱 example amounts in the vendor's own currency (fmtMoney), as a real contract shows them
+  const values = { ...CT_SAMPLE, total_cost: fmtMoney(4200), deposit: fmtMoney(1260), balance: fmtMoney(2940), ...(overrides || {}) };
   return String(text || '').replace(/\{\{(\w+)\}\}/g, (m, k) =>
     values[k] !== undefined && values[k] !== '' ? values[k] : m);
 }
@@ -4368,7 +4369,8 @@ function paintPlaceholdersHtml(html) {
 
 function ContractSetup() {
   const [studio, setStudio] = useState('');   // the vendor's own name for the sample preview
-  useEffect(() => { api.myProfile().then(d => setStudio(d.profile?.business_name || '')).catch(() => {}); }, []);
+  const [trade, setTrade] = useState('other');   // 🧑‍💼 their trade — which sample contract they see
+  useEffect(() => { api.myProfile().then(d => { setStudio(d.profile?.business_name || ''); setTrade(d.profile?.profession || 'other'); }).catch(() => {}); }, []);
   const dialog = useDialog();
   const [tpls, setTpls] = useState([]);
   /* ⚠️ TRUE to begin with: "No templates yet" must not appear before the
@@ -4433,9 +4435,12 @@ function ContractSetup() {
   const sections = sel?.sections?.length ? sel.sections : [];
 
   /** 📝 a complete, ready-made wedding agreement — the vendor's own copy, fully editable */
-  async function addWedding() {
+  /* 📖 the sample contract for the vendor's trade — read-only; "Make my own copy" turns it into their template */
+  const [viewSample, setViewSample] = useState(false);
+  async function copySample() {
     try {
-      const d = await api.addCtTemplate(WEDDING_AGREEMENT);
+      const d = await api.addCtTemplate(contractSampleFor(trade));
+      setViewSample(false);
       setSel(d.template);
       setSelClean(JSON.stringify(d.template));
       load();
@@ -4535,6 +4540,25 @@ function ContractSetup() {
   const assembled = sel ? templateAssembled(sel) : '';
   const previewHtml = showRaw ? paintPlaceholdersHtml(assembled) : fillSample(assembled, { event_type: sel?.event_type, ...(studio ? { company_name: studio } : {}) });
   const initialCount = (sel?.sections || []).filter(x => x.initial).length;
+
+  if (viewSample) {
+    const smp = contractSampleFor(trade);
+    return (
+      <div className="cs-wide">
+        <div className="cs-bar">
+          <button className="refresh" onClick={() => setViewSample(false)}>← Back</button>
+          <div className="cs-bar-right">
+            <button className="refresh cs-save-top" onClick={copySample}>📋 Make my own copy</button>
+          </div>
+        </div>
+        <p className="cs-sample-note">📖 A sample {professionLabel(trade)} contract — an example to read, not legal advice. Make your own copy to edit it, and have it reviewed by a lawyer before you use it.</p>
+        <div className="cs-preview-doc ct-doc">
+          <div className={`ct-theme ct-accent-${smp.accent} ct-fonts-${smp.font_style}`}
+            dangerouslySetInnerHTML={{ __html: fillSample(templateAssembled(smp), { event_type: smp.event_type, ...(studio ? { company_name: studio } : {}) }) }} />
+        </div>
+      </div>
+    );
+  }
 
   if (sel) return (
     <div className="cs-wide">
@@ -4711,12 +4735,17 @@ function ContractSetup() {
       <div className="cs-head">
         <div className="cs-hint">🛠️ Build your own contracts — each term gets its own card, placeholders auto-fill</div>
         <button className="refresh cs-new" onClick={add}>+ New template</button>
-        <button className="refresh cs-new" onClick={addWedding} title="Your own copy of a complete wedding agreement — every word, colour and font stays editable">+ Wedding agreement</button>
       </div>
       {msg && <div className="err-banner">{msg}</div>}
       <div className="cs-grid">
         {loading && <div className="cs-empty">Loading…</div>}
         {!loading && tpls.length === 0 && <div className="cs-empty">No templates yet — create one 👆</div>}
+        {/* 📖 the sample for their trade, first — to read, and copy if they like it */}
+        <div className="table-wrap cs-card is-sample" onClick={() => setViewSample(true)}>
+          <div className="cs-card-ic">📖</div>
+          <div className="cs-card-name">Sample: {contractSampleFor(trade).name}</div>
+          <div className="cs-card-meta">{professionLabel(trade)} · read-only · make your own copy</div>
+        </div>
         {tpls.map(t => {
           const n = (t.sections || []).filter(x => x.initial).length
             || (t.body?.match(/\[INITIAL\]/g) || []).length;
@@ -5456,6 +5485,8 @@ function FieldBuilder({ fields, setFields, onTrade }) {
 }
 
 function InqFormSettings() {
+  /* 🧑‍💼 a preset loaded here sets the vendor's trade when the form is saved (Contract setup's sample follows it) */
+  const [chosenTrade, setChosenTrade] = useState(null);
   // 🔗 The vendor's public handle. It comes from the server rather than the
   // stored session because a vendor who logged in before handles existed has a
   // session that predates the field, and their link would render "undefined".
@@ -5476,6 +5507,7 @@ function InqFormSettings() {
     setSaving(true);
     try {
       await api.saveInquirySettings(s);
+      if (chosenTrade) { await api.setProfession(chosenTrade); setChosenTrade(null); }
       // Re-read from the server rather than trusting the local copy. A save that
       // half-succeeded, or a second tab editing the same form, would otherwise
       // leave the panel showing something the public form never received —
@@ -5566,7 +5598,7 @@ function InqFormSettings() {
           <FieldBuilder
             fields={s.custom_fields || []}
             setFields={(f) => setS(prev => ({ ...prev, custom_fields: f }))}
-            onTrade={(key) => setS(prev => ({ ...prev, background: key, details_heading: '' }))}
+            onTrade={(key) => { setS(prev => ({ ...prev, background: key, details_heading: '' })); setChosenTrade(key); }}
           />
         </div>
 
@@ -6252,8 +6284,6 @@ function BookingDetail({ id, onBack }) {
   const [busy, setBusy] = useState(false);
   const [assign, setAssign] = useState({ crew_member_id: '', duty: '', arrive_time: '', leave_time: '' });
   const assignLock = useRef(false);
-  const [gateway, setGateway] = useState(false);
-  const [timer, setTimer] = useState({ enabled: false, hours: 72, started_at: null });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   useEffect(() => { load(); }, [id]);
@@ -6261,28 +6291,7 @@ function BookingDetail({ id, onBack }) {
     try {
       const data = await api.booking(id);
       setD(data);
-      const lead = data.booking || {};
-      setGateway(!!lead.gateway_enabled);
-      setTimer({
-        enabled: !!lead.timer_enabled,
-        hours: lead.timer_hours ?? 72,
-        started_at: lead.timer_started_at || null,
-      });
     } catch (e) { setErr(e.message); }
-  }
-  async function toggleGateway() {
-    const next = !gateway;
-    setGateway(next);
-    try { await api.setGateway(id, next); flash(next ? '🔒 Secure login ON' : '🔓 Secure login OFF'); }
-    catch (e) { setGateway(!next); flash('⚠️ ' + e.message); }
-  }
-  async function saveTimer(opts = {}) {
-    const next = { enabled: timer.enabled, hours: Number(timer.hours) || 72, ...opts };
-    try {
-      const d = await api.saveTimer(id, next);
-      setTimer({ enabled: d.timer_enabled, hours: d.timer_hours, started_at: d.timer_started_at });
-      flash('✅ Timer saved');
-    } catch (e) { flash('⚠️ ' + e.message); }
   }
   function flash(m) { setMsg(m); setTimeout(() => setMsg(''), 2000); }
 
@@ -6379,50 +6388,9 @@ function BookingDetail({ id, onBack }) {
           {/* Same money controls as the lead page — a booking is the same record */}
           <MoneySection lead={b} />
 
-          {/* ── paperwork: kept indefinitely, downloadable any time.
+          {/* ── paperwork: kept indefinitely, downloadable any time. The offer's Secure and Timer controls belong to the
+              lead page, before a booking — a booked client has accepted the offer (Raj, 2026-11-05).
               No ld-card wrapper — .lead-right already paints each child as a card. ── */}
-          <div className="bd-side">
-            <div className="ctb-head bd-contract-head">
-              <div className="ctb-title-row">
-                <h3 className="ctb-h3">📄 Contract</h3>
-                <button
-                  className="refresh ctb-preview"
-                  title="Open the contract the client will see, in a new tab"
-                  onClick={() => window.open(`/contract-preview/${b.id}`, '_blank')}>
-                  👁️ Preview
-                </button>
-              </div>
-              <div className="ctb-actions">
-                <button
-                  className={`refresh ld-gate ld-btn-sm ${gateway ? 'is-on' : ''}`}
-                  onClick={toggleGateway}
-                  title={gateway
-                    ? 'Secure login is ON — client must confirm their email before opening the portal'
-                    : 'Secure login is OFF — turn on to require email confirmation before the client portal opens'}
-                >🔒 Secure {gateway ? 'ON' : 'OFF'}</button>
-                <div className={`ld-timer-btn ${timer.enabled ? 'is-on' : ''}`} title="How long the package offer stays valid after you send it">
-                  <button
-                    className="ld-timer-toggle"
-                    onClick={() => saveTimer({ enabled: !timer.enabled })}
-                    title={timer.enabled
-                      ? 'Offer timer is ON — click to turn off the countdown'
-                      : 'Offer timer is OFF — click to start a countdown when packages are sent'}
-                  >⏳ Timer {timer.enabled ? 'ON' : 'OFF'}</button>
-                  <input className="ld-timer-hrs" type="number" min="1" max="720" value={timer.hours}
-                    onChange={e => setTimer(x => ({ ...x, hours: e.target.value }))}
-                    onBlur={() => timer.enabled && saveTimer()}
-                    title="Hours the offer stays valid after packages are sent" />
-                  <span className="ld-timer-unit">h</span>
-                </div>
-              </div>
-            </div>
-            {timer.enabled && timer.started_at && (
-              <div className="ld-timer-status">
-                ▶ Expires in <b>{expiryText(timer.started_at, timer.hours)}</b>
-              </div>
-            )}
-          </div>
-
           <div className="bd-side">
             <div className="ld-card-h">📄 Documentation</div>
             <div className="bd-docs">

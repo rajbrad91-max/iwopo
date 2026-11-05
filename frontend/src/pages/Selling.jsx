@@ -177,7 +177,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const [services, setServices] = useState([]);
   const [packages, setPackages] = useState([]);
   const [cycle, setCycle] = useState('monthly');
-  const [form, setForm] = useState({ businessName: '', email: '', password: '' });
+  const [form, setForm] = useState({ businessName: '', email: '', password: '', profession: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verify, setVerify] = useState(null);   // ✉️ { email, code } after sign-up: the emailed code comes next
@@ -229,10 +229,11 @@ export default function Selling({ onSignup, onGoLogin }) {
   async function handleSignup() {
     setError('');
     if (!form.businessName || !form.email || !form.password) { setError('Please fill in all fields'); return; }
+    if (!form.profession) { setError('Please choose your trade — or Other'); return; }
     if (!passwordReady(form.password, { email: form.email, business: form.businessName })) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
     setLoading(true);
     try {
-      const r = await api.signup(form.businessName, form.email, form.password);
+      const r = await api.signup(form.businessName, form.email, form.password, form.profession);
       if (r.verify) { setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent }); return; }   // ✉️ confirm the address first
       setSession(r.token, r.user);
       onSignup(r.user);
@@ -483,6 +484,12 @@ export default function Selling({ onSignup, onGoLogin }) {
                 <p className="sl-signup-sub">Free trial · cancel anytime</p>
                 <label htmlFor="sl-biz">Business name</label>
                 <input id="sl-biz" value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="e.g. Rosewood Photography" />
+                {/* 🧑‍💼 their trade: Contract setup shows them a sample contract for it (Other: a general one) */}
+                <label htmlFor="sl-trade">Your trade</label>
+                <select id="sl-trade" value={form.profession} onChange={e => set('profession', e.target.value)}>
+                  <option value="" disabled hidden>Choose your trade…</option>
+                  {PROFESSION_LIST.map(p => <option key={p.key} value={p.key}>{p.icon} {p.label}</option>)}
+                </select>
                 <label htmlFor="sl-email">Email</label>
                 <input id="sl-email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@studio.com" />
                 <label htmlFor="sl-pass">Password</label>

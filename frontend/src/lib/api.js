@@ -450,8 +450,8 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, device_token: trustedDevice(email) }) }),
   loginCode: (ticket, code, remember) => request('/auth/login/code', { method: 'POST', body: JSON.stringify({ ticket, code, remember }) }),
   loginResend: (ticket) => request('/auth/login/resend', { method: 'POST', body: JSON.stringify({ ticket }) }),
-  signup: (businessName, email, password) =>
-    request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password }) }),
+  signup: (businessName, email, password, profession) =>
+    request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password, profession }) }),
   verifyEmail: (email, code) => request('/auth/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
   resendCode: (email) => request('/auth/resend', { method: 'POST', body: JSON.stringify({ email }) }),
   confirmEmailChange: (code) => request('/me/email/confirm', { method: 'PUT', body: JSON.stringify({ code }) }),
@@ -743,6 +743,7 @@ export const api = {
   updateLead: (id, data) => request(`/leads/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   myCurrencies: () => request('/me/currencies'),
   mySettings: () => request('/me/settings'),
+  setProfession: (profession) => request('/me/profession', { method: 'PUT', body: JSON.stringify({ profession }) }),
   saveSettings: (data) => request('/me/settings', { method: 'PUT', body: JSON.stringify(data) }),
   updateMyName: (name) => request('/me/account', { method: 'PUT', body: JSON.stringify({ name }) }),
   changeEmail: (email, password) => request('/me/email', { method: 'PUT', body: JSON.stringify({ email, password }) }),

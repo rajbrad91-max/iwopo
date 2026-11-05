@@ -815,6 +815,7 @@ model vendors {
   email_log                email_log[]
   id                       Int                        @id @default(autoincrement())
   business_name            String                     @db.VarChar(200)
+  profession               String?                    @db.VarChar(40)   // 🧑‍💼 the vendor's trade (lib/professions)
   status                   String?                    @default("trial") @db.VarChar(50)
   storage_mb               Int?                       @default(0)
   country                  String?                    @db.VarChar(100)
