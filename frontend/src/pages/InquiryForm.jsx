@@ -40,6 +40,98 @@ function usefulLink(url) {
   catch { return false; }
 }
 
+/**
+ * 🧾 The inquiry form's frame — the vendor's theme, colour, font, their trade's drawing behind the card, and the
+ * header with their logo, name and intro. The client's form, its thank-you, and the panel's Edit Details all draw
+ * it, so a lead is edited in exactly the form the client filled in (Raj, 2026-11-05). `embedded` keeps it inside
+ * the panel: no full-screen height, the drawing held within its own area.
+ */
+export function InquiryShell({ cfg, intro = true, art = true, embedded = false, aside = null, children }) {
+  const c = cfg || {};
+  const [logoOk, setLogoOk] = useState(true);
+  return (
+    <div className={`iq-wrap${embedded ? ' is-embedded' : ''}`} style={themeStyleObject(c.brand_color || '#2dd4bf', c.theme, c.font || 'Inter')}>
+      {/* 🖼️ one big drawing for the vendor's trade behind the card ("None": plain) */}
+      {art && <ProfessionArt trade={c.background} />}
+      <div className={`iq-card iq-theme-${c.theme || DEFAULT_THEME}`}>
+        {/* header: logo (or initials) on top, brand + intro under it — every theme */}
+        <div className="iq-hd">
+          {/* 🎨 a soft wash of the studio's colour, the logo in a white circle overlapping it (design 3, 2026-11-03) */}
+          <div className="iq-band" aria-hidden="true" />
+          {/* a logo that fails to load is never an empty box — the studio's initials in a circle instead */}
+          <div className="iq-badge">
+            {c.logo_path && logoOk
+              ? <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={() => setLogoOk(false)} />
+              : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
+          </div>
+          <div className="iq-hd-text">
+            <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
+            {intro && (usefulLink(c.intro_link)
+              ? <a className="iq-sub iq-sub-link" href={c.intro_link} target="_blank" rel="noopener noreferrer">{c.intro_text || 'Tell us about your event'} ↗</a>
+              : <p className="iq-sub">{c.intro_text || 'Tell us about your event'}</p>)}
+          </div>
+        </div>
+        {children}
+      </div>
+      {aside}
+    </div>
+  );
+}
+
+/** Bring the first problem into view and put the cursor in it. */
+export function focusFirstProblem(field) {
+  requestAnimationFrame(() => {
+    const box = document.querySelector(`[data-field="${field}"]`);
+    if (!box) return;
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    box.querySelector('input, select, textarea')?.focus({ preventScroll: true });
+  });
+}
+
+/**
+ * ✅ Every problem with a filled-in form, top to bottom in the order the boxes appear — the client's form and the
+ * panel's Edit Details check with the same rules. `editing` is the vendor correcting a lead: an event date may be
+ * in the past (an old booking), and a question the client left unanswered does not block saving — the vendor may
+ * not know it yet — while a wrong answer (an email, a phone, a number, an end before the start) still does.
+ * `bookingKeys` are the booking facts Edit Details asks for because the form does not.
+ */
+export function formProblems(cfg, p, answers, { editing = false, bookingKeys = [] } = {}) {
+  const problems = [];
+  if (!editing && !p.role) problems.push({ field: 'role', message: 'Please choose your role' });
+  if (!String(p.name || '').trim()) problems.push({ field: 'name', message: 'Please enter your name' });
+  if (!String(p.email || '').trim()) problems.push({ field: 'email', message: 'Please enter your email' });
+  // same rule the server enforces, so a typo is caught before the round-trip
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) problems.push({ field: 'email', message: 'That email address does not look right' });
+  if (!String(p.phone || '').trim()) { if (!editing) problems.push({ field: 'phone', message: 'Please enter your phone number' }); }
+  else if (phoneProblem(p.phone)) problems.push({ field: 'phone', message: phoneProblem(p.phone) });
+  if (instaProblem(p.instagram)) problems.push({ field: 'instagram', message: instaProblem(p.instagram) });
+  // 🔀 only the questions that are actually shown are checked
+  const shown = shownFields(cfg.custom_fields || [], answers, p);
+  for (const x of allProblems(shown, answers, { editing })) problems.push({ field: `f:${x.id}`, message: x.message });
+  for (const b of BOOKING_FIELDS.filter(f => bookingKeys.includes(f.key))) {
+    const v = p[b.key];
+    if (b.type === 'time' && v === PARTIAL_TIME) problems.push({ field: `booking:${b.key}`, message: `Please finish the time for "${b.label}"` });
+    if (b.type === 'number' && v !== '' && v != null && !/^\d+$/.test(String(v))) problems.push({ field: `booking:${b.key}`, message: `"${b.label}" needs a number` });
+  }
+  return problems;
+}
+
+/** The answers as a lead stores them: an unticked box is "No", "Other" with nothing typed is no answer, numbers
+ *  lose their commas and $ signs, and the pre-events list loses its empty cards. Only the questions `shown`. */
+export function formAnswers(shown, answers) {
+  const custom = {};
+  for (const f of shown) {
+    if (f.type === 'heading') continue;                    // a section title asks nothing
+    custom[f.id] = answers[f.id] === OTHER ? '' : answers[f.id];
+    // 🗓️ the pre-events list, without the empty cards and the keys that only kept the cards apart on screen
+    if (f.type === 'pre_events') custom[f.id] = (answers[f.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim());
+    if (f.type === 'checkbox') custom[f.id] = answers[f.id] === true;
+    // 349.99 stays 349.99 — kept as written, without commas or a $ sign
+    if (f.type === 'number' && custom[f.id] !== undefined && custom[f.id] !== '') custom[f.id] = plainNumber(custom[f.id]);
+  }
+  return custom;
+}
+
 export default function InquiryForm({ handle, byHost = false }) {
   // 🍯 spam guards: a box people never see, and when the form opened (routes/leads.js)
   const [trap, setTrap] = useState('');
@@ -60,7 +152,6 @@ export default function InquiryForm({ handle, byHost = false }) {
   // every problem found, keyed by the box it belongs to — all are shown at once (QA 2026-10-10)
   const [errs, setErrs] = useState({});
   const [busy, setBusy] = useState(false);
-  const [logoOk, setLogoOk] = useState(true);
   useDocumentTitle(cfg?.brand_name);
 
   const [p, setP] = useState({ role: '', name: '', email: '', phone: '', instagram: '', heard: '' });
@@ -78,50 +169,20 @@ export default function InquiryForm({ handle, byHost = false }) {
         .catch(() => { setGone(true); setCfg({}); });
   }, [handle, byHost]);
 
-  /** Point at the field: outline it, bring it into view, put the cursor in it. */
   /** Mark every problem, and take the client to the first one. */
   function fail(list) {
-    const all = Array.isArray(list) ? list : [list];
-    setErrs(Object.fromEntries(all.map(x => [x.field, x.message])));
-    const first = all[0]?.field;
-    requestAnimationFrame(() => {
-      const box = document.querySelector(`[data-field="${first}"]`);
-      if (!box) return;
-      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      box.querySelector('input, select, textarea')?.focus({ preventScroll: true });
-    });
+    setErrs(Object.fromEntries(list.map(x => [x.field, x.message])));
+    focusFirstProblem(list[0]?.field);
   }
 
   async function submit() {
     setErr(''); setErrs({});
-    // top to bottom, in the order the client sees the boxes — every problem at once
-    const problems = [];
-    if (!p.role) problems.push({ field: 'role', message: 'Please choose your role' });
-    if (!p.name.trim()) problems.push({ field: 'name', message: 'Please enter your name' });
-    if (!p.email.trim()) problems.push({ field: 'email', message: 'Please enter your email' });
-    // same rule the server enforces, so a typo is caught before the round-trip
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) problems.push({ field: 'email', message: 'That email address does not look right' });
-    if (!p.phone.trim()) problems.push({ field: 'phone', message: 'Please enter your phone number' });
-    else if (phoneProblem(p.phone)) problems.push({ field: 'phone', message: phoneProblem(p.phone) });
-    if (instaProblem(p.instagram)) problems.push({ field: 'instagram', message: instaProblem(p.instagram) });
-    // 🔀 only the questions the client can actually see are checked — and sent
-    const shown = shownFields(cfg.custom_fields || [], answers, p);
-    for (const x of allProblems(shown, answers)) problems.push({ field: `f:${x.id}`, message: x.message });
+    const problems = formProblems(cfg, p, answers);
     if (problems.length) return fail(problems);
     setBusy(true);
     try {
-      // An unticked box is an answer. Leaving it out of custom_data made the
-      // lead look as if the question had never been asked.
-      const custom = {};
-      for (const f of shown) {
-        if (f.type === 'heading') continue;                    // a section title asks nothing
-        custom[f.id] = answers[f.id] === OTHER ? '' : answers[f.id];   // "Other" with nothing typed is no answer
-        // 🗓️ the pre-events list, without the empty cards and the keys that only kept the cards apart on screen
-        if (f.type === 'pre_events') custom[f.id] = (answers[f.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim());
-        if (f.type === 'checkbox') custom[f.id] = answers[f.id] === true;
-        // 349.99 stays 349.99 — kept as the client wrote it, without commas or a $ sign
-        if (f.type === 'number' && custom[f.id] !== undefined && custom[f.id] !== '') custom[f.id] = plainNumber(custom[f.id]);
-      }
+      // 🔀 only the questions the client can actually see are sent
+      const custom = formAnswers(shownFields(cfg.custom_fields || [], answers, p), answers);
       await api.createLead({
         vendor_slug: who,
         name: p.name, email: p.email, phone: p.phone,
@@ -148,59 +209,22 @@ export default function InquiryForm({ handle, byHost = false }) {
   /* 🎉 The thank-you keeps the vendor's colour, font, name and logo — it used to
      switch to plain beige, so the client seemed to land on another site. */
   if (done) {
-    const b = cfg?.brand_color || '#2dd4bf';
     return (
-      <div className="iq-wrap" style={themeStyleObject(b, cfg?.theme, cfg?.font || 'Inter')}>
-        <div className={`iq-card iq-theme-${cfg?.theme || DEFAULT_THEME}`}>
-          <div className="iq-hd">
-            <div className="iq-band" aria-hidden="true" />
-            <div className="iq-badge">
-              {cfg?.logo_path && logoOk
-                ? <img className="iq-logo" src={`/api/me/logo/${cfg.logo_path}`} alt="" onError={() => setLogoOk(false)} />
-                : <div className="iq-mono" aria-hidden="true">{initials(cfg?.brand_name)}</div>}
-            </div>
-            <div className="iq-hd-text"><div className="iq-brand">{cfg?.brand_name || 'Booking Inquiry'}</div></div>
-          </div>
+      <InquiryShell cfg={cfg} intro={false} art={false}>
           <div className="iq-done">
             <div className="iq-check">✓</div>
             <h2>{firstName(p.name) ? `Thank you, ${firstName(p.name)}!` : 'Thank you!'} 🎉</h2>
             <p>Your inquiry has been sent. We&apos;ll be in touch soon.</p>
           </div>
-        </div>
-      </div>
+      </InquiryShell>
     );
   }
 
   if (!cfg) return <div className="iq-wrap"><div className="iq-card">Loading…</div></div>;
 
   const c = cfg;
-  const brand = c.brand_color || '#2dd4bf';
-  const font = c.font || 'Inter';
-  const theme = c.theme || DEFAULT_THEME;
-
   return (
-    <div className="iq-wrap" style={themeStyleObject(brand, cfg.theme, font)}>
-      {/* 🖼️ one big drawing for the vendor's trade behind the card ("None": plain) */}
-      <ProfessionArt trade={c.background} />
-      <div className={`iq-card iq-theme-${theme}`}>
-        {/* header: logo (or initials) on top, brand + intro under it — every theme */}
-        <div className="iq-hd">
-          {/* 🎨 a soft wash of the studio's colour, the logo in a white circle overlapping it (design 3, 2026-11-03) */}
-          <div className="iq-band" aria-hidden="true" />
-          {/* a logo that fails to load is never an empty box — the studio's initials in a circle instead */}
-          <div className="iq-badge">
-            {c.logo_path && logoOk
-              ? <img className="iq-logo" src={`/api/me/logo/${c.logo_path}`} alt="" onError={() => setLogoOk(false)} />
-              : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
-          </div>
-          <div className="iq-hd-text">
-            <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
-            {usefulLink(c.intro_link)
-              ? <a className="iq-sub iq-sub-link" href={c.intro_link} target="_blank" rel="noopener noreferrer">{c.intro_text || 'Tell us about your event'} ↗</a>
-              : <p className="iq-sub">{c.intro_text || 'Tell us about your event'}</p>}
-          </div>
-        </div>
-
+    <InquiryShell cfg={c} aside={c.chat ? <ChatWidget handle={who} businessName={c.brand_name} botName={c.bot_name} /> : null}>
         <div className="iq-body">
           <LeadFormBody cfg={c} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes}
             clientForm errs={errs} />
@@ -216,10 +240,7 @@ export default function InquiryForm({ handle, byHost = false }) {
           </button>
           <p className="iq-req-note">Fields marked * are required</p>
         </div>
-      </div>
-      {/* 🤖 only for vendors subscribed to the chatbot */}
-      {c.chat && <ChatWidget handle={who} businessName={c.brand_name} botName={c.bot_name} />}
-    </div>
+    </InquiryShell>
   );
 }
 
@@ -230,7 +251,17 @@ export default function InquiryForm({ handle, byHost = false }) {
 /** Question types that take the whole row rather than half of it. */
 const FULL_WIDTH = new Set(['checkbox', 'paragraph', 'heading', 'pre_events']);
 
-export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, clientForm = false, errs = {} }) {
+/** 📅 The booking facts a contract needs. Edit Details asks for the ones the vendor's form does not (LeadFormBody
+ *  `bookingKeys`), with the form's own date, time, location and number questions. */
+export const BOOKING_FIELDS = [
+  { key: 'event_date', type: 'date', label: 'Event date' },
+  { key: 'location', type: 'location', label: 'Venue or location' },
+  { key: 'timing_from', type: 'time', label: 'Start time' },
+  { key: 'timing_to', type: 'time', label: 'End time' },
+  { key: 'guests', type: 'number', label: 'Guests (approx.)' },
+];
+
+export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, clientForm = false, errs = {}, bookingKeys = [] }) {
   const c = cfg || {};
   const box = (key, extra = '') => ({ 'data-field': key, className: `${extra} ${errs[key] ? 'iq-field-err' : ''}`.trim() || undefined });
   const note = (key) => (errs[key] ? <div className="iq-field-msg" role="alert">⚠️ {errs[key]}</div> : null);
@@ -296,6 +327,23 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
                 <CustomField fld={fld} value={answers[fld.id]} onChange={v => setAns(fld.id, v)}
                   answers={answers} fields={c.custom_fields} clientForm={clientForm} />
                 {note(`f:${fld.id}`)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 📅 Edit Details only: the booking facts the vendor's form does not ask — the contract needs them */}
+      {bookingKeys.length > 0 && (
+        <div className="iq-section">
+          <div className="iq-section-title"><span className="iq-emoji">📅 </span>The booking</div>
+          <p className="iq-section-note">Used on the contract. Fill these in once the couple confirms.</p>
+          <div className="iq-grid">
+            {BOOKING_FIELDS.filter(b => bookingKeys.includes(b.key)).map(b => (
+              <div key={b.key} {...box(`booking:${b.key}`)}>
+                <CustomField fld={{ id: `booking:${b.key}`, type: b.type, label: b.label }} value={p[b.key] ?? ''}
+                  onChange={v => setPI(b.key, v)} answers={{}} fields={[]} />
+                {note(`booking:${b.key}`)}
               </div>
             ))}
           </div>
@@ -368,9 +416,9 @@ function isEventDate(fld, fields) {
  * Returns { id, message } for the first problem, or null.
  */
 /** Every problem on the form, top to bottom. */
-export function allProblems(fields, answers) {
+export function allProblems(fields, answers, opts = {}) {
   const out = [];
-  for (const f of fields) { const p = checkAnswers([f], answers, fields); if (p) out.push(p); }
+  for (const f of fields) { const p = checkAnswers([f], answers, fields, opts); if (p) out.push(p); }
   return out;
 }
 
@@ -380,7 +428,7 @@ export function plainNumber(v) {
   return /^\d+(\.\d+)?$/.test(t) ? t : String(v).trim();
 }
 
-export function checkAnswers(fields, answers, allFields = fields) {
+export function checkAnswers(fields, answers, allFields = fields, { editing = false } = {}) {
   const today = todayLocal();
   const hours = allFields.find(f => f.type === 'hours' && f.from_field && f.to_field);
   const fromF = allFields.find(f => f.maps_to === 'timing_from') || (hours && allFields.find(f => f.id === hours.from_field));
@@ -390,12 +438,12 @@ export function checkAnswers(fields, answers, allFields = fields) {
     const v = answers[f.id];
     // ⏱️ a time with only some of hour / minutes / AM-PM picked
     if (f.type === 'time' && v === PARTIAL_TIME) return { id: f.id, message: `Please finish the time for "${f.label}"` };
-    if (v === OTHER) { if (f.required) return { id: f.id, message: `Please type your answer for "${f.label}"` }; continue; }
+    if (v === OTHER) { if (f.required && !editing) return { id: f.id, message: `Please type your answer for "${f.label}"` }; continue; }
     const empty = v === undefined || v === null || v === '' || v === false || (Array.isArray(v) && !v.length);
-    if (f.required && empty) return { id: f.id, message: `"${f.label}" is required` };
+    if (f.required && empty && !editing) return { id: f.id, message: `"${f.label}" is required` };
     if (empty) continue;
     if (f.type === 'pre_events') { const pe = preEventProblem(v, today); if (pe) return { id: f.id, message: pe }; continue; }
-    if (f.type === 'date' && isEventDate(f, allFields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
+    if (!editing && f.type === 'date' && isEventDate(f, allFields) && String(v) < today) return { id: f.id, message: 'That date has already passed — please check the event date' };
     // decimals are fine — a price or a budget has cents (QA 2026-10-10: 349.99 was refused)
     if (f.type === 'number' && !/^\d+(\.\d{1,2})?$/.test(plainNumber(v))) return { id: f.id, message: `"${f.label}" needs a number, e.g. 350 or 349.99` };
     // 👥 a guest count is at least 1 — "0 guests" is a slip, not an event (Muse comparison, 2026-10-30)

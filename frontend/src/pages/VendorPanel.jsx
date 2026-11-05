@@ -16,7 +16,7 @@ import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
 import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
 import { COUNTRIES } from '../lib/countries';
-import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber } from './InquiryForm';
+import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber, InquiryShell, formProblems, formAnswers, focusFirstProblem, BOOKING_FIELDS } from './InquiryForm';
 import { OTHER } from '../lib/formRules';
 import PasswordInput from '../components/PasswordInput';
 import './inquiry.css';
@@ -3283,7 +3283,7 @@ function LeadDetail({ lead, onBack, onSaved }) {
   const [cfg, setCfg] = useState(null);
   const [ep, setEp] = useState({
     role: lead.role || '', name: lead.name || '', email: lead.email || '', phone: lead.phone || '',
-    instagram: lead.instagram || '', heard: lead.heard || '',
+    instagram: String(lead.instagram || '').replace(/^@/, ''), heard: lead.heard || '',   // the form shows the @ itself
     event_date: lead.event_date ? String(lead.event_date).slice(0, 10) : '',
     location: lead.location || '',
     timing_from: lead.timing_from ? String(lead.timing_from).slice(0, 5) : '',
@@ -3292,31 +3292,11 @@ function LeadDetail({ lead, onBack, onSaved }) {
   });
   const [eAnswers, setEAnswers] = useState(lead.custom_data || {});
   const [eNotes, setENotes] = useState(lead.notes || '');
-  const BOOKING_KEYS = ['event_date', 'location', 'timing_from', 'timing_to', 'guests'];
-  // Snapshot fields and the vendor's current form can use different ids for the same answer.
-  const answerFields = () => [
-    ...(Array.isArray(lead.form_snapshot) ? lead.form_snapshot : []),
-    ...(cfg?.custom_fields || []),
-  ];
-  const setEpi = (k, v) => {
-    setEp(s => ({ ...s, [k]: v }));
-    if (!BOOKING_KEYS.includes(k)) return;
-    setEAnswers(s => {
-      const next = { ...s };
-      let changed = false;
-      for (const f of answerFields()) {
-        if (f.maps_to === k && next[f.id] !== v) { next[f.id] = v; changed = true; }
-      }
-      return changed ? next : s;
-    });
-  };
-  const setEAns = (id, v) => {
-    setEAnswers(s => ({ ...s, [id]: v }));
-    const fld = answerFields().find(f => f.id === id);
-    if (fld?.maps_to && BOOKING_KEYS.includes(fld.maps_to)) {
-      setEp(s => (s[fld.maps_to] === v ? s : { ...s, [fld.maps_to]: v }));
-    }
-  };
+  /* ✏️ Edit Details is the client's own inquiry form (InquiryShell + LeadFormBody), checked by the same rules. */
+  const [errs, setErrs] = useState({});
+  const clearErr = (k) => setErrs(e => { if (!e[k]) return e; const n = { ...e }; delete n[k]; return n; });
+  const setEpi = (k, v) => { setEp(s => ({ ...s, [k]: v })); clearErr(k); clearErr(`booking:${k}`); };
+  const setEAns = (id, v) => { setEAnswers(s => ({ ...s, [id]: v })); clearErr(`f:${id}`); };
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   // 📦 The vendor loads a FOLDER; its packages are copied onto this lead so they
@@ -3435,26 +3415,56 @@ function LeadDetail({ lead, onBack, onSaved }) {
      The form's Pre-Events question holds the client's original answer; Edit details shows and saves the lead's
      own list through it, so a pre-event changed or removed here is changed everywhere. */
   const preEventsField = () => (cfg?.custom_fields || []).find(f => f.type === 'pre_events');
+  /* ✏️ A question that maps to one of the lead's own columns (date, venue, times, guests, hours, event type, getting
+     ready…) starts from that column when its answer is empty — a lead added by hand, imported or older keeps those
+     facts on the lead, not in the answers, and the form must open with them, as the lead page shows them. */
+  const fromColumn = (f) => {
+    const v = lead[f.maps_to];
+    if (v === null || v === undefined || v === '') return undefined;
+    if (f.type === 'checkbox') return v === true;
+    if (f.maps_to === 'event_date') return String(v).slice(0, 10);
+    if (f.type === 'time') return String(v).slice(0, 5);
+    if (f.type === 'hours') return `${v} hr${Number(v) === 1 ? '' : 's'}`;
+    return String(v);
+  };
   function openEdit() {
     const pf = preEventsField();
-    if (pf) setEAnswers(s => ({ ...s, [pf.id]: (Array.isArray(lead.pre_events) ? lead.pre_events : []).map((e, k) => ({ ...e, _k: `saved-${k}` })) }));
+    setEAnswers(s => {
+      const next = { ...s };
+      for (const f of cfg?.custom_fields || []) {
+        const empty = next[f.id] === undefined || next[f.id] === null || next[f.id] === '';
+        if (f.maps_to && f.type !== 'pre_events' && empty) { const v = fromColumn(f); if (v !== undefined) next[f.id] = v; }
+      }
+      if (pf) next[pf.id] = (Array.isArray(lead.pre_events) ? lead.pre_events : []).map((e, k) => ({ ...e, _k: `saved-${k}` }));
+      return next;
+    });
     setEdit(true);
   }
 
+  // 📅 the booking facts the vendor's form does not ask — Edit Details asks them itself (the contract needs them)
+  const bookingKeys = BOOKING_FIELDS.map(b => b.key).filter(k => !(cfg?.custom_fields || []).some(f => f.maps_to === k));
+
   async function save() {
-    setBusy(true); setMsg('');
+    setMsg(''); setErrs({});
+    const problems = formProblems(cfg, ep, eAnswers, { editing: true, bookingKeys });
+    if (problems.length) {
+      setErrs(Object.fromEntries(problems.map(x => [x.field, x.message])));
+      return focusFirstProblem(problems[0].field);
+    }
+    setBusy(true);
     const pf = preEventsField();
     try {
+      // the answers the lead already had stay; the questions on the form are written exactly as the client's form
+      // writes them, and the server maps them onto the lead's date, venue, guests… (routes/leads.js)
+      const custom = { ...(lead.custom_data || {}), ...formAnswers(shownFields(cfg.custom_fields || [], eAnswers, ep), eAnswers) };
+      const preEvents = pf ? (eAnswers[pf.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim()) : null;
+      if (pf) custom[pf.id] = preEvents;
+      const booking = Object.fromEntries(bookingKeys.map(k => [k, ep[k] === '' || ep[k] == null ? null : ep[k]]));
       const d = await api.updateLead(lead.id, {
-        ...(pf ? { pre_events: (eAnswers[pf.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim()) } : {}),
-        name: ep.name, email: ep.email, phone: ep.phone,
-        role: ep.role, instagram: ep.instagram, heard: ep.heard,
-        notes: eNotes, custom_data: eAnswers,
-        event_date: ep.event_date || null,
-        location: ep.location || null,
-        timing_from: ep.timing_from || null,
-        timing_to: ep.timing_to || null,
-        guests: ep.guests === '' || ep.guests == null ? null : ep.guests,
+        name: ep.name, email: ep.email, phone: ep.phone, role: ep.role,
+        instagram: ep.instagram ? `@${ep.instagram}` : '', heard: ep.heard,
+        notes: eNotes, custom_data: custom, ...booking,
+        ...(pf ? { pre_events: preEvents } : {}),
       });
       if (onSaved && d?.lead) onSaved(d.lead);
       setMsg('✅ Saved'); setEdit(false);
@@ -3463,49 +3473,24 @@ function LeadDetail({ lead, onBack, onSaved }) {
   }
 
 
-  // ---- EDIT MODE ----
+  // ---- EDIT MODE: the client's own inquiry form — same theme, colours, font and questions — editable ----
   if (edit) return (
-    <div className="table-wrap ld-wrap iq-inline">
-      <button className="refresh ld-cancel" onClick={() => setEdit(false)}>← Cancel</button>
-      <h2 className="ld-h2">✏️ Edit Lead</h2>
-      {msg && <div className="ld-msg is-err">{msg}</div>}
+    <div className="ld-view">
+      <div className="ld-topbar">
+        <button className="refresh" onClick={() => { setEdit(false); setErrs({}); setMsg(''); }} title="Leave without saving">← Cancel</button>
+      </div>
       {!cfg ? <div className="loading">Loading…</div> : (
-        <>
-          <LeadFormBody cfg={cfg} p={ep} setPI={setEpi} answers={eAnswers} setAns={setEAns} notes={eNotes} setNotes={setENotes} />
-
-              {/* ⚠️ The booking essentials, always shown here whatever the
-                  public form asks. A contract without a date or a venue is
-                  not an agreement about anything. */}
-              <div className="ld-core">
-                <h3>📅 The booking</h3>
-                <p className="ld-core-note">Used on the contract. Fill these in once the couple confirms.</p>
-                <div className="ld-core-grid">
-                  <label>Event date
-                    <input type="date" value={(ep.event_date || '').slice(0, 10)}
-                      onChange={e => setEpi('event_date', e.target.value)} />
-                  </label>
-                  <label>Venue or location
-                    <input type="text" maxLength={300} placeholder="Where it happens"
-                      value={ep.location || ''} onChange={e => setEpi('location', e.target.value)} />
-                  </label>
-                  <label>Start time
-                    <input type="time" value={ep.timing_from || ''}
-                      onChange={e => setEpi('timing_from', e.target.value)} />
-                  </label>
-                  <label>End time
-                    <input type="time" value={ep.timing_to || ''}
-                      onChange={e => setEpi('timing_to', e.target.value)} />
-                  </label>
-                  <label>Guests (approx.)
-                    <input type="number" min="0" placeholder="150"
-                      value={ep.guests ?? ''} onChange={e => setEpi('guests', e.target.value)} />
-                  </label>
-                </div>
-              </div>
-          <button className="refresh ld-save" onClick={save} disabled={busy}>
-            {busy ? 'Saving…' : '💾 Save changes'}
-          </button>
-        </>
+        <InquiryShell cfg={cfg} embedded>
+          <div className="iq-body">
+            <LeadFormBody cfg={cfg} p={ep} setPI={setEpi} answers={eAnswers} setAns={setEAns} notes={eNotes} setNotes={setENotes}
+              errs={errs} bookingKeys={bookingKeys} />
+            {msg && <div className="iq-err">{msg}</div>}
+            <button className="iq-btn" onClick={save} disabled={busy}>
+              {busy ? 'Saving…' : <><span className="iq-emoji">💾 </span>Save changes</>}
+            </button>
+            <p className="iq-req-note">Fields marked * are required</p>
+          </div>
+        </InquiryShell>
       )}
     </div>
   );
