@@ -2425,12 +2425,21 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
   .leads-tabs > .refresh { flex: 1 1 0; min-width: 0; }   /* on every phone size, not only the ones that happened to stretch */
 }
 
-/* 🖥️ wider screens: the toolbar sits under the four tiles at exactly their width — History's right edge lines up
-   with the last tile ("Booked"), the spare room sits after the sort button (Raj, 2026-10-27) */
+/* 🖥️ wider screens: the toolbar sits to the right of the four tiles, so the list starts higher (Raj, 2026-11-05;
+   before: under the tiles). With room for it, on one line; with less (a tablet, a foldable, a narrow window, the
+   sidebar open, a foldable), in two lines as tall as the tiles — the four icons over Active · History — and the tiles
+   narrow to make room where they must. The switch follows the width the bar really has (a container query), not the
+   device, so the open sidebar or a narrow window count too. Phones keep their own layout (above). */
 @media (min-width: 601px) {
-  .lead-topbar { display: grid; grid-template-columns: max-content; justify-content: start; }
-  .lead-topbar > .leads-tabs { width: 100%; }
-  .leads-tabs > .lsm-wrap { margin-right: auto; }
+  .lead-topbar { container-type: inline-size; flex-wrap: nowrap; }   /* the bar itself: a container query styles only what is inside it */
+  .leads-tabs > .lsm-wrap { margin-right: 10px; }   /* the icons, then a little more room before Active · History */
+}
+@container (max-width: 939px) {
+  .lead-topbar > .lead-stats { flex: 0 1 auto; min-width: 0; grid-template-columns: repeat(4, minmax(0, 118px)); }
+  .lead-stat-lbl { white-space: normal; line-height: 1.2; }   /* "Packages Sent" may take two lines on a narrow tile */
+  .lead-topbar > .leads-tabs { flex: none; display: grid; grid-template-columns: repeat(4, 38px); gap: 8px; align-self: stretch; align-content: space-between; }
+  .leads-tabs > .lsm-wrap { margin-right: 0; }
+  .leads-tabs > .refresh { grid-column: span 2; justify-content: center; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
 }
 
 /* 📱 phones only: a slightly bigger sidebar — easier to read and tap (desktop unchanged, Raj 2026-10-27) */
