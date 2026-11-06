@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { TRIAL_DAYS } from './billing.js';
+import { usdRate, convert } from './localPrice.js';
 
 /**
  * 📋 Every plan card, in ONE place (Raj, 2026-11-06). The home page, the panel's Plans page, Super Admin and the
@@ -40,7 +41,7 @@ function planLines(p, liveKeys) {
 }
 
 /** All plans, in their order, as cards: prices, storage, chats, trial days, unlock keys and lines. */
-export async function planCards() {
+export async function planCards({ currency } = {}) {
   const [plans, live] = await Promise.all([
     prisma.plans.findMany({
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
@@ -50,6 +51,7 @@ export async function planCards() {
     prisma.services.findMany({ where: { feature_key: { not: null }, is_private: false, is_live: true }, select: { feature_key: true } }),
   ]);
   const liveKeys = new Set(live.map(s => s.feature_key));
+  const rate = await usdRate(currency);   // 🌍 the visitor's currency, as an estimate (lib/localPrice.js)
   return plans.map(p => {
     const monthly = Number(p.price_monthly);
     const lines = planLines(p, liveKeys);
@@ -57,6 +59,7 @@ export async function planCards() {
       id: p.id, key: p.code, code: p.code, name: p.name, tagline: p.tagline, icon: p.icon, sort_order: p.sort_order,
       price_monthly: monthly, price_annual: Number(p.price_annual ?? 0), storage_gb: p.storage_gb, chat_limit: p.chat_limit,
       trial_days: monthly > 0 ? TRIAL_DAYS : 0,
+      local: rate && monthly > 0 ? { currency: String(currency).toUpperCase(), monthly: convert(monthly, rate), annual: convert(Number(p.price_annual ?? 0), rate) } : null,
       features: p.plan_features.map(f => f.feature_key).filter(k => liveKeys.has(k) || k === 'custom_domain'),
       lines,
       // the shape the home page and Super Admin already render: a line is an "included" item; coming ones say so

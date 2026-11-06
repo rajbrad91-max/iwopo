@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, fmtDateTime } from '../lib/api';
+import { api, fmtDateTime, fmtMoney } from '../lib/api';
 
 /**
  * ➕ My Services (Raj, 2026-11-06): the plan a vendor is on, what it includes (the same lines as the pricing page —
@@ -18,7 +18,11 @@ export default function MyServicesView({ onPlans }) {
   const cur = b.current_plan || {};
   const card = (b.plans || []).find(p => p.code === cur.code);
   const trialOrFree = cur.code === 'free' || cur.reason === 'trial';
-  const per = (a) => (a.cycle === 'annual' ? `$${a.price_annual}/yr` : `$${a.price}/mo`);
+  const per = (a) => {
+    const unit = a.cycle === 'annual' ? '/yr' : '/mo';
+    if (a.local) return `≈ ${fmtMoney(a.cycle === 'annual' ? a.local.price_annual : a.local.price, { currency: a.local.currency })}${unit}`;   // 🌍 their currency
+    return `$${a.cycle === 'annual' ? a.price_annual : a.price}${unit}`;
+  };
   const planNames = (codes) => codes.map(c => c[0].toUpperCase() + c.slice(1)).join(' & ');
 
   async function act(a, add) {

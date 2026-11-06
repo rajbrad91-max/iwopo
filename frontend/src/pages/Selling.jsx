@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { passwordReady } from '../lib/passwordRules';
 import VerifyCode from '../components/VerifyCode';
-import { api, setSession } from '../lib/api';
+import { api, setSession, fmtMoney } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import { PROFESSION_LIST } from '../lib/professions';
 import './selling.css';
@@ -240,11 +240,19 @@ export default function Selling({ onSignup, onGoLogin }) {
   }
 
   const realPkgs = packages.filter(p => p.price_monthly != null);
-  const priceOf = (p) => Number(p.price_monthly) === 0
-    ? { big: '0', unit: '', sub: 'Free forever', free: true }
-    : cycle === 'annual'
-    ? { big: Number(p.price_annual).toFixed(2).replace(/\.00$/, ''), unit: '/yr', sub: `reg. $${Number(p.price_annual_regular || p.price_monthly * 12).toFixed(2).replace(/\.00$/, '')}` }
-    : { big: Number(p.price_monthly).toFixed(2).replace(/\.00$/, ''), unit: '/mo', sub: null };
+  /* 🌍 the visitor's own currency first, as an estimate (≈) — set in USD, charged in their currency at checkout */
+  const priceOf = (p) => {
+    if (Number(p.price_monthly) === 0) return { cur: '$', big: '0', unit: '', sub: 'Free forever', note: true };
+    const annual = cycle === 'annual';
+    const usd = Number(annual ? p.price_annual : p.price_monthly);
+    const plain = (n) => Number(n).toFixed(2).replace(/\.00$/, '');
+    const unit = annual ? '/yr' : '/mo';
+    if (p.local) {
+      return { cur: '≈', big: fmtMoney(annual ? p.local.annual : p.local.monthly, { currency: p.local.currency }), unit,
+        sub: `US$${plain(usd)} · exact amount in your currency at checkout`, note: true };
+    }
+    return { cur: '$', big: plain(usd), unit, sub: annual ? `reg. $${plain(p.price_annual_regular || p.price_monthly * 12)}` : null };
+  };
 
   return (
     <div className="sl">
@@ -390,9 +398,9 @@ export default function Selling({ onSignup, onGoLogin }) {
                   <h3>{p.name}</h3>
                   <div className="sl-pkg-tag">{p.tagline}</div>
                   <div className="sl-price">
-                    <span className="cur">$</span><span className="big">{pr.big}</span><span className="unit">{pr.unit}</span>
+                    <span className="cur">{pr.cur}</span><span className="big">{pr.big}</span><span className="unit">{pr.unit}</span>
                   </div>
-                  {pr.sub && <div className={`sl-price-sub${pr.free ? ' is-free' : ''}`}>{pr.sub}</div>}
+                  {pr.sub && <div className={`sl-price-sub${pr.note ? ' is-note' : ''}`}>{pr.sub}</div>}
                   <ul className="sl-incl">
                     {(p.included || []).map(f => (
                       <li key={f.id}><span className="ic">{f.icon}</span><span>{f.name}{f.detail ? <em> · {f.detail}</em> : ''}</span></li>

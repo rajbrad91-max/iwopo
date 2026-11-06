@@ -20,6 +20,7 @@ import { notify } from './notifications.js';
 import { serverError } from '../lib/httpError.js';
 import { planCards } from '../lib/planCatalog.js';
 import { addonsFor, addAddon, removeAddon } from '../lib/addons.js';
+import { visitorCurrency } from '../lib/localPrice.js';
 
 const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '');
 const DAY = 86_400_000;
@@ -62,7 +63,7 @@ router.get('/', async (req, res) => {
   try {
     const [access, sub, plans] = await Promise.all([
       billingAccess(v), paidSubscription(v),
-      planCards(),
+      planCards({ currency: visitorCurrency(req) }),
     ]);
     const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
@@ -71,11 +72,11 @@ router.get('/', async (req, res) => {
       trial_ends_at: access.trialEndsAt, trial_days_left: access.reason === 'trial' ? daysLeft : 0,
       subscription: sub ? { plan_id: sub.plan_id, status: sub.status, cycle: sub.billing_cycle, renews_at: sub.current_period_end, cancels: sub.cancel_at_period_end } : null,
       current_plan: await currentPlan(v).then(c => ({ code: c.plan?.code, name: c.plan?.name, reason: c.reason })),
-      addons: await addonsFor(v),
+      addons: await addonsFor(v, { currency: visitorCurrency(req) }),
       // the paid plans as cards (Free is where an unpaid account rests, never something to check out)
       plans: plans.filter(p => p.price_monthly > 0).map(p => ({
         id: p.id, code: p.code, name: p.name, icon: p.icon, tagline: p.tagline, storage_gb: p.storage_gb,
-        monthly: p.price_monthly, annual: p.price_annual || annualOf(p.price_monthly), lines: p.lines,
+        monthly: p.price_monthly, annual: p.price_annual || annualOf(p.price_monthly), lines: p.lines, local: p.local,
       })),
     });
   } catch (e) { serverError(res, e); }
@@ -122,8 +123,8 @@ router.post('/checkout', async (req, res) => {
       subscription_data: { trial_end, metadata: { vendor_id: v, plan_id: plan.id, cycle } },
       metadata: { vendor_id: v, plan_id: plan.id, cycle },
       allow_promotion_codes: true,
-      // 💵 charged in USD as priced — Stripe's Adaptive Pricing would show the buyer's local currency (Muse F-40)
-      adaptive_pricing: { enabled: false },
+      // 🌍 charged in the subscriber's own currency (Stripe Adaptive Pricing — Raj, 2026-11-06); iwopo is paid in USD
+      adaptive_pricing: { enabled: true },
       // ⚖️ what they agree to, said where they pay (pages: /terms, /refund-policy)
       custom_text: { submit: { message: `By subscribing you agree to iwopo’s Terms of Service (${APP_URL}/terms). Cancel any time in Manage billing; payments are not refunded (${APP_URL}/refund-policy).` } },
       success_url: `${APP_URL}/panel/plans?billing=done`,

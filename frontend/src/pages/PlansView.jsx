@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { api, fmtMoney } from '../lib/api';
 import './plans.css';
 
 /** The features a plan grants, in words a vendor would use. */
@@ -102,7 +102,9 @@ export default function PlansView() {
             <div key={p.id} className={`pl-card ${mine ? 'is-current' : ''}`}>
               {mine && <span className="pl-tag">Your plan</span>}
               <h3>{p.icon} {p.name}</h3>
-              <div className="pl-price"><b>{money(price)}</b><span>/{cycle === 'annual' ? 'year' : 'month'}</span></div>
+              {/* 🌍 their currency first (≈); the USD price it is set in, under it */}
+              <div className="pl-price"><b>{p.local ? `≈ ${fmtMoney(cycle === 'annual' ? p.local.annual : p.local.monthly, { currency: p.local.currency })}` : money(price)}</b><span>/{cycle === 'annual' ? 'year' : 'month'}</span></div>
+              {p.local && <div className="pl-storage">{money(price)} · exact amount in your currency at checkout</div>}
               {cycle === 'annual' && <div className="pl-storage">{money(p.annual / 12)}/month, billed yearly</div>}
               {p.tagline && <p className="pl-quiet">{p.tagline}</p>}
               {/* 📋 the same lines as the home page — generated from what the plan unlocks (lib/planCatalog.js) */}
@@ -118,7 +120,7 @@ export default function PlansView() {
         })}
       </div>
       {err && <p className="pl-banner is-bad">⚠️ {err}</p>}
-      <p className="pl-foot">Prices in USD. Checkout may show your own currency — Stripe converts it and may add a small conversion fee; you can switch to USD on the payment page. Cancel any time; you keep your plan until the end of the period.</p>
+      <p className="pl-foot">Prices are set in US dollars and shown in your currency as an estimate (≈). Checkout charges the exact amount in your currency, or in USD if you choose. Cancel any time; you keep your plan until the end of the period.</p>
     </div>
   );
 }

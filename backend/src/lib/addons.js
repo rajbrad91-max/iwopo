@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.js';
 import { stripe } from './stripe.js';
 import { currentPlan, paidSubscription } from './billing.js';
+import { usdRate, convert } from './localPrice.js';
 
 /**
  * ➕ Add-ons (Raj, 2026-11-06): extra storage (+500 GB / +1 TB / +2 TB), Crew on Essential, your own domain on Essential
@@ -16,8 +17,9 @@ const priceFor = (svc, planCode, cycle) => {
 };
 
 /** The add-ons as this vendor sees them: price on their plan, and whether each is included, theirs, open or not yet. */
-export async function addonsFor(vendorId) {
+export async function addonsFor(vendorId, { currency } = {}) {
   const vid = Number(vendorId);
+  const rate = await usdRate(currency);   // 🌍 shown in the vendor's currency, as an estimate
   const [{ plan, reason }, sub, rows, mine] = await Promise.all([
     currentPlan(vid), paidSubscription(vid),
     prisma.services.findMany({ where: isAddon, orderBy: [{ storage_gb: 'asc' }, { price: 'asc' }, { id: 'asc' }] }),
@@ -39,17 +41,21 @@ export async function addonsFor(vendorId) {
       id: s.id, name: s.name, icon: s.icon, description: s.description, storage_gb: s.storage_gb,
       price: priceFor(s, plan?.code, 'monthly'), price_annual: priceFor(s, plan?.code, 'annual'), cycle,
       plans: codes, state, ends_at: owned.get(s.id) || null, on_trial: reason === 'trial',
+      local: rate ? { currency: String(currency).toUpperCase(), price: convert(priceFor(s, plan?.code, 'monthly'), rate), price_annual: convert(priceFor(s, plan?.code, 'annual'), rate) } : null,
     };
   });
 }
 
-async function stripePriceForAddon(svc, planCode, cycle) {
-  const cents = Math.round(priceFor(svc, planCode, cycle) * 100);
-  const lookup = `iwopo_addon_${svc.id}_${cycle}_${cents}`;
+async function stripePriceForAddon(svc, planCode, cycle, currency = 'usd') {
+  const cur = String(currency).toLowerCase();
+  const rate = cur === 'usd' ? 1 : await usdRate(cur);
+  if (!rate) throw Object.assign(new Error('Add-ons are not available in this currency yet — please contact support.'), { status: 409 });
+  const cents = Math.round(convert(priceFor(svc, planCode, cycle), rate) * 100);
+  const lookup = `iwopo_addon_${svc.id}_${cycle}_${cur}_${cents}`;
   const found = await stripe('GET', '/prices', { lookup_keys: [lookup], active: true, limit: 1 });
   if (found.data?.[0]) return found.data[0].id;
   const price = await stripe('POST', '/prices', {
-    currency: 'usd', unit_amount: cents, lookup_key: lookup, transfer_lookup_key: true,
+    currency: cur, unit_amount: cents, lookup_key: lookup, transfer_lookup_key: true,
     product_data: { name: `iwopo ${svc.name}`, metadata: { service_id: svc.id } },
     recurring: { interval: cycle === 'annual' ? 'year' : 'month' }, metadata: { service_id: svc.id, cycle },
   }, { idempotencyKey: `addon-price-${lookup}` });
@@ -71,8 +77,9 @@ export async function addAddon(vendorId, serviceId) {
     paidSubscription(vid), prisma.services.findUnique({ where: { id: a.id } }), currentPlan(vid),
   ]);
   if (a.state === 'available') {
+    const { currency } = await stripe('GET', `/subscriptions/${sub.stripe_subscription_id}`);   // 🌍 the subscription's own currency
     await stripe('POST', '/subscription_items', {
-      subscription: sub.stripe_subscription_id, price: await stripePriceForAddon(svc, plan.code, a.cycle), quantity: 1,
+      subscription: sub.stripe_subscription_id, price: await stripePriceForAddon(svc, plan.code, a.cycle, currency), quantity: 1,
       proration_behavior: 'create_prorations', metadata: { service_id: svc.id, vendor_id: vid },
     }, { idempotencyKey: `addon-${vid}-${svc.id}-${Date.now()}` });
   }

@@ -595,7 +595,7 @@
 .sl-price .big { font-family: 'Sora', sans-serif; font-size: 2.4rem; font-weight: 750; color: var(--ink); letter-spacing: -.04em; }
 .sl-price .unit { color: var(--gray); font-weight: 600; margin-left: 2px; }
 .sl-price-sub { font-size: 0.82rem; color: var(--gray); margin-bottom: 8px; text-decoration: line-through; }
-.sl-price-sub.is-free { text-decoration: none; font-weight: 600; }   /* "Free forever" is a promise, not a crossed-out price */
+.sl-price-sub.is-note { text-decoration: none; }   /* "Free forever", or the USD price beside a local one — a note, not a crossed-out price */
 .sl-incl { list-style: none; padding: 0; margin: 12px 0 18px; display: grid; gap: 8px; flex: 1; align-content: start; }   /* lines from the top, never spread to fill the card */
 .sl-incl li { font-size: 0.9rem; color: var(--text); display: flex; gap: 8px; align-items: baseline; }
 .sl-incl .ic { opacity: .85; }
