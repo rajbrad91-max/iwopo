@@ -91,7 +91,11 @@ export async function adminOverview(now = new Date()) {
     mrr: round2(mrr), arr: round2(mrr * 12), owed: round2(owed),
     new_this_month: growth[growth.length - 1].sellers,
     growth,
-    plans: plans.map(p => ({ id: p.id, name: p.name, sellers: onEach.get(p.id) || 0, paying: byPlan.get(p.id)?.paying || 0, mrr: round2(byPlan.get(p.id)?.mrr || 0) })),
+    plans: [
+      ...plans.map(p => ({ id: p.id, name: p.name, sellers: onEach.get(p.id) || 0, paying: byPlan.get(p.id)?.paying || 0, mrr: round2(byPlan.get(p.id)?.mrr || 0) })),
+      // the sellers on no plan yet, so Plans in Use adds up to every seller (Muse re-test: 31 of 45)
+      ...(vendors.length > onPlan.size ? [{ id: 'none', name: 'No plan yet (free trial)', sellers: vendors.length - onPlan.size, paying: 0, mrr: 0 }] : []),
+    ],
     states,
   };
 }

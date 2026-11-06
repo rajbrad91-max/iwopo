@@ -287,6 +287,8 @@ export function logout() {
 }
 
 export function clearSession() {
+  // the cached sidebar features of whoever was signed in (and the old shared key), so the next account starts clean
+  try { Object.keys(localStorage).filter(k => k === 'vf_features' || k.startsWith('vf_features:')).forEach(k => localStorage.removeItem(k)); } catch { /* private mode */ }
   sessionStorage.removeItem('iwopo_token');
   sessionStorage.removeItem('iwopo_user');
   localStorage.removeItem('iwopo_token');

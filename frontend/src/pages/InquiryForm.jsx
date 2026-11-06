@@ -591,11 +591,13 @@ function TimeSelect({ value, onChange }) {
     <div className={`iq-time${is24 ? ' iq-time-24' : ''}`}>
       <select aria-label="Hour" value={part.h} onChange={e => put({ h: e.target.value })} onKeyDown={typeHour}>
         <option value="" disabled hidden>Hour</option>
-        {hours.map(h => <option key={h} value={h}>{h}</option>)}
+        {/* the label a browser matches when its list is open and digits are typed: "9", not "09" (Muse re-test) */}
+        {hours.map(h => <option key={h} value={h}>{String(Number(h))}</option>)}
       </select>
       <select aria-label="Minutes" value={part.mi} onChange={e => put({ mi: e.target.value })} onKeyDown={typeMinute}>
         <option value="" disabled hidden>Min</option>
-        {MINUTES.map(x => <option key={x} value={x}>:{x}</option>)}
+        {/* "30", not ":30" — typing 3 finds it */}
+        {MINUTES.map(x => <option key={x} value={x}>{x}</option>)}
       </select>
       {!is24 && (
         <select aria-label="AM or PM" value={part.ap} onChange={e => put({ ap: e.target.value })}>

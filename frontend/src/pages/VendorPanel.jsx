@@ -151,7 +151,8 @@ export default function VendorPanel({ onLogout }) {
   // seeded from the last session so the sidebar and tab render immediately;
   // the network copy replaces it a moment later and the server decides regardless
   const [features, setFeatures] = useState(() => {
-    try { const c = localStorage.getItem('vf_features'); return c ? JSON.parse(c) : null; }
+    // 🔒 per account: one key for everyone flashed the last account's sidebar after signing in as another (Muse re-test)
+    try { const c = localStorage.getItem(`vf_features:${getUser()?.id}`); return c ? JSON.parse(c) : null; }
     catch { return null; }
   });   // 🗝️ entitlements (null = loading)
   const [loading, setLoading] = useState(true);
@@ -226,7 +227,7 @@ export default function VendorPanel({ onLogout }) {
       const list = f.features || [];
       setFeatures(list);
       // seed the next load, so the tab renders without waiting for the network
-      try { localStorage.setItem('vf_features', JSON.stringify(list)); } catch { /* private mode */ }
+      try { localStorage.setItem(`vf_features:${getUser()?.id}`, JSON.stringify(list)); } catch { /* private mode */ }
       // 🌗 apply this vendor's saved theme
       const settings = await applyVendorClock(st || {});
       const th = settings.theme || 'dark';
@@ -3588,8 +3589,12 @@ function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when package
   const [webPay, setWebPay] = useState(lead.web_payment_enabled !== false);
   const [msg, setMsg] = useState('');
 
+  useEffect(() => {
+    load();   // again when packages are loaded, saved or sent
+    // …and the status with them: a send moves the lead on (📤 Package Sent), which this box showed only after a reload
+    if (refresh) api.lead(lead.id).then(r => { const s = (r?.lead || r)?.status; if (s) setStatus(s); }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
-  useEffect(() => { load(); }, [refresh]);   // again when packages are loaded, saved or sent
+  }, [refresh]);
   async function load() {
     try { const d = await api.leadPayments(lead.id); setData(d); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
   }
