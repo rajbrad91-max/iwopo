@@ -708,6 +708,9 @@ export const api = {
   trialEligible: () => request('/auth/trial-eligible'),
   // 🎫 plans — what a subscription grants, including its storage
   plansList: () => request('/vendors/plans'),
+  // 🗑️ Super Admin: delete a vendor for good
+  vendorDeletePreview: (id) => request(`/vendors/${id}/delete-preview`),
+  deleteVendor: (id, confirm) => request(`/vendors/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm }) }),
   // 💳 billing with Stripe (routes/billing.js)
   billing: () => request('/billing'),
   billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),

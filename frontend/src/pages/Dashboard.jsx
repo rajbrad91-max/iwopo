@@ -9,6 +9,7 @@ import './super.css';
 import './agentvoice.css';
 import { useDialog } from '../lib/dialog.jsx';
 import { PROFESSIONS } from '../lib/professions';
+import DeleteVendorModal from '../components/DeleteVendor';
 
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
@@ -92,7 +93,7 @@ export default function Dashboard({ onLogout }) {
             {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} overview={overview} />}
             {view === 'services' && <ServicesView packages={packages} onReload={load} />}
             {view === 'manage' && <ManageServicesView />}
-            {view === 'buyers' && <BuyersView vendors={vendors} overview={overview} />}
+            {view === 'buyers' && <BuyersView vendors={vendors} overview={overview} onChanged={load} />}
             {view === 'referrals' && <ReferralsView />}
             {view === 'billing' && <BillingView packages={packages} overview={overview} />}
             {view === 'aichat' && <AiChatView vendors={vendors} />}
@@ -1210,8 +1211,9 @@ const BILLING_STATE = {
   owner: ['👑 Owner', 'active'], paying: ['Paying', 'active'], past_due: ['Past due', 'past'], trial: ['Trial', 'trial'], expired: ['Trial ended', 'past'],
 };
 
-function BuyersView({ vendors, overview }) {
+function BuyersView({ vendors, overview, onChanged }) {
   const [openId, setOpenId] = useState(null);
+  const [delId, setDelId] = useState(null);   // 🗑️ the vendor being deleted
   const [refCount, setRefCount] = useState(0);
   useEffect(() => {
     api.referrals().then(d => setRefCount((d.referrals || []).filter(r => r.status === 'rewarded').length)).catch(() => {});
@@ -1247,13 +1249,17 @@ function BuyersView({ vendors, overview }) {
                     super admin notices someone is nearly full, and a number
                     that needs a click is a number nobody looks at. */}
                 <td>{v.storage ? <StorageCell s={v.storage} /> : <span className="sa-muted">—</span>}</td>
-                <td><button className="sa-view-btn" onClick={() => setOpenId(v.id)}>Manage</button></td>
+                <td className="sa-row-actions">
+                  <button className="sa-view-btn" onClick={() => setOpenId(v.id)}>Manage</button>
+                  <button type="button" className="sa-del-btn" title="Delete this vendor" aria-label={`Delete ${v.business_name}`} onClick={() => setDelId(v.id)}>🗑️</button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       {openId && <VendorDrawer vendorId={openId} onClose={() => setOpenId(null)} />}
+      {delId && <DeleteVendorModal vendorId={delId} onClose={() => setDelId(null)} onDeleted={() => { setDelId(null); onChanged?.(); }} />}
     </>
   );
 }

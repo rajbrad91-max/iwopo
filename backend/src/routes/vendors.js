@@ -5,6 +5,8 @@ import { tenantScope } from '../middleware/tenant.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { serverError } from '../lib/httpError.js';
+import { deletePreview, deleteVendor } from '../lib/deleteVendor.js';
+import { logSecurity } from '../lib/securityLog.js';
 
 const router = express.Router();
 
@@ -169,6 +171,22 @@ router.put('/:id/storage', requireAuth, requireSuperAdmin, async (req, res) => {
 });
 
 // GET /api/vendors/:id/detail → super admin: full vendor profile
+/* 🗑️ Super Admin: delete a vendor for good (lib/deleteVendor.js) — preview first, then the business name typed to confirm */
+router.get('/:id/delete-preview', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const p = await deletePreview(req.params.id);
+    if (!p) return res.status(404).json({ error: 'No such vendor' });
+    res.json(p);
+  } catch (e) { serverError(res, e); }
+});
+router.delete('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const removed = await deleteVendor(req.params.id, req.body?.confirm);
+    logSecurity(req, req.user, `vendor_deleted:${Number(req.params.id)}`);
+    res.json({ ok: true, removed });
+  } catch (e) { if (e.status) return res.status(e.status).json({ error: e.message }); serverError(res, e); }
+});
+
 router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
