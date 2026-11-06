@@ -174,7 +174,6 @@ const FAQ = [
 ];
 
 export default function Selling({ onSignup, onGoLogin }) {
-  const [services, setServices] = useState([]);
   const [packages, setPackages] = useState([]);
   const [cycle, setCycle] = useState('monthly');
   const [form, setForm] = useState({ businessName: '', email: '', password: '', profession: '' });
@@ -198,7 +197,6 @@ export default function Selling({ onSignup, onGoLogin }) {
   }, []);
 
   useEffect(() => {
-    api.services().then(d => setServices(d.services || [])).catch(() => {});
     api.packages().then(d => setPackages(d.packages || [])).catch(() => {});
     api.trialEligible().then(d => { setTrialOk(d.eligible); setOpen(d.open !== false); }).catch(() => {});
     const t = setTimeout(() => setHeroSeen(true), 250);
@@ -241,9 +239,10 @@ export default function Selling({ onSignup, onGoLogin }) {
     finally { setLoading(false); }
   }
 
-  const standalone = services.filter(s => Number(s.price) > 0);
   const realPkgs = packages.filter(p => p.price_monthly != null);
-  const priceOf = (p) => cycle === 'annual'
+  const priceOf = (p) => Number(p.price_monthly) === 0
+    ? { big: '0', unit: '', sub: 'Free forever', free: true }
+    : cycle === 'annual'
     ? { big: Number(p.price_annual).toFixed(2).replace(/\.00$/, ''), unit: '/yr', sub: `reg. $${Number(p.price_annual_regular || p.price_monthly * 12).toFixed(2).replace(/\.00$/, '')}` }
     : { big: Number(p.price_monthly).toFixed(2).replace(/\.00$/, ''), unit: '/mo', sub: null };
 
@@ -382,7 +381,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         <div className="sl-pkg-grid">
           {realPkgs.map((p, i) => {
             const pr = priceOf(p);
-            const feat = i === 1 || (realPkgs.length < 2 && i === 0);
+            const feat = p.code === 'pro';   // the plan most vendors pick
             return (
               <Reveal key={p.id} className="sl-pkg-wrap" style={{ transitionDelay: `${i * 80}ms` }}>
                 <div className={`sl-pkg ${feat ? 'feat' : ''}`}>
@@ -393,10 +392,10 @@ export default function Selling({ onSignup, onGoLogin }) {
                   <div className="sl-price">
                     <span className="cur">$</span><span className="big">{pr.big}</span><span className="unit">{pr.unit}</span>
                   </div>
-                  {pr.sub && <div className="sl-price-sub">{pr.sub}</div>}
+                  {pr.sub && <div className={`sl-price-sub${pr.free ? ' is-free' : ''}`}>{pr.sub}</div>}
                   <ul className="sl-incl">
                     {(p.included || []).map(f => (
-                      <li key={f.id}><span className="ic">{f.icon}</span>{f.name}{f.detail ? <em> · {f.detail}</em> : ''}</li>
+                      <li key={f.id}><span className="ic">{f.icon}</span><span>{f.name}{f.detail ? <em> · {f.detail}</em> : ''}</span></li>
                     ))}
                   </ul>
                   {(p.addons || []).length > 0 && (
@@ -417,21 +416,6 @@ export default function Selling({ onSignup, onGoLogin }) {
           })}
         </div>
 
-        {standalone.length > 0 && (
-          <div className="sl-svc-row">
-            <p className="sl-svc-lbl">Or start with one service</p>
-            <div className="sl-svc-grid">
-              {standalone.map((s, i) => (
-                <button type="button" key={s.id} className="sl-svc" style={{ transitionDelay: `${(i % 4) * 50}ms` }}
-                  onClick={() => choosePlan(s, 'service')}>
-                  <span className="sl-svc-icon">{s.icon}</span>
-                  <span className="sl-svc-name">{s.name}</span>
-                  <span className="sl-svc-price">{s.tiers ? 'from ' : ''}${s.price}<em>/mo</em></span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Proof + FAQ side by side on wide screens */}

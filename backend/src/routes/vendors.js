@@ -99,15 +99,6 @@ router.put('/plans/:planId/storage', requireAuth, requireSuperAdmin, async (req,
       select: { id: true, code: true, name: true, storage_gb: true },
     });
 
-    /* The packages table carries the same figure for the pricing page, and the
-       two drifting apart is how a vendor ends up shown one number and given
-       another. Kept in step by key, silently — a package that no longer exists
-       simply matches nothing. */
-    await prisma.packages.updateMany({
-      where: { key: plan.code },
-      data: { storage_gb: Math.round(gb) },
-    });
-
     res.json({ plan });
   } catch (e) {
     if (e?.code === 'P2025') return res.status(404).json({ error: 'Plan not found' });

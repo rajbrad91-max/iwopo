@@ -696,7 +696,7 @@ function PackageCard({ pkg, editMode, onSaved }) {
 
       {editMode && <StorageEditor pkg={pkg} onSaved={onSaved} />}
       {pkg.price_monthly != null ? (
-        editMode ? <><PriceEditor item={pkg} isPackage onSaved={onSaved} /><CountryPriceEditor type="package" item={pkg} onSaved={onSaved} /></> : (
+        editMode ? <PriceEditor item={pkg} isPackage onSaved={onSaved} /> : (
           <div className="sa-pkg-price">
             <span className="amt">{money(pkg.price_monthly)}</span><span className="per">/mo</span>
             {hasAnnual && (
@@ -705,7 +705,6 @@ function PackageCard({ pkg, editMode, onSaved }) {
                 {pkg.price_annual_regular && <s>{money(pkg.price_annual_regular)}</s>}
               </div>
             )}
-            <CountryPriceList cp={pkg.country_prices} />
           </div>
         )
       ) : (
@@ -1552,7 +1551,7 @@ function GeminiVoiceSettings({ s, setS, editing }) {
    private assistant) has its own key in Settings, so Anthropic's bill keeps
    the two apart (Raj, 2026-10-10). */
 /** 🔒 Settings that are keys or passwords — write-only: never read back, only replaced. */
-const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass'];
+const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass', 'stripe_connect_webhook_secret'];
 
 function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
   const [s, setS] = useState(null);
@@ -2048,6 +2047,30 @@ function FaceEngineSettings() {
               </div>
               </div>
               )}
+        </div>
+
+        {/* 💳 Stripe Connect — vendors connect their OWN Stripe for client card payments (lib/stripeConnect.js) */}
+        <div className="fr-cred">
+          <div className="fr-cred-head sa-connect-head"><span>💳 Stripe Connect — client card payments</span></div>
+          <div className="fr-cred-body">
+            {/* its own Edit — the shared one sits inside folded sections, so these keys were otherwise read-only */}
+            <div className="sa-connect-actions">
+              {!editing
+                ? <button type="button" className="sa-btn-teal sa-connect-btn" onClick={startEdit}>✏️ Edit</button>
+                : <>
+                    <button type="button" className="sa-btn-teal sa-connect-btn" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                    <button type="button" className="sa-connect-x" onClick={stopEdit}>✕</button>
+                  </>}
+            </div>
+            <div><label className="lbl">Connect client ID (ca_…)</label>
+              <input style={editing ? box : roBox} readOnly={!editing} autoComplete="off" placeholder="ca_…"
+                value={s.stripe_connect_client_id || ''} onChange={e => setS({ ...s, stripe_connect_client_id: e.target.value })} /></div>
+            <div><label className="lbl">Connected-accounts webhook secret (whsec_…)</label>
+              <input style={editing ? box : roBox} readOnly={!editing} autoComplete="off"
+                placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''}
+                value={s.stripe_connect_webhook_secret || ''} onChange={e => setS({ ...s, stripe_connect_webhook_secret: e.target.value })} /></div>
+            <p className="sa-connect-note">From the Stripe dashboard → Connect settings (client ID) and Developers → Webhooks (the endpoint listening to connected accounts). Money from clients goes to each vendor&rsquo;s own Stripe — never through iwopo.</p>
+          </div>
         </div>
 
         {/* 📧 Platform email.

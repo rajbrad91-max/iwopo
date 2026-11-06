@@ -60,6 +60,33 @@ export async function billingAccess(vendorId) {
   return { allowed: false, reason: 'expired', trialEndsAt: ends };
 }
 
+/**
+ * 📋 The plan in effect for a vendor (Raj, 2026-11-06) — the ONE answer that what they unlock, their storage and their
+ * Wopo Assistant limit all read, so the three can never disagree:
+ *   owner or paying      → the plan of their current subscription (an owner with none: Studio)
+ *   in the free trial    → Pro, with storage capped at TRIAL_STORAGE_GB
+ *   trial over, unpaid   → Free (they keep their leads and can still take enquiries; nothing is locked away)
+ * Returns { plan, reason: 'owner' | 'paid' | 'trial' | 'free', access } — plan carries its plan_features.
+ */
+const TRIAL_PLAN = 'pro';
+export const TRIAL_STORAGE_GB = 10;
+const PLAN_SELECT = { id: true, code: true, name: true, storage_gb: true, chat_limit: true, plan_features: { select: { feature_key: true } } };
+export async function currentPlan(vendorId) {
+  const access = await billingAccess(vendorId);
+  const byCode = (code) => prisma.plans.findUnique({ where: { code }, select: PLAN_SELECT });
+  if (access.reason === 'trial') return { plan: await byCode(TRIAL_PLAN), reason: 'trial', access };
+  if (access.allowed) {
+    const sub = await prisma.vendor_subscriptions.findFirst({
+      where: currentSubscriptionWhere(vendorId),                // 🔒 tenancy inside
+      orderBy: { started_at: 'desc' },                          // the most recent one wins
+      select: { plans: { select: PLAN_SELECT } },
+    });
+    if (sub?.plans) return { plan: sub.plans, reason: access.reason, access };
+    if (access.reason === 'owner') return { plan: await byCode('studio'), reason: 'owner', access };
+  }
+  return { plan: await byCode('free'), reason: 'free', access };
+}
+
 /** The Stripe price for a plan and cycle, created once per amount and found again by its lookup key. */
 export async function stripePriceFor(plan, cycle) {
   const amount = cycle === 'annual' ? Number(plan.price_annual ?? annualOf(plan.price_monthly)) : Number(plan.price_monthly);

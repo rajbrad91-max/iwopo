@@ -595,7 +595,8 @@
 .sl-price .big { font-family: 'Sora', sans-serif; font-size: 2.4rem; font-weight: 750; color: var(--ink); letter-spacing: -.04em; }
 .sl-price .unit { color: var(--gray); font-weight: 600; margin-left: 2px; }
 .sl-price-sub { font-size: 0.82rem; color: var(--gray); margin-bottom: 8px; text-decoration: line-through; }
-.sl-incl { list-style: none; padding: 0; margin: 12px 0 18px; display: grid; gap: 8px; flex: 1; }
+.sl-price-sub.is-free { text-decoration: none; font-weight: 600; }   /* "Free forever" is a promise, not a crossed-out price */
+.sl-incl { list-style: none; padding: 0; margin: 12px 0 18px; display: grid; gap: 8px; flex: 1; align-content: start; }   /* lines from the top, never spread to fill the card */
 .sl-incl li { font-size: 0.9rem; color: var(--text); display: flex; gap: 8px; align-items: baseline; }
 .sl-incl .ic { opacity: .85; }
 .sl-incl em { -webkit-text-fill-color: var(--gray); background: none; color: var(--gray); font-style: normal; font-size: 0.84rem; }

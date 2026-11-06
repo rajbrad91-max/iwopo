@@ -712,6 +712,9 @@ export const api = {
   billing: () => request('/billing'),
   billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),
   billingPortal: () => request('/billing/portal', { method: 'POST' }),
+  // ➕ add-ons on a paid plan (lib/addons.js)
+  billingAddAddon: (id) => request(`/billing/addons/${id}`, { method: 'POST' }),
+  billingRemoveAddon: (id) => request(`/billing/addons/${id}`, { method: 'DELETE' }),
   // 🛟 a help message to iwopo (routes/support.js)
   supportMessage: (body) => request('/support/message', { method: 'POST', body: JSON.stringify(body) }),
   // 📧 prove the platform mail settings actually work
@@ -930,11 +933,17 @@ export const api = {
   portalPick: (token, package_id) => request(`/portal/${token}/pick`, { method: 'POST', body: JSON.stringify({ package_id }) }),
   // client says they've paid directly — a claim the vendor confirms separately
   portalPayDirect: (token) => request(`/portal/${token}/pay-direct`, { method: 'POST' }),
+  portalPayCard: (token) => request(`/portal/${token}/pay-card`, { method: 'POST' }),   // 💳 on the vendor's own Stripe
   confirmPaymentClaim: (leadId, data) => request(`/payments/lead/${leadId}/confirm-claim`,
     { method: 'PUT', body: JSON.stringify(data) }),
   myServices: () => request('/vendors/me/services'),
   // 💳 the upgrade page — current plan, what else exists, what each grants
   myPlans: () => request('/me/plans'),
+  limitState: () => request('/me/limit-state'),
+  // 💳 the vendor's own Stripe (Stripe Connect)
+  stripeConnectStatus: () => request('/stripe-connect/status'),
+  stripeConnectStart: () => request('/stripe-connect/start'),
+  stripeConnectDisconnect: () => request('/stripe-connect/disconnect', { method: 'POST' }),   // 📏 over the storage limit?
   // 📊 private to the platform owner
   analytics: (days) => request('/analytics?days=' + (days || 30)),
   // 🔑 machines allowed to upload — the live shoot watcher

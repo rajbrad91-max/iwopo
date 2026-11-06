@@ -3,11 +3,6 @@ import { api } from '../lib/api';
 import './plans.css';
 
 /** The features a plan grants, in words a vendor would use. */
-const FEATURE_LABEL = {
-  galleries: '📸 Galleries', leads: '📋 Leads & Bookings', contracts: '📄 Contracts & Invoices',
-  calendar: '📅 Calendar', crew: '👷 Crew', chatbot: '🤖 AI Chat',
-  website: '🌐 Website Builder', fileflyer: '📤 File Flyer',
-};
 const money = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;
 const date = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '');
 
@@ -95,7 +90,7 @@ export default function PlansView() {
       {b.state !== 'owner' && (
         <div className="pl-cycle" role="group" aria-label="Billing cycle">
           <button type="button" className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>Monthly</button>
-          <button type="button" className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Yearly <span className="pl-save">save 20%</span></button>
+          <button type="button" className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Yearly <span className="pl-save">2 months free</span></button>
         </div>
       )}
 
@@ -106,13 +101,14 @@ export default function PlansView() {
           return (
             <div key={p.id} className={`pl-card ${mine ? 'is-current' : ''}`}>
               {mine && <span className="pl-tag">Your plan</span>}
-              <h3>{p.name}</h3>
+              <h3>{p.icon} {p.name}</h3>
               <div className="pl-price"><b>{money(price)}</b><span>/{cycle === 'annual' ? 'year' : 'month'}</span></div>
               {cycle === 'annual' && <div className="pl-storage">{money(p.annual / 12)}/month, billed yearly</div>}
-              <div className="pl-storage">{p.storage_gb} GB of storage</div>
-              {p.features.length > 0
-                ? <ul className="pl-feats">{p.features.map(f => <li key={f}>{FEATURE_LABEL[f] || f}</li>)}{p.own_domain && <li>💎 Your own domain, no iwopo branding</li>}</ul>
-                : <p className="pl-quiet pl-feats-none">No features listed on this plan yet.</p>}
+              {p.tagline && <p className="pl-quiet">{p.tagline}</p>}
+              {/* 📋 the same lines as the home page — generated from what the plan unlocks (lib/planCatalog.js) */}
+              <ul className="pl-feats">
+                {p.lines.map(l => <li key={l.key} className={l.coming ? 'is-coming' : ''}>{l.icon} {l.name}{l.coming && <em> · coming soon</em>}</li>)}
+              </ul>
               {b.state === 'owner' ? null
                 : mine ? <button type="button" className="pl-b" disabled>Current plan</button>
                 : sub ? <button type="button" className="pl-b" disabled={busy === 'portal'} onClick={manage}>Switch in billing</button>

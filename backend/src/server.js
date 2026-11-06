@@ -78,6 +78,9 @@ import { startTrialReminders } from './lib/trialReminders.js';
 import supportRoutes from './routes/support.js';
 import { serverError } from './lib/httpError.js';
 import { quiet } from './lib/quiet.js';
+import { sweepOverLimit } from './lib/overLimit.js';
+import stripeConnectRoutes, { connectWebhook } from './routes/stripeConnect.js';
+import { sweepInactiveFree } from './lib/inactiveFree.js';
 
 dotenv.config();
 
@@ -159,6 +162,7 @@ app.use(cors({
 app.use('/api/comms/webhook', commsWebhookRoutes);
 // 💳 Stripe signs the raw bytes too — mounted before express.json() for the same reason
 app.use('/api/billing/webhook', billingWebhook);
+app.use('/api/stripe-connect/webhook', connectWebhook);   // 💳 card payments on vendors' own accounts
 
 // 🎞️ the Raw Selector logo arrives as a data URL (up to 3 MB) — this one route
 // may send a bigger body; everything else keeps the 100 KB default below
@@ -186,7 +190,8 @@ app.use('/api/contracts', gate('contracts'), contractRoutes);
 app.use('/api/invoices', gate('contracts'), invoiceRoutes);
 app.use('/api/crew', gate('crew'), crewRoutes);
 app.use('/api/albums', gate('galleries'), albumRoutes);
-app.use('/api/g', galleryPublicRoutes); // 🌐 public client gallery (no auth/gate)
+app.use('/api/g', galleryPublicRoutes);
+app.use('/api/stripe-connect', stripeConnectRoutes);   // 💳 connect / disconnect a vendor's own Stripe // 🌐 public client gallery (no auth/gate)
 app.use('/api/poll', pollRoutes); // 🗳️ public voting page (one vote per IP)
 app.use('/api/chatbot', chatbotRoutes); // 🤖 Wopo Assistant chatbot: subscribers + knowledge base
 app.use('/api/notifications', notificationRoutes);
@@ -302,6 +307,10 @@ setInterval(() => { reconcile(objects).catch(quiet('server · reconcile')); }, 2
 /* 🎫 Close subscriptions whose end date has passed. The quota already ignores
    them, so this is about the record being honest rather than the allowance. */
 setInterval(() => { sweepExpiredSubscriptions().catch(quiet('server · sweepExpiredSubscriptions')); }, 60 * 60_000).unref();
+// 🧹 Free accounts nobody uses: 6 months → notice, a week before → final notice, end of month 7 → data removed (lib/inactiveFree.js)
+setInterval(() => { sweepInactiveFree().catch(quiet('server · sweepInactiveFree')); }, 24 * 60 * 60_000).unref();
+// 📏 over the storage limit: the 15-day countdown, its reminders and the lock (lib/overLimit.js)
+setInterval(() => { sweepOverLimit().catch(quiet('server · sweepOverLimit')); }, 60 * 60_000).unref();
 sweepExpiredSubscriptions().catch(quiet('server · sweepExpiredSubscriptions'));
 
 /* 📊 Visitor events older than a year. Long enough to compare this season with

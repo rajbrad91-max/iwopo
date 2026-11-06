@@ -14,10 +14,12 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { stripe, stripeReady, verifyWebhook } from '../lib/stripe.js';
-import { billingAccess, paidSubscription, stripePriceFor, stripeCustomerFor, recordSubscription, annualOf, trialEnd } from '../lib/billing.js';
+import { billingAccess, paidSubscription, stripePriceFor, stripeCustomerFor, recordSubscription, annualOf, trialEnd, currentPlan } from '../lib/billing.js';
 import { forgetHosts } from '../lib/vendorHosts.js';
 import { notify } from './notifications.js';
 import { serverError } from '../lib/httpError.js';
+import { planCards } from '../lib/planCatalog.js';
+import { addonsFor, addAddon, removeAddon } from '../lib/addons.js';
 
 const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '');
 const DAY = 86_400_000;
@@ -60,7 +62,7 @@ router.get('/', async (req, res) => {
   try {
     const [access, sub, plans] = await Promise.all([
       billingAccess(v), paidSubscription(v),
-      prisma.plans.findMany({ orderBy: { price_monthly: 'asc' }, select: { id: true, code: true, name: true, price_monthly: true, price_annual: true, storage_gb: true, plan_features: { select: { feature_key: true } } } }),
+      planCards(),
     ]);
     const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
@@ -68,14 +70,31 @@ router.get('/', async (req, res) => {
       state: access.reason,                              // owner | paid | trial | expired
       trial_ends_at: access.trialEndsAt, trial_days_left: access.reason === 'trial' ? daysLeft : 0,
       subscription: sub ? { plan_id: sub.plan_id, status: sub.status, cycle: sub.billing_cycle, renews_at: sub.current_period_end, cancels: sub.cancel_at_period_end } : null,
-      plans: plans.map(p => ({
-        id: p.id, code: p.code, name: p.name, storage_gb: p.storage_gb,
-        monthly: Number(p.price_monthly), annual: Number(p.price_annual ?? annualOf(p.price_monthly)),
-        features: p.plan_features.map(f => f.feature_key).filter(k => k !== 'custom_domain'),
-        own_domain: p.plan_features.some(f => f.feature_key === 'custom_domain'),
+      current_plan: await currentPlan(v).then(c => ({ code: c.plan?.code, name: c.plan?.name, reason: c.reason })),
+      addons: await addonsFor(v),
+      // the paid plans as cards (Free is where an unpaid account rests, never something to check out)
+      plans: plans.filter(p => p.price_monthly > 0).map(p => ({
+        id: p.id, code: p.code, name: p.name, icon: p.icon, tagline: p.tagline, storage_gb: p.storage_gb,
+        monthly: p.price_monthly, annual: p.price_annual || annualOf(p.price_monthly), lines: p.lines,
       })),
     });
   } catch (e) { serverError(res, e); }
+});
+
+/* ➕ add-ons: a paying vendor adds one (charged the difference now) or removes it (from the next bill) — lib/addons.js */
+router.post('/addons/:id', async (req, res) => {
+  const v = vendorOf(req);
+  if (!v) return res.status(400).json({ error: 'Not a vendor account' });
+  try {
+    if (!stripeReady()) return res.status(503).json({ error: 'Payments are being set up — please try again soon.' });
+    res.json({ addon: await addAddon(v, req.params.id) });
+  } catch (e) { res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.status ? e.message : 'Could not add it — please try again.' }); }
+});
+router.delete('/addons/:id', async (req, res) => {
+  const v = vendorOf(req);
+  if (!v) return res.status(400).json({ error: 'Not a vendor account' });
+  try { res.json({ addon: await removeAddon(v, req.params.id) }); }
+  catch (e) { serverError(res, e); }
 });
 
 router.post('/checkout', async (req, res) => {
@@ -103,6 +122,8 @@ router.post('/checkout', async (req, res) => {
       subscription_data: { trial_end, metadata: { vendor_id: v, plan_id: plan.id, cycle } },
       metadata: { vendor_id: v, plan_id: plan.id, cycle },
       allow_promotion_codes: true,
+      // 💵 charged in USD as priced — Stripe's Adaptive Pricing would show the buyer's local currency (Muse F-40)
+      adaptive_pricing: { enabled: false },
       // ⚖️ what they agree to, said where they pay (pages: /terms, /refund-policy)
       custom_text: { submit: { message: `By subscribing you agree to iwopo’s Terms of Service (${APP_URL}/terms). Cancel any time in Manage billing; payments are not refunded (${APP_URL}/refund-policy).` } },
       success_url: `${APP_URL}/panel/plans?billing=done`,

@@ -220,3 +220,7 @@
 
 /* 🍯 the spam trap box (InquiryForm): off-screen, out of the tab order, hidden from screen readers */
 .iq-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+
+/* 🌱 a Free vendor's form (2026-11-06) */
+.iq-powered { display: block; margin-top: 18px; text-align: center; font-size: 12px; color: var(--muted); text-decoration: none; }
+.iq-powered:hover { text-decoration: underline; }

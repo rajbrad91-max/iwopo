@@ -11,7 +11,7 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { getFeatures } from '../lib/entitlements.js';
+import { getFeatures, cleanupFeatures } from '../lib/entitlements.js';
 import { CURRENCIES, CURRENCY_CODES, currencyFor } from '../lib/currencies.js';
 import { resolveTimezone, timezoneToStore } from '../lib/timezones.js';
 import { storageFor } from '../lib/storageQuota.js';
@@ -19,6 +19,7 @@ import { revokeAllForUser } from '../lib/tokenRevocation.js';
 import { logSecurity } from '../lib/securityLog.js';
 import { serverError } from '../lib/httpError.js';
 import { PROFESSION_KEYS } from '../lib/professions.js';
+import { refreshLimit } from '../lib/overLimit.js';
 
 const router = express.Router();
 const LOGO_DIR = LOGO_DIR_CFG;
@@ -30,7 +31,8 @@ router.get('/features', requireAuth, async (req, res) => {
   if (!req.user.vendor_id) return res.json({ features: [] });
   try {
     const set = await getFeatures(req.user.vendor_id);
-    res.json({ features: [...set] });
+    // 🧹 pages kept open for clean-up only (lib/entitlements.js cleanupFeatures)
+    res.json({ features: [...set], cleanup: await cleanupFeatures(req.user.vendor_id, set) });
   } catch (e) { serverError(res, e); }
 });
 
@@ -69,21 +71,16 @@ router.get('/plans', requireAuth, async (req, res) => {
   const v = Number(req.user.vendor_id);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
-    const [st, plans, packages] = await Promise.all([
+    const [st, plans] = await Promise.all([
       storageFor(v),
       prisma.plans.findMany({
         select: {
-          id: true, code: true, name: true, price_monthly: true, storage_gb: true,
-          plan_features: { select: { feature_key: true } },
+          id: true, code: true, name: true, tagline: true, icon: true, price_monthly: true, price_annual: true,
+          storage_gb: true, sort_order: true, plan_features: { select: { feature_key: true } },
         },
-        orderBy: { id: 'asc' },
-      }),
-      prisma.packages.findMany({
-        select: { key: true, tagline: true, icon: true, price_monthly: true, price_annual: true, sort_order: true },
+        orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
       }),
     ]);
-
-    const byKey = Object.fromEntries(packages.map(p => [p.key, p]));
     const sellable = new Set(
       (await prisma.services.findMany({ where: { is_private: false, feature_key: { not: null } }, select: { feature_key: true } }))
         .map(r => r.feature_key),
@@ -91,13 +88,12 @@ router.get('/plans', requireAuth, async (req, res) => {
     const currentGb = Math.round(st.limit_mb / 1024);
 
     const rows = plans.map(p => {
-      const pkg = byKey[p.code] || {};
       return {
         id: p.id, code: p.code, name: p.name,
-        tagline: pkg.tagline || null,
-        icon: pkg.icon || null,
-        price_monthly: Number(pkg.price_monthly ?? p.price_monthly ?? 0),
-        price_annual: pkg.price_annual != null ? Number(pkg.price_annual) : null,
+        tagline: p.tagline || null,
+        icon: p.icon || null,
+        price_monthly: Number(p.price_monthly ?? 0),
+        price_annual: p.price_annual != null ? Number(p.price_annual) : null,
         storage_gb: p.storage_gb,
         /* 🔒 A private feature attached to a plan by accident would be
          advertised on the upgrade page. Filtered against the catalogue rather
@@ -111,7 +107,7 @@ router.get('/plans', requireAuth, async (req, res) => {
            more of it would still be the right suggestion, so this is measured
            in gigabytes rather than pounds. */
         upgrade: (p.storage_gb || 0) > currentGb,
-        sort_order: pkg.sort_order ?? p.id,
+        sort_order: p.sort_order ?? p.id,
       };
     }).sort((a, b) => (a.storage_gb || 0) - (b.storage_gb || 0));
 
@@ -119,7 +115,7 @@ router.get('/plans', requireAuth, async (req, res) => {
       plans: rows,
       current: {
         on_plan: st.limit_source === 'plan',
-        name: st.limit_source === 'plan' ? st.plan_name : 'Free trial',
+        name: st.plan_name || 'Free trial',   // "Pro trial", "Essential", "Free" — the plan in effect
         limit_gb: currentGb,
         used_bytes: st.used_bytes,
         percent: st.percent,
@@ -129,6 +125,13 @@ router.get('/plans', requireAuth, async (req, res) => {
       },
     });
   } catch (e) { serverError(res, e); }
+});
+
+/* 📏 Am I over my storage? The panel's banner asks — and asking re-checks, so deleting files lifts a lock at once. */
+router.get('/limit-state', requireAuth, async (req, res) => {
+  const v = Number(req.user.vendor_id);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  try { res.json(await refreshLimit(v)); } catch (e) { serverError(res, e); }
 });
 
 router.get('/currencies', requireAuth, (req, res) => {

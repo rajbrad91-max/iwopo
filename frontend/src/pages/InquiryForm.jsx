@@ -72,6 +72,7 @@ export function InquiryShell({ cfg, intro = true, art = true, embedded = false, 
           </div>
         </div>
         {children}
+        {c.powered_by && <a className="iq-powered" href="https://iwopo.com" target="_blank" rel="noopener noreferrer">Powered by iwopo</a>}
       </div>
       {aside}
     </div>

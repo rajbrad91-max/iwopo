@@ -109,7 +109,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
  * The dropdown status override still exists and still works — this only ever
  * moves a lead FORWARD to booked, never away from wherever a vendor put it.
  */
-async function markBooked(leadId) {
+export async function markBooked(leadId) {
   const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
   if (!lead || lead.status === 'booked') return;
   const money = await moneySummary(lead);

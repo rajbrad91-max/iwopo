@@ -23,6 +23,7 @@ import { recordEvent } from '../lib/siteEvents.js';
 import { notify } from './notifications.js';
 import { ownDomainAllowed } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
+import { mediaLocked } from '../lib/overLimit.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -170,6 +171,15 @@ function checkViewToken(vt, albumId) {
 }
 // prune expired hourly
 setInterval(() => { const now = Date.now(); for (const [k, v] of viewTokens) if (v.exp < now) viewTokens.delete(k); }, 3600 * 1000);
+
+/* 🔒 a locked vendor's gallery (lib/overLimit.js): the client is told it is unavailable, nothing about why */
+router.param('token', async (req, res, next, token) => {
+  try {
+    const a = await prisma.albums.findFirst({ where: { public_token: String(token) }, select: { vendor_id: true } });
+    if (a && await mediaLocked(a.vendor_id)) return res.status(423).json({ error: 'This gallery is temporarily unavailable. Please contact your photographer.' });
+    next();
+  } catch (e) { next(e); }
+});
 
 async function findAlbum(token) {
   /* ⚠️ kind: gallery, and this one line is load-bearing.

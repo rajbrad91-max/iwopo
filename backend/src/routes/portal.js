@@ -10,6 +10,8 @@ import { limit } from '../middleware/rateLimit.js';
 import { ownDomainAllowed } from '../lib/vendorHosts.js';
 import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
+import { getFeatures } from '../lib/entitlements.js';
+import { accountOf, connectReady, cardCheckout } from '../lib/stripeConnect.js';
 
 const router = express.Router();
 
@@ -274,6 +276,9 @@ router.get('/:token', async (req, res) => {
     const vendorCurrency = currencyFor(vset?.currency, vrow?.country);
 
     res.json({
+      // 🎉 can this vendor take the booking here (contracts in their plan)? Free: the pick becomes a request (Raj, 2026-11-06)
+      books: (await getFeatures(lead.vendor_id)).has('contracts'),
+      card_pay: !!(await accountOf(lead.vendor_id)) && await connectReady(),   // 💳 the vendor's own Stripe is connected
       lead: {
         name: lead.name, event_type: lead.event_type, event_date: lead.event_date,
         location: lead.location,
@@ -327,6 +332,20 @@ router.post('/:token/verify',
   } catch (e) { serverError(res, e); }
 });
 
+/* 🎉 The catch on the Free plan (Raj, 2026-11-06): when a client picks a package from a vendor whose plan has no contracts,
+   no contract is prepared — the vendor is told the client wants to book and that Essential sends the contract and takes
+   the deposit; the client is told the vendor will be in touch to confirm. The moment money is near is the moment to upgrade. */
+async function afterPick(lead, packageId, packageName, req) {
+  if ((await getFeatures(lead.vendor_id)).has('contracts')) {
+    await reconcileContract(lead, packageId, clientIp(req));
+    notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${packageName}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
+    return true;
+  }
+  notify(lead.vendor_id, `🎉 ${lead.name || 'A client'} wants to book "${packageName}"!`,
+    'Upgrade to Essential to send the contract and take the deposit.', 'package', { type: 'lead', id: lead.id });
+  return false;
+}
+
 /* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package */
 router.post('/:token/pick', limit({ name: 'portal-pick', max: 30, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
   const { package_id } = req.body;
@@ -356,9 +375,8 @@ router.post('/:token/pick', limit({ name: 'portal-pick', max: 30, windowMs: 60 *
         }),
       ]);
       const updated = await prisma.leads.findUnique({ where: { id: lead.id } });
-      await reconcileContract(lead, own.id, clientIp(req));
-      notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${own.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
-      return res.json({ lead: updated, money: await moneySummary(updated) });
+      const books = await afterPick(lead, own.id, own.name, req);
+      return res.json({ lead: updated, money: await moneySummary(updated), books });
     }
 
     // 🔒 legacy path: the package must belong to the lead's vendor
@@ -380,10 +398,35 @@ router.post('/:token/pick', limit({ name: 'portal-pick', max: 30, windowMs: 60 *
       where: { id: lead.id },
       data: { package_id: p.id, package_snapshot: snapshot, updated_at: new Date() },
     });
-    await reconcileContract(lead, p.id, clientIp(req));
-    notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${p.name}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
-    res.json({ ok: true, money: await moneySummary(updated) });
+    const books = await afterPick(lead, p.id, p.name, req);
+    res.json({ ok: true, money: await moneySummary(updated), books });
   } catch (e) { serverError(res, e); }
+});
+
+/* 💳 PUBLIC: POST /api/portal/:token/pay-card → a Stripe page on the VENDOR's own account for what is due now.
+   The same rules as paying directly: a package chosen and the contract signed (lib/stripeConnect.js). */
+router.post('/:token/pay-card', limit({ name: 'portal-pay-card', max: 20, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
+  try {
+    const lead = await leadByToken(req.params.token);
+    if (!lead) return res.status(404).json({ error: 'Link not found' });
+    if (!gateOpen(req, lead)) return res.status(403).json({ error: 'Please confirm your email first' });   // 🔒
+    const contract = await prisma.contracts.findFirst({
+      where: { lead_id: lead.id, status: { not: 'voided' } }, orderBy: { id: 'desc' }, select: { signed_at: true },   // 🔒 via the lead
+    });
+    if (!contract?.signed_at) return res.status(409).json({ error: 'Please sign your contract before paying' });
+    const money = await moneySummary(lead);
+    const due = Number(money.paid) > 0 ? Number(money.balance) : Number(money.deposit_amount);
+    const [vset, vrow] = await Promise.all([
+      prisma.vendor_settings.findUnique({ where: { vendor_id: lead.vendor_id }, select: { currency: true } }),
+      prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { country: true, business_name: true } }),
+    ]);
+    const what = Number(money.paid) > 0 ? 'Balance' : 'Deposit';
+    const url = await cardCheckout({
+      lead, amount: due, currency: currencyFor(vset?.currency, vrow?.country), token: req.params.token,
+      description: `${vrow?.business_name || 'Booking'} — ${what}${lead.event_type ? ` · ${lead.event_type}` : ''}`,
+    });
+    res.json({ url });
+  } catch (e) { res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.status ? e.message : 'Card payment could not start — please try again.' }); }
 });
 
 /* 🌐 PUBLIC: POST /api/portal/:token/pay-direct

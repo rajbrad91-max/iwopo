@@ -49,6 +49,8 @@ import { clientBase, inquiryUrl, setClientBase } from '../lib/clientBase';
 import BillingBanner from '../components/BillingBanner';
 import HelpView from '../components/HelpView';
 import { professionLabel } from '../lib/professions';
+import MyServicesView from '../components/MyServices';
+import StripeConnectCard from '../components/StripeConnect';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -67,11 +69,11 @@ const TAB_FEATURE = {
 
 function FeatureLocked({ goServices }) {
   return (
-    <div className="table-wrap" style={{ padding: 40, textAlign: 'center', maxWidth: 520 }}>
-      <div style={{ fontSize: 44 }}>🔒</div>
-      <h2 style={{ margin: '10px 0 6px' }}>This feature isn't in your plan</h2>
-      <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 18 }}>Upgrade your plan or add it as a standalone service to unlock it. ✨</p>
-      <button className="refresh" onClick={goServices} style={{ background: '#2dd4bf', color: '#06231f' }}>🧩 View My Services</button>
+    <div className="table-wrap fl-box">
+      <div className="fl-icon" aria-hidden="true">🔒</div>
+      <h2 className="fl-h">This isn't in your plan</h2>
+      <p className="fl-p">Choose a plan or an add-on that includes it.</p>
+      <button type="button" className="svx-change" onClick={goServices}>See your plan & add-ons</button>
     </div>
   );
 }
@@ -147,7 +149,6 @@ let csLeaveGuard = null;
 
 export default function VendorPanel({ onLogout }) {
   useActivityPing();                 // 👀 TEMPORARY — records pages only for the tracked tester
-  const [services, setServices] = useState([]);
   // seeded from the last session so the sidebar and tab render immediately;
   // the network copy replaces it a moment later and the server decides regardless
   const [features, setFeatures] = useState(() => {
@@ -176,6 +177,9 @@ export default function VendorPanel({ onLogout }) {
 
   // 🗝️ single access check used everywhere
   const has = (key) => !!features && (features.includes('*') || features.includes(key));
+  // 🧹 a page the plan no longer includes but that still holds the vendor's galleries or files: open for clean-up only
+  const [cleanup, setCleanup] = useState([]);
+  const canOpen = (key) => has(key) || cleanup.includes(key);
   // 🔴 how many leads are still status='new' — drives the sidebar badge.
   // Polled rather than derived from the leads list, because the badge has to be
   // right on every tab, not just when Leads is open.
@@ -221,11 +225,11 @@ export default function VendorPanel({ onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const [d, f, st] = await Promise.all([api.myServices(), api.myFeatures(), api.mySettings().catch(() => ({ settings: null }))]);
+      const [f, st] = await Promise.all([api.myFeatures(), api.mySettings().catch(() => ({ settings: null }))]);
       api.domainInfo().then(x => setClientBase(x.client_base_url)).catch(() => {});   // 🌐 where client links point
-      setServices(d.services);
       const list = f.features || [];
       setFeatures(list);
+      setCleanup(f.cleanup || []);
       // seed the next load, so the tab renders without waiting for the network
       try { localStorage.setItem(`vf_features:${getUser()?.id}`, JSON.stringify(list)); } catch { /* private mode */ }
       // 🌗 apply this vendor's saved theme
@@ -322,11 +326,11 @@ export default function VendorPanel({ onLogout }) {
         {has('leads') && <a href={navHref('bookings')} className={`nav-item ${tab==='bookings'?'active':''}`} aria-current={tab==='bookings' ? 'page' : undefined} onClick={navClick('bookings')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4c5.svg" alt="" /></span><span className="nav-txt">Bookings</span></a>}
         {has('contracts') && <a href={navHref('contracts')} className={`nav-item ${tab==='contracts'?'active':''}`} aria-current={tab==='contracts' ? 'page' : undefined} onClick={navClick('contracts')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4c4.svg" alt="" /></span><span className="nav-txt">Contracts & Invoices</span></a>}
         {has('crew') && <a href={navHref('crew')} className={`nav-item ${tab==='crew'?'active':''}`} aria-current={tab==='crew' ? 'page' : undefined} onClick={navClick('crew')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f477.svg" alt="" /></span><span className="nav-txt">Crew Management</span></a>}
-        {has('galleries') && <a href={navHref('galleries')} className={`nav-item ${tab==='galleries'?'active':''}`} aria-current={tab==='galleries' ? 'page' : undefined} onClick={navClick('galleries')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4f8.svg" alt="" /></span><span className="nav-txt">Galleries</span></a>}
+        {canOpen('galleries') && <a href={navHref('galleries')} className={`nav-item ${tab==='galleries'?'active':''}`} aria-current={tab==='galleries' ? 'page' : undefined} onClick={navClick('galleries')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4f8.svg" alt="" /></span><span className="nav-txt">Galleries</span>{cleanup.includes('galleries') && <span className="nav-cleanup" title="Not in your plan — clean-up only"> 🧹</span>}</a>}
         {/* 🖨️ Sits under Galleries because that is where the requests come
             from — a client picks photographs in their gallery and sends them. */}
         {has('galleries') && <a href={navHref('requests')} className={`nav-item ${tab==='requests'?'active':''}`} aria-current={tab==='requests' ? 'page' : undefined} onClick={navClick('requests')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f5bc.svg" alt="" /></span><span className="nav-txt">Photo Selection</span></a>}
-        {has('fileflyer') && <a href={navHref('fileflyer')} className={`nav-item ${tab==='fileflyer'?'active':''}`} aria-current={tab==='fileflyer' ? 'page' : undefined} onClick={navClick('fileflyer')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4e4.svg" alt="" /></span><span className="nav-txt">File Flyer</span></a>}
+        {canOpen('fileflyer') && <a href={navHref('fileflyer')} className={`nav-item ${tab==='fileflyer'?'active':''}`} aria-current={tab==='fileflyer' ? 'page' : undefined} onClick={navClick('fileflyer')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4e4.svg" alt="" /></span><span className="nav-txt">File Flyer</span>{cleanup.includes('fileflyer') && <span className="nav-cleanup" title="Not in your plan — clean-up only"> 🧹</span>}</a>}
         {/* 🔒 The four features private to the platform owner, kept
             together and in a deliberate order rather than scattered down
             the list. Each still appears only for somebody granted it. */}
@@ -385,7 +389,13 @@ export default function VendorPanel({ onLogout }) {
         </div>
 
         {error && <div className="err-banner">⚠️ {error}</div>}
-        {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) ? (
+        {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) && cleanup.includes(TAB_FEATURE[tab]) && (
+          <div className="cleanup-note" role="status">
+            <span>🧹 <b>This isn't in your plan any more.</b> You can still view, download and delete what's here — choose a plan that includes it to keep using it.</span>
+            <button type="button" className="svx-change" onClick={() => go('plans')}>See plans</button>
+          </div>
+        )}
+        {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) && !cleanup.includes(TAB_FEATURE[tab]) ? (
           <FeatureLocked goServices={() => setTab('services')} />
         ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'help' ? (
           <HelpView user={user} onGo={(t) => go(t)} />
@@ -436,28 +446,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'dashboard' ? (
           <DashHome goTab={setTab} openBooking={(id) => navigate({ tab: 'bookings', booking: String(id) })} />
         ) : (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Service</th><th>Price</th><th>Status</th></tr></thead>
-              <tbody>
-                {services.map(s => (
-                  <tr key={s.id}>
-                    <td className="biz">{s.icon} {s.name}</td>
-                    {/* included by the vendor's plan → say so (not "$0/mo · Upgrade"); bought on its own → Active */}
-                    {/* no price of its own: it comes with a plan — never "$0/mo" beside an Upgrade (Muse F-38) */}
-                    <td>{!s.enabled && has(s.feature_key) ? 'Included' : Number(s.price) > 0 ? `$${s.price}/mo` : 'With a plan'}</td>
-                    {/* "Off" told a vendor a feature was unavailable and left
-                        them there. It now says what to do about it. */}
-                    <td>{s.enabled
-                      ? <span className="badge active">Active</span>
-                      : has(s.feature_key)
-                        ? <span className="badge active">✅ In your plan</span>
-                        : <button className="svc-upgrade" onClick={() => go('plans')}>{Number(s.price) > 0 ? 'Upgrade' : 'See plans'}</button>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <MyServicesView onPlans={() => go('plans')} />
         )}
       </main>
     </div>
@@ -5840,6 +5829,8 @@ function SettingsView({ user, onProfileChange }) {
           💰 Your packages, invoices and what clients see are all shown in {s.currency || 'USD'}.
           {' '}Example: {fmtMoney(1250, { currency: s.currency })}
         </div>
+
+        <StripeConnectCard />
 
         {/* 🔒 Payment privacy (Raj, 2026-10-23): off = amounts always visible; on = hidden in a booking until 👁 is tapped */}
         <label className="pref-toggle">

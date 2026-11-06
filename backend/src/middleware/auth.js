@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { newJti, tokenStillValid } from '../lib/tokenRevocation.js';
+import { touchSeen } from '../lib/lastSeen.js';
 dotenv.config();
 
 const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -25,6 +26,7 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Session ended — please sign in again' });
   }
   req.user = payload;
+  if (payload.vendor_id) touchSeen(payload.id);   // 👣 a vendor using the panel (lib/lastSeen.js)
   next();
 }
 

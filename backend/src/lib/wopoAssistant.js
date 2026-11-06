@@ -9,6 +9,7 @@ import { getSetting } from './settings.js';
 import { notify } from '../routes/notifications.js';
 import { TRADE_WORDS, PHOTO_VIDEO_TRADES } from './professions.js';
 import { getFeatures } from './entitlements.js';
+import { currentPlan } from './billing.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 export const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -222,6 +223,20 @@ export function chatTools() {
 }
 
 /** Save a lead into the vendor's leads table. */
+const CHAT_LIMIT_REPLY = "Thanks for reaching out! 😊 Please fill in the inquiry form on this page and the team will get back to you shortly.";
+const DEFAULT_CHAT_LIMIT = 100;   // the chat switched on without a plan that sets one (Super Admin's switch)
+
+/** Has this vendor used this month's conversations? A session already seen this month is never cut off mid-way. */
+async function overChatLimit(vendorId, session) {
+  const vid = Number(vendorId);
+  const since = new Date(); since.setUTCDate(1); since.setUTCHours(0, 0, 0, 0);
+  if (session && await prisma.chatbot_usage.findFirst({ where: { vendor_id: vid, session, created_at: { gte: since } }, select: { id: true } })) return false;   // 🔒 this vendor
+  const { plan } = await currentPlan(vid);
+  const limit = plan?.chat_limit || DEFAULT_CHAT_LIMIT;
+  const used = await prisma.chatbot_usage.groupBy({ by: ['session'], where: { vendor_id: vid, created_at: { gte: since }, session: { not: null } } });   // 🔒 this vendor
+  return used.length >= limit;
+}
+
 /** how a lead from the website chat begins its notes — and how a later save finds it again */
 const CHAT_NOTE = '— From the website chat —';
 
@@ -420,6 +435,10 @@ export async function generateReply(vendorId, businessName, text, history = [], 
   /* 🔁 One request to the assistant. After a tool step (saving the lead, a message, an unanswered question) the result
      goes back to it so it can carry on — ask the next detail — instead of the turn ending on an empty reply (Raj,
      2026-11-05: chats stopped after the name and phone). At most two more rounds, so a turn can never loop. */
+  /* 🤖 The plan's Wopo Assistant conversations a month (Essential 100 · Pro 500 · Studio 2,000). A conversation already
+     under way carries on; a NEW one past the limit is pointed to the inquiry form instead of reaching the AI. */
+  if (await overChatLimit(vendorId, session)) return { reply: CHAT_LIMIT_REPLY, lead_saved: false };
+
   const system = buildSystemPrompt(k, businessName, ctx);
   async function ask(msgs) {
     const res = await fetch(API_URL, {

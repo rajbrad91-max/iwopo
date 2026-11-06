@@ -17,6 +17,8 @@ import { clientIp } from '../lib/clientIp.js';
 import { limit } from '../middleware/rateLimit.js';
 import { serverError } from '../lib/httpError.js';
 import { adminOverview } from '../lib/adminOverview.js';
+import { planCards } from '../lib/planCatalog.js';
+import { syncOffer } from '../lib/stripeCoupons.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -43,6 +45,7 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
        access key ID there is nothing useful to recognise it by, so the whole
        thing is replaced rather than clipped. */
     if (s.smtp_pass) s.smtp_pass = '••••••••';
+    if (s.stripe_connect_webhook_secret) s.stripe_connect_webhook_secret = '••••••••';   // 💳 never goes back out
     for (const k of ['anthropic_api_key', 'agent_api_key', 'gemini_api_key', 'deepgram_api_key', 'local_voice_token']) {
       if (s[k]) s[k] = s[k].slice(0, 4) + '••••••••' + s[k].slice(-4);
     }
@@ -245,6 +248,8 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
          one person who could set them had to edit a file on the server — so
          they were never set, and nothing in the product could send anything. */
       'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from', 'smtp_from_name',
+      // 💳 Stripe Connect — vendors' own Stripe accounts for client card payments (lib/stripeConnect.js)
+      'stripe_connect_client_id', 'stripe_connect_webhook_secret',
     ];
 
     /* 🔒 One bucket for both classes would silently un-gate every client gallery
@@ -373,50 +378,19 @@ router.get('/services', async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-// Public: packages (3 tiers) with their items nested
+// 📋 Public: the plans as cards — the ONE list (lib/planCatalog.js), in USD (Raj, 2026-11-06)
 router.get('/packages', async (req, res) => {
-  try {
-    const geo = geoFrom(req);
-    const packages = await prisma.packages.findMany({ orderBy: { sort_order: 'asc' } });
-    const items = await prisma.package_items.findMany({ orderBy: [{ package_id: 'asc' }, { sort_order: 'asc' }] });
-    const result = packages.map(p => {
-      const gp = p.price_monthly != null ? geoPrice(p, geo, 'price_monthly', 'price_annual') : { m: p.price_monthly, y: p.price_annual };
-      const { country_prices, ...pub } = p; // 🔒 hide all-country pricing from public
-      return {
-      ...pub,
-      price_monthly: gp.m,
-      price_annual: gp.y ?? p.price_annual,
-      currency: geo.currency,
-      included: items.filter(i => i.package_id === p.id && i.is_included),
-      addons: items.filter(i => i.package_id === p.id && i.is_addon),
-      standalone: items.filter(i => i.package_id === p.id && !i.is_included && !i.is_addon),
-      };
-    });
-    res.json({ packages: result });
-  } catch (e) {
-    serverError(res, e);
-  }
+  try { res.json({ packages: await planCards() }); } catch (e) { serverError(res, e); }
 });
 
-// 🔒 Super admin: full packages incl. country_prices (for editor)
+// 🔒 Super admin: the same cards, for the price editor
 router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) => {
-  try {
-    const packages = await prisma.packages.findMany({ orderBy: { sort_order: 'asc' } });
-    const items = await prisma.package_items.findMany({ orderBy: [{ package_id: 'asc' }, { sort_order: 'asc' }] });
-    const result = packages.map(p => ({
-      ...p,
-      included: items.filter(i => i.package_id === p.id && i.is_included),
-      addons: items.filter(i => i.package_id === p.id && i.is_addon),
-      standalone: items.filter(i => i.package_id === p.id && !i.is_included && !i.is_addon),
-    }));
-    res.json({ packages: result });
-  } catch (e) { serverError(res, e); }
+  try { res.json({ packages: await planCards() }); } catch (e) { serverError(res, e); }
 });
 
-/* 🔓 What each plan UNLOCKS (2026-11-01). The package card is what the pricing page SAYS; plan_features is what a
-   vendor on that plan actually GETS. Until now only the database could change the second, so the two drifted apart
-   (Vendor Suite unlocked nothing). Super Admin now sets it. Plans and packages share their code (packages.key =
-   plans.code). Only public features can be chosen; private tools are never touched. */
+/* 🔓 What each plan UNLOCKS (2026-11-01, plans the one source since 2026-11-06). plan_features is what a vendor on a plan
+   actually GETS, and every price card's lines are generated from it (lib/planCatalog.js), so a card cannot promise
+   what the plan does not give. Super Admin sets it. Only public features can be chosen; private tools are never touched. */
 const unlockCatalog = () => prisma.services.findMany({
   where: { feature_key: { not: null }, is_private: false }, orderBy: { id: 'asc' },
   select: { feature_key: true, name: true, icon: true },
@@ -444,7 +418,7 @@ router.put('/admin/plan-unlocks/:code', requireAuth, requireSuperAdmin, async (r
 
 // 🔒 Super admin: update a PACKAGE price
 router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { price_monthly, price_annual, price_annual_regular, storage_gb } = req.body;
+  const { price_monthly, price_annual, storage_gb } = req.body;
   try {
     /* Storage is edited here rather than per vendor, so changing it moves every
        vendor on this package at once. Left alone when the field is absent, so
@@ -454,30 +428,11 @@ router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, re
       ? { storage_gb: Math.min(Math.round(gb), 100000) }   // 100TB, a sanity ceiling
       : {};
 
-    await prisma.packages.update({
+    // 📋 a plan's price and storage (the plans table is the one source — lib/planCatalog.js)
+    const num = (v) => (v === undefined || v === null || v === '' ? undefined : Math.max(0, Number(v)));
+    await prisma.plans.update({
       where: { id: Number(req.params.id) },
-      data: {
-        price_monthly: price_monthly ?? null,
-        price_annual: price_annual ?? null,
-        price_annual_regular: price_annual_regular ?? null,
-        ...storage,
-      },
-    });
-    res.json({ ok: true });
-  } catch (e) { serverError(res, e); }
-});
-
-// 🔒 Super admin: update a PACKAGE ITEM price
-router.put('/package-items/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { price_monthly, price_annual, price_annual_regular } = req.body;
-  try {
-    await prisma.package_items.update({
-      where: { id: Number(req.params.id) },
-      data: {
-        price_monthly: price_monthly ?? null,
-        price_annual: price_annual ?? null,
-        price_annual_regular: price_annual_regular ?? null,
-      },
+      data: { price_monthly: num(price_monthly), price_annual: num(price_annual), ...storage },
     });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
@@ -520,8 +475,9 @@ router.put('/country-prices/:type/:id', requireAuth, requireSuperAdmin, async (r
     // the model is chosen from a fixed pair — never interpolated from user input
     const data = { country_prices: country_prices || {} };
     const where = { id: Number(id) };
-    if (type === 'package') await prisma.packages.update({ where, data });
-    else await prisma.services.update({ where, data });
+    // 📋 plans are priced in USD only (Raj, 2026-11-06) — country prices are for services
+    if (type !== 'service') return res.status(400).json({ error: 'Plans are priced in USD only' });
+    await prisma.services.update({ where, data });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -551,7 +507,9 @@ router.post('/offers', requireAuth, requireSuperAdmin, async (req, res) => {
         applies_to: applies_to || 'all',
       },
     });
-    res.status(201).json({ offer });
+    // 🎟️ the same code in Stripe, so checkout takes it — a failure is said, the offer stays (it can be re-synced)
+    const sync = await syncOffer(offer).catch(e => ({ synced: false, error: e.message }));
+    res.status(201).json({ offer, stripe: sync });
   } catch (e) {
     if (e.code === 'P2002' || e.code === '23505') return res.status(409).json({ error: 'Code already exists' });
     serverError(res, e);
@@ -587,14 +545,17 @@ router.get('/offers/validate/:code', async (req, res) => {
 router.put('/offers/:id/toggle', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const cur = await prisma.offers.findUnique({ where: { id }, select: { active: true } });
+    const cur = await prisma.offers.findUnique({ where: { id } });
     if (!cur) return res.status(404).json({ error: 'Not found' });
-    await prisma.offers.update({ where: { id }, data: { active: !cur.active } });   // active = NOT active
-    res.json({ ok: true });
+    const offer = await prisma.offers.update({ where: { id }, data: { active: !cur.active } });   // active = NOT active
+    const sync = await syncOffer(offer).catch(e => ({ synced: false, error: e.message }));   // 🎟️ Stripe follows
+    res.json({ ok: true, stripe: sync });
   } catch (e) { serverError(res, e); }
 });
 router.delete('/offers/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
+    const offer = await prisma.offers.findUnique({ where: { id: Number(req.params.id) } });
+    if (offer) await syncOffer(offer, { removing: true }).catch(() => {});   // 🎟️ its Stripe code stops working first
     await prisma.offers.deleteMany({ where: { id: Number(req.params.id) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }

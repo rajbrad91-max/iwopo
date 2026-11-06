@@ -473,24 +473,11 @@ model offers {
   applies_to  String?   @default("all") @db.VarChar(40)
 
   @@index([code], map: "idx_offers_code")
+  /// 🎟️ the same coupon in Stripe, so checkout accepts it (lib/stripeCoupons.js)
+  stripe_coupon_id     String?                @db.VarChar(64)
+  stripe_promo_id      String?                @db.VarChar(64)
 }
 
-model package_items {
-  id                   Int      @id @default(autoincrement())
-  package_id           Int
-  name                 String   @db.VarChar(120)
-  icon                 String?  @db.VarChar(20)
-  detail               String?  @db.VarChar(200)
-  price_monthly        Decimal? @db.Decimal(8, 2)
-  price_annual         Decimal? @db.Decimal(8, 2)
-  price_annual_regular Decimal? @db.Decimal(8, 2)
-  is_addon             Boolean? @default(false)
-  is_included          Boolean? @default(false)
-  sort_order           Int?     @default(0)
-  packages             packages @relation(fields: [package_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([package_id], map: "idx_pkg_items_pkg")
-}
 
 model package_templates {
   id              Int               @id @default(autoincrement())
@@ -505,24 +492,6 @@ model package_templates {
   @@index([vendor_id], map: "idx_ptpl_vendor")
 }
 
-model packages {
-  id                   Int             @id @default(autoincrement())
-  key                  String          @unique @db.VarChar(50)
-  name                 String          @db.VarChar(120)
-  tagline              String?         @db.VarChar(200)
-  icon                 String?         @db.VarChar(20)
-  price_monthly        Decimal?        @db.Decimal(8, 2)
-  price_annual         Decimal?        @db.Decimal(8, 2)
-  price_annual_regular Decimal?        @db.Decimal(8, 2)
-  trial_days           Int?            @default(30)
-  sort_order           Int?            @default(0)
-  country_prices       Json?           @default("{}")
-  /// What this package includes. A vendor's storage limit is derived from here,
-  /// so raising a package's allowance raises it for everyone on that package at
-  /// once — which is why it lives on the package and not on the account.
-  storage_gb           Int             @default(50)
-  package_items        package_items[]
-}
 
 model password_reset_tokens {
   id         Int       @id @default(autoincrement())
@@ -551,6 +520,8 @@ model payments {
 
   @@index([lead_id], map: "idx_pay_lead")
   @@index([vendor_id], map: "idx_pay_vendor")
+  /// 💳 the Stripe Checkout session a card payment came from — recorded once, however often Stripe tells us
+  reference            String?                @unique @db.VarChar(100)
 }
 
 model photo_faces {
@@ -618,6 +589,14 @@ model plans {
   stripe_product_id    String?                @db.VarChar(64)
   created_at           DateTime?              @default(now()) @db.Timestamp(6)
   storage_gb           Int?
+  /// 📋 the plan card: a line under the name, its icon and its place in the row
+  tagline              String?                @db.VarChar(160)
+  icon                 String?                @db.VarChar(16)
+  sort_order           Int                    @default(0)
+  /// 🤖 Wopo Assistant conversations a month (0 = none)
+  chat_limit           Int                    @default(0)
+  /// ✨ lines on the card beyond what it unlocks — [{ "label": "Priority support" }, { "label": "…", "coming": true }]
+  highlights           Json                   @default("[]")
   plan_features        plan_features[]
   vendor_subscriptions vendor_subscriptions[]
 }
@@ -688,6 +667,12 @@ model services {
   services             services?         @relation("servicesToservices", fields: [requires_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   other_services       services[]        @relation("servicesToservices")
   vendor_services      vendor_services[]
+  /// ➕ an add-on's extra storage in GB (+500 GB / +1 TB / +2 TB) — counted into the vendor's space (lib/storageQuota.js)
+  storage_gb           Int?
+  /// ➕ the plans that can add it (["essential"]); empty = any paid plan
+  plan_codes           Json                   @default("[]")
+  /// ➕ a different monthly price on some plans ({ "studio": 7.5 })
+  plan_prices          Json                   @default("{}")
 }
 
 model support_messages {
@@ -730,6 +715,8 @@ model users {
   vendors               vendors?                @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_users_vendor")
+  /// 👣 last time this person used the panel (at most hourly) — the Free clean-up counts from it (lib/inactiveFree.js)
+  last_seen_at         DateTime?              @db.Timestamptz(6)
 }
 
 model vendor_feature_overrides {
@@ -773,6 +760,8 @@ model vendor_services {
 
   @@unique([vendor_id, service_id])
   @@index([vendor_id], map: "idx_vendor_services_vendor")
+  /// ➕ a removed add-on keeps working until the period it was paid for ends (Raj: downgrades apply from the next bill)
+  ends_at              DateTime?              @db.Timestamptz(6)
 }
 
 model vendor_settings {
@@ -787,6 +776,16 @@ model vendor_settings {
   default_deposit_percent Decimal   @default(30) @db.Decimal(5, 2)
   storage_limit_mb        Int?
   vendors                 vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  /// 📏 when this vendor's files went over their plan + add-ons; cleared when back under (lib/overLimit.js)
+  over_limit_since     DateTime?              @db.Timestamptz(6)
+  /// 📏 which reminder went last: 0 none · 1 day 0 · 2 day 7 · 3 day 13 · 4 locked
+  over_limit_stage     Int                    @default(0)
+  /// 💳 the vendor's OWN Stripe account (Stripe Connect, Standard, OAuth) — client card payments go straight to it
+  stripe_account_id    String?                @db.VarChar(64)
+  stripe_connected_at  DateTime?              @db.Timestamptz(6)
+  /// 🧹 Free clean-up: 0 none · 1 six-month notice · 2 final notice · 3 data removed — and when the first notice went
+  inactive_stage       Int                    @default(0)
+  inactive_notice_at   DateTime?              @db.Timestamptz(6)
 }
 
 model vendor_subscriptions {

@@ -171,6 +171,9 @@ export async function putObject(cls, key, body, contentType, knownSize) {
  * exactly that problem, one object at a time.
  */
 export async function getStream(cls, key, range) {
+  // 🔒 a vendor over their storage for {GRACE_DAYS}+ days: their galleries and files are locked (lib/overLimit.js)
+  const owner = /^vendor\/(\d+)\/(galleries|files)\//.exec(String(key));
+  if (cls === PRIVATE && owner && await (await import('./overLimit.js')).mediaLocked(owner[1])) throw Object.assign(new Error('media locked'), { status: 423, code: 'MEDIA_LOCKED' });
   const { client, bucket } = await clientFor(cls);
   const out = await client.send(new GetObjectCommand({
     Bucket: bucket, Key: key,

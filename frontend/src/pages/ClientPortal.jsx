@@ -267,7 +267,8 @@ export default function ClientPortal({ token }) {
   // bound once the payload arrives, so every figure on the page uses one currency
   const cash = cashIn(data?.currency);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
+  // 💳 back from Stripe's card page: thanked at once — the payment shows when Stripe confirms it
+  const [msg, setMsg] = useState(() => (new URLSearchParams(window.location.search).get('paid') === 'card' ? '✅ Thank you! Your card payment went through — it will show here in a moment.' : ''));
   const [busy, setBusy] = useState(false);
   // a step the client walked back to by hand — cleared whenever the booking
   // itself moves on, so the page returns to wherever they actually are
@@ -321,6 +322,13 @@ export default function ClientPortal({ token }) {
     }
     catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
+  }
+
+  /* 💳 by card, on the vendor's own Stripe (lib/stripeConnect.js) — Stripe's page, then back here */
+  async function payCard() {
+    setBusy(true); setMsg('');
+    try { const r = await api.portalPayCard(token); window.location.href = r.url; }
+    catch (e) { setMsg('⚠️ ' + e.message); setBusy(false); }
   }
 
   async function payDirect() {
@@ -542,7 +550,15 @@ export default function ClientPortal({ token }) {
           </section>
         )}
 
-        {step === 2 && (
+        {/* 🎉 this vendor confirms bookings themselves (Free plan): the pick is a request, no contract here */}
+        {step === 2 && data.books === false && (
+          <section className="po-sec">
+            <p className="po-eyebrow">Step two</p>
+            <h2 className="po-h">Your choice is sent 🎉</h2>
+            <p className="po-lead">{business_name} will be in touch shortly to confirm your booking.</p>
+          </section>
+        )}
+        {step === 2 && data.books !== false && (
           contract?.body ? (
             <ContractStep contract={contract} clientName={lead.name} onSigned={afterSign} />
           ) : (
@@ -593,8 +609,13 @@ export default function ClientPortal({ token }) {
                   </div>
                 </dl>
 
-                <button type="button" className="po-cta" onClick={payDirect} disabled={busy}>
-                  💳 Pay directly
+                {data.card_pay && (
+                  <button type="button" className="po-cta" onClick={payCard} disabled={busy}>
+                    💳 Pay {cash(money.paid > 0 ? money.balance : money.deposit_amount)} by card
+                  </button>
+                )}
+                <button type="button" className={`po-cta${data.card_pay ? ' is-alt' : ''}`} onClick={payDirect} disabled={busy}>
+                  {data.card_pay ? '🏦 I paid another way' : '💳 Pay directly'}
                 </button>
                 <p className="po-fine">
                   Send an e-transfer, or pay by cash or card in person. Press this once you have —

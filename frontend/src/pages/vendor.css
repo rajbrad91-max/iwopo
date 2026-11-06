@@ -2490,3 +2490,45 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 /* 🔗 a gallery's client link, shown beside Copy (Muse F-14) */
 .gal-link { font-size: 12px; color: var(--muted); text-decoration: underline; overflow-wrap: anywhere; }
 .gal-link:hover { color: var(--text); }
+
+/* ➕ My Services — the plan, its lines, and the add-ons (components/MyServices.jsx, 2026-11-06) */
+.svx { max-width: 860px; }
+.svx-plan { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.svx-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.svx-plan-name { margin: 2px 0 0; font-size: 20px; color: var(--text); }
+.svx-change, .svx-add { padding: 8px 16px; border-radius: 9px; border: 1px solid var(--teal-2); background: var(--teal-soft); color: var(--text); font-weight: 600; cursor: pointer; }
+.svx-change:hover, .svx-add:hover { border-color: var(--teal); }
+.svx-remove { margin-left: 8px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
+.svx-remove:hover { color: var(--red); border-color: var(--red); }
+.svx-lines { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 18px; font-size: 14px; color: var(--text); }
+.svx-lines li.is-coming { color: var(--muted); }
+.svx-lines em, .svx-addon-desc { font-style: normal; font-size: 12.5px; color: var(--muted); }
+.svx-quiet { margin: 14px 0 0; color: var(--muted); }
+.svx-h { margin: 26px 0 10px; font-size: 16px; color: var(--text); }
+.svx-addons { display: grid; gap: 8px; }
+.svx-addon { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.svx-addon-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.svx-addon-name { font-weight: 600; color: var(--text); }
+.svx-addon-price { font-weight: 600; color: var(--text); white-space: nowrap; }
+.svx-addon-act { display: flex; align-items: center; justify-content: flex-end; min-width: 150px; }
+.svx-note { font-size: 13px; color: var(--muted); margin-right: 8px; }
+.svx-msg { margin-top: 12px; color: var(--text); }
+@media (max-width: 640px) { .svx-addon { grid-template-columns: 1fr; } .svx-addon-act { justify-content: flex-start; } .svx-plan { flex-direction: column; align-items: flex-start; } }
+
+/* 🔒 a feature not in the plan (FeatureLocked) */
+.fl-box { padding: 40px; text-align: center; max-width: 520px; }
+.fl-icon { font-size: 40px; }
+.fl-h { margin: 10px 0 6px; }
+.fl-p { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+/* 🧹 a page kept open for clean-up only (lib/entitlements.js cleanupFeatures) */
+.cleanup-note { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--amber); border-radius: 12px; background: var(--panel-2); color: var(--text); font-size: 14px; }
+.nav-cleanup { font-size: 12px; }
+@media (max-width: 640px) { .cleanup-note { flex-direction: column; align-items: flex-start; } }
+
+/* 💳 Card payments — Stripe Connect (components/StripeConnect.jsx) */
+.scx { margin: 18px 0 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.scx-h { margin: 0 0 6px; font-size: 15px; color: var(--text); }
+.scx-p { margin: 0 0 10px; font-size: 13.5px; color: var(--text); }
+.scx-note { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.scx-msg { margin: 10px 0 0; font-size: 13px; color: var(--text); }

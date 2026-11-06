@@ -25,7 +25,7 @@ function encode(obj, prefix = '', out = []) {
 }
 
 /** One Stripe API call. Throws an Error carrying Stripe's own message. */
-export async function stripe(method, path, params, { idempotencyKey } = {}) {
+export async function stripe(method, path, params, { idempotencyKey, account } = {}) {
   if (!stripeReady()) throw new Error('Payments are not set up yet.');
   const headers = { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`, 'Stripe-Version': '2024-06-20' };
   let url = API + path, body;
@@ -33,6 +33,7 @@ export async function stripe(method, path, params, { idempotencyKey } = {}) {
   if (method === 'GET') { if (pairs.length) url += '?' + new URLSearchParams(pairs); }
   else { headers['Content-Type'] = 'application/x-www-form-urlencoded'; body = new URLSearchParams(pairs).toString(); }
   if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+  if (account) headers['Stripe-Account'] = account;   // 💳 on a vendor's own connected account (Stripe Connect)
   const r = await fetch(url, { method, headers, body });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) { const e = new Error(data?.error?.message || `Stripe error ${r.status}`); e.status = r.status; e.stripe = data?.error; throw e; }
@@ -43,8 +44,7 @@ export async function stripe(method, path, params, { idempotencyKey } = {}) {
  * The event, if the Stripe-Signature header proves Stripe sent these exact bytes (within 5 minutes); otherwise null.
  * The body must be the RAW request bytes — the route is mounted before express.json() for that reason.
  */
-export function verifyWebhook(rawBody, header) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET || '';
+export function verifyWebhook(rawBody, header, secret = process.env.STRIPE_WEBHOOK_SECRET || '') {
   if (!secret || !header) return null;
   const parts = Object.fromEntries(String(header).split(',').map(p => p.split('=')).filter(p => p.length === 2).map(([k, v]) => [k.trim(), v.trim()]));
   const t = Number(parts.t);

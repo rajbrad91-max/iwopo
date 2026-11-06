@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { resolveHost } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { isActiveSubscriber } from '../lib/wopoAssistant.js';
+import { currentPlan } from '../lib/billing.js';
 
 const router = express.Router();
 
@@ -46,6 +47,9 @@ const DEFAULTS = {
 // domain. The Host header identifies them, so their enquiry page can live on
 // their domain instead of sending a couple off to an iwopo address.
 // Declared before :handle, which would otherwise swallow "by-host".
+/** 🌱 a Free vendor's form says "Powered by iwopo" — free advertising, part of the Free plan (2026-11-06) */
+const onFree = (vendorId) => currentPlan(vendorId).then(c => c.plan?.code === 'free').catch(() => false);
+
 router.get('/by-host', async (req, res) => {
   try {
     // 🌐 a live own domain or the vendor's subdomain (lib/vendorHosts.js)
@@ -67,7 +71,7 @@ router.get('/by-host', async (req, res) => {
         ...DEFAULTS, ...s,
         brand_name: s.brand_name || vendor?.business_name,
         logo_path: vendor?.logo_path || '',
-        bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(site.vendor_id).catch(() => false),
+        bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(site.vendor_id).catch(() => false), powered_by: await onFree(site.vendor_id),
         time_format: await timeFormat(site.vendor_id),
       },
       slug: vendor?.slug || '',
@@ -132,7 +136,7 @@ router.get('/:handle', async (req, res) => {
       where: { vendor_id: vendorId }, select: { bot_name: true },
     });
 
-    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(vendorId).catch(() => false), time_format: await timeFormat(vendorId) } });
+    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(vendorId).catch(() => false), powered_by: await onFree(vendorId), time_format: await timeFormat(vendorId) } });
   } catch (e) { serverError(res, e); }
 });
 

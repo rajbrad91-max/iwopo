@@ -17,13 +17,13 @@
  */
 import prisma from '../config/prisma.js';
 import { ledgerBytesFor } from './storageLedger.js';
-import { currentSubscriptionWhere } from './billing.js';
+import { currentPlan, TRIAL_STORAGE_GB } from './billing.js';
 
 /* A vendor on the free trial has no package — signup writes plan 'starter',
    which is not a package key. The trial's allowance therefore lives here rather
    than on a row, and it is small on purpose: a trial is for trying the product,
    not for delivering a season's weddings through. */
-const TRIAL_LIMIT_MB = 5 * 1024;
+const FALLBACK_LIMIT_MB = 1024;   // only when a plan has no storage set — small, so the mistake shows
 
 
 /**
@@ -65,25 +65,19 @@ async function limitMbFor(vendorId) {
     return { limitMb: settings.storage_limit_mb, source: 'override' };
   }
 
-  /* The same conditions the feature gate uses, so a vendor cannot have the
-     features of a plan without its storage or the other way round. */
-  const sub = await prisma.vendor_subscriptions.findFirst({
-    where: currentSubscriptionWhere(v),                       // 🔒 tenancy inside; same rule as the features (lib/billing.js)
-    orderBy: { started_at: 'desc' },                          // the most recent one wins
-    select: { plans: { select: { name: true, storage_gb: true } } },
+  /* The plan in effect (lib/billing.js currentPlan) — the same answer the features come from, so a vendor cannot have
+     a plan's features without its storage or the other way round. In the free trial it is Pro's, capped at
+     TRIAL_STORAGE_GB (Raj, 2026-11-06); a trial that ended unpaid is on Free. */
+  const { plan, reason } = await currentPlan(v);
+  if (!plan?.storage_gb) return { limitMb: FALLBACK_LIMIT_MB, source: 'fallback', planName: plan?.name || 'No plan' };
+  /* ➕ storage add-ons (+500 GB / +1 TB / +2 TB) a paying vendor has on top — not during the trial, not on Free */
+  const extra = reason === 'trial' || reason === 'free' ? [] : await prisma.vendor_services.findMany({
+    where: { vendor_id: v, enabled: true, OR: [{ ends_at: null }, { ends_at: { gt: new Date() } }], services: { storage_gb: { gt: 0 } } },   // 🔒 this vendor
+    select: { services: { select: { storage_gb: true } } },
   });
-
-  const plan = sub?.plans;
-  if (plan?.storage_gb) {
-    return { limitMb: plan.storage_gb * 1024, source: 'plan', planName: plan.name };
-  }
-
-  /* A subscription whose plan has no storage set is a configuration mistake,
-     not a free-for-all. It falls to the trial and says 'plan' so a super admin
-     looking at the Buyers list can see something is wrong. */
-  if (sub) return { limitMb: TRIAL_LIMIT_MB, source: 'plan', planName: (plan?.name || 'Plan') + ' (no storage set)' };
-
-  return { limitMb: TRIAL_LIMIT_MB, source: 'trial', planName: 'Free trial' };
+  const addedGb = extra.reduce((n, r) => n + (r.services?.storage_gb || 0), 0);
+  const gb = (reason === 'trial' ? Math.min(plan.storage_gb, TRIAL_STORAGE_GB) : plan.storage_gb) + addedGb;
+  return { limitMb: gb * 1024, source: reason === 'trial' ? 'trial' : 'plan', planName: reason === 'trial' ? `${plan.name} trial` : plan.name };
 }
 
 export async function storageFor(vendorId) {
