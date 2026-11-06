@@ -3,16 +3,13 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { resolveHost } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
+import { isActiveSubscriber } from '../lib/wopoAssistant.js';
 
 const router = express.Router();
 
 /** 🤖 Is the Wopo Assistant chatbot on for this vendor — an ACTIVE subscriber?
  *  The public form shows the chat bubble only then (the chat endpoint already
  *  refuses everyone else; the bubble used to show for every vendor anyway). */
-async function chatOn(vendorId) {
-  const sub = await prisma.chatbot_subscribers.findUnique({ where: { vendor_id: Number(vendorId) }, select: { active: true } }).catch(() => null);
-  return !!sub?.active;
-}
 /** 🕐 The vendor's 12h / 24h choice (Settings → Preferences), so the form's time pickers match it. */
 async function timeFormat(vendorId) {
   const vs = await prisma.vendor_settings.findUnique({ where: { vendor_id: Number(vendorId) }, select: { time_format: true } }).catch(() => null);
@@ -70,7 +67,7 @@ router.get('/by-host', async (req, res) => {
         ...DEFAULTS, ...s,
         brand_name: s.brand_name || vendor?.business_name,
         logo_path: vendor?.logo_path || '',
-        bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(site.vendor_id),
+        bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(site.vendor_id).catch(() => false),
         time_format: await timeFormat(site.vendor_id),
       },
       slug: vendor?.slug || '',
@@ -135,7 +132,7 @@ router.get('/:handle', async (req, res) => {
       where: { vendor_id: vendorId }, select: { bot_name: true },
     });
 
-    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await chatOn(vendorId), time_format: await timeFormat(vendorId) } });
+    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(vendorId).catch(() => false), time_format: await timeFormat(vendorId) } });
   } catch (e) { serverError(res, e); }
 });
 

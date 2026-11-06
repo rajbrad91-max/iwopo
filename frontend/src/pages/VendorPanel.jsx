@@ -14,7 +14,7 @@ import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import PublicSite from './PublicSite';
-import { api, getUser, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue, applyVendorClock, vendorDayKey } from '../lib/api';
+import { api, getUser, logout, getAuthToken, fmtTime, fmtDateTime, fmtEventDate, fmtMoney, eventDateParts, eventDateValue, applyVendorClock, vendorDayKey, moneySymbol } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import { chime } from '../lib/chime';
 import { useActivityPing } from '../lib/activityPing';   // 👀 TEMPORARY — tester activity
@@ -443,14 +443,15 @@ export default function VendorPanel({ onLogout }) {
                   <tr key={s.id}>
                     <td className="biz">{s.icon} {s.name}</td>
                     {/* included by the vendor's plan → say so (not "$0/mo · Upgrade"); bought on its own → Active */}
-                    <td>{!s.enabled && has(s.feature_key) ? 'Included' : `$${s.price}/mo`}</td>
+                    {/* no price of its own: it comes with a plan — never "$0/mo" beside an Upgrade (Muse F-38) */}
+                    <td>{!s.enabled && has(s.feature_key) ? 'Included' : Number(s.price) > 0 ? `$${s.price}/mo` : 'With a plan'}</td>
                     {/* "Off" told a vendor a feature was unavailable and left
                         them there. It now says what to do about it. */}
                     <td>{s.enabled
                       ? <span className="badge active">Active</span>
                       : has(s.feature_key)
                         ? <span className="badge active">✅ In your plan</span>
-                        : <button className="svc-upgrade" onClick={() => go('plans')}>Upgrade</button>}</td>
+                        : <button className="svc-upgrade" onClick={() => go('plans')}>{Number(s.price) > 0 ? 'Upgrade' : 'See plans'}</button>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1231,6 +1232,8 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                 wrong answers and one right one is worse than one button. */}
             {edit && kind !== 'liveshoot' && <button className="refresh gal-mini-send" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
             {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-copy-url" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
+            {/* 🔗 the client's link itself, to open and check (Muse F-14: it was only ever copied, never shown) */}
+            {edit?.public_token && kind !== 'liveshoot' && <a className="gal-link" href={`/g/${edit.public_token}`} target="_blank" rel="noreferrer">{`${window.location.origin}/g/${edit.public_token}`}</a>}
             {msg && <span className={`gal-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
           </div>
         </div>
@@ -3317,6 +3320,7 @@ function LeadDetail({ lead, onSaved }) {
     try { await api.setGateway(lead.id, next); setPkgMsg(next ? '🔒 Secure login ON' : '🔓 Secure login OFF'); setTimeout(() => setPkgMsg(''), 1500); }
     catch (e) { setGateway(!next); setPkgMsg('⚠️ ' + e.message); }
   }
+  const [moneyTick, setMoneyTick] = useState(0);   // 💰 Payments reloads when it moves (Muse F-21)
   // 📤 a message under the packages for a few seconds (components/SendPackages and the package tools use it)
   const flashPkg = (m) => { setPkgMsg(m); setTimeout(() => setPkgMsg(''), 3000); };
 
@@ -3342,6 +3346,7 @@ function LeadDetail({ lead, onSaved }) {
     try {
       const d = await api.loadLeadPackages(lead.id, id);
       setLeadPkgs(d.packages || []);
+      setMoneyTick(t => t + 1);   // the total follows the loaded packages
       setMsg(`✅ ${d.packages.length} packages loaded from ${d.folder}`);
       setTimeout(() => setMsg(''), 2200);
     } catch (e) {
@@ -3354,6 +3359,7 @@ function LeadDetail({ lead, onSaved }) {
     try {
       const d = await api.updateLeadPackage(lead.id, id, patch);
       setLeadPkgs(ps => ps.map(p => p.id === id ? d.package : p));
+      setMoneyTick(t => t + 1);
       setEditPkg(null);
     } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
   }
@@ -3457,7 +3463,7 @@ function LeadDetail({ lead, onSaved }) {
             onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}
           >👁️ Preview Contract</button>
           <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh bx-primary ld-btn-sm" disabled={pkgBusy}
-            onMessage={flashPkg} onSent={() => setPkgLocked(true)} />
+            onMessage={flashPkg} onSent={() => { setPkgLocked(true); setMoneyTick(t => t + 1); }} />
         </div>
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
       </div>
@@ -3468,7 +3474,7 @@ function LeadDetail({ lead, onSaved }) {
       <div className="lead-right">
 
       {/* 💰 Payment */}
-      <MoneySection lead={lead} />
+      <MoneySection lead={lead} refresh={moneyTick} />
 
       {/* 📄 Contract + portal/timer controls — kept together on the action side */}
       <div className="ld-side-box">
@@ -3556,7 +3562,7 @@ function expiryText(startedAt, hours) {
   return `${m}m`;
 }
 
-function MoneySection({ lead }) {
+function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when packages are loaded, saved or sent
   const [hidePay, setHidePay] = useState(false);   // 🔒 the vendor's payment-privacy setting
   const [reveal, setReveal] = useState(false);     // 👁 shown for this visit only
   useEffect(() => { api.mySettings().then(s => setHidePay(!!s?.settings?.hide_payments)).catch(() => {}); }, []);
@@ -3583,7 +3589,7 @@ function MoneySection({ lead }) {
   const [msg, setMsg] = useState('');
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [refresh]);   // again when packages are loaded, saved or sent
   async function load() {
     try { const d = await api.leadPayments(lead.id); setData(d); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
   }
@@ -3729,7 +3735,7 @@ function MoneySection({ lead }) {
                 </p>
                 <label className="lbl" htmlFor="ms-claim-amt">Amount received</label>
                 <div className="ms-claim-amt-row">
-                  <span className="ms-claim-cur">$</span>
+                  <span className="ms-claim-cur">{moneySymbol()}</span>
                   <input
                     id="ms-claim-amt" className="gal-input" autoFocus type="number" min="0" step="0.01"
                     value={claimModal.amount}
@@ -3782,7 +3788,7 @@ function MoneySection({ lead }) {
               <button type="button" className={depositMode === 'percent' ? 'is-on' : ''}
                 onClick={() => switchDepositMode('percent')} title="Deposit as a percentage of the total">%</button>
               <button type="button" className={depositMode === 'amount' ? 'is-on' : ''}
-                onClick={() => switchDepositMode('amount')} title="Deposit as a fixed dollar amount">$</button>
+                onClick={() => switchDepositMode('amount')} title="Deposit as a fixed amount">{moneySymbol()}</button>
             </div>
             {depositMode === 'percent' ? (
               <input className="ms-input" type="number" placeholder="30"
@@ -3799,7 +3805,7 @@ function MoneySection({ lead }) {
             value={money.discount_percent} onChange={e => setMoney({ ...money, discount_percent: e.target.value })} onBlur={saveMoney} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} />
         </div>
         <div className="ms-field">
-          <label className="ms-label">Custom Billed ($)</label>
+          <label className="ms-label">Custom Billed ({moneySymbol()})</label>
           <input className="ms-input" type="number" placeholder="auto"
             value={money.price_override} onChange={e => setMoney({ ...money, price_override: e.target.value })} onBlur={saveMoney} onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} />
         </div>
@@ -3835,7 +3841,7 @@ function MoneySection({ lead }) {
       {/* manual payments */}
       <div className="ms-mp-head">Manual Payments</div>
       <div className="ms-pay-row">
-        <input className="ms-input ms-amt" type="number" placeholder="Amount $" value={amt} onChange={e => setAmt(e.target.value)} />
+        <input className="ms-input ms-amt" type="number" placeholder={`Amount ${moneySymbol()}`} value={amt} onChange={e => setAmt(e.target.value)} />
         <select className="ms-input ms-method" value={method} onChange={e => setMethod(e.target.value)}>
           <option value="manual">Manual</option><option value="etransfer">E-transfer</option>
           <option value="cash">Cash</option><option value="card">Card</option>
@@ -4962,6 +4968,12 @@ const FORM_PRESETS = {
     { type: 'checkbox', label: 'Red carpet service' },
     { type: 'text', label: 'Special requests' },
   ] },
+  // ✨ any other trade (Muse F-24: "Other" had no preset) — the event, and what they would like from us
+  other: { label: '✨ Other', fields: [
+    ...CORE_EVENT,
+    { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
+    { type: 'text', label: 'What would you like from us?' },
+  ] },
 };
 
 function FieldBuilder({ fields, setFields, onTrade }) {
@@ -4993,21 +5005,16 @@ function FieldBuilder({ fields, setFields, onTrade }) {
   // 🎉 Add the whole event group at once. A column already claimed by an
   // existing field is left claimed — the new field still appears, just
   // unmapped, so adding this twice can't quietly steal a mapping.
+  /* 🎉 Adds the event questions the form does not have yet — a question it already asks (its date, its times) is not
+     added twice (Muse F-24) — and works the Hours out from the start and end times, whichever were there before. */
   const addEventGroup = () => {
-    const taken = new Set(fields.map(f => f.maps_to).filter(Boolean));
-    const added = EVENT_PRESET.map(p => {
-      const free = p.maps_to && !taken.has(p.maps_to);
-      if (free) taken.add(p.maps_to);
-      return {
-        id: uid(),
-        type: p.type,
-        label: p.label,
-        required: false,
-        maps_to: free ? p.maps_to : '',
-        options: p.options ? [...p.options] : [],
-      };
-    });
-    setFields([...fields, ...added]);
+    const have = new Set(fields.map(f => f.maps_to).filter(Boolean));
+    const added = EVENT_PRESET.filter(p => !(p.maps_to && have.has(p.maps_to))).map(p => ({
+      id: uid(), type: p.type, label: p.label, required: false, maps_to: p.maps_to || '', options: p.options ? [...p.options] : [],
+    }));
+    const all = [...fields, ...added];
+    const from = all.find(f => f.maps_to === 'timing_from'), to = all.find(f => f.maps_to === 'timing_to');
+    setFields(all.map(f => (added.includes(f) && f.type === 'hours' && from && to ? { ...f, from_field: from.id, to_field: to.id } : f)));
   };
   /**
    * 🧰 Load a whole trade's starter questions.
@@ -5535,7 +5542,7 @@ function PkgCard({ pkg, onSaved, onDelete }) {
 
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)' }}>💰 Base price ($)</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>💰 Base price ({moneySymbol()})</label>
           <input style={box} type="number" value={f.base_price} onChange={e => set('base_price', e.target.value)} />
         </div>
         <div style={{ flex: 1 }}>
@@ -5543,7 +5550,7 @@ function PkgCard({ pkg, onSaved, onDelete }) {
           <input style={box} type="number" value={f.included_hours} onChange={e => set('included_hours', e.target.value)} />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)' }}>➕ Extra $/hour</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>➕ Extra {moneySymbol()}/hour</label>
           <input style={box} type="number" value={f.per_hour_price} onChange={e => set('per_hour_price', e.target.value)} />
         </div>
       </div>
@@ -6197,7 +6204,7 @@ function BookingDetail({ id }) {
                       {c.checked_in_at && <span className="bd-crew-in">✅ Checked in</span>}
                       <button className="bd-x" onClick={() => removeCrew(c.id)} disabled={busy} title="Unassign this team member from the day">✕</button>
                     </div>
-                    {(c.duty || c.member_role) && <div className="bd-crew-line">🎬 {[c.duty, c.member_role].filter(Boolean).join(' · ')}</div>}
+                    {(c.duty || c.member_role) && <div className="bd-crew-line">🎬 {[...new Set([c.duty, c.member_role].filter(Boolean))].join(' · ')}</div>}
                     {(c.arrive_time || c.leave_time) && (
                       <div className="bd-crew-line">🕐 {[c.arrive_time, c.leave_time].filter(Boolean).map(fmtTime).join(' – ')}</div>
                     )}

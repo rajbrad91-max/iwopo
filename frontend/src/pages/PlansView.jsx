@@ -24,7 +24,10 @@ export default function PlansView() {
   const [cycle, setCycle] = useState('monthly');
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
-  const back = new URLSearchParams(window.location.search).get('billing');      // done | cancelled (from Stripe)
+  // done | cancelled (from Stripe) — read once, then taken out of the address, so a later sign-in in the same tab
+  // doesn't land on someone else's "Thank you" (Muse F-06)
+  const [back] = useState(() => new URLSearchParams(window.location.search).get('billing'));
+  useEffect(() => { if (back) window.history.replaceState(null, '', window.location.pathname); }, [back]);
 
   const load = () => Promise.all([api.myPlans(), api.billing()])
     .then(([plans, billing]) => { setD(plans); setB(billing); if (billing.subscription?.cycle) setCycle(billing.subscription.cycle); })

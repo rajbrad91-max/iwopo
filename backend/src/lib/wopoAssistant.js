@@ -8,6 +8,7 @@ import { mine } from './tenancy.js';
 import { getSetting } from './settings.js';
 import { notify } from '../routes/notifications.js';
 import { TRADE_WORDS, PHOTO_VIDEO_TRADES } from './professions.js';
+import { getFeatures } from './entitlements.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 export const DEFAULT_MODEL = 'claude-sonnet-4-6';
@@ -21,12 +22,19 @@ export async function getKnowledge(vendorId) {
   return k || {};
 }
 
+/**
+ * 💬 Does this vendor have the AI chat? Super Admin's own switch (AI Chat → subscribers) decides when it is set — on or
+ * off; otherwise their plan does (its 'chatbot' unlock). Muse F-02: Studio Special includes the chat, but only the
+ * switch was read, so its vendors were shown the sales page. The panel's AI Chat page and the inquiry form's bubble
+ * both ask this.
+ */
 export async function isActiveSubscriber(vendorId) {
   const s = await prisma.chatbot_subscribers.findUnique({
-    where: { vendor_id: Number(vendorId) },
+    where: { vendor_id: Number(vendorId) },                                                     // 🔒 this vendor
     select: { active: true },
   });
-  return !!s?.active;
+  if (s) return !!s.active;
+  return (await getFeatures(vendorId)).has('chatbot');
 }
 
 /** The vendor's own inquiry-form questions worth asking in a chat — not the contact ones (the chat asks those itself), not

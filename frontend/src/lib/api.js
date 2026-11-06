@@ -147,6 +147,13 @@ export function eventDateValue(v) { return ymd(v); }
  * This is for money a vendor charges their clients. iwopo's own pricing to the
  * vendor is a different thing and is not formatted with this.
  */
+/** 💱 The vendor's currency symbol ("$", "€", "£", "CA$"…), for the label beside an amount field (Muse F-25). */
+export function moneySymbol() {
+  const code = localStorage.getItem('vf_currency') || 'USD';
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: code }).formatToParts(0).find(p => p.type === 'currency')?.value || code; }
+  catch { return code; }
+}
+
 export function fmtMoney(n, { decimals = 0, currency } = {}) {
   const code = currency || localStorage.getItem('vf_currency') || 'USD';
   const value = Number(n || 0);

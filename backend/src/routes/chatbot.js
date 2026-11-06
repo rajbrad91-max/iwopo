@@ -345,11 +345,8 @@ function vid(req) { return req.user.vendor_id; }
 // am I subscribed? (drives the panel: history vs upsell)
 router.get('/my/status', requireAuth, async (req, res) => {
   try {
-    const sub = await prisma.chatbot_subscribers.findUnique({
-      where: { vendor_id: vid(req) },             // 🔒 tenancy — own row only
-      select: { active: true },
-    });
-    res.json({ subscribed: !!sub, active: !!sub?.active });
+    const on = await isActiveSubscriber(vid(req));   // 🔒 own vendor — the switch if set, else the plan (lib/wopoAssistant)
+    res.json({ subscribed: on, active: on });
   } catch (e) { serverError(res, e); }
 });
 
