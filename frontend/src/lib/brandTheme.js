@@ -97,6 +97,12 @@ export function buildTheme(brandColor, themeName = 'Modern', fontFamily) {
     ? rgba(fromOklch(0.24, Math.min(c * 0.5, 0.06), h), 0.78)
     : rgba('#ffffff', 0.92);
   const flat = themeName === 'Minimal';
+  /* 🔘 A solid control that floats over the page (the chat bubble): calm and deep, never bright or distracting, and
+     never so pale it reads as switched off (Raj, 2026-11-05). A colourful brand gets a deeper, quieter shade of
+     itself; a neutral one — white, grey, near-black, whose mid-grey looked disabled — a deep charcoal with a
+     breath of the brand's hue. White on it either way. */
+  const neutral = C < 0.03;
+  const solid = neutral ? fromOklch(0.27, Math.min(C, 0.015), h) : fromOklch(0.4, Math.min(c * 0.7, 0.1), h);
 
   const shape = { ...(SHAPES[themeName] || SHAPES.Modern) };
   if (fontFamily) {
@@ -117,6 +123,12 @@ export function buildTheme(brandColor, themeName = 'Modern', fontFamily) {
        brand that has to be a dark tone at reduced strength; white at 70%
        disappeared entirely, taking the first line a couple reads with it. */
     '--on-brand-soft': onBrandSoft,
+    '--brand-solid': solid,
+    /* 🫧 an outlined control (the chat bubble): a light tint of the brand inside, and an edge that is clearly there —
+       the brand itself, or for a neutral brand the deep charcoal, since its grey edge looked switched off */
+    '--brand-tint': fromOklch(0.9, Math.min(c * 0.45, 0.07), h),
+    '--brand-edge': neutral ? solid : brand,
+    '--on-brand-solid': '#ffffff',
 
     // surfaces + text (hue-tinted neutrals, never flat gray)
     '--page-bg': fromOklch(0.975, c * 0.14, h),
