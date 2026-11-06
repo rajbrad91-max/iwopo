@@ -716,6 +716,7 @@ export const api = {
   billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),
   billingPortal: () => request('/billing/portal', { method: 'POST' }),
   // ➕ add-ons on a paid plan (lib/addons.js)
+  billingAutoRenew: (on) => request('/billing/auto-renew', { method: 'POST', body: JSON.stringify({ on }) }),   // 🔁
   billingAddAddon: (id) => request(`/billing/addons/${id}`, { method: 'POST' }),
   billingRemoveAddon: (id) => request(`/billing/addons/${id}`, { method: 'DELETE' }),
   // 🛟 a help message to iwopo (routes/support.js)

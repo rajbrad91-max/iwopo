@@ -82,6 +82,20 @@ router.get('/', async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
+/* 🔁 Auto-renew on or off (Raj, 2026-11-06). Off: the plan simply ends when the paid period does — no refund, no
+   reminder; everything keeps working until then. On again: it renews as before. Stripe holds the switch. */
+router.post('/auto-renew', async (req, res) => {
+  const v = vendorOf(req);
+  if (!v) return res.status(400).json({ error: 'Not a vendor account' });
+  try {
+    const sub = await paidSubscription(v);
+    if (!sub?.stripe_subscription_id) return res.status(409).json({ error: 'There is no paid plan to renew.' });
+    const s = await stripe('POST', `/subscriptions/${sub.stripe_subscription_id}`, { cancel_at_period_end: !req.body?.on });
+    await recordSubscription(s);
+    res.json({ auto_renew: !s.cancel_at_period_end });
+  } catch (e) { serverError(res, e); }
+});
+
 /* ➕ add-ons: a paying vendor adds one (charged the difference now) or removes it (from the next bill) — lib/addons.js */
 router.post('/addons/:id', async (req, res) => {
   const v = vendorOf(req);
