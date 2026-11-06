@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { api, fmtDateTime } from '../lib/api';
 import SignContract from './SignContract';
 import './contractpreview.css';
 import AutoReleaseToggle from '../components/AutoReleaseToggle';
@@ -109,7 +109,7 @@ export default function ContractPreview({ leadId }) {
         onChange={(on) => toggleAutoRelease(on, ct)} />
       <button type="button" className="ct-prev-release" onClick={() => release(ct?.id)}
         disabled={busy || !ct?.id || !!ct?.released_at}>
-        {ct?.released_at ? `✓ Released ${String(ct.released_at).slice(0, 10)}` : 'Release contract'}
+        {ct?.released_at ? `✓ Released ${fmtDateTime(ct.released_at, { dateOnly: true })}` : 'Release contract'}   {/* the vendor's own day, not UTC's */}
       </button>
     </div>
   );

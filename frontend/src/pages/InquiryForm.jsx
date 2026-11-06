@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useRef, useState, useEffect, createContext, useContext } from 'react';
 import { firstName } from '../lib/firstName';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import { instaHandle, instaProblem } from '../lib/instagram';
@@ -545,6 +545,27 @@ const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50
  * The value stays "HH:MM" (24-hour) on both formats, exactly what the lead has
  * always stored.
  */
+/**
+ * ⌨️ Typing digits in a time box picks the number typed (Muse, 2026-11-05): a browser's list jumps on every key, so
+ * "1" then "1" landed on 1 rather than 11, and the minutes — shown as ":30" — matched nothing typed. Digits typed within
+ * a second build one number; the exact one wins, else the first that starts with it ("3" → 30). Mouse and arrow keys
+ * work as always.
+ */
+function useTypeToPick(options, pick) {
+  const typed = useRef({ text: '', at: 0 });
+  return (e) => {
+    if (!/^\d$/.test(e.key)) return;
+    e.preventDefault();
+    const now = Date.now(), t = typed.current;
+    const find = (x) => options.find(o => Number(o) === Number(x)) || options.find(o => o.startsWith(x));
+    let text = now - t.at < 1000 ? t.text + e.key : e.key;
+    let hit = find(text);
+    if (!hit) { text = e.key; hit = find(text); }
+    typed.current = { text, at: now };
+    if (hit) pick(hit);
+  };
+}
+
 function TimeSelect({ value, onChange }) {
   const is24 = useContext(TimeFormat) === '24h';
   const m = /^(\d{1,2}):(\d{2})$/.exec(value || '');
@@ -563,13 +584,16 @@ function TimeSelect({ value, onChange }) {
       onChange(`${String(h24).padStart(2, '0')}:${t.mi}`);
     } else onChange(t.h || t.mi || t.ap ? PARTIAL_TIME : '');
   };
+  const hours = is24 ? HOURS_24 : HOURS_12;
+  const typeHour = useTypeToPick(hours, h => put({ h }));
+  const typeMinute = useTypeToPick(MINUTES, mi => put({ mi }));
   return (
     <div className={`iq-time${is24 ? ' iq-time-24' : ''}`}>
-      <select aria-label="Hour" value={part.h} onChange={e => put({ h: e.target.value })}>
+      <select aria-label="Hour" value={part.h} onChange={e => put({ h: e.target.value })} onKeyDown={typeHour}>
         <option value="" disabled hidden>Hour</option>
-        {(is24 ? HOURS_24 : HOURS_12).map(h => <option key={h} value={h}>{h}</option>)}
+        {hours.map(h => <option key={h} value={h}>{h}</option>)}
       </select>
-      <select aria-label="Minutes" value={part.mi} onChange={e => put({ mi: e.target.value })}>
+      <select aria-label="Minutes" value={part.mi} onChange={e => put({ mi: e.target.value })} onKeyDown={typeMinute}>
         <option value="" disabled hidden>Min</option>
         {MINUTES.map(x => <option key={x} value={x}>:{x}</option>)}
       </select>

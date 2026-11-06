@@ -3847,7 +3847,7 @@ function MoneySection({ lead }) {
         <div className="ms-pay-list">
           {data.payments.map(p => (
             <div key={p.id} className="ms-pay-item">
-              <span>💵 <b>{fmtMoney(p.amount, { decimals: 2 })}</b> · {p.method} · {String(p.paid_at).slice(0, 10)}</span>
+              <span>💵 <b>{fmtMoney(p.amount, { decimals: 2 })}</b> · {p.method} · {fmtDateTime(p.paid_at, { dateOnly: true })}</span>
               <span className="bx-del" onClick={() => delPay(p.id)} title="Remove this payment record" role="button">🗑️</span>
             </div>
           ))}
@@ -4008,7 +4008,7 @@ const CT_SAMPLE = {
   client_name: 'Priya & Arjun', client_email: 'priya@example.com',
   event_type: 'Wedding', event_date: '29 October 2028',
   location: 'Abbotsford, BC', hours: '8', guests: '150',
-  package_name: 'Standard Package',
+  package_name: 'Standard Package', deposit_percent: '30%',
   /* ⚠️ en-GB, to match the event_date sample above. Leaving this to the
      browser's locale meant a contract showed "29 October 2028" and
      "October 7, 2026" in the same breath. */
@@ -4031,7 +4031,8 @@ function fillSample(text, overrides) {
      it is for, which is how a Reception template previewed as a Wedding. */
   // 💱 example amounts in the vendor's own currency (fmtMoney), as a real contract shows them
   const values = { ...CT_SAMPLE, total_cost: fmtMoney(4200), deposit: fmtMoney(1260), balance: fmtMoney(2940), ...(overrides || {}) };
-  return String(text || '').replace(/\{\{(\w+)\}\}/g, (m, k) =>
+  // {{deposit_percent}} reads "30%" — as on a real contract, a "%" written after it is not printed twice (Muse F-11)
+  return String(text || '').replace(/\{\{deposit_percent\}\}\s*%/g, '{{deposit_percent}}').replace(/\{\{(\w+)\}\}/g, (m, k) =>
     values[k] !== undefined && values[k] !== '' ? values[k] : m);
 }
 

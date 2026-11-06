@@ -423,7 +423,8 @@ function sectionHtml(section, values, blocks, initCounter) {
 }
 
 function substitute(text, values) {
-  let t = String(text ?? '');
+  // {{deposit_percent}} reads "30%" — a "%" written after it would print "30%%" (Muse F-11)
+  let t = String(text ?? '').replace(/\{\{deposit_percent\}\}\s*%/g, '{{deposit_percent}}');
   for (const [k, v] of Object.entries(values)) t = t.split(k).join(v == null ? '' : String(v));
   // a token the template still names, and this booking has no value for, must
   // not reach the client as {{like_this}}
