@@ -207,9 +207,13 @@
 .iq-card .iq-pe-remove { width: auto; padding: 4px 10px; background: none; border: 1px solid var(--field-line); border-radius: 8px;
   color: var(--muted); font-size: 12px; font-family: inherit; cursor: pointer; }
 .iq-card .iq-pe-remove:hover { color: #b4433a; border-color: #b4433a; }
-.iq-card .iq-pe-add { width: 100%; padding: 12px; background: none; border: 1.5px dashed var(--brand, #C9A86A); border-radius: 10px;
-  color: var(--brand-strong, #a8874a); font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer; }
-.iq-card .iq-pe-add:hover { background: var(--field-bg); }
+/* ＋ Add Pre-Event: an outlined button that always looks ready — a light tint of the brand, an edge that is clearly
+   there (the brand, or charcoal for a neutral one) and dark text; a near-white brand's grey dashes looked disabled
+   (Raj, 2026-11-05) */
+.iq-card .iq-pe-add { width: 100%; padding: 12px; background: var(--brand-tint, #eef0f2); border: 1.5px solid var(--brand-edge, #2b2b2b);
+  border-radius: 10px; color: var(--brand-ink, #1f2937); font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer;
+  transition: box-shadow .15s, transform .15s; }
+.iq-card .iq-pe-add:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, .1); transform: translateY(-1px); }
 @media (max-width: 560px) { .iq-pe-card { padding: 12px; } }
 /* ⏱️ a pre-event's hours, worked out from its times — shown, not typed */
 .iq-card .iq-pe-hours { color: var(--muted); cursor: default; }
