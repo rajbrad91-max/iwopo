@@ -1,5 +1,4 @@
 import prisma from '../config/prisma.js';
-import { TRIAL_DAYS } from './billing.js';
 import { usdRate, convert } from './localPrice.js';
 
 /**
@@ -46,7 +45,7 @@ export async function planCards({ currency } = {}) {
     prisma.plans.findMany({
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
       select: { id: true, code: true, name: true, tagline: true, icon: true, price_monthly: true, price_annual: true,
-        storage_gb: true, chat_limit: true, highlights: true, sort_order: true, plan_features: { select: { feature_key: true } } },
+        storage_gb: true, chat_limit: true, trial_days: true, highlights: true, sort_order: true, plan_features: { select: { feature_key: true } } },
     }),
     prisma.services.findMany({ where: { feature_key: { not: null }, is_private: false, is_live: true }, select: { feature_key: true } }),
   ]);
@@ -58,7 +57,7 @@ export async function planCards({ currency } = {}) {
     return {
       id: p.id, key: p.code, code: p.code, name: p.name, tagline: p.tagline, icon: p.icon, sort_order: p.sort_order,
       price_monthly: monthly, price_annual: Number(p.price_annual ?? 0), storage_gb: p.storage_gb, chat_limit: p.chat_limit,
-      trial_days: monthly > 0 ? TRIAL_DAYS : 0,
+      trial_days: p.trial_days,                 // 🧪 Essential and Pro 30, Studio none
       local: rate && monthly > 0 ? { currency: String(currency).toUpperCase(), monthly: convert(monthly, rate), annual: convert(Number(p.price_annual ?? 0), rate) } : null,
       features: p.plan_features.map(f => f.feature_key).filter(k => liveKeys.has(k) || k === 'custom_domain'),
       lines,

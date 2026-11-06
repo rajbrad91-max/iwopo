@@ -595,6 +595,8 @@ model plans {
   sort_order           Int                    @default(0)
   /// 🤖 Wopo Assistant conversations a month (0 = none)
   chat_limit           Int                    @default(0)
+  /// 🧪 free days before the first charge — Essential and Pro 30, Studio none (Raj, 2026-11-06)
+  trial_days           Int                    @default(0)
   /// ✨ lines on the card beyond what it unlocks — [{ "label": "Priority support" }, { "label": "…", "coming": true }]
   highlights           Json                   @default("[]")
   plan_features        plan_features[]

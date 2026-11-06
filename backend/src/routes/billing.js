@@ -130,7 +130,8 @@ router.post('/checkout', async (req, res) => {
     const price = await stripePriceFor(plan, cycle);
     // the free trial carries over: billing starts when it ends (Stripe needs at least 48 hours to schedule that)
     const ends = trialEnd(vendor).getTime();
-    const trial_end = ends - Date.now() > 2 * DAY ? Math.floor(ends / 1000) : undefined;
+    // 🧪 only a plan with a trial carries the free days over — Studio is charged from day one (Raj, 2026-11-06)
+    const trial_end = plan.trial_days > 0 && ends - Date.now() > 2 * DAY ? Math.floor(ends / 1000) : undefined;
     const session = await stripe('POST', '/checkout/sessions', {
       mode: 'subscription', customer, client_reference_id: v,
       line_items: [{ price, quantity: 1 }],
