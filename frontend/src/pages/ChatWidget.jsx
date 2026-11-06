@@ -13,10 +13,28 @@ export default function ChatWidget({ handle, businessName, botName }) {
   const [session] = useState(() => Math.random().toString(36).slice(2) + Date.now().toString(36));
   const bodyRef = useRef(null);
   const inputRef = useRef(null);   // ⌨️ the cursor stays in the box, message after message
+  const who = `${bot} from ${businessName || 'the team'}`;
+
+  /* 👋 a few seconds after the page opens, a small card beside the bubble says hello (Raj, 2026-11-05). Its ✕ puts
+     it away for the rest of the visit; opening the chat puts it away too. */
+  const teaserKey = `cw-teaser-closed:${handle}`;
+  const [teaser, setTeaser] = useState(false);
+  useEffect(() => {
+    let closed = false;
+    try { closed = sessionStorage.getItem(teaserKey) === '1'; } catch { /* private mode: show it */ }
+    if (closed) return undefined;
+    const t = setTimeout(() => setTeaser(true), 4000);
+    return () => clearTimeout(t);
+  }, [teaserKey]);
+  function putTeaserAway() {
+    setTeaser(false);
+    try { sessionStorage.setItem(teaserKey, '1'); } catch { /* private mode: it just returns next visit */ }
+  }
+  function openChat() { putTeaserAway(); setOpen(true); }
 
   useEffect(() => {
     if (open && msgs.length === 0) {
-      setMsgs([{ role: 'assistant', content: `Hi! I'm ${bot} from ${businessName || 'the team'} — how can I help?` }]);
+      setMsgs([{ role: 'assistant', content: `Hi! I'm ${who} — how can I help?` }]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the greeting is written once, when the chat first opens
   }, [open]);
@@ -48,7 +66,18 @@ export default function ChatWidget({ handle, businessName, botName }) {
 
   if (!open) {
     return (
-      <button className="cw-bubble" onClick={() => setOpen(true)} title="Chat with us">💬</button>
+      <>
+        {teaser && (
+          <div className="cw-teaser" role="button" tabIndex={0} onClick={openChat}
+            onKeyDown={e => { if (e.key === 'Enter') openChat(); }}>
+            <button type="button" className="cw-teaser-x" aria-label="Close"
+              onClick={e => { e.stopPropagation(); putTeaserAway(); }}>✕</button>
+            <p className="cw-teaser-hi">👋 Hi! I'm <b>{bot}</b> from {businessName || 'the team'}.</p>
+            <p className="cw-teaser-ask">Need help? Just ask!</p>
+          </div>
+        )}
+        <button className="cw-bubble" onClick={openChat} title={`Chat with ${who}`}>💬</button>
+      </>
     );
   }
 

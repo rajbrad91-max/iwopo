@@ -11,7 +11,28 @@
   box-shadow: inset 0 0 0 2.5px var(--brand-edge, #2b2b2b), 0 8px 22px rgba(0, 0, 0, .16);
   transition: transform .18s;
 }
-.cw-bubble:hover { transform: scale(1.07); }
+.cw-bubble { animation: cw-float 3.4s ease-in-out infinite; }   /* 🎈 a gentle float */
+.cw-bubble:hover { animation-play-state: paused; transform: scale(1.07); }
+@keyframes cw-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+
+/* 👋 the hello card beside the bubble, a few seconds after the page opens */
+.cw-teaser {
+  position: fixed; bottom: 96px; right: 24px; z-index: 90; width: 250px; max-width: calc(100vw - 48px);
+  padding: 12px 34px 12px 14px; border-radius: 14px; cursor: pointer;
+  background: var(--surface, #fff); border: 1px solid var(--line, #e5e7eb); box-shadow: 0 12px 32px rgba(0, 0, 0, .14);
+  font-family: system-ui, -apple-system, sans-serif; animation: cw-pop .35s ease-out;
+}
+.cw-teaser::after {   /* the little tail toward the bubble */
+  content: ''; position: absolute; right: 22px; bottom: -7px; width: 12px; height: 12px; transform: rotate(45deg);
+  background: var(--surface, #fff); border-right: 1px solid var(--line, #e5e7eb); border-bottom: 1px solid var(--line, #e5e7eb);
+}
+.cw-teaser-hi { margin: 0; font-size: 13.5px; line-height: 1.4; color: var(--text, #1f2937); }
+.cw-teaser-hi b { color: var(--brand-ink, #1f2937); }
+.cw-teaser-ask { margin: 3px 0 0; font-size: 12.5px; color: var(--muted, #6b7280); }
+.cw-teaser-x { position: absolute; top: 6px; right: 8px; padding: 2px 4px; border: none; background: none; cursor: pointer; font-size: 12px; color: var(--muted, #6b7280); }
+.cw-teaser-x:hover { color: var(--text, #1f2937); }
+@keyframes cw-pop { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .cw-bubble, .cw-teaser { animation: none; } }
 
 .cw-panel {
   position: fixed; bottom: 24px; right: 24px; z-index: 90;
