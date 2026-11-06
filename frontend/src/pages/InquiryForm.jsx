@@ -224,7 +224,7 @@ export default function InquiryForm({ handle, byHost = false }) {
 
   const c = cfg;
   return (
-    <InquiryShell cfg={c} aside={c.chat ? <ChatWidget handle={who} businessName={c.brand_name} botName={c.bot_name} /> : null}>
+    <InquiryShell cfg={c} aside={c.chat ? <ChatWidget handle={who} botName={c.bot_name} /> : null}>
         <div className="iq-body">
           <LeadFormBody cfg={c} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes}
             clientForm errs={errs} />

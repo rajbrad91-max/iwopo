@@ -4,7 +4,7 @@ import './chatwidget.css';
 // 💬 Wopo Assistant — the chat widget, for any public vendor page.
 // The name is the vendor's own: they can rename their assistant, and the header
 // and the greeting have to agree with what the bot calls itself in its replies.
-export default function ChatWidget({ handle, businessName, botName }) {
+export default function ChatWidget({ handle, botName }) {
   const bot = (botName || '').trim() || 'Wopo Assistant';
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([]);
@@ -13,7 +13,6 @@ export default function ChatWidget({ handle, businessName, botName }) {
   const [session] = useState(() => Math.random().toString(36).slice(2) + Date.now().toString(36));
   const bodyRef = useRef(null);
   const inputRef = useRef(null);   // ⌨️ the cursor stays in the box, message after message
-  const who = `${bot} from ${businessName || 'the team'}`;
 
   /* 👋 a few seconds after the page opens, a small card beside the bubble says hello (Raj, 2026-11-05). Its ✕ puts
      it away for the rest of the visit; opening the chat puts it away too. */
@@ -34,7 +33,9 @@ export default function ChatWidget({ handle, businessName, botName }) {
 
   useEffect(() => {
     if (open && msgs.length === 0) {
-      setMsgs([{ role: 'assistant', content: `Hi! I'm ${who} — how can I help?` }]);
+      // short and inviting, no business name (Raj, 2026-11-05: a form titled "Please fill Inquiry form" made it read
+      // "Wopo Assistant from Please fill Inquiry form")
+      setMsgs([{ role: 'assistant', content: `Hi! I'm ${bot} — how can I help you today?` }]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the greeting is written once, when the chat first opens
   }, [open]);
@@ -72,11 +73,11 @@ export default function ChatWidget({ handle, businessName, botName }) {
             onKeyDown={e => { if (e.key === 'Enter') openChat(); }}>
             <button type="button" className="cw-teaser-x" aria-label="Close"
               onClick={e => { e.stopPropagation(); putTeaserAway(); }}>✕</button>
-            <p className="cw-teaser-hi">👋 Hi! I'm <b>{bot}</b> from {businessName || 'the team'}.</p>
-            <p className="cw-teaser-ask">Need help? Just ask!</p>
+            <p className="cw-teaser-hi">👋 Hi! I'm <b>{bot}</b>, here to help.</p>
+            <p className="cw-teaser-ask">Ask me anything.</p>
           </div>
         )}
-        <button className="cw-bubble" onClick={openChat} title={`Chat with ${who}`}>💬</button>
+        <button className="cw-bubble" onClick={openChat} title={`Chat with ${bot}`}>💬</button>
       </>
     );
   }
