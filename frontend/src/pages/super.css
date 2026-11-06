@@ -162,6 +162,14 @@
 .sa-bells { display:flex; gap:10px; align-items:center; margin-left:auto; }
 .sa-bell { position:relative; width:40px; height:40px; border-radius:11px; background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
 .sa-bell:hover { border-color:var(--teal); transform:translateY(-1px); }
+/* 🎧 💲 🎟️ each button tinted in its own colour from the panel's palette — calm tile, coloured two-tone icon (2026-11-05) */
+.sa-bell { --tone: var(--teal); color: var(--tone); background: color-mix(in srgb, var(--tone) 11%, var(--panel)); border-color: color-mix(in srgb, var(--tone) 30%, var(--line)); }
+.sa-bell:hover { border-color: var(--tone); }
+.sa-bell svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sa-bell svg .tw { fill: color-mix(in srgb, currentColor 24%, transparent); }
+.sa-bell-support { --tone: var(--teal); }
+.sa-bell-paid { --tone: var(--green); }
+.sa-bell-trial { --tone: var(--amber); }
 .sa-bell-badge { position:absolute; top:-5px; right:-5px; background:var(--red); color:#fff; font-size:10px; font-weight:800; min-width:18px; height:18px; padding:0 4px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
 
 /* ◀ sidebar auto-hide → icons only */
@@ -355,3 +363,14 @@
 .sa-unlock-save { margin-top: 8px; width: 100%; padding: 8px 12px; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; background: var(--teal, #2dd4bf); color: #06231f; }
 .sa-unlock-none { font-size: 12.5px; color: #d97706; padding: 2px 0; }
 .sa-unlock-msg { font-size: 12.5px; margin-top: 6px; }
+
+/* 🍩 Vendors by Type — the box grows with its list, two columns beside a fixed-size donut (2026-11-05) */
+.sa-type-box { display: flex; align-items: center; gap: 24px; padding: 14px 0 6px; container-type: inline-size; }
+.sa-type-pie { flex: 0 0 170px; height: 170px; }
+/* columns just wider than the longest name, so each number sits close to its trade and they still line up (Raj) */
+.sa-legend-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 215px)); column-gap: 36px; row-gap: 9px; align-content: center; }
+.sa-legend-cols .sa-legend-item { min-width: 0; font-size: 12px; }
+/* one column when the CARD is narrow (a laptop screen squeezes it), whatever the screen size */
+@container (max-width: 620px) { .sa-legend-cols { grid-template-columns: minmax(0, 230px); } }
+@media (max-width: 640px) { .sa-type-box { flex-direction: column; align-items: stretch; } .sa-type-pie { align-self: center; } }
+

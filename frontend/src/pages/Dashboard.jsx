@@ -122,21 +122,49 @@ function AdminBells({ goView }) {
     goView(view);
   }
 
-  const Bell = ({ emoji, n, title, onClick }) => (
-    <button className="sa-bell" title={title} onClick={onClick}>
-      {emoji}
+  // 🔔 each top-bar button: its own icon on a tile tinted in its colour (Raj, 2026-11-05 — the emoji didn't say what they were)
+  const Bell = ({ icon, tone, n, title, onClick }) => (
+    <button className={`sa-bell sa-bell-${tone}`} title={title} aria-label={title} onClick={onClick}>
+      {icon}
       {n > 0 && <span className="sa-bell-badge">{n}</span>}
     </button>
   );
 
   return (
     <div className="sa-bells">
-      <Bell emoji="📨" n={c.messages} title="Support messages" onClick={() => open('messages', 'support')} />
-      <Bell emoji="💰" n={c.paid} title="New paid subscribers" onClick={() => open('paid', 'buyers')} />
-      <Bell emoji="🎁" n={c.trials} title="New trial subscribers" onClick={() => open('trials', 'buyers')} />
+      <Bell icon={<SupportIcon />} tone="support" n={c.messages} title="Support messages" onClick={() => open('messages', 'support')} />
+      <Bell icon={<PaidIcon />} tone="paid" n={c.paid} title="New paid subscribers" onClick={() => open('paid', 'buyers')} />
+      <Bell icon={<TrialIcon />} tone="trial" n={c.trials} title="New trial subscribers" onClick={() => open('trials', 'buyers')} />
     </div>
   );
 }
+
+/* 🎧 💲 🎟️ The top-bar icons — two-tone line drawings (outline in the button's colour, one part filled with its tint).
+   Support: a headset. New paid: a person with a dollar sign. New trial: a person with a ticket where the "+" would be. */
+const SupportIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 14v-3a8 8 0 1 1 16 0v3" />
+    <path d="M18 19c0 1.657 -2.686 3 -6 3" />
+    <path className="tw" d="M4 14a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-1a2 2 0 0 1 -2 -2z" />
+    <path className="tw" d="M15 14a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-1a2 2 0 0 1 -2 -2z" />
+  </svg>
+);
+const PaidIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path className="tw" d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+    <path d="M6 21v-2a4 4 0 0 1 4 -4h3" />
+    <path d="M21 15h-2.5a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-2.5" />
+    <path d="M19 21v1m0 -8v1" />
+  </svg>
+);
+const TrialIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path className="tw" d="M7 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+    <path d="M5 21v-2a4 4 0 0 1 4 -4h2" />
+    <path className="tw" d="M14.5 14.5h6.5a1 1 0 0 1 1 1v1.25a1.25 1.25 0 0 0 0 2.5v1.25a1 1 0 0 1 -1 1h-6.5a1 1 0 0 1 -1 -1v-1.25a1.25 1.25 0 0 0 0 -2.5v-1.25a1 1 0 0 1 1 -1z" />
+    <path d="M18.5 15.5v.6m0 1.9v.6m0 1.9v.4" />
+  </svg>
+);
 
 /* ---------- DASHBOARD ---------- */
 function DashboardView({ vendors, packages, overview }) {
@@ -230,7 +258,7 @@ function DashboardView({ vendors, packages, overview }) {
             <ResponsiveContainer width="50%" height={210}>
               <PieChart>
                 <Pie data={planData} dataKey="v" nameKey="name" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {planData.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
+                  {planData.map((d, i) => <Cell key={i} fill={d.c} stroke="var(--panel)" />)}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
@@ -247,15 +275,19 @@ function DashboardView({ vendors, packages, overview }) {
 
         <div className="sa-box">
           <h3>🍩 Vendors by Type</h3><div className="sa-box-sub">Vendors per profession</div>
-          <div style={{ height: 180, display: 'flex' }}>
-            <ResponsiveContainer width="45%" height="100%">
-              <PieChart>
-                <Pie data={vTypes} dataKey="v" nameKey="n" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {vTypes.map((d, i) => <Cell key={i} fill={d.c} stroke="#131e22" />)}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="sa-legend">
+          {/* 🍩 the box grows with its list — every trade now has a row, and a fixed 180px pushed "Not set" out of the card
+             (Raj, 2026-11-05); the list sits in two columns beside a fixed-size donut */}
+          <div className="sa-type-box">
+            <div className="sa-type-pie">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={vTypes} dataKey="v" nameKey="n" innerRadius={48} outerRadius={78} paddingAngle={2}>
+                    {vTypes.map((d, i) => <Cell key={i} fill={d.c} stroke="var(--panel)" />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="sa-legend sa-legend-cols">
               {vTypes.map((t, i) => (
                 <div key={i} className="sa-legend-item">
                   <span className="sa-legend-dot" style={{ background: t.c }} />{t.n}
