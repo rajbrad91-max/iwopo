@@ -5,32 +5,49 @@ import { api } from '../lib/api';
  * ✉️ "Enter the 6-digit code we emailed you" — used by sign-up and by sign-in when an address isn't confirmed yet.
  * On staging the code is shown on screen (nothing is emailed there).
  */
-export default function VerifyCode({ email, sandboxCode, notSent, onVerified, onBack, initialCode = '' }) {
+export default function VerifyCode({ email, sandboxCode, notSent, onVerified, onBack, onAlreadyConfirmed, ticket, initialCode = '' }) {
   const [code, setCode] = useState(initialCode);
   const [err, setErr] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
   const [wait, setWait] = useState(45);
   const [practice, setPractice] = useState(sandboxCode || '');
+  const [confirmed, setConfirmed] = useState(false);   // already confirmed (the email's button, say): say so and carry on
   // opened from the email's button: the code is already here — check it once, straight away
   const tried = useRef(false);
   useEffect(() => {
     if (tried.current || !/^\d{6}$/.test(initialCode)) return;
     tried.current = true;
-    api.verifyEmail(email, initialCode).then(onVerified).catch(e => setErr(e.message));
+    api.verifyEmail(email, initialCode).then(onVerified).catch(e => (e.code === 'already_confirmed' ? setConfirmed(true) : setErr(e.message)));
   }, [initialCode, email, onVerified]);
   useEffect(() => { if (wait <= 0) return undefined; const t = setTimeout(() => setWait(w => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
 
   async function verify() {
     setErr(''); setBusy(true);
     try { onVerified(await api.verifyEmail(email, code)); }
-    catch (e) { setErr(e.message); }
+    catch (e) { if (e.code === 'already_confirmed') setConfirmed(true); else setErr(e.message); }
     finally { setBusy(false); }
   }
   async function resend() {
     setErr(''); setInfo('');
-    try { const r = await api.resendCode(email); if (r.sandbox_code) setPractice(r.sandbox_code); setInfo(r.message || 'A new code is on its way. 📬'); setWait(45); }
+    try {
+      const r = await api.resendCode(email, ticket);
+      if (r.already_confirmed) { setConfirmed(true); return; }
+      if (r.sandbox_code) setPractice(r.sandbox_code); setInfo(r.message || 'A new code is on its way. 📬'); setWait(45);
+    }
     catch (e) { setErr(e.message); }
+  }
+
+  if (confirmed) {
+    return (
+      <div className="vc">
+        <h1>Email confirmed ✅</h1>
+        <p className="login-sub"><b>{email}</b> is already confirmed. Log in to carry on — if you chose a plan, payment is the next step.</p>
+        {onAlreadyConfirmed
+          ? <button className="login-btn" onClick={onAlreadyConfirmed}>Log in</button>
+          : <button className="login-btn" onClick={() => window.location.assign('/')}>Go to log in</button>}
+      </div>
+    );
   }
 
   return (

@@ -680,3 +680,14 @@
 .sl-signup-box .sl-optional { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .sl-ref-note { margin: 6px 0 0; font-size: .84rem; color: var(--p-deep); }
 
+/* ✉️ the email-code step, in the same light box as the sign-up window (components/VerifyCode.jsx) */
+.sl-verify h1 { margin: 0 0 6px; font-family: 'Sora', sans-serif; font-size: 24px; color: var(--ink); }
+.sl-verify .login-sub { margin: 0 0 12px; color: var(--text); line-height: 1.5; }
+.sl-verify .vc-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
+.sl-verify .login-btn { width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 12px; background: var(--grad); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.sl-verify .login-btn:disabled { cursor: default; }   /* full colour while it waits for six digits — controls never look faded */
+.sl-verify .vc-link { color: var(--p-deep); }
+.sl-verify .vc-link:disabled { color: var(--gray); }
+.sl-verify .login-error { margin-top: 10px; color: #B42318; font-size: 14px; }
+.sl-verify .login-notice { margin-top: 10px; color: #1F5A4F; font-size: 14px; }
+

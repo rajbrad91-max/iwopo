@@ -459,10 +459,10 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, device_token: trustedDevice(email) }) }),
   loginCode: (ticket, code, remember) => request('/auth/login/code', { method: 'POST', body: JSON.stringify({ ticket, code, remember }) }),
   loginResend: (ticket) => request('/auth/login/resend', { method: 'POST', body: JSON.stringify({ ticket }) }),
-  signup: (businessName, email, password, profession, marketing = false, referral_code = '') =>
-    request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password, profession, marketing, referral_code }) }),
+  /** fields: businessName, email, password, profession, marketing, referral_code, plan_id, cycle */
+  signup: (fields) => request('/auth/signup', { method: 'POST', body: JSON.stringify(fields) }),
   verifyEmail: (email, code) => request('/auth/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
-  resendCode: (email) => request('/auth/resend', { method: 'POST', body: JSON.stringify({ email }) }),
+  resendCode: (email, ticket) => request('/auth/resend', { method: 'POST', body: JSON.stringify({ email, ticket }) }),
   confirmEmailChange: (code) => request('/me/email/confirm', { method: 'PUT', body: JSON.stringify({ code }) }),
   forgotPassword: (email) =>
     request('/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
@@ -717,7 +717,7 @@ export const api = {
   deleteVendor: (id, confirm, cancelSubscription = false) => request(`/vendors/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm, cancel_subscription: cancelSubscription }) }),
   // 💳 billing with Stripe (routes/billing.js)
   billing: () => request('/billing'),
-  billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),
+  billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),   // no plan: the one chosen at sign-up
   billingPortal: () => request('/billing/portal', { method: 'POST' }),
   // ➕ add-ons on a paid plan (lib/addons.js)
   billingAutoRenew: (on) => request('/billing/auto-renew', { method: 'POST', body: JSON.stringify({ on }) }),   // 🔁

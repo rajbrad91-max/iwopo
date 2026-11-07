@@ -168,7 +168,7 @@ router.get('/trial-eligible', async (req, res) => {
 router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   // 🚧 paused until launch — refused here, whatever the page shows (lib/signups.js)
   if (!(await signupsOpen())) return res.status(403).json({ error: SIGNUPS_CLOSED_MESSAGE, code: 'signups_closed' });
-  const { businessName, name, email, password, profession, marketing, referral_code } = req.body;
+  const { businessName, name, email, password, profession, marketing, referral_code, plan_id, cycle } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
   const weak = await checkPassword(password, { email, name, business: businessName });   // 🔐 the shared password rules
@@ -181,6 +181,8 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
      still made, without a trial — it starts on Free and can buy any plan straight away. */
   const ip = clientIp(req);
   const withTrial = (await trialCount(ip)) < TRIAL_LIMIT;
+  // 💳 the paid plan they chose, remembered (not granted) — only a real plan with a price
+  const pending = plan_id ? await prisma.plans.findFirst({ where: { id: Number(plan_id), price_monthly: { gt: 0 } }, select: { id: true } }) : null;
   // 🎟️ a referral code that is typed must be a real one — said now, so the visitor can fix it or leave it empty
   if (String(referral_code || '').trim() && !(await referrerByCode(referral_code))) {
     return res.status(400).json({ error: "That referral code isn't recognised — check it, or leave the box empty." });
@@ -210,6 +212,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
           ...(marketing === true ? { marketing_opt_in: true, marketing_opt_in_at: new Date() } : {}),   // 📬 only if they ticked it
           signup_ip: ip,
           referral_code: await newReferralCode(tx, businessName),   // 🎟️ their own code to share
+          ...(pending ? { pending_plan_id: pending.id, pending_cycle: cycle === 'annual' ? 'annual' : 'monthly' } : {}),
         },
         select: { id: true },
       });
@@ -238,7 +241,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
     // ✉️ the account works once the address is confirmed with the emailed code
     await prisma.users.update({ where: { id: created.id }, data: { email_verified_at: null } });
     const sent = await issueCode(created.id, 'verify', { to: created.email || email });
-    res.status(201).json({ verify: true, trial: withTrial, email: created.email || email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
+    res.status(201).json({ verify: true, trial: withTrial, ticket: twoStepTicket(created), email: created.email || email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
   } catch (e) { serverError(res, e); }
 });
 
@@ -332,11 +335,13 @@ router.post('/verify', limit({ name: 'verify', max: 20, windowMs: 15 * 60_000 })
   try {
     const user = await prisma.users.findFirst({ where: { email: { equals: normEmail(req.body.email), mode: 'insensitive' } } });
     if (!user) return res.status(400).json({ error: 'That code is not right.' });
-    if (user.email_verified_at) return res.status(400).json({ error: 'This email is already confirmed — sign in with your password.' });
+    if (user.email_verified_at) return res.status(400).json({ error: 'already_confirmed', message: 'This email is already confirmed — log in to carry on.' });
     await useCode(user.id, 'verify', req.body.code);
     const done = await prisma.users.update({ where: { id: user.id }, data: { email_verified_at: new Date() } });
     logSecurity(req, done, 'email_confirmed');
-    res.json({ token: signToken(done), user: { id: done.id, name: done.name, email: done.email, role: done.role, vendor_id: done.vendor_id } });
+    const v = done.vendor_id ? await prisma.vendors.findUnique({ where: { id: done.vendor_id }, select: { pending_plan_id: true } }) : null;
+    res.json({ token: signToken(done), user: { id: done.id, name: done.name, email: done.email, role: done.role, vendor_id: done.vendor_id },
+      pay_next: !!v?.pending_plan_id });   // 💳 a chosen plan waits: the next stop is Stripe's payment page
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -345,6 +350,12 @@ router.post('/resend', limit({ name: 'resend', max: 6, windowMs: 60 * 60_000 }),
   const message = 'If that address is waiting to be confirmed, a new code is on its way. 📬';
   try {
     const user = await prisma.users.findFirst({ where: { email: { equals: normEmail(req.body.email), mode: 'insensitive' } } });
+    /* The sign-up window holds a ticket for the account it just made, so it can be told plainly that the address is
+       already confirmed (by the email's button, say). Anyone else keeps the same answer either way, so this cannot be
+       used to find out which addresses have accounts. */
+    if (user?.email_verified_at && ticketUser(req.body.ticket) === user.id) {
+      return res.json({ ok: true, already_confirmed: true, message: 'This email is already confirmed — log in to carry on.' });
+    }
     if (!user || user.email_verified_at) return res.json({ ok: true, message });
     const sent = await issueCode(user.id, 'verify', { to: user.email });
     if (sent.tooSoon) return res.status(429).json({ error: 'Please wait a little before asking for another code.' });

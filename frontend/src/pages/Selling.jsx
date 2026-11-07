@@ -248,7 +248,7 @@ export default function Selling({ onSignup, onGoLogin }) {
     setSession(token, user);
     if (paidChoice) {
       try {
-        const r = await api.billingCheckout(chosen.id, chosen.cycle || cycle);
+        const r = await api.billingCheckout(chosen?.id, chosen?.cycle || cycle);
         if (r?.url) { window.location.assign(r.url); return; }
       } catch { /* falls through to the panel */ }
     }
@@ -262,8 +262,12 @@ export default function Selling({ onSignup, onGoLogin }) {
     if (!passwordReady(form.password, { email: form.email, business: form.businessName })) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
     setLoading(true);
     try {
-      const r = await api.signup(form.businessName, form.email, form.password, form.profession, form.marketing, form.referral.trim());
-      if (r.verify) { setBuying(false); setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent }); return; }   // ✉️ confirm the address first
+      const r = await api.signup({
+        businessName: form.businessName, email: form.email, password: form.password, profession: form.profession,
+        marketing: form.marketing, referral_code: form.referral.trim(),
+        ...(paidChoice ? { plan_id: chosen.id, cycle: chosen.cycle || cycle } : {}),   // 💳 remembered on the account
+      });
+      if (r.verify) { setBuying(false); setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent, ticket: r.ticket }); return; }   // ✉️ confirm the address first
       await afterSignedIn(r.token, r.user);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
@@ -311,9 +315,10 @@ export default function Selling({ onSignup, onGoLogin }) {
     <div className="sl">
       {verify && (
         <div className="vc-overlay" role="dialog" aria-label="Confirm your email">
-          <div className="login-card">
-            <VerifyCode email={verify.email} sandboxCode={verify.code} notSent={verify.notSent}
-              onVerified={({ token, user }) => afterSignedIn(token, user)} onBack={() => setVerify(null)} />
+          <div className="sl-signup-box sl-buy sl-verify">
+            <VerifyCode email={verify.email} sandboxCode={verify.code} notSent={verify.notSent} ticket={verify.ticket}
+              onVerified={({ token, user }) => afterSignedIn(token, user)} onBack={() => setVerify(null)}
+              onAlreadyConfirmed={() => { setVerify(null); onGoLogin(); }} />
           </div>
         </div>
       )}

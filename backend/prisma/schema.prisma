@@ -813,6 +813,9 @@ model vendor_subscriptions {
 }
 
 model vendors {
+  /// 💳 the plan chosen at sign-up, until it is paid for — so confirming the email anywhere leads to payment
+  pending_plan_id      Int?
+  pending_cycle        String?   @db.VarChar(10)
   /// 🎟️ the code a vendor shares — iwopo.com/?ref=CODE (Raj, 2026-11-07)
   referral_code        String?   @unique @db.VarChar(24)
   /// 📬 agreed to occasional offers and news (unticked at sign-up; switch in My Services) — Raj, 2026-11-07

@@ -17,13 +17,23 @@ export default function BillingBanner({ onPlans }) {
     return (
       <div className={`bb ${lim.locked ? 'bb-ended' : 'bb-soon'}`} role={lim.locked ? 'alert' : 'status'}>
         <span>{lim.locked
-          ? <>🔒 <b>Your galleries and files are locked.</b> You are {lim.over_by_gb} GB over your plan — delete some or move up a plan to open them again.</>
+          ? <>🔒 <b>Your galleries and files are locked.</b> You are {lim.over_by || `${lim.over_by_gb} GB`} over your plan — delete some or move up a plan to open them again.</>
           : <>💾 <b>You are {lim.over_by || `${lim.over_by_gb} GB`} over your storage.</b> Delete some files or move up a plan within {lim.days_left} {lim.days_left === 1 ? 'day' : 'days'} — after that your galleries and files are locked.</>}</span>
         <button type="button" className="bb-btn" onClick={onPlans}>See plans</button>
       </div>
     );
   }
   if (!b || b.subscription) return null;
+  /* 💳 a plan chosen at sign-up and not paid for yet: the one next step, in plain words */
+  if (b.pending_plan) {
+    const pay = async () => { try { const r = await api.billingCheckout(); if (r?.url) window.location.assign(r.url); } catch { onPlans(); } };
+    return (
+      <div className="bb bb-soon" role="status">
+        <span>💳 <b>Finish setting up {b.pending_plan.name}.</b> Your account is ready — payment is the last step.</span>
+        <button type="button" className="bb-btn" onClick={pay}>Continue to payment</button>
+      </div>
+    );
+  }
   if (b.state === 'trial' && b.trial_days_left <= 7) {
     return (
       <div className="bb bb-soon" role="status">

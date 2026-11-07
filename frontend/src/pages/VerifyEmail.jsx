@@ -1,5 +1,6 @@
 import { setSession } from '../lib/api';
 import VerifyCode from '../components/VerifyCode';
+import { api } from '../lib/api';
 
 /**
  * ✉️ /verify?email=…&code=… — the page the "Confirm my email" button in the sign-up email opens (Raj, 2026-10-23).
@@ -16,7 +17,12 @@ export default function VerifyEmail() {
         <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>
         {email ? (
           <VerifyCode email={email} initialCode={code}
-            onVerified={({ token, user }) => { setSession(token, user); window.location.replace('/panel'); }}
+            onVerified={async ({ token, user, pay_next }) => {
+              setSession(token, user);
+              // 💳 confirmed from the email's button: a plan chosen at sign-up goes straight to payment
+              if (pay_next) { try { const r = await api.billingCheckout(); if (r?.url) { window.location.replace(r.url); return; } } catch { /* the panel offers it */ } }
+              window.location.replace('/panel');
+            }}
             onBack={() => window.location.assign('/')} />
         ) : (
           <>

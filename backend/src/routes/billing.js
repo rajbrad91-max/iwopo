@@ -28,6 +28,14 @@ const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '')
 const DAY = 86_400_000;
 
 /* ── Stripe → iwopo (raw body; exported separately so server.js can mount it before the JSON parser) ── */
+/** 💳 The plan a vendor chose at sign-up and has not paid for yet — what the panel's "finish your payment" line offers */
+async function pendingPlan(v) {
+  const x = await prisma.vendors.findUnique({ where: { id: v }, select: { pending_plan_id: true, pending_cycle: true } });
+  if (!x?.pending_plan_id || await paidSubscription(v)) return null;
+  const p = await prisma.plans.findUnique({ where: { id: x.pending_plan_id }, select: { id: true, name: true } });
+  return p ? { id: p.id, name: p.name, cycle: x.pending_cycle || 'monthly' } : null;
+}
+
 export const billingWebhook = express.Router();
 billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
   const event = verifyWebhook(req.body?.toString('utf8') || '', req.headers['stripe-signature']);
@@ -41,6 +49,7 @@ billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' })
       const s = await stripe('GET', `/subscriptions/${o.subscription}`);
       const r = await recordSubscription(s);
       await settleCheckout(s).catch(e => console.warn('[referral settle]', e.message));   // 🎁 the bonus it carried is given
+      if (r) await prisma.vendors.update({ where: { id: r.vendorId }, data: { pending_plan_id: null, pending_cycle: null } });   // 💳 paid: nothing waiting
       if (r) notify(r.vendorId, '🎉 Your plan is set up', 'Thank you — your iwopo subscription is in place', 'plans', { type: 'plans' });
     } else if (event.type === 'invoice.payment_failed' && invoiceSubscription(o)) {
       const r = await recordSubscription(await stripe('GET', `/subscriptions/${invoiceSubscription(o)}`));
@@ -77,6 +86,7 @@ router.get('/', async (req, res) => {
     const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
       marketing_opt_in: !!(await prisma.vendors.findUnique({ where: { id: v }, select: { marketing_opt_in: true } }))?.marketing_opt_in,   // 📬
+      pending_plan: await pendingPlan(v),   // 💳 chosen at sign-up, not yet paid
       ready: stripeReady(),
       state: access.reason,                              // owner | paid | trial | expired
       trial_ends_at: access.trialEndsAt, trial_days_left: access.reason === 'trial' ? daysLeft : 0,
@@ -145,9 +155,11 @@ router.post('/checkout', async (req, res) => {
       const portal = await stripe('POST', '/billing_portal/sessions', { customer, return_url: `${APP_URL}/panel/plans` });
       return res.json({ url: portal.url });
     }
-    const plan = await prisma.plans.findUnique({ where: { id: Number(req.body?.plan_id) } });
-    if (!plan) return res.status(404).json({ error: 'That plan does not exist.' });
-    const cycle = req.body?.cycle === 'annual' ? 'annual' : 'monthly';
+    // 💳 no plan named: the one they chose at sign-up (confirmed by the email's button, or on another device)
+    const pend = req.body?.plan_id ? null : await prisma.vendors.findUnique({ where: { id: v }, select: { pending_plan_id: true, pending_cycle: true } });
+    const plan = await prisma.plans.findUnique({ where: { id: Number(req.body?.plan_id || pend?.pending_plan_id || 0) } });
+    if (!plan) return res.status(404).json({ error: 'Choose a plan first.' });
+    const cycle = (req.body?.cycle || pend?.pending_cycle) === 'annual' ? 'annual' : 'monthly';
     const price = await stripePriceFor(plan, cycle);
     // 🧪 the free trial carries over — capped by the chosen plan's own trial days; Studio (0) is charged from day one.
     //    Stripe needs at least 48 hours to schedule a trial end.
