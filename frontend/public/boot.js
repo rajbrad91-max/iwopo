@@ -32,6 +32,16 @@
   } catch (e) { /* storage blocked — the page still loads normally */ }
 })();
 
+/* 🫥 The search-engine copy the server writes into the page (lib/seo) is for crawlers; a visitor would see it as plain blue
+ * links for a moment before the app draws over it (Raj, 2026-11-07). Hidden from the first paint (styles/index.css);
+ * the app shows the page once it has drawn (main.jsx). If the app never starts, the copy is shown after a few seconds,
+ * so a page is never left blank. */
+(function () {
+  var d = document.documentElement;
+  d.setAttribute('data-app-pending', '');
+  window.addEventListener('load', function () { setTimeout(function () { d.removeAttribute('data-app-pending'); }, 4000); });
+})();
+
 /* 📲 iwopo as an installable app (2026-10-27): on iwopo's own addresses only — a vendor's own website domain must not
    offer "Install iwopo". No service worker is added for this (one that handled page loads made every refresh flash). */
 (function () {

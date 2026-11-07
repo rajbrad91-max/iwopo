@@ -227,3 +227,6 @@ tr:last-child td { border-bottom:none; }
 /* " New to iwopo? Create an account\ under the sign-in form (design review 2026-11-01) */
 .login-new { margin: 14px 0 0; text-align: center; font-size: 13px; color: var(--muted, #6b7280); }
 .login-new a { color: inherit; font-weight: 700; text-decoration: underline; }
+
+/* 🫥 until the app has drawn, the server's search-engine copy stays out of sight (public/boot.js, main.jsx) */
+html[data-app-pending] #root { visibility: hidden; }
