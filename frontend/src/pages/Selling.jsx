@@ -179,7 +179,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const [compare, setCompare] = useState([]);   // 📊 the same plans, row by row (PlanTable)
   const [compareNotes, setCompareNotes] = useState([]);   // the * small print under the table
   const [cycle, setCycle] = useState('monthly');
-  const [form, setForm] = useState({ businessName: '', email: '', password: '', profession: '' });
+  const [form, setForm] = useState({ businessName: '', email: '', password: '', profession: '', marketing: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verify, setVerify] = useState(null);   // ✉️ { email, code } after sign-up: the emailed code comes next
@@ -255,7 +255,7 @@ export default function Selling({ onSignup, onGoLogin }) {
     if (!passwordReady(form.password, { email: form.email, business: form.businessName })) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
     setLoading(true);
     try {
-      const r = await api.signup(form.businessName, form.email, form.password, form.profession);
+      const r = await api.signup(form.businessName, form.email, form.password, form.profession, form.marketing);
       if (r.verify) { setBuying(false); setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent }); return; }   // ✉️ confirm the address first
       await afterSignedIn(r.token, r.user);
     } catch (err) { setError(err.message); }
@@ -282,6 +282,8 @@ export default function Selling({ onSignup, onGoLogin }) {
         <PasswordInput id={`${p}-pass`} checklist={{ email: form.email, business: form.businessName }} value={form.password} onChange={e => set('password', e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSignup()} placeholder="••••••••" />
         {error && <div className="sl-err">{error}</div>}
+        {/* 📬 offers only with consent — unticked; changeable any time in My Services */}
+        <label className="sl-optin"><input type="checkbox" checked={form.marketing} onChange={e => set('marketing', e.target.checked)} /> <span>Email me occasional offers and news from iwopo. Unsubscribe any time.</span></label>
         <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>
           {loading ? 'Creating…' : p === 'buy' && paidChoice ? 'Create account & continue' : 'Create account'}
         </button>

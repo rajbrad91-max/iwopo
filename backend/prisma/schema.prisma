@@ -809,6 +809,9 @@ model vendor_subscriptions {
 }
 
 model vendors {
+  /// 📬 agreed to occasional offers and news (unticked at sign-up; switch in My Services) — Raj, 2026-11-07
+  marketing_opt_in     Boolean   @default(false)
+  marketing_opt_in_at  DateTime? @db.Timestamp(6)
   email_inquiries         email_inquiries[]
   followups               followups[]
   project_stages           project_stages[]

@@ -6,6 +6,7 @@ import { getFeatures } from '../lib/entitlements.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { serverError } from '../lib/httpError.js';
 import { deletePreview, deleteVendor } from '../lib/deleteVendor.js';
+import { membershipOf, changeMembership, formerSubscribers } from '../lib/membership.js';
 import { logSecurity } from '../lib/securityLog.js';
 
 const router = express.Router();
@@ -163,6 +164,20 @@ router.delete('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   } catch (e) { if (e.status) return res.status(e.status).json({ error: e.message }); serverError(res, e); }
 });
 
+/* 👋 Super admin: everyone who paid and has stopped (or is stopping) — for win-back offers later */
+router.get('/former', requireAuth, requireSuperAdmin, async (req, res) => {
+  try { res.json({ former: await formerSubscribers() }); } catch (e) { serverError(res, e); }
+});
+
+/* ⏸️ Super admin: stop a membership at the end of the paid period, stop it now (no refund), or resume it */
+router.post('/:id/membership', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const m = await changeMembership(Number(req.params.id), String(req.body?.when || ''));
+    logSecurity(req, req.user, `membership_${req.body?.when}:${req.params.id}`);
+    res.json({ membership: m });
+  } catch (e) { e.status ? res.status(e.status).json({ error: e.message }) : serverError(res, e); }
+});
+
 router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
@@ -188,6 +203,7 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
       select: { id: true, status: true, started_at: true, ends_at: true, plans: { select: { name: true } } },
     });
     const subscriptions = subRows.map(({ plans, ...s }) => ({ ...s, plan_name: plans?.name ?? null }));
+    const membership = await membershipOf(id).catch(() => null);   // ⏸️ paying? stopping? and their offers consent
 
     /**
      * 💾 What this vendor has stored, against their allowance. Summed from the
@@ -222,7 +238,7 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
         })
       : [];
 
-    res.json({ vendor, users, services, subscriptions, storage, referredBy: referral[0] || null });
+    res.json({ membership, vendor, users, services, subscriptions, storage, referredBy: referral[0] || null });
   } catch (e) { serverError(res, e); }
 });
 

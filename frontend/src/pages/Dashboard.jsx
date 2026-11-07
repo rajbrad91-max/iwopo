@@ -908,6 +908,7 @@ function VendorDrawer({ vendorId, onClose }) {
             <PlanPicker vendorId={vendorId} storage={d.storage} onChanged={load} />
             <StorageLimit vendorId={vendorId} storage={d.storage} onSaved={load} />
 
+            <Membership vendorId={vendorId} membership={d.membership} onChanged={load} />
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Subscription history</div>
             {d.subscriptions.length === 0
               ? <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>No subscription records</div>
@@ -919,6 +920,86 @@ function VendorDrawer({ vendorId, onClose }) {
               ))}
           </>
         )}
+      </div>
+    </>
+  );
+}
+
+/**
+ * ⏸️ Membership (Raj, 2026-11-07): stop at the end of the paid period, stop now (no refund) or resume — the account,
+ * its data and contact stay, so they can come back. Deleting the account is the separate 🗑️ in Buyers.
+ */
+function Membership({ vendorId, membership: m, onChanged }) {
+  const [busy, setBusy] = useState('');
+  const [sure, setSure] = useState(false);   // "stop now" asks twice
+  const [msg, setMsg] = useState('');
+  if (!m) return null;
+  const day = (x) => (x ? new Date(x).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+  async function go(when) {
+    setBusy(when); setMsg('');
+    try { await api.vendorMembership(vendorId, when); setSure(false); onChanged(); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(''); }
+  }
+  return (
+    <div className="sa-mem">
+      <div className="sa-mem-title">⏸️ Membership</div>
+      {!m.paying ? <div className="sa-mem-line">Not paying right now — nothing to stop.</div> : (
+        <>
+          <div className="sa-mem-line">
+            <b>{m.plan}</b> · {m.cycle || 'monthly'} · {m.stopping ? <span className="sa-mem-warn">stops {day(m.period_end)}</span> : <>renews {day(m.period_end)}</>}
+          </div>
+          <div className="sa-mem-actions">
+            {m.stopping
+              ? <button type="button" className="sa-view-btn" disabled={!!busy} onClick={() => go('resume')}>{busy === 'resume' ? 'Resuming…' : '▶️ Resume membership'}</button>
+              : <button type="button" className="sa-view-btn" disabled={!!busy} onClick={() => go('period_end')}>{busy === 'period_end' ? 'Stopping…' : '⏸️ Stop at period end'}</button>}
+            {!sure
+              ? <button type="button" className="sa-mem-now" disabled={!!busy} onClick={() => setSure(true)}>⏹️ Stop now</button>
+              : <button type="button" className="sa-mem-now is-sure" disabled={!!busy} onClick={() => go('now')}>{busy === 'now' ? 'Stopping…' : 'Confirm: stop today, no refund'}</button>}
+          </div>
+        </>
+      )}
+      <div className="sa-mem-line sa-mem-muted">📬 Offers: {m.marketing_opt_in ? `agreed ${day(m.marketing_opt_in_at)}` : 'not agreed'}</div>
+      {msg && <div className="sa-mem-line">{msg}</div>}
+    </div>
+  );
+}
+
+/** 👋 Everyone who paid and stopped (or is stopping): who a win-back offer could go to. Export takes only those who agreed. */
+function FormerSubscribers() {
+  const [rows, setRows] = useState(null);
+  useEffect(() => { api.formerSubscribers().then(d => setRows(d.former || [])).catch(() => setRows([])); }, []);
+  const day = (x) => (x ? String(x).slice(0, 10) : '—');
+  function exportAgreed() {
+    const ok = (rows || []).filter(r => r.offers && r.email);
+    const csv = ['business,name,email,last_plan,state,ended'].concat(ok.map(r => [r.business_name, r.name, r.email, r.plan, r.state, day(r.ended_at)].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `iwopo-former-subscribers-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  const agreed = (rows || []).filter(r => r.offers).length;
+  return (
+    <>
+      <div className="sa-section-title sa-former-title">👋 Former subscribers
+        <button type="button" className="sa-view-btn" disabled={!agreed} onClick={exportAgreed}>⬇️ Export the {agreed} who agreed to offers</button>
+      </div>
+      <div className="sa-table-wrap">
+        <table>
+          <thead><tr><th>Buyer</th><th>Last plan</th><th>State</th><th>Ended</th><th>Offers</th></tr></thead>
+          <tbody>
+            {rows === null ? <tr><td colSpan={5}>Loading…</td></tr>
+              : rows.length === 0 ? <tr><td colSpan={5}>Nobody has stopped paying yet.</td></tr>
+              : rows.map(r => (
+                <tr key={r.vendor_id}>
+                  <td><b>{r.business_name}</b><div className="sa-former-mail">{r.email}</div></td>
+                  <td>{r.plan || '—'}</td>
+                  <td>{r.state === 'stopping' ? '⏸️ stopping' : '⏹️ ended'}</td>
+                  <td>{day(r.ended_at)}</td>
+                  <td>{r.offers ? '📬 agreed' : '—'}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       </div>
     </>
   );
@@ -1084,6 +1165,7 @@ function BuyersView({ vendors, overview, onChanged }) {
       </div>
       {openId && <VendorDrawer vendorId={openId} onClose={() => setOpenId(null)} />}
       {delId && <DeleteVendorModal vendorId={delId} onClose={() => setDelId(null)} onDeleted={() => { setDelId(null); onChanged?.(); }} />}
+      <FormerSubscribers />
     </>
   );
 }

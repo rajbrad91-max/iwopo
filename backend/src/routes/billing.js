@@ -70,6 +70,7 @@ router.get('/', async (req, res) => {
     ]);
     const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
+      marketing_opt_in: !!(await prisma.vendors.findUnique({ where: { id: v }, select: { marketing_opt_in: true } }))?.marketing_opt_in,   // 📬
       ready: stripeReady(),
       state: access.reason,                              // owner | paid | trial | expired
       trial_ends_at: access.trialEndsAt, trial_days_left: access.reason === 'trial' ? daysLeft : 0,
@@ -82,6 +83,17 @@ router.get('/', async (req, res) => {
         monthly: p.price_monthly, annual: p.price_annual || annualOf(p.price_monthly), lines: p.lines, local: p.local,
       })),
     });
+  } catch (e) { serverError(res, e); }
+});
+
+/* 📬 The vendor's own switch for offers and news from iwopo (Raj, 2026-11-07) — consent they can take back any time */
+router.post('/marketing', async (req, res) => {
+  const v = vendorOf(req);
+  if (!v) return res.status(400).json({ error: 'Not a vendor account' });
+  try {
+    const on = req.body?.on === true;
+    await prisma.vendors.update({ where: { id: v }, data: { marketing_opt_in: on, marketing_opt_in_at: on ? new Date() : null } });
+    res.json({ marketing_opt_in: on });
   } catch (e) { serverError(res, e); }
 });
 

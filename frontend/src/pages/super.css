@@ -425,3 +425,16 @@
 /* 💳 deleting a paying vendor: cancel their Stripe subscription first, ticked on purpose (components/DeleteVendor.jsx) */
 .sa-del-sub { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; padding: 10px 12px; border: 1px solid #f59e0b; border-radius: 8px; background: rgba(245, 158, 11, .08); font-size: 13.5px; color: var(--text); cursor: pointer; }
 .sa-del-sub input { margin-top: 3px; accent-color: #f59e0b; }
+
+/* ⏸️ Membership in the Buyers drawer, 👋 Former subscribers under the list (pages/Dashboard.jsx) */
+.sa-mem { margin: 16px 0 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.sa-mem-title { margin-bottom: 6px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.sa-mem-line { margin: 4px 0; font-size: 13.5px; color: var(--text); }
+.sa-mem-muted { color: var(--muted); font-size: 12.5px; }
+.sa-mem-warn { color: #f59e0b; font-weight: 600; }
+.sa-mem-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+.sa-mem-now { padding: 7px 12px; border: 1px solid #f87171; border-radius: 8px; background: transparent; color: #f87171; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.sa-mem-now.is-sure { background: #f87171; color: #1b2228; }
+.sa-former-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px; }
+.sa-former-mail { font-size: 12px; color: var(--muted); }
+

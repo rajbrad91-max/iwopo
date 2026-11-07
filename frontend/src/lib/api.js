@@ -459,8 +459,8 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, device_token: trustedDevice(email) }) }),
   loginCode: (ticket, code, remember) => request('/auth/login/code', { method: 'POST', body: JSON.stringify({ ticket, code, remember }) }),
   loginResend: (ticket) => request('/auth/login/resend', { method: 'POST', body: JSON.stringify({ ticket }) }),
-  signup: (businessName, email, password, profession) =>
-    request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password, profession }) }),
+  signup: (businessName, email, password, profession, marketing = false) =>
+    request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password, profession, marketing }) }),
   verifyEmail: (email, code) => request('/auth/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
   resendCode: (email) => request('/auth/resend', { method: 'POST', body: JSON.stringify({ email }) }),
   confirmEmailChange: (code) => request('/me/email/confirm', { method: 'PUT', body: JSON.stringify({ code }) }),
@@ -696,6 +696,9 @@ export const api = {
   myChatbotKnowledge: () => request('/chatbot/my/knowledge'),
   saveMyChatbotKnowledge: (body) => request('/chatbot/my/knowledge', { method: 'PUT', body: JSON.stringify(body) }),
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
+  vendorMembership: (id, when) => request(`/vendors/${id}/membership`, { method: 'POST', body: JSON.stringify({ when }) }),   // ⏸️
+  formerSubscribers: () => request('/vendors/former'),   // 👋
+  billingMarketing: (on) => request('/billing/marketing', { method: 'POST', body: JSON.stringify({ on }) }),   // 📬
   vendorFeatures: (id) => request(`/vendors/${id}/features`),
   setVendorFeature: (id, key, body) => request(`/vendors/${id}/features/${key}`, { method: 'PUT', body: JSON.stringify(body) }),
   services: () => request('/services'),

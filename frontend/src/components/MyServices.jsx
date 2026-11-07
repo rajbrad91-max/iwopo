@@ -33,6 +33,14 @@ export default function MyServicesView({ onPlans }) {
     finally { setBusy(0); }
   }
 
+  /* 📬 offers and news from iwopo — their consent, theirs to change */
+  async function setOffers(on) {
+    setBusy('offers'); setMsg('');
+    try { await api.billingMarketing(on); await load(); setMsg(on ? '📬 You will get occasional offers and news' : 'No more offers or news emails'); }
+    catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(0); }
+  }
+
   async function act(a, add) {
     if (!add && !window.confirm(`Remove ${a.name} from your next bill? It keeps working until the end of this billing period.`)) return;
     setBusy(a.id); setMsg('');
@@ -65,6 +73,14 @@ export default function MyServicesView({ onPlans }) {
         </div>
         <button type="button" className="svx-change" onClick={onPlans}>{trialOrFree ? 'Choose a plan' : 'Change plan'}</button>
       </section>
+      <div className="svx-renew">
+        <span className="svx-renew-label">📬 Offers &amp; news from iwopo</span>
+        <button type="button" role="switch" aria-checked={!!b.marketing_opt_in} disabled={busy === 'offers'}
+          className={`svx-switch${b.marketing_opt_in ? ' is-on' : ''}`} onClick={() => setOffers(!b.marketing_opt_in)}>
+          <span className="svx-switch-knob" />
+        </button>
+        <span className="svx-note">{b.marketing_opt_in ? 'On — the odd offer or update, never more' : 'Off'}</span>
+      </div>
       {b.subscription && (
         <div className="svx-renew">
           <span className="svx-renew-label">🔁 Auto-renew</span>

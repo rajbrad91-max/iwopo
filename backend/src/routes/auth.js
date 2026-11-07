@@ -167,7 +167,7 @@ router.get('/trial-eligible', async (req, res) => {
 router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   // 🚧 paused until launch — refused here, whatever the page shows (lib/signups.js)
   if (!(await signupsOpen())) return res.status(403).json({ error: SIGNUPS_CLOSED_MESSAGE, code: 'signups_closed' });
-  const { businessName, name, email, password, profession } = req.body;
+  const { businessName, name, email, password, profession, marketing } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
   const weak = await checkPassword(password, { email, name, business: businessName });   // 🔐 the shared password rules
@@ -202,6 +202,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
              the only thing that decides what anybody gets. */
           status: 'trial',
           trial_ends_at: withTrial ? await signupTrialEnd() : new Date(),   // 🧪 the trial plan's own trial days — or none
+          ...(marketing === true ? { marketing_opt_in: true, marketing_opt_in_at: new Date() } : {}),   // 📬 only if they ticked it
           signup_ip: ip,
         },
         select: { id: true },
