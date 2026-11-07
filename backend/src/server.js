@@ -81,6 +81,7 @@ import { quiet } from './lib/quiet.js';
 import { sweepOverLimit } from './lib/overLimit.js';
 import stripeConnectRoutes, { connectWebhook } from './routes/stripeConnect.js';
 import { sweepInactiveFree } from './lib/inactiveFree.js';
+import helpVideosRouter from './routes/helpVideos.js';
 
 dotenv.config();
 
@@ -240,6 +241,7 @@ app.use('/api/sites', gate('website'), siteRoutes);
 app.use('/api/domain', domainRoutes);     // 🌐 the vendor's web address (free subdomain + own domain)
 app.use('/api/billing', billingRoutes);   // 💳 plans, Stripe checkout and billing portal
 app.use('/api/support', supportRoutes);   // 🛟 vendors' help messages
+app.use('/api', helpVideosRouter);   // 🎬 /api/help/videos, /api/admin/help-videos
 
 /* ⚠️ Only answers the health check when nothing wants HTML. A browser or a
    crawler asking for / wants the marketing page; a monitor wants JSON. */

@@ -1,7 +1,7 @@
 /**
  * 🛟 /api/support — a vendor asks iwopo for help (2026-11-03).
  *
- * POST /api/support/message { topic, subject, message, page } — files the message in Super Admin's Messages inbox
+ * POST /api/support/message { topic, subject, message, page, screenshot? } — files the message in Super Admin's Messages inbox
  * (support_messages), then emails SUPPORT_EMAIL (sales@iwopo.com) with who is asking (studio, account, plan state,
  * page they were on) and Reply-To set to the vendor, so answering is one click; the vendor gets a short "we got it"
  * copy. Filed first: a message is never lost because an email could not be sent. Signed-in vendors only, 5 messages an hour per account. Who is asking
@@ -14,13 +14,22 @@ import { limit } from '../middleware/rateLimit.js';
 import { sendPlatformEmail } from './email.js';
 import { billingAccess } from '../lib/billing.js';
 import { quiet } from '../lib/quiet.js';
+import multer from 'multer';
+import crypto from 'crypto';
+import * as objects from '../lib/objectStore.js';
+import { emailShell, emailText, emailRows, emailButton, esc } from '../lib/emailLayout.js';
+
+/* 📎 one screenshot per message (Raj, 2026-11-07): an image, 5 MB at most, kept in memory only until it is stored privately */
+const SHOT_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+const shot = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, f, cb) => cb(null, !!SHOT_TYPES[f.mimetype]) });
+const APP_URL = process.env.APP_URL || 'https://iwopo.com';
 
 const router = express.Router();
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'sales@iwopo.com';
 const TOPICS = { question: 'Question', problem: 'Something isn’t working', billing: 'Billing', idea: 'Feature idea' };
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 60 * 60 * 1000, perAccount: true }), async (req, res) => {
+router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 60 * 60 * 1000, perAccount: true }), (req, res, next) => shot.single('screenshot')(req, res, (e) => (e ? res.status(400).json({ error: e.code === 'LIMIT_FILE_SIZE' ? 'That screenshot is over 5 MB — try a smaller one.' : 'That screenshot could not be read.' }) : next())), async (req, res) => {
   try {
     const vendorId = Number(req.user.vendor_id) || null;                       // 🔒 from the token
     const topic = TOPICS[req.body?.topic] ? req.body.topic : 'question';
@@ -41,18 +50,32 @@ router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 
       ['Page', page || '—'],
       ['Browser', String(req.headers['user-agent'] || '').slice(0, 160)],
     ];
-    const text = `${message}\n\n— — —\n${facts.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nReply to this email to answer them.`;
-    const html = `<p style="white-space:pre-wrap">${esc(message)}</p><hr><table>${facts.map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td>${esc(v)}</td></tr>`).join('')}</table><p>Reply to this email to answer them.</p>`;
-    await prisma.support_messages.create({
+    const row = await prisma.support_messages.create({
       data: { vendor_id: vendorId, from_email: user?.email || null, subject: `${TOPICS[topic]}${subject ? `: ${subject}` : ''}`.slice(0, 200), body: message },
     });
+    // 📎 the screenshot, stored privately under the message — only Super Admin can open it
+    if (req.file) {
+      const key = `support/${row.id}-${crypto.randomBytes(6).toString('hex')}.${SHOT_TYPES[req.file.mimetype]}`;
+      try {
+        await objects.putObject(objects.PRIVATE, key, req.file.buffer, req.file.mimetype, req.file.size);
+        await prisma.support_messages.update({ where: { id: row.id }, data: { attachment_key: key, attachment_type: req.file.mimetype } });
+        facts.push(['Screenshot', 'attached — open it in Super Admin → Support']);
+      } catch (e) { console.warn(`🛟 screenshot for message ${row.id} not stored: ${e.message}`); facts.push(['Screenshot', 'could not be stored']); }
+    }
+    const text = `${message}\n\n— — —\n${facts.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nReply to this email to answer them.`;
+    const html = emailShell({ title: head.replace(/^\[iwopo help\] /, ''), preheader: message.slice(0, 120), body:
+      emailText(esc(message).replace(/\n/g, '<br>')) + emailRows(facts)
+      + (req.file ? emailButton(`${APP_URL}/panel`, 'Open Super Admin → Support', true) : '') + emailText('Reply to this email to answer them.', { muted: true }) });
     try { await sendPlatformEmail(SUPPORT_EMAIL, head, text, html, { replyTo: user?.email || undefined }); }
     catch (e) { console.warn(`🛟 help message from vendor ${vendorId} filed, but not emailed: ${e.message}`); }
 
     if (user?.email) {                                                         // the vendor's copy (best effort)
       sendPlatformEmail(user.email, 'We got your message — iwopo',
         `Hi ${user.name || who},\n\nThanks — we got your message and will reply to this email address.\n\nYour message:\n${message}\n\n— iwopo`,
-        `<p>Hi ${esc(user.name || who)},</p><p>Thanks — we got your message and will reply to this email address.</p><p><b>Your message:</b></p><p style="white-space:pre-wrap">${esc(message)}</p><p>— iwopo</p>`,
+        emailShell({ title: 'We got your message', preheader: 'We will reply to this email address.', body:
+          emailText(`Hi ${esc(user.name || who)}, thanks — we got your message and will reply to this email address.`)
+          + emailText('<b>Your message:</b>') + emailText(esc(message).replace(/\n/g, '<br>'), { muted: true }) }),
+        `/p>`,
       ).catch(quiet('support · sendPlatformEmail'));
     }
     res.json({ ok: true, reply_to: user?.email || null });

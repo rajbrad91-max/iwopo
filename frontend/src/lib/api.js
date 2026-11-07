@@ -725,7 +725,16 @@ export const api = {
   billingAddAddon: (id) => request(`/billing/addons/${id}`, { method: 'POST' }),
   billingRemoveAddon: (id) => request(`/billing/addons/${id}`, { method: 'DELETE' }),
   // 🛟 a help message to iwopo (routes/support.js)
-  supportMessage: (body) => request('/support/message', { method: 'POST', body: JSON.stringify(body) }),
+  supportMessage: (form) => request('/support/message', { method: 'POST', body: form }),   // FormData: fields + an optional screenshot
+  helpVideos: () => request('/help/videos'),   // 🎬
+  adminAddHelpVideo: (title, url) => request('/admin/help-videos', { method: 'POST', body: JSON.stringify({ title, url }) }),
+  adminRemoveHelpVideo: (id) => request(`/admin/help-videos/${id}`, { method: 'DELETE' }),
+  /** 📎 a support message's screenshot, as a blob for an object URL (Super Admin) */
+  adminMessageAttachment: async (id) => {
+    const r = await fetch(`${BASE}/admin/messages/${id}/attachment`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!r.ok) throw new Error('That screenshot could not be opened.');
+    return r.blob();
+  },
   // 📧 prove the platform mail settings actually work
   testPlatformEmail: (to) => request('/settings/platform/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
   // 📞 does the Quo key work? listing the numbers is the cheapest proof

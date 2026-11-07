@@ -22,6 +22,7 @@ import { syncOffer } from '../lib/stripeCoupons.js';
 import { visitorCurrency } from '../lib/localPrice.js';
 import { stripe, stripeReady } from '../lib/stripe.js';
 import { myReferrals } from '../lib/referrals.js';
+import * as objects from '../lib/objectStore.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -350,8 +351,20 @@ router.put('/admin/counts/:group/seen', requireAuth, requireSuperAdmin, async (r
 // 📨 support messages list (super admin)
 router.get('/admin/messages', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const messages = await prisma.support_messages.findMany({ orderBy: { created_at: 'desc' } });
-    res.json({ messages });
+    const rows = await prisma.support_messages.findMany({ orderBy: { created_at: 'desc' } });
+    res.json({ messages: rows.map(({ attachment_key, ...m }) => ({ ...m, has_attachment: !!attachment_key })) });   // the key stays server-side
+  } catch (e) { serverError(res, e); }
+});
+
+/* 📎 Super admin: a support message's screenshot, streamed from private storage */
+router.get('/admin/messages/:id/attachment', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const m = await prisma.support_messages.findUnique({ where: { id: Number(req.params.id) }, select: { attachment_key: true, attachment_type: true } });
+    if (!m?.attachment_key) return res.status(404).json({ error: 'No screenshot on that message' });
+    const obj = await objects.getStream(objects.PRIVATE, m.attachment_key);
+    res.setHeader('Content-Type', m.attachment_type || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'private, no-store');
+    obj.stream.pipe(res);
   } catch (e) { serverError(res, e); }
 });
 
