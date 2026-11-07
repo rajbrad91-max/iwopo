@@ -9,30 +9,32 @@
 .ppm-legend .ppm-dot { margin-left: 8px; }
 
 .ppm-wrap { padding: 0; overflow-x: auto; }
-.ppm-table { width: 100%; min-width: 1180px; border-collapse: collapse; }
-.ppm-table th { position: sticky; top: 0; padding: 12px 10px; text-align: left; font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; background: var(--panel); border-bottom: 1px solid var(--line); }
-.ppm-table td { padding: 12px 10px; vertical-align: top; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.ppm-table { width: 100%; border-collapse: collapse; }   /* sized by its content — no forced width */
+.ppm .ppm-table th:first-child { padding-left: 10px; }
+.ppm .ppm-table th { position: sticky; top: 0; padding: 9px 5px; text-align: left; font-size: 12.5px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); white-space: nowrap; background: var(--panel); border-bottom: 1px solid var(--line); }
+.ppm .ppm-table td { padding: 8px 5px; vertical-align: top; border-bottom: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
 .ppm-table tr.is-overdue td:first-child { box-shadow: inset 4px 0 0 #ef4444; }
 .ppm-empty { padding: 26px !important; text-align: center; color: var(--muted); }
-.ppm-client b { display: block; font-size: 14.5px; }
+.ppm .ppm-table td.ppm-client { white-space: normal; min-width: 120px; padding-left: 10px; }
+.ppm-client b { display: block; font-size: 14px; }
 .ppm-sub { display: block; font-size: 12px; color: var(--muted); }
-.ppm-due { margin-top: 6px; padding: 2px 8px; white-space: nowrap; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 11.5px; cursor: pointer; }
-.ppm-due.is-late { border-color: #ef4444; background: rgba(239, 68, 68, .12); color: #ef4444; font-weight: 700; }
+.ppm-due { padding: 0; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: inherit; text-decoration: underline dotted; white-space: nowrap; cursor: pointer; }
+.ppm-due.is-late { color: #ef4444; font-weight: 700; text-decoration: none; }
 
 /* a stage: a dot and its date */
 .ppm-dot { display: inline-block; flex-shrink: 0; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: currentColor; }
 .ppm-dot.is-done { color: #22c55e; } .ppm-dot.is-todo { color: #f59e0b; } .ppm-dot.is-late { color: #ef4444; }
-.ppm-cell { display: inline-flex; align-items: center; padding: 5px 9px; border: 1px solid transparent; border-radius: 8px; background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.ppm-cell { display: inline-flex; align-items: center; min-width: 22px; padding: 3px 6px; border: 1px solid transparent; border-radius: 8px; background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
 .ppm-cell:hover { border-color: var(--line); background: var(--panel-2); }
 .ppm-cell.is-done { color: var(--text); } .ppm-cell.is-done .ppm-dot { color: #22c55e; }
 .ppm-cell.is-todo { color: var(--muted); } .ppm-cell.is-todo .ppm-dot { color: #f59e0b; }
-.ppm-cell.is-small { padding: 3px 8px; font-size: 12.5px; }
+.ppm-cell.is-small { padding: 1px 6px; font-size: 12.5px; }
 .ppm-cell.is-static { cursor: default; } .ppm-cell.is-static:hover { border-color: transparent; background: transparent; }
-.ppm-edit { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 4px; }
+.ppm-edit { display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center; column-gap: 2px; }
 .ppm-edit .ppm-sub { display: inline; }
-.ppm-shoot .ppm-ev { display: flex; align-items: center; padding: 2px 0; white-space: nowrap; }
+.ppm-shoot .ppm-ev { display: flex; align-items: center; padding: 1px 0; font-size: 12.5px; white-space: nowrap; }
 .ppm-ev.is-done .ppm-dot { color: #22c55e; } .ppm-ev.is-up { color: var(--muted); } .ppm-ev.is-up .ppm-dot { color: #94a3b8; }
-.ppm-log-btn { padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+.ppm-log-btn { padding: 3px 7px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
 
 /* the booking's log */
 .ppm-log td { background: var(--panel-2); }
@@ -55,3 +57,7 @@
 .ppm-pop-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; }
 .ppm-pop-close { margin-left: auto; }
 .ppm-pop-clear { color: #ef4444; }
+/* words a screen reader says for a dot alone */
+.ppm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ppm-cell { position: relative; }
+

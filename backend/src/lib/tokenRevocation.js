@@ -61,7 +61,8 @@ async function validFrom(userId) {
     const u = await prisma.users.findUnique({
       where: { id: Number(userId) }, select: { tokens_valid_from: true },
     });
-    vf = u?.tokens_valid_from ? new Date(u.tokens_valid_from).getTime() : null;
+    // a user who no longer exists (the account was deleted): every token of theirs has ended
+    vf = !u ? Infinity : u.tokens_valid_from ? new Date(u.tokens_valid_from).getTime() : null;
   } catch { vf = null; }
   validFromCache.set(userId, { validFrom: vf, at: Date.now() });
   return vf;

@@ -21,12 +21,12 @@ function short(d) {
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 
 const STAGES = [
-  ['backed_up_at', '💾 Backed up'],
-  ['sent_to_editor_at', '🧑‍🎨 Sent to editor'],
-  ['editing', '🎨 Editing'],
+  ['backed_up_at', '💾 Copied'],
+  ['sent_to_editor_at', '✂️ To editor'],
+  ['editing', '🎨 Edited'],
   ['delivered_at', '📦 Delivered'],
-  ['review_asked_at', '⭐ Review asked'],
-  ['download_reminder_at', '⏰ Download reminder'],
+  ['review_asked_at', '⭐ Review'],
+  ['download_reminder_at', '⏰ Reminder'],
 ];
 
 /** where a booking stands — for sorting and the Active filter */
@@ -103,12 +103,14 @@ export default function PpmBoard() {
                   <tr className={s.overdue ? 'is-overdue' : ''}>
                     <td className="ppm-client">
                       <b>{b.client}</b>
-                      {b.event_type && <span className="ppm-sub">{b.event_type}</span>}
-                      <button type="button" className={`ppm-due${s.overdue ? ' is-late' : ''}`} onClick={() => setEdit({ lead: b, field: 'delivery_due_at', label: '📅 Delivery due' })}>
-                        {s.due ? `${s.overdue ? '⚠️ Overdue · ' : 'Due '}${short(s.due)}` : '+ due date'}
-                      </button>
+                      <span className="ppm-sub">
+                        {b.event_type ? `${b.event_type} · ` : ''}
+                        <button type="button" className={`ppm-due${s.overdue ? ' is-late' : ''}`} onClick={() => setEdit({ lead: b, field: 'delivery_due_at', label: '📅 Delivery due' })}>
+                          {s.due ? `${s.overdue ? '⚠️ ' : 'due '}${short(s.due)}` : '+ due'}
+                        </button>
+                      </span>
                     </td>
-                    <td><span className="ppm-cell is-done is-static"><span className="ppm-dot" />{b.booked_at ? short(b.booked_at) : 'Booked'}</span></td>
+                    <td><span className="ppm-cell is-done is-static" title={b.booked_at ? 'Contract signed' : 'Booked'}><span className="ppm-dot" />{b.booked_at ? short(b.booked_at) : '✓'}</span></td>
                     <td className="ppm-shoot">
                       {b.events.length === 0 ? <span className="ppm-sub">no date yet</span> : b.events.map((e, i) => {
                         const shot = e.date && e.date < today();
@@ -126,7 +128,7 @@ export default function PpmBoard() {
                     <td><Stage onPick={setEdit} b={b} field="delivered_at" label="📦 Delivered" /></td>
                     <td><Stage onPick={setEdit} b={b} field="review_asked_at" label="⭐ Review asked" /></td>
                     <td><Stage onPick={setEdit} b={b} field="download_reminder_at" label="⏰ Download reminder" /></td>
-                    <td><button type="button" className="ppm-log-btn" onClick={() => toggleLog(b.lead_id)} aria-expanded={open === b.lead_id}>{open === b.lead_id ? 'Close' : 'Log'}</button></td>
+                    <td><button type="button" className="ppm-log-btn" onClick={() => toggleLog(b.lead_id)} aria-expanded={open === b.lead_id} title={open === b.lead_id ? 'Close the log' : 'Messages and emails'}>{open === b.lead_id ? '✕' : '📜'}</button></td>
                   </tr>
                 </FragmentRow>
               ))}
@@ -150,7 +152,7 @@ function Stage({ b, field, label, small, onPick }) {
   return (
     <button type="button" className={`ppm-cell ${done ? 'is-done' : 'is-todo'}${small ? ' is-small' : ''}`} onClick={() => onPick({ lead: b, field, label })}
       title={done ? `${label}: ${at ? short(at) : 'yes'} — click to change` : `${label}: not yet — click to set`}>
-      <span className="ppm-dot" />{done ? (at ? short(at) : 'Yes') : reminderDue ? `due ${reminderDue}` : 'not yet'}
+      <span className="ppm-dot" />{done ? (at ? short(at) : '✓') : reminderDue ? `due ${reminderDue}` : <span className="ppm-sr">not yet</span>}
     </button>
   );
 }

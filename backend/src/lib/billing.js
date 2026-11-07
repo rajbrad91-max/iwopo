@@ -148,6 +148,9 @@ export async function stripeCustomerFor(vendorId) {
 export async function recordSubscription(sub) {
   const vendorId = Number(sub.metadata?.vendor_id) || (await prisma.vendors.findFirst({ where: { stripe_customer_id: String(sub.customer) }, select: { id: true } }))?.id;
   if (!vendorId) return null;
+  // an account deleted since (its cancelled subscription still reports in): nothing to record, and no error for Stripe to retry
+  const v = await prisma.vendors.findUnique({ where: { id: vendorId }, select: { billing_exempt: true } });
+  if (!v) return null;
   const item = sub.items?.data?.[0];
   const planId = Number(item?.price?.metadata?.plan_id || sub.metadata?.plan_id) || null;
   const plan = planId ? await prisma.plans.findUnique({ where: { id: planId }, select: { id: true } }) : null;
@@ -170,7 +173,6 @@ export async function recordSubscription(sub) {
     await prisma.vendor_subscriptions.create({ data: { ...data, stripe_subscription_id: sub.id, started_at: new Date() } });
   }
   const vendorStatus = sub.status === 'trialing' ? 'trial' : PAID.has(sub.status) ? 'active' : 'expired';
-  const v = await prisma.vendors.findUnique({ where: { id: vendorId }, select: { billing_exempt: true } });
   if (!v.billing_exempt) await prisma.vendors.update({ where: { id: vendorId }, data: { status: vendorStatus } });
   return { vendorId, status: sub.status };
 }
