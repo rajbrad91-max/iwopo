@@ -687,6 +687,7 @@
 .pt .pt-cta { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--ink); background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s; }
 .pt .pt-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 20px -12px rgba(26, 18, 11, .45); }
 .pt .pt-cta.is-solid { border-color: transparent; background: var(--grad); color: #fff; }
+.pt-trial { margin-top: 9px; font-size: 12px; font-weight: 600; color: var(--p-deep); }   /* the trial is a buying condition: by the button, not a feature row */
 .pt .is-pop { background: rgba(230, 92, 0, .045); }
 .pt thead .is-pop { box-shadow: inset 0 3px 0 var(--p); }
 .pt-ribbon { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: rgba(230, 92, 0, .1); color: var(--p-deep); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }

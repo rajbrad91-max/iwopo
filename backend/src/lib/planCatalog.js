@@ -77,10 +77,11 @@ export async function planCards({ currency } = {}) {
  * so the two can never disagree. A cell is true (included), false (not included), or text (a value, or the price of
  * the add-on that brings it to that plan); `coming` marks what is not sold yet.
  */
+// in the order a vendor shops: the tools they need daily, then delivering work, then capacity; perks last (Raj, 2026-11-07)
 const GROUPS = [
-  ['The basics', [['storage', 'Storage'], ['extra_storage', 'Extra storage'], ['chatbot', 'Wopo Assistant chats a month'], ['trial', 'Free trial']]],
   ['Run your bookings', [['leads', 'Inquiry form, leads & packages'], ['contracts', 'Contracts, e-signing & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Calendar'], ['website', 'Website builder']]],
   ['Deliver your work', [['galleries', 'Client galleries with face recognition'], ['fileflyer', 'File Flyer — large-file delivery'], ['crew', 'Crew & team on the day']]],
+  ['Storage & AI', [['storage', 'Storage'], ['extra_storage', 'Extra storage'], ['chatbot', 'Wopo Assistant chats a month']]],
 ];
 export async function planCompare({ currency } = {}) {
   const cards = await planCards({ currency });
@@ -97,7 +98,6 @@ export async function planCompare({ currency } = {}) {
   const cell = (c, key) => {
     if (key === 'storage') return c.lines.find(l => l.key === 'storage').name.replace(/ storage$/, '');
     if (key === 'chatbot') return has(c, 'chatbot') ? c.chat_limit.toLocaleString('en-US') : false;
-    if (key === 'trial') return c.trial_days > 0 ? `${c.trial_days} days` : false;
     if (key === 'extra_storage') return c.price_monthly > 0 && Number.isFinite(storageFrom) ? `Add-on · from ${money(storageFrom)}/mo` : false;
     if (has(c, key)) return true;
     const a = c.price_monthly > 0 && addonFor(key, c.code);

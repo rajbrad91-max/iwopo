@@ -32,6 +32,7 @@ export default function PlanTable({ plans, groups, priceOf, onChoose }) {
                   <button type="button" className={`pt-cta${pop ? ' is-solid' : ''}`} onClick={() => onChoose(p)}>
                     {Number(p.price_monthly) === 0 ? 'Start free' : `Choose ${p.name}`}
                   </button>
+                  <span className="pt-trial">{p.trial_days > 0 ? `${p.trial_days}-day free trial` : '\u00A0'}</span>
                 </th>
               );
             })}
