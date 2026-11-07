@@ -52,6 +52,7 @@ import { professionLabel } from '../lib/professions';
 import MyServicesView from '../components/MyServices';
 import StripeConnectCard from '../components/StripeConnect';
 import WelcomeSteps from '../components/WelcomeSteps';
+import AutoRenewSetting from '../components/AutoRenewSetting';
 import { applyTheme } from '../lib/theme';
 
 // 🗝️ tab → required feature (one map controls everything)
@@ -379,11 +380,11 @@ export default function VendorPanel({ onLogout }) {
         }}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f310.svg" alt="" /></span><span className="nav-txt">Perfect Poses Site</span></div>}
         {/* 📊 private — only a vendor a super admin has granted it sees this at all */}
         <div className="nav-group">SETUP</div>
-        {has('website') && <a href={navHref('website')} className={`nav-item ${tab==='website'?'active':''}`} aria-current={tab==='website' ? 'page' : undefined} onClick={navClick('website')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f310.svg" alt="" /></span><span className="nav-txt">My Website</span></a>}
-        {has('leads') && <a href={navHref('packages')} className={`nav-item ${tab==='packages'?'active':''}`} aria-current={tab==='packages' ? 'page' : undefined} onClick={navClick('packages')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4e6.svg" alt="" /></span><span className="nav-txt">My Packages</span></a>}
         {has('leads') && <a href={navHref('inqform')} className={`nav-item ${tab==='inqform'?'active':''}`} aria-current={tab==='inqform' ? 'page' : undefined} onClick={navClick('inqform')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f3a8.svg" alt="" /></span><span className="nav-txt">Inquiry Form</span></a>}
-        <a href={navHref('services')} className={`nav-item ${tab==='services'?'active':''}`} aria-current={tab==='services' ? 'page' : undefined} onClick={navClick('services')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f9e9.svg" alt="" /></span><span className="nav-txt">My Services</span></a>
+        {has('leads') && <a href={navHref('packages')} className={`nav-item ${tab==='packages'?'active':''}`} aria-current={tab==='packages' ? 'page' : undefined} onClick={navClick('packages')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4e6.svg" alt="" /></span><span className="nav-txt">My Packages</span></a>}
         <a href={navHref('aichat')} className={`nav-item ${tab==='aichat'?'active':''}`} aria-current={tab==='aichat' ? 'page' : undefined} onClick={navClick('aichat')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f916.svg" alt="" /></span><span className="nav-txt">AI Chat</span></a>
+        <a href={navHref('services')} className={`nav-item ${tab==='services'?'active':''}`} aria-current={tab==='services' ? 'page' : undefined} onClick={navClick('services')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f9e9.svg" alt="" /></span><span className="nav-txt">My Services</span></a>
+        {has('website') && <a href={navHref('website')} className={`nav-item ${tab==='website'?'active':''}`} aria-current={tab==='website' ? 'page' : undefined} onClick={navClick('website')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f310.svg" alt="" /></span><span className="nav-txt">My Website</span></a>}
         <div className="nav-group">ACCOUNT</div>
         <a href={navHref('refer')} className={`nav-item ${tab==='refer'?'active':''}`} aria-current={tab==='refer' ? 'page' : undefined} onClick={navClick('refer')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f465.svg" alt="" /></span><span className="nav-txt">Refer a Friend</span></a>
         <a href={navHref('settings')} className={`nav-item ${tab==='settings'?'active':''}`} aria-current={tab==='settings' ? 'page' : undefined} onClick={navClick('settings')}><span className="nav-ic"><img className="nav-emo" src="/emoji/2699.svg" alt="" /></span><span className="nav-txt">Settings</span></a>
@@ -5930,6 +5931,7 @@ function SettingsView({ user, onProfileChange }) {
         <PasswordInput style={box} value={pw.current} onChange={e => setPw({ ...pw, current: e.target.value })} placeholder="Current password" />
         <PasswordInput style={box} checklist value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} placeholder="New password" />
         <button className="refresh" onClick={savePw} style={{ marginTop: 8 }}>Change password</button>
+        <AutoRenewSetting />
       </div>
       )}
 

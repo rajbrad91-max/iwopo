@@ -26,7 +26,7 @@ export const LEGAL = {
         'Essential and Pro start with a free trial (currently 30 days). No card is needed to start it. Studio has no free trial and is charged from the day you choose it.',
         'When a trial ends without a paid plan, your account moves to the Free plan: your inquiry form, leads and packages keep working, and paid features stop until you choose a plan.',
         'If you choose a plan during the trial, billing starts when the trial ends.',
-        'Plans renew automatically every month or year until you turn auto-renew off in My Services or cancel.',
+        'Plans renew automatically every month or year until you turn auto-renew off in Settings → Account or cancel.',
         'Add-ons (such as extra storage) are added to your plan and charged for the rest of the current period; when you remove one, it keeps working until the end of the period you have paid for.',
         'Referrals: when a friend signs up with your referral code (or the email you invited) and pays for a plan, they get their first month free and you get one month free — taken off your next bill, or added when you first choose a plan.',
         'Storage counts everything iwopo keeps for your account: your original files, plus the copies iwopo makes of each photo and video so your clients can view them quickly (a full-screen version and a thumbnail). For a typical high-resolution photo these copies add about 1 MB.',
@@ -36,7 +36,7 @@ export const LEGAL = {
         'Taxes are added where required by law.',
         'If a payment fails, we may retry it and limit paid features until it is resolved.',
       ] },
-      { h2: '4. Cancelling and refunds', p: ['You can turn auto-renew off in My Services, or cancel in Plans → Manage billing, at any time. You keep your plan until the end of the month or year you have paid for, and it does not renew. Payments are not refunded, including for unused time on monthly or yearly plans, except where the law requires otherwise. See our Refund & Cancellation Policy.'] },
+      { h2: '4. Cancelling and refunds', p: ['You can turn auto-renew off in Settings → Account, or cancel in Plans → Manage billing, at any time. You keep your plan until the end of the month or year you have paid for, and it does not renew. Payments are not refunded, including for unused time on monthly or yearly plans, except where the law requires otherwise. See our Refund & Cancellation Policy.'] },
       { h2: '5. Your content and your clients’ information', ul: [
         'You own what you upload and create in iwopo — photos, videos, files, contracts, forms, website content and your clients’ details ("your content").',
         'You give us permission to store, process, display and transmit your content only as needed to run iwopo for you, keep it secure and improve its reliability.',
@@ -135,7 +135,7 @@ export const LEGAL = {
     lead: 'Try Essential or Pro free first; turn auto-renew off or cancel any time; you keep what you paid for until the end of the period. Payments are not refunded.',
     sections: [
       { h2: 'Free trial', ul: ['Essential and Pro start with a free trial (currently 30 days), with no card needed. Studio has no free trial.', 'Choosing a plan during the trial does not shorten it: billing starts when the trial ends.', 'If the trial ends without a plan, your account moves to the Free plan.'] },
-      { h2: 'Cancelling', ul: ['Turn auto-renew off in My Services, or cancel in Plans → Manage billing, any time — no need to contact us.', 'Your plan stays active until the end of the month or year you have paid for, then it does not renew.', 'Your content is kept after that, so you can return by choosing a plan (see our Terms for how long).'] },
+      { h2: 'Cancelling', ul: ['Turn auto-renew off in Settings → Account, or cancel in Plans → Manage billing, any time — no need to contact us.', 'Your plan stays active until the end of the month or year you have paid for, then it does not renew.', 'Your content is kept after that, so you can return by choosing a plan (see our Terms for how long).'] },
       { h2: 'Refunds', ul: ['Payments are not refunded, including for unused time on monthly or yearly plans, because you keep full access until the end of the period.', 'Changing plans in Manage billing is adjusted automatically by Stripe for the time remaining.', 'Where the law where you live gives you a right to a refund, that right applies.', `If you were charged in error (for example twice), write to ${'sales@iwopo.com'} and we will put it right.`] },
     ],
   },

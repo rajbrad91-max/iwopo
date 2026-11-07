@@ -29,7 +29,7 @@ export async function emailInvoice(inv) {
   const first = inv.billing_reason === 'subscription_create';
   const paid = inv.amount_paid || 0;
   const renews = sub?.cancel_at_period_end ? `Auto-renew is off: your plan ends on ${ends ? day(ends) : 'the end of this period'}.`
-    : ends ? `It renews on ${day(ends)}. You can turn auto-renew off any time in My Services.` : '';
+    : ends ? `It renews on ${day(ends)}. You can turn auto-renew off any time in Settings → Account.` : '';
   const subject = first ? (paid ? `Your iwopo ${plan} plan is active` : `Your iwopo ${plan} free trial has started`) : `Your iwopo receipt: ${money(paid, inv.currency)}`;
   const headline = first ? (paid ? `Welcome to ${plan}` : `Your ${plan} free trial has started`) : 'Thank you for your payment';
   const lead = first && !paid ? `Nothing has been charged today. ${renews}` : `We received ${money(paid, inv.currency)} for your ${plan} plan. ${renews}`;

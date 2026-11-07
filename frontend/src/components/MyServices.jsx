@@ -25,13 +25,6 @@ export default function MyServicesView({ onPlans }) {
   };
   const planNames = (codes) => codes.map(c => c[0].toUpperCase() + c.slice(1)).join(' & ');
 
-  /* 🔁 auto-renew: off = the plan ends with the period already paid for */
-  async function setRenew(on) {
-    setBusy('renew'); setMsg('');
-    try { await api.billingAutoRenew(on); await load(); setMsg(on ? '🔁 Auto-renew is on' : 'Auto-renew is off — your plan ends with this billing period'); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-    finally { setBusy(0); }
-  }
 
   /* 📬 offers and news from iwopo — their consent, theirs to change */
   async function setOffers(on) {
@@ -81,18 +74,6 @@ export default function MyServicesView({ onPlans }) {
         </button>
         <span className="svx-note">{b.marketing_opt_in ? 'On — the odd offer or update, never more' : 'Off'}</span>
       </div>
-      {b.subscription && (
-        <div className="svx-renew">
-          <span className="svx-renew-label">🔁 Auto-renew</span>
-          <button type="button" role="switch" aria-checked={!b.subscription.cancels} disabled={busy === 'renew'}
-            className={`svx-switch${b.subscription.cancels ? '' : ' is-on'}`} onClick={() => setRenew(!!b.subscription.cancels)}>
-            <span className="svx-switch-knob" />
-          </button>
-          <span className="svx-note">{b.subscription.renews_at
-            ? `${b.subscription.cancels ? 'Your plan ends' : 'Renews'} ${fmtDateTime(b.subscription.renews_at, { dateOnly: true })}`
-            : (b.subscription.cancels ? 'Your plan ends with this billing period' : 'Renews automatically')}</span>
-        </div>
-      )}
       {card
         ? <ul className="svx-lines">{card.lines.map(l => <li key={l.key} className={l.coming ? 'is-coming' : ''}>{l.icon} {l.name}{l.coming && <em> · coming soon</em>}</li>)}</ul>
         : <p className="svx-quiet">Free: your inquiry form, leads and packages. Choose a plan to send contracts and take bookings.</p>}
