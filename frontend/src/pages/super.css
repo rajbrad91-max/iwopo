@@ -397,3 +397,7 @@
 .sa-del-cancel { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line); background: none; color: var(--text); cursor: pointer; }
 .sa-del-go { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--red); background: var(--red); color: #fff; font-weight: 600; cursor: pointer; }
 .sa-del-go:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* 👀 the public pricing table shown inside Packages (pages/Dashboard.jsx) */
+.sa-pt-preview { margin: 0 0 24px; }
+.sa-pt-preview .pt-wrap { margin-top: 0; max-width: none; }

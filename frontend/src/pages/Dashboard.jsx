@@ -10,6 +10,7 @@ import './agentvoice.css';
 import { useDialog } from '../lib/dialog.jsx';
 import { PROFESSIONS } from '../lib/professions';
 import DeleteVendorModal from '../components/DeleteVendor';
+import PlanTable, { planPriceOf } from '../components/PlanTable';
 
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
@@ -321,6 +322,10 @@ function ServicesView({ packages, onReload }) {
   const [showOffer, setShowOffer] = useState(false);
   const [nf, setNf] = useState({ code: '', label: '', percent_off: '', ends_at: '' });
 
+  // 👀 the public pricing table, exactly as a visitor gets it, refreshed whenever a price is saved
+  const [preview, setPreview] = useState(null);
+  useEffect(() => { api.packages().then(setPreview).catch(() => {}); }, [packages]);
+
   useEffect(() => { loadOffers(); }, []);
   async function loadOffers() {
     try { const d = await api.offers(); setOffers(d.offers || []); } catch {}
@@ -383,6 +388,14 @@ function ServicesView({ packages, onReload }) {
       <div className="sa-hint" style={{ marginTop: 0, marginBottom: 14 }}>
         {editMode ? 'Click any price to change it, then Save.' : 'Every package includes a 30-day free trial.'}
       </div>
+      {preview?.compare?.length > 0 && (
+        <div className="sa-pt-preview">
+          <div className="sa-hint" style={{ margin: '0 0 8px' }}>👀 Exactly what visitors see on the pricing page right now — a plan's button jumps to its cards below.</div>
+          <PlanTable plans={(preview.packages || []).filter(p => p.price_monthly != null)} groups={preview.compare} notes={preview.compare_notes || []}
+            priceOf={(p) => planPriceOf(p, 'monthly')}
+            onChoose={(p) => document.getElementById(`sa-pkg-${p.code || p.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
+        </div>
+      )}
       <div className="sa-pkg-grid">
         {packages.map(p => <PackageCard key={p.id} pkg={p} editMode={editMode} onSaved={onReload} />)}
       </div>
@@ -686,7 +699,7 @@ function PlanUnlocks({ pkgKey, editMode }) {
 function PackageCard({ pkg, editMode, onSaved }) {
   const hasAnnual = pkg.price_annual != null;
   return (
-    <div className="sa-pkg-card">
+    <div className="sa-pkg-card" id={`sa-pkg-${pkg.key}`}>
       <div className="sa-pkg-head">
         <div className="sa-pkg-icon">{pkg.icon}</div>
         <div>

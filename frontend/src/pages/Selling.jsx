@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { passwordReady } from '../lib/passwordRules';
 import VerifyCode from '../components/VerifyCode';
-import { api, setSession, fmtMoney } from '../lib/api';
+import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import { PROFESSION_LIST } from '../lib/professions';
 import './selling.css';
-import PlanTable from '../components/PlanTable';
+import PlanTable, { planPriceOf } from '../components/PlanTable';
 
 /**
  * Reveal-on-scroll. Skipped for reduced-motion via CSS; observer still adds
@@ -243,19 +243,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   }
 
   const realPkgs = packages.filter(p => p.price_monthly != null);
-  /* 🌍 the visitor's own currency first, as an estimate (≈) — set in USD, charged in their currency at checkout */
-  const priceOf = (p) => {
-    if (Number(p.price_monthly) === 0) return { cur: '$', big: '0', unit: '', sub: 'Free forever', note: true };
-    const annual = cycle === 'annual';
-    const usd = Number(annual ? p.price_annual : p.price_monthly);
-    const plain = (n) => Number(n).toFixed(2).replace(/\.00$/, '');
-    const unit = annual ? '/yr' : '/mo';
-    if (p.local) {
-      return { cur: '≈', big: fmtMoney(annual ? p.local.annual : p.local.monthly, { currency: p.local.currency }), unit,
-        sub: `US$${plain(usd)} · exact amount in your currency at checkout`, note: true };
-    }
-    return { cur: '$', big: plain(usd), unit, sub: annual ? `reg. $${plain(p.price_annual_regular || p.price_monthly * 12)}` : null };
-  };
+  const priceOf = (p) => planPriceOf(p, cycle);   // 🌍 shared with the table everywhere it appears (PlanTable)
 
   return (
     <div className="sl">

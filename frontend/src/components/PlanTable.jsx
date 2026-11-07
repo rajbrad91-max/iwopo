@@ -3,6 +3,23 @@
  * plans as everywhere else — so the table cannot promise what a plan does not give. Pro, the plan most vendors pick,
  * is softly highlighted. On a phone the table scrolls sideways with the feature names pinned.
  */
+import { fmtMoney } from '../lib/api';
+import './plan-table.css';
+
+/** 🌍 A plan's price for the header: the visitor's own currency first (≈), the USD it is set in as the note. */
+export function planPriceOf(p, cycle = 'monthly') {
+  if (Number(p.price_monthly) === 0) return { cur: '$', big: '0', unit: '', sub: 'Free forever', note: true };
+  const annual = cycle === 'annual';
+  const usd = Number(annual ? p.price_annual : p.price_monthly);
+  const plain = (n) => Number(n).toFixed(2).replace(/\.00$/, '');
+  const unit = annual ? '/yr' : '/mo';
+  if (p.local) {
+    return { cur: '≈', big: fmtMoney(annual ? p.local.annual : p.local.monthly, { currency: p.local.currency }), unit,
+      sub: `US$${plain(usd)} · exact amount in your currency at checkout`, note: true };
+  }
+  return { cur: '$', big: plain(usd), unit, sub: annual ? `reg. $${plain(p.price_annual_regular || p.price_monthly * 12)}` : null };
+}
+
 const cellView = (v) => (v === true
   ? <span className="pt-yes" aria-label="Included">✓</span>
   : !v ? <span className="pt-no" aria-label="Not included">—</span>
@@ -11,7 +28,7 @@ const cellView = (v) => (v === true
 export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose, open = true }) {
   if (!plans.length) return null;
   return (
-    <div className="pt-wrap">
+    <div className="pt-wrap pt-scope">
       <table className="pt">
         <thead>
           <tr>
