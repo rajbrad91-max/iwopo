@@ -5,7 +5,7 @@ import './ppmBoard.css';
 /**
  * 📊 The PPM Board — every booking and where it stands, for Perfect Poses Media's own use (Raj, 2026-11-07).
  * The same facts as the desktop board and Gale (lib/projectStages.js via /api/agent/stages — the AI Agent
- * feature, which only the owner's account has): booked → each shoot day (pre-wedding, mehndi…) → backed up →
+ * feature, which only the owner's account has): booked → the wedding date → backed up →
  * sent to editor → editing (photos, videos) → delivered → review asked → download reminder. Nothing is guessed:
  * a stage is done only when it has a date. Click a stage to set or clear it; it re-reads every minute.
  */
@@ -35,7 +35,7 @@ function standing(b) {
   const due = ymd(b.delivery_due_at);
   const overdue = !!(!b.delivered && due && due < t);
   const finished = b.delivered && b.review_asked_at && b.download_reminder_at;
-  const lastShoot = b.events.map(e => e.date).filter(Boolean).sort().pop() || b.shoot_date || '';
+  const lastShoot = b.shoot_date || '';
   return { overdue, finished, due, lastShoot };
 }
 
@@ -111,11 +111,10 @@ export default function PpmBoard() {
                       </span>
                     </td>
                     <td><span className="ppm-cell is-done is-static" title={b.booked_at ? 'Contract signed' : 'Booked'}><span className="ppm-dot" />{b.booked_at ? short(b.booked_at) : '✓'}</span></td>
-                    <td className="ppm-shoot">
-                      {b.events.length === 0 ? <span className="ppm-sub">no date yet</span> : b.events.map((e, i) => {
-                        const shot = e.date && e.date < today();
-                        return <div key={i} className={`ppm-ev ${shot ? 'is-done' : 'is-up'}`}><span className="ppm-dot" />{e.name}{e.date ? ` · ${short(e.date)}` : ''}</div>;
-                      })}
+                    <td className="ppm-shoot">   {/* the main wedding date only — green once it has passed */}
+                      {b.shoot_date
+                        ? <span className={`ppm-ev ${b.shoot_date < today() ? 'is-done' : 'is-up'}`}><span className="ppm-dot" />{short(b.shoot_date)}</span>
+                        : <span className="ppm-sub">—</span>}
                     </td>
                     <td><Stage onPick={setEdit} b={b} field="backed_up_at" label="💾 Backed up" /></td>
                     <td><Stage onPick={setEdit} b={b} field="sent_to_editor_at" label="🧑‍🎨 Sent to editor" /></td>

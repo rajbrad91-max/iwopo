@@ -23,7 +23,7 @@ const TZ = 'America/Vancouver';
 
 /** The lead, only if it is this vendor's. */
 async function leadOf(vendorId, leadId) {
-  return prisma.leads.findFirst({ where: { id: Number(leadId), vendor_id: Number(vendorId) }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true, pre_events: true, delivered: true } });   // 🔒 tenancy
+  return prisma.leads.findFirst({ where: { id: Number(leadId), vendor_id: Number(vendorId) }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true, delivered: true } });   // 🔒 tenancy
 }
 
 /** A date from the caller: "2026-10-17", an ISO time, "now", or null to clear. */
@@ -35,21 +35,12 @@ function asDate(v) {
   return d;
 }
 
-/** The shoot days: the main event, then every pre-event (pre-wedding, mehndi, sangeet…), in date order. */
-function eventsOf(lead) {
-  const main = lead.event_date ? [{ name: lead.event_type || 'Main event', date: lead.event_date.toISOString().slice(0, 10), main: true }] : [];
-  const pre = (Array.isArray(lead.pre_events) ? lead.pre_events : [])
-    .filter(e => e && (e.name || e.date))
-    .map(e => ({ name: String(e.name || 'Event').slice(0, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(String(e.date)) ? e.date : null, main: false }));
-  return [...pre, ...main].sort((a, b) => String(a.date || '9999').localeCompare(String(b.date || '9999')));
-}
 
 const shape = (lead, st, bookedAt = null) => ({
   lead_id: lead.id,
   client: lead.name,
   event_type: lead.event_type || null,
   shoot_date: lead.event_date ? lead.event_date.toISOString().slice(0, 10) : null,
-  events: eventsOf(lead),
   booked_at: bookedAt,                                  // the contract's signing, when there is one
   status: lead.status,
   backed_up_at: st?.backed_up_at || null,
@@ -77,7 +68,7 @@ async function signedAt(leadIds) {
 /** Every booking with its stages (newest shoot first). */
 export async function listStages(vendorId) {
   const v = Number(vendorId);
-  const leads = await prisma.leads.findMany({ where: { vendor_id: v, status: 'booked', archived_at: null }, orderBy: { event_date: 'desc' }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true, pre_events: true, delivered: true } });   // 🔒
+  const leads = await prisma.leads.findMany({ where: { vendor_id: v, status: 'booked', archived_at: null }, orderBy: { event_date: 'desc' }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true, delivered: true } });   // 🔒
   const st = await prisma.project_stages.findMany({ where: { vendor_id: v, lead_id: { in: leads.map(l => l.id) } } });   // 🔒
   const by = new Map(st.map(s => [s.lead_id, s]));
   const signed = await signedAt(leads.map(l => l.id));      // ids are this vendor's already
