@@ -376,6 +376,11 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
        refuse anything else — while no browser can seek without being able to
        request the middle of the file. */
     const range = req.headers.range;
+    /* 📱 The browser that opened the gallery may keep these files for a day (Raj, 2026-11-07): a photo's files
+       never change once uploaded, and without this a phone — Safari especially — threw away the photos the
+       viewer had fetched ahead and downloaded them again. "private": kept by that browser only, never by a
+       shared cache; the address still needs this visit's view token. */
+    res.setHeader('Cache-Control', 'private, max-age=86400');
     const o = await galleryStream(p.vendor_id, rel, range);
     if (o) {
       if (o.contentType) res.setHeader('Content-Type', o.contentType);
@@ -390,7 +395,7 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
 
     const full = path.join(ROOT, rel);
     if (!fs.existsSync(full)) return res.status(404).end();
-    res.sendFile(full, (err) => { if (err && !res.headersSent) res.status(404).end(); });
+    res.sendFile(full, { cacheControl: false }, (err) => { if (err && !res.headersSent) res.status(404).end(); });   // keeps the header above
   } catch { res.status(404).end(); }
 });
 

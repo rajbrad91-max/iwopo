@@ -590,6 +590,10 @@
   min-width: 0; min-height: 0;
   overflow: hidden;
 }
+/* 🖼️ the photo in the viewer: the thumbnail sets its on-screen size at once (width/height attributes from
+   PublicGallery's fit), the sharp 2200px version fades in exactly over it */
+.pg-lb-pic { position: relative; display: block; line-height: 0; }
+.pg-lb-soft { display: block; max-width: 98vw; max-height: 96vh; user-select: none; -webkit-user-drag: none; }
 /* the sharp full-size image, centered in the stage */
 .pg-lb-img {
   position: relative; z-index: 1;
@@ -829,3 +833,9 @@
 
 /* and a live shoot has only one section, so it should not stretch across the
    whole row looking lost */
+
+/* 🖼️ the sharp version lies exactly over the thumbnail and fades in once it has arrived (after .pg-lb-img) */
+.pg-lb-sharp { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; opacity: 0; transition: opacity .18s ease-out; }
+.pg-lb-sharp.is-ready { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .pg-lb-sharp { transition: none; } }
+

@@ -475,7 +475,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
   if (pickedOnly) photos = photos.filter(p => picked.has(p.id));
   if (favOnly) photos = photos.filter(p => favs.has(p.id));
 
+  const dirRef = useRef(1);   // ⏭️ the way the viewer last moved — what to make ready first
   const step = useCallback((dir) => {
+    dirRef.current = dir < 0 ? -1 : 1;
     setLightbox(i => {
       if (i === null) return null;
       const n = photos.length;
@@ -522,15 +524,45 @@ export default function PublicGallery({ token, embedded, onBack }) {
     return () => clearInterval(t);
   }, [slideshow, lightbox, step, photos]);
 
-  // ⏭️ preload the full-size of next 3 + prev 1 so swiping feels instant
+  /* ⏭️ Made ready around the photo being viewed (Raj, 2026-11-07): the next 4 in the direction of travel and the
+     2 behind, fetched AND decoded, so a swipe shows a finished picture. The images are held here so the browser
+     does not throw them away before they are needed; the ring wraps like the viewer does. */
+  const warm = useRef(new Map());
   useEffect(() => {
     if (lightbox === null || !session) return;
     const n = photos.length;
-    [lightbox + 1, lightbox + 2, lightbox + 3, lightbox - 1]
-      .filter(i => i >= 0 && i < n)
-      .forEach(i => { const im = new Image(); im.src = photoUrl(photos[i].id, 'full'); });
+    if (!n) return;
+    const d = dirRef.current;
+    const ahead = [1, 2, 3, 4].map(k => lightbox + d * k).concat([1, 2].map(k => lightbox - d * k));
+    const keep = new Map();
+    for (const raw of ahead) {
+      const p = photos[((raw % n) + n) % n];
+      if (!p || p.kind === 'video') continue;
+      const url = photoUrl(p.id, 'full');
+      let im = warm.current.get(url);
+      if (!im) { im = new Image(); im.decoding = 'async'; im.src = url; im.decode?.().catch(() => { /* shown normally if this fails */ }); }
+      keep.set(url, im);
+    }
+    warm.current = keep;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- preloads around the photo being viewed; the photo list is rebuilt on every render
   }, [lightbox, session]);
+
+  /* 🖼️ No black screen (Raj, 2026-11-07): the grid's thumbnail is already on the phone, so it shows at once at the
+     photo's full on-screen size, and the sharp 2200px version fades in exactly over it when it has arrived.
+     The size comes from the thumbnail's own shape, fitted to the screen, and is set as the image's width and
+     height (attributes, not styles); it follows the screen when it turns or resizes. */
+  const [fit, setFit] = useState(null);      // { id, r, w, h }
+  const [sharp, setSharp] = useState(null);  // id of the photo whose sharp version is on screen
+  const fitTo = useCallback((id, r) => {
+    const w = Math.min(window.innerWidth * 0.98, window.innerHeight * 0.96 * r);
+    setFit({ id, r, w: Math.round(w), h: Math.round(w / r) });
+  }, []);
+  useEffect(() => {
+    if (!fit) return undefined;
+    const onResize = () => fitTo(fit.id, fit.r);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [fit, fitTo]);
 
   // 👆 swipe the full-screen photo: left/right to move, down to close
   const touch = useRef(null);
@@ -968,14 +1000,24 @@ export default function PublicGallery({ token, embedded, onBack }) {
                 />
               )
             ) : (
-              <img
-                key={current.id}
-                className="pg-lb-img"
-                src={photoUrl(current.id, 'full')}
-                alt=""
-                decoding="async"
-                fetchpriority="high"
-              />
+              <div className="pg-lb-pic" key={current.id}>
+                <img
+                  className="pg-lb-soft"
+                  src={photoUrl(current.id, 'thumb')}
+                  alt=""
+                  aria-hidden="true"
+                  onLoad={e => fitTo(current.id, e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
+                  {...(fit?.id === current.id ? { width: fit.w, height: fit.h } : {})}
+                />
+                <img
+                  className={`pg-lb-img pg-lb-sharp${sharp === current.id ? ' is-ready' : ''}`}
+                  src={photoUrl(current.id, 'full')}
+                  alt=""
+                  decoding="async"
+                  fetchpriority="high"
+                  onLoad={() => setSharp(current.id)}
+                />
+              </div>
             )}
           </div>
           <button className="pg-lb-nav next" onClick={e => { e.stopPropagation(); setSlideshow(false); step(1); }} aria-label="Next" title="Next photo">›</button>
