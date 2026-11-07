@@ -382,8 +382,8 @@ router.get('/services', async (req, res) => {
 // 📋 Public: the plans as cards — the ONE list (lib/planCatalog.js), in USD (Raj, 2026-11-06)
 router.get('/packages', async (req, res) => {
   try {
-    const { plans, groups } = await planCompare({ currency: visitorCurrency(req) });
-    res.json({ packages: plans, compare: groups });   // 📊 the cards, and the same plans as a table
+    const { plans, groups, notes } = await planCompare({ currency: visitorCurrency(req) });
+    res.json({ packages: plans, compare: groups, compare_notes: notes });   // 📊 the cards, and the same plans as a table
   } catch (e) { serverError(res, e); }
 });
 

@@ -177,6 +177,7 @@ const FAQ = [
 export default function Selling({ onSignup, onGoLogin }) {
   const [packages, setPackages] = useState([]);
   const [compare, setCompare] = useState([]);   // 📊 the same plans, row by row (PlanTable)
+  const [compareNotes, setCompareNotes] = useState([]);   // the * small print under the table
   const [cycle, setCycle] = useState('monthly');
   const [form, setForm] = useState({ businessName: '', email: '', password: '', profession: '' });
   const [error, setError] = useState('');
@@ -199,7 +200,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   }, []);
 
   useEffect(() => {
-    api.packages().then(d => { setPackages(d.packages || []); setCompare(d.compare || []); }).catch(() => {});
+    api.packages().then(d => { setPackages(d.packages || []); setCompare(d.compare || []); setCompareNotes(d.compare_notes || []); }).catch(() => {});
     api.trialEligible().then(d => { setTrialOk(d.eligible); setOpen(d.open !== false); }).catch(() => {});
     const t = setTimeout(() => setHeroSeen(true), 250);
     return () => clearTimeout(t);
@@ -388,7 +389,7 @@ export default function Selling({ onSignup, onGoLogin }) {
           </div>
         </Reveal>
 
-        <PlanTable plans={realPkgs} groups={compare} priceOf={priceOf} onChoose={(p) => choosePlan(p, 'package')} />
+        <PlanTable plans={realPkgs} groups={compare} notes={compareNotes} priceOf={priceOf} open={open} onChoose={(p) => choosePlan(p, 'package')} />
 
       </section>
 

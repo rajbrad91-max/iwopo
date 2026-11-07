@@ -81,7 +81,7 @@ export async function planCards({ currency } = {}) {
 const GROUPS = [
   ['Run your bookings', [['leads', 'Smart inquiry form, leads & packages'], ['contracts', 'Contracts, e-signatures & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Booking calendar'], ['website', 'Portfolio website builder']]],
   ['Deliver your work', [['galleries', 'Client galleries with AI face recognition'], ['fileflyer', 'File Flyer — effortless large-file delivery'], ['crew', 'Crew scheduling & day-of team']]],
-  ['Storage & AI', [['storage', 'Pooled storage — photos, videos & large files'], ['capacity', 'Roughly what fits'], ['extra_storage', 'Add extra storage anytime'], ['chatbot', 'Wopo AI Assistant chats a month']]],
+  ['Storage & AI', [['storage', 'Pooled storage — photos, videos & large files'], ['capacity', 'Roughly what fits', 1], ['extra_storage', 'Add extra storage anytime'], ['chatbot', 'Wopo AI Assistant chats a month']]],
 ];
 export async function planCompare({ currency } = {}) {
   const cards = await planCards({ currency });
@@ -112,7 +112,7 @@ export async function planCompare({ currency } = {}) {
     return a ? `Add-on · ${money(priceFor(a, c.code, 'monthly'))}/mo` : false;
   };
   const coming = (key) => cards.some(c => c.lines.some(l => l.key === key && l.coming));
-  const groups = GROUPS.map(([title, rows]) => ({ title, rows: rows.map(([key, label]) => ({ key, label, coming: coming(key), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) })) }));
+  const groups = GROUPS.map(([title, rows]) => ({ title, rows: rows.map(([key, label, star]) => ({ key, label, star, coming: coming(key), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) })) }));
   // the extras: your own domain (an add-on below Studio), then each plan's highlights by their wording
   const addonRow = (key, label) => ({ key, label, coming: coming(key) || addons.some(a => a.feature_key === key && !a.is_live), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) });
   const extras = [addonRow('custom_domain', 'Your own custom domain'), addonRow('social_ai', 'Instagram & WhatsApp AI')];
@@ -122,5 +122,7 @@ export async function planCompare({ currency } = {}) {
   for (const c of cards) for (const l of c.lines) if (l.key.startsWith('highlight-') && !/powered by iwopo/i.test(l.name) && !rowAddons.some(n => l.name.toLowerCase().includes(n)) && !seen.has(l.name)) seen.set(l.name, l.coming);
   for (const [label, soon] of seen) extras.push({ key: `extra-${extras.length}`, label, coming: soon, cells: Object.fromEntries(cards.map(c => [c.code, c.lines.some(l => l.name === label)])) });
   groups.push({ title: 'Extras', rows: extras });
-  return { plans: cards, groups };
+  // the small print a starred row points to — estimates, never promises, so the table stays honest
+  const notes = ['* Rough estimates, not a promise — what fits depends on your own file sizes. Based on high-resolution photos of about 9 MB and 4K video at about 15 GB an hour. Storage is one pool shared by photos, videos and files.'];
+  return { plans: cards, groups, notes };
 }
