@@ -18,7 +18,7 @@ export default function BillingBanner({ onPlans }) {
       <div className={`bb ${lim.locked ? 'bb-ended' : 'bb-soon'}`} role={lim.locked ? 'alert' : 'status'}>
         <span>{lim.locked
           ? <>🔒 <b>Your galleries and files are locked.</b> You are {lim.over_by_gb} GB over your plan — delete some or move up a plan to open them again.</>
-          : <>💾 <b>You are {lim.over_by_gb} GB over your storage.</b> Delete some files or move up a plan within {lim.days_left} {lim.days_left === 1 ? 'day' : 'days'} — after that your galleries and files are locked.</>}</span>
+          : <>💾 <b>You are {lim.over_by || `${lim.over_by_gb} GB`} over your storage.</b> Delete some files or move up a plan within {lim.days_left} {lim.days_left === 1 ? 'day' : 'days'} — after that your galleries and files are locked.</>}</span>
         <button type="button" className="bb-btn" onClick={onPlans}>See plans</button>
       </div>
     );

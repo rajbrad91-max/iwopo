@@ -13,7 +13,7 @@ import { priceFor } from './addons.js';
 const LINES = [
   ['leads', '📋', () => 'Inquiry form, leads & packages'],
   ['contracts', '📄', () => 'Contracts, e-signing, invoices & payment tracking'],
-  ['calendar', '📅', () => 'Calendar'],
+  ['calendar', '📅', () => 'Booking Calendar'],   // the same name as the pricing table and the add-on (Raj, 2026-11-07)
   ['website', '🌐', () => 'Website builder'],
   ['chatbot', '🤖', (p) => `Wopo Assistant · ${p.chat_limit.toLocaleString('en-US')} chats a month`],
   ['galleries', '📸', () => 'Client Galleries with face recognition'],
@@ -79,7 +79,7 @@ export async function planCards({ currency } = {}) {
  */
 // in the order a vendor shops: the tools they need daily, then delivering work, then capacity; perks last (Raj, 2026-11-07)
 const GROUPS = [
-  ['Run your bookings', [['leads', 'Smart inquiry form, leads & packages'], ['contracts', 'Contracts, e-signatures & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Booking calendar'], ['website', 'Portfolio website builder']]],
+  ['Run your bookings', [['leads', 'Smart inquiry form, leads & packages'], ['contracts', 'Contracts, e-signatures & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Booking Calendar'], ['website', 'Portfolio website builder']]],
   ['Deliver your work', [['galleries', 'Client galleries with AI face recognition'], ['fileflyer', 'File Flyer — effortless large-file delivery'], ['crew', 'Crew scheduling & day-of team']]],
   ['Storage & AI', [['storage', 'Pooled storage — photos, videos & large files'], ['capacity', 'Roughly what fits', 1], ['extra_storage', 'Add extra storage anytime'], ['chatbot', 'Wopo AI Assistant chats a month']]],
 ];
@@ -95,10 +95,11 @@ export async function planCompare({ currency } = {}) {
   const storageFrom = Math.min(...addons.filter(a => a.storage_gb > 0).map(a => Number(a.price)));
   const addonFor = (key, code) => addons.find(a => a.feature_key === key && (!(a.plan_codes || []).length || a.plan_codes.includes(code)));
   const has = (c, key) => c.lines.some(l => l.key === key);
-  // 📸 what a plan's storage roughly holds: high-resolution photos at ~9 MB each, 4K video at ~15 GB an hour
+  // 📸 what a plan's storage roughly holds: a ~9 MB high-resolution photo plus its full-screen and thumbnail copies
+  //    (~1 MB, WebP) is ~10 MB counted; 4K video at ~15 GB an hour (Raj, 2026-11-07: storage counts everything)
   const roughly = (n) => (n >= 1000 ? (Math.round(n / 500) * 500).toLocaleString('en-US') : String(Math.round(n / 10) * 10));
   const fits = (gb) => {
-    const photos = `≈ ${roughly(gb * 1000 / 9)} photos`;
+    const photos = `≈ ${roughly(gb * 1000 / 10)} photos`;
     const hours = Math.round(gb / 15);
     return hours >= 1 ? `${photos} · ${hours} hrs of 4K video` : photos;
   };
@@ -123,6 +124,6 @@ export async function planCompare({ currency } = {}) {
   for (const [label, soon] of seen) extras.push({ key: `extra-${extras.length}`, label, coming: soon, cells: Object.fromEntries(cards.map(c => [c.code, c.lines.some(l => l.name === label)])) });
   groups.push({ title: 'Extras', rows: extras });
   // the small print a starred row points to — estimates, never promises, so the table stays honest
-  const notes = ['* Rough estimates, not a promise — what fits depends on your own file sizes. Based on high-resolution photos of about 9 MB and 4K video at about 15 GB an hour. Storage is one pool shared by photos, videos and files.'];
+  const notes = ['* Rough estimates, not a promise — what fits depends on your own file sizes. Based on high-resolution photos of about 9 MB, plus about 1 MB for the full-screen and thumbnail copies iwopo makes so clients can view them, and 4K video at about 15 GB an hour. Storage is one pool shared by photos, videos and files.'];
   return { plans: cards, groups, notes };
 }

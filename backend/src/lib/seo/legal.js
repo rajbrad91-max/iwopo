@@ -6,7 +6,7 @@
  * keep access to the end of the paid period, contact sales@iwopo.com. To be reviewed by a lawyer before relying on it.
  * Rendered by lib/seoPage.js like every other standalone page; listed in allPages() so footers and the sitemap agree.
  */
-export const LEGAL_UPDATED = '2026-11-06';
+export const LEGAL_UPDATED = '2026-11-07';
 const CONTACT = 'sales@iwopo.com';
 
 export const LEGAL = {
@@ -28,6 +28,7 @@ export const LEGAL = {
         'If you choose a plan during the trial, billing starts when the trial ends.',
         'Plans renew automatically every month or year until you turn auto-renew off in My Services or cancel.',
         'Add-ons (such as extra storage) are added to your plan and charged for the rest of the current period; when you remove one, it keeps working until the end of the period you have paid for.',
+        'Storage counts everything iwopo keeps for your account: your original files, plus the copies iwopo makes of each photo and video so your clients can view them quickly (a full-screen version and a thumbnail). For a typical high-resolution photo these copies add about 1 MB.',
         'Prices are set in US dollars. We show them in your local currency as an estimate; at checkout our payment processor (Stripe) charges the exact amount in your currency, including its conversion.',
         'Payments are handled by Stripe. We do not store your full card details.',
         'Prices may change. We will tell you at least 30 days before a change affects your next renewal; you can cancel before it applies.',

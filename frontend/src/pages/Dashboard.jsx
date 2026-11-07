@@ -316,6 +316,7 @@ function StatCard({ label, value, trend, cls }) {
 
 /* ---------- SERVICES & PACKAGES ---------- */
 function ServicesView() {
+  const [rev, setRev] = useState(0);   // bumps when the pricing table saves, so the standalone list re-reads the same add-on rows
   const dialog = useDialog();
   const [offers, setOffers] = useState([]);
   const [showOffer, setShowOffer] = useState(false);
@@ -374,18 +375,18 @@ function ServicesView() {
 
       {/* PACKAGES — the public pricing table, editable in place (components/PlanEditorTable.jsx) */}
       <div className="sa-section-title sa-pt-title">Packages & Pricing 🎁</div>
-      <PlanEditorTable />
+      <PlanEditorTable onSaved={() => setRev(r => r + 1)} />
 
       {/* STANDALONE SERVICES */}
-      <StandaloneServices />
+      <StandaloneServices rev={rev} />
     </>
   );
 }
 
-function StandaloneServices() {
+function StandaloneServices({ rev = 0 }) {
   const [services, setServices] = useState([]);
   const [edit, setEdit] = useState(false);
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [rev]);
   function load() { api.adminServices().then(d => setServices((d.services || []).filter(s => Number(s.price) > 0))).catch(() => {}); }
   return (
     <>
@@ -905,7 +906,7 @@ function VendorDrawer({ vendorId, onClose }) {
 
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>File Flyer storage</div>
             <PlanPicker vendorId={vendorId} storage={d.storage} onChanged={load} />
-            <StorageLimit vendorId={vendorId} storage={d.storage} />
+            <StorageLimit vendorId={vendorId} storage={d.storage} onSaved={load} />
 
             <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Subscription history</div>
             {d.subscriptions.length === 0
@@ -982,7 +983,7 @@ function PlanPicker({ vendorId, storage, onChanged }) {
  * commercial decision about a particular vendor, and hanging it off a plan
  * would mean changing everyone on that plan to change one of them.
  */
-function StorageLimit({ vendorId, storage }) {
+function StorageLimit({ vendorId, storage, onSaved }) {
   const [mb, setMb] = useState(storage?.limit_mb ?? 1024);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -993,35 +994,37 @@ function StorageLimit({ vendorId, storage }) {
      override they never meant to, pinning them at the previous plan's figure. */
   useEffect(() => { setMb(storage?.limit_mb ?? 1024); }, [storage?.limit_mb]);
 
+  // the line above the box reads the vendor's REAL limit, not what is being typed (empty read "of MB")
   const usedMb = (Number(storage?.used_bytes || 0) / 1024 / 1024);
-  const pct = mb > 0 ? Math.min(100, Math.round(usedMb / mb * 100)) : 0;
+  const limitMb = Number(storage?.limit_mb || 0);
+  const pct = limitMb > 0 ? Math.min(100, Math.round(usedMb / limitMb * 100)) : 0;
+  const fromPlan = storage?.limit_source !== 'override';
 
   async function save() {
     setBusy(true); setMsg('');
     try {
-      await api.setVendorStorage(vendorId, Number(mb) || 0);
+      // 🧹 empty = no override: the vendor goes back to their plan's storage (it used to save 0 MB and block uploads)
+      await api.setVendorStorage(vendorId, String(mb).trim() === '' ? null : Number(mb));
       setMsg('✅ Saved');
       setTimeout(() => setMsg(''), 1800);
+      onSaved?.();   // re-read the vendor so the line above shows the limit that now applies
     } catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
 
   return (
-    <div style={{ padding: '6px 0' }}>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
-        Using <b style={{ color: 'var(--text)' }}>{usedMb.toFixed(1)} MB</b> of {mb} MB ({pct}%)
+    <div className="sa-limit">
+      <div className="sa-limit-use">
+        Using <b>{usedMb.toFixed(1)} MB</b> of {limitMb.toLocaleString('en-US')} MB ({pct}%) · {fromPlan ? 'from the plan' : 'set here'}
       </div>
-      <div style={{ height: 6, borderRadius: 999, background: 'var(--panel-2)', overflow: 'hidden', marginBottom: 10 }}>
-        <div style={{ height: '100%', width: pct + '%', background: pct > 90 ? '#f59e0b' : 'var(--teal)' }} />
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input type="number" min="0" value={mb} onChange={e => setMb(e.target.value)}
-          style={{ width: 120, padding: '7px 10px', fontSize: 13.5, color: 'var(--text)',
-            background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7 }} />
-        <span style={{ fontSize: 13, color: 'var(--muted)' }}>MB</span>
+      <progress className={`sa-limit-bar${pct > 90 ? ' is-high' : ''}`} value={pct} max={100} aria-label="Storage used" />
+      <div className="sa-limit-row">
+        <input type="number" min="0" className="sa-limit-in" value={mb} placeholder="Plan's storage" title="Leave empty to use the plan's storage" onChange={e => setMb(e.target.value)} />
+        <span className="sa-limit-unit">MB</span>
         <button className="refresh" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Set limit'}</button>
-        {msg && <span style={{ fontSize: 12.5, color: msg[0] === '✅' ? '#4ade80' : '#f87171' }}>{msg}</span>}
+        {msg && <span className={`sa-limit-msg${msg[0] === '✅' ? ' is-ok' : ''}`}>{msg}</span>}
       </div>
+      <div className="sa-limit-hint">Leave the box empty and press Set limit to go back to the plan's storage.</div>
     </div>
   );
 }

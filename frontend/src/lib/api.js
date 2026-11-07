@@ -699,7 +699,7 @@ export const api = {
   vendorFeatures: (id) => request(`/vendors/${id}/features`),
   setVendorFeature: (id, key, body) => request(`/vendors/${id}/features/${key}`, { method: 'PUT', body: JSON.stringify(body) }),
   services: () => request('/services'),
-  packages: () => request('/packages'),
+  packages: (currency) => request(`/packages${currency ? `?currency=${encodeURIComponent(currency)}` : ''}`),   // a currency code shows prices in it (Super Admin: USD)
   adminServices: () => request('/admin/services'),
   adminPackages: () => request('/admin/packages'),
   // 🔓 what each plan actually unlocks (Super Admin)

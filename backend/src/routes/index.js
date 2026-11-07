@@ -383,7 +383,8 @@ router.get('/services', async (req, res) => {
 // 📋 Public: the plans as cards — the ONE list (lib/planCatalog.js), in USD (Raj, 2026-11-06)
 router.get('/packages', async (req, res) => {
   try {
-    const { plans, groups, notes } = await planCompare({ currency: visitorCurrency(req) });
+    const asked = String(req.query.currency || '').toUpperCase();   // an explicit currency (Super Admin asks for USD) beats the visitor's country
+    const { plans, groups, notes } = await planCompare({ currency: /^[A-Z]{3}$/.test(asked) ? asked : visitorCurrency(req) });
     res.json({ packages: plans, compare: groups, compare_notes: notes });   // 📊 the cards, and the same plans as a table
   } catch (e) { serverError(res, e); }
 });

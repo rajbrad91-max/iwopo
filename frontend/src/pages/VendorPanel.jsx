@@ -98,20 +98,21 @@ function StorageBar({ onUpgrade }) {
   const near = pct >= 80;
   const tone = pct >= 95 ? '#f87171' : near ? '#fbbf24' : 'var(--brand, #2dd4bf)';
 
-  /* Whole gigabytes, both sides. A vendor thinks in weddings, not kilobytes —
+  /* Whole gigabytes, both sides (MB only below a gigabyte). A vendor thinks in weddings, not kilobytes —
      "0 KB of 5 GB" is precise and says nothing. Used rounds to the nearest GB;
      what is LEFT rounds down, so the number never promises room that is not
      there. */
   const GB = 1073741824;
-  const usedGb = Math.round((s.used_bytes || 0) / GB);
-  const limitGb = Math.max(1, Math.round((s.limit_mb || 0) / 1024));
+  // under a gigabyte (a small override, a test) whole gigabytes read "0 GB / 1 GB" — so MB there
+  const size = (bytes) => (bytes < GB ? `${Math.round(bytes / 1048576)} MB` : `${Math.round(bytes / GB)} GB`);
+  const limitBytes = (s.limit_mb || 0) * 1048576;
   const leftBytes = Math.max(0, (s.limit_bytes || 0) - (s.used_bytes || 0));
   const leftGb = Math.floor(leftBytes / GB);
   /* Under a gigabyte, whole-gigabyte rounding says "0 GB left" while there is
      still room — which reads as full when it is not. Said in words instead, so
      the scale stays gigabytes without claiming the tank is empty. */
   const leftTxt = leftBytes === 0 ? 'Full'
-    : leftGb === 0 ? 'Under 1 GB left'
+    : leftGb === 0 ? (limitBytes < GB ? `${size(leftBytes)} left` : 'Under 1 GB left')
     : `${leftGb} GB left`;
 
   return (
@@ -119,7 +120,7 @@ function StorageBar({ onUpgrade }) {
       <div className="vp-storage-top">
         <span className="vp-storage-lbl">Storage</span>
         <span className="vp-storage-num" style={near ? { color: tone } : undefined}>
-          {near ? leftTxt : `${usedGb} GB / ${limitGb} GB`}
+          {near ? leftTxt : `${size(s.used_bytes || 0)} / ${size(limitBytes)}`}
         </span>
       </div>
       <div className="vp-storage-bar"><span style={{ width: pct + '%', background: tone }} /></div>

@@ -12,6 +12,7 @@ import { sendPlatformEmail } from '../routes/email.js';
 export const GRACE_DAYS = 15;
 const DAY = 86_400_000;
 const GB = 1024 ** 3;
+const overText = (bytes) => (bytes < GB ? `${Math.max(1, Math.round(bytes / 1048576))} MB` : `${Math.round(bytes / GB * 10) / 10} GB`);
 
 /** Where a vendor stands right now — and the stored start of the countdown kept in step with it. */
 export async function refreshLimit(vendorId) {
@@ -32,6 +33,8 @@ export async function refreshLimit(vendorId) {
   return {
     over, since, locked: !!since && left === 0, days_left: left, stage: row?.over_limit_stage || 0,
     over_by_gb: over ? Math.round((st.used_bytes - st.limit_mb * 1024 * 1024) / GB * 10) / 10 : 0,
+    // said the way a person reads it: "13 MB" under a gigabyte (it read "0 GB over"), "2.4 GB" above
+    over_by: over ? overText(st.used_bytes - st.limit_mb * 1024 * 1024) : '',
     used_gb: Math.round(st.used_bytes / GB * 10) / 10, limit_gb: Math.round(st.limit_mb / 1024),
   };
 }
@@ -51,10 +54,10 @@ export async function mediaLocked(vendorId) {
 
 const STAGES = [
   // [stage, after days, title, body]
-  [1, 0, '💾 You are over your storage', (s) => `Your files are ${s.over_by_gb} GB over your plan. Please delete some or move up a plan within ${GRACE_DAYS} days — after that your galleries and files are locked until you do.`],
-  [2, 7, '⏳ 8 days left to sort out your storage', (s) => `You are still ${s.over_by_gb} GB over your plan. Delete some files or move up a plan — in 8 days your galleries and files will be locked.`],
-  [3, 13, '⚠️ 2 days left before your files are locked', (s) => `You are ${s.over_by_gb} GB over your plan. In 2 days your galleries and files will be locked — delete some or move up a plan to keep them open.`],
-  [4, GRACE_DAYS, '🔒 Your galleries and files are locked', (s) => `You are ${s.over_by_gb} GB over your plan, so your galleries and files are locked. Delete some or move up a plan and they open again straight away.`],
+  [1, 0, '💾 You are over your storage', (s) => `Your files are ${s.over_by} over your plan. Please delete some or move up a plan within ${GRACE_DAYS} days — after that your galleries and files are locked until you do.`],
+  [2, 7, '⏳ 8 days left to sort out your storage', (s) => `You are still ${s.over_by} over your plan. Delete some files or move up a plan — in 8 days your galleries and files will be locked.`],
+  [3, 13, '⚠️ 2 days left before your files are locked', (s) => `You are ${s.over_by} over your plan. In 2 days your galleries and files will be locked — delete some or move up a plan to keep them open.`],
+  [4, GRACE_DAYS, '🔒 Your galleries and files are locked', (s) => `You are ${s.over_by} over your plan, so your galleries and files are locked. Delete some or move up a plan and they open again straight away.`],
 ];
 
 /** Hourly: every vendor holding files — start or clear the countdown, and send the reminder that is due (once each). */

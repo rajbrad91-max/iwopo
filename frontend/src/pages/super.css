@@ -398,9 +398,27 @@
 .sa-pt .pt-edit-row label { display: inline-flex; align-items: center; gap: 4px; }
 .sa-pt .pt-coming { color: var(--gray); font-weight: 500; }
 .sa-pt .pt-note-sm { font-size: 11.5px; color: var(--gray); }
-.sa-pt .pt-tog { width: 36px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: #FFFBF7; color: #CBBFB3; font-weight: 800; cursor: pointer; transition: background .15s, color .15s; }
+.sa-pt .pt-tog { width: 44px; height: 34px; margin: 2px; border-radius: 8px; border: 1px solid var(--line); background: #FFFBF7; color: #CBBFB3; font-weight: 800; cursor: pointer; transition: background .15s, color .15s; }
 .sa-pt .pt-tog.is-on { background: rgba(230, 92, 0, .12); border-color: rgba(230, 92, 0, .3); color: var(--p-deep); }
 .sa-pt .pt-calc { opacity: .75; }
 .sa-pt .pt-help { text-align: left; font-size: 12.5px; color: var(--gray); }
 .sa-pt .pt-btn { padding: 6px 12px; border: 1px solid var(--ink); border-radius: 8px; background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
 .sa-pt .pt-coming input { width: 15px; height: 15px; accent-color: var(--p); }
+
+/* 💾 A vendor's own storage limit, in Buyers → Manage (pages/Dashboard.jsx StorageLimit) */
+.sa-limit { padding: 6px 0; }
+.sa-limit-use { margin-bottom: 6px; font-size: 13px; color: var(--muted); }
+.sa-limit-use b { color: var(--text); }
+.sa-limit-bar { display: block; width: 100%; height: 6px; margin-bottom: 10px; border: 0; border-radius: 999px; overflow: hidden; background: var(--panel-2); appearance: none; -webkit-appearance: none; }
+.sa-limit-bar::-webkit-progress-bar { background: var(--panel-2); border-radius: 999px; }
+.sa-limit-bar::-webkit-progress-value { background: var(--teal); border-radius: 999px; }
+.sa-limit-bar::-moz-progress-bar { background: var(--teal); border-radius: 999px; }
+.sa-limit-bar.is-high::-webkit-progress-value { background: #f59e0b; }
+.sa-limit-bar.is-high::-moz-progress-bar { background: #f59e0b; }
+.sa-limit-row { display: flex; gap: 8px; align-items: center; }
+.sa-limit-in { width: 150px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); color: var(--text); font-size: 13.5px; }
+.sa-limit-unit { font-size: 13px; color: var(--muted); }
+.sa-limit-msg { font-size: 12.5px; color: #f87171; }
+.sa-limit-msg.is-ok { color: #4ade80; }
+.sa-limit-hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
+
