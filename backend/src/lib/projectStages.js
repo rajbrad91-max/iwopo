@@ -8,20 +8,22 @@
  * is untouched. Every read and write is filtered by the vendor id from the login, never from the body.
  *
  *   project_stages    one row per booking: data backed up (when, by whom), sent to the editor,
- *                     editing done — photos and videos separately
+ *                     editing done — photos and videos separately — and (2026-11-07) delivery due, delivered,
+ *                     review asked, download reminder sent. Shown on the panel's PPM Board too.
  *   outside_messages  what he sent outside iwopo (WhatsApp, Instagram…), recorded by him
  *   email_log         every email iwopo sends a client, like the texts in Calls & Messages
  */
 import prisma from '../config/prisma.js';
 import { getFeatures } from './entitlements.js';
 
-const DATE_FIELDS = ['backed_up_at', 'sent_to_editor_at', 'editing_photos_done_at', 'editing_videos_done_at'];
+const DATE_FIELDS = ['backed_up_at', 'sent_to_editor_at', 'editing_photos_done_at', 'editing_videos_done_at',
+  'delivery_due_at', 'delivered_at', 'review_asked_at', 'download_reminder_at'];
 export const CHANNELS = ['whatsapp', 'instagram', 'facebook', 'phone', 'in_person', 'other'];
 const TZ = 'America/Vancouver';
 
 /** The lead, only if it is this vendor's. */
 async function leadOf(vendorId, leadId) {
-  return prisma.leads.findFirst({ where: { id: Number(leadId), vendor_id: Number(vendorId) }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true } });   // 🔒 tenancy
+  return prisma.leads.findFirst({ where: { id: Number(leadId), vendor_id: Number(vendorId) }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true, pre_events: true, delivered: true } });   // 🔒 tenancy
 }
 
 /** A date from the caller: "2026-10-17", an ISO time, "now", or null to clear. */
@@ -33,27 +35,53 @@ function asDate(v) {
   return d;
 }
 
-const shape = (lead, st) => ({
+/** The shoot days: the main event, then every pre-event (pre-wedding, mehndi, sangeet…), in date order. */
+function eventsOf(lead) {
+  const main = lead.event_date ? [{ name: lead.event_type || 'Main event', date: lead.event_date.toISOString().slice(0, 10), main: true }] : [];
+  const pre = (Array.isArray(lead.pre_events) ? lead.pre_events : [])
+    .filter(e => e && (e.name || e.date))
+    .map(e => ({ name: String(e.name || 'Event').slice(0, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(String(e.date)) ? e.date : null, main: false }));
+  return [...pre, ...main].sort((a, b) => String(a.date || '9999').localeCompare(String(b.date || '9999')));
+}
+
+const shape = (lead, st, bookedAt = null) => ({
   lead_id: lead.id,
   client: lead.name,
   event_type: lead.event_type || null,
   shoot_date: lead.event_date ? lead.event_date.toISOString().slice(0, 10) : null,
+  events: eventsOf(lead),
+  booked_at: bookedAt,                                  // the contract's signing, when there is one
   status: lead.status,
   backed_up_at: st?.backed_up_at || null,
   backed_up_by: st?.backed_up_by || null,
   sent_to_editor_at: st?.sent_to_editor_at || null,
   editing_photos_done_at: st?.editing_photos_done_at || null,
   editing_videos_done_at: st?.editing_videos_done_at || null,
+  delivery_due_at: st?.delivery_due_at || null,
+  delivered: !!(lead.delivered || st?.delivered_at),
+  delivered_at: st?.delivered_at || null,
+  review_asked_at: st?.review_asked_at || null,
+  download_reminder_at: st?.download_reminder_at || null,
   updated_at: st?.updated_at || null,
 });
+
+/** When each booking's contract was signed (the earliest signature), for these bookings only. */
+async function signedAt(leadIds) {
+  if (!leadIds.length) return new Map();
+  const rows = await prisma.contracts.findMany({ where: { lead_id: { in: leadIds }, signed_at: { not: null } }, orderBy: { signed_at: 'asc' }, select: { lead_id: true, signed_at: true } });
+  const m = new Map();
+  for (const r of rows) if (!m.has(r.lead_id)) m.set(r.lead_id, r.signed_at);
+  return m;
+}
 
 /** Every booking with its stages (newest shoot first). */
 export async function listStages(vendorId) {
   const v = Number(vendorId);
-  const leads = await prisma.leads.findMany({ where: { vendor_id: v, status: 'booked', archived_at: null }, orderBy: { event_date: 'desc' }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true } });   // 🔒
+  const leads = await prisma.leads.findMany({ where: { vendor_id: v, status: 'booked', archived_at: null }, orderBy: { event_date: 'desc' }, select: { id: true, name: true, email: true, phone: true, status: true, event_type: true, event_date: true, pre_events: true, delivered: true } });   // 🔒
   const st = await prisma.project_stages.findMany({ where: { vendor_id: v, lead_id: { in: leads.map(l => l.id) } } });   // 🔒
   const by = new Map(st.map(s => [s.lead_id, s]));
-  return leads.map(l => shape(l, by.get(l.id)));
+  const signed = await signedAt(leads.map(l => l.id));      // ids are this vendor's already
+  return leads.map(l => shape(l, by.get(l.id), signed.get(l.id) || null));
 }
 
 /** One booking: its stages, the messages sent outside iwopo, and the emails iwopo sent. */
@@ -66,8 +94,9 @@ export async function stagesFor(vendorId, leadId) {
     prisma.outside_messages.findMany({ where: { vendor_id: v, lead_id: lead.id }, orderBy: { sent_at: 'desc' }, take: 50 }),
     prisma.email_log.findMany({ where: { vendor_id: v, OR: [{ lead_id: lead.id }, ...(lead.email ? [{ to_email: { equals: lead.email, mode: 'insensitive' } }] : [])] }, orderBy: { sent_at: 'desc' }, take: 50 }),
   ]);
+  const signed = await signedAt([lead.id]);
   return {
-    ...shape(lead, st),
+    ...shape(lead, st, signed.get(lead.id) || null),
     outside_messages: outside.map(m => ({ id: m.id, channel: m.channel, direction: m.direction, text: m.body, sent_at: m.sent_at, recorded_by: m.recorded_by })),
     emails: emails.map(e => ({ id: e.id, to: e.to_email, subject: e.subject, kind: e.kind, ok: e.ok, error: e.error || null, sent_at: e.sent_at })),
   };
@@ -81,6 +110,8 @@ export async function setStages(vendorId, leadId, input = {}) {
   const data = {};
   for (const k of DATE_FIELDS) if (input[k] !== undefined) data[k] = asDate(input[k]);
   if (input.backed_up_by !== undefined) data.backed_up_by = String(input.backed_up_by || '').trim().slice(0, 80);
+  // 📦 delivered keeps the booking's own flag in step, so every part of iwopo agrees
+  if (data.delivered_at !== undefined) await prisma.leads.updateMany({ where: { id: lead.id, vendor_id: v }, data: { delivered: !!data.delivered_at } });   // 🔒
   if (input.event_type !== undefined) await prisma.leads.updateMany({ where: { id: lead.id, vendor_id: v }, data: { event_type: String(input.event_type || '').trim().slice(0, 80) || null } });   // 🔒
   if (Object.keys(data).length) {
     await prisma.project_stages.upsert({

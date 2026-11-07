@@ -53,6 +53,7 @@ import MyServicesView from '../components/MyServices';
 import StripeConnectCard from '../components/StripeConnect';
 import WelcomeSteps from '../components/WelcomeSteps';
 import AutoRenewSetting from '../components/AutoRenewSetting';
+import PpmBoard from '../components/PpmBoard';
 import { applyTheme } from '../lib/theme';
 
 // 🗝️ tab → required feature (one map controls everything)
@@ -360,6 +361,8 @@ export default function VendorPanel({ onLogout }) {
             together and in a deliberate order rather than scattered down
             the list. Each still appears only for somebody granted it. */}
         {has('comms') && <a href={navHref('comms')} className={`nav-item ${tab==='comms'?'active':''}`} aria-current={tab==='comms' ? 'page' : undefined} onClick={navClick('comms')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4de.svg" alt="" /></span><span className="nav-txt">Calls & Messages</span>{inbox.total > 0 && <span className="nav-badge" title={`${inbox.total} unread`}>{inbox.total > 99 ? '99+' : inbox.total}</span>}</a>}
+        {/* 📊 the owner's private PPM Board — only the AI Agent feature (Perfect Poses Media) */}
+        {has('agent') && <a href={navHref('ppm')} className={`nav-item ${tab==='ppm'?'active':''}`} aria-current={tab==='ppm' ? 'page' : undefined} onClick={navClick('ppm')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4ca.svg" alt="" /></span><span className="nav-txt">PPM Board</span></a>}
         {has('agent') && <a href={navHref('agent')} className={`nav-item ${tab==='agent'?'active':''}`} aria-current={tab==='agent' ? 'page' : undefined} onClick={navClick('agent')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f916.svg" alt="" /></span><span className="nav-txt">AI Agent</span></a>}
         {has('rawsel') && <a href={navHref('rawsel')} className={`nav-item ${tab==='rawsel'?'active':''}`} aria-current={tab==='rawsel' ? 'page' : undefined} onClick={navClick('rawsel')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f39e.svg" alt="" /></span><span className="nav-txt">Raw Selector</span></a>}
         {has('analytics') && <a href={navHref('analytics')} className={`nav-item ${tab==='analytics'?'active':''}`} aria-current={tab==='analytics' ? 'page' : undefined} onClick={navClick('analytics')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f4ca.svg" alt="" /></span><span className="nav-txt">Analytics</span></a>}
@@ -402,7 +405,7 @@ export default function VendorPanel({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'ppm' ? 'PPM Board' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               {tab !== 'fileflyer' && <div className="sub">Welcome back, {user?.name} 👋</div>}
             </div>
           </div>
@@ -443,6 +446,8 @@ export default function VendorPanel({ onLogout }) {
           <RequestsView />
         ) : tab === 'liveshoot' ? (
           <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
+        ) : tab === 'ppm' ? (
+          has('agent') ? <PpmBoard /> : null   /* 📊 the owner's private board — nothing for anyone else */
         ) : tab === 'comms' ? (
           <Suspense fallback={<div className="tab-loading">Loading…</div>}><Inbox /></Suspense>
         ) : tab === 'agent' ? (

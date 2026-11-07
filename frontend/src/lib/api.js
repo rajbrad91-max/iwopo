@@ -698,6 +698,10 @@ export const api = {
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   vendorMembership: (id, when) => request(`/vendors/${id}/membership`, { method: 'POST', body: JSON.stringify({ when }) }),   // ⏸️
   formerSubscribers: () => request('/vendors/former'),   // 👋
+  // 📊 PPM Board (the AI Agent feature — the owner's account): every booking's stages
+  ppmBoard: () => request('/agent/stages'),
+  ppmDetail: (leadId) => request(`/agent/stages/${leadId}`),
+  ppmSet: (leadId, data) => request(`/agent/stages/${leadId}`, { method: 'PUT', body: JSON.stringify(data) }),
   billingWelcomeSeen: () => request('/billing/welcome-seen', { method: 'POST' }),   // 👋
   billingMarketing: (on) => request('/billing/marketing', { method: 'POST', body: JSON.stringify({ on }) }),   // 📬
   vendorFeatures: (id) => request(`/vendors/${id}/features`),

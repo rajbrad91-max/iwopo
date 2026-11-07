@@ -1574,6 +1574,11 @@ model project_stages {
   sent_to_editor_at      DateTime? @db.Timestamp(6)
   editing_photos_done_at DateTime? @db.Timestamp(6)
   editing_videos_done_at DateTime? @db.Timestamp(6)
+  /// 📊 the rest of the PPM board's stages (Raj, 2026-11-07): when delivery is due, delivered, review asked, download reminder sent
+  delivery_due_at        DateTime? @db.Timestamp(6)
+  delivered_at           DateTime? @db.Timestamp(6)
+  review_asked_at        DateTime? @db.Timestamp(6)
+  download_reminder_at   DateTime? @db.Timestamp(6)
   updated_at             DateTime  @default(now()) @db.Timestamp(6)
   vendors                vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   leads                  leads     @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
