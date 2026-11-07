@@ -704,6 +704,7 @@ export const api = {
   adminPackages: () => request('/admin/packages'),
   // 🔓 what each plan actually unlocks (Super Admin)
   adminPlanUnlocks: () => request('/admin/plan-unlocks'),
+  saveAdminPlan: (id, body) => request(`/admin/plans/${id}`, { method: 'PUT', body: JSON.stringify(body) }),   // 📋 the editable pricing table
   saveAdminPlanUnlocks: (code, features) => request(`/admin/plan-unlocks/${code}`, { method: 'PUT', body: JSON.stringify({ features }) }),
   trialEligible: () => request('/auth/trial-eligible'),
   // 🎫 plans — what a subscription grants, including its storage
@@ -728,13 +729,9 @@ export const api = {
   testAi: (which) => request('/settings/platform/test-ai', { method: 'POST', body: JSON.stringify({ which }) }),
   // 🗑️ removing a credential is explicit — saving an empty box does not
   clearPlatformKeys: (keys) => request('/settings/platform', { method: 'PUT', body: JSON.stringify({ clear: keys }) }),
-  setPlanStorage: (planId, gb) =>
-    request(`/vendors/plans/${planId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_gb: gb }) }),
   setVendorPlan: (vendorId, planId) =>
     request(`/vendors/${vendorId}/plan`, { method: 'PUT', body: JSON.stringify({ plan_id: planId }) }),
 
-  updatePackagePrice: (id, prices) =>
-    request(`/packages/${id}/price`, { method: 'PUT', body: JSON.stringify(prices) }),
   updateItemPrice: (id, prices) =>
     request(`/package-items/${id}/price`, { method: 'PUT', body: JSON.stringify(prices) }),
   updateServicePrice: (id, prices) =>

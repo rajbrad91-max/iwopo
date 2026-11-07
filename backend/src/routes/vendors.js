@@ -84,30 +84,6 @@ router.get('/plans', requireAuth, requireSuperAdmin, async (req, res) => {
 });
 
 /**
- * 💾 PUT /api/vendors/plans/:planId/storage → what this plan grants.
- *
- * Changing it moves every vendor on that plan at once, which is the point: a
- * plan's allowance is a product decision, not a per-vendor one. The per-vendor
- * override above is for the exceptions.
- */
-router.put('/plans/:planId/storage', requireAuth, requireSuperAdmin, async (req, res) => {
-  try {
-    const gb = Number(req.body?.storage_gb);
-    if (!Number.isFinite(gb) || gb < 0) return res.status(400).json({ error: 'Give a number of GB' });
-
-    const plan = await prisma.plans.update({
-      where: { id: Number(req.params.planId) },
-      data: { storage_gb: Math.round(gb) },
-      select: { id: true, code: true, name: true, storage_gb: true },
-    });
-
-    res.json({ plan });
-  } catch (e) {
-    if (e?.code === 'P2025') return res.status(404).json({ error: 'Plan not found' });
-    serverError(res, e);
-  }
-});
-
 /**
  * 🎫 PUT /api/vendors/:id/plan → put this vendor on a plan, or back on the trial.
  *

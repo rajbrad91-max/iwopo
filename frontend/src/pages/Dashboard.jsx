@@ -10,7 +10,7 @@ import './agentvoice.css';
 import { useDialog } from '../lib/dialog.jsx';
 import { PROFESSIONS } from '../lib/professions';
 import DeleteVendorModal from '../components/DeleteVendor';
-import PlanTable, { planPriceOf } from '../components/PlanTable';
+import PlanEditorTable from '../components/PlanEditorTable';
 
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
@@ -92,7 +92,7 @@ export default function Dashboard({ onLogout }) {
         {loading ? <div className="sa-loading">Loading…</div> : (
           <>
             {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} overview={overview} />}
-            {view === 'services' && <ServicesView packages={packages} onReload={load} />}
+            {view === 'services' && <ServicesView onReload={load} />}
             {view === 'manage' && <ManageServicesView />}
             {view === 'buyers' && <BuyersView vendors={vendors} overview={overview} onChanged={load} />}
             {view === 'referrals' && <ReferralsView />}
@@ -315,16 +315,11 @@ function StatCard({ label, value, trend, cls }) {
 }
 
 /* ---------- SERVICES & PACKAGES ---------- */
-function ServicesView({ packages, onReload }) {
+function ServicesView({ onReload }) {
   const dialog = useDialog();
-  const [editMode, setEditMode] = useState(false);
   const [offers, setOffers] = useState([]);
   const [showOffer, setShowOffer] = useState(false);
   const [nf, setNf] = useState({ code: '', label: '', percent_off: '', ends_at: '' });
-
-  // 👀 the public pricing table, exactly as a visitor gets it, refreshed whenever a price is saved
-  const [preview, setPreview] = useState(null);
-  useEffect(() => { api.packages().then(setPreview).catch(() => {}); }, [packages]);
 
   useEffect(() => { loadOffers(); }, []);
   async function loadOffers() {
@@ -377,28 +372,9 @@ function ServicesView({ packages, onReload }) {
         </div>
       )}
 
-      {/* PACKAGES */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 18 }}>
-        <div className="sa-section-title" style={{ margin: 0 }}>Packages & Pricing 🎁</div>
-        <button className={`sa-view-btn ${editMode ? 'active-btn' : ''}`}
-          onClick={() => setEditMode(!editMode)}>
-          {editMode ? '✓ Done' : '✏️ Edit Prices'}
-        </button>
-      </div>
-      <div className="sa-hint" style={{ marginTop: 0, marginBottom: 14 }}>
-        {editMode ? 'Click any price to change it, then Save.' : 'Every package includes a 30-day free trial.'}
-      </div>
-      {preview?.compare?.length > 0 && (
-        <div className="sa-pt-preview">
-          <div className="sa-hint sa-pt-hint">👀 Exactly what visitors see on the pricing page right now — a plan's button jumps to its cards below.</div>
-          <PlanTable plans={(preview.packages || []).filter(p => p.price_monthly != null)} groups={preview.compare} notes={preview.compare_notes || []}
-            priceOf={(p) => planPriceOf(p, 'monthly')}
-            onChoose={(p) => document.getElementById(`sa-pkg-${p.code || p.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
-        </div>
-      )}
-      <div className="sa-pkg-grid">
-        {packages.map(p => <PackageCard key={p.id} pkg={p} editMode={editMode} onSaved={onReload} />)}
-      </div>
+      {/* PACKAGES — the public pricing table, editable in place (components/PlanEditorTable.jsx) */}
+      <div className="sa-section-title sa-pt-title">Packages & Pricing 🎁</div>
+      <PlanEditorTable onSaved={onReload} />
 
       {/* STANDALONE SERVICES */}
       <StandaloneServices />
@@ -599,181 +575,13 @@ function ServicePriceEditor({ service, onSaved }) {
  * of what they bought rather than a number someone has to remember to copy onto
  * each account.
  */
-function StorageEditor({ pkg, onSaved }) {
-  /* Same as PriceEditor beside it — these two edit the same row and a failure
-     in one should not look different from a failure in the other. */
-  const dialog = useDialog();
-  const [gb, setGb] = useState(pkg.storage_gb ?? 50);
-  const [busy, setBusy] = useState(false);
 
-  async function save() {
-    const n = Number(gb);
-    if (!Number.isFinite(n) || n <= 0) return;
-    setBusy(true);
-    try { await api.updatePackagePrice(pkg.id, { storage_gb: Math.round(n) }); onSaved?.(); }
-    /* The list reloading is not an answer: it shows the OLD figure, which looks
-       identical to a save that simply had nothing to change. This decides what
-       every vendor on the plan is allowed. */
-    catch (e) { dialog.alert(e.message, { title: 'Could not save the storage', error: true }); }
-    finally { setBusy(false); }
-  }
-
-  return (
-    <div className="pkg-storage">
-      <label>Storage included</label>
-      <input type="number" min="1" value={gb} onChange={e => setGb(e.target.value)}
-        onBlur={save} disabled={busy} />
-      <span>GB</span>
-    </div>
-  );
-}
-
-function PriceEditor({ item, isPackage, onSaved }) {
-  const dialog = useDialog();
-  const [m, setM] = useState(item.price_monthly ?? '');
-  const [y, setY] = useState(item.price_annual ?? '');
-  const [saving, setSaving] = useState(false);
-  async function save() {
-    setSaving(true);
-    try {
-      const body = { price_monthly: m === '' ? null : Number(m), price_annual: y === '' ? null : Number(y), price_annual_regular: item.price_annual_regular ?? null };
-      if (isPackage) await api.updatePackagePrice(item.id, body);
-      else await api.updateItemPrice(item.id, body);
-      onSaved && onSaved();
-    } catch (e) { dialog.alert(e.message, { title: 'Save failed', error: true }); }
-    finally { setSaving(false); }
-  }
-  return (
-    <div className="sa-price-edit">
-      <span>$</span><input value={m} onChange={e => setM(e.target.value)} placeholder="mo" />
-      <span>/yr $</span><input value={y} onChange={e => setY(e.target.value)} placeholder="yr" />
-      <button onClick={save} disabled={saving}>{saving ? '…' : '💾'}</button>
-    </div>
-  );
-}
 
 /**
  * 🔓 What vendors on this plan actually get (2026-11-01). Shown on every package card; checkboxes in Edit mode.
  * Separate from "INCLUDED" above, which is only what the pricing page lists.
  */
-function PlanUnlocks({ pkgKey, editMode }) {
-  const [d, setD] = useState(null);
-  const [sel, setSel] = useState([]);
-  const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    api.adminPlanUnlocks()
-      .then(x => { setD(x); setSel(x.plans.find(p => p.code === pkgKey)?.features || []); })
-      .catch(e => setMsg('⚠️ ' + e.message));
-  }, [pkgKey]);
-  if (!d) return msg ? <div className="sa-unlock-msg">{msg}</div> : null;
-  if (!d.plans.some(p => p.code === pkgKey)) return null;
-  const label = (k) => { const s = d.catalog.find(c => c.feature_key === k); return s ? `${s.icon || ''} ${s.name}` : k; };
-  const toggle = (k) => setSel(s => (s.includes(k) ? s.filter(x => x !== k) : [...s, k]));
-  async function save() {
-    setBusy(true); setMsg('');
-    try { const r = await api.saveAdminPlanUnlocks(pkgKey, sel); setSel(r.features); setMsg('✅ Saved — vendors on this plan now get exactly these.'); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-    finally { setBusy(false); }
-  }
-  return (
-    <div className="sa-pkg-sec sa-unlock">
-      <div className="sa-pkg-sec-label">🔓 UNLOCKS — what vendors on this plan actually get</div>
-      {editMode ? (
-        <>
-          {d.catalog.map(s => (
-            <label key={s.feature_key} className="sa-unlock-row">
-              <input type="checkbox" checked={sel.includes(s.feature_key)} onChange={() => toggle(s.feature_key)} disabled={busy} />
-              <span>{s.icon} {s.name}</span>
-            </label>
-          ))}
-          <button type="button" className="sa-unlock-save" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save what this plan unlocks'}</button>
-        </>
-      ) : sel.length ? sel.map(k => <div key={k} className="sa-pkg-item"><span>{label(k)}</span></div>)
-        : <div className="sa-unlock-none">Nothing — vendors on this plan get no features yet.</div>}
-      {msg && <div className="sa-unlock-msg">{msg}</div>}
-    </div>
-  );
-}
 
-function PackageCard({ pkg, editMode, onSaved }) {
-  const hasAnnual = pkg.price_annual != null;
-  return (
-    <div className="sa-pkg-card" id={`sa-pkg-${pkg.key}`}>
-      <div className="sa-pkg-head">
-        <div className="sa-pkg-icon">{pkg.icon}</div>
-        <div>
-          <div className="sa-pkg-name">{pkg.name}</div>
-          <div className="sa-pkg-tag">{pkg.tagline}</div>
-        </div>
-      </div>
-
-      {editMode && <StorageEditor pkg={pkg} onSaved={onSaved} />}
-      {pkg.price_monthly != null ? (
-        editMode ? <PriceEditor item={pkg} isPackage onSaved={onSaved} /> : (
-          <div className="sa-pkg-price">
-            <span className="amt">{money(pkg.price_monthly)}</span><span className="per">/mo</span>
-            {hasAnnual && (
-              <div className="sa-pkg-annual">
-                or <b>{money(pkg.price_annual)}</b>/yr
-                {pkg.price_annual_regular && <s>{money(pkg.price_annual_regular)}</s>}
-              </div>
-            )}
-          </div>
-        )
-      ) : (
-        <div className="sa-pkg-price"><span className="amt-sm">À la carte</span></div>
-      )}
-
-      <div className="sa-trial-pill">🎁 {pkg.trial_days}-day free trial</div>
-
-      <PlanUnlocks pkgKey={pkg.key} editMode={editMode} />
-
-      {pkg.included?.length > 0 && (
-        <div className="sa-pkg-sec">
-          <div className="sa-pkg-sec-label">✓ INCLUDED</div>
-          {pkg.included.map(i => (
-            <div key={i.id} className="sa-pkg-item">
-              <span>{i.icon} {i.name}</span>
-              {i.detail && <span className="sa-pkg-detail">{i.detail}</span>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {pkg.standalone?.length > 0 && (
-        <div className="sa-pkg-sec">
-          <div className="sa-pkg-sec-label">SERVICES</div>
-          {pkg.standalone.map(i => (
-            <div key={i.id} className="sa-pkg-item sa-pkg-item-col">
-              <span>{i.icon} {i.name}{i.detail ? ` · ${i.detail}` : ''}</span>
-              {editMode ? <PriceEditor item={i} onSaved={onSaved} /> : (
-                <span className="sa-pkg-iprice">
-                  {money(i.price_monthly)}{i.price_annual ? ` · ${money(i.price_annual)}/yr` : ''}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {pkg.addons?.length > 0 && (
-        <div className="sa-pkg-sec">
-          <div className="sa-pkg-sec-label">➕ ADD-ONS</div>
-          {pkg.addons.map(i => (
-            <div key={i.id} className="sa-pkg-item sa-pkg-item-col">
-              <span>{i.icon} {i.name}{i.detail ? ` · ${i.detail}` : ''}</span>
-              {editMode ? <PriceEditor item={i} onSaved={onSaved} /> : (
-                <span className="sa-pkg-iprice">
-                  {money(i.price_monthly)}{i.price_annual ? ` · ${money(i.price_annual)}/yr` : ''}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ---------- MANAGE SERVICES ---------- */
 

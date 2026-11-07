@@ -20,6 +20,7 @@ import { adminOverview } from '../lib/adminOverview.js';
 import { planCards, planCompare } from '../lib/planCatalog.js';
 import { syncOffer } from '../lib/stripeCoupons.js';
 import { visitorCurrency } from '../lib/localPrice.js';
+import { stripe, stripeReady } from '../lib/stripe.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -420,25 +421,34 @@ router.put('/admin/plan-unlocks/:code', requireAuth, requireSuperAdmin, async (r
   } catch (e) { serverError(res, e); }
 });
 
-// 🔒 Super admin: update a PACKAGE price
-router.put('/packages/:id/price', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { price_monthly, price_annual, storage_gb } = req.body;
+/* 📋 Super admin: a plan's own fields, from the editable pricing table (Raj, 2026-11-07). The plans table is the one
+   source the backend enforces — currentPlan, storage limits, chat limits, the trial at checkout, the public page —
+   so an edit here is what vendors actually get. A renamed plan renames its Stripe product too. */
+router.put('/admin/plans/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    /* Storage is edited here rather than per vendor, so changing it moves every
-       vendor on this package at once. Left alone when the field is absent, so
-       the price form can keep sending only prices. */
-    const gb = Number(storage_gb);
-    const storage = Number.isFinite(gb) && gb > 0
-      ? { storage_gb: Math.min(Math.round(gb), 100000) }   // 100TB, a sanity ceiling
-      : {};
-
-    // 📋 a plan's price and storage (the plans table is the one source — lib/planCatalog.js)
-    const num = (v) => (v === undefined || v === null || v === '' ? undefined : Math.max(0, Number(v)));
-    await prisma.plans.update({
-      where: { id: Number(req.params.id) },
-      data: { price_monthly: num(price_monthly), price_annual: num(price_annual), ...storage },
-    });
-    res.json({ ok: true });
+    const b = req.body || {};
+    const plan = await prisma.plans.findUnique({ where: { id: Number(req.params.id) }, select: { id: true, name: true, stripe_product_id: true, price_monthly: true } });
+    if (!plan) return res.status(404).json({ error: 'No plan with that id' });
+    const text = (v, max) => (v === undefined ? undefined : String(v).trim().slice(0, max));
+    const num = (v, lo, hi, whole) => {
+      if (v === undefined || v === null || v === '') return undefined;
+      const n = Number(v); if (!Number.isFinite(n)) return undefined;
+      return Math.min(hi, Math.max(lo, whole ? Math.round(n) : Math.round(n * 100) / 100));
+    };
+    const data = {
+      name: text(b.name, 40) || undefined, tagline: text(b.tagline, 90),
+      price_monthly: num(b.price_monthly, 0, 100000), price_annual: num(b.price_annual, 0, 1000000),
+      storage_gb: num(b.storage_gb, 1, 100000, true), chat_limit: num(b.chat_limit, 0, 1000000, true), trial_days: num(b.trial_days, 0, 365, true),
+    };
+    if (Array.isArray(b.highlights)) {
+      data.highlights = b.highlights.map(h => ({ label: String(h?.label || '').trim().slice(0, 80), coming: !!h?.coming })).filter(h => h.label).slice(0, 12);
+    }
+    for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
+    const saved = await prisma.plans.update({ where: { id: plan.id }, data });
+    if (data.name && data.name !== plan.name && plan.stripe_product_id && stripeReady()) {
+      await stripe('POST', `/products/${plan.stripe_product_id}`, { name: `iwopo ${data.name}` }).catch(e => console.warn('[plans] Stripe product not renamed:', e.message));
+    }
+    res.json({ ok: true, plan: { id: saved.id, code: saved.code, name: saved.name } });
   } catch (e) { serverError(res, e); }
 });
 

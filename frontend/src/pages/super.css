@@ -103,25 +103,8 @@
 
 /* ---- Packages ---- */
 .sa-pkg-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; align-items:start; }
-.sa-pkg-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
-.sa-pkg-card:hover { border-color:var(--teal-2); }
-.sa-pkg-head { display:flex; align-items:center; gap:11px; margin-bottom:12px; }
-.sa-pkg-icon { width:42px; height:42px; border-radius:10px; background:var(--teal-soft); border:1px solid var(--teal-2); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
-.sa-pkg-name { font-weight:800; font-size:15px; }
-.sa-pkg-tag { color:var(--muted); font-size:11px; margin-top:2px; }
-.sa-pkg-price { margin-bottom:10px; }
-.sa-pkg-price .amt { font-size:26px; font-weight:800; }
-.sa-pkg-price .amt-sm { font-size:17px; font-weight:800; color:var(--teal); }
-.sa-pkg-price .per { color:var(--muted); font-size:13px; margin-left:2px; }
-.sa-pkg-annual { font-size:12px; color:var(--muted); margin-top:3px; }
-.sa-pkg-annual b { color:var(--text); }
-.sa-pkg-annual s { color:#5c7079; margin-left:6px; }
+
 .sa-trial-pill { display:inline-block; background:#4ade8018; color:var(--green); border:1px solid #4ade8044; padding:4px 11px; border-radius:20px; font-size:11px; font-weight:700; margin-bottom:12px; }
-.sa-pkg-sec { margin-top:12px; }
-.sa-pkg-sec-label { font-size:10px; letter-spacing:1px; color:var(--muted); font-weight:700; margin-bottom:7px; }
-.sa-pkg-item { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 10px; background:var(--panel-2); border-radius:8px; margin-bottom:5px; font-size:12px; }
-.sa-pkg-detail { color:var(--muted); font-size:11px; }
-.sa-pkg-iprice { color:var(--teal); font-weight:700; font-size:11px; white-space:nowrap; }
 
 @media (max-width:920px) {
   .sa-pkg-grid { grid-template-columns:1fr; }
@@ -130,7 +113,7 @@
 /* Flag emoji font (Windows support) */
 /* Price editing */
 .sa-view-btn.active-btn { background: var(--teal-soft); color: var(--teal); border-color: var(--teal-2); }
-.sa-pkg-item-col { flex-direction: column; align-items: stretch; gap: 6px; }
+
 .sa-price-edit { display: flex; align-items: center; gap: 4px; font-size: 12px; }
 .sa-price-edit input { width: 52px; padding: 4px 6px; background: var(--bg); border: 1px solid var(--teal-2); border-radius: 6px; color: var(--text); font-size: 12px; }
 .sa-price-edit button { background: var(--teal); border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
@@ -358,11 +341,6 @@
 .sa-muted { color: var(--sa-muted, #7c9199); }
 
 /* 🔓 what a plan actually unlocks (PlanUnlocks in Dashboard.jsx) */
-.sa-unlock { border-top: 1px dashed var(--line, rgba(255, 255, 255, .12)); padding-top: 10px; }
-.sa-unlock-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; cursor: pointer; }
-.sa-unlock-save { margin-top: 8px; width: 100%; padding: 8px 12px; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; background: var(--teal, #2dd4bf); color: #06231f; }
-.sa-unlock-none { font-size: 12.5px; color: #d97706; padding: 2px 0; }
-.sa-unlock-msg { font-size: 12.5px; margin-top: 6px; }
 
 /* 🍩 Vendors by Type — the box grows with its list, two columns beside a fixed-size donut (2026-11-05) */
 .sa-type-box { display: flex; align-items: center; gap: 24px; padding: 14px 0 6px; container-type: inline-size; }
@@ -398,7 +376,31 @@
 .sa-del-go { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--red); background: var(--red); color: #fff; font-weight: 600; cursor: pointer; }
 .sa-del-go:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* 👀 the public pricing table shown inside Packages (pages/Dashboard.jsx) */
-.sa-pt-preview { margin: 0 0 24px; }
+
 .sa-pt-hint { margin: 0 0 8px; }
-.sa-pt-preview .pt-wrap { margin-top: 0; max-width: none; }
+
+/* 📋 The editable pricing table in Packages & Pricing (components/PlanEditorTable.jsx). The table itself is styled
+   by components/plan-table.css, exactly as on the public page; these are only the editing controls. */
+.sa-pt-title { margin: 18px 0 6px; }
+.sa-pt-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.sa-pt-bar .sa-hint { margin: 0; }
+.sa-pt-actions { display: flex; gap: 8px; }
+.sa-pt-msg { margin: 0 0 10px; }
+.sa-pt .pt-wrap { margin-top: 0; max-width: none; }
+.sa-pt .pt-in { width: 74px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #FFFBF7; color: var(--ink); font: inherit; font-weight: 600; text-align: center; }
+.sa-pt .pt-in:focus { outline: 2px solid var(--p2); outline-offset: 1px; }
+.sa-pt .pt-in-name { width: 100%; margin-bottom: 6px; font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 700; }
+.sa-pt .pt-in-tag { width: 100%; margin-bottom: 10px; font-weight: 400; font-size: 12.5px; }
+.sa-pt .pt-in-new { width: 240px; text-align: left; font-weight: 500; }
+.sa-pt .pt-edit { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); }
+.sa-pt .pt-edit-price { display: flex; justify-content: center; margin: 6px 0; }
+.sa-pt .pt-edit-row { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12.5px; font-weight: 500; color: var(--gray); }
+.sa-pt .pt-edit-row label { display: inline-flex; align-items: center; gap: 4px; }
+.sa-pt .pt-coming { color: var(--gray); font-weight: 500; }
+.sa-pt .pt-note-sm { font-size: 11.5px; color: var(--gray); }
+.sa-pt .pt-tog { width: 36px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: #FFFBF7; color: #CBBFB3; font-weight: 800; cursor: pointer; transition: background .15s, color .15s; }
+.sa-pt .pt-tog.is-on { background: rgba(230, 92, 0, .12); border-color: rgba(230, 92, 0, .3); color: var(--p-deep); }
+.sa-pt .pt-calc { opacity: .75; }
+.sa-pt .pt-help { text-align: left; font-size: 12.5px; color: var(--gray); }
+.sa-pt .pt-btn { padding: 6px 12px; border: 1px solid var(--ink); border-radius: 8px; background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.sa-pt .pt-coming input { width: 15px; height: 15px; accent-color: var(--p); }
