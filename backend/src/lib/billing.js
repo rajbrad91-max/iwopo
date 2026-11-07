@@ -38,6 +38,19 @@ export const currentSubscriptionWhere = (vendorId, now = new Date()) => ({
  *  whole days left, then shows the same number as iwopo. */
 export const endOfDay = (d) => { const x = new Date(d); x.setUTCHours(23, 59, 59, 0); return x; };
 export const trialEnd = (v) => (v?.trial_ends_at ? new Date(v.trial_ends_at) : endOfDay(new Date(v?.created_at || Date.now()).getTime() + TRIAL_DAYS * DAY));
+/** 🧪 When a new account's free trial ends: the trial plan's own trial days, as set in Super Admin's pricing table
+ *  (Raj, 2026-11-07) — stamped on the account at sign-up, so a later edit never shortens a trial already running.
+ *  0 days means no trial: the account starts on Free. */
+export async function signupTrialEnd() {
+  const p = await prisma.plans.findUnique({ where: { code: TRIAL_PLAN }, select: { trial_days: true } });
+  const days = Number(p?.trial_days ?? TRIAL_DAYS);
+  return days > 0 ? endOfDay(Date.now() + days * DAY) : new Date();
+}
+/** The free days a checkout carries over: what is left of the trial, but never more than the chosen plan offers. */
+export const carriedTrialEnd = (vendor, plan) => {
+  if (!(plan?.trial_days > 0)) return null;
+  return Math.min(trialEnd(vendor).getTime(), endOfDay(Date.now() + plan.trial_days * DAY).getTime());
+};
 export const annualOf = (monthly) => Math.round(Number(monthly) * 12 * (1 - ANNUAL_DISCOUNT) * 100) / 100;
 
 /** The Stripe-backed subscription that counts, if any. */
@@ -109,11 +122,20 @@ export async function stripePriceFor(plan, cycle) {
 }
 
 /** The Stripe customer for a vendor, created once and remembered on the vendor. */
+/* A customer removed in Stripe (by hand in the dashboard, say) must not break the vendor's next checkout: the stored id
+   is checked, and a gone one is replaced. Stripe also replays a creation request for 24 hours — so a customer created
+   and then deleted within a day would come straight back from the replay; a fresh key then makes a real new one. */
+const customerGone = async (id) => {
+  try { return !!(await stripe('GET', `/customers/${id}`)).deleted; }
+  catch (e) { if (/no such customer/i.test(e.message)) return true; throw e; }
+};
 export async function stripeCustomerFor(vendorId) {
   const v = await prisma.vendors.findUnique({ where: { id: Number(vendorId) }, select: { id: true, business_name: true, stripe_customer_id: true } });
-  if (v.stripe_customer_id) return v.stripe_customer_id;
+  if (v.stripe_customer_id && !await customerGone(v.stripe_customer_id)) return v.stripe_customer_id;
   const owner = await prisma.users.findFirst({ where: { vendor_id: v.id, role: 'vendor' }, orderBy: { id: 'asc' }, select: { email: true } });
-  const c = await stripe('POST', '/customers', { name: v.business_name, email: owner?.email || undefined, metadata: { vendor_id: v.id } }, { idempotencyKey: `customer-${v.id}` });
+  const body = { name: v.business_name, email: owner?.email || undefined, metadata: { vendor_id: v.id } };
+  let c = await stripe('POST', '/customers', body, { idempotencyKey: `customer-${v.id}` });
+  if (await customerGone(c.id)) c = await stripe('POST', '/customers', body, { idempotencyKey: `customer-${v.id}-${Date.now()}` });
   await prisma.vendors.update({ where: { id: v.id }, data: { stripe_customer_id: c.id } });
   return c.id;
 }

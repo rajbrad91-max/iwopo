@@ -14,7 +14,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { stripe, stripeReady, verifyWebhook } from '../lib/stripe.js';
-import { billingAccess, paidSubscription, stripePriceFor, stripeCustomerFor, recordSubscription, annualOf, trialEnd, currentPlan } from '../lib/billing.js';
+import { billingAccess, paidSubscription, stripePriceFor, stripeCustomerFor, recordSubscription, annualOf, carriedTrialEnd, currentPlan } from '../lib/billing.js';
 import { forgetHosts } from '../lib/vendorHosts.js';
 import { notify } from './notifications.js';
 import { serverError } from '../lib/httpError.js';
@@ -128,10 +128,10 @@ router.post('/checkout', async (req, res) => {
     if (!plan) return res.status(404).json({ error: 'That plan does not exist.' });
     const cycle = req.body?.cycle === 'annual' ? 'annual' : 'monthly';
     const price = await stripePriceFor(plan, cycle);
-    // the free trial carries over: billing starts when it ends (Stripe needs at least 48 hours to schedule that)
-    const ends = trialEnd(vendor).getTime();
-    // 🧪 only a plan with a trial carries the free days over — Studio is charged from day one (Raj, 2026-11-06)
-    const trial_end = plan.trial_days > 0 && ends - Date.now() > 2 * DAY ? Math.floor(ends / 1000) : undefined;
+    // 🧪 the free trial carries over — capped by the chosen plan's own trial days; Studio (0) is charged from day one.
+    //    Stripe needs at least 48 hours to schedule a trial end.
+    const ends = carriedTrialEnd(vendor, plan);
+    const trial_end = ends && ends - Date.now() > 2 * DAY ? Math.floor(ends / 1000) : undefined;
     const session = await stripe('POST', '/checkout/sessions', {
       mode: 'subscription', customer, client_reference_id: v,
       line_items: [{ price, quantity: 1 }],

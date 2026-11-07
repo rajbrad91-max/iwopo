@@ -16,6 +16,7 @@ import { signupsOpen, SIGNUPS_CLOSED_MESSAGE } from '../lib/signups.js';
 import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
 import { professionOf } from '../lib/professions.js';
+import { signupTrialEnd } from '../lib/billing.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -206,6 +207,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
              SUBSCRIPTION that grants it. The subscription is made below and is
              the only thing that decides what anybody gets. */
           status: isPaid ? 'active' : 'trial',
+          trial_ends_at: await signupTrialEnd(),   // 🧪 the trial plan's own trial days (lib/billing.js)
           signup_ip: ip,
         },
         select: { id: true },

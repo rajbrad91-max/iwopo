@@ -441,7 +441,8 @@ router.put('/admin/plans/:id', requireAuth, requireSuperAdmin, async (req, res) 
       storage_gb: num(b.storage_gb, 1, 100000, true), chat_limit: num(b.chat_limit, 0, 1000000, true), trial_days: num(b.trial_days, 0, 365, true),
     };
     if (Array.isArray(b.highlights)) {
-      data.highlights = b.highlights.map(h => ({ label: String(h?.label || '').trim().slice(0, 80), coming: !!h?.coming })).filter(h => h.label).slice(0, 12);
+      // { label } or { label, coming: true } — the form the plans were seeded in, so a save that changes nothing leaves them as they were
+      data.highlights = b.highlights.map(h => ({ label: String(h?.label || '').trim().slice(0, 80), ...(h?.coming ? { coming: true } : {}) })).filter(h => h.label).slice(0, 12);
     }
     for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
     const saved = await prisma.plans.update({ where: { id: plan.id }, data });

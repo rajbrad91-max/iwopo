@@ -92,7 +92,7 @@ export default function Dashboard({ onLogout }) {
         {loading ? <div className="sa-loading">Loading…</div> : (
           <>
             {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} overview={overview} />}
-            {view === 'services' && <ServicesView onReload={load} />}
+            {view === 'services' && <ServicesView />}
             {view === 'manage' && <ManageServicesView />}
             {view === 'buyers' && <BuyersView vendors={vendors} overview={overview} onChanged={load} />}
             {view === 'referrals' && <ReferralsView />}
@@ -315,7 +315,7 @@ function StatCard({ label, value, trend, cls }) {
 }
 
 /* ---------- SERVICES & PACKAGES ---------- */
-function ServicesView({ onReload }) {
+function ServicesView() {
   const dialog = useDialog();
   const [offers, setOffers] = useState([]);
   const [showOffer, setShowOffer] = useState(false);
@@ -374,7 +374,7 @@ function ServicesView({ onReload }) {
 
       {/* PACKAGES — the public pricing table, editable in place (components/PlanEditorTable.jsx) */}
       <div className="sa-section-title sa-pt-title">Packages & Pricing 🎁</div>
-      <PlanEditorTable onSaved={onReload} />
+      <PlanEditorTable />
 
       {/* STANDALONE SERVICES */}
       <StandaloneServices />

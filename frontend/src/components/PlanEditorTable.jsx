@@ -21,7 +21,7 @@ const Num = ({ value, onChange, step = 1, min = 0, max }) => (
   <input type="number" className="pt-in" value={value ?? ''} min={min} max={max} step={step} onChange={e => onChange(e.target.value)} />
 );
 
-export default function PlanEditorTable({ onSaved }) {
+export default function PlanEditorTable() {
   const [pub, setPub] = useState(null);         // what visitors get: rows, computed cells, the footnote
   const [admin, setAdmin] = useState([]);       // the plans with ids, storage, chats, trial, highlights
   const [unlocks, setUnlocks] = useState(null); // the feature catalog and each plan's keys
@@ -86,7 +86,6 @@ export default function PlanEditorTable({ onSaved }) {
         }
       }
       await load(); setDraft(null); setMsg('✅ Saved — this is what visitors see, and what vendors get, from now on');
-      onSaved?.();
     } catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
