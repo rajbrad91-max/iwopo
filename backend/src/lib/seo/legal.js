@@ -28,6 +28,7 @@ export const LEGAL = {
         'If you choose a plan during the trial, billing starts when the trial ends.',
         'Plans renew automatically every month or year until you turn auto-renew off in My Services or cancel.',
         'Add-ons (such as extra storage) are added to your plan and charged for the rest of the current period; when you remove one, it keeps working until the end of the period you have paid for.',
+        'Referrals: when a friend signs up with your referral code (or the email you invited) and pays for a plan, they get their first month free and you get one month free — taken off your next bill, or added when you first choose a plan.',
         'Storage counts everything iwopo keeps for your account: your original files, plus the copies iwopo makes of each photo and video so your clients can view them quickly (a full-screen version and a thumbnail). For a typical high-resolution photo these copies add about 1 MB.',
         'Prices are set in US dollars. We show them in your local currency as an estimate; at checkout our payment processor (Stripe) charges the exact amount in your currency, including its conversion.',
         'Payments are handled by Stripe. We do not store your full card details.',

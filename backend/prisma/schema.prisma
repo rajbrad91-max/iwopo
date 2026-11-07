@@ -617,6 +617,10 @@ model poll_votes {
 }
 
 model referrals {
+  /// 🎁 the friend's free month was given (at their first checkout)
+  friend_rewarded_at   DateTime? @db.Timestamp(6)
+  /// 🎁 the referrer's free month was given (a Stripe credit, or at their own first checkout)
+  referrer_rewarded_at DateTime? @db.Timestamp(6)
   id               Int       @id @default(autoincrement())
   referrer_email   String    @db.VarChar(200)
   friend_email     String    @db.VarChar(200)
@@ -809,6 +813,8 @@ model vendor_subscriptions {
 }
 
 model vendors {
+  /// 🎟️ the code a vendor shares — iwopo.com/?ref=CODE (Raj, 2026-11-07)
+  referral_code        String?   @unique @db.VarChar(24)
   /// 📬 agreed to occasional offers and news (unticked at sign-up; switch in My Services) — Raj, 2026-11-07
   marketing_opt_in     Boolean   @default(false)
   marketing_opt_in_at  DateTime? @db.Timestamp(6)

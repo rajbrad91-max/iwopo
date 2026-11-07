@@ -17,6 +17,7 @@ import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
 import { professionOf } from '../lib/professions.js';
 import { signupTrialEnd } from '../lib/billing.js';
+import { newReferralCode, referrerByCode, linkReferral } from '../lib/referrals.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -167,7 +168,7 @@ router.get('/trial-eligible', async (req, res) => {
 router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   // 🚧 paused until launch — refused here, whatever the page shows (lib/signups.js)
   if (!(await signupsOpen())) return res.status(403).json({ error: SIGNUPS_CLOSED_MESSAGE, code: 'signups_closed' });
-  const { businessName, name, email, password, profession, marketing } = req.body;
+  const { businessName, name, email, password, profession, marketing, referral_code } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
   const weak = await checkPassword(password, { email, name, business: businessName });   // 🔐 the shared password rules
@@ -180,6 +181,10 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
      still made, without a trial — it starts on Free and can buy any plan straight away. */
   const ip = clientIp(req);
   const withTrial = (await trialCount(ip)) < TRIAL_LIMIT;
+  // 🎟️ a referral code that is typed must be a real one — said now, so the visitor can fix it or leave it empty
+  if (String(referral_code || '').trim() && !(await referrerByCode(referral_code))) {
+    return res.status(400).json({ error: "That referral code isn't recognised — check it, or leave the box empty." });
+  }
 
   const exists = await prisma.users.findFirst({ where: { email }, select: { id: true } });
   if (exists) return res.status(409).json({ error: 'Email already registered' });
@@ -204,6 +209,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
           trial_ends_at: withTrial ? await signupTrialEnd() : new Date(),   // 🧪 the trial plan's own trial days — or none
           ...(marketing === true ? { marketing_opt_in: true, marketing_opt_in_at: new Date() } : {}),   // 📬 only if they ticked it
           signup_ip: ip,
+          referral_code: await newReferralCode(tx, businessName),   // 🎟️ their own code to share
         },
         select: { id: true },
       });
@@ -219,6 +225,9 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
         },
         select: { id: true, name: true, email: true, role: true, vendor_id: true },   // ✉️ the code is sent to this
       });
+
+      // 🎟️ linked to whoever referred them — the code typed, or an email invite waiting for this address
+      await linkReferral(tx, { friendVendorId: vendor.id, friendEmail: email, code: referral_code });
 
       // 3. The free trial is recorded against the connection, so the per-connection limit can count it
       if (withTrial) await tx.trial_signups.create({ data: { ip_address: ip, email, vendor_id: vendor.id } });

@@ -677,3 +677,8 @@
 /* 📬 the offers consent box in the sign-up window — unticked by default */
 .sl-signup-box .sl-optin { display: flex; gap: 9px; align-items: flex-start; margin: 12px 0 2px; font-size: .86rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text); cursor: pointer; }
 .sl-signup-box .sl-optin input { width: auto; margin-top: 3px; accent-color: var(--p); }
+
+/* 🎟️ the referral code field in the sign-up window */
+.sl-signup-box .sl-optional { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.sl-ref-note { margin: 6px 0 0; font-size: .84rem; color: var(--p-deep); }
+

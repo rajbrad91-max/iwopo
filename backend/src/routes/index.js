@@ -21,6 +21,7 @@ import { planCards, planCompare } from '../lib/planCatalog.js';
 import { syncOffer } from '../lib/stripeCoupons.js';
 import { visitorCurrency } from '../lib/localPrice.js';
 import { stripe, stripeReady } from '../lib/stripe.js';
+import { myReferrals } from '../lib/referrals.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -577,8 +578,8 @@ router.delete('/offers/:id', requireAuth, requireSuperAdmin, async (req, res) =>
   } catch (e) { serverError(res, e); }
 });
 
-// 👥 REFERRALS — a signed-in vendor refers a friend's email; both get a free month when the friend joins on a paid
-// plan (rewarded at sign-up, routes/auth.js). The referrer is the account in the token, never an email from the
+// 👥 REFERRALS — a signed-in vendor refers a friend's email (or shares their code); both get a free month when the
+// friend pays for a plan (lib/referrals.js). The referrer is the account in the token, never an email from the
 // request: until 2026-11-04 anyone, signed in or not, could file a referral in any vendor's name. 10 an hour each.
 const referralLimit = limit({ name: 'referral', max: 10, windowMs: 60 * 60_000, perAccount: true, key: (r) => String(r.user?.id) });
 router.post('/referrals', requireAuth, referralLimit, async (req, res) => {
@@ -598,6 +599,12 @@ router.post('/referrals', requireAuth, referralLimit, async (req, res) => {
     const referral = await prisma.referrals.create({ data: { referrer_email, friend_email } });
     res.status(201).json({ referral });
   } catch { res.status(500).json({ error: 'Could not save the referral — please try again.' }); }
+});
+
+// 🎟️ A vendor's own referral page: their code, share link, and the friends who joined (lib/referrals.js)
+router.get('/referrals/mine', requireAuth, async (req, res) => {
+  if (!req.user?.vendor_id) return res.status(400).json({ error: 'Not a vendor account' });
+  try { res.json(await myReferrals(req.user.vendor_id, process.env.APP_URL || 'https://iwopo.com')); } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: list all referrals

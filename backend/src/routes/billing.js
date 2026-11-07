@@ -22,6 +22,7 @@ import { planCards } from '../lib/planCatalog.js';
 import { addonsFor, addAddon, removeAddon } from '../lib/addons.js';
 import { visitorCurrency } from '../lib/localPrice.js';
 import { emailInvoice, invoiceSubscription } from '../lib/billingEmails.js';
+import { referralBonus, withBonus, settleCheckout, rewardReferrer } from '../lib/referrals.js';
 
 const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '');
 const DAY = 86_400_000;
@@ -37,7 +38,9 @@ billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' })
       const r = await recordSubscription(o);
       if (r && event.type === 'customer.subscription.deleted') notify(r.vendorId, '💳 Your iwopo plan has ended', 'Choose a plan to switch your features back on — your data is safe', 'plans', { type: 'plans' });
     } else if (event.type === 'checkout.session.completed' && o.subscription) {
-      const r = await recordSubscription(await stripe('GET', `/subscriptions/${o.subscription}`));
+      const s = await stripe('GET', `/subscriptions/${o.subscription}`);
+      const r = await recordSubscription(s);
+      await settleCheckout(s).catch(e => console.warn('[referral settle]', e.message));   // 🎁 the bonus it carried is given
       if (r) notify(r.vendorId, '🎉 Your plan is set up', 'Thank you — your iwopo subscription is in place', 'plans', { type: 'plans' });
     } else if (event.type === 'invoice.payment_failed' && invoiceSubscription(o)) {
       const r = await recordSubscription(await stripe('GET', `/subscriptions/${invoiceSubscription(o)}`));
@@ -46,6 +49,9 @@ billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' })
       await recordSubscription(await stripe('GET', `/subscriptions/${invoiceSubscription(o)}`));
       // ✉️ the plan-active email / receipt, from noreply@iwopo.com — a mail hiccup never fails the webhook
       await emailInvoice(o).catch(e => console.warn('[billing email]', o.id, e.message));
+      // 🎁 a referred friend really paid: their referrer gets a month (credit now, or owed)
+      const rw = await rewardReferrer(o).catch(e => { console.warn('[referral reward]', o.id, e.message); return null; });
+      if (rw) notify(rw.vendorId, '🎁 A friend you referred has joined', rw.how === 'credit' ? 'You get one month free — it comes off your next bill' : 'You get one month free — it starts when you choose a plan', 'plans', { type: 'plans' });
     }
     forgetHosts();                                      // plan changes move own-domain and branding rights
     res.json({ received: true });
@@ -145,12 +151,16 @@ router.post('/checkout', async (req, res) => {
     const price = await stripePriceFor(plan, cycle);
     // 🧪 the free trial carries over — capped by the chosen plan's own trial days; Studio (0) is charged from day one.
     //    Stripe needs at least 48 hours to schedule a trial end.
-    const ends = carriedTrialEnd(vendor, plan);
+    const carried = carriedTrialEnd(vendor, plan);
+    // 🎁 a referral's free month(s) go on top (lib/referrals.js)
+    const bonus = await referralBonus(v);
+    const ends = withBonus(carried && carried - Date.now() > 2 * DAY ? carried : null, bonus.days);
     const trial_end = ends && ends - Date.now() > 2 * DAY ? Math.floor(ends / 1000) : undefined;
+    const refMeta = { ...(bonus.friendId ? { referral_friend: bonus.friendId } : {}), ...(bonus.owedIds.length ? { referral_owed: bonus.owedIds.join(',') } : {}) };
     const session = await stripe('POST', '/checkout/sessions', {
       mode: 'subscription', customer, client_reference_id: v,
       line_items: [{ price, quantity: 1 }],
-      subscription_data: { trial_end, metadata: { vendor_id: v, plan_id: plan.id, cycle } },
+      subscription_data: { trial_end, metadata: { vendor_id: v, plan_id: plan.id, cycle, ...refMeta } },
       metadata: { vendor_id: v, plan_id: plan.id, cycle },
       allow_promotion_codes: true,
       // 🌍 charged in the subscriber's own currency (Stripe Adaptive Pricing — Raj, 2026-11-06); iwopo is paid in USD

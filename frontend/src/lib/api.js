@@ -459,8 +459,8 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, device_token: trustedDevice(email) }) }),
   loginCode: (ticket, code, remember) => request('/auth/login/code', { method: 'POST', body: JSON.stringify({ ticket, code, remember }) }),
   loginResend: (ticket) => request('/auth/login/resend', { method: 'POST', body: JSON.stringify({ ticket }) }),
-  signup: (businessName, email, password, profession, marketing = false) =>
-    request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password, profession, marketing }) }),
+  signup: (businessName, email, password, profession, marketing = false, referral_code = '') =>
+    request('/auth/signup', { method: 'POST', body: JSON.stringify({ businessName, email, password, profession, marketing, referral_code }) }),
   verifyEmail: (email, code) => request('/auth/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
   resendCode: (email) => request('/auth/resend', { method: 'POST', body: JSON.stringify({ email }) }),
   confirmEmailChange: (code) => request('/me/email/confirm', { method: 'PUT', body: JSON.stringify({ code }) }),
@@ -749,6 +749,7 @@ export const api = {
   deleteOffer: (id) => request(`/offers/${id}`, { method: 'DELETE' }),
   referrals: () => request('/referrals'),
   // 👥 the referrer is the signed-in account (routes/index.js) — only the friend is sent
+  myReferrals: () => request('/referrals/mine'),   // 🎟️ code, link, friends who joined
   createReferral: (friend_email) => request('/referrals', { method: 'POST', body: JSON.stringify({ friend_email }) }),
   createLead: (data) => request('/leads', { method: 'POST', body: JSON.stringify(data) }),
   leads: (vendorId, listing) => request(`/leads${listingQs({ vendor_id: vendorId, ...listing })}`),

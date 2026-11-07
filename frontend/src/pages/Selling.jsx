@@ -179,7 +179,15 @@ export default function Selling({ onSignup, onGoLogin }) {
   const [compare, setCompare] = useState([]);   // 📊 the same plans, row by row (PlanTable)
   const [compareNotes, setCompareNotes] = useState([]);   // the * small print under the table
   const [cycle, setCycle] = useState('monthly');
-  const [form, setForm] = useState({ businessName: '', email: '', password: '', profession: '', marketing: false });
+  // 🎟️ a share link (iwopo.com/?ref=CODE) fills the referral code in — kept for the visit, in case they look around first
+  const [form, setForm] = useState(() => {
+    let referral = '';
+    try {
+      referral = new URLSearchParams(window.location.search).get('ref') || sessionStorage.getItem('iwopo_ref') || '';
+      if (referral) sessionStorage.setItem('iwopo_ref', referral);
+    } catch { /* private mode: the link still fills it this time */ }
+    return { businessName: '', email: '', password: '', profession: '', marketing: false, referral: referral.toUpperCase() };
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verify, setVerify] = useState(null);   // ✉️ { email, code } after sign-up: the emailed code comes next
@@ -255,7 +263,7 @@ export default function Selling({ onSignup, onGoLogin }) {
     if (!passwordReady(form.password, { email: form.email, business: form.businessName })) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
     setLoading(true);
     try {
-      const r = await api.signup(form.businessName, form.email, form.password, form.profession, form.marketing);
+      const r = await api.signup(form.businessName, form.email, form.password, form.profession, form.marketing, form.referral.trim());
       if (r.verify) { setBuying(false); setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent }); return; }   // ✉️ confirm the address first
       await afterSignedIn(r.token, r.user);
     } catch (err) { setError(err.message); }
@@ -282,6 +290,10 @@ export default function Selling({ onSignup, onGoLogin }) {
         <PasswordInput id={`${p}-pass`} checklist={{ email: form.email, business: form.businessName }} value={form.password} onChange={e => set('password', e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSignup()} placeholder="••••••••" />
         {error && <div className="sl-err">{error}</div>}
+        {/* 🎟️ a friend's code: first month free on a paid plan — optional */}
+        <label htmlFor={`${p}-ref`}>Referral code <span className="sl-optional">(optional)</span></label>
+        <input id={`${p}-ref`} value={form.referral} onChange={e => set('referral', e.target.value.toUpperCase())} placeholder="e.g. ROSEWOOD-7K2F" autoComplete="off" />
+        {form.referral.trim() && <p className="sl-ref-note">🎁 With a friend's code, your first month on a paid plan is free.</p>}
         {/* 📬 offers only with consent — unticked; changeable any time in My Services */}
         <label className="sl-optin"><input type="checkbox" checked={form.marketing} onChange={e => set('marketing', e.target.checked)} /> <span>Email me occasional offers and news from iwopo. Unsubscribe any time.</span></label>
         <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>
