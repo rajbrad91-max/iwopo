@@ -186,6 +186,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const [trialOk, setTrialOk] = useState(true);
   const [open, setOpen] = useState(true);   // 🚧 false while sign-ups are paused before launch
   const [chosen, setChosen] = useState(null);
+  const [buying, setBuying] = useState(false);   // 💳 the sign-up window a plan's button opens
   const [faqOpen, setFaqOpen] = useState(0);
   const [heroSeen, setHeroSeen] = useState(false);
   const heroRef = useRef(null);
@@ -225,7 +226,22 @@ export default function Selling({ onSignup, onGoLogin }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
   function goSignup() { document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth' }); }
   function goPackages() { document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' }); }
-  function choosePlan(item, kind) { setChosen({ ...item, kind, cycle }); goSignup(); }
+  /* 💳 A plan's button opens the sign-up right where the visitor is (it used to scroll to the bottom of the page) */
+  function choosePlan(item, kind) { setChosen({ ...item, kind, cycle }); if (open) setBuying(true); else goSignup(); }
+  const paidChoice = chosen?.kind === 'package' && Number(chosen.price_monthly) > 0;
+
+  /* A confirmed account that chose a paid plan goes straight to Stripe's payment page — no detour through the panel.
+     If the payment page can't be made, the account still exists and the panel's Plans page takes the payment. */
+  async function afterSignedIn(token, user) {
+    setSession(token, user);
+    if (paidChoice) {
+      try {
+        const r = await api.billingCheckout(chosen.id, chosen.cycle || cycle);
+        if (r?.url) { window.location.assign(r.url); return; }
+      } catch { /* falls through to the panel */ }
+    }
+    onSignup(user);
+  }
 
   async function handleSignup() {
     setError('');
@@ -235,9 +251,8 @@ export default function Selling({ onSignup, onGoLogin }) {
     setLoading(true);
     try {
       const r = await api.signup(form.businessName, form.email, form.password, form.profession);
-      if (r.verify) { setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent }); return; }   // ✉️ confirm the address first
-      setSession(r.token, r.user);
-      onSignup(r.user);
+      if (r.verify) { setBuying(false); setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent }); return; }   // ✉️ confirm the address first
+      await afterSignedIn(r.token, r.user);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
@@ -245,13 +260,59 @@ export default function Selling({ onSignup, onGoLogin }) {
   const realPkgs = packages.filter(p => p.price_monthly != null);
   const priceOf = (p) => planPriceOf(p, cycle);   // 🌍 shared with the table everywhere it appears (PlanTable)
 
+  /* ✍️ The sign-up fields, written once: the plan window and the section at the bottom both use them (p = id prefix) */
+  const signupForm = (p) => (
+    <>
+        <label htmlFor={`${p}-biz`}>Business name</label>
+        <input id={`${p}-biz`} value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="e.g. Rosewood Photography" />
+        {/* 🧑‍💼 their trade: Contract setup shows them a sample contract for it (Other: a general one) */}
+        <label htmlFor={`${p}-trade`}>Your trade</label>
+        <select id={`${p}-trade`} value={form.profession} onChange={e => set('profession', e.target.value)}>
+          <option value="" disabled hidden>Choose your trade…</option>
+          {PROFESSION_LIST.map(p => <option key={p.key} value={p.key}>{p.icon} {p.label}</option>)}
+        </select>
+        <label htmlFor={`${p}-email`}>Email</label>
+        <input id={`${p}-email`} value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@studio.com" />
+        <label htmlFor={`${p}-pass`}>Password</label>
+        <PasswordInput id={`${p}-pass`} checklist={{ email: form.email, business: form.businessName }} value={form.password} onChange={e => set('password', e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSignup()} placeholder="••••••••" />
+        {error && <div className="sl-err">{error}</div>}
+        <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>
+          {loading ? 'Creating…' : p === 'buy' && paidChoice ? 'Create account & continue' : 'Create account'}
+        </button>
+        <p className="sl-consent">By creating an account you agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
+    </>
+  );
+  const chosenPrice = chosen ? planPriceOf(chosen, chosen.cycle || cycle) : null;
+
   return (
     <div className="sl">
       {verify && (
         <div className="vc-overlay" role="dialog" aria-label="Confirm your email">
           <div className="login-card">
             <VerifyCode email={verify.email} sandboxCode={verify.code} notSent={verify.notSent}
-              onVerified={({ token, user }) => { setSession(token, user); onSignup(user); }} onBack={() => setVerify(null)} />
+              onVerified={({ token, user }) => afterSignedIn(token, user)} onBack={() => setVerify(null)} />
+          </div>
+        </div>
+      )}
+      {buying && chosen && (
+        <div className="vc-overlay" role="dialog" aria-label={`Start ${chosen.name}`}>
+          <div className="sl-signup-box sl-buy">
+            <button type="button" className="sl-buy-x" aria-label="Close" onClick={() => setBuying(false)}>×</button>
+            <h3 className="sl-buy-title">Start {chosen.name}</h3>
+            <p className="sl-buy-price">
+              {Number(chosen.price_monthly) === 0 ? 'Free forever'
+                : `${chosenPrice.cur === '≈' ? `≈ ${chosenPrice.big}` : `$${chosenPrice.big}`}${chosenPrice.unit}`}
+              {paidChoice && (chosen.trial_days > 0 && trialOk
+                ? ` · ${chosen.trial_days}-day free trial, nothing charged today`
+                : ' · charged today, cancel anytime')}
+            </p>
+            <ol className="sl-buy-steps">
+              <li className="is-on">Your account</li>
+              <li>Confirm your email</li>
+              {paidChoice && <li>Pay securely with Stripe</li>}
+            </ol>
+            {signupForm('buy')}
           </div>
         </div>
       )}
@@ -430,24 +491,7 @@ export default function Selling({ onSignup, onGoLogin }) {
                 <h3>Create your studio</h3>
                 {/* 🧪 used-up trials never stop an account: it starts on Free and any plan can be bought at once */}
                 <p className="sl-signup-sub">{trialOk ? 'Free trial · cancel anytime' : 'The free trials on this connection are used up, so your account starts on the Free plan — you can buy any plan straight away.'}</p>
-                <label htmlFor="sl-biz">Business name</label>
-                <input id="sl-biz" value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="e.g. Rosewood Photography" />
-                {/* 🧑‍💼 their trade: Contract setup shows them a sample contract for it (Other: a general one) */}
-                <label htmlFor="sl-trade">Your trade</label>
-                <select id="sl-trade" value={form.profession} onChange={e => set('profession', e.target.value)}>
-                  <option value="" disabled hidden>Choose your trade…</option>
-                  {PROFESSION_LIST.map(p => <option key={p.key} value={p.key}>{p.icon} {p.label}</option>)}
-                </select>
-                <label htmlFor="sl-email">Email</label>
-                <input id="sl-email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@studio.com" />
-                <label htmlFor="sl-pass">Password</label>
-                <PasswordInput id="sl-pass" checklist={{ email: form.email, business: form.businessName }} value={form.password} onChange={e => set('password', e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSignup()} placeholder="••••••••" />
-                {error && <div className="sl-err">{error}</div>}
-                <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>
-                  {loading ? 'Creating…' : 'Create account'}
-                </button>
-                <p className="sl-consent">By creating an account you agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
+                {signupForm('sl')}
                 <div className="sl-login-row">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
               </>
             )}

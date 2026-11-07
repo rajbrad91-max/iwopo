@@ -663,3 +663,15 @@
 
 /* the proof section now holds only the FAQ: let it use the full width (design review 2026-11-01) */
 .sl-split > :only-child { grid-column: 1 / -1; }
+
+/* 💳 The sign-up window a plan's button opens (Selling.jsx) — account, email code, then Stripe */
+.sl-buy { position: relative; width: min(460px, 94vw); max-height: 92vh; overflow-y: auto; text-align: left; background: var(--card); box-shadow: 0 30px 70px -30px rgba(26, 18, 11, .55); }   /* fields styled by .sl-signup-box, like the form at the bottom */
+.sl-buy-x { position: absolute; top: 10px; right: 12px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--gray); font-size: 24px; line-height: 1; cursor: pointer; }
+.sl-buy-x:hover { background: var(--bg); color: var(--ink); }
+.sl-buy-title { margin: 0 0 4px; font-family: 'Sora', sans-serif; font-size: 24px; color: var(--ink); }
+.sl-buy-price { margin: 0 0 14px; font-weight: 600; color: var(--p-deep); }
+.sl-buy-steps { display: flex; gap: 6px; margin: 0 0 6px; padding: 0; list-style: none; counter-reset: step; }
+.sl-buy-steps li { flex: 1; padding: 7px 8px; border-radius: 8px; background: var(--bg); color: var(--gray); font-size: 12px; font-weight: 600; text-align: center; counter-increment: step; }
+.sl-buy-steps li::before { content: counter(step) '. '; }
+.sl-buy-steps li.is-on { background: rgba(230, 92, 0, .1); color: var(--p-deep); }
+

@@ -21,6 +21,7 @@ import { serverError } from '../lib/httpError.js';
 import { planCards } from '../lib/planCatalog.js';
 import { addonsFor, addAddon, removeAddon } from '../lib/addons.js';
 import { visitorCurrency } from '../lib/localPrice.js';
+import { emailInvoice, invoiceSubscription } from '../lib/billingEmails.js';
 
 const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '');
 const DAY = 86_400_000;
@@ -38,11 +39,13 @@ billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' })
     } else if (event.type === 'checkout.session.completed' && o.subscription) {
       const r = await recordSubscription(await stripe('GET', `/subscriptions/${o.subscription}`));
       if (r) notify(r.vendorId, '🎉 Your plan is set up', 'Thank you — your iwopo subscription is in place', 'plans', { type: 'plans' });
-    } else if (event.type === 'invoice.payment_failed' && o.subscription) {
-      const r = await recordSubscription(await stripe('GET', `/subscriptions/${o.subscription}`));
+    } else if (event.type === 'invoice.payment_failed' && invoiceSubscription(o)) {
+      const r = await recordSubscription(await stripe('GET', `/subscriptions/${invoiceSubscription(o)}`));
       if (r) notify(r.vendorId, '⚠️ Your iwopo payment didn’t go through', 'Please update your card in Plans → Manage billing', 'plans', { type: 'plans' });
-    } else if (event.type === 'invoice.paid' && o.subscription) {
-      await recordSubscription(await stripe('GET', `/subscriptions/${o.subscription}`));
+    } else if (event.type === 'invoice.paid' && invoiceSubscription(o)) {
+      await recordSubscription(await stripe('GET', `/subscriptions/${invoiceSubscription(o)}`));
+      // ✉️ the plan-active email / receipt, from noreply@iwopo.com — a mail hiccup never fails the webhook
+      await emailInvoice(o).catch(e => console.warn('[billing email]', o.id, e.message));
     }
     forgetHosts();                                      // plan changes move own-domain and branding rights
     res.json({ received: true });
