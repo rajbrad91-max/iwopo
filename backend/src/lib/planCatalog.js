@@ -79,9 +79,9 @@ export async function planCards({ currency } = {}) {
  */
 // in the order a vendor shops: the tools they need daily, then delivering work, then capacity; perks last (Raj, 2026-11-07)
 const GROUPS = [
-  ['Run your bookings', [['leads', 'Inquiry form, leads & packages'], ['contracts', 'Contracts, e-signing & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Calendar'], ['website', 'Website builder']]],
-  ['Deliver your work', [['galleries', 'Client galleries with face recognition'], ['fileflyer', 'File Flyer — large-file delivery'], ['crew', 'Crew & team on the day']]],
-  ['Storage & AI', [['storage', 'Storage'], ['extra_storage', 'Extra storage'], ['chatbot', 'Wopo Assistant chats a month']]],
+  ['Run your bookings', [['leads', 'Smart inquiry form, leads & packages'], ['contracts', 'Contracts, e-signatures & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Booking calendar'], ['website', 'Portfolio website builder']]],
+  ['Deliver your work', [['galleries', 'Client galleries with AI face recognition'], ['fileflyer', 'File Flyer — effortless large-file delivery'], ['crew', 'Crew scheduling & day-of team']]],
+  ['Storage & AI', [['storage', 'Pooled storage — photos, videos & large files'], ['capacity', 'Roughly what fits'], ['extra_storage', 'Add extra storage anytime'], ['chatbot', 'Wopo AI Assistant chats a month']]],
 ];
 export async function planCompare({ currency } = {}) {
   const cards = await planCards({ currency });
@@ -95,8 +95,16 @@ export async function planCompare({ currency } = {}) {
   const storageFrom = Math.min(...addons.filter(a => a.storage_gb > 0).map(a => Number(a.price)));
   const addonFor = (key, code) => addons.find(a => a.feature_key === key && (!(a.plan_codes || []).length || a.plan_codes.includes(code)));
   const has = (c, key) => c.lines.some(l => l.key === key);
+  // 📸 what a plan's storage roughly holds: high-resolution photos at ~9 MB each, 4K video at ~15 GB an hour
+  const roughly = (n) => (n >= 1000 ? (Math.round(n / 500) * 500).toLocaleString('en-US') : String(Math.round(n / 10) * 10));
+  const fits = (gb) => {
+    const photos = `≈ ${roughly(gb * 1000 / 9)} photos`;
+    const hours = Math.round(gb / 15);
+    return hours >= 1 ? `${photos} · ${hours} hrs of 4K video` : photos;
+  };
   const cell = (c, key) => {
     if (key === 'storage') return c.lines.find(l => l.key === 'storage').name.replace(/ storage$/, '');
+    if (key === 'capacity') return fits(Number(c.storage_gb) || 0);
     if (key === 'chatbot') return has(c, 'chatbot') ? c.chat_limit.toLocaleString('en-US') : false;
     if (key === 'extra_storage') return c.price_monthly > 0 && Number.isFinite(storageFrom) ? `Add-on · from ${money(storageFrom)}/mo` : false;
     if (has(c, key)) return true;
@@ -107,7 +115,7 @@ export async function planCompare({ currency } = {}) {
   const groups = GROUPS.map(([title, rows]) => ({ title, rows: rows.map(([key, label]) => ({ key, label, coming: coming(key), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) })) }));
   // the extras: your own domain (an add-on below Studio), then each plan's highlights by their wording
   const addonRow = (key, label) => ({ key, label, coming: coming(key) || addons.some(a => a.feature_key === key && !a.is_live), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) });
-  const extras = [addonRow('custom_domain', 'Your own domain'), addonRow('social_ai', 'Instagram & WhatsApp AI')];
+  const extras = [addonRow('custom_domain', 'Your own custom domain'), addonRow('social_ai', 'Instagram & WhatsApp AI')];
   // a highlight that names an add-on (Studio's "Instagram & WhatsApp AI at half price") is that add-on's row, priced per plan
   const rowAddons = addons.filter(a => ['custom_domain', 'social_ai'].includes(a.feature_key)).map(a => a.name.toLowerCase());
   const seen = new Map();

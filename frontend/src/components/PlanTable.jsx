@@ -25,7 +25,7 @@ export default function PlanTable({ plans, groups, priceOf, onChoose }) {
               return (
                 <th key={p.code} scope="col" className={`pt-plan${pop ? ' is-pop' : ''}`}>
                   {pop && <span className="pt-ribbon">Most popular</span>}
-                  <span className="pt-name">{p.icon} {p.name}</span>
+                  <span className="pt-name">{p.name}</span>
                   <span className="pt-tag">{p.tagline}</span>
                   <span className="pt-price"><span className="pt-cur">{pr.cur}</span><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
                   <span className="pt-note">{pr.sub || ' '}</span>
