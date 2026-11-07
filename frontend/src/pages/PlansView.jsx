@@ -54,7 +54,6 @@ export default function PlansView() {
 
   return (
     <div className="pl">
-      {back === 'done' && <div className="pl-banner is-good">🎉 Thank you! Your plan is being set up — it shows here in a moment.</div>}
       {back === 'cancelled' && <div className="pl-banner">No change made — choose a plan whenever you’re ready.</div>}
 
       <div className="pl-state">
@@ -101,7 +100,7 @@ export default function PlansView() {
           return (
             <div key={p.id} className={`pl-card ${mine ? 'is-current' : ''}`}>
               {mine && <span className="pl-tag">Your plan</span>}
-              <h3>{p.icon} {p.name}</h3>
+              <h3>{p.name}</h3>
               {/* 🌍 their currency first (≈); the USD price it is set in, under it */}
               <div className="pl-price"><b>{p.local ? `≈ ${fmtMoney(cycle === 'annual' ? p.local.annual : p.local.monthly, { currency: p.local.currency })}` : money(price)}</b><span>/{cycle === 'annual' ? 'year' : 'month'}</span></div>
               {p.local && <div className="pl-storage">{money(price)} · exact amount in your currency at checkout</div>}

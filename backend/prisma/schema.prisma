@@ -774,7 +774,7 @@ model vendor_settings {
   vendor_id               Int       @id
   time_format             String?   @default("12h") @db.VarChar(5)
   timezone                String?   @default("America/Vancouver") @db.VarChar(80)
-  theme                   String?   @default("dark") @db.VarChar(10)
+  theme                   String?   @default("system") @db.VarChar(10)
   updated_at              DateTime? @default(now()) @db.Timestamp(6)
   currency                String?   @db.VarChar(3)
   auto_release_contract   Boolean   @default(false)
@@ -813,6 +813,8 @@ model vendor_subscriptions {
 }
 
 model vendors {
+  /// 👋 the getting-started steps were shown after their first payment (once)
+  welcome_seen_at      DateTime? @db.Timestamp(6)
   /// 💳 the plan chosen at sign-up, until it is paid for — so confirming the email anywhere leads to payment
   pending_plan_id      Int?
   pending_cycle        String?   @db.VarChar(10)

@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { sendPlatformEmail } from '../routes/email.js';
 import { quiet } from './quiet.js';
+import { emailShell, emailText, emailCode, emailButton, esc } from './emailLayout.js';
 
 const TTL_MS = 15 * 60_000, MAX_TRIES = 5, RESEND_GAP_MS = 45_000;
 export const mailSandbox = () => process.env.MAIL_SANDBOX === '1';
@@ -50,20 +51,11 @@ export async function useCode(userId, purpose, code) {
 export async function notice(to, subject, lines) {
   if (mailSandbox() || !to) return;
   const text = `${lines.join('\n\n')}\n\nIf this wasn't you, reset your password straight away and contact iwopo support.\n\n— iwopo`;
-  await sendPlatformEmail(to, subject, text, shell(subject, lines.map(l => `<p style="margin:0 0 14px">${esc(l)}</p>`).join('') +
-    '<p style="margin:0;color:#6b7280;font-size:13px">If this wasn\'t you, reset your password straight away and contact iwopo support.</p>')).catch(quiet('emailCodes · sendPlatformEmail'));
+  const html = emailShell({ title: subject, preheader: lines[0] || subject, body: lines.map(l => emailText(esc(l))).join('')
+    + emailText("If this wasn't you, reset your password straight away and contact iwopo support.", { muted: true }) });
+  await sendPlatformEmail(to, subject, text, html).catch(quiet('emailCodes · sendPlatformEmail'));
 }
 
-const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-function shell(title, body) {
-  const base = process.env.APP_URL || 'https://iwopo.com';
-  return `<!doctype html><html><body style="margin:0;background:#f4f6f7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f7;padding:28px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;padding:28px">
-<tr><td><img src="${base}/iwopo-logo.png" alt="iwopo" height="34" style="display:block;margin:0 0 20px"></td></tr>
-<tr><td><h1 style="margin:0 0 16px;font-size:20px">${esc(title)}</h1>${body}</td></tr>
-</table><p style="color:#9ca3af;font-size:12px;margin:14px 0 0">iwopo · sent automatically, please don't reply</p></td></tr></table></body></html>`;
-}
 function codeMail(code, purpose, to) {
   // ✉️ two-step sign-in: no link — the code must be typed where the password was
   if (purpose === 'login') {
@@ -72,18 +64,16 @@ function codeMail(code, purpose, to) {
     return {
       subject: `${code} is your iwopo sign-in code`,
       text: `${lead}\n\n${code}\n\n${warn}\n\n— iwopo`,
-      html: shell('Your sign-in code', `<p style="margin:0 0 16px">${esc(lead)}</p>
-<p style="margin:0 0 16px;font-size:32px;font-weight:800;letter-spacing:8px">${code}</p>
-<p style="margin:0;color:#6b7280;font-size:13px">${esc(warn)}</p>`),
+      html: emailShell({ title: 'Your sign-in code', preheader: `${code} — your iwopo sign-in code`, body: emailText(esc(lead)) + emailCode(code) + emailText(esc(warn), { muted: true }) }),
     };
   }
   const link = `${process.env.APP_URL || 'https://iwopo.com'}/verify?email=${encodeURIComponent(to || '')}&code=${code}`;
   const subject = purpose === 'change' ? `${code} is your code to confirm your new email` : `${code} is your iwopo verification code`;
   const lead = purpose === 'change' ? 'Use this code to confirm your new email address on iwopo:' : 'Welcome to iwopo! Use this code to confirm your email address:';
   const text = `${lead}\n\n${code}\n\n${purpose === 'change' ? '' : `Or open: ${link}\n\n`}It works for 15 minutes. If you didn't ask for this, you can ignore this email.\n\n— iwopo`;
-  const html = shell(purpose === 'change' ? 'Confirm your new email' : 'Confirm your email', `<p style="margin:0 0 16px">${esc(lead)}</p>
-<p style="margin:0 0 16px;font-size:32px;font-weight:800;letter-spacing:8px">${code}</p>
-${purpose === 'change' ? '' : `<p style="margin:0 0 16px"><a href="${esc(link)}" style="display:inline-block;padding:12px 22px;border-radius:10px;background:#0d9488;color:#fff;font-weight:700;text-decoration:none">Confirm my email</a></p>`}
-<p style="margin:0;color:#6b7280;font-size:13px">It works for 15 minutes. If you didn't ask for this, you can ignore this email.</p>`);
+  const html = emailShell({ title: purpose === 'change' ? 'Confirm your new email' : 'Confirm your email', preheader: `${code} — ${lead}`, body:
+    emailText(esc(lead)) + emailCode(code)
+    + (purpose === 'change' ? '' : emailButton(link, 'Confirm my email', true))
+    + emailText("It works for 15 minutes. If you didn't ask for this, you can ignore this email.", { muted: true }) });
   return { subject, text, html };
 }

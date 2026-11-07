@@ -36,6 +36,14 @@ async function pendingPlan(v) {
   return p ? { id: p.id, name: p.name, cycle: x.pending_cycle || 'monthly' } : null;
 }
 
+/** 👋 { plan } when a paying vendor has not yet seen the getting-started steps — else null */
+async function welcomeDue(v, sub) {
+  const x = await prisma.vendors.findUnique({ where: { id: v }, select: { welcome_seen_at: true, billing_exempt: true } });
+  if (!x || x.welcome_seen_at || x.billing_exempt) return null;
+  const p = await prisma.plans.findUnique({ where: { id: sub.plan_id }, select: { name: true } });
+  return { plan: p?.name || 'your plan' };
+}
+
 export const billingWebhook = express.Router();
 billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
   const event = verifyWebhook(req.body?.toString('utf8') || '', req.headers['stripe-signature']);
@@ -87,6 +95,7 @@ router.get('/', async (req, res) => {
     res.json({
       marketing_opt_in: !!(await prisma.vendors.findUnique({ where: { id: v }, select: { marketing_opt_in: true } }))?.marketing_opt_in,   // 📬
       pending_plan: await pendingPlan(v),   // 💳 chosen at sign-up, not yet paid
+      welcome: sub ? await welcomeDue(v, sub) : null,   // 👋 the getting-started steps, once after paying
       ready: stripeReady(),
       state: access.reason,                              // owner | paid | trial | expired
       trial_ends_at: access.trialEndsAt, trial_days_left: access.reason === 'trial' ? daysLeft : 0,
@@ -100,6 +109,14 @@ router.get('/', async (req, res) => {
       })),
     });
   } catch (e) { serverError(res, e); }
+});
+
+/* 👋 The getting-started steps were seen — they open once, after the first payment */
+router.post('/welcome-seen', async (req, res) => {
+  const v = vendorOf(req);
+  if (!v) return res.status(400).json({ error: 'Not a vendor account' });
+  try { await prisma.vendors.update({ where: { id: v }, data: { welcome_seen_at: new Date() } }); res.json({ ok: true }); }
+  catch (e) { serverError(res, e); }
 });
 
 /* 📬 The vendor's own switch for offers and news from iwopo (Raj, 2026-11-07) — consent they can take back any time */
@@ -179,7 +196,7 @@ router.post('/checkout', async (req, res) => {
       adaptive_pricing: { enabled: true },
       // ⚖️ what they agree to, said where they pay (pages: /terms, /refund-policy)
       custom_text: { submit: { message: `By subscribing you agree to iwopo’s Terms of Service (${APP_URL}/terms). Cancel any time in Manage billing; payments are not refunded (${APP_URL}/refund-policy).` } },
-      success_url: `${APP_URL}/panel/plans?billing=done`,
+      success_url: `${APP_URL}/panel?billing=done`,   // 👋 the dashboard, where the getting-started steps open
       cancel_url: `${APP_URL}/panel/plans?billing=cancelled`,
     });
     res.json({ url: session.url });

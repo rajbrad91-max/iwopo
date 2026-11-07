@@ -15,7 +15,9 @@
   try {
     var d = document.documentElement, p = location.pathname, bg = '';
     var signedIn = !!(sessionStorage.getItem('iwopo_token') || localStorage.getItem('iwopo_token'));
-    var light = localStorage.getItem('vf_theme') === 'light';
+    // 🌗 'light' | 'dark' | 'system' (follow the device; light when it has no preference) — src/lib/theme.js
+    var saved = localStorage.getItem('vf_theme') || 'system';
+    var light = saved === 'light' || (saved !== 'dark' && !(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches));
     if (p.indexOf('/panel') === 0 || ((p === '/' || p === '/login') && signedIn)) {
       if (light) d.setAttribute('data-theme', 'light');
       bg = light ? '#eef2f3' : '#0a1013';

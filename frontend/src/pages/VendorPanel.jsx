@@ -51,6 +51,8 @@ import HelpView from '../components/HelpView';
 import { professionLabel } from '../lib/professions';
 import MyServicesView from '../components/MyServices';
 import StripeConnectCard from '../components/StripeConnect';
+import WelcomeSteps from '../components/WelcomeSteps';
+import { applyTheme } from '../lib/theme';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -170,10 +172,14 @@ export default function VendorPanel({ onLogout }) {
 
   useEffect(() => { api.myProfile().then(d => setProfile(d.profile)).catch(() => {}); }, []);
 
-  // 🌗 instant paint from last-known theme (avoids flash); load() then applies vendor's DB theme
+  // 🌗 instant paint from the last-known theme (avoids a flash); load() then applies the vendor's saved choice.
+  //    'system' keeps following the device when it switches between light and dark.
   useEffect(() => {
-    const cached = localStorage.getItem('vf_theme');
-    if (cached === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    applyTheme(localStorage.getItem('vf_theme') || 'system');
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const follow = () => { if ((localStorage.getItem('vf_theme') || 'system') === 'system') applyTheme('system'); };
+    mq?.addEventListener?.('change', follow);
+    return () => mq?.removeEventListener?.('change', follow);
   }, []);
 
   // 🗝️ single access check used everywhere
@@ -222,6 +228,26 @@ export default function VendorPanel({ onLogout }) {
 
   useEffect(() => { load(); }, []);
 
+  /* 👋 The getting-started steps, once, after the first payment (Raj, 2026-11-07). Stripe sends the vendor back here
+     a moment before its webhook records the payment, so on that return the check repeats for up to ~20 seconds. */
+  const [welcome, setWelcome] = useState(null);
+  useEffect(() => {
+    let stop = false, tries = 0;
+    const justPaid = new URLSearchParams(window.location.search).get('billing') === 'done';
+    if (justPaid) window.history.replaceState(null, '', window.location.pathname);
+    const check = async () => {
+      try {
+        const b = await api.billing();
+        if (stop) return;
+        if (b.welcome) setWelcome(b.welcome.plan);
+        else if (justPaid && !b.subscription && ++tries < 10) setTimeout(check, 2000);
+      } catch { /* the steps are a courtesy — never block the panel */ }
+    };
+    check();
+    return () => { stop = true; };
+  }, []);
+  const closeWelcome = () => { setWelcome(null); api.billingWelcomeSeen().catch(() => {}); };
+
   async function load() {
     setLoading(true);
     setError('');
@@ -235,10 +261,7 @@ export default function VendorPanel({ onLogout }) {
       try { localStorage.setItem(`vf_features:${getUser()?.id}`, JSON.stringify(list)); } catch { /* private mode */ }
       // 🌗 apply this vendor's saved theme
       const settings = await applyVendorClock(st || {});
-      const th = settings.theme || 'dark';
-      if (th === 'light') document.documentElement.setAttribute('data-theme', 'light');
-      else document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('vf_theme', th);
+      applyTheme(settings.theme || 'system');
       if (!localStorage.getItem('vf_currency')) localStorage.setItem('vf_currency', 'USD');
     } catch (err) {
       setError(err.message);
@@ -373,6 +396,7 @@ export default function VendorPanel({ onLogout }) {
 
       <main className="main">
         <BillingBanner onPlans={() => go('plans')} />
+        {welcome && <WelcomeSteps plan={welcome} onGo={(t) => { closeWelcome(); go(t); }} onClose={closeWelcome} />}
         <div className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
@@ -5694,10 +5718,10 @@ function SettingsView({ user, onProfileChange }) {
   useEffect(() => {
     api.mySettings().then(async d => {
       const settings = await applyVendorClock(d);
-      setS(settings || { time_format: '12h', theme: 'dark', timezone: '' });
+      setS(settings || { time_format: '12h', theme: 'system', timezone: '' });
       setZones(d.zones || []);
       setChosenCurrency(d.chosen_currency || '');
-    }).catch(() => setS({ time_format: '12h', theme: 'dark', timezone: '' }));
+    }).catch(() => setS({ time_format: '12h', theme: 'system', timezone: '' }));
     api.myCurrencies().then(d => setCurrencies(d.currencies || [])).catch(() => {});
     api.myProfile().then(d => setProf(d.profile || {})).catch(() => setProf({}));
   }, []);
@@ -5733,9 +5757,7 @@ function SettingsView({ user, onProfileChange }) {
   async function savePrefs(next) {
     setS(next); setSaved('');
     // 🌗 apply theme live + persist
-    if (next.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
-    else document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('vf_theme', next.theme || 'dark');
+    applyTheme(next.theme || 'system');
     localStorage.setItem('vf_time_format', next.time_format || '12h');
     localStorage.setItem('vf_timezone', next.timezone || '');
     if (next.currency) localStorage.setItem('vf_currency', next.currency);
@@ -5792,13 +5814,11 @@ function SettingsView({ user, onProfileChange }) {
           ))}
         </div>
 
-        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }}>Theme</label>
-        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-          {['dark', 'light'].map(t => (
-            <button key={t} onClick={() => savePrefs({ ...s, theme: t })}
-              className="refresh" style={{ flex: 1, background: s.theme === t ? '#2dd4bf' : 'var(--panel-2)', color: s.theme === t ? '#06231f' : 'var(--text)' }}>
-              {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
-            </button>
+        <label className="set-theme-label">Theme</label>
+        <div className="set-theme-row">
+          {[['system', '🖥️ Match my device'], ['light', '☀️ Light'], ['dark', '🌙 Dark']].map(([t, label]) => (
+            <button key={t} type="button" onClick={() => savePrefs({ ...s, theme: t })}
+              className={`refresh set-theme-btn${(s.theme || 'system') === t ? ' is-on' : ''}`}>{label}</button>
           ))}
         </div>
 

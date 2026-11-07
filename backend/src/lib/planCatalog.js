@@ -10,20 +10,33 @@ import { priceFor } from './addons.js';
  * promise something the plan does not give (Muse F-08, F-03). A feature whose service is not live yet, and a
  * highlight marked "coming", are shown as coming soon rather than sold.
  */
+/** 🏷️ What each feature is called — ONE wording for the pricing table, the plan cards and the vendor's Plans page (Raj, 2026-11-07) */
+export const FEATURE_LABEL = {
+  leads: 'Smart inquiry form, leads & packages',
+  contracts: 'Contracts, e-signatures & invoices',
+  card_payments: 'Card payments, straight to your Stripe',
+  calendar: 'Booking Calendar',
+  website: 'Portfolio website builder',
+  chatbot: 'Wopo AI Assistant',
+  galleries: 'Client galleries with AI face recognition',
+  fileflyer: 'File Flyer — effortless large-file delivery',
+  crew: 'Crew scheduling & day-of team',
+  custom_domain: 'Your own custom domain',
+};
 const LINES = [
-  ['leads', '📋', () => 'Inquiry form, leads & packages'],
-  ['contracts', '📄', () => 'Contracts, e-signing, invoices & payment tracking'],
-  ['calendar', '📅', () => 'Booking Calendar'],   // the same name as the pricing table and the add-on (Raj, 2026-11-07)
-  ['website', '🌐', () => 'Website builder'],
-  ['chatbot', '🤖', (p) => `Wopo Assistant · ${p.chat_limit.toLocaleString('en-US')} chats a month`],
-  ['galleries', '📸', () => 'Client Galleries with face recognition'],
-  ['fileflyer', '📦', () => 'File Flyer — branded large-file sending'],
-  ['crew', '👷', () => 'Crew & team on the day'],
-  ['custom_domain', '🔗', () => 'Your own domain'],
+  ['leads', '📋', () => FEATURE_LABEL.leads],
+  ['contracts', '📄', () => FEATURE_LABEL.contracts],
+  ['calendar', '📅', () => FEATURE_LABEL.calendar],
+  ['website', '🌐', () => FEATURE_LABEL.website],
+  ['chatbot', '🤖', (p) => `${FEATURE_LABEL.chatbot} · ${p.chat_limit.toLocaleString('en-US')} chats a month`],
+  ['galleries', '📸', () => FEATURE_LABEL.galleries],
+  ['fileflyer', '📦', () => FEATURE_LABEL.fileflyer],
+  ['crew', '👷', () => FEATURE_LABEL.crew],
+  ['custom_domain', '🔗', () => FEATURE_LABEL.custom_domain],
 ];
 // 💳 client card payments go straight to the vendor's own Stripe (Stripe Connect) — every paid plan; shown as coming
 //    only while Connect is not set up for this site (lib/stripeConnect.js connectReady)
-const CARD_PAYMENTS = { key: 'card_payments', icon: '💳', name: 'Stripe card payments, straight to your account' };
+const CARD_PAYMENTS = { key: 'card_payments', icon: '💳', name: FEATURE_LABEL.card_payments };
 
 const storageLabel = (gb) => (gb >= 1000 && gb % 1000 === 0 ? `${gb / 1000} TB` : `${gb} GB`);
 
@@ -79,9 +92,9 @@ export async function planCards({ currency } = {}) {
  */
 // in the order a vendor shops: the tools they need daily, then delivering work, then capacity; perks last (Raj, 2026-11-07)
 const GROUPS = [
-  ['Run your bookings', [['leads', 'Smart inquiry form, leads & packages'], ['contracts', 'Contracts, e-signatures & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Booking Calendar'], ['website', 'Portfolio website builder']]],
-  ['Deliver your work', [['galleries', 'Client galleries with AI face recognition'], ['fileflyer', 'File Flyer — effortless large-file delivery'], ['crew', 'Crew scheduling & day-of team']]],
-  ['Storage & AI', [['storage', 'Pooled storage — photos, videos & large files'], ['capacity', 'Roughly what fits', 1], ['extra_storage', 'Add extra storage anytime'], ['chatbot', 'Wopo AI Assistant chats a month']]],
+  ['Run your bookings', [['leads', FEATURE_LABEL.leads], ['contracts', FEATURE_LABEL.contracts], ['card_payments', FEATURE_LABEL.card_payments], ['calendar', FEATURE_LABEL.calendar], ['website', FEATURE_LABEL.website]]],
+  ['Deliver your work', [['galleries', FEATURE_LABEL.galleries], ['fileflyer', FEATURE_LABEL.fileflyer], ['crew', FEATURE_LABEL.crew]]],
+  ['Storage & AI', [['storage', 'Pooled storage — photos, videos & large files'], ['capacity', 'Roughly what fits', 1], ['extra_storage', 'Add extra storage anytime'], ['chatbot', `${FEATURE_LABEL.chatbot} chats a month`]]],
 ];
 export async function planCompare({ currency } = {}) {
   const cards = await planCards({ currency });
@@ -116,7 +129,7 @@ export async function planCompare({ currency } = {}) {
   const groups = GROUPS.map(([title, rows]) => ({ title, rows: rows.map(([key, label, star]) => ({ key, label, star, coming: coming(key), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) })) }));
   // the extras: your own domain (an add-on below Studio), then each plan's highlights by their wording
   const addonRow = (key, label) => ({ key, label, coming: coming(key) || addons.some(a => a.feature_key === key && !a.is_live), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) });
-  const extras = [addonRow('custom_domain', 'Your own custom domain'), addonRow('social_ai', 'Instagram & WhatsApp AI')];
+  const extras = [addonRow('custom_domain', FEATURE_LABEL.custom_domain), addonRow('social_ai', 'Instagram & WhatsApp AI')];
   // a highlight that names an add-on (Studio's "Instagram & WhatsApp AI at half price") is that add-on's row, priced per plan
   const rowAddons = addons.filter(a => ['custom_domain', 'social_ai'].includes(a.feature_key)).map(a => a.name.toLowerCase());
   const seen = new Map();

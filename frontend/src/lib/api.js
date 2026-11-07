@@ -698,6 +698,7 @@ export const api = {
   vendorDetail: (id) => request(`/vendors/${id}/detail`),
   vendorMembership: (id, when) => request(`/vendors/${id}/membership`, { method: 'POST', body: JSON.stringify({ when }) }),   // ⏸️
   formerSubscribers: () => request('/vendors/former'),   // 👋
+  billingWelcomeSeen: () => request('/billing/welcome-seen', { method: 'POST' }),   // 👋
   billingMarketing: (on) => request('/billing/marketing', { method: 'POST', body: JSON.stringify({ on }) }),   // 📬
   vendorFeatures: (id) => request(`/vendors/${id}/features`),
   setVendorFeature: (id, key, body) => request(`/vendors/${id}/features/${key}`, { method: 'PUT', body: JSON.stringify(body) }),

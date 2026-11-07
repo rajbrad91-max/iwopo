@@ -186,7 +186,7 @@ router.put('/settings', requireAuth, async (req, res) => {
     //    are; an absent time zone keeps the saved one (timezoneToStore)
     const data = { timezone: timezoneToStore(timezone, existing?.timezone, vendor?.country) };
     if (time_format !== undefined) data.time_format = time_format || '12h';
-    if (theme !== undefined) data.theme = theme || 'dark';
+    if (theme !== undefined) data.theme = ['light', 'dark', 'system'].includes(theme) ? theme : 'system';   // 🌗 'system' follows the device
     // only write a currency we actually support; an empty string means "go back
     // to following my country" rather than "store a blank"
     if (currency !== undefined) {
@@ -201,7 +201,7 @@ router.put('/settings', requireAuth, async (req, res) => {
     await prisma.vendor_settings.upsert({
       where: { vendor_id: vid },                  // 🔒 tenancy
       update: { ...data, updated_at: new Date() },
-      create: { vendor_id: vid, time_format: '12h', theme: 'dark', ...data },   // a first save starts from the defaults
+      create: { vendor_id: vid, time_format: '12h', theme: 'system', ...data },   // a first save starts from the defaults
     });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }

@@ -186,7 +186,7 @@ export default function Selling({ onSignup, onGoLogin }) {
       referral = new URLSearchParams(window.location.search).get('ref') || sessionStorage.getItem('iwopo_ref') || '';
       if (referral) sessionStorage.setItem('iwopo_ref', referral);
     } catch { /* private mode: the link still fills it this time */ }
-    return { businessName: '', email: '', password: '', profession: '', marketing: false, referral: referral.toUpperCase() };
+    return { businessName: '', email: '', password: '', password2: '', profession: '', marketing: false, referral: referral.toUpperCase() };
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -260,6 +260,7 @@ export default function Selling({ onSignup, onGoLogin }) {
     if (!form.businessName || !form.email || !form.password) { setError('Please fill in all fields'); return; }
     if (!form.profession) { setError('Please choose your trade — or Other'); return; }
     if (!passwordReady(form.password, { email: form.email, business: form.businessName })) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
+    if (form.password !== form.password2) { setError("The two passwords don't match — type the same one twice."); return; }
     setLoading(true);
     try {
       const r = await api.signup({
@@ -292,13 +293,17 @@ export default function Selling({ onSignup, onGoLogin }) {
         <label htmlFor={`${p}-pass`}>Password</label>
         <PasswordInput id={`${p}-pass`} checklist={{ email: form.email, business: form.businessName }} value={form.password} onChange={e => set('password', e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSignup()} placeholder="••••••••" />
-        {error && <div className="sl-err">{error}</div>}
+        {/* 🔐 typed twice, so a slip of the finger can't lock them out */}
+        <label htmlFor={`${p}-pass2`}>Confirm password</label>
+        <PasswordInput id={`${p}-pass2`} value={form.password2} onChange={e => set('password2', e.target.value)} placeholder="Type it again" autoComplete="new-password" />
+        {form.password2 && <p className={`sl-match${form.password2 === form.password ? ' is-ok' : ''}`}>{form.password2 === form.password ? '✓ Passwords match' : "✗ Passwords don't match yet"}</p>}
         {/* 🎟️ a friend's code: first month free on a paid plan — optional */}
         <label htmlFor={`${p}-ref`}>Referral code <span className="sl-optional">(optional)</span></label>
         <input id={`${p}-ref`} value={form.referral} onChange={e => set('referral', e.target.value.toUpperCase())} placeholder="e.g. ROSEWOOD-7K2F" autoComplete="off" />
         {form.referral.trim() && <p className="sl-ref-note">🎁 With a friend's code, your first month on a paid plan is free.</p>}
         {/* 📬 offers only with consent — unticked; changeable any time in My Services */}
         <label className="sl-optin"><input type="checkbox" checked={form.marketing} onChange={e => set('marketing', e.target.checked)} /> <span>Email me occasional offers and news from iwopo. Unsubscribe any time.</span></label>
+        {error && <div className="sl-err">{error}</div>}
         <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>
           {loading ? 'Creating…' : p === 'buy' && paidChoice ? 'Create account & continue' : 'Create account'}
         </button>
