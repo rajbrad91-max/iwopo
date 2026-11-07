@@ -9,7 +9,7 @@ const SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace";
 
 /** A button: primary is the solid accent, secondary an outline. */
-export const emailButton = (href, label, primary = false) => `<a href="${esc(href)}" style="display:inline-block;margin:0 8px 8px 0;padding:11px 18px;border-radius:8px;font:600 14px ${SANS};text-decoration:none;${primary ? 'background:#C44D00;color:#ffffff' : 'background:#ffffff;color:#0F1418;border:1px solid #D0D5DA'}">${esc(label)}</a>`;
+export const emailButton = (href, label, primary = false) => `<a href="${esc(href)}" style="display:inline-block;margin:0 8px 8px 0;padding:11px 18px;border-radius:8px;font:600 14px ${SANS};text-decoration:none;${primary ? 'background:#E65C00;color:#ffffff' : 'background:#ffffff;color:#0F1418;border:1px solid #D0D5DA'}">${esc(label)}</a>`;
 
 /** Label / value rows in the quiet panel — values in monospace, like a receipt. */
 export const emailRows = (rows) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 22px;background:#F6F7F8;border:1px solid #E4E7EA;border-radius:10px">

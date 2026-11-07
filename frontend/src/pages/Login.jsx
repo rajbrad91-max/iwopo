@@ -67,7 +67,7 @@ export default function Login({ onLogin, onBack }) {
   );
 
   return (
-    <div className="login-wrap">
+    <div className="login-wrap auth-public">
       <div className="login-card">
         {onBack && mode !== 'forgot' && <div className="login-back" onClick={onBack}>← Back to iwopo.com</div>}
         <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>

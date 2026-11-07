@@ -12,7 +12,7 @@ export default function VerifyEmail() {
   const email = (q.get('email') || '').trim();
   const code = (q.get('code') || '').replace(/\D/g, '').slice(0, 6);
   return (
-    <div className="login-wrap">
+    <div className="login-wrap auth-public">
       <div className="login-card">
         <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>
         {email ? (

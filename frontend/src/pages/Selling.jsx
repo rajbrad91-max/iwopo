@@ -323,7 +323,7 @@ export default function Selling({ onSignup, onGoLogin }) {
     <div className="sl">
       {verify && (
         <div className="vc-overlay" role="dialog" aria-label="Confirm your email">
-          <div className="sl-signup-box sl-buy sl-verify">
+          <div className="sl-signup-box sl-buy auth-public">
             <VerifyCode email={verify.email} sandboxCode={verify.code} notSent={verify.notSent} ticket={verify.ticket}
               onVerified={({ token, user }) => afterSignedIn(token, user)} onBack={() => setVerify(null)}
               onAlreadyConfirmed={() => { setVerify(null); onGoLogin(); }} />

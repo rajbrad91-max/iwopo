@@ -12,7 +12,7 @@
   --bg: #FFF7F0;
   --card: #FFFFFF;
   --shadow: 0 18px 40px -24px rgba(26, 18, 11, .35);
-  --grad: linear-gradient(135deg, #A33C00 0%, #B84500 50%, #C44D00 100%);
+  --grad: linear-gradient(135deg, #C44D00 0%, #E65C00 45%, #FF7A26 100%);
   --maxw: 1120px;
   font-family: 'Outfit', 'Sora', sans-serif;
   color: var(--text);

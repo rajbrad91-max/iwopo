@@ -230,3 +230,27 @@ tr:last-child td { border-bottom:none; }
 
 /* 🫥 until the app has drawn, the server's search-engine copy stays out of sight (public/boot.js, main.jsx) */
 html[data-app-pending] #root { visibility: hidden; }
+
+/* 🔐 Before the panel — sign in, password reset, the email-link page and the sign-up window's code step — the public
+ * site's light look and orange buttons; the panel's teal only once the vendor is inside (Raj, 2026-11-07). */
+.auth-public {
+  --ap-ink: #1A120B; --ap-text: #2C241C; --ap-gray: #6E6258; --ap-line: #EDE4DA; --ap-field: #FFFBF7;
+  --ap-accent: #E65C00; --ap-deep: #C44D00; --ap-grad: linear-gradient(135deg, #C44D00 0%, #E65C00 45%, #FF7A26 100%);
+  color: var(--ap-text);
+}
+.login-wrap.auth-public { background: #FFF7F0; }
+.auth-public .login-card { background: #fff; border-color: var(--ap-line); box-shadow: 0 30px 70px -40px rgba(26, 18, 11, .45); }
+.auth-public h1 { margin: 0 0 6px; font-family: 'Sora', sans-serif; font-size: 24px; color: var(--ap-ink); }
+.auth-public .login-sub, .auth-public label, .auth-public .login-new, .auth-public .login-back { color: var(--ap-gray); }
+.auth-public input { background: var(--ap-field); border: 1px solid var(--ap-line); color: var(--ap-ink); }
+.auth-public input:focus { outline: none; border-color: var(--ap-accent); }
+.auth-public .vc-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
+.auth-public .login-btn { border: 0; border-radius: 12px; background: var(--ap-grad); color: #fff; font-weight: 700; }
+.auth-public .login-btn:hover { background: var(--ap-grad); filter: brightness(1.05); }
+.auth-public .login-btn:disabled { opacity: 1; filter: none; cursor: default; }   /* waits, never fades */
+.auth-public .login-forgot-link, .auth-public .vc-link, .auth-public .login-back:hover { color: var(--ap-deep); }
+.auth-public .vc-link:disabled { color: #A89C91; }
+.auth-public .login-error { background: #FEECEB; color: #B42318; }
+.auth-public .login-notice { background: #EAF6EF; color: #1F5A4F; }
+.auth-public .pw-rules li.is-ok { color: #1F7A4D; }
+

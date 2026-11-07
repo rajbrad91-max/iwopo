@@ -29,7 +29,7 @@ export default function ResetPassword({ token, heading = 'Set a new password', i
   }
 
   return (
-    <div className="login-wrap">
+    <div className="login-wrap auth-public">
       <div className="login-card">
         <div className="login-brand"><img src="/iwopo-logo.png" alt="iwopo" className="login-brand-img" /></div>
 
