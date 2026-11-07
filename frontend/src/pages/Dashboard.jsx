@@ -959,6 +959,7 @@ function Membership({ vendorId, membership: m, onChanged }) {
           </div>
         </>
       )}
+      <div className="sa-mem-line sa-mem-muted">📜 Terms: {m.terms_accepted_at ? `agreed ${day(m.terms_accepted_at)} (version ${m.terms_version})` : 'no record (signed up before the tick box)'}</div>
       <div className="sa-mem-line sa-mem-muted">📬 Offers: {m.marketing_opt_in ? `agreed ${day(m.marketing_opt_in_at)}` : 'not agreed'}</div>
       {msg && <div className="sa-mem-line">{msg}</div>}
     </div>

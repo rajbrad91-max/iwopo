@@ -12,7 +12,9 @@ const periodEnd = (s) => s?.current_period_end ?? s?.items?.data?.[0]?.current_p
 export async function membershipOf(vendorId) {
   const sub = await paidSubscription(vendorId);
   const v = await prisma.vendors.findUnique({ where: { id: Number(vendorId) }, select: { marketing_opt_in: true, marketing_opt_in_at: true } });
-  const base = { marketing_opt_in: !!v?.marketing_opt_in, marketing_opt_in_at: v?.marketing_opt_in_at || null };
+  const owner = await prisma.users.findFirst({ where: { vendor_id: Number(vendorId), role: 'vendor' }, orderBy: { id: 'asc' }, select: { terms_accepted_at: true, terms_version: true } });
+  const base = { marketing_opt_in: !!v?.marketing_opt_in, marketing_opt_in_at: v?.marketing_opt_in_at || null,
+    terms_accepted_at: owner?.terms_accepted_at || null, terms_version: owner?.terms_version || null };   // 📜
   if (!sub?.stripe_subscription_id) return { ...base, paying: false };
   const s = await stripe('GET', `/subscriptions/${sub.stripe_subscription_id}`);
   const plan = await prisma.plans.findUnique({ where: { id: sub.plan_id }, select: { name: true } });

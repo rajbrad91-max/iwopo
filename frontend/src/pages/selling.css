@@ -655,8 +655,6 @@
 }
 
 /* ⚖️ consent line under "Create account" (2026-10-31) */
-.sl-consent { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted, #8A7B6E); text-align: center; }
-.sl-consent a { color: inherit; text-decoration: underline; }
 
 /* the proof section now holds only the FAQ: let it use the full width (design review 2026-11-01) */
 .sl-split > :only-child { grid-column: 1 / -1; }
@@ -675,7 +673,14 @@
 
 /* 📬 the offers consent box in the sign-up window — unticked by default */
 .sl-signup-box .sl-optin { display: flex; gap: 9px; align-items: flex-start; margin: 12px 0 2px; font-size: .86rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text); cursor: pointer; }
-.sl-signup-box .sl-optin input { width: auto; margin-top: 3px; accent-color: var(--p); }
+.sl-signup-box .sl-optin input {   /* drawn here, so unticked is plainly empty and ticked plainly ticked, on any system theme */
+  flex-shrink: 0; width: 20px; height: 20px; margin: 1px 0 0; padding: 0; display: grid; place-content: center;
+  appearance: none; -webkit-appearance: none; border: 1.5px solid #B9AEA3; border-radius: 6px; background: #fff; cursor: pointer;
+}
+.sl-signup-box .sl-optin input:checked { border-color: var(--p-deep); background: var(--p-deep); }
+.sl-signup-box .sl-optin input:checked::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 800; line-height: 1; }
+.sl-signup-box .sl-optin input:focus-visible { outline: 2px solid color-mix(in srgb, var(--p) 45%, transparent); outline-offset: 2px; }
+.sl-signup-box .sl-optin a { color: var(--p-deep); text-decoration: underline; }
 
 /* 🎟️ the referral code field in the sign-up window */
 .sl-signup-box .sl-optional { font-weight: 400; text-transform: none; letter-spacing: 0; }

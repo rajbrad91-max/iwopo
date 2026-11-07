@@ -186,7 +186,7 @@ export default function Selling({ onSignup, onGoLogin }) {
       referral = new URLSearchParams(window.location.search).get('ref') || sessionStorage.getItem('iwopo_ref') || '';
       if (referral) sessionStorage.setItem('iwopo_ref', referral);
     } catch { /* private mode: the link still fills it this time */ }
-    return { businessName: '', email: '', password: '', password2: '', profession: '', marketing: false, referral: referral.toUpperCase() };
+    return { businessName: '', email: '', password: '', password2: '', profession: '', marketing: false, terms: false, referral: referral.toUpperCase() };
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -231,7 +231,8 @@ export default function Selling({ onSignup, onGoLogin }) {
     return () => window.removeEventListener('mousemove', onMove);
   }, []);
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+  // a correction clears the message about it — a stale error under a fixed form reads as still wrong
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setError(''); }
   /* 🎯 An account starts from a plan choice, never on its own (Raj, 2026-11-07): the general buttons take the visitor to
      the plans; a plan's own button opens the sign-up window. While sign-ups are paused: the Opening-soon section. */
   function goSignup() {
@@ -261,11 +262,12 @@ export default function Selling({ onSignup, onGoLogin }) {
     if (!form.profession) { setError('Please choose your trade — or Other'); return; }
     if (!passwordReady(form.password, { email: form.email, business: form.businessName })) { setError('Choose a stronger password — follow the checklist under the box.'); return; }
     if (form.password !== form.password2) { setError("The two passwords don't match — type the same one twice."); return; }
+    if (!form.terms) { setError('Please tick the box to agree to the Terms of Service and Privacy Policy.'); return; }
     setLoading(true);
     try {
       const r = await api.signup({
         businessName: form.businessName, email: form.email, password: form.password, profession: form.profession,
-        marketing: form.marketing, referral_code: form.referral.trim(),
+        marketing: form.marketing, terms: form.terms, referral_code: form.referral.trim(),
         ...(paidChoice ? { plan_id: chosen.id, cycle: chosen.cycle || cycle } : {}),   // 💳 remembered on the account
       });
       if (r.verify) { setBuying(false); setVerify({ email: r.email, code: r.sandbox_code, notSent: r.not_sent, ticket: r.ticket }); return; }   // ✉️ confirm the address first
@@ -301,13 +303,14 @@ export default function Selling({ onSignup, onGoLogin }) {
         <label htmlFor={`${p}-ref`}>Referral code <span className="sl-optional">(optional)</span></label>
         <input id={`${p}-ref`} value={form.referral} onChange={e => set('referral', e.target.value.toUpperCase())} placeholder="e.g. ROSEWOOD-7K2F" autoComplete="off" />
         {form.referral.trim() && <p className="sl-ref-note">🎁 With a friend's code, your first month on a paid plan is free.</p>}
+        {/* 📜 a required, unticked "I agree" — kept apart from the optional offers box (consent is never bundled) */}
+        <label className="sl-optin"><input type="checkbox" checked={form.terms} onChange={e => set('terms', e.target.checked)} /> <span>I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</span></label>
         {/* 📬 offers only with consent — unticked; changeable any time in My Services */}
         <label className="sl-optin"><input type="checkbox" checked={form.marketing} onChange={e => set('marketing', e.target.checked)} /> <span>Email me occasional offers and news from iwopo. Unsubscribe any time.</span></label>
         {error && <div className="sl-err">{error}</div>}
         <button type="button" className="sl-cta full" onClick={handleSignup} disabled={loading}>
           {loading ? 'Creating…' : p === 'buy' && paidChoice ? 'Create account & continue' : 'Create account'}
         </button>
-        <p className="sl-consent">By creating an account you agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
     </>
   );
   const chosenPrice = chosen ? planPriceOf(chosen, chosen.cycle || cycle) : null;

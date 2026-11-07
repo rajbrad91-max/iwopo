@@ -18,6 +18,7 @@ import { serverError } from '../lib/httpError.js';
 import { professionOf } from '../lib/professions.js';
 import { signupTrialEnd } from '../lib/billing.js';
 import { newReferralCode, referrerByCode, linkReferral } from '../lib/referrals.js';
+import { LEGAL_UPDATED } from '../lib/seo/legal.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -168,8 +169,10 @@ router.get('/trial-eligible', async (req, res) => {
 router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   // 🚧 paused until launch — refused here, whatever the page shows (lib/signups.js)
   if (!(await signupsOpen())) return res.status(403).json({ error: SIGNUPS_CLOSED_MESSAGE, code: 'signups_closed' });
-  const { businessName, name, email, password, profession, marketing, referral_code, plan_id, cycle } = req.body;
+  const { businessName, name, email, password, profession, marketing, referral_code, plan_id, cycle, terms } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
+  // 📜 an account needs an explicit "I agree" — ticked, not assumed (Raj, 2026-11-07)
+  if (terms !== true) return res.status(400).json({ error: 'terms_required', message: 'Please tick the box to agree to the Terms of Service and Privacy Policy.' });
   if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
   const weak = await checkPassword(password, { email, name, business: businessName });   // 🔐 the shared password rules
   if (weak.length) return res.status(400).json(weakAnswer(weak));
@@ -225,6 +228,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
           password_hash: hash,
           role: 'vendor',
           vendor_id: vendor.id,
+          terms_accepted_at: new Date(), terms_version: LEGAL_UPDATED,   // 📜 what they agreed to, and when
         },
         select: { id: true, name: true, email: true, role: true, vendor_id: true },   // ✉️ the code is sent to this
       });

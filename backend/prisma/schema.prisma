@@ -706,6 +706,9 @@ model trial_signups {
 }
 
 model users {
+  /// 📜 agreed to the Terms of Service and Privacy Policy at sign-up — when, and which version (LEGAL_UPDATED)
+  terms_accepted_at    DateTime? @db.Timestamp(6)
+  terms_version        String?   @db.VarChar(20)
   id                    Int                     @id @default(autoincrement())
   name                  String                  @db.VarChar(200)
   email                 String                  @unique @db.VarChar(200)
