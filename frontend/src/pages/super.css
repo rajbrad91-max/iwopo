@@ -400,4 +400,5 @@
 
 /* 👀 the public pricing table shown inside Packages (pages/Dashboard.jsx) */
 .sa-pt-preview { margin: 0 0 24px; }
+.sa-pt-hint { margin: 0 0 8px; }
 .sa-pt-preview .pt-wrap { margin-top: 0; max-width: none; }

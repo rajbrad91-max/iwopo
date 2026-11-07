@@ -390,7 +390,7 @@ function ServicesView({ packages, onReload }) {
       </div>
       {preview?.compare?.length > 0 && (
         <div className="sa-pt-preview">
-          <div className="sa-hint" style={{ margin: '0 0 8px' }}>👀 Exactly what visitors see on the pricing page right now — a plan's button jumps to its cards below.</div>
+          <div className="sa-hint sa-pt-hint">👀 Exactly what visitors see on the pricing page right now — a plan's button jumps to its cards below.</div>
           <PlanTable plans={(preview.packages || []).filter(p => p.price_monthly != null)} groups={preview.compare} notes={preview.compare_notes || []}
             priceOf={(p) => planPriceOf(p, 'monthly')}
             onChoose={(p) => document.getElementById(`sa-pkg-${p.code || p.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
