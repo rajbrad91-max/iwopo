@@ -425,10 +425,11 @@ export default function Selling({ onSignup, onGoLogin }) {
                 <a className="sl-cta full" href="mailto:info@iwopo.com?subject=Tell%20me%20when%20iwopo%20opens">Tell me when you open</a>
                 <div className="sl-login-row">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
               </>
-            ) : trialOk ? (
+            ) : (
               <>
                 <h3>Create your studio</h3>
-                <p className="sl-signup-sub">Free trial · cancel anytime</p>
+                {/* 🧪 used-up trials never stop an account: it starts on Free and any plan can be bought at once */}
+                <p className="sl-signup-sub">{trialOk ? 'Free trial · cancel anytime' : 'The free trials on this connection are used up, so your account starts on the Free plan — you can buy any plan straight away.'}</p>
                 <label htmlFor="sl-biz">Business name</label>
                 <input id="sl-biz" value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="e.g. Rosewood Photography" />
                 {/* 🧑‍💼 their trade: Contract setup shows them a sample contract for it (Other: a general one) */}
@@ -448,13 +449,6 @@ export default function Selling({ onSignup, onGoLogin }) {
                 </button>
                 <p className="sl-consent">By creating an account you agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
                 <div className="sl-login-row">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
-              </>
-            ) : (
-              <>
-                <h3>Free trials used up</h3>
-                <p className="sl-signup-sub">Choose a paid plan to keep going.</p>
-                <button type="button" className="sl-cta full" onClick={goPackages}>View packages</button>
-                <div className="sl-login-row">Have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
               </>
             )}
           </Reveal>

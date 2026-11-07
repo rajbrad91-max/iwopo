@@ -167,25 +167,19 @@ router.get('/trial-eligible', async (req, res) => {
 router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }), async (req, res) => {
   // 🚧 paused until launch — refused here, whatever the page shows (lib/signups.js)
   if (!(await signupsOpen())) return res.status(403).json({ error: SIGNUPS_CLOSED_MESSAGE, code: 'signups_closed' });
-  const { businessName, name, email, password, plan, profession } = req.body;
+  const { businessName, name, email, password, profession } = req.body;
   if (!businessName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   if (!emailOk(normEmail(email))) return res.status(400).json({ error: 'That is not a valid email address — check it has an @ and a domain, like name@example.com.' });
   const weak = await checkPassword(password, { email, name, business: businessName });   // 🔐 the shared password rules
   if (weak.length) return res.status(400).json(weakAnswer(weak));
 
-  const isPaid = plan && plan !== 'trial';
+  /* 🔐 A sign-up never grants a paid plan: a plan someone pays for comes ONLY from a completed Stripe payment
+     (routes/billing.js). It used to take a plan name from the request and create an active paid subscription —
+     anyone could have asked for "pro" and had it free (Raj, 2026-11-07).
+     🧪 The free-trial limit per connection limits TRIALS, never accounts: with the trials used up the account is
+     still made, without a trial — it starts on Free and can buy any plan straight away. */
   const ip = clientIp(req);
-
-  // Trial limit only applies to TRIAL signups (paid always allowed)
-  if (!isPaid) {
-    const used = await trialCount(ip);
-    if (used >= TRIAL_LIMIT) {
-      return res.status(429).json({
-        error: 'trial_limit',
-        message: `You've used all ${TRIAL_LIMIT} free trials. Please choose a paid plan to continue. 💳`
-      });
-    }
-  }
+  const withTrial = (await trialCount(ip)) < TRIAL_LIMIT;
 
   const exists = await prisma.users.findFirst({ where: { email }, select: { id: true } });
   if (exists) return res.status(409).json({ error: 'Email already registered' });
@@ -206,8 +200,8 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
              allowance: this wrote the name of a plan but never created the
              SUBSCRIPTION that grants it. The subscription is made below and is
              the only thing that decides what anybody gets. */
-          status: isPaid ? 'active' : 'trial',
-          trial_ends_at: await signupTrialEnd(),   // 🧪 the trial plan's own trial days (lib/billing.js)
+          status: 'trial',
+          trial_ends_at: withTrial ? await signupTrialEnd() : new Date(),   // 🧪 the trial plan's own trial days — or none
           signup_ip: ip,
         },
         select: { id: true },
@@ -225,32 +219,8 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
         select: { id: true, name: true, email: true, role: true, vendor_id: true },   // ✉️ the code is sent to this
       });
 
-      /* 3. The subscription itself, for a paid signup.
-            Looked up by code rather than trusted from the body, so a caller
-            inventing a plan name gets a trial rather than an allowance. */
-      if (isPaid) {
-        const chosen = await tx.plans.findFirst({ where: { code: String(plan) }, select: { id: true } });
-        if (chosen) {
-          await tx.vendor_subscriptions.create({
-            data: { vendor_id: vendor.id, plan_id: chosen.id, status: 'active', started_at: new Date() },
-          });
-        }
-      }
-
-      // 4. Record trial against IP (only for trials)
-      if (!isPaid) {
-        await tx.trial_signups.create({
-          data: { ip_address: ip, email, vendor_id: vendor.id },
-        });
-      }
-
-      // 4. Referral reward — if this email was referred AND signed up PAID → reward both 🎁
-      if (isPaid) {
-        await tx.referrals.updateMany({
-          where: { friend_email: email, status: 'pending' },
-          data: { status: 'rewarded', friend_vendor_id: vendor.id, rewarded_at: new Date() },
-        });
-      }
+      // 3. The free trial is recorded against the connection, so the per-connection limit can count it
+      if (withTrial) await tx.trial_signups.create({ data: { ip_address: ip, email, vendor_id: vendor.id } });
 
       return user;
     });
@@ -258,7 +228,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
     // ✉️ the account works once the address is confirmed with the emailed code
     await prisma.users.update({ where: { id: created.id }, data: { email_verified_at: null } });
     const sent = await issueCode(created.id, 'verify', { to: created.email || email });
-    res.status(201).json({ verify: true, email: created.email || email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
+    res.status(201).json({ verify: true, trial: withTrial, email: created.email || email, ...(sent.code ? { sandbox_code: sent.code } : {}), ...(sent.error ? { not_sent: true } : {}) });
   } catch (e) { serverError(res, e); }
 });
 
