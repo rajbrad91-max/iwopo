@@ -611,11 +611,7 @@
   border: 1px solid var(--line); background: #FFF9F4; font: inherit; color: var(--ink);
 }
 .sl-signup-box input:focus { outline: 2px solid color-mix(in srgb, var(--p) 45%, transparent); border-color: var(--p); }
-.sl-chosen {
-  background: #FFF4EB; border: 1px solid var(--line); border-radius: 10px;
-  padding: 10px 12px; font-size: 0.88rem; margin-bottom: 12px;
-}
-.sl-clear { margin-left: 8px; color: var(--p); font-weight: 650; text-decoration: underline; }
+
 .sl-err { margin-top: 10px; color: #B42318; font-size: 0.88rem; font-weight: 600; }
 .sl-login-row { margin-top: 14px; text-align: center; font-size: 0.9rem; color: var(--gray); }
 .sl-login-row button { color: var(--p-deep); font-weight: 650; text-decoration: underline; }
@@ -675,3 +671,5 @@
 .sl-buy-steps li::before { content: counter(step) '. '; }
 .sl-buy-steps li.is-on { background: rgba(230, 92, 0, .1); color: var(--p-deep); }
 
+/* the closing band's second button sits under the first, full width (Selling.jsx) */
+.sl-close-alt { display: block; width: 100%; margin-top: 10px; text-align: center; }

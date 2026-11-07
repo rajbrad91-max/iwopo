@@ -711,7 +711,7 @@ export const api = {
   plansList: () => request('/vendors/plans'),
   // 🗑️ Super Admin: delete a vendor for good
   vendorDeletePreview: (id) => request(`/vendors/${id}/delete-preview`),
-  deleteVendor: (id, confirm) => request(`/vendors/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm }) }),
+  deleteVendor: (id, confirm, cancelSubscription = false) => request(`/vendors/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm, cancel_subscription: cancelSubscription }) }),
   // 💳 billing with Stripe (routes/billing.js)
   billing: () => request('/billing'),
   billingCheckout: (plan_id, cycle) => request('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan_id, cycle }) }),

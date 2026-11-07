@@ -2,10 +2,11 @@ import prisma from '../config/prisma.js';
 import * as objects from './objectStore.js';
 import { paidSubscription } from './billing.js';
 import { disconnect } from './stripeConnect.js';
+import { stripe } from './stripe.js';
 
 /**
- * 🗑️ Delete a vendor for good (Super Admin, Raj, 2026-11-06). Never an owner account; never one with a live Stripe
- * subscription (cancel it first). Their Stripe is disconnected, their stored photos and files are removed from storage,
+ * 🗑️ Delete a vendor for good (Super Admin, Raj, 2026-11-06). Never an owner account. A paying vendor's Stripe
+ * subscription is cancelled first, and only when Super Admin ticks that it should be (2026-11-07) — never silently. Their Stripe is disconnected, their stored photos and files are removed from storage,
  * and the account with everything it holds is deleted: 58 kinds of record go with the vendor through the database; the
  * few with no link (galleries and through them their photos, faces and folders, gallery settings and theme, support
  * messages, stored-file records) are removed here first. The security log is kept — it is the audit trail.
@@ -22,18 +23,24 @@ export async function deletePreview(vendorId) {
     prisma.albums.count({ where }), prisma.photos.count({ where: { albums: { vendor_id: v } } }), prisma.file_share_items.count({ where }),
     paidSubscription(v),
   ]);
-  const blocked = vendor.billing_exempt ? 'This is an owner account — it can never be deleted.'
-    : sub ? 'This vendor has an active Stripe subscription — cancel it first.' : null;
-  return { id: v, business_name: vendor.business_name, blocked, counts: { logins: users, leads, contracts, payments, galleries, photos, files } };
+  const blocked = vendor.billing_exempt ? 'This is an owner account — it can never be deleted.' : null;
+  const planName = sub?.plan_id ? (await prisma.plans.findUnique({ where: { id: sub.plan_id }, select: { name: true } }))?.name : null;
+  const paying = sub?.stripe_subscription_id ? { plan: planName || 'a paid plan' } : null;   // 💳 cancelled first, if ticked
+  return { id: v, business_name: vendor.business_name, blocked, paying, counts: { logins: users, leads, contracts, payments, galleries, photos, files } };
 }
 
-export async function deleteVendor(vendorId, confirmName) {
+export async function deleteVendor(vendorId, confirmName, { cancelSubscription = false } = {}) {
   const p = await deletePreview(vendorId);
   const no = (status, message) => Object.assign(new Error(message), { status });
   if (!p) throw no(404, 'No such vendor');
   if (p.blocked) throw no(409, p.blocked);
   if (String(confirmName || '').trim().toLowerCase() !== String(p.business_name || '').trim().toLowerCase()) throw no(400, 'Type the business name exactly to confirm.');
   const v = p.id;
+  if (p.paying) {
+    if (!cancelSubscription) throw no(409, 'This vendor pays by Stripe — tick "cancel their subscription" to delete them.');
+    const sub = await paidSubscription(v);
+    await stripe('DELETE', `/subscriptions/${sub.stripe_subscription_id}`);     // billing stops today, no refund
+  }
   await disconnect(v).catch(() => {});                                              // 💳 their own Stripe, if connected
   await prisma.$transaction([
     prisma.albums.deleteMany({ where: { vendor_id: v } }),                          // photos, faces, folders cascade

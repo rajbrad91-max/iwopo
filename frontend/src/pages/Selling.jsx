@@ -224,7 +224,12 @@ export default function Selling({ onSignup, onGoLogin }) {
   }, []);
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
-  function goSignup() { document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth' }); }
+  /* 🎯 Every "Start free trial" button opens the one sign-up window, right where the visitor is.
+     While sign-ups are paused it shows the Opening-soon section at the bottom instead. */
+  function goSignup() {
+    if (open) { setChosen({ kind: 'trial', name: 'your free trial' }); setBuying(true); }
+    else document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth' });
+  }
   function goPackages() { document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' }); }
   /* 💳 A plan's button opens the sign-up right where the visitor is (it used to scroll to the bottom of the page) */
   function choosePlan(item, kind) { setChosen({ ...item, kind, cycle }); if (open) setBuying(true); else goSignup(); }
@@ -260,7 +265,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const realPkgs = packages.filter(p => p.price_monthly != null);
   const priceOf = (p) => planPriceOf(p, cycle);   // 🌍 shared with the table everywhere it appears (PlanTable)
 
-  /* ✍️ The sign-up fields, written once: the plan window and the section at the bottom both use them (p = id prefix) */
+  /* ✍️ The sign-up fields, in the one sign-up window (p = id prefix) */
   const signupForm = (p) => (
     <>
         <label htmlFor={`${p}-biz`}>Business name</label>
@@ -283,7 +288,12 @@ export default function Selling({ onSignup, onGoLogin }) {
         <p className="sl-consent">By creating an account you agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
     </>
   );
-  const chosenPrice = chosen ? planPriceOf(chosen, chosen.cycle || cycle) : null;
+  const chosenPrice = chosen && chosen.kind !== 'trial' ? planPriceOf(chosen, chosen.cycle || cycle) : null;
+  const buyLine = !chosen ? ''
+    : chosen.kind === 'trial' ? (trialOk ? 'Free trial · no card needed · cancel anytime' : 'The free trials on this connection are used up, so you start on the Free plan')
+    : Number(chosen.price_monthly) === 0 ? 'Free forever'
+    : `${chosenPrice.cur === '≈' ? `≈ ${chosenPrice.big}` : `$${chosenPrice.big}`}${chosenPrice.unit}`
+      + (chosen.trial_days > 0 && trialOk ? ` · ${chosen.trial_days}-day free trial, nothing charged today` : ' · charged today, cancel anytime');
 
   return (
     <div className="sl">
@@ -299,14 +309,8 @@ export default function Selling({ onSignup, onGoLogin }) {
         <div className="vc-overlay" role="dialog" aria-label={`Start ${chosen.name}`}>
           <div className="sl-signup-box sl-buy">
             <button type="button" className="sl-buy-x" aria-label="Close" onClick={() => setBuying(false)}>×</button>
-            <h3 className="sl-buy-title">Start {chosen.name}</h3>
-            <p className="sl-buy-price">
-              {Number(chosen.price_monthly) === 0 ? 'Free forever'
-                : `${chosenPrice.cur === '≈' ? `≈ ${chosenPrice.big}` : `$${chosenPrice.big}`}${chosenPrice.unit}`}
-              {paidChoice && (chosen.trial_days > 0 && trialOk
-                ? ` · ${chosen.trial_days}-day free trial, nothing charged today`
-                : ' · charged today, cancel anytime')}
-            </p>
+            <h3 className="sl-buy-title">{chosen.kind === 'trial' ? 'Start your free trial' : `Start ${chosen.name}`}</h3>
+            <p className="sl-buy-price">{buyLine}</p>
             <ol className="sl-buy-steps">
               <li className="is-on">Your account</li>
               <li>Confirm your email</li>
@@ -472,13 +476,6 @@ export default function Selling({ onSignup, onGoLogin }) {
             <p>{open ? 'Bring galleries, clients and bookings into one calm place. No card needed.' : 'We’re putting the finishing touches on iwopo. New studios can join very soon.'}</p>
           </Reveal>
           <Reveal className="sl-signup-box">
-            {chosen && (
-              <div className="sl-chosen">
-                Selected: <b>{chosen.icon} {chosen.name}</b>
-                <span> · {chosen.kind === 'package' ? (cycle === 'annual' ? 'annual' : 'monthly') : `$${chosen.price}/mo`}</span>
-                <button type="button" className="sl-clear" onClick={() => setChosen(null)}>change</button>
-              </div>
-            )}
             {!open ? (
               <>
                 <h3>Opening very soon</h3>
@@ -488,10 +485,10 @@ export default function Selling({ onSignup, onGoLogin }) {
               </>
             ) : (
               <>
-                <h3>Create your studio</h3>
-                {/* 🧪 used-up trials never stop an account: it starts on Free and any plan can be bought at once */}
-                <p className="sl-signup-sub">{trialOk ? 'Free trial · cancel anytime' : 'The free trials on this connection are used up, so your account starts on the Free plan — you can buy any plan straight away.'}</p>
-                {signupForm('sl')}
+                <h3>Ready when you are</h3>
+                <p className="sl-signup-sub">{trialOk ? 'Start a free trial, no card needed, or pick a plan and be set up in a couple of minutes.' : 'Start on the Free plan, or pick a plan and be set up in a couple of minutes.'}</p>
+                <button type="button" className="sl-cta full" onClick={goSignup}>{trialOk ? 'Start free trial' : 'Create your account'}</button>
+                <button type="button" className="sl-ghost lg sl-close-alt" onClick={goPackages}>See plans</button>
                 <div className="sl-login-row">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
               </>
             )}

@@ -157,7 +157,7 @@ router.get('/:id/delete-preview', requireAuth, requireSuperAdmin, async (req, re
 });
 router.delete('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const removed = await deleteVendor(req.params.id, req.body?.confirm);
+    const removed = await deleteVendor(req.params.id, req.body?.confirm, { cancelSubscription: req.body?.cancel_subscription === true });
     logSecurity(req, req.user, `vendor_deleted:${Number(req.params.id)}`);
     res.json({ ok: true, removed });
   } catch (e) { if (e.status) return res.status(e.status).json({ error: e.message }); serverError(res, e); }

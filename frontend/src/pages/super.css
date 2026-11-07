@@ -422,3 +422,6 @@
 .sa-limit-msg.is-ok { color: #4ade80; }
 .sa-limit-hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
 
+/* 💳 deleting a paying vendor: cancel their Stripe subscription first, ticked on purpose (components/DeleteVendor.jsx) */
+.sa-del-sub { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; padding: 10px 12px; border: 1px solid #f59e0b; border-radius: 8px; background: rgba(245, 158, 11, .08); font-size: 13.5px; color: var(--text); cursor: pointer; }
+.sa-del-sub input { margin-top: 3px; accent-color: #f59e0b; }

@@ -7,12 +7,13 @@ export default function DeleteVendorModal({ vendorId, onClose, onDeleted }) {
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [cancelSub, setCancelSub] = useState(false);   // 💳 a paying vendor: their Stripe subscription is cancelled first
   useEffect(() => { api.vendorDeletePreview(vendorId).then(setP).catch(e => setErr(e.message)); }, [vendorId]);
-  const match = p && typed.trim().toLowerCase() === String(p.business_name || '').trim().toLowerCase();
+  const match = p && typed.trim().toLowerCase() === String(p.business_name || '').trim().toLowerCase() && (!p.paying || cancelSub);
 
   async function go() {
     setBusy(true); setErr('');
-    try { await api.deleteVendor(vendorId, typed); onDeleted(); }
+    try { await api.deleteVendor(vendorId, typed, cancelSub); onDeleted(); }
     catch (e) { setErr(e.message); setBusy(false); }
   }
 
@@ -25,6 +26,12 @@ export default function DeleteVendorModal({ vendorId, onClose, onDeleted }) {
           <ul className="sa-del-list">
             {Object.entries(p.counts).map(([k, n]) => <li key={k}><span>{k}</span><b>{n}</b></li>)}
           </ul>
+          {p.paying && (
+            <label className="sa-del-sub">
+              <input type="checkbox" checked={cancelSub} onChange={e => setCancelSub(e.target.checked)} />
+              <span>💳 They pay for <b>{p.paying.plan}</b> by Stripe. Cancel their subscription now — billing stops today, no refund.</span>
+            </label>
+          )}
           <label className="sa-del-p" htmlFor="sa-del-name">Type <b>{p.business_name}</b> to confirm:</label>
           <input id="sa-del-name" className="sa-del-input" value={typed} onChange={e => setTyped(e.target.value)} autoComplete="off" autoFocus />
         </>}
