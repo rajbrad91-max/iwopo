@@ -5,6 +5,7 @@ import { api, setSession, fmtMoney } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import { PROFESSION_LIST } from '../lib/professions';
 import './selling.css';
+import PlanTable from '../components/PlanTable';
 
 /**
  * Reveal-on-scroll. Skipped for reduced-motion via CSS; observer still adds
@@ -175,6 +176,7 @@ const FAQ = [
 
 export default function Selling({ onSignup, onGoLogin }) {
   const [packages, setPackages] = useState([]);
+  const [compare, setCompare] = useState([]);   // 📊 the same plans, row by row (PlanTable)
   const [cycle, setCycle] = useState('monthly');
   const [form, setForm] = useState({ businessName: '', email: '', password: '', profession: '' });
   const [error, setError] = useState('');
@@ -197,7 +199,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   }, []);
 
   useEffect(() => {
-    api.packages().then(d => setPackages(d.packages || [])).catch(() => {});
+    api.packages().then(d => { setPackages(d.packages || []); setCompare(d.compare || []); }).catch(() => {});
     api.trialEligible().then(d => { setTrialOk(d.eligible); setOpen(d.open !== false); }).catch(() => {});
     const t = setTimeout(() => setHeroSeen(true), 250);
     return () => clearTimeout(t);
@@ -379,50 +381,14 @@ export default function Selling({ onSignup, onGoLogin }) {
       <section className="sl-section sl-price-band" id="packages">
         <Reveal className="sl-head">
           <h2>Simple plans. Start free.</h2>
-          <p className="sl-sub">Full packages or just the pieces you need.</p>
+          <p className="sl-sub">Every plan side by side. Start free, move up when you need more.</p>
           <div className="sl-toggle" role="group" aria-label="Billing cycle">
             <button type="button" className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>Monthly</button>
             <button type="button" className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Annual <span className="save">Save</span></button>
           </div>
         </Reveal>
 
-        <div className="sl-pkg-grid">
-          {realPkgs.map((p, i) => {
-            const pr = priceOf(p);
-            const feat = p.code === 'pro';   // the plan most vendors pick
-            return (
-              <Reveal key={p.id} className="sl-pkg-wrap" style={{ transitionDelay: `${i * 80}ms` }}>
-                <div className={`sl-pkg ${feat ? 'feat' : ''}`}>
-                  {feat && <div className="sl-ribbon">Most popular</div>}
-                  <div className="sl-pkg-icon">{p.icon}</div>
-                  <h3>{p.name}</h3>
-                  <div className="sl-pkg-tag">{p.tagline}</div>
-                  <div className="sl-price">
-                    <span className="cur">{pr.cur}</span><span className="big">{pr.big}</span><span className="unit">{pr.unit}</span>
-                  </div>
-                  {pr.sub && <div className={`sl-price-sub${pr.note ? ' is-note' : ''}`}>{pr.sub}</div>}
-                  <ul className="sl-incl">
-                    {(p.included || []).map(f => (
-                      <li key={f.id}><span className="ic">{f.icon}</span><span>{f.name}{f.detail ? <em> · {f.detail}</em> : ''}</span></li>
-                    ))}
-                  </ul>
-                  {(p.addons || []).length > 0 && (
-                    <div className="sl-addons">
-                      <div className="sl-addons-lbl">Optional add-ons</div>
-                      {p.addons.map(a => (
-                        <div key={a.id} className="sl-addon-row"><span>{a.icon} {a.name}</span><span className="sl-addon-price">+${a.price_monthly}/mo</span></div>
-                      ))}
-                    </div>
-                  )}
-                  <button type="button" className={`sl-pick ${feat ? 'solid' : ''}`} onClick={() => choosePlan(p, 'package')}>
-                    Choose {p.name}
-                  </button>
-                  {p.trial_days > 0 && <div className="sl-trial">{p.trial_days}-day free trial</div>}
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
+        <PlanTable plans={realPkgs} groups={compare} priceOf={priceOf} onChoose={(p) => choosePlan(p, 'package')} />
 
       </section>
 

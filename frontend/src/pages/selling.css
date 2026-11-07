@@ -568,67 +568,7 @@
   margin-left: 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: .04em;
   background: color-mix(in srgb, #fff 22%, transparent); padding: 2px 7px; border-radius: 6px;
 }
-.sl-pkg-grid {
-  max-width: var(--maxw); margin: 0 auto;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;
-}
-.sl-pkg {
-  position: relative; background: #fff; border: 1px solid var(--line);
-  border-radius: 18px; padding: 26px 22px 22px; height: 100%;
-  box-shadow: var(--shadow); display: flex; flex-direction: column;
-}
-.sl-pkg.feat {
-  border-color: color-mix(in srgb, var(--p) 45%, var(--line));
-  transform: translateY(-6px);
-  box-shadow: 0 24px 50px -28px rgba(198, 77, 0, .45);
-}
-.sl-ribbon {
-  position: absolute; top: 14px; right: 14px;
-  background: var(--grad); color: #fff; font-size: 0.7rem; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px;
-}
-.sl-pkg-icon { font-size: 1.5rem; margin-bottom: 10px; }
-.sl-pkg h3 { font-size: 1.25rem; margin-bottom: 4px; }
-.sl-pkg-tag { color: var(--gray); font-size: 0.9rem; margin-bottom: 16px; }
-.sl-price { display: flex; align-items: baseline; gap: 2px; margin-bottom: 6px; }
-.sl-price .cur { font-weight: 700; color: var(--p); }
-.sl-price .big { font-family: 'Sora', sans-serif; font-size: 2.4rem; font-weight: 750; color: var(--ink); letter-spacing: -.04em; }
-.sl-price .unit { color: var(--gray); font-weight: 600; margin-left: 2px; }
-.sl-price-sub { font-size: 0.82rem; color: var(--gray); margin-bottom: 8px; text-decoration: line-through; }
-.sl-price-sub.is-note { text-decoration: none; }   /* "Free forever", or the USD price beside a local one — a note, not a crossed-out price */
-.sl-incl { list-style: none; padding: 0; margin: 12px 0 18px; display: grid; gap: 8px; flex: 1; align-content: start; }   /* lines from the top, never spread to fill the card */
-.sl-incl li { font-size: 0.9rem; color: var(--text); display: flex; gap: 8px; align-items: baseline; }
-.sl-incl .ic { opacity: .85; }
-.sl-incl em { -webkit-text-fill-color: var(--gray); background: none; color: var(--gray); font-style: normal; font-size: 0.84rem; }
-.sl-addons { border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 14px; }
-.sl-addons-lbl { font-size: 0.72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); margin-bottom: 8px; }
-.sl-addon-row { display: flex; justify-content: space-between; gap: 10px; font-size: 0.86rem; padding: 4px 0; }
-.sl-addon-price { color: var(--p-deep); font-weight: 650; white-space: nowrap; }
-/* ".sl button" (0,1,1) reset every button and outranked .sl-pick (0,1,0): the non-featured plan's button
-   rendered as plain text. Scoped under .sl so the plan button wins (design review 2026-11-01). */
-.sl .sl-pick {
-  width: 100%; padding: 13px; border-radius: 11px; font-weight: 650;
-  border: 1px solid var(--ink); color: var(--ink); background: #fff;
-  transition: background .18s, color .18s;
-}
-.sl .sl-pick:hover, .sl .sl-pick.solid { background: var(--grad); color: #fff; border-color: transparent; }
-.sl-trial { text-align: center; margin-top: 10px; font-size: 0.82rem; color: var(--p-deep); font-weight: 600; }
 
-.sl-svc-row { max-width: var(--maxw); margin: 36px auto 0; }
-.sl-svc-lbl { text-align: center; font-size: 0.85rem; letter-spacing: .12em; text-transform: uppercase; color: var(--gray); margin: 0 0 14px; }
-.sl-svc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.sl-svc {
-  text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 14px;
-  padding: 14px; display: grid; gap: 4px; box-shadow: var(--shadow);
-  transition: transform .18s ease, border-color .18s;
-}
-.sl-svc:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--p) 40%, var(--line)); }
-.sl-svc-icon { font-size: 1.15rem; }
-.sl-svc-name { font-weight: 650; font-size: 0.92rem; color: var(--ink); }
-.sl-svc-price { font-size: 0.88rem; color: var(--p-deep); font-weight: 650; }
-.sl-svc-price em { -webkit-text-fill-color: var(--gray); background: none; color: var(--gray); font-style: normal; font-weight: 500; }
-
-/* proof + faq */
 .sl-split {
   max-width: var(--maxw); margin: 0 auto;
   display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: start;
@@ -708,7 +648,7 @@
   .sl-float.f1 { left: 2%; top: 6%; }
   .sl-float.f2 { display: none; }
   .sl-float.f3 { right: 2%; }
-  .sl-pkg.feat { transform: none; }
+
   .sl-nav-links { display: none; }
 }
 @media (max-width: 560px) {
@@ -723,3 +663,48 @@
 
 /* the proof section now holds only the FAQ: let it use the full width (design review 2026-11-01) */
 .sl-split > :only-child { grid-column: 1 / -1; }
+
+/* 📊 Pricing as a comparison table (components/PlanTable.jsx, Raj 2026-11-07) */
+.pt-wrap { max-width: var(--maxw); margin: 34px auto 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 22px; background: var(--card); box-shadow: var(--shadow); }
+.pt { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-size: 14.5px; color: var(--text); }
+.pt th, .pt td { padding: 14px 18px; text-align: center; border-bottom: 1px solid var(--line); }
+.pt th { text-transform: none; letter-spacing: normal; font-size: inherit; font-weight: 500; color: var(--ink); }   /* the site's table headings are small caps; not here */
+.pt .pt-feat, .pt .pt-corner { text-align: left; }
+.pt thead th { vertical-align: top; padding: 42px 18px 24px; background: var(--card); }
+.pt-corner, .pt-feat { position: sticky; left: 0; z-index: 1; text-align: left; background: var(--card); }
+.pt-corner { z-index: 2; min-width: 250px; vertical-align: bottom !important; }
+.pt-corner-t { display: block; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 20px; color: var(--ink); letter-spacing: -0.01em; }
+.pt-corner-s { display: block; margin-top: 6px; font-size: 13px; font-weight: 400; color: var(--gray); }
+.pt-plan { position: relative; min-width: 175px; }
+.pt-plan > span { display: block; }
+.pt-name { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 18px; color: var(--ink); }
+.pt-tag { margin: 4px 0 14px; min-height: 34px; font-size: 12.5px; font-weight: 400; color: var(--gray); }
+.pt .pt-price { display: flex; justify-content: center; align-items: baseline; gap: 3px; }
+.pt-cur { font-size: 15px; font-weight: 700; color: var(--p); }
+.pt-big { font-family: 'Sora', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+.pt-unit { font-size: 13px; font-weight: 500; color: var(--gray); }
+.pt-note { margin: 6px 0 16px; min-height: 30px; font-size: 11.5px; font-weight: 400; color: var(--gray); }
+.pt .pt-cta { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--ink); background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.pt .pt-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 20px -12px rgba(26, 18, 11, .45); }
+.pt .pt-cta.is-solid { border-color: transparent; background: var(--grad); color: #fff; }
+.pt .is-pop { background: rgba(230, 92, 0, .045); }
+.pt thead .is-pop { box-shadow: inset 0 3px 0 var(--p); }
+.pt-ribbon { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: rgba(230, 92, 0, .1); color: var(--p-deep); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.pt-group th { padding: 24px 18px 9px; text-align: left; background: var(--bg); color: var(--gray); font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.pt-feat { min-width: 250px; font-weight: 500; color: var(--ink); }
+.pt tbody tr:not(.pt-group):hover > * { background: #FFFBF7; }
+.pt-yes { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(230, 92, 0, .12); color: var(--p-deep); font-size: 13px; font-weight: 800; }
+.pt-no { color: #CBBFB3; }
+.pt-val { font-weight: 600; color: var(--ink); }
+.pt-soon { display: inline-block; margin-left: 8px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--gray); font-size: 10.5px; font-weight: 600; vertical-align: middle; }
+.pt tbody:last-child tr:last-child > * { border-bottom: 0; }
+@media (max-width: 720px) {
+  .pt-wrap { margin: 26px -16px 0; border-left: 0; border-right: 0; border-radius: 0; }
+  .pt { min-width: 0; width: max-content; font-size: 13px; }
+  .pt th, .pt td { padding: 12px 10px; }
+  .pt-feat, .pt-corner { min-width: 128px; max-width: 128px; }
+  .pt-corner-t { font-size: 16px; }
+  .pt-plan { min-width: 128px; max-width: 150px; }
+  .pt-big { font-size: 26px; }
+  .pt-soon { display: block; width: max-content; margin: 4px 0 0; }
+}

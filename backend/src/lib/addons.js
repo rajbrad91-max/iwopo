@@ -11,7 +11,7 @@ import { usdRate, convert } from './localPrice.js';
  */
 const isAddon = { is_addon: true, price: { gt: 0 }, is_private: false };
 
-const priceFor = (svc, planCode, cycle) => {
+export const priceFor = (svc, planCode, cycle) => {
   const monthly = Number((svc.plan_prices || {})[planCode] ?? svc.price);
   return cycle === 'annual' ? (svc.plan_prices?.[planCode] != null ? monthly * 10 : Number(svc.price_annual ?? monthly * 10)) : monthly;
 };

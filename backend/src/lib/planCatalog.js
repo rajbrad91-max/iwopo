@@ -1,5 +1,7 @@
 import prisma from '../config/prisma.js';
 import { usdRate, convert } from './localPrice.js';
+import { connectReady } from './stripeConnect.js';
+import { priceFor } from './addons.js';
 
 /**
  * 📋 Every plan card, in ONE place (Raj, 2026-11-06). The home page, the panel's Plans page, Super Admin and the
@@ -19,19 +21,20 @@ const LINES = [
   ['crew', '👷', () => 'Crew & team on the day'],
   ['custom_domain', '🔗', () => 'Your own domain'],
 ];
-// 💳 client card payments go straight to the vendor's own Stripe (Stripe Connect) — every paid plan, coming until built
-const CARD_PAYMENTS = { key: 'card_payments', icon: '💳', name: 'Stripe card payments, straight to your account', coming: true };
+// 💳 client card payments go straight to the vendor's own Stripe (Stripe Connect) — every paid plan; shown as coming
+//    only while Connect is not set up for this site (lib/stripeConnect.js connectReady)
+const CARD_PAYMENTS = { key: 'card_payments', icon: '💳', name: 'Stripe card payments, straight to your account' };
 
 const storageLabel = (gb) => (gb >= 1000 && gb % 1000 === 0 ? `${gb / 1000} TB` : `${gb} GB`);
 
 /** A plan's lines: storage, then what it unlocks in a fixed order, then its highlights. */
-function planLines(p, liveKeys) {
+function planLines(p, liveKeys, connect) {
   const has = new Set((p.plan_features || []).map(f => f.feature_key));
   const lines = [{ key: 'storage', icon: '💾', name: `${storageLabel(p.storage_gb || 0)} storage` }];
   for (const [key, icon, label] of LINES) {
     if (!has.has(key)) continue;
     lines.push({ key, icon, name: label(p), coming: !liveKeys.has(key) });
-    if (key === 'contracts' && Number(p.price_monthly) > 0) lines.push(CARD_PAYMENTS);
+    if (key === 'contracts' && Number(p.price_monthly) > 0) lines.push({ ...CARD_PAYMENTS, coming: !connect });
   }
   for (const [i, h] of (Array.isArray(p.highlights) ? p.highlights : []).entries()) {
     if (h?.label) lines.push({ key: `highlight-${i}`, icon: '✨', name: String(h.label), coming: !!h.coming });
@@ -51,9 +54,10 @@ export async function planCards({ currency } = {}) {
   ]);
   const liveKeys = new Set(live.map(s => s.feature_key));
   const rate = await usdRate(currency);   // 🌍 the visitor's currency, as an estimate (lib/localPrice.js)
+  const connect = await connectReady();   // 💳 card payments are sold once Stripe Connect is set up
   return plans.map(p => {
     const monthly = Number(p.price_monthly);
-    const lines = planLines(p, liveKeys);
+    const lines = planLines(p, liveKeys, connect);
     return {
       id: p.id, key: p.code, code: p.code, name: p.name, tagline: p.tagline, icon: p.icon, sort_order: p.sort_order,
       price_monthly: monthly, price_annual: Number(p.price_annual ?? 0), storage_gb: p.storage_gb, chat_limit: p.chat_limit,
@@ -66,4 +70,49 @@ export async function planCards({ currency } = {}) {
       addons: [], standalone: [],
     };
   });
+}
+
+/**
+ * 📊 The pricing table (Raj, 2026-11-07): every plan side by side, row by row, built from the same plans as the cards
+ * so the two can never disagree. A cell is true (included), false (not included), or text (a value, or the price of
+ * the add-on that brings it to that plan); `coming` marks what is not sold yet.
+ */
+const GROUPS = [
+  ['The basics', [['storage', 'Storage'], ['extra_storage', 'Extra storage'], ['chatbot', 'Wopo Assistant chats a month'], ['trial', 'Free trial']]],
+  ['Run your bookings', [['leads', 'Inquiry form, leads & packages'], ['contracts', 'Contracts, e-signing & invoices'], ['card_payments', 'Card payments, straight to your Stripe'], ['calendar', 'Calendar'], ['website', 'Website builder']]],
+  ['Deliver your work', [['galleries', 'Client galleries with face recognition'], ['fileflyer', 'File Flyer — large-file delivery'], ['crew', 'Crew & team on the day']]],
+];
+export async function planCompare({ currency } = {}) {
+  const cards = await planCards({ currency });
+  const rate = await usdRate(currency);
+  const money = (usd) => {   // whole amounts without cents ($5), others with both digits ($7.50)
+    const v = rate ? convert(usd, rate) : Number(usd);
+    const cents = Number.isInteger(v) ? 0 : 2;
+    return new Intl.NumberFormat('en', { style: 'currency', currency: rate ? String(currency).toUpperCase() : 'USD', minimumFractionDigits: cents, maximumFractionDigits: cents }).format(v);
+  };
+  const addons = await prisma.services.findMany({ where: { is_addon: true, price: { gt: 0 }, is_private: false }, select: { name: true, feature_key: true, storage_gb: true, price: true, plan_prices: true, plan_codes: true, is_live: true } });
+  const storageFrom = Math.min(...addons.filter(a => a.storage_gb > 0).map(a => Number(a.price)));
+  const addonFor = (key, code) => addons.find(a => a.feature_key === key && (!(a.plan_codes || []).length || a.plan_codes.includes(code)));
+  const has = (c, key) => c.lines.some(l => l.key === key);
+  const cell = (c, key) => {
+    if (key === 'storage') return c.lines.find(l => l.key === 'storage').name.replace(/ storage$/, '');
+    if (key === 'chatbot') return has(c, 'chatbot') ? c.chat_limit.toLocaleString('en-US') : false;
+    if (key === 'trial') return c.trial_days > 0 ? `${c.trial_days} days` : false;
+    if (key === 'extra_storage') return c.price_monthly > 0 && Number.isFinite(storageFrom) ? `Add-on · from ${money(storageFrom)}/mo` : false;
+    if (has(c, key)) return true;
+    const a = c.price_monthly > 0 && addonFor(key, c.code);
+    return a ? `Add-on · ${money(priceFor(a, c.code, 'monthly'))}/mo` : false;
+  };
+  const coming = (key) => cards.some(c => c.lines.some(l => l.key === key && l.coming));
+  const groups = GROUPS.map(([title, rows]) => ({ title, rows: rows.map(([key, label]) => ({ key, label, coming: coming(key), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) })) }));
+  // the extras: your own domain (an add-on below Studio), then each plan's highlights by their wording
+  const addonRow = (key, label) => ({ key, label, coming: coming(key) || addons.some(a => a.feature_key === key && !a.is_live), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) });
+  const extras = [addonRow('custom_domain', 'Your own domain'), addonRow('social_ai', 'Instagram & WhatsApp AI')];
+  // a highlight that names an add-on (Studio's "Instagram & WhatsApp AI at half price") is that add-on's row, priced per plan
+  const rowAddons = addons.filter(a => ['custom_domain', 'social_ai'].includes(a.feature_key)).map(a => a.name.toLowerCase());
+  const seen = new Map();
+  for (const c of cards) for (const l of c.lines) if (l.key.startsWith('highlight-') && !/powered by iwopo/i.test(l.name) && !rowAddons.some(n => l.name.toLowerCase().includes(n)) && !seen.has(l.name)) seen.set(l.name, l.coming);
+  for (const [label, soon] of seen) extras.push({ key: `extra-${extras.length}`, label, coming: soon, cells: Object.fromEntries(cards.map(c => [c.code, c.lines.some(l => l.name === label)])) });
+  groups.push({ title: 'Extras', rows: extras });
+  return { plans: cards, groups };
 }

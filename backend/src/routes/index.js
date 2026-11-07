@@ -17,7 +17,7 @@ import { clientIp } from '../lib/clientIp.js';
 import { limit } from '../middleware/rateLimit.js';
 import { serverError } from '../lib/httpError.js';
 import { adminOverview } from '../lib/adminOverview.js';
-import { planCards } from '../lib/planCatalog.js';
+import { planCards, planCompare } from '../lib/planCatalog.js';
 import { syncOffer } from '../lib/stripeCoupons.js';
 import { visitorCurrency } from '../lib/localPrice.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
@@ -381,7 +381,10 @@ router.get('/services', async (req, res) => {
 
 // 📋 Public: the plans as cards — the ONE list (lib/planCatalog.js), in USD (Raj, 2026-11-06)
 router.get('/packages', async (req, res) => {
-  try { res.json({ packages: await planCards({ currency: visitorCurrency(req) }) }); } catch (e) { serverError(res, e); }
+  try {
+    const { plans, groups } = await planCompare({ currency: visitorCurrency(req) });
+    res.json({ packages: plans, compare: groups });   // 📊 the cards, and the same plans as a table
+  } catch (e) { serverError(res, e); }
 });
 
 // 🔒 Super admin: the same cards, for the price editor
