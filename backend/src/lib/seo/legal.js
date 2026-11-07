@@ -6,7 +6,7 @@
  * keep access to the end of the paid period, contact sales@iwopo.com. To be reviewed by a lawyer before relying on it.
  * Rendered by lib/seoPage.js like every other standalone page; listed in allPages() so footers and the sitemap agree.
  */
-export const LEGAL_UPDATED = '2026-10-31';
+export const LEGAL_UPDATED = '2026-11-06';
 const CONTACT = 'sales@iwopo.com';
 
 export const LEGAL = {
@@ -22,15 +22,19 @@ export const LEGAL = {
         `Tell us at ${CONTACT} if you think someone has accessed your account without permission.`,
       ] },
       { h2: '3. Free trial, plans and payment', ul: [
-        'New accounts get a free trial (currently 30 days). No card is needed to start it.',
-        'To keep using paid features after the trial, choose a plan. If you choose a plan during the trial, billing starts when the trial ends.',
-        'Plans renew automatically every month or year until you cancel. Prices are set in US dollars; at checkout you may pay in your local currency, converted by our payment processor (Stripe).',
+        'iwopo has a Free plan and paid plans (currently Essential, Pro and Studio). Each plan’s price, storage and features are shown on our pricing page.',
+        'Essential and Pro start with a free trial (currently 30 days). No card is needed to start it. Studio has no free trial and is charged from the day you choose it.',
+        'When a trial ends without a paid plan, your account moves to the Free plan: your inquiry form, leads and packages keep working, and paid features stop until you choose a plan.',
+        'If you choose a plan during the trial, billing starts when the trial ends.',
+        'Plans renew automatically every month or year until you turn auto-renew off in My Services or cancel.',
+        'Add-ons (such as extra storage) are added to your plan and charged for the rest of the current period; when you remove one, it keeps working until the end of the period you have paid for.',
+        'Prices are set in US dollars. We show them in your local currency as an estimate; at checkout our payment processor (Stripe) charges the exact amount in your currency, including its conversion.',
         'Payments are handled by Stripe. We do not store your full card details.',
         'Prices may change. We will tell you at least 30 days before a change affects your next renewal; you can cancel before it applies.',
         'Taxes are added where required by law.',
         'If a payment fails, we may retry it and limit paid features until it is resolved.',
       ] },
-      { h2: '4. Cancelling and refunds', p: ['You can cancel at any time in Plans → Manage billing. You keep your plan until the end of the period you have paid for, and it does not renew. Payments are not refunded, including for unused time, except where the law requires otherwise. See our Refund & Cancellation Policy.'] },
+      { h2: '4. Cancelling and refunds', p: ['You can turn auto-renew off in My Services, or cancel in Plans → Manage billing, at any time. You keep your plan until the end of the month or year you have paid for, and it does not renew. Payments are not refunded, including for unused time on monthly or yearly plans, except where the law requires otherwise. See our Refund & Cancellation Policy.'] },
       { h2: '5. Your content and your clients’ information', ul: [
         'You own what you upload and create in iwopo — photos, videos, files, contracts, forms, website content and your clients’ details ("your content").',
         'You give us permission to store, process, display and transmit your content only as needed to run iwopo for you, keep it secure and improve its reliability.',
@@ -39,7 +43,8 @@ export const LEGAL = {
       ] },
       { h2: '6. Contracts, e-signatures and payments between you and your clients', p: [
         'iwopo provides tools to prepare contracts and collect electronic signatures, and records who signed, when and from where. You are responsible for the content of your contracts, packages and invoices and for making sure they suit the law where you and your clients are. iwopo is not a party to any agreement between you and your clients and does not give legal advice.',
-        'Unless iwopo states otherwise in the product, your clients pay you directly; iwopo does not receive or hold those payments.',
+        'Your clients pay you directly; iwopo does not receive or hold those payments.',
+        'If you connect your own Stripe account, your clients can pay you by card through iwopo. Those payments are made on your Stripe account: the money goes to you, Stripe’s terms apply between you and Stripe, and refunds and disputes are yours to handle. iwopo charges no fee on them and only records that a payment was made.',
       ] },
       { h2: '7. Processing your clients’ data on your behalf', ul: [
         'We process your clients’ personal information only to provide iwopo to you and on your instructions (how you use iwopo).',
@@ -51,10 +56,11 @@ export const LEGAL = {
       { h2: '8. Acceptable use', p: ['Do not use iwopo to break the law, infringe others’ rights, upload content you have no right to share, send spam, harm or deceive people, upload malicious code, try to access other vendors’ data, or overload or attack the service. We may remove content or suspend accounts that do.'] },
       { h2: '9. Your own domain and addresses', p: ['iwopo may give your account a web address (such as yourname.iwopo.com) and, on plans that include it, let you connect a domain you own. You are responsible for your domain and its DNS settings. We may change or withdraw an address if it is misleading, infringes someone’s rights or is needed for the service.'] },
       { h2: '10. When an account ends', ul: [
-        'If your trial ends or your plan lapses, paid features pause and your content is kept, so you can pick up where you left off by choosing a plan.',
-        'We keep paused accounts for at least 90 days. After that we may delete the account and its content after giving you at least 30 days’ notice by email.',
+        'If your trial ends or your plan lapses, your account moves to the Free plan and your content is kept, so you can pick up where you left off by choosing a plan.',
+        'If your files are more than your plan and add-ons allow (for example after moving to a smaller plan), you have 15 days to delete some or choose a larger plan. After that your galleries and files are locked — not viewable or downloadable, by you or your clients — until you are back within your limit. You can still delete files while they are locked.',
+        'If no one signs in to an account on the Free plan for 6 months, we email you. If no one signs in within the following month, its leads, packages, galleries and files are removed; the account itself is kept so you can sign in again. Accounts on a paid plan are never removed this way.',
         `You can ask us to delete your account at any time by writing to ${CONTACT}. Deleted content is removed from our systems within a reasonable time, including from backups.`,
-        'Before your content is deleted, you can download it.',
+        'On a paid plan you can download your content at any time. On the Free plan, we provide a copy on request.',
       ] },
       { h2: '11. Availability and changes', p: ['We work to keep iwopo available and secure, but it may sometimes be unavailable for maintenance or reasons outside our control. We improve iwopo continually and may change features. If we make a change that significantly reduces what you pay for, we will tell you in advance.'] },
       { h2: '12. Disclaimers and limits of liability', p: [
@@ -82,13 +88,14 @@ export const LEGAL = {
         'Billing: plan, billing history and the last digits and type of your card — handled by Stripe; we never see or store full card numbers.',
         'Content vendors add: client names and contact details, event details, contracts and signatures (with the time, IP address and device recorded for the signature), invoices, photos, videos and files.',
         'Gallery face grouping: when a vendor uses it, face measurements are created from gallery photos (and from a selfie a guest chooses to upload) to group photos of the same person. This runs on iwopo’s own servers; when they are busy, a gallery may be processed by Amazon Rekognition instead. The measurements are used only for that gallery, never sold or used to identify people elsewhere, and are deleted — including Amazon’s copy — when the gallery is deleted.',
-        'Security and usage: sign-in events, trusted devices, IP addresses, browser type and basic logs that keep iwopo secure and working.',
+        'Security and usage: sign-in events, trusted devices, IP addresses, browser type, when an account was last used, and basic logs that keep iwopo secure and working.',
+        'Your approximate country, worked out from your IP address on our own servers, to show prices in your currency.',
         'Messages you send us.',
       ] },
       { h2: 'How we use it', ul: [
         'To provide iwopo: accounts, sign-in, the vendor’s tools and the pages their clients use.',
         'To bill subscriptions, prevent fraud and keep accounts secure (for example two-step sign-in).',
-        'To send service emails: sign-in codes, trial reminders, receipts and notices. We do not send marketing emails without your consent, and you can opt out at any time.',
+        'To send service emails: sign-in codes, receipts and notices about your account. We do not send marketing emails without your consent, and you can opt out at any time.',
         'To fix problems and improve iwopo.',
         'To meet legal obligations.',
         'We do not sell personal information, and we do not use it for third-party advertising.',
@@ -97,14 +104,15 @@ export const LEGAL = {
         'Hostinger — servers and database (United States).',
         'Cloudflare (R2) and Amazon Web Services — storage of photos, videos and files.',
         'Google Workspace — sending email.',
-        'Stripe — subscription payments.',
+        'Stripe — subscription payments, and card payments vendors take on their own connected Stripe accounts.',
+        'ExchangeRate-API — daily currency exchange rates (no personal information is sent).',
         'Amazon Web Services (Rekognition) — backup face grouping for galleries when our own servers are busy.',
         'Anthropic and Google (Gemini) — AI features such as the chat assistant. Content is sent only when an AI feature is used, and only what that feature needs.',
         'Each provider only receives what it needs to do its job and is bound to protect it.',
       ] },
       { h2: 'International transfers', p: ['iwopo is run from the United States and our providers may process information in other countries. Where the law requires it (for example for the EU, UK or Canada), we rely on appropriate safeguards such as standard contractual clauses.'] },
       { h2: 'How long we keep it', ul: [
-        'Account and content: for as long as the account exists. Paused accounts are kept at least 90 days, then may be deleted after 30 days’ notice.',
+        'Account and content: for as long as the account exists. On the Free plan, the content of an account no one has signed in to for 7 months is removed (after an email at 6 months); the account itself is kept.',
         'Billing records: as long as tax and accounting law requires.',
         'Security logs: for a limited period, then deleted.',
         'Vendors can delete their clients’ information, galleries and files at any time; deleted items are removed from our systems within a reasonable time, including backups.',
@@ -122,10 +130,10 @@ export const LEGAL = {
   refunds: {
     path: '/refund-policy', title: 'Refund & Cancellation Policy | iwopo', h1: 'Refund & Cancellation Policy',
     description: 'Free trial, cancelling an iwopo plan, and refunds.',
-    lead: 'Try iwopo free first; cancel any time; you keep what you paid for until the end of the period. Payments are not refunded.',
+    lead: 'Try Essential or Pro free first; turn auto-renew off or cancel any time; you keep what you paid for until the end of the period. Payments are not refunded.',
     sections: [
-      { h2: 'Free trial', ul: ['New accounts get a free trial (currently 30 days), with no card needed.', 'Choosing a plan during the trial does not shorten it: billing starts when the trial ends.', 'We email you before the trial ends.'] },
-      { h2: 'Cancelling', ul: ['Cancel any time in Plans → Manage billing — no need to contact us.', 'Your plan stays active until the end of the month or year you have paid for, then it does not renew.', 'Your content is kept after that, so you can return by choosing a plan (see our Terms for how long).'] },
+      { h2: 'Free trial', ul: ['Essential and Pro start with a free trial (currently 30 days), with no card needed. Studio has no free trial.', 'Choosing a plan during the trial does not shorten it: billing starts when the trial ends.', 'If the trial ends without a plan, your account moves to the Free plan.'] },
+      { h2: 'Cancelling', ul: ['Turn auto-renew off in My Services, or cancel in Plans → Manage billing, any time — no need to contact us.', 'Your plan stays active until the end of the month or year you have paid for, then it does not renew.', 'Your content is kept after that, so you can return by choosing a plan (see our Terms for how long).'] },
       { h2: 'Refunds', ul: ['Payments are not refunded, including for unused time on monthly or yearly plans, because you keep full access until the end of the period.', 'Changing plans in Manage billing is adjusted automatically by Stripe for the time remaining.', 'Where the law where you live gives you a right to a refund, that right applies.', `If you were charged in error (for example twice), write to ${'sales@iwopo.com'} and we will put it right.`] },
     ],
   },
