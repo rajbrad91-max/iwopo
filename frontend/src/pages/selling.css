@@ -671,8 +671,6 @@
 .sl-buy-steps li::before { content: counter(step) '. '; }
 .sl-buy-steps li.is-on { background: rgba(230, 92, 0, .1); color: var(--p-deep); }
 
-/* the closing band's second button sits under the first, full width (Selling.jsx) */
-.sl-close-alt { display: block; width: 100%; margin-top: 10px; text-align: center; }
 
 /* 📬 the offers consent box in the sign-up window — unticked by default */
 .sl-signup-box .sl-optin { display: flex; gap: 9px; align-items: flex-start; margin: 12px 0 2px; font-size: .86rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text); cursor: pointer; }
