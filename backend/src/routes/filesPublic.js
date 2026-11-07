@@ -13,6 +13,7 @@ import * as objects from '../lib/objectStore.js';
 import { recordEvent } from '../lib/siteEvents.js';
 import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 import { serverError } from '../lib/httpError.js';
+import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -212,11 +213,11 @@ function safeZipName(name) {
 router.get('/:token/zip', async (req, res) => {
   try {
     const found = await shareByToken(req.params.token);
-    if (!found) return res.status(404).json({ error: 'This link is not valid' });
+    if (!found) return downloadFailed(req, res, 404, 'This link is not valid', "This link isn't valid — check you have the whole address.");
     const { share, expired } = found;
-    if (expired) return res.status(410).json({ error: 'expired' });
+    if (expired) return downloadFailed(req, res, 410, 'expired', 'This link has expired — ask for a new one.');
     if (locked(req, share)) {
-      return res.status(403).json({ error: 'Locked' });
+      return downloadFailed(req, res, 403, 'Locked', 'This link is locked — open it from its page and enter the password first.');
     }
 
     /* 🔒 Default to the share's OWN folder, not null.
@@ -228,7 +229,7 @@ router.get('/:token/zip', async (req, res) => {
     let rootId = share.folder_id ?? null, label = share.title;
     if (req.query.folder) {
       const f = await prisma.file_folders.findUnique({ where: { id: Number(req.query.folder) } });
-      if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) return res.status(404).json({ error: 'Folder not found' });
+      if (!f || !(await withinShare(f.id, share.folder_id, share.vendor_id))) return downloadFailed(req, res, 404, 'Folder not found', "This folder isn't available any more.");
       rootId = f.id; label = f.name;
     }
 
@@ -240,7 +241,7 @@ router.get('/:token/zip', async (req, res) => {
     archive.pipe(res);
     await zipInto(archive, share.vendor_id, rootId, '');
     archive.finalize();
-  } catch (e) { if (!res.headersSent) serverError(res, e); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 // GET /api/f/:token/thumb/:itemId → preview for a client browsing in grid view
@@ -287,25 +288,25 @@ router.post('/:token/unlock', limit({ name: 'share-unlock', max: 12, windowMs: 1
 router.get('/:token/download/:itemId', async (req, res) => {
   try {
     const found = await shareByToken(req.params.token);
-    if (!found) return res.status(404).json({ error: 'This link is not valid' });
+    if (!found) return downloadFailed(req, res, 404, 'This link is not valid', "This link isn't valid — check you have the whole address.");
     const { share, expired } = found;
-    if (expired) return res.status(410).json({ error: 'expired' });
+    if (expired) return downloadFailed(req, res, 410, 'expired', 'This link has expired — ask for a new one.');
     if (locked(req, share)) {
-      return res.status(403).json({ error: 'Locked' });
+      return downloadFailed(req, res, 403, 'Locked', 'This link is locked — open it from its page and enter the password first.');
     }
     // the item must belong to THIS share — an id from another share is not
     // reachable just because this token happens to be valid
     const itemId = Number(req.params.itemId);
     // anything that is not a plain integer is refused before it reaches Prisma,
     // which throws on NaN rather than returning nothing
-    if (!Number.isInteger(itemId)) return res.status(404).json({ error: 'Not found' });
+    if (!Number.isInteger(itemId)) return downloadFailed(req, res, 404, 'Not found', "This isn't available any more.");
     const item = await prisma.file_share_items.findFirst({
       where: { id: itemId, vendor_id: share.vendor_id },
     });
-    if (!item) return res.status(404).json({ error: 'Not found' });
+    if (!item) return downloadFailed(req, res, 404, 'Not found', "This isn't available any more.");
     // 🔒 and it must sit inside what this link actually shared
     if (!(await withinShare(item.folder_id, share.folder_id, share.vendor_id))) {
-      return res.status(404).json({ error: 'Not found' });
+      return downloadFailed(req, res, 404, 'Not found', "This isn't available any more.");
     }
 
     recordEvent(req, share.vendor_id, 'file_download', { targetId: item.id, label: item.filename });
@@ -320,9 +321,9 @@ router.get('/:token/download/:itemId', async (req, res) => {
       return o.stream.pipe(res);                  // streamed, never buffered
     }
     const full = path.join(vendorDir(share.vendor_id), item.stored_name);
-    if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing' });
+    if (!fs.existsSync(full)) return downloadFailed(req, res, 404, 'File missing', "This file isn't available any more.");
     res.download(full, item.filename);
-  } catch (e) { serverError(res, e); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 /**

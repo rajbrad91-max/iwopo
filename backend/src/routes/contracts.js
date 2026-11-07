@@ -16,6 +16,7 @@ import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { limit } from '../middleware/rateLimit.js';
+import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 
 const router = express.Router();
 
@@ -1153,7 +1154,7 @@ router.get('/download/:token', async (req, res) => {
         leads: { select: { name: true, email: true } },
       },
     });
-    if (!c) return res.status(404).send('Signed contract not found');
+    if (!c) return downloadFailed(req, res, 404, 'not_found', "This contract isn't available.");
 
     /**
      * The stored body is already HTML — it must NOT be escaped again here.
@@ -1178,7 +1179,7 @@ router.get('/download/:token', async (req, res) => {
     await deliver(res, `contract-${c.leads?.name || c.id}-${c.signed_at ? new Date(c.signed_at).toISOString().slice(0, 10) : 'signed'}`, c.title, `
       <div class="ct-doc">${body}${acceptanceHtml(c, await signedZone(c.vendor_id))}</div>
     `);
-  } catch (e) { res.status(500).send(e.message); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 /** the vendor's time zone, for the "Signed:" line (local time, like the reference — the certificate keeps UTC) */
@@ -1220,7 +1221,7 @@ router.get('/certificate/:token/download', async (req, res) => {
         vendors: { select: { business_name: true, logo_path: true } },
       },
     });
-    if (!c) return res.status(404).send('Certificate not found');
+    if (!c) return downloadFailed(req, res, 404, 'not_found', "This certificate isn't available.");
 
     const trail = await prisma.contract_audit.findMany({
       where: { contract_id: c.id },
@@ -1255,7 +1256,7 @@ router.get('/certificate/:token/download', async (req, res) => {
       <p class="fine">All times shown in UTC. Downloaded ${new Date().toUTCString()}.
       Keep this copy for your own records.</p>
     `);
-  } catch (e) { res.status(500).send(e.message); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 // PUBLIC: GET /api/contracts/certificate/:token → signing certificate (signed only)

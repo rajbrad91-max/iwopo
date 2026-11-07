@@ -24,6 +24,7 @@ import { notify } from './notifications.js';
 import { ownDomainAllowed } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { mediaLocked } from '../lib/overLimit.js';
+import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -397,8 +398,8 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
 router.get('/:token/download/:photoId', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
-    if (!a) return res.status(404).end();
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
+    if (!a) return downloadFailed(req, res, 404, 'not_found', "This gallery isn't available any more.");
+    if (!checkViewToken(req.query.vt, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
     const p = await prisma.photos.findFirst({
       where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 tenancy
     });
@@ -428,8 +429,8 @@ router.get('/:token/download/:photoId', async (req, res) => {
 router.get('/:token/download-all', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
-    if (!a) return res.status(404).end();
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
+    if (!a) return downloadFailed(req, res, 404, 'not_found', "This gallery isn't available any more.");
+    if (!checkViewToken(req.query.vt, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
 
     const eventId = req.query.event ? parseInt(req.query.event, 10) : null;
     let photos, zipLabel = a.title || 'gallery';
@@ -443,7 +444,7 @@ router.get('/:token/download-all', async (req, res) => {
     } else {
       photos = await allPhotoRowsInAlbum(a.id);
     }
-    if (!photos.length) return res.status(404).json({ error: 'No photos' });
+    if (!photos.length) return downloadFailed(req, res, 404, 'No photos', 'There are no photos to download here yet.');
 
     recordEvent(req, a.vendor_id, 'zip_download', { targetId: a.id, label: zipLabel });
 
@@ -464,7 +465,7 @@ router.get('/:token/download-all', async (req, res) => {
       if (fs.existsSync(full)) archive.file(full, { name });
     }
     archive.finalize();
-  } catch (e) { serverError(res, e); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 // 🤳 selfie search → returns matching photo IDs (public, needs view token)

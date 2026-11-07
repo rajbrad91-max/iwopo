@@ -17,6 +17,7 @@ import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { quiet } from '../lib/quiet.js';
+import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 
 const router = express.Router();
 
@@ -506,7 +507,7 @@ router.get('/zip', requireAuth, async (req, res) => {
     let rootId = null, label = 'My files';
     if (req.query.folder) {
       const f = await prisma.file_folders.findUnique({ where: { id: Number(req.query.folder) } });
-      if (!f || f.vendor_id !== v) return res.status(404).json({ error: 'Folder not found' });  // 🔒 tenancy
+      if (!f || f.vendor_id !== v) return downloadFailed(req, res, 404, 'Folder not found', "This folder isn't available any more.");  // 🔒 tenancy
       rootId = f.id; label = f.name;
     }
     res.attachment(safeZipName(label) + '.zip');
@@ -515,7 +516,7 @@ router.get('/zip', requireAuth, async (req, res) => {
     archive.pipe(res);
     await zipInto(archive, v, rootId, '');
     archive.finalize();
-  } catch (e) { if (!res.headersSent) serverError(res, e); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 // GET /api/files/folder/:folderId/zip → one folder and everything under it
@@ -523,8 +524,8 @@ router.get('/folder/:folderId/zip', requireAuth, async (req, res) => {
   try {
     const fid = Number(req.params.folderId);
     const f = await prisma.file_folders.findUnique({ where: { id: fid } });
-    if (!f) return res.status(404).json({ error: 'Not found' });
-    if (f.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });     // 🔒 tenancy
+    if (!f) return downloadFailed(req, res, 404, 'Not found', "This isn't available any more.");
+    if (f.vendor_id !== vid(req)) return downloadFailed(req, res, 403, 'Forbidden', "This isn't available to your account.");     // 🔒 tenancy
 
     res.attachment(safeZipName(f.name) + '.zip');
     const archive = archiver('zip', { zlib: { level: 6 } });
@@ -532,7 +533,7 @@ router.get('/folder/:folderId/zip', requireAuth, async (req, res) => {
     archive.pipe(res);
     await zipInto(archive, f.vendor_id, fid, '');
     archive.finalize();
-  } catch (e) { if (!res.headersSent) serverError(res, e); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 /* ───────── 📁 FOLDERS ───────── */
@@ -1178,8 +1179,8 @@ router.get('/item/:itemId/download', requireAuth, async (req, res) => {
   try {
     const itemId = Number(req.params.itemId);
     const item = await prisma.file_share_items.findUnique({ where: { id: itemId } });
-    if (!item) return res.status(404).json({ error: 'Not found' });
-    if (item.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+    if (!item) return downloadFailed(req, res, 404, 'Not found', "This isn't available any more.");
+    if (item.vendor_id !== vid(req)) return downloadFailed(req, res, 403, 'Forbidden', "This isn't available to your account.");   // 🔒 tenancy
     // a share can hold a film, and a download manager resuming a 20GB file asks
     // for a range exactly as a player does
     const o = await fileStream(item.vendor_id, item.stored_name, req.headers.range);
@@ -1192,9 +1193,9 @@ router.get('/item/:itemId/download', requireAuth, async (req, res) => {
       return o.stream.pipe(res);                  // streamed, never buffered
     }
     const full = path.join(vendorDir(item.vendor_id), item.stored_name);
-    if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing from storage' });
+    if (!fs.existsSync(full)) return downloadFailed(req, res, 404, 'File missing from storage', "This file isn't available any more.");
     res.download(full, item.filename);
-  } catch (e) { serverError(res, e); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 export default router;

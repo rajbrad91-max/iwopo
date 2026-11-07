@@ -767,9 +767,12 @@ export default function PublicGallery({ token, embedded, onBack }) {
                 onClick={openFavorites}
                 title={favOnly ? 'Showing your favorites — click to show all' : 'View your favorites (enter your email)'}
               >Favorites</button>
-              <button className="pg-scene-dl" onClick={() => downloadAll(activeEvent)} disabled={zipBusy === activeEvent} title="Download these photos in a Zip file">
-                {zipBusy === activeEvent ? 'Preparing…' : `Download ${session.events.find(ev => String(ev.id) === String(activeEvent))?.name || 'event'}`}
-              </button>
+              {/* 📥 only a tab with photos offers a Zip of them */}
+              {(String(activeEvent) === 'all' ? allPhotos.length > 0 : allPhotos.some(p => String(p.event_id) === String(activeEvent))) && (
+                <button className="pg-scene-dl" onClick={() => downloadAll(activeEvent)} disabled={zipBusy === activeEvent} title="Download these photos in a Zip file">
+                  {zipBusy === activeEvent ? 'Preparing…' : `Download ${session.events.find(ev => String(ev.id) === String(activeEvent))?.name || 'event'}`}
+                </button>
+              )}
             </div>
           )}
         </nav>

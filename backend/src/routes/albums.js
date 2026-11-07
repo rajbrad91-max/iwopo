@@ -31,6 +31,7 @@ import { enqueuePhotos } from '../lib/photoProcessor.js';
 import { recordObject } from '../lib/storageLedger.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
+import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -1706,16 +1707,16 @@ router.get('/:id/selection.zip', async (req, res) => {
   const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
   let user;
-  try { user = jwt.verify(tok, SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+  try { user = jwt.verify(tok, SECRET); } catch { return downloadFailed(req, res, 401, 'Invalid token', 'Your sign-in has expired — open iwopo and try again.'); }
   // 🎟️ the signature is fine, but the token may have been cancelled since
-  if (!await tokenStillValid(user)) return res.status(401).json({ error: 'Session ended' });
+  if (!await tokenStillValid(user)) return downloadFailed(req, res, 401, 'Session ended', 'Your sign-in has expired — open iwopo and try again.');
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({
       where: { id, vendor_id: user.vendor_id },   // 🔒 tenancy
       select: { id: true, title: true },
     });
-    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (!own) return downloadFailed(req, res, 404, 'Not found', "This isn't available any more.");
     const sels = await prisma.selections.findMany({
       where: { album_id: id },
       include: { photos: { select: { id: true, vendor_id: true, storage_path: true, filename: true } } },
@@ -1724,7 +1725,7 @@ router.get('/:id/selection.zip', async (req, res) => {
       .map(s => s.photos)
       .filter(Boolean)
       .sort((a, b) => byFilename(a.filename, b.filename));   // 2 before 10
-    if (!rows.length) return res.status(404).json({ error: 'Nothing selected' });
+    if (!rows.length) return downloadFailed(req, res, 404, 'Nothing selected', "The client hasn't picked any photos yet.");
     const safe = `${own.title || 'gallery'}-selection`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);
     const archive = archiver('zip', { zlib: { level: 6 } });
@@ -1748,7 +1749,7 @@ router.get('/:id/selection.zip', async (req, res) => {
       if (fs.existsSync(full)) archive.file(full, { name });
     }
     archive.finalize();
-  } catch (e) { serverError(res, e); }
+  } catch (e) { downloadCrashed(req, res, e); }
 });
 
 export default router;
