@@ -1,63 +1,116 @@
-/* 📊 PPM Board (components/PpmBoard.jsx) — panel theme variables, light and dark */
-.ppm { display: flex; flex-direction: column; gap: 14px; }
+/* 📊 PPM Board (components/PpmBoard.jsx) — a progress rail per booking, on the panel's light and dark themes.
+   One colour language: green done, iwopo orange the next step, grey not yet, amber due soon, brick red late. */
+.ppm {
+  --ppm-done: #4f9a6a;
+  --ppm-next: #e65c00;
+  --ppm-todo: color-mix(in srgb, var(--muted) 55%, transparent);
+  --ppm-soon: #c99032;
+  --ppm-late: #c4524a;
+  display: flex; flex-direction: column; gap: 14px;
+}
 .ppm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .ppm-views { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
 .ppm-view { padding: 7px 16px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; }
-.ppm-view.is-on { background: var(--teal); color: #06231f; }
+.ppm-view.is-on { background: var(--teal); color: var(--accInk); }
 .ppm-search { flex: 1; min-width: 200px; max-width: 320px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; }
-.ppm-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
-.ppm-legend .ppm-dot { margin-left: 8px; }
+.ppm-legend { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12.5px; color: var(--muted); }
+.ppm-key { display: inline-block; width: 10px; height: 10px; margin-left: 8px; border-radius: 50%; }
+.ppm-key.is-done { background: var(--ppm-done); } .ppm-key.is-next { background: var(--ppm-next); } .ppm-key.is-todo { background: var(--ppm-todo); }
+.ppm-key.is-soon { background: var(--ppm-soon); } .ppm-key.is-late { background: var(--ppm-late); }
 
-.ppm-wrap { padding: 0; overflow-x: auto; }
-.ppm-table { width: 100%; border-collapse: collapse; }   /* sized by its content — no forced width */
-.ppm .ppm-table th:first-child { padding-left: 10px; }
-.ppm .ppm-table th { position: sticky; top: 0; padding: 9px 5px; text-align: left; font-size: 12.5px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); white-space: nowrap; background: var(--panel); border-bottom: 1px solid var(--line); }
-.ppm .ppm-table td { padding: 8px 5px; vertical-align: top; border-bottom: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
-.ppm-table tr.is-overdue td:first-child { box-shadow: inset 4px 0 0 #ef4444; }
-.ppm-empty { padding: 26px !important; text-align: center; color: var(--muted); }
-.ppm .ppm-table td.ppm-client { white-space: normal; min-width: 120px; padding-left: 10px; }
-.ppm-client b { display: block; font-size: 14px; }
-.ppm-sub { display: block; font-size: 12px; color: var(--muted); }
-.ppm-due { padding: 0; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: inherit; text-decoration: underline dotted; white-space: nowrap; cursor: pointer; }
-.ppm-due.is-late { color: #ef4444; font-weight: 700; text-decoration: none; }
+/* the list: who · rail · badge · log, the same columns for the step names on top */
+.ppm-list { display: flex; flex-direction: column; gap: 10px; }
+.ppm-head, .ppm-row {
+  display: grid; align-items: center; column-gap: 18px;
+  grid-template-columns: minmax(150px, 220px) minmax(380px, 1fr) minmax(118px, auto) 36px;
+  grid-template-areas: "who track badge log";
+}
+.ppm-head { padding: 0 16px; }
+.ppm-head .ppm-rail { grid-column: 2; }
+.ppm-rail.is-head li { display: flex; justify-content: center; font-size: 12px; color: var(--muted); }
+.ppm-row { position: relative; padding: 16px 16px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.ppm-row.is-late { border-color: color-mix(in srgb, var(--ppm-late) 60%, var(--line)); box-shadow: inset 5px 0 0 var(--ppm-late); }
+.ppm-empty { padding: 26px; text-align: center; color: var(--muted); }
+.ppm-who { grid-area: who; min-width: 0; }
+.ppm-who b { display: block; overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.ppm-sub { display: block; font-size: 12.5px; color: var(--muted); }
 
-/* a stage: a dot and its date */
-.ppm-dot { display: inline-block; flex-shrink: 0; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: currentColor; }
-.ppm-dot.is-done { color: #22c55e; } .ppm-dot.is-todo { color: #f59e0b; } .ppm-dot.is-late { color: #ef4444; }
-.ppm-cell { display: inline-flex; align-items: center; min-width: 22px; padding: 3px 6px; border: 1px solid transparent; border-radius: 8px; background: transparent; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
-.ppm-cell:hover { border-color: var(--line); background: var(--panel-2); }
-.ppm-cell.is-done { color: var(--text); } .ppm-cell.is-done .ppm-dot { color: #22c55e; }
-.ppm-cell.is-todo { color: var(--muted); } .ppm-cell.is-todo .ppm-dot { color: #f59e0b; }
-.ppm-cell.is-small { padding: 1px 6px; font-size: 12.5px; }
-.ppm-cell.is-static { cursor: default; } .ppm-cell.is-static:hover { border-color: transparent; background: transparent; }
-.ppm-edit { display: grid; grid-template-columns: auto auto; justify-content: start; align-items: center; column-gap: 2px; }
-.ppm-edit .ppm-sub { display: inline; }
-.ppm-shoot .ppm-ev { display: flex; align-items: center; padding: 1px 0; font-size: 12.5px; white-space: nowrap; }
-.ppm-ev.is-done .ppm-dot { color: #22c55e; } .ppm-ev.is-up { color: var(--muted); } .ppm-ev.is-up .ppm-dot { color: #94a3b8; }
-.ppm-log-btn { padding: 3px 7px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+/* the rail: eight steps, a line joining them, green as far as the work has got */
+.ppm-track { grid-area: track; position: relative; padding-bottom: 22px; }
+.ppm-rail { display: grid; grid-template-columns: repeat(8, 1fr); margin: 0; padding: 0; list-style: none; }
+.ppm-step { position: relative; display: flex; justify-content: center; }
+.ppm-step + .ppm-step::before {   /* the line from the previous step to this one */
+  content: ""; position: absolute; top: 50%; right: 50%; width: 100%; height: 3px; margin-top: -1.5px; border-radius: 2px;
+  background: var(--ppm-todo);
+}
+.ppm-step.is-done::before, .ppm-step.is-half::before { background: var(--ppm-done); }
+.ppm-knob {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; border: 3px solid var(--ppm-todo); border-radius: 50%;
+  background: var(--panel); cursor: pointer; transition: transform .12s ease-out;
+}
+span.ppm-knob { cursor: default; }
+button.ppm-knob:hover { transform: scale(1.18); }
+button.ppm-knob:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.ppm-step.is-done .ppm-knob { border-color: var(--ppm-done); background: var(--ppm-done); }
+.ppm-step.is-done .ppm-knob::after {   /* a tick */
+  content: ""; width: 5px; height: 9px; margin-top: -2px; border: solid var(--panel); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
+.ppm-step.is-half .ppm-knob { border-color: var(--ppm-done); background: linear-gradient(90deg, var(--ppm-done) 50%, var(--panel) 50%); }
+.ppm-step.is-next .ppm-knob { width: 26px; height: 26px; border-color: var(--ppm-next); }
+.ppm-step.is-next .ppm-knob::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ppm-next); }
+.ppm-step.is-next.is-half .ppm-knob::after { content: none; }
+.ppm-next {   /* "Next: …" under the next step — kept inside the rail at its two ends */
+  position: absolute; bottom: 0; left: calc((var(--at) + .5) * 12.5%); margin: 0; transform: translateX(-50%);
+  font-size: 12.5px; font-weight: 700; color: var(--ppm-next); white-space: nowrap;
+}
+.ppm-next.at-0 { --at: 0; } .ppm-next.at-1 { --at: 1; } .ppm-next.at-2 { --at: 2; } .ppm-next.at-3 { --at: 3; }
+.ppm-next.at-4 { --at: 4; } .ppm-next.at-5 { --at: 5; } .ppm-next.at-6 { --at: 6; } .ppm-next.at-7 { --at: 7; }
+.ppm-next.at-0, .ppm-next.at-1 { left: 0; transform: none; }
+.ppm-next.at-6, .ppm-next.at-7 { left: auto; right: 0; transform: none; }
 
-/* the booking's log */
-.ppm-log td { background: var(--panel-2); }
+/* the badge: how the delivery date stands — tap to change it */
+.ppm-badge {
+  grid-area: badge; justify-self: end; padding: 5px 12px; border: 1px solid; border-radius: 999px; background: transparent;
+  font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.ppm-badge.is-ok { border-color: color-mix(in srgb, var(--ppm-done) 55%, transparent); background: color-mix(in srgb, var(--ppm-done) 14%, transparent); color: var(--ppm-done); }
+.ppm-badge.is-soon { border-color: color-mix(in srgb, var(--ppm-soon) 60%, transparent); background: color-mix(in srgb, var(--ppm-soon) 15%, transparent); color: var(--ppm-soon); }
+.ppm-badge.is-late { border-color: color-mix(in srgb, var(--ppm-late) 60%, transparent); background: color-mix(in srgb, var(--ppm-late) 15%, transparent); color: var(--ppm-late); }
+.ppm-badge.is-none { border-style: dashed; border-color: var(--line); color: var(--muted); }
+.ppm-log-btn { grid-area: log; justify-self: end; padding: 4px 7px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+
+/* the booking's log, under its row */
+.ppm-log { grid-column: 1 / -1; margin-top: 14px; padding: 14px 16px; border-radius: 10px; background: var(--panel-2); font-size: 13px; }
 .ppm-log-in { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .ppm-log-in ul { margin: 6px 0 0; padding-left: 18px; }
 .ppm-log-in li { margin-bottom: 4px; }
 .ppm-log-in .ppm-sub { display: inline; }
-.ppm-fail { color: #ef4444; }
-@media (max-width: 800px) { .ppm-log-in { grid-template-columns: 1fr; } }
+.ppm-fail { color: var(--ppm-late); }
+
+/* 📱 narrow screens: name and badge on top, the rail full width underneath */
+@media (max-width: 860px) {
+  .ppm-head { display: none; }
+  .ppm-row { grid-template-columns: minmax(0, 1fr) auto 36px; grid-template-areas: "who badge log" "track track track"; row-gap: 14px; padding: 14px; }
+  .ppm-track { min-width: 0; }
+  .ppm-knob { width: 20px; height: 20px; }
+  .ppm-step.is-next .ppm-knob { width: 24px; height: 24px; }
+  .ppm-log-in { grid-template-columns: 1fr; }
+}
 
 /* set a stage */
 .ppm-pop-back { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .5); }
 .ppm-pop { width: min(340px, 100%); padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); }
 .ppm-pop h3 { margin: 0 0 2px; }
-.ppm-pop-main { width: 100%; margin: 14px 0 6px; padding: 11px; border: 0; border-radius: 10px; background: var(--teal); color: #06231f; font: inherit; font-weight: 700; cursor: pointer; }
+.ppm-pop-main { width: 100%; margin: 14px 0 6px; padding: 11px; border: 0; border-radius: 10px; background: var(--teal); color: var(--accInk); font: inherit; font-weight: 700; cursor: pointer; }
 .ppm-pop-lbl { display: block; margin: 12px 0 6px; font-size: 12.5px; color: var(--muted); }
 .ppm-pop-row { display: flex; gap: 8px; }
 .ppm-pop-row input { flex: 1; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); color: var(--text); font: inherit; }
 .ppm-pop-set, .ppm-pop-close, .ppm-pop-clear { padding: 9px 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.ppm-pop-pick { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.ppm-pop-state { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.ppm-pop-state.is-done { color: var(--ppm-done); }
 .ppm-pop-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; }
 .ppm-pop-close { margin-left: auto; }
-.ppm-pop-clear { color: #ef4444; }
-/* words a screen reader says for a dot alone */
-.ppm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.ppm-cell { position: relative; }
-
+.ppm-pop-clear { color: var(--ppm-late); }
+@media (prefers-reduced-motion: reduce) { .ppm-knob { transition: none; } }
