@@ -4,6 +4,7 @@ import './gallery.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useBrandIcon } from '../lib/useBrandIcon';
 import { ClientTopBar, ClientFooter } from '../components/ClientLinks';
+import { useZoomPan } from '../lib/useZoomPan';
 
 const API = '/api/g';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Playfair+Display:wght@400;500;700&family=Jost:wght@300;400;500&family=Montserrat:wght@300;400;600&family=Poppins:wght@300;400;600&family=Lora:wght@400;600&family=Raleway:wght@300;400;600&display=swap';
@@ -513,6 +514,8 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
       return n ? (i + dir + n) % n : null;
     });
   }, [photos.length]);
+  // 🔍 pinch / double-tap / wheel zoom of the photo on screen — never a film, never a download (lib/useZoomPan.js)
+  const zoom = useZoomPan(lightbox, lightbox !== null && photos[lightbox]?.kind !== 'video');
 
   useEffect(() => {
     if (lightbox === null) return;
@@ -601,6 +604,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     touch.current = { x: t.clientX, y: t.clientY };
   };
   const onTouchEnd = (e) => {
+    if (zoom.busy()) { touch.current = null; return; }   // zoomed or pinching: the zoom has the gesture
     if (!touch.current) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touch.current.x;
@@ -997,7 +1001,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
             </div>
           </div>
           <button className="pg-lb-nav prev" onClick={e => { e.stopPropagation(); setSlideshow(false); step(-1); }} aria-label="Previous" title="Previous photo">‹</button>
-          <div className="pg-lb-stage" onClick={e => e.stopPropagation()}>
+          <div className={`pg-lb-stage${current.kind === 'video' ? '' : ' is-photo'}${zoom.zoomed ? ' is-zoomed' : ''}`} ref={zoom.stageRef} onClick={e => e.stopPropagation()}>
             {current.kind === 'video' ? (
               /* Whether a film plays is a property of the VIEWER, not the file.
                  Safari decodes HEVC and Chrome on Windows does not, so the same
@@ -1025,7 +1029,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
                 />
               )
             ) : (
-              <div className="pg-lb-pic" key={current.id}>
+              <div className="pg-lb-pic" key={current.id} ref={zoom.picRef}>
                 <img
                   className="pg-lb-soft"
                   src={photoUrl(current.id, 'thumb')}

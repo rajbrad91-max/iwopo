@@ -605,7 +605,17 @@
 }
 /* 🖼️ the photo in the viewer: the thumbnail sets its on-screen size at once (width/height attributes from
    PublicGallery's fit), the sharp 2200px version fades in exactly over it */
-.pg-lb-pic { position: relative; display: block; line-height: 0; }
+.pg-lb-pic {
+  position: relative; display: block; line-height: 0;
+  transition: transform .22s ease-out;   /* 🔍 a double-tap glides; under the fingers it follows at once (.is-gesture) */
+}
+/* 🔍 zoomed (lib/useZoomPan.js): moved by --zx --zy --zs — only while zoomed, so unzoomed is exactly as before */
+.pg-lb-pic.is-zoom { transform: translate(var(--zx, 0px), var(--zy, 0px)) scale(var(--zs, 1)); }
+.pg-lb-pic.is-gesture { transition: none; }                     /* under the fingers: no lag */
+.pg-lb-stage.is-photo { touch-action: none; cursor: zoom-in; }  /* the page itself never zooms over a photo */
+.pg-lb-stage.is-zoomed { overflow: visible; cursor: grab; }     /* zoomed: the photo may use the whole screen */
+.pg-lb-stage.is-zoomed:active { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) { .pg-lb-pic { transition: none; } }
 .pg-lb-soft { display: block; max-width: 98vw; max-height: 96vh; user-select: none; -webkit-user-drag: none; }
 /* the sharp full-size image, centered in the stage */
 .pg-lb-img {
