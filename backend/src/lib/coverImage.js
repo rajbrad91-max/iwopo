@@ -14,12 +14,12 @@
  * several times the size of the master and carries nothing a 2500px crop can
  * use.
  *
- * ⚡ Each crop comes in four sizes (Raj, 2026-11-08 — speed first): every screen
+ * ⚡ Each crop comes in three sizes (Raj, 2026-11-08 — speed first): every screen
  * gets the one that fits it rather than all getting 2500px. full 2500 for big
- * screens, 1920 for phones and ordinary laptops, 800 for album cards, and a
- * tiny one that appears at once behind the blurred sign-in and under the banner
- * while the sharp one arrives. Names: coverName(); every file of a cover:
- * coverNames(); what to serve for a request: coverCandidates().
+ * screens, 1920 for phones and ordinary laptops, 800 for album cards. (A tiny one
+ * was tried and dropped the same day: the sign-in now fades the banner cover in.)
+ * Names: coverName(); every file of a cover: coverNames(); what to serve for a
+ * request: coverCandidates().
  */
 import sharp from 'sharp';
 import path from 'node:path';
@@ -33,8 +33,11 @@ export const COVER_SIZES = {
   full: { edge: 2500, q: 84, tag: '' },          // big screens (and what a request without a size gets)
   1920: { edge: 1920, q: 80, tag: '_1920' },     // phones and ordinary laptops
   800: { edge: 800, q: 80, tag: '_800' },        // album cards
-  tiny: { edge: 128, q: 60, tag: '_tiny' },      // behind the blur, and under the banner until the sharp one lands
 };
+
+/* Sizes no longer made — their files are removed with the cover (routes/albums.js) and cleared from storage by
+   scripts/coverSizes.mjs, so none is left behind. '_tiny': dropped 2026-11-08. */
+export const RETIRED_COVER_TAGS = ['_tiny'];
 export const CROP_EDGE = COVER_SIZES.full.edge;
 
 /* The hero is the full width of the screen and as tall as the viewport, so its
@@ -51,6 +54,9 @@ export const coverName = (base, shape = 'wide', size = 'full') => `${base}${SHAP
 
 /** Every rendition of a cover (not the master) — what is uploaded, re-cut and removed together. */
 export const coverNames = (base) => Object.keys(SHAPES).flatMap(shape => Object.keys(COVER_SIZES).map(size => coverName(base, shape, size)));
+
+/** The files of retired sizes a cover may still have in storage. */
+export const retiredCoverNames = (base) => Object.keys(SHAPES).flatMap(shape => RETIRED_COVER_TAGS.map(tag => `${base}${SHAPES[shape].suffix}${tag}.webp`));
 
 /**
  * The files to try for a request, best first: the size asked for, then that shape at full size, then the wide one.

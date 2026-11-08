@@ -1,9 +1,8 @@
 /**
- * 🖼️ Cover sizes for covers made before them (Raj, 2026-11-08: speed first). Safe to run again: a cover that already
- * has every size is left alone.
+ * 🖼️ Every cover in line with lib/coverImage.js (Raj, 2026-11-08: speed first): missing sizes made, retired sizes'
+ * files removed. Safe to run again: a cover already in line is left alone.
  *
- * For each album with a cover, the missing renditions (lib/coverImage.js coverNames — 1920, 800 and tiny, in both
- * shapes) are cut from the cover's master, around its saved focus point, exactly as an upload or a focus change makes
+ * For each album with a cover, the missing renditions (lib/coverImage.js coverNames — 1920 and 800, in both shapes) are cut from the cover's master, around its saved focus point, exactly as an upload or a focus change makes
  * them. A cover older than masters has none, so its own full-size crops are the source instead: each shape's smaller
  * sizes are shrunk from that shape's full crop. Existing files are never rewritten.
  *
@@ -18,7 +17,7 @@ import prisma from '../src/config/prisma.js';
 import * as objects from '../src/lib/objectStore.js';
 import { withLocalFile } from '../src/lib/localFile.js';
 import { GALLERIES_ROOT } from '../src/config/paths.js';
-import { coverName, coverNames, writeCrops, COVER_SIZES } from '../src/lib/coverImage.js';
+import { coverName, coverNames, retiredCoverNames, writeCrops, COVER_SIZES } from '../src/lib/coverImage.js';
 
 const DRY = process.argv.includes('--dry');
 const key = (vendorId, albumId, file) => objects.keyFor(vendorId, 'galleries', String(albumId), file);
@@ -29,6 +28,11 @@ async function has(a, file) {
   if (r2) return !!(await objects.headObject(objects.PRIVATE, key(a.vendor_id, a.id, file)));   // null when it is not there
   return fs.existsSync(path.join(GALLERIES_ROOT, String(a.id), file));
 }
+/** A retired size's file goes, from storage and from the disk. */
+async function drop(a, file) {
+  if (r2) await objects.deleteObject(objects.PRIVATE, key(a.vendor_id, a.id, file));
+  try { fs.unlinkSync(path.join(GALLERIES_ROOT, String(a.id), file)); } catch { /* not on the disk */ }
+}
 async function store(a, dir, file) {
   if (!r2) return;                                                // the disk copy is the stored one
   await objects.putObject(objects.PRIVATE, key(a.vendor_id, a.id, file), fs.createReadStream(path.join(dir, file)));
@@ -36,13 +40,17 @@ async function store(a, dir, file) {
 }
 
 const albums = await prisma.albums.findMany({ where: { cover_photo: { not: null } }, select: { id: true, vendor_id: true, title: true, cover_photo: true, cover_focus: true }, orderBy: { id: 'asc' } });
-let made = 0, skipped = 0, failed = 0;
+let made = 0, removed = 0, skipped = 0, failed = 0;
 for (const a of albums) {
   const base = a.cover_photo.replace(/\.webp$/, '');
+  const retired = [];
+  for (const f of retiredCoverNames(base)) if (await has(a, f)) retired.push(f);
+  if (retired.length && !DRY) { for (const f of retired) await drop(a, f); removed += retired.length; console.log(`#${a.id} ${a.title}: ${retired.length} retired file(s) removed`); }
   const missing = [];
   for (const f of coverNames(base)) if (!await has(a, f)) missing.push(f);
-  if (!missing.length) { skipped++; continue; }
-  if (DRY) { console.log(`#${a.id} ${a.title}: would make ${missing.length}`); continue; }
+  if (DRY && (missing.length || retired.length)) console.log(`#${a.id} ${a.title}: would make ${missing.length}, remove ${retired.length}`);
+  if (!missing.length) { if (!retired.length) skipped++; continue; }
+  if (DRY) continue;
   const dir = r2 ? fs.mkdtempSync(path.join(os.tmpdir(), 'cover-')) : path.join(GALLERIES_ROOT, String(a.id));
   try {
     // the master, cut exactly as an upload would
@@ -74,6 +82,6 @@ for (const a of albums) {
   } catch (e) { failed++; console.log(`#${a.id} ${a.title}: failed — ${e.message}`); }
   finally { if (r2) fs.rmSync(dir, { recursive: true, force: true }); }
 }
-console.log(`done: ${made} files made · ${skipped} covers already complete · ${failed} failed`);
+console.log(`done: ${made} files made · ${removed} retired removed · ${skipped} covers already in line · ${failed} failed`);
 await prisma.$disconnect();
 process.exit(failed ? 1 : 0);

@@ -36,8 +36,10 @@ const IconTrash = <Icon d={<><path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1
 // door with an arrow leaving → "sign out of this gallery"
 const IconSignOut = <Icon d={<><path d="M15 4h3a1 1 0 011 1v14a1 1 0 01-1 1h-3" /><path d="M10 8l-4 4 4 4" /><path d="M6 12h9" /></>} />;
 
-export default function PublicGallery({ token, embedded, onBack }) {
-  const [meta, setMeta] = useState(null);
+export default function PublicGallery({ token, embedded, onBack, preview = null }) {
+  /* ⚡ Opened from the all-galleries page, the album's title, cover and theme are already known (`preview`, same shape
+     as the album details), so the sign-in shows at once while the full details load (Raj, 2026-11-08). */
+  const [meta, setMeta] = useState(preview);
   const [err, setErr] = useState('');
   const [pw, setPw] = useState('');
   const [authing, setAuthing] = useState(false);
@@ -164,7 +166,11 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // On load, try the saved token before showing the password screen. The photo
   // list is re-fetched rather than cached, so a gallery edited since the last
   // visit shows the current photos.
-  const [restoring, setRestoring] = useState(true);
+  /* Only a saved session is worth waiting for: without one, the sign-in shows at once (no "Loading…" first). */
+  const [restoring, setRestoring] = useState(() => {
+    try { const s = JSON.parse(window.localStorage?.getItem(sessionKey) || 'null'); return !!(s?.vt && s.exp > Date.now()); }
+    catch { return false; }
+  });
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -209,18 +215,26 @@ export default function PublicGallery({ token, embedded, onBack }) {
 
   const theme = session?.theme || meta?.theme || {};
   /* 🖼️ The cover, as theme variables (Raj, 2026-11-08 — speed first): the banner and the sign-in background read
-     --pg-cover, --pg-cover-tiny and --pg-cover-focus (gallery.css), so they need no inline style. The shape follows
-     the screen (about 2:1 on a laptop, 9:16 on a phone — two crops exist); the size follows its real pixels — 1920
-     unless a big screen needs the full 2500; and the tiny one shows at once, behind the blur and under the banner
-     until the sharp one has arrived. */
-  const coverVars = (() => {
-    const al = meta?.album;
-    if (!al?.cover || typeof window === 'undefined') return {};
+     --pg-cover and --pg-cover-focus (gallery.css), so they need no inline style. The shape follows the screen (about
+     2:1 on a laptop, 9:16 on a phone — two crops exist); the size follows its real pixels — 1920 unless a big screen
+     needs the full 2500. The sign-in shows it once it has fully arrived (coverShown), with a short fade instead of a
+     jump, and the banner after signing in uses the very same file, already in the browser. */
+  const coverSrc = (() => {
+    if (!meta?.album?.cover || typeof window === 'undefined') return null;
     const tall = window.innerWidth < 700;
     const size = !tall && window.innerWidth * (window.devicePixelRatio || 1) > 2200 ? 'full' : '1920';
-    const src = (s) => `url(${API}/${token}/cover?${tall ? 'v=tall&' : ''}s=${s})`;
-    return { '--pg-cover': src(size), '--pg-cover-tiny': src('tiny'), '--pg-cover-focus': al.cover_focus || '50% 50%' };
+    return `${API}/${token}/cover?${tall ? 'v=tall&' : ''}s=${size}`;
   })();
+  const coverVars = coverSrc ? { '--pg-cover': `url(${coverSrc})`, '--pg-cover-focus': meta.album.cover_focus || '50% 50%' } : {};
+  const [coverShown, setCoverShown] = useState(null);   // the cover address that has fully arrived
+  useEffect(() => {
+    if (!coverSrc) return undefined;
+    let live = true;
+    const im = new Image();
+    im.onload = () => { if (live) setCoverShown(coverSrc); };
+    im.src = coverSrc;
+    return () => { live = false; };
+  }, [coverSrc]);
   const styleVars = {
     '--pg-bg': theme.bg_color || '#fbfbfa',
     '--pg-head': theme.heading_color || '#16161a',
@@ -615,7 +629,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
     const m = meta.album;
     return (
       <div className="pg-wrap pg-gatewrap" style={styleVars}>
-        {hasCover && <div className="pg-gate-bg" />}
+        {hasCover && <div className={`pg-gate-bg${coverShown === coverSrc ? ' is-shown' : ''}`} />}
         {links && <ClientTopBar links={links} brand={meta.vendor?.name} variant="gate" />}
         <div className="pg-gate">
           {links?.private_url ? <a className="pg-eyebrow pg-eyebrow-link" href={links.private_url}>{theme.title_text || 'Private gallery'}</a> : <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>}

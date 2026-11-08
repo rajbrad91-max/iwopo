@@ -212,14 +212,14 @@ router.get('/vendor/:token', async (req, res) => {
       where: { vendor_id: v.id, kind: 'gallery' },   // 🔒 this vendor, galleries only
       orderBy: [{ created_at: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
       select: {
-        public_token: true, title: true, category: true, cover_photo: true,
+        public_token: true, title: true, category: true, cover_photo: true, cover_focus: true,
         _count: { select: { photos: true } },
       },
     });
     res.json({
       vendor: { name: v.business_name, logo: v.logo_path || null, white_label: await ownDomainAllowed(v.id), links: await clientLinksFor(v.id) },
       theme: await getTheme(v.id),
-      albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: a._count.photos })),
+      albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, cover_focus: a.cover_focus || '50% 50%', photo_count: a._count.photos })),
     });
   } catch (e) { serverError(res, e); }
 });

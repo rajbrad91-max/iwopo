@@ -18,17 +18,24 @@
 }
 
 /* ── password gate ── */
-.pg-gatewrap { display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-/* the sign-in background, softly blurred (Raj, 2026-11-08): the tiny cover (a few KB) is on screen at once, and the
-   sharp one the banner uses downloads meanwhile and lies over it when it arrives — so after signing in the banner
-   already has it: no flash, no black */
+/* the sign-in screen: a soft cream multiplied into the theme's background — a light theme turns warm cream, a dark
+   one stays as it is (Raj, 2026-11-08) */
+.pg-gatewrap {
+  display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
+  background: linear-gradient(#f6eedf, #f6eedf), var(--pg-bg, #fbfbfa);
+  background-blend-mode: multiply;
+}
+/* its background: the banner cover, softly blurred, shown once it has fully arrived with a short fade instead of a
+   jump (PublicGallery coverShown) — after signing in the banner already has the same file (Raj, 2026-11-08) */
 .pg-gate-bg {
   position: absolute; inset: 0;
-  background-image: var(--pg-cover), var(--pg-cover-tiny);
   background-size: cover; background-position: var(--pg-cover-focus, center);
   filter: blur(16px) saturate(1.05);
-  opacity: .3; transform: scale(1.15);
+  opacity: 0; transform: scale(1.15);
+  transition: opacity .35s ease-out;
 }
+.pg-gate-bg.is-shown { background-image: var(--pg-cover); opacity: .3; }
+@media (prefers-reduced-motion: reduce) { .pg-gate-bg { transition: none; } }
 .pg-gate { position: relative; width: 100%; max-width: 360px; padding: 40px 24px; text-align: center; }
 .pg-gate-title {
   font-family: var(--pg-hfont, serif);
@@ -88,10 +95,10 @@
   color: #fff;
 }
 .pg-cover.is-plain { color: var(--pg-head); }
-/* the banner: the sharp cover over its tiny version, which shows at once while the sharp one arrives */
+/* the banner: the cover the sign-in has already loaded */
 .pg-cover-img {
   position: absolute; inset: 0;
-  background-image: var(--pg-cover), var(--pg-cover-tiny);
+  background-image: var(--pg-cover);
   background-size: cover; background-position: var(--pg-cover-focus, center);
   animation: pg-ken 20s ease-out forwards;
 }

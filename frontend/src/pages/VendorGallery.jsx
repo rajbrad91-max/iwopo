@@ -43,7 +43,8 @@ export default function VendorGallery({ token }) {
   if (openToken) {
     return (
       <div style={styleVars}>
-        <PublicGallery token={openToken} embedded onBack={() => setOpenToken(null)} />
+        <PublicGallery token={openToken} embedded onBack={() => setOpenToken(null)}
+          preview={{ album: data?.albums.find(a => a.token === openToken), theme: data?.theme, vendor: data?.vendor }} />
       </div>
     );
   }

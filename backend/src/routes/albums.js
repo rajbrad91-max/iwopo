@@ -2,7 +2,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
 import { wouldExceed } from '../lib/storageQuota.js';
 import { orderEvents, VIDEO_FOLDER } from '../lib/albumEvents.js';
-import { writeMaster, writeCrops, coverNames, coverCandidates } from '../lib/coverImage.js';
+import { writeMaster, writeCrops, coverNames, coverCandidates, retiredCoverNames } from '../lib/coverImage.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -573,7 +573,7 @@ async function removeOldCover(vendorId, albumId, dir) {
   const prev = await prisma.albums.findFirst({ where: { id: albumId, vendor_id: vendorId }, select: { cover_photo: true } });
   if (!prev?.cover_photo) return;
   const base = prev.cover_photo.replace(/\.webp$/, '');
-  for (const f of [...coverNames(base), `${base}_master.webp`]) {
+  for (const f of [...coverNames(base), ...retiredCoverNames(base), `${base}_master.webp`]) {
     try { fs.unlinkSync(path.join(dir, f)); } catch { /* already gone */ }
     if (await objects.enabled(objects.PRIVATE)) {
       try { await objects.deleteObject(objects.PRIVATE, galleryKey(vendorId, albumId, f)); } catch { /* fine */ }
