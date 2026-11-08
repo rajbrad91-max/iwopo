@@ -5,6 +5,7 @@ import { resolveHost } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { isActiveSubscriber } from '../lib/wopoAssistant.js';
 import { currentPlan } from '../lib/billing.js';
+import { clientLinksFor } from '../lib/clientLinks.js';
 
 const router = express.Router();
 
@@ -73,6 +74,7 @@ router.get('/by-host', async (req, res) => {
         logo_path: vendor?.logo_path || '',
         bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(site.vendor_id).catch(() => false), powered_by: await onFree(site.vendor_id),
         time_format: await timeFormat(site.vendor_id),
+        links: await clientLinksFor(site.vendor_id),   // 🔗 optional client-page links
       },
       slug: vendor?.slug || '',
     });
@@ -136,7 +138,7 @@ router.get('/:handle', async (req, res) => {
       where: { vendor_id: vendorId }, select: { bot_name: true },
     });
 
-    res.json({ settings: { ...DEFAULTS, ...s, brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(vendorId).catch(() => false), powered_by: await onFree(vendorId), time_format: await timeFormat(vendorId) } });
+    res.json({ settings: { ...DEFAULTS, ...s, links: await clientLinksFor(vendorId), brand_name: s.brand_name || vendor.business_name, logo_path: vendor.logo_path || '', bot_name: (kb?.bot_name || '').trim() || 'Wopo Assistant', chat: await isActiveSubscriber(vendorId).catch(() => false), powered_by: await onFree(vendorId), time_format: await timeFormat(vendorId) } });
   } catch (e) { serverError(res, e); }
 });
 

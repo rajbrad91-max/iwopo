@@ -52,6 +52,7 @@ import { professionLabel } from '../lib/professions';
 import MyServicesView from '../components/MyServices';
 import StripeConnectCard from '../components/StripeConnect';
 import WelcomeSteps from '../components/WelcomeSteps';
+import ClientLinksSettings from '../components/ClientLinksSettings';
 import AutoRenewSetting from '../components/AutoRenewSetting';
 import PpmBoard from '../components/PpmBoard';
 import { applyTheme } from '../lib/theme';
@@ -913,7 +914,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
   }
 
   function copyUrl(a) {
-    const url = `${window.location.origin}/g/${a.public_token}`;
+    const url = `${clientBase()}/g/${a.public_token}`;   // the vendor's own address, like every client link
     navigator.clipboard.writeText(url).then(() => {
       setCopiedUrl(true); setTimeout(() => setCopiedUrl(false), 2000);
     }).catch(() => { dialog.prompt('Select and copy this link:', url, { title: 'Gallery link', readOnly: true, okLabel: 'Done' }); });
@@ -1254,7 +1255,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
             {edit && kind !== 'liveshoot' && <button className="refresh gal-mini-send" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
             {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-copy-url" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
             {/* 🔗 the client's link itself, to open and check (Muse F-14: it was only ever copied, never shown) */}
-            {edit?.public_token && kind !== 'liveshoot' && <a className="gal-link" href={`/g/${edit.public_token}`} target="_blank" rel="noreferrer">{`${window.location.origin}/g/${edit.public_token}`}</a>}
+            {edit?.public_token && kind !== 'liveshoot' && <a className="gal-link" href={`${clientBase()}/g/${edit.public_token}`} target="_blank" rel="noreferrer">{`${clientBase()}/g/${edit.public_token}`}</a>}
             {msg && <span className={`gal-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
           </div>
         </div>
@@ -1403,7 +1404,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
               )}
               <div className="gal-card-cover">
                 {a.cover_photo
-                  ? <img src={api.albumCoverUrl(a.id)} alt={a.title} loading="lazy" />
+                  ? <img src={api.albumCoverUrl(a.id, 800)} alt={a.title} loading="lazy" />
                   : <div className="gal-card-noimg">🖼️</div>}
               </div>
               <div className="gal-card-body">
@@ -5341,7 +5342,7 @@ function InqFormSettings() {
       <div className="table-wrap" style={{ padding: 22 }}>
         <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
         <p className="sub inq-link-row">
-          Your link: <b className="inq-link">{window.location.origin}/inquiry/{handle || '…'}</b> 🔗
+          Your link: <b className="inq-link">{handle ? inquiryUrl(handle) : '…'}</b> 🔗
           {' · '}
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they
@@ -5799,7 +5800,7 @@ function SettingsView({ user, onProfileChange }) {
   return (
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="set-tabs">
-        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security'], ['address', '🌐 Web address']].map(([k, label]) => (
+        {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security'], ['address', '🌐 Web address'], ['links', '🔗 Client page links']].map(([k, label]) => (
           <button key={k} className="refresh" onClick={() => setSub(k)}
             style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
         ))}
@@ -5944,6 +5945,7 @@ function SettingsView({ user, onProfileChange }) {
       {sub === 'devices' && <DevicesSetup />}
       {sub === 'security' && <SecurityLog />}
       {sub === 'address' && <DomainSettings />}
+      {sub === 'links' && <ClientLinksSettings />}
     </div>
   );
 }

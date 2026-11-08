@@ -2,7 +2,7 @@ import { GALLERIES_ROOT } from '../config/paths.js';
 import * as objects from '../lib/objectStore.js';
 import { wouldExceed } from '../lib/storageQuota.js';
 import { orderEvents, VIDEO_FOLDER } from '../lib/albumEvents.js';
-import { writeMaster, writeCrops } from '../lib/coverImage.js';
+import { writeMaster, writeCrops, coverNames, coverCandidates } from '../lib/coverImage.js';
 import express from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
@@ -502,7 +502,7 @@ Admin Password: {admin_password}
 
 Thank you for choosing us! 💛`;
 
-// 🔒 upload/replace cover photo → webp 1200px
+// 🔒 upload/replace cover photo → a WebP master and every rendition (lib/coverImage.js)
 router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) => {
   const v = vid(req);
   const id = Number(req.params.id);
@@ -526,7 +526,7 @@ router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) 
 
     const focus = req.body?.focus || '50% 50%';
     await writeCrops(path.join(dir, master), dir, base, focus);
-    await coverToR2(v, id, dir, [master, `${base}.webp`, `${base}_tall.webp`]);
+    await coverToR2(v, id, dir, [master, ...coverNames(base)]);
     await removeOldCover(v, id, dir);            // whatever the previous cover was
 
     await prisma.albums.updateMany({
@@ -554,15 +554,6 @@ async function coverToR2(vendorId, albumId, dir, files) {
   }));
 }
 
-/**
- * Which rendition to hand back. "?v=tall" asks for the phone-shaped one; a
- * cover uploaded before this existed has no tall file, so the caller falls
- * through to the disk and gets the wide one — old covers keep working.
- */
-function coverVariant(coverPhoto, want) {
-  if (want !== 'tall') return coverPhoto;
-  return coverPhoto.replace(/\.webp$/, '_tall.webp');
-}
 
 /** Covers read from R2 first, like every other piece of gallery media. */
 async function serveCoverFromR2(res, vendorId, albumId, file) {
@@ -582,7 +573,7 @@ async function removeOldCover(vendorId, albumId, dir) {
   const prev = await prisma.albums.findFirst({ where: { id: albumId, vendor_id: vendorId }, select: { cover_photo: true } });
   if (!prev?.cover_photo) return;
   const base = prev.cover_photo.replace(/\.webp$/, '');
-  for (const f of [`${base}.webp`, `${base}_tall.webp`, `${base}_master.webp`]) {
+  for (const f of [...coverNames(base), `${base}_master.webp`]) {
     try { fs.unlinkSync(path.join(dir, f)); } catch { /* already gone */ }
     if (await objects.enabled(objects.PRIVATE)) {
       try { await objects.deleteObject(objects.PRIVATE, galleryKey(vendorId, albumId, f)); } catch { /* fine */ }
@@ -617,7 +608,7 @@ router.put('/:id/cover-focus', requireAuth, async (req, res) => {
           objects.PRIVATE, galleryKey(v, id, `${base}_master.webp`),
           async (master) => {
             await writeCrops(master, dir, base, focus);
-            await coverToR2(v, id, dir, [`${base}.webp`, `${base}_tall.webp`]);
+            await coverToR2(v, id, dir, coverNames(base));
             return true;
           },
         );
@@ -639,9 +630,12 @@ router.get('/cover/:id', async (req, res) => {
       select: { cover_photo: true, vendor_id: true },
     });
     if (!a?.cover_photo) return res.status(404).end();
-    const file = coverVariant(a.cover_photo, req.query.v);
-    if (await serveCoverFromR2(res, a.vendor_id, Number(req.params.id), file)) return;
-    res.sendFile(path.join(ROOT, String(req.params.id), file), (err) => {
+    // "?v=tall" for the phone shape, "?s=1920|800|tiny" for a smaller size; the nearest that exists is served
+    const files = coverCandidates(a.cover_photo, req.query.v, req.query.s);
+    for (const f of files) if (await serveCoverFromR2(res, a.vendor_id, Number(req.params.id), f)) return;
+    const disk = files.map(f => path.join(ROOT, String(req.params.id), f)).find(p => fs.existsSync(p));
+    if (!disk) return res.status(404).end();
+    res.sendFile(disk, (err) => {
       if (err && !res.headersSent) res.status(404).end();
     });
   } catch { res.status(404).end(); }

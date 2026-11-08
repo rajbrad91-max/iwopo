@@ -3,6 +3,16 @@ import { api } from '../lib/api';
 import './helpView.css';
 import { GETTING_STARTED } from '../lib/gettingStarted';
 
+/* 🌐 The own-domain guide in 15 languages — one-page PDFs in /public/help-guides/own-domain (/guides is the SEO articles' path) (Raj, 2026-11-08).
+   The browser's own language is picked first when there is a guide in it. */
+const GUIDE_LANGS = [['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'], ['pt', 'Português'],
+  ['it', 'Italiano'], ['nl', 'Nederlands'], ['ru', 'Русский'], ['ar', 'العربية'], ['hi', 'हिन्दी'], ['pa', 'ਪੰਜਾਬੀ'],
+  ['ur', 'اردو'], ['zh', '中文（简体）'], ['ja', '日本語'], ['ko', '한국어']];
+const browserGuide = () => {
+  const want = (typeof navigator !== 'undefined' ? navigator.language || '' : '').slice(0, 2).toLowerCase();
+  return GUIDE_LANGS.some(([c]) => c === want) ? want : 'en';
+};
+
 /**
  * 🛟 Help & Support (2026-11-03; 2026-11-07): the getting-started guide (the same steps as the Welcome pop-up), video
  * guides added in Super Admin, quick answers that open the right screen, and a message — with a screenshot if it helps —
@@ -28,6 +38,7 @@ export default function HelpView({ user, onGo }) {
   const [shot, setShot] = useState(null);          // 📎 { file, url } — one screenshot
   const [videos, setVideos] = useState(null);
   const fileRef = useRef(null);
+  const [guide, setGuide] = useState(browserGuide);   // 🌐 the own-domain guide's language
   useEffect(() => { api.helpVideos().then(d => setVideos(d.videos || [])).catch(() => setVideos([])); }, []);
   useEffect(() => () => { if (shot?.url) URL.revokeObjectURL(shot.url); }, [shot]);
 
@@ -73,6 +84,23 @@ export default function HelpView({ user, onGo }) {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section className="table-wrap hv-card hv-wide">
+        <h3 className="hv-h">🌐 Your own domain</h3>
+        <p className="hv-sub">Show your galleries and inquiry form on your own web address — like <b>clients.yourstudio.com</b> — with no “iwopo” in it. You add one record where your domain is managed; iwopo checks it and adds the padlock for you.</p>
+        <ol className="hv-dsteps">
+          <li><b>Settings → Web address</b>: type your domain and press <b>Connect</b>.</li>
+          <li>Add the one record it shows at your domain company (GoDaddy, Namecheap, Cloudflare…).</li>
+          <li>Press <b>Check now</b> — it turns Active, usually within minutes.</li>
+        </ol>
+        <div className="hv-guide">
+          <label className="hv-guide-lbl" htmlFor="hv-guide-lang">📄 Step-by-step guide (PDF)</label>
+          <select id="hv-guide-lang" className="hv-guide-sel" value={guide} onChange={e => setGuide(e.target.value)}>
+            {GUIDE_LANGS.map(([c, name]) => <option key={c} value={c}>{name}</option>)}
+          </select>
+          <a className="refresh hv-guide-dl" href={`/help-guides/own-domain/${guide}.pdf`} target="_blank" rel="noreferrer">Download</a>
+        </div>
       </section>
 
       <section className="table-wrap hv-card hv-wide">

@@ -3,6 +3,7 @@ import PasswordInput from '../components/PasswordInput';
 import './gallery.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useBrandIcon } from '../lib/useBrandIcon';
+import { ClientTopBar, ClientFooter } from '../components/ClientLinks';
 
 const API = '/api/g';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Playfair+Display:wght@400;500;700&family=Jost:wght@300;400;500&family=Montserrat:wght@300;400;600&family=Poppins:wght@300;400;600&family=Lora:wght@400;600&family=Raleway:wght@300;400;600&display=swap';
@@ -207,6 +208,19 @@ export default function PublicGallery({ token, embedded, onBack }) {
   }, [session?.vt, favEmail, token]);
 
   const theme = session?.theme || meta?.theme || {};
+  /* 🖼️ The cover, as theme variables (Raj, 2026-11-08 — speed first): the banner and the sign-in background read
+     --pg-cover, --pg-cover-tiny and --pg-cover-focus (gallery.css), so they need no inline style. The shape follows
+     the screen (about 2:1 on a laptop, 9:16 on a phone — two crops exist); the size follows its real pixels — 1920
+     unless a big screen needs the full 2500; and the tiny one shows at once, behind the blur and under the banner
+     until the sharp one has arrived. */
+  const coverVars = (() => {
+    const al = meta?.album;
+    if (!al?.cover || typeof window === 'undefined') return {};
+    const tall = window.innerWidth < 700;
+    const size = !tall && window.innerWidth * (window.devicePixelRatio || 1) > 2200 ? 'full' : '1920';
+    const src = (s) => `url(${API}/${token}/cover?${tall ? 'v=tall&' : ''}s=${s})`;
+    return { '--pg-cover': src(size), '--pg-cover-tiny': src('tiny'), '--pg-cover-focus': al.cover_focus || '50% 50%' };
+  })();
   const styleVars = {
     '--pg-bg': theme.bg_color || '#fbfbfa',
     '--pg-head': theme.heading_color || '#16161a',
@@ -214,6 +228,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
     '--pg-sub': theme.sub_color || '#8a8a8f',
     '--pg-hfont': `'${theme.heading_font || 'Playfair Display'}', serif`,
     '--pg-bfont': `'${theme.body_font || 'Jost'}', sans-serif`,
+    ...coverVars,
   };
 
   async function unlock(e) {
@@ -593,22 +608,17 @@ export default function PublicGallery({ token, embedded, onBack }) {
   // returning visitor doesn't see the login flash past
   if (restoring && !session) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
 
-  /* The hero is as tall as the viewport and as wide as the screen, so its shape
-     is about 2:1 on a laptop and about 9:16 on a phone. Two crops exist; ask for
-     the one that fits, or a portrait cover gets its sides cut away on a phone
-     and a landscape one loses its top and bottom on a desktop. */
-  const wantTall = typeof window !== 'undefined' && window.innerWidth < 700;
-  const coverUrl = meta.album.cover
-    ? `${API}/${token}/cover${wantTall ? '?v=tall' : ''}`
-    : null;
+  const hasCover = !!meta.album.cover;   // its pictures arrive through coverVars, above
+  const links = embedded ? null : meta.vendor?.links;   // 🔗 the vendor's optional links (components/ClientLinks.jsx)
 
   if (!session) {
     const m = meta.album;
     return (
       <div className="pg-wrap pg-gatewrap" style={styleVars}>
-        {coverUrl && <div className="pg-gate-bg" style={{ backgroundImage: `url(${coverUrl})`, backgroundPosition: meta.album.cover_focus || '50% 50%' }} />}
+        {hasCover && <div className="pg-gate-bg" />}
+        {links && <ClientTopBar links={links} brand={meta.vendor?.name} variant="gate" />}
         <div className="pg-gate">
-          <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
+          {links?.private_url ? <a className="pg-eyebrow pg-eyebrow-link" href={links.private_url}>{theme.title_text || 'Private gallery'}</a> : <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>}
           <h1 className="pg-gate-title">{m.title}</h1>
           <form onSubmit={unlock} className="pg-gate-form">
             <PasswordInput className="pg-input" placeholder="Password" value={pw} onChange={e => setPw(e.target.value)} autoFocus />
@@ -642,8 +652,9 @@ export default function PublicGallery({ token, embedded, onBack }) {
   return (
     <div className="pg-wrap" style={styleVars}>
 
-      <section className={`pg-cover ${coverUrl ? '' : 'is-plain'}`}>
-        {coverUrl && <div className="pg-cover-img" style={{ backgroundImage: `url(${coverUrl})`, backgroundPosition: meta.album.cover_focus || '50% 50%' }} />}
+      {links && <ClientTopBar links={links} brand={meta.vendor?.name} />}
+      <section className={`pg-cover ${hasCover ? '' : 'is-plain'}`}>
+        {hasCover && <div className="pg-cover-img" />}
         {/* 🚪 sign out — sits over the cover, top right. Sessions now persist
             across visits, so there has to be a deliberate way to leave one on a
             shared or borrowed device. */}
@@ -652,7 +663,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
           <span>Sign out</span>
         </button>
         <div className="pg-cover-inner">
-          <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>
+          {links?.private_url ? <a className="pg-eyebrow pg-eyebrow-link" href={links.private_url}>{theme.title_text || 'Private gallery'}</a> : <div className="pg-eyebrow">{theme.title_text || 'Private gallery'}</div>}
           <h1 className="pg-cover-title">{session.title}</h1>
           {/* The first thing a couple reads. A gallery holding one film and no
               pictures announced itself as "1 photos", which is both wrong and
@@ -1024,6 +1035,7 @@ export default function PublicGallery({ token, embedded, onBack }) {
         </div>
       )}
 
+      {links && <ClientFooter links={links} />}
       {!embedded && !meta?.vendor?.white_label && <footer className="pg-foot">Powered by iwopo</footer>}
     </div>
   );

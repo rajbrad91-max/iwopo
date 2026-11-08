@@ -43,3 +43,10 @@
 .hv-shot-on { display: flex; align-items: center; gap: 10px; }
 .hv-shot-on img { max-width: 160px; max-height: 100px; border: 1px solid var(--line); border-radius: 8px; object-fit: cover; }
 
+/* 🌐 Your own domain — three steps and the guide in 15 languages */
+.hv-dsteps { margin: 6px 0 14px; padding-inline-start: 20px; font-size: 14px; line-height: 1.6; }
+.hv-guide { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.hv-guide-lbl { font-size: 13.5px; font-weight: 600; }
+.hv-guide-sel { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 14px; }
+.hv-guide-dl { text-decoration: none; }
+

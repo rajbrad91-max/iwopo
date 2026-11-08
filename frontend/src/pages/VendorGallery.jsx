@@ -3,6 +3,7 @@ import PublicGallery from './PublicGallery';
 import './gallery.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useBrandIcon } from '../lib/useBrandIcon';
+import { ClientTopBar, ClientFooter } from '../components/ClientLinks';
 
 const API = '/api/g';
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Playfair+Display:wght@500;700&family=Jost:wght@400;600&family=Montserrat:wght@400;600&family=Poppins:wght@400;600&family=Lora:wght@400;600&family=Raleway:wght@400;600&display=swap';
@@ -50,11 +51,16 @@ export default function VendorGallery({ token }) {
   if (err) return <div className="pg-wrap" style={styleVars}><div className="pg-state">⚠️ {err}</div></div>;
   if (!data) return <div className="pg-wrap" style={styleVars}><div className="pg-state">Loading…</div></div>;
 
+  const links = data.vendor.links;   // 🔗 the vendor's optional links (components/ClientLinks.jsx)
+
   return (
     <div className="pg-wrap" style={styleVars}>
+      {links && <ClientTopBar links={links} />}
       <div className="vg-head">
-        <div className="vg-kicker">{theme.title_text || 'Client Galleries'}</div>
-        <h1 className="vg-title">{data.vendor.name}</h1>
+        {links?.private_url
+          ? <a className="vg-kicker vg-kicker-link" href={links.private_url}>{theme.title_text || 'Client Galleries'}</a>
+          : <div className="vg-kicker">{theme.title_text || 'Client Galleries'}</div>}
+        <h1 className="vg-title">{links?.title_url ? <a className="vg-title-link" href={links.title_url}>{data.vendor.name}</a> : data.vendor.name}</h1>
         <div className="vg-sub">{theme.subtitle_text || 'Secure, Password-Protected Memories'}</div>
         {theme.tagline_text && <div className="vg-tagline">{theme.tagline_text}</div>}
       </div>
@@ -67,7 +73,7 @@ export default function VendorGallery({ token }) {
             <div key={a.token} className="vg-card" onClick={() => setOpenToken(a.token)}>
               <div className="vg-card-cover">
                 {a.cover
-                  ? <img src={`${API}/vendor-cover/${a.token}`} alt={a.title} loading="lazy" />
+                  ? <img src={`${API}/vendor-cover/${a.token}?s=800`} alt={a.title} loading="lazy" />
                   : <div className="vg-card-noimg">🖼️</div>}
                 <div className="vg-card-lock">🔒</div>
               </div>
@@ -80,6 +86,7 @@ export default function VendorGallery({ token }) {
         </div>
       )}
 
+      {links && <ClientFooter links={links} />}
       {!data.vendor.white_label && <div className="pg-foot">Powered by iwopo</div>}
     </div>
   );

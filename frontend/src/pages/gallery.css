@@ -19,10 +19,14 @@
 
 /* ── password gate ── */
 .pg-gatewrap { display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+/* the sign-in background, softly blurred (Raj, 2026-11-08): the tiny cover (a few KB) is on screen at once, and the
+   sharp one the banner uses downloads meanwhile and lies over it when it arrives — so after signing in the banner
+   already has it: no flash, no black */
 .pg-gate-bg {
   position: absolute; inset: 0;
-  background-size: cover; background-position: center;
-  filter: blur(30px) saturate(1.05);
+  background-image: var(--pg-cover), var(--pg-cover-tiny);
+  background-size: cover; background-position: var(--pg-cover-focus, center);
+  filter: blur(16px) saturate(1.05);
   opacity: .3; transform: scale(1.15);
 }
 .pg-gate { position: relative; width: 100%; max-width: 360px; padding: 40px 24px; text-align: center; }
@@ -84,9 +88,11 @@
   color: #fff;
 }
 .pg-cover.is-plain { color: var(--pg-head); }
+/* the banner: the sharp cover over its tiny version, which shows at once while the sharp one arrives */
 .pg-cover-img {
   position: absolute; inset: 0;
-  background-size: cover; background-position: center;
+  background-image: var(--pg-cover), var(--pg-cover-tiny);
+  background-size: cover; background-position: var(--pg-cover-focus, center);
   animation: pg-ken 20s ease-out forwards;
 }
 .pg-cover:not(.is-plain)::after {
@@ -838,4 +844,9 @@
 .pg-lb-sharp { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; opacity: 0; transition: opacity .18s ease-out; }
 .pg-lb-sharp.is-ready { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .pg-lb-sharp { transition: none; } }
+
+/* 🔗 the "Private gallery" label and the studio name, when the vendor gives them a link (components/ClientLinks.jsx) */
+.pg-eyebrow-link, .vg-kicker-link { display: block; color: inherit; text-decoration: none; }
+.pg-eyebrow-link:hover, .vg-kicker-link:hover, .vg-title-link:hover { text-decoration: underline; }
+.vg-title-link { color: inherit; text-decoration: none; }
 

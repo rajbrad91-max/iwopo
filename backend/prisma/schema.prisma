@@ -819,6 +819,7 @@ model vendor_subscriptions {
 }
 
 model vendors {
+  client_links         client_links?
   /// 👋 the getting-started steps were shown after their first payment (once)
   welcome_seen_at      DateTime? @db.Timestamp(6)
   /// 💳 the plan chosen at sign-up, until it is paid for — so confirming the email anywhere leads to payment
@@ -1711,3 +1712,28 @@ model help_videos {
   sort_order  Int       @default(0)
   created_at  DateTime? @default(now()) @db.Timestamp(6)
 }
+
+/// 🔗 Optional links on a vendor's client pages — the inquiry form and the galleries (Raj, 2026-11-08): the business
+/// name and the "Private gallery" label made clickable, up to two buttons, social icons, and a contact footer.
+/// Nothing set = the pages exactly as before. lib/clientLinks.js cleans and serves it.
+model client_links {
+  vendor_id      Int      @id
+  title_url      String?  @db.VarChar(300)
+  private_url    String?  @db.VarChar(300)
+  button1_label  String?  @db.VarChar(40)
+  button1_url    String?  @db.VarChar(300)
+  button2_label  String?  @db.VarChar(40)
+  button2_url    String?  @db.VarChar(300)
+  instagram      String?  @db.VarChar(300)
+  facebook       String?  @db.VarChar(300)
+  youtube        String?  @db.VarChar(300)
+  tiktok         String?  @db.VarChar(300)
+  pinterest      String?  @db.VarChar(300)
+  whatsapp       String?  @db.VarChar(300)
+  footer_phone   String?  @db.VarChar(40)
+  footer_email   String?  @db.VarChar(160)
+  footer_address String?  @db.VarChar(200)
+  updated_at     DateTime @default(now()) @db.Timestamp(6)
+  vendors        vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+

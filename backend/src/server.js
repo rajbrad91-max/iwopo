@@ -82,6 +82,7 @@ import { sweepOverLimit } from './lib/overLimit.js';
 import stripeConnectRoutes, { connectWebhook } from './routes/stripeConnect.js';
 import { sweepInactiveFree } from './lib/inactiveFree.js';
 import helpVideosRouter from './routes/helpVideos.js';
+import clientLinksRoutes from './routes/clientLinks.js';
 
 dotenv.config();
 
@@ -181,6 +182,7 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/leads', gate('leads'), leadRoutes);
 // 📇 the address book — not gated: sending files is not a leads feature
 app.use('/api/contacts', contactRoutes);
+app.use('/api/me/client-links', clientLinksRoutes);   // 🔗 optional links on the client pages
 app.use('/api/me', meRoutes);
 app.use('/api/vendor-packages', vendorPackageRoutes);
 app.use('/api/payments', gate('leads'), paymentRoutes);

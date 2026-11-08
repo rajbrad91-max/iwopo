@@ -25,6 +25,8 @@ import { ownDomainAllowed } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { mediaLocked } from '../lib/overLimit.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
+import { coverCandidates } from '../lib/coverImage.js';
+import { clientLinksFor } from '../lib/clientLinks.js';
 
 const require = createRequire(import.meta.url);
 const archiver = require('archiver');
@@ -215,7 +217,7 @@ router.get('/vendor/:token', async (req, res) => {
       },
     });
     res.json({
-      vendor: { name: v.business_name, logo: v.logo_path || null, white_label: await ownDomainAllowed(v.id) },
+      vendor: { name: v.business_name, logo: v.logo_path || null, white_label: await ownDomainAllowed(v.id), links: await clientLinksFor(v.id) },
       theme: await getTheme(v.id),
       albums: albums.map(a => ({ token: a.public_token, title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: a._count.photos })),
     });
@@ -241,12 +243,13 @@ router.get('/vendor-cover/:albumToken', async (req, res) => {
   try {
     const a = await findAlbum(req.params.albumToken);
     if (!a || !a.cover_photo) return res.status(404).end();
-    const file = req.query.v === 'tall' ? a.cover_photo.replace(/\.webp$/, '_tall.webp') : a.cover_photo;
-    if (await coverFromR2(res, a, file)) return;
-    /* An older cover has no tall rendition, so a phone asking for one falls
-       back to the wide file rather than getting nothing. */
-    const disk = path.join(ROOT, String(a.id), file);
-    res.sendFile(fs.existsSync(disk) ? disk : path.join(ROOT, String(a.id), a.cover_photo), (err) => {
+    /* "?v=tall" for the phone shape, "?s=1920|800|tiny" for a smaller size. An older cover without that shape or
+       size gets the nearest it has (lib/coverImage.js coverCandidates) rather than nothing. */
+    const files = coverCandidates(a.cover_photo, req.query.v, req.query.s);
+    for (const f of files) if (await coverFromR2(res, a, f)) return;
+    const disk = files.map(f => path.join(ROOT, String(a.id), f)).find(p => fs.existsSync(p));
+    if (!disk) return res.status(404).end();
+    res.sendFile(disk, (err) => {
       if (err && !res.headersSent) res.status(404).end();
     });
   } catch { res.status(404).end(); }
@@ -266,7 +269,7 @@ router.get('/:token', async (req, res) => {
     /* Counted apart. A gallery holding one film and no photographs announced
        itself as "1 photo" on the page a couple lands on. */
     const nVideo = await prisma.photos.count({ where: { album_id: a.id, kind: 'video' } });
-    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n - nVideo, video_count: nVideo, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null, logo: v?.logo_path || null, white_label: await ownDomainAllowed(a.vendor_id) } });
+    res.json({ album: { title: a.title, category: a.category, cover: !!a.cover_photo, photo_count: n - nVideo, video_count: nVideo, id: a.id, token: a.public_token, mode: 'per_client', cover_focus: a.cover_focus || '50% 50%' }, theme, vendor: { name: v?.business_name || null, logo: v?.logo_path || null, white_label: await ownDomainAllowed(a.vendor_id), links: await clientLinksFor(a.vendor_id) } });
   } catch (e) { serverError(res, e); }
 });
 
@@ -275,12 +278,13 @@ router.get('/:token/cover', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a || !a.cover_photo) return res.status(404).end();
-    const file = req.query.v === 'tall' ? a.cover_photo.replace(/\.webp$/, '_tall.webp') : a.cover_photo;
-    if (await coverFromR2(res, a, file)) return;
-    /* An older cover has no tall rendition, so a phone asking for one falls
-       back to the wide file rather than getting nothing. */
-    const disk = path.join(ROOT, String(a.id), file);
-    res.sendFile(fs.existsSync(disk) ? disk : path.join(ROOT, String(a.id), a.cover_photo), (err) => {
+    /* "?v=tall" for the phone shape, "?s=1920|800|tiny" for a smaller size. An older cover without that shape or
+       size gets the nearest it has (lib/coverImage.js coverCandidates) rather than nothing. */
+    const files = coverCandidates(a.cover_photo, req.query.v, req.query.s);
+    for (const f of files) if (await coverFromR2(res, a, f)) return;
+    const disk = files.map(f => path.join(ROOT, String(a.id), f)).find(p => fs.existsSync(p));
+    if (!disk) return res.status(404).end();
+    res.sendFile(disk, (err) => {
       if (err && !res.headersSent) res.status(404).end();
     });
   } catch { res.status(404).end(); }

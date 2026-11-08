@@ -1,0 +1,34 @@
+/* 🔗 The optional links on a vendor's client pages (components/ClientLinks.jsx). They take the page's own text
+   colour (currentColor), so they sit in every theme without colours of their own. */
+.cl-bar {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px;
+  width: 100%; max-width: 1200px; margin: 0 auto; padding: 12px 20px; box-sizing: border-box;
+  font-size: 14px; color: inherit;
+}
+.cl-bar.is-gate { position: absolute; top: 0; left: 0; right: 0; max-width: none; }   /* over the sign-in screen */
+.cl-bar.is-form { max-width: 860px; padding: 0 0 14px; }                            /* above the inquiry card */
+.cl-left { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; min-width: 0; }
+.cl-link { color: inherit; text-decoration: none; }
+.cl-link:hover { text-decoration: underline; }
+.cl-brand { font-weight: 600; }
+.cl-btn {
+  display: inline-block; padding: 6px 14px; border: 1px solid currentColor; border-radius: 999px;
+  color: inherit; font-size: 13px; line-height: 1.2; text-decoration: none;
+}
+.cl-btn:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.cl-socials { display: flex; align-items: center; gap: 4px; }
+.cl-social { display: inline-flex; padding: 6px; border-radius: 8px; color: inherit; }
+.cl-social:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.cl-ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cl-ico .cl-fill, .cl-ico .cl-dot { fill: currentColor; stroke: none; }
+.cl-foot {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: 100%; max-width: 1200px; margin: 0 auto; padding: 28px 20px 8px; box-sizing: border-box;
+  font-size: 13px; color: inherit; text-align: center;
+}
+.cl-contact { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 20px; }
+.cl-contact a { color: inherit; text-decoration: none; }
+.cl-contact a:hover { text-decoration: underline; }
+@media (max-width: 600px) { .cl-bar { padding: 10px 14px; } .cl-bar.is-form { padding: 0 0 12px; } }

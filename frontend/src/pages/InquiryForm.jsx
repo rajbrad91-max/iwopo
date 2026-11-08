@@ -14,6 +14,7 @@ import { shownFields, OTHER, BLANK_PRE_EVENT } from '../lib/formRules';
 export { PROFESSIONS } from '../lib/professions';
 import { PROFESSIONS } from '../lib/professions';
 import ProfessionArt from '../components/ProfessionArt.jsx';
+import { ClientTopBar, ClientFooter } from '../components/ClientLinks';
 
 /* 🤍 Ivory (2026-10-09, Raj's pick of four designs): a white card on a soft
    page tinted from the brand colour, a monogram or logo in a circle, the name
@@ -49,10 +50,13 @@ function usefulLink(url) {
 export function InquiryShell({ cfg, intro = true, art = true, embedded = false, aside = null, children }) {
   const c = cfg || {};
   const [logoOk, setLogoOk] = useState(true);
+  const links = embedded ? null : c.links;   // 🔗 the vendor's optional links — the client's own page only (components/ClientLinks.jsx)
+  const brand = c.brand_name || 'Booking Inquiry';
   return (
-    <div className={`iq-wrap${embedded ? ' is-embedded' : ''}`} style={themeStyleObject(c.brand_color || '#2dd4bf', c.theme, c.font || 'Inter')}>
+    <div className={`iq-wrap${embedded ? ' is-embedded' : ''}${links ? ' has-links' : ''}`} style={themeStyleObject(c.brand_color || '#2dd4bf', c.theme, c.font || 'Inter')}>
       {/* 🖼️ one big drawing for the vendor's trade behind the card ("None": plain) */}
       {art && <ProfessionArt trade={c.background} />}
+      {links && <ClientTopBar links={links} variant="form" />}
       <div className={`iq-card iq-theme-${c.theme || DEFAULT_THEME}`}>
         {/* header: logo (or initials) on top, brand + intro under it — every theme */}
         <div className="iq-hd">
@@ -65,7 +69,7 @@ export function InquiryShell({ cfg, intro = true, art = true, embedded = false, 
               : <div className="iq-mono" aria-hidden="true">{initials(c.brand_name)}</div>}
           </div>
           <div className="iq-hd-text">
-            <div className="iq-brand">{c.brand_name || 'Booking Inquiry'}</div>
+            <div className="iq-brand">{links?.title_url ? <a className="iq-brand-link" href={links.title_url}>{brand}</a> : brand}</div>
             {intro && (usefulLink(c.intro_link)
               ? <a className="iq-sub iq-sub-link" href={c.intro_link} target="_blank" rel="noopener noreferrer">{c.intro_text || 'Tell us about your event'} ↗</a>
               : <p className="iq-sub">{c.intro_text || 'Tell us about your event'}</p>)}
@@ -74,6 +78,7 @@ export function InquiryShell({ cfg, intro = true, art = true, embedded = false, 
         {children}
         {c.powered_by && <a className="iq-powered" href="https://iwopo.com" target="_blank" rel="noopener noreferrer">Powered by iwopo</a>}
       </div>
+      {links && <ClientFooter links={links} />}
       {aside}
     </div>
   );

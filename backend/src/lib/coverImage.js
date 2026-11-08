@@ -13,6 +13,13 @@
  * The original JPEG is discarded once the master exists. A camera file is
  * several times the size of the master and carries nothing a 2500px crop can
  * use.
+ *
+ * ⚡ Each crop comes in four sizes (Raj, 2026-11-08 — speed first): every screen
+ * gets the one that fits it rather than all getting 2500px. full 2500 for big
+ * screens, 1920 for phones and ordinary laptops, 800 for album cards, and a
+ * tiny one that appears at once behind the blurred sign-in and under the banner
+ * while the sharp one arrives. Names: coverName(); every file of a cover:
+ * coverNames(); what to serve for a request: coverCandidates().
  */
 import sharp from 'sharp';
 import path from 'node:path';
@@ -20,7 +27,15 @@ import path from 'node:path';
 /* Far more than any crop needs — the widest rendition is 2500 — while being a
    quarter the size of a modern camera file. */
 export const MASTER_EDGE = 4000;
-export const CROP_EDGE = 2500;
+
+/* The sizes each crop is written in: longest edge, WebP quality, filename tag. */
+export const COVER_SIZES = {
+  full: { edge: 2500, q: 84, tag: '' },          // big screens (and what a request without a size gets)
+  1920: { edge: 1920, q: 80, tag: '_1920' },     // phones and ordinary laptops
+  800: { edge: 800, q: 80, tag: '_800' },        // album cards
+  tiny: { edge: 128, q: 60, tag: '_tiny' },      // behind the blur, and under the banner until the sharp one lands
+};
+export const CROP_EDGE = COVER_SIZES.full.edge;
 
 /* The hero is the full width of the screen and as tall as the viewport, so its
    shape is opposite on the two devices: about 2:1 on a laptop and about 9:16 on
@@ -30,6 +45,23 @@ export const SHAPES = {
   wide: { ratio: 2 / 1, suffix: '' },          // desktop — cover_<ts>.webp
   tall: { ratio: 9 / 16, suffix: '_tall' },    // mobile  — cover_<ts>_tall.webp
 };
+
+/** A cover file's name: cover_<ts>[_tall][_1920|_800|_tiny].webp */
+export const coverName = (base, shape = 'wide', size = 'full') => `${base}${SHAPES[shape].suffix}${COVER_SIZES[size].tag}.webp`;
+
+/** Every rendition of a cover (not the master) — what is uploaded, re-cut and removed together. */
+export const coverNames = (base) => Object.keys(SHAPES).flatMap(shape => Object.keys(COVER_SIZES).map(size => coverName(base, shape, size)));
+
+/**
+ * The files to try for a request, best first: the size asked for, then that shape at full size, then the wide one.
+ * A cover made before a size (or the tall shape) existed simply gets the nearest it has.
+ */
+export function coverCandidates(coverPhoto, v, s) {
+  const base = coverPhoto.replace(/\.webp$/, '');
+  const shape = v === 'tall' ? 'tall' : 'wide';
+  const size = Object.hasOwn(COVER_SIZES, s) ? s : 'full';
+  return [...new Set([coverName(base, shape, size), coverName(base, shape, 'full'), coverPhoto])];
+}
 
 /** "40% 50%" → { x: 0.4, y: 0.5 }, tolerant of anything malformed. */
 export function parseFocus(focus) {
@@ -66,26 +98,28 @@ export async function writeMaster(srcPath, destPath) {
 }
 
 /**
- * Cut both renditions from the master.
+ * Cut both shapes from a source picture (the master — or, for a cover older than masters, its own full crop), each
+ * in every size. The crop is taken once per shape and every size is shrunk from it.
  *
  * withoutEnlargement matters: a vendor uploading something small should get a
  * small sharp cover rather than a large soft one.
  */
-export async function writeCrops(masterPath, dir, base, focus) {
+export async function writeCrops(masterPath, dir, base, focus, { only } = {}) {
   const m = await sharp(masterPath).metadata();
   const f = parseFocus(focus);
   const written = [];
-  for (const [name, shape] of Object.entries(SHAPES)) {
-    const rect = cropRect(m.width, m.height, shape.ratio, f);
-    const long = Math.max(rect.width, rect.height);
-    const scale = Math.min(CROP_EDGE / long, 1);
-    const out = `${base}${shape.suffix}.webp`;
-    await sharp(masterPath)
-      .extract(rect)
-      .resize(Math.round(rect.width * scale), Math.round(rect.height * scale))
-      .webp({ quality: 84 })
-      .toFile(path.join(dir, out));
-    written.push({ name, file: out });
+  for (const shape of Object.keys(SHAPES)) {
+    const rect = cropRect(m.width, m.height, SHAPES[shape].ratio, f);
+    const crop = await sharp(masterPath).extract(rect).toBuffer();
+    for (const [size, spec] of Object.entries(COVER_SIZES)) {
+      const out = coverName(base, shape, size);
+      if (only && !only.includes(out)) continue;
+      await sharp(crop)
+        .resize(spec.edge, spec.edge, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: spec.q })
+        .toFile(path.join(dir, out));
+      written.push(out);
+    }
   }
   return written;
 }

@@ -612,6 +612,8 @@ export const api = {
   publishMySite: (published) => request('/sites/my/publish', { method: 'PUT', body: JSON.stringify({ published }) }),
   publicSite: (slug) => request(`/sites/${slug}`),
   siteByHost: () => request('/sites/by-host'),
+  clientLinks: () => request('/me/client-links'),   // 🔗 the vendor's optional client-page links
+  saveClientLinks: (data) => request('/me/client-links', { method: 'PUT', body: JSON.stringify(data) }),
   inquirySettingsByHost: () => request('/inquiry-settings/by-host'),
   // 🌐 the vendor's web address: free subdomain + own domain (routes/domain.js)
   domainInfo: () => request('/domain'),
@@ -884,7 +886,7 @@ export const api = {
     if (!res.ok) throw new Error(data.error || 'Cover upload failed');
     return data;
   },
-  albumCoverUrl: (id) => `/api/albums/cover/${id}`,
+  albumCoverUrl: (id, size) => `/api/albums/cover/${id}${size ? `?s=${size}` : ''}`,   // size: 1920 · 800 · tiny (none = full)
   saveCoverFocus: (albumId, focus) =>
     request(`/albums/${albumId}/cover-focus`, { method: 'PUT', body: JSON.stringify({ focus }) }),
   album: (id) => request(`/albums/${id}`),
