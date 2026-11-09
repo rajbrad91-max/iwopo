@@ -997,8 +997,9 @@
 .gal-card-noimg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 44px; opacity: .35; }
 .gal-card-body { padding: 16px; }
 .gal-card-title { font-weight: 800; font-size: 15.5px; letter-spacing: -.2px; }
-.gal-card-cat { color: var(--muted); font-size: 12px; margin: 3px 0 10px; }
-.gal-card-meta { display: flex; gap: 14px; font-size: 12px; margin-bottom: 12px; color: var(--muted); }
+.gal-card-sub { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 3px 0 12px; }
+.gal-card-cat { min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.gal-card-meta { display: flex; flex: none; gap: 14px; font-size: 12px; color: var(--muted); }
 .gal-picked { color: #2dd4bf; font-weight: 700; }
 .gal-card-actions { display: flex; gap: 8px; }
 .gal-mini { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 9px; padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
@@ -1021,6 +1022,7 @@
 .gal-send-ta { min-height: 220px; margin-top: 6px; font-family: inherit; line-height: 1.5; resize: vertical; }
 .gal-send-ta[readonly] { opacity: .85; cursor: default; }
 .gal-send-foot { display: flex; gap: 14px; align-items: center; margin-top: 16px; }
+.gal-send-copy { margin-left: auto; }   /* 📋 Copy, at the bottom right */
 
 /* 📸 Gallery select-mode */
 .gal-card-sel { border-color: #2dd4bf; box-shadow: 0 0 0 2px #2dd4bf55; }
@@ -2353,7 +2355,8 @@ a.nav-item { color: inherit; text-decoration: none; }
   .gal-card-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 6px; row-gap: 4px; padding: 8px 9px 9px; }
   .gal-card-title { grid-column: 1 / -1; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gal-card-cat { display: none; }
-  .gal-card-meta { gap: 8px; font-size: 11px; margin: 0; flex-wrap: wrap; }
+  .gal-card-sub { margin: 0; }
+  .gal-card-meta { gap: 8px; font-size: 11px; flex-wrap: wrap; }
   .gal-card-actions { gap: 5px; justify-content: flex-end; }
   .gal-mini { flex: none; padding: 4px 8px; font-size: 11px; border-radius: 8px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
@@ -2600,7 +2603,7 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 /* 📧📊⚙️ gallery tiles: the Manage button's row shared equally by Send instructions, the download log (Studio) and
    Manage, with breathing space between them (Raj, 2026-11-09) */
 .gal-card-actions.is-icons { gap: 10px; }
-.gal-icon { flex: 1 1 0; min-width: 0; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+.gal-icon { flex: 1 1 0; min-width: 0; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
 .gal-icon:hover { border-color: #2dd4bf; background: #2dd4bf0d; }
 .gal-icon.is-done { border-color: #4f9a6a; background: color-mix(in srgb, #4f9a6a 22%, var(--panel-2)); }   /* 🟢 every Zip downloaded */
 

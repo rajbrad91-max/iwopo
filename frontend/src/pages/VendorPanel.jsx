@@ -881,6 +881,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = 
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [galleryToken, setGalleryToken] = useState('');
   const [copiedGallery, setCopiedGallery] = useState(false);
+  const [copiedMsg, setCopiedMsg] = useState(false);   // 📋 the Send Instructions text, copied
   const [theme, setTheme] = useState({});
   const [themeSaved, setThemeSaved] = useState(false);
   const GAL_FONTS = ['Cormorant Garamond', 'Playfair Display', 'Jost', 'Montserrat', 'Poppins', 'Lora', 'Raleway'];
@@ -908,6 +909,13 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = 
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
+  /* 📋 copy the whole instructions text — as shown, edits included (Raj, 2026-11-09). If the browser refuses, the
+     text is right there in the box to select by hand. */
+  function copyInstructions() {
+    navigator.clipboard.writeText(sendModal.body).then(() => {
+      setCopiedMsg(true); setTimeout(() => setCopiedMsg(false), 2000);
+    }).catch(() => setSendMsg('⚠️ Could not copy — select the text above and copy it'));
+  }
   function copyGalleryUrl() {
     const url = `${clientBase()}/gallery/${galleryToken}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -1419,10 +1427,14 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = 
               </div>
               <div className="gal-card-body">
                 <div className="gal-card-title">{a.title}</div>
-                <div className="gal-card-cat">{a.category || '—'}</div>
-                <div className="gal-card-meta">
-                  <span>📷 {a.photo_count}</span>
-                  {a.selected_count > 0 && <span className="gal-picked">✅ {a.selected_count}</span>}
+                {/* category on the left, the counts on the right — one line (Raj, 2026-11-09) */}
+                <div className="gal-card-sub">
+                  <span className="gal-card-cat">{a.category || '—'}</span>
+                  <span className="gal-card-meta">
+                    <span>📷 {a.photo_count}</span>
+                    {a.video_count > 0 && <span>🎬 {a.video_count}</span>}
+                    {a.selected_count > 0 && <span className="gal-picked">✅ {a.selected_count}</span>}
+                  </span>
                 </div>
                 {!selectMode && (shortcuts && kind === 'gallery' ? (
                   /* 📧 Send instructions · 📊 the download log (Studio — gallery_insights) · ⚙️ Manage, sharing the row
@@ -1491,6 +1503,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = 
             <div className="gal-send-foot">
               <button className="refresh gal-save" onClick={doSend}>📨 Send</button>
               {sendMsg && <span className="gal-err">{sendMsg}</span>}
+              <button className="gal-gen gal-send-copy" onClick={copyInstructions}>{copiedMsg ? '✅ Copied' : '📋 Copy'}</button>
             </div>
           </div>
         </div>
