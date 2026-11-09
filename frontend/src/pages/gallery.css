@@ -867,3 +867,8 @@
 .pg-eyebrow-link:hover, .vg-kicker-link:hover, .vg-title-link:hover { text-decoration: underline; }
 .vg-title-link { color: inherit; text-decoration: none; }
 
+/* 📦 a big download's parts (PublicGallery zipParts) — each a link to its own Zip; ticked once started */
+.pg-zip-part { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-decoration: none; }
+.pg-zip-part-meta { font-size: 12.5px; color: var(--pg-sub); }
+.pg-zip-part.is-got { border-color: var(--pg-accent); color: var(--pg-accent); }
+

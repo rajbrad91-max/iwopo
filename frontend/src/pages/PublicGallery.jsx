@@ -51,6 +51,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
 
   const [lightbox, setLightbox] = useState(null);
   const [zipBusy, setZipBusy] = useState('');
+  const [zipParts, setZipParts] = useState(null);   // a big download's parts: { q, title, parts, got }
   const [activeEvent, setActiveEvent] = useState('all');
   const [matchIds, setMatchIds] = useState(null);
   const [selfieBusy, setSelfieBusy] = useState(false);
@@ -315,13 +316,26 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   function clearFace() { setActiveFace(null); setMatchIds(null); setSelfieMsg(''); }
 
   const downloadOne = (id) => { window.location.href = `${API}/${token}/download/${id}?vt=${session.vt}`; };
-  function downloadAll(eventId) {
+  /* 📦 A big tab comes in parts of up to 4 GB (backend lib/photoZip.js): ask first, then either download the one Zip
+     as before or offer the parts — each its own Zip, so a dropped connection repeats one part, not all of it. */
+  async function downloadAll(eventId) {
     const key = eventId || 'all';
     setZipBusy(key);
     const q = eventId && eventId !== 'all' ? `&event=${eventId}` : '';
+    try {
+      const r = await fetch(`${API}/${token}/download-parts?vt=${session.vt}${q}`);
+      const d = r.ok ? await r.json() : null;
+      if (d?.parts?.length > 1) {
+        const name = session.events.find(ev => String(ev.id) === String(eventId))?.name;
+        setZipParts({ q, title: name || 'these photos', parts: d.parts, count: d.count, bytes: d.bytes, got: [] });
+        setZipBusy('');
+        return;
+      }
+    } catch { /* the one Zip, as before */ }
     window.location.href = `${API}/${token}/download-all?vt=${session.vt}${q}`;
     setTimeout(() => setZipBusy(''), 4000);
   }
+  const gb = (bytes) => `${(bytes / 1e9).toFixed(1)} GB`;   // as drives label it, like the 4 GB parts
   function downloadPicked() {
     setZipBusy('picked');
     [...picked].forEach((id, i) => setTimeout(() => downloadOne(id), i * 400));
@@ -708,6 +722,27 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
             <div className="pg-modal-acts">
               <button className="pg-btn" onClick={() => cameraInput.current?.click()}>Take a selfie</button>
               <button className="pg-btn is-ghost" onClick={() => selfieInput.current?.click()}>Upload a photo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📦 a big download, in parts */}
+      {zipParts && (
+        <div className="pg-modal" onClick={() => setZipParts(null)}>
+          <div className="pg-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="pg-modal-x" onClick={() => setZipParts(null)} title="Close">✕</button>
+            <h2 className="pg-modal-title">Download in {zipParts.parts.length} parts</h2>
+            <p className="pg-modal-sub">{zipParts.title}: {zipParts.count} photos, {gb(zipParts.bytes)}. Each part is its own Zip file — if one is interrupted, only that part needs downloading again.</p>
+            <div className="pg-modal-acts">
+              {zipParts.parts.map(p => (
+                <a key={p.part} className={`pg-btn is-ghost pg-zip-part${zipParts.got.includes(p.part) ? ' is-got' : ''}`}
+                  href={`${API}/${token}/download-all?vt=${session.vt}${zipParts.q}&part=${p.part}`}
+                  onClick={() => setZipParts(z => ({ ...z, got: [...new Set([...z.got, p.part])] }))}>
+                  <span>{zipParts.got.includes(p.part) ? '✓ ' : ''}Part {p.part}</span>
+                  <span className="pg-zip-part-meta">{p.count} photos · {gb(p.bytes)}</span>
+                </a>
+              ))}
             </div>
           </div>
         </div>

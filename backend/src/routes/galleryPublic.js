@@ -8,7 +8,6 @@ import path from 'path';
 import crypto from 'crypto';
 import multer from 'multer';
 import sharp from 'sharp';
-import { createRequire } from 'module';
 import prisma from '../config/prisma.js';
 import { getFaceDescriptors, findMatches } from '../lib/faceEngine.js';
 import { isUsableFace } from '../lib/portraitScore.js';
@@ -27,9 +26,8 @@ import { mediaLocked } from '../lib/overLimit.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { coverCandidates } from '../lib/coverImage.js';
 import { clientLinksFor } from '../lib/clientLinks.js';
+import { photoZip, zipParts } from '../lib/photoZip.js';
 
-const require = createRequire(import.meta.url);
-const archiver = require('archiver');
 /* A guest uploads a selfie here with no account and no token beyond the album
    link, so this is the one upload an anonymous caller can reach. It had no size
    cap and no type check at all — enough to fill the disk from outside. */
@@ -434,32 +432,51 @@ router.get('/:token/download/:photoId', async (req, res) => {
   } catch { res.status(404).end(); }
 });
 
-// ⬇️ download ALL as zip (optionally one event via ?event=ID)
+/** what a Zip of this gallery holds: one tab (?event=ID) or every photograph, in the gallery's order */
+async function zipScope(a, eventParam) {
+  const eventId = eventParam ? parseInt(eventParam, 10) : null;
+  if (!eventId) return { photos: await allPhotoRowsInAlbum(a.id), label: a.title || 'gallery' };
+  const ev = await prisma.album_events.findFirst({
+    where: { id: eventId, album_id: a.id },    // 🔒 event must belong to this album
+    select: { name: true },
+  });
+  return { photos: await photosInEvent(a.id, eventId), label: ev ? `${a.title}-${ev.name}` : (a.title || 'gallery') };
+}
+
+// 📦 how a download comes: one Zip, or parts of up to 4 GB each (lib/photoZip.js) — the gallery asks before it starts
+router.get('/:token/download-parts', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (!a) return res.status(404).json({ error: "This gallery isn't available any more." });
+    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Open the gallery again — your viewing session has ended.' });
+    const { photos } = await zipScope(a, req.query.event);
+    const parts = zipParts(photos).map((p, i) => ({ part: i + 1, count: p.rows.length, bytes: p.bytes }));
+    res.json({ parts, count: photos.length, bytes: parts.reduce((n, p) => n + p.bytes, 0) });
+  } catch (e) { serverError(res, e); }
+});
+
+// ⬇️ download ALL as zip (optionally one event via ?event=ID, and one part of a big one via ?part=N)
 router.get('/:token/download-all', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return downloadFailed(req, res, 404, 'not_found', "This gallery isn't available any more.");
     if (!checkViewToken(req.query.vt, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
 
-    const eventId = req.query.event ? parseInt(req.query.event, 10) : null;
-    let photos, zipLabel = a.title || 'gallery';
-    if (eventId) {
-      photos = await photosInEvent(a.id, eventId);
-      const ev = await prisma.album_events.findFirst({
-        where: { id: eventId, album_id: a.id },    // 🔒 event must belong to this album
-        select: { name: true },
-      });
-      if (ev) zipLabel = `${a.title}-${ev.name}`;
-    } else {
-      photos = await allPhotoRowsInAlbum(a.id);
-    }
+    let { photos, label: zipLabel } = await zipScope(a, req.query.event);
     if (!photos.length) return downloadFailed(req, res, 404, 'No photos', 'There are no photos to download here yet.');
+    if (req.query.part) {   // without ?part the whole set comes as one Zip, as before
+      const parts = zipParts(photos);
+      const n = parseInt(req.query.part, 10);
+      if (!(n >= 1 && n <= parts.length)) return downloadFailed(req, res, 404, 'No such part', 'That part of the download does not exist — open the gallery and choose again.');
+      photos = parts[n - 1].rows;
+      if (parts.length > 1) zipLabel = `${zipLabel}-part-${n}-of-${parts.length}`;
+    }
 
     recordEvent(req, a.vendor_id, 'zip_download', { targetId: a.id, label: zipLabel });
 
     const safe = zipLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);
-    const archive = archiver('zip', { zlib: { level: 6 } });
+    const archive = photoZip();   // stored: photographs are already compressed (lib/photoZip.js)
     archive.on('error', () => { try { res.status(500).end(); } catch {} });
     archive.pipe(res);
     for (const p of photos) {

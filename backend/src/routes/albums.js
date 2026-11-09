@@ -9,7 +9,7 @@ import crypto from 'crypto';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
-import archiver from 'archiver';
+import { photoZip } from '../lib/photoZip.js';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -1722,7 +1722,7 @@ router.get('/:id/selection.zip', async (req, res) => {
     if (!rows.length) return downloadFailed(req, res, 404, 'Nothing selected', "The client hasn't picked any photos yet.");
     const safe = `${own.title || 'gallery'}-selection`.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);
-    const archive = archiver('zip', { zlib: { level: 6 } });
+    const archive = photoZip();   // stored: photographs are already compressed (lib/photoZip.js)
     archive.on('error', () => { try { res.status(500).end(); } catch { /* stream already closed */ } });
     archive.pipe(res);
     /* The vendor's zip of what a couple chose. It was reading the disk alone,
