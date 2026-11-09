@@ -54,10 +54,12 @@ import { pollComms } from './lib/commsPoll.js';
 import commsRoutes from './routes/comms.js';
 import rawselRoutes from './routes/rawsel.js';
 import editorRoutes from './routes/editor.js';
+import photographerRoutes from './routes/photographer.js';
 import agentRoutes from './routes/agent.js';
 import pcRoutes from './routes/pc.js';
 import activityRoutes from './routes/activity.js';     // 👀 TEMPORARY — tester activity
 import { sweepRaws } from './lib/rawFiles.js';
+import { ingestFtp } from './lib/cameraFtp.js';
 import { writeAltTexts } from './lib/rawDelivery.js';
 import { sweepReminders } from './lib/agentReminders.js';
 import { refreshBriefings } from './lib/agentKnowledge.js';
@@ -216,6 +218,7 @@ app.use('/api/inbox', gate('comms'), inboxRoutes);
 app.use('/api/rawsel', gate('rawsel'), rawselRoutes);
 // 👨‍💻 the photo editor's own door — editor logins only (signed with a different key), see routes/editor.js
 app.use('/api/editor', editorRoutes);
+app.use('/api/photographer', photographerRoutes);   // 📸 Raw Selector: the photographer's door
 // 🤖 AI Agent — private like comms: the vendor's own AI agent, reading their panel
 app.use('/api/agent', gate('agent'), agentRoutes);
 app.use('/api/pc', pcRoutes);
@@ -349,9 +352,11 @@ setInterval(() => { scanAllInquiries().catch(quiet('server · scanAllInquiries')
 setInterval(() => { syncAllContacts().catch(quiet('server · syncAllContacts')); }, 15 * 60_000).unref();
 setTimeout(() => { scanAllInquiries().catch(quiet('server · scanAllInquiries')); }, 3 * 60_000).unref();
 setTimeout(() => { scanFollowups().catch(quiet('server · scanFollowups')); }, 2 * 60_000).unref();
-// 🎞️ Raw Selector: RAWs whose photo was deleted, and RAWs 30 days past delivery
+// 🎞️ Raw Selector: the files of RAWs whose photo was deleted
 setInterval(() => { sweepRaws().catch(quiet('server · sweepRaws')); }, 10 * 60_000).unref();
 setTimeout(() => { sweepRaws().catch(quiet('server · sweepRaws')); }, 2 * 60_000).unref();
+// 📡 camera FTP: file what the cameras finished sending into the shoots their photographers chose (lib/cameraFtp.js)
+setInterval(() => { ingestFtp().catch(quiet('server · ingestFtp')); }, 30_000).unref();
 // 🤖 alt text for delivered photos — catches up by itself once an AI key is saved
 setInterval(() => { writeAltTexts().catch(quiet('server · writeAltTexts')); }, 60 * 60_000).unref();
 // ⏰ AI Agent reminders: alerts that fall due go on the bell (the phone app also rings by itself)

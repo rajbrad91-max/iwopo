@@ -70,8 +70,21 @@ model albums {
   /// is green while it still holds exactly that many
   downloads_complete_count Int?
   gallery_downloads  gallery_downloads[]
+  /// 📸 Raw Selector (lib/shoots.js): the booking a shoot or its delivered gallery belongs to, the shoot a delivered
+  /// gallery came from, the owner's note for the editor, and when the upload was announced
+  lead_id                  Int?
+  source_album_id          Int?
+  editor_note              String?
+  uploaded_at              DateTime?        @db.Timestamp(6)
+  /// 🗑️ when the vendor removed this shoot's RAWs, and which: 'all' or 'unpicked'
+  raws_removed_at          DateTime?        @db.Timestamp(6)
+  raws_removed_scope       String?          @db.VarChar(10)
+  leads                    leads?           @relation(fields: [lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  source                   albums?          @relation("AlbumDelivery", fields: [source_album_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  deliveries               albums[]         @relation("AlbumDelivery")
   @@index([vendor_id], map: "idx_albums_vendor")
   @@index([vendor_id, kind], map: "idx_albums_kind")
+  @@index([lead_id], map: "idx_albums_lead")
 }
 
 model chatbot_knowledge {
@@ -240,6 +253,14 @@ model crew_members {
   vendors    vendors     @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   lead_crew  lead_crew[]
 
+  /// 📸 a photographer's own sign-in at /photographer (routes/photographer.js)
+  password_hash String?     @db.VarChar(100)
+  joined_at     DateTime?   @db.Timestamp(6)
+  last_login_at DateTime?   @db.Timestamp(6)
+  /// 📡 camera FTP (lib/cameraFtp.js): the login's password, sealed, and the shoot the camera's uploads go to
+  ftp_password_enc String?
+  ftp_lead_id      Int?
+  ftp_lead         leads?    @relation("CrewFtpShoot", fields: [ftp_lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   @@index([vendor_id], map: "idx_crew_vendor")
 }
 
@@ -376,6 +397,8 @@ model lead_crew {
   crew_members   crew_members @relation(fields: [crew_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   leads          leads        @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  /// 📸 this crew member uploads the booking's photos (Raw Selector) — set in Crew Management
+  uploads        Boolean      @default(false)
   @@index([lead_id], map: "idx_lc_lead")
 }
 
@@ -443,6 +466,8 @@ model leads {
   occasion_greetings      occasion_greetings[]
   payments                payments[]
 
+  albums                  albums[]
+  crew_ftp                crew_members[] @relation("CrewFtpShoot")
   @@index([vendor_id], map: "idx_leads_vendor")
   @@index([vendor_id, seen_at], map: "idx_leads_vendor_seen")
   @@index([package_template_id], map: "idx_leads_pkg_tpl")
@@ -1204,7 +1229,6 @@ model raw_files {
   created_at   DateTime? @default(now()) @db.Timestamp(6)
   /// when the edited photos reached the client; RAWs go 30 days after
   delivered_at DateTime? @db.Timestamp(6)
-  delete_after DateTime? @db.Timestamp(6)
   vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   albums       albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos       photos?   @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)

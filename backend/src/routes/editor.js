@@ -30,6 +30,8 @@ import { sendAsVendor } from './email.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
+import { deliveryFor, DELIVERY_KIND } from '../lib/shoots.js';
+import { openPassword } from '../lib/sharePassword.js';
 
 const router = express.Router();
 const SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':raw-editor';
@@ -107,7 +109,7 @@ async function selectedRaws(albumId, vendorId) {
   const ids = picks.map(p => p.photo_id);
   const raws = ids.length ? await prisma.raw_files.findMany({
     where: { vendor_id: vendorId, album_id: albumId, photo_id: { in: ids } },
-    select: { id: true, filename: true, size_bytes: true },
+    select: { id: true, filename: true, size_bytes: true, photo_id: true },
     orderBy: { filename: 'asc' },
   }) : [];
   return { selected: ids.length, raws };
@@ -142,10 +144,20 @@ router.get('/clients', requireEditor, async (req, res) => {
 router.get('/clients/:albumId', requireEditor, async (req, res) => {
   try {
     const v = req.editor.vendor_id;
-    const album = await prisma.albums.findFirst({ where: { id: Number(req.params.albumId), vendor_id: v }, select: { id: true, title: true } });
+    const album = await prisma.albums.findFirst({ where: { id: Number(req.params.albumId), vendor_id: v }, select: { id: true, title: true, editor_note: true } });
     if (!album) return res.status(404).json({ error: 'Not found' });
     const { selected, raws } = await selectedRaws(album.id, v);
-    res.json({ id: album.id, name: album.title, selected, files: raws.map(r => ({ id: r.id, name: r.filename, size: Number(r.size_bytes || 0) })) });
+    /* 🖼️ what each RAW looks like: the photo's 2200px preview, a 15-minute link — to look at only; a download is the RAW */
+    const photos = await prisma.photos.findMany({ where: { id: { in: raws.map(r => r.photo_id).filter(Boolean) }, album_id: album.id }, select: { id: true, preview_path: true } });
+    const preview = new Map();
+    for (const p of photos) {
+      const parts = String(p.preview_path || '').split('/').filter(Boolean);
+      if (parts.length >= 3) preview.set(p.id, await objects.signGet(objects.PRIVATE, objects.keyFor(v, 'galleries', parts[1], parts[2]), `${p.id}.webp`).catch(() => null));
+    }
+    res.json({
+      id: album.id, name: album.title, selected, studioNote: album.editor_note || '',
+      files: raws.map(r => ({ id: r.id, name: r.filename, size: Number(r.size_bytes || 0), preview: preview.get(r.photo_id) || null })),
+    });
   } catch (e) { serverError(res, e); }
 });
 
@@ -163,7 +175,7 @@ router.get('/raws/:id/link', requireEditor, limit({ name: 'raw-editor-link', max
 
 /* ── ⬆️ delivering EDITED photos ────────────────────────────────────────
    The editor uploads finished JPEGs into named folders ("Photos",
-   "Instagram", "Stories"); each folder becomes a TAB in the client's gallery
+   "Stories", "Posters"); each folder becomes a TAB in the client's gallery
    (album_events.delivery = true: shown like any tab, never face-scanned).
    Every photo gets the vendor's logo printed on it first. */
 const IMG = /\.(jpe?g|png)$/i;
@@ -173,7 +185,7 @@ const galleryKey = (v, albumId, name) => objects.keyFor(v, 'galleries', String(a
 const tabName = (t) => String(t || '').trim().replace(/\s+/g, ' ').slice(0, 60);
 
 async function editorAlbum(req, res) {
-  const a = await prisma.albums.findFirst({ where: { id: Number(req.params.albumId), vendor_id: req.editor.vendor_id }, select: { id: true, title: true, client_email: true, public_token: true } });
+  const a = await prisma.albums.findFirst({ where: { id: Number(req.params.albumId), vendor_id: req.editor.vendor_id }, select: { id: true, title: true, kind: true, client_email: true, public_token: true } });
   if (!a) res.status(404).json({ error: 'Not found' });
   return a;
 }
@@ -182,7 +194,8 @@ async function editorAlbum(req, res) {
 router.get('/clients/:albumId/tabs', requireEditor, async (req, res) => {
   try {
     const a = await editorAlbum(req, res); if (!a) return;
-    const tabs = await prisma.album_events.findMany({ where: { album_id: a.id, delivery: true }, select: { id: true, name: true, _count: { select: { photos: true } } }, orderBy: { sort_order: 'asc' } });
+    const d = await deliveryFor(req.editor.vendor_id, a);   // 📁 a shoot's gallery-to-be (lib/shoots.js)
+    const tabs = await prisma.album_events.findMany({ where: { album_id: d.id, delivery: true }, select: { id: true, name: true, _count: { select: { photos: true } } }, orderBy: { sort_order: 'asc' } });
     res.json({ tabs: tabs.map(t => ({ id: t.id, name: t.name, photos: t._count.photos })) });
   } catch (e) { serverError(res, e); }
 });
@@ -192,6 +205,7 @@ router.post('/clients/:albumId/deliver/begin', requireEditor, async (req, res) =
   try {
     const a = await editorAlbum(req, res); if (!a) return;
     const v = req.editor.vendor_id;
+    const d = await deliveryFor(v, a);   // 📁 a shoot's gallery-to-be (lib/shoots.js)
     const files = Array.isArray(req.body?.files) ? req.body.files.slice(0, MAX_FILES) : [];
     if (!files.length) return res.status(400).json({ error: 'No files' });
     for (const f of files) {
@@ -205,7 +219,7 @@ router.post('/clients/:albumId/deliver/begin', requireEditor, async (req, res) =
     for (const f of files) {
       const ext = path.extname(String(f.name)).toLowerCase() || '.jpg';
       const name = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_orig${ext}`;
-      const key = galleryKey(v, a.id, name);
+      const key = galleryKey(v, d.id, name);
       items.push({ name: f.name, key, url: await objects.signPut(objects.PRIVATE, key, Number(f.size)) });
     }
     res.json({ items });
@@ -217,21 +231,22 @@ router.post('/clients/:albumId/deliver/complete', requireEditor, async (req, res
   try {
     const a = await editorAlbum(req, res); if (!a) return;
     const v = req.editor.vendor_id;
+    const d = await deliveryFor(v, a);   // 📁 a shoot's gallery-to-be (lib/shoots.js)
     const name = tabName(req.body?.tab);
     if (!name) return res.status(400).json({ error: 'Give the folder a name, e.g. Photos' });
-    let tab = await prisma.album_events.findFirst({ where: { album_id: a.id, name, delivery: true } });
+    let tab = await prisma.album_events.findFirst({ where: { album_id: d.id, name, delivery: true } });
     if (!tab) {
-      const last = await prisma.album_events.aggregate({ where: { album_id: a.id }, _max: { sort_order: true } });
-      tab = await prisma.album_events.create({ data: { album_id: a.id, vendor_id: v, name, delivery: true, sort_order: (last._max.sort_order ?? 0) + 1 } });
+      const last = await prisma.album_events.aggregate({ where: { album_id: d.id }, _max: { sort_order: true } });
+      tab = await prisma.album_events.create({ data: { album_id: d.id, vendor_id: v, name, delivery: true, sort_order: (last._max.sort_order ?? 0) + 1 } });
     }
     const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, MAX_FILES) : [];
     const created = [], errors = [];
     for (const it of items) {
       const leaf = path.basename(String(it?.key || ''));
       // 🔒 rebuilt from the editor's vendor and this album: any other key is refused
-      if (!/_orig\.(jpe?g|png)$/i.test(leaf) || it.key !== galleryKey(v, a.id, leaf)) { errors.push('Not your file'); continue; }
-      const rel = `${v}/${a.id}/${leaf}`;
-      const dup = await prisma.photos.findFirst({ where: { album_id: a.id, storage_path: rel }, select: { id: true } });
+      if (!/_orig\.(jpe?g|png)$/i.test(leaf) || it.key !== galleryKey(v, d.id, leaf)) { errors.push('Not your file'); continue; }
+      const rel = `${v}/${d.id}/${leaf}`;
+      const dup = await prisma.photos.findFirst({ where: { album_id: d.id, storage_path: rel }, select: { id: true } });
       if (dup) { created.push(dup.id); continue; }
       if (!await objects.headObject(objects.PRIVATE, it.key)) { errors.push(`${String(it.name || leaf).slice(0, 80)} did not arrive`); continue; }
       // ®️ the vendor's logo, printed before any preview is made from it
@@ -241,11 +256,11 @@ router.post('/clients/:albumId/deliver/complete', requireEditor, async (req, res
       const base = leaf.replace(/_orig\.[^.]+$/, '');
       const row = await prisma.photos.create({
         data: {
-          album_id: a.id, vendor_id: v,
+          album_id: d.id, vendor_id: v,
           filename: path.basename(String(it.name || leaf)).slice(0, 200),
           storage_path: rel,
-          preview_path: `${v}/${a.id}/${base}_full.webp`,
-          thumb_path: `${v}/${a.id}/${base}_thumb.webp`,
+          preview_path: `${v}/${d.id}/${base}_full.webp`,
+          thumb_path: `${v}/${d.id}/${base}_thumb.webp`,
           size_bytes: BigInt(size),
           event_id: tab.id,
           ready: false,
@@ -260,32 +275,40 @@ router.post('/clients/:albumId/deliver/complete', requireEditor, async (req, res
 });
 
 /**
- * A batch is done: tell the vendor and the client, start the 30-day clock on
- * the RAWs (first delivery only), and have Claude describe the new photos.
+ * 📣 The editor sends (Raj, 2026-11-09): the shoot's gallery-to-be becomes a gallery like any other — in Galleries,
+ * named after the shoot, opened with the booking's passwords — and the vendor is told (bell + email), and the client
+ * too when the editor chooses "Notify owner + client". The RAWs are marked delivered (a record; they are deleted only
+ * when the vendor says so). An older gallery that is not a shoot is told about the same way.
  */
 router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) => {
   try {
     const a = await editorAlbum(req, res); if (!a) return;
     const v = req.editor.vendor_id;
-    const name = tabName(req.body?.tab);
-    const count = Math.max(0, Math.min(5000, Number(req.body?.count) || 0));
-    if (!count) return res.json({ ok: true });
-    // ⏳ RAWs go 30 days after the edited photos first reach the client
-    const now = new Date();
-    await prisma.raw_files.updateMany({ where: { album_id: a.id, vendor_id: v, delivered_at: null }, data: { delivered_at: now, delete_after: new Date(now.getTime() + 30 * 86400e3) } });
-    await notify(v, `🎞️ ${count} edited photo${count === 1 ? '' : 's'} delivered — ${a.title}`, `${req.editor.name || req.editor.email} added them to "${name}". RAW files will be deleted in 30 days.`, 'rawsel', { type: 'album', id: a.id });
-    let emailed = false;
-    if (a.client_email && a.public_token) {
-      const studio = (await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true } }))?.business_name || 'Your photographer';
-      const link = `${(process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '')}/g/${a.public_token}`;
-      emailed = await sendAsVendor(v, {
-        to: a.client_email,
-        subject: `Your edited photos are ready — ${name}`,
-        text: `Hi,\n\n${count} edited photo${count === 1 ? ' is' : 's are'} now in your gallery, in the "${name}" tab:\n${link}\n\n${studio}`,
-      }).then(() => true).catch(() => false);
+    const d = await deliveryFor(v, a);
+    const tabs = await prisma.album_events.findMany({ where: { album_id: d.id, delivery: true }, select: { id: true } });
+    const count = tabs.length ? await prisma.photos.count({ where: { album_id: d.id, event_id: { in: tabs.map(t => t.id) } } }) : 0;
+    if (!count) return res.status(400).json({ error: 'Upload the edited photos first' });
+    const gallery = d.kind === DELIVERY_KIND ? await prisma.albums.update({ where: { id: d.id }, data: { kind: 'gallery' } }) : d;
+    await prisma.raw_files.updateMany({ where: { album_id: a.id, vendor_id: v, delivered_at: null }, data: { delivered_at: new Date() } });
+    const who = req.editor.name || req.editor.email;
+    const client = !!req.body?.client;
+    await notify(v, `🎞️ ${a.title}: ${count} edited photo${count === 1 ? '' : 's'} delivered`, `${who} sent them${client ? ' and told the client' : ''}. The gallery is in Galleries.`, 'info', '/panel/galleries');
+    const ven = await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true, email: true } });
+    const studio = ven?.business_name || 'Your photographer';
+    const base = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    const ownerEmailed = ven?.email
+      ? (await sendAsVendor(v, { to: ven.email, subject: `🎞️ ${a.title}: edited photos delivered`, text: `${who} sent ${count} edited photo${count === 1 ? '' : 's'} for ${a.title}${client ? ', and the client has been told' : ''}.\n\nGalleries: ${base}/panel/galleries` })).ok
+      : false;
+    let clientEmailed = false;
+    if (client && gallery.client_email && gallery.public_token) {
+      clientEmailed = (await sendAsVendor(v, {
+        to: gallery.client_email,
+        subject: `Your edited photos are ready — ${gallery.title}`,
+        text: `Hi ${gallery.title},\n\nYour edited photos are ready:\n${base}/g/${gallery.public_token}\n\nPassword: ${openPassword(gallery.guest_password_enc) || '(ask us)'}\n\n${studio}`,
+      })).ok;
     }
     writeAltTexts().catch(quiet('editor · writeAltTexts'));
-    res.json({ ok: true, emailed });
+    res.json({ ok: true, count, gallery: gallery.id, ownerEmailed, clientEmailed });
   } catch (e) { serverError(res, e); }
 });
 

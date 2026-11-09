@@ -138,13 +138,12 @@ export async function runPanelTool(name, input, vendorId) {
       const out = [];
       for (const g of groups) {
         const a = await prisma.albums.findFirst({ where: { id: g.album_id, vendor_id: v }, select: { title: true } });
-        const [paired, delivered, soonest, delTabs] = await Promise.all([
+        const [paired, delivered, delTabs] = await Promise.all([
           prisma.raw_files.count({ where: { album_id: g.album_id, vendor_id: v, photo_id: { not: null } } }),
           prisma.raw_files.count({ where: { album_id: g.album_id, vendor_id: v, delivered_at: { not: null } } }),
-          prisma.raw_files.findFirst({ where: { album_id: g.album_id, vendor_id: v, delete_after: { not: null } }, orderBy: { delete_after: 'asc' }, select: { delete_after: true } }),
           prisma.album_events.count({ where: { album_id: g.album_id, vendor_id: v, delivery: true } }),
         ]);
-        out.push({ gallery: a?.title, album_id: g.album_id, raws: g._count._all, matched_to_photos: paired, edited_delivered: delTabs > 0 || delivered > 0, raws_deleted_on: day(soonest?.delete_after) });
+        out.push({ gallery: a?.title, album_id: g.album_id, raws: g._count._all, matched_to_photos: paired, edited_delivered: delTabs > 0 || delivered > 0 });
       }
       const editors = await prisma.raw_editors.findMany({ where: { vendor_id: v } }).catch(() => []);
       return { galleries_with_raws: out, editors: editors.map(e => ({ name: e.name || null, email: e.email })) };

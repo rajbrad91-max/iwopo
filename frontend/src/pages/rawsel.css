@@ -92,3 +92,54 @@
   .rs-table td.rs-strong { grid-column: 1 / -1; font-size: 15px; }
   .rs-table td.rs-strong::before { content: none; }
 }
+
+/* 📸 the photographer's portal (PhotographerPortal.jsx): the two notify buttons */
+.ph-notify { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* 🛤️ the Raw Selector rail (components/ShootRail.jsx) — the PPM board's colour language: green done, orange next */
+.sr { --sr-done: #4f9a6a; --sr-next: #e65c00; --sr-todo: color-mix(in srgb, var(--muted) 55%, transparent); display: flex; flex-direction: column; gap: 10px; }
+.sr-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.sr-legend { display: inline-flex; align-items: center; gap: 4px 6px; font-size: 12.5px; color: var(--muted); }
+.sr-key { display: inline-block; width: 10px; height: 10px; margin-left: 8px; border-radius: 50%; background: var(--sr-todo); }
+.sr-key.is-done { background: var(--sr-done); } .sr-key.is-next { background: var(--sr-next); }
+.sr-new { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.sr-input { min-width: 260px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; }
+.sr-row { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.sr-row.is-open { border-color: color-mix(in srgb, var(--teal) 50%, var(--line)); }
+.sr-head { display: grid; grid-template-columns: minmax(150px, 220px) 1fr auto; align-items: center; gap: 16px; width: 100%; padding: 14px 16px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sr-who { display: flex; flex-direction: column; min-width: 0; }
+.sr-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-rail { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; padding: 0; list-style: none; }
+.sr-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); }
+.sr-step + .sr-step::before { content: ""; position: absolute; top: 7px; right: 50%; width: 100%; height: 3px; border-radius: 2px; background: var(--sr-todo); }
+.sr-step.is-done::before { background: var(--sr-done); }
+.sr-dot { position: relative; z-index: 1; width: 16px; height: 16px; border: 3px solid var(--sr-todo); border-radius: 50%; background: var(--panel); }
+.sr-step.is-done .sr-dot { border-color: var(--sr-done); background: var(--sr-done); }
+.sr-step.is-next .sr-dot { border-color: var(--sr-next); }
+.sr-step.is-next span { color: var(--sr-next); font-weight: 700; }
+.sr-counts { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.sr-body { display: flex; flex-direction: column; gap: 14px; padding: 4px 16px 16px; }
+.sr-group { padding-top: 12px; border-top: 1px solid var(--line); }
+.sr-h { margin: 0 0 8px; font-size: 13.5px; }
+.sr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sr-actions a.rs-x { text-decoration: none; }
+.sr-note { width: 100%; min-height: 70px; margin-bottom: 8px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text); font: inherit; resize: vertical; }
+.sr-danger { color: #c4524a; }
+@media (max-width: 760px) {
+  .sr-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who counts" "rail rail"; }
+  .sr-who { grid-area: who; } .sr-counts { grid-area: counts; } .sr-rail { grid-area: rail; }
+}
+
+/* 🖼️ the editor's view of a client's picks (EditorPortal.jsx): previews, the studio's note */
+.ep-note { margin: 12px 0; padding: 10px 14px; border-left: 4px solid #c99032; border-radius: 8px; background: color-mix(in srgb, #c99032 10%, transparent); }
+.ep-note p { margin: 4px 0 0; white-space: pre-wrap; }
+.ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.ep-tile { overflow: hidden; border: 1px solid var(--line, #d5dce1); border-radius: 12px; }
+.ep-tile img, .ep-tile-none { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: #00000014; }
+.ep-tile-none { display: flex; align-items: center; justify-content: center; font-size: 12.5px; color: #6d7880; }
+.ep-tile-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; }
+.ep-tile-foot .rs-x { margin-left: auto; }
+
+/* 📡 the photographer's camera FTP switch (PhotographerPortal.jsx) */
+.ph-ftp-on { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; font-weight: 600; cursor: pointer; }
+.ph-ftp-on input { width: 16px; height: 16px; }

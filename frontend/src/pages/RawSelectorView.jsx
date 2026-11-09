@@ -9,8 +9,8 @@ import { useState, useEffect, useRef } from 'react';
 import { api, fmtDateTime } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
 import './rawsel.css';
+import ShootRail from '../components/ShootRail';
 
-const gb = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.round(b / 1e6)} MB`);
 const day = (d) => (d ? fmtDateTime(d, { dateOnly: true }) : '');
 
 export default function RawSelectorView() {
@@ -155,28 +155,8 @@ export default function RawSelectorView() {
 
       <section className="rs-card">
         <h2 className="rs-h">📸 Clients</h2>
-        <p className="rs-sub">Upload JPEG + RAW together into a client's album. When the client sends their selection, the editor sees it.</p>
-        {clients === null ? <div className="rs-muted">Loading…</div>
-          : clients.length === 0 ? <div className="rs-muted">No albums with RAW files or selections yet.</div>
-            : (
-              <div className="rs-table-wrap">
-                <table className="rs-table">
-                  <thead><tr><th>Client</th><th>Picked</th><th>RAWs for the editor</th><th>All RAWs</th><th>Selection sent</th><th>RAWs deleted on</th></tr></thead>
-                  <tbody>
-                    {clients.map(c => (
-                      <tr key={c.id}>
-                        <td className="rs-strong">{c.name}</td>
-                        <td data-label="Picked">{c.selected || '—'}</td>
-                        <td data-label="RAWs for the editor">{c.selected ? <span className={c.selectedWithRaw < c.selected ? 'rs-warn' : ''}>{c.selectedWithRaw} / {c.selected}</span> : '—'}</td>
-                        <td data-label="All RAWs">{c.raws ? `${c.raws} · ${gb(c.bytes)}` : '—'}</td>
-                        <td data-label="Selection sent">{c.sentAt ? day(c.sentAt) : 'Not yet'}</td>
-                        <td data-label="RAWs deleted on">{c.deleteAfter ? day(c.deleteAfter) : 'After delivery + 30 days'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        <p className="rs-sub">One row per client, from the upload to the delivered gallery. Open a row for its downloads, your note for the editor, and the RAW files.</p>
+        <ShootRail clients={clients} reload={load} />
       </section>
     </div>
   );

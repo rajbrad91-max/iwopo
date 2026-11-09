@@ -932,8 +932,11 @@ export const api = {
   },
   updateCrew: (id, data) => request(`/crew/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCrew: (id) => request(`/crew/${id}`, { method: 'DELETE' }),
+  crewFtp: (id) => request(`/crew/${id}/ftp`),   // 📡 camera FTP (Raw Selector)
+  crewFtpReset: (id) => request(`/crew/${id}/ftp`, { method: 'POST' }),
   leadCrew: (leadId) => request(`/crew/lead/${leadId}`),
   assignCrew: (leadId, data) => request(`/crew/lead/${leadId}`, { method: 'POST', body: JSON.stringify(data) }),
+  crewUploads: (id, uploads) => request(`/crew/assignment/${id}/uploads`, { method: 'PATCH', body: JSON.stringify({ uploads }) }),   // 📸 Raw Selector
   unassignCrew: (id) => request(`/crew/assignment/${id}`, { method: 'DELETE' }),
   checkinInfo: (token) => request(`/crew/checkin/${token}`, { public: true }),
   checkinAction: (token, data) => request(`/crew/checkin/${token}`, { method: 'POST', public: true, body: JSON.stringify(typeof data === 'string' ? { action: data } : data) }),
@@ -1008,6 +1011,12 @@ export const api = {
   rawselStatus: (albumId) => request(`/rawsel/albums/${albumId}`),
   rawselDeleteAll: (albumId) => request(`/rawsel/albums/${albumId}`, { method: 'DELETE' }),
   rawselOverview: () => request('/rawsel/overview'),
+  rawselNote: (albumId, note) => request(`/rawsel/albums/${albumId}/note`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  rawselDeleteRaws: (albumId, scope) => request(`/rawsel/albums/${albumId}/raws?scope=${scope}`, { method: 'DELETE' }),
+  rawselBookings: () => request('/rawsel/bookings'),
+  rawselShootBegin: (leadId, files) => request(`/rawsel/shoots/${leadId}/begin`, { method: 'POST', body: JSON.stringify({ files }) }),
+  rawselShootComplete: (leadId, items) => request(`/rawsel/shoots/${leadId}/complete`, { method: 'POST', body: JSON.stringify({ items }) }),
+  rawselShootNotify: (leadId, client) => request(`/rawsel/shoots/${leadId}/notify`, { method: 'POST', body: JSON.stringify({ client }) }),
   // 🤖 AI Agent (private)
   agentUsage: () => request('/agent/usage'),
   agentChat: (messages, voice = false) => request('/agent/chat', { method: 'POST', body: JSON.stringify({ messages, voice }) }),

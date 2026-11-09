@@ -59,6 +59,7 @@ export default function EditorPortal() {
   const [tabs, setTabs] = useState([]);              // delivery tabs already in the client's gallery
   const [tab, setTab] = useState('Photos');
   const [sending, setSending] = useState('');
+  const [sent, setSent] = useState('');            // 📣 the editor has sent it
 
   const loadAll = () => Promise.all([call('/me'), call('/clients')])
     .then(([m, c]) => { setMe(m); setClients(c.clients); })
@@ -80,7 +81,7 @@ export default function EditorPortal() {
     setProgress('');
     try {
       const [d, t] = await Promise.all([call(`/clients/${c.id}`), call(`/clients/${c.id}/tabs`)]);
-      setOpen(d); setTabs(t.tabs); setSending('');
+      setOpen(d); setTabs(t.tabs); setSending(''); setSent('');
     } catch (x) { setErr(x.message); }
   }
 
@@ -127,6 +128,15 @@ export default function EditorPortal() {
     setProgress(`✅ ${files.length} downloads started — they land in your Downloads folder`);
   }
 
+  /** 📣 everything is in: the gallery goes to the studio — and the client, if chosen */
+  async function send(client) {
+    setSent(''); setErr('');
+    try {
+      const r = await call(`/clients/${open.id}/deliver/finish`, { method: 'POST', body: { client } });
+      setSent(`✅ Sent — ${r.count} edited photo${r.count === 1 ? '' : 's'}. The studio has been told${client ? (r.clientEmailed ? ', and the client too' : ' (the client could not be emailed)') : ''}.`);
+    } catch (x) { setErr(x.message); }
+  }
+
   /** ⬆️ Edited photos → storage directly → into the chosen tab (logo printed there). */
   async function deliver(e) {
     const files = [...(e.target.files || [])].filter(f => /\.(jpe?g|png)$/i.test(f.name));
@@ -146,8 +156,7 @@ export default function EditorPortal() {
         done++;
       } catch (x) { failed.push(`${f.name}: ${x.message}`); }
     }
-    if (done) await call(`/clients/${open.id}/deliver/finish`, { method: 'POST', body: { tab: folder, count: done } }).catch(() => {});
-    setSending(failed.length ? `⚠️ ${done} delivered, ${failed.length} failed — ${failed.slice(0, 3).join(' · ')}` : `✅ ${done} photo${done === 1 ? '' : 's'} delivered to "${folder}" — the studio and the client have been told`);
+    setSending(failed.length ? `⚠️ ${done} uploaded, ${failed.length} failed — ${failed.slice(0, 3).join(' · ')}` : `✅ ${done} photo${done === 1 ? '' : 's'} uploaded to "${folder}". Add more folders, then press Notify when everything is in.`);
     call(`/clients/${open.id}/tabs`).then(t => setTabs(t.tabs)).catch(() => {});
   }
 
@@ -185,24 +194,36 @@ export default function EditorPortal() {
           {progress && <div className="ep-progress">{progress}</div>}
           <div className="ep-deliver">
             <h3 className="rs-h">⬆️ Deliver edited photos</h3>
-            <p className="rs-sub">Each folder becomes a tab in {open.name}'s gallery. The studio's logo is added to every photo.</p>
+            <p className="rs-sub">Each folder becomes a tab in {open.name}'s gallery — Photos, Stories, Posters, or any name. The studio's logo is added to every photo. Press Notify when everything is in.</p>
             <div className="rs-add">
               <input list="ep-tabs" value={tab} onChange={e => setTab(e.target.value)} placeholder="Folder name, e.g. Photos" aria-label="Folder name" maxLength={60} />
-              <datalist id="ep-tabs">{[...new Set(['Photos', 'Instagram', 'Stories', ...tabs.map(t => t.name)])].map(n => <option key={n} value={n} />)}</datalist>
+              <datalist id="ep-tabs">{[...new Set(['Photos', 'Stories', 'Posters', ...tabs.map(t => t.name)])].map(n => <option key={n} value={n} />)}</datalist>
               <label className={`rs-btn rs-file ${tab.trim() ? '' : 'is-off'}`}>Choose edited photos
                 <input type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple hidden disabled={!tab.trim()} onChange={deliver} />
               </label>
             </div>
             {sending && <div className="ep-progress">{sending}</div>}
-            {tabs.length > 0 && <div className="rs-muted">Already delivered: {tabs.map(t => `${t.name} (${t.photos})`).join(' · ')}</div>}
+            {tabs.length > 0 && <div className="rs-muted">Uploaded so far: {tabs.map(t => `${t.name} (${t.photos})`).join(' · ')}</div>}
+            {tabs.length > 0 && (
+              <div className="ph-notify">
+                <button className="rs-btn" type="button" onClick={() => send(false)}>Notify owner</button>
+                <button className="rs-btn" type="button" onClick={() => send(true)}>Notify owner + client</button>
+              </div>
+            )}
+            {sent && <div className="rs-ok">{sent}</div>}
           </div>
+          {open.studioNote && <div className="ep-note"><b>📝 From the studio</b><p>{open.studioNote}</p></div>}
           <h3 className="rs-h ep-gap">🎞️ RAW files to edit</h3>
-          <ul className="rs-list">
+          {/* 🖼️ each pick as the client saw it (a 2200px preview); Download is the RAW */}
+          <ul className="ep-grid">
             {open.files.map(f => (
-              <li key={f.id} className="rs-row">
-                <span className="rs-strong">{f.name}</span>
-                <span className="rs-muted">{mb(f.size)}</span>
-                <button className="rs-x" type="button" onClick={() => downloadOne(f).catch(x => setErr(x.message))}>Download</button>
+              <li key={f.id} className="ep-tile">
+                {f.preview ? <img src={f.preview} alt={f.name} loading="lazy" /> : <div className="ep-tile-none">No preview</div>}
+                <div className="ep-tile-foot">
+                  <span className="rs-strong">{f.name}</span>
+                  <span className="rs-muted">{mb(f.size)}</span>
+                  <button className="rs-x" type="button" onClick={() => downloadOne(f).catch(x => setErr(x.message))}>Download RAW</button>
+                </div>
               </li>
             ))}
           </ul>

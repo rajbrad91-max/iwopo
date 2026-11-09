@@ -1441,6 +1441,8 @@
 .bd-crew-in { font-size: 11.5px; font-weight: 700; color: var(--teal); white-space: nowrap; }
 .bd-crew-line { font-size: 13px; color: var(--text); opacity: .9; margin: 4px 0; overflow-wrap: anywhere; }
 .bd-crew-line a { color: inherit; }
+.bd-crew-uploads { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }   /* 📸 Raw Selector */
+.bd-crew-uploads input { width: 16px; height: 16px; accent-color: var(--teal); }
 .bd-assign { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bd-assign label { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); min-width: 0; }
 .bd-assign .bd-input { flex: none; width: 100%; height: 36px; box-sizing: border-box; }   /* a box keeps its own height in a stacked label */
@@ -2631,4 +2633,13 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .gdl-item { padding: 3px 9px; border-radius: 7px; background: color-mix(in srgb, var(--teal) 12%, transparent); color: var(--text); font-size: 12px; }
 .gdl-item.is-zip { background: color-mix(in srgb, #c99032 18%, transparent); font-weight: 600; }
 @media (max-width: 600px) { .gdl { padding: 18px 16px; } .gdl-when { margin-left: 0; width: 100%; } }
+
+/* 📡 a crew member's camera FTP login (components/CameraFtpBox.jsx) */
+.cr-icon-btn.is-on { border-color: #4f9a6a; }
+.cftp { width: 100%; max-width: 460px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.cftp-note { margin: 10px 0; color: var(--muted); font-size: 13.5px; }
+.cftp-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 12px 0; font-size: 14px; }
+.cftp-grid dt { color: var(--muted); }
+.cftp-grid dd { margin: 0; font-weight: 600; word-break: break-all; }
+.cftp-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
 

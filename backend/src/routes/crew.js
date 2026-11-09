@@ -10,6 +10,10 @@ import { clientBaseUrl } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
 import { mine, mineVia } from '../lib/tenancy.js';
 import { limit } from '../middleware/rateLimit.js';
+import { getFeatures } from '../lib/entitlements.js';
+import { FTP_HOST, ftpUser, setFtpLogin, removeFtpLogin } from '../lib/cameraFtp.js';
+import { openPassword } from '../lib/sharePassword.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 function vid(req) {
@@ -121,10 +125,16 @@ function shapeRow(a) {
 /* ── 👷 CREW MEMBERS (vendor roster) ── */
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const crew = await prisma.crew_members.findMany({
+    const rows = await prisma.crew_members.findMany({
       where: { vendor_id: Number(vid(req)) },    // 🔒 tenancy
       orderBy: { name: 'asc' },
+      select: { id: true, vendor_id: true, name: true, role: true, phone: true, email: true, created_at: true, password_hash: true, ftp_password_enc: true },
     });
+    /* 🔒 the photographer's login and FTP password never leave the server in a list — only whether they exist */
+    const crew = rows.map(r => ({
+      id: r.id, vendor_id: r.vendor_id, name: r.name, role: r.role, phone: r.phone, email: r.email, created_at: r.created_at,
+      has_login: !!r.password_hash, has_ftp: !!r.ftp_password_enc,
+    }));
     res.json({ crew });
   } catch (e) { serverError(res, e); }
 });
@@ -254,7 +264,29 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     await prisma.crew_members.delete({ where: { id, ...mine(v) } });
+    try { removeFtpLogin(id); } catch (e) { quiet('crew · removeFtpLogin')(e); }   // 📡 their camera FTP login goes too
     res.json({ ok: true });
+  } catch (e) { serverError(res, e); }
+});
+
+/* ── 📡 camera FTP (Raw Selector, private): the vendor creates a crew member's login and sets it on the camera ── */
+async function ftpMember(req, res) {
+  const feats = await getFeatures(vid(req));
+  if (!feats.has('*') && !feats.has('rawsel')) { res.status(402).json({ error: 'The Raw Selector is not enabled on this account.' }); return null; }
+  const cm = await prisma.crew_members.findFirst({ where: { id: Number(req.params.id), vendor_id: vid(req) }, select: { id: true, ftp_password_enc: true } });   // 🔒
+  if (!cm) { res.status(404).json({ error: 'Not found' }); return null; }
+  return cm;
+}
+router.get('/:id/ftp', requireAuth, async (req, res) => {
+  try {
+    const cm = await ftpMember(req, res); if (!cm) return;
+    res.json(cm.ftp_password_enc ? { host: FTP_HOST, port: 21, user: ftpUser(cm.id), password: openPassword(cm.ftp_password_enc) } : { host: FTP_HOST, port: 21, user: null });
+  } catch (e) { serverError(res, e); }
+});
+router.post('/:id/ftp', requireAuth, async (req, res) => {
+  try {
+    const cm = await ftpMember(req, res); if (!cm) return;
+    res.json({ host: FTP_HOST, port: 21, ...await setFtpLogin(cm.id) });
   } catch (e) { serverError(res, e); }
 });
 
@@ -319,6 +351,19 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       return res.status(409).json({ error: 'This person is already assigned to this booking' });
     }
     res.status(201).json({ assignment });
+  } catch (e) { serverError(res, e); }
+});
+
+// 📸 Raw Selector (private): whether this crew member uploads the booking's photos — or the vendor does
+router.patch('/assignment/:id/uploads', requireAuth, async (req, res) => {
+  try {
+    const feats = await getFeatures(vid(req));
+    if (!feats.has('*') && !feats.has('rawsel')) return res.status(402).json({ error: 'The Raw Selector is not enabled on this account.' });
+    const id = Number(req.params.id);
+    const row = await prisma.lead_crew.findUnique({ where: { id }, select: { leads: { select: { vendor_id: true } } } });
+    if (!row || row.leads?.vendor_id !== vid(req)) return res.status(404).json({ error: 'Not found' });   // 🔒 tenancy
+    const updated = await prisma.lead_crew.update({ where: { id }, data: { uploads: !!req.body?.uploads }, select: { id: true, uploads: true } });
+    res.json(updated);
   } catch (e) { serverError(res, e); }
 });
 

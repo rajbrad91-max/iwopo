@@ -58,6 +58,7 @@ import PpmBoard from '../components/PpmBoard';
 import { applyTheme } from '../lib/theme';
 import GalleryDownloadLog from '../components/GalleryDownloadLog';
 import { MailIcon, ChartIcon, GearIcon } from '../components/TileIcons';
+import CameraFtpBox from '../components/CameraFtpBox';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -436,11 +437,11 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'leads' ? (
           <LeadsView routeLead={route.lead} onOpenLead={(id) => navigate({ tab: 'leads', lead: id ? String(id) : null })} />
         ) : tab === 'bookings' ? (
-          <BookingsView routeBooking={route.booking} onOpenBooking={(id) => navigate({ tab: 'bookings', booking: id ? String(id) : null })} />
+          <BookingsView routeBooking={route.booking} onOpenBooking={(id) => navigate({ tab: 'bookings', booking: id ? String(id) : null })} rawsel={has('rawsel')} />
         ) : tab === 'contracts' ? (
           <ContractsTab />
         ) : tab === 'crew' ? (
-          <CrewView />
+          <CrewView rawsel={has('rawsel')} />
         ) : tab === 'plans' ? (
           <PlansView />
         ) : tab === 'occasions' ? (
@@ -2406,7 +2407,8 @@ function AlbumDetail({ albumId, onBack }) {
   );
 }
 
-function CrewView() {
+function CrewView({ rawsel = false }) {
+  const [ftpFor, setFtpFor] = useState(null);   // 📡 the crew member whose camera FTP login is open
   const dialog = useDialog();
   const [tab, setTab] = useState('upcoming'); // upcoming | past | team
   const [crew, setCrew] = useState([]);
@@ -2647,6 +2649,7 @@ function CrewView() {
                     <td className="cr-phone">{c.phone || '—'}</td>
                     <td className="cr-email">{c.email || '—'}</td>
                     <td className="cr-acts">
+                      {rawsel && <button type="button" className={`cr-icon-btn${c.has_ftp ? ' is-on' : ''}`} onClick={() => setFtpFor(c)} title="Camera FTP login">📡</button>}
                       <button type="button" className="cr-icon-btn" onClick={() => startEdit(c)} title="Edit this person">✏️</button>
                       <button type="button" className="cr-icon-btn" onClick={() => del(c.id)} title="Remove from your team">🗑️</button>
                     </td>
@@ -2730,6 +2733,7 @@ function CrewView() {
           ))}
         </div>
       )}
+      {ftpFor && <CameraFtpBox member={ftpFor} onClose={() => setFtpFor(null)} />}
     </div>
   );
 }
@@ -4632,7 +4636,7 @@ function crewStatus(c) {
   return { label: `${total} assigned`, cls: 'trial', icon: '👥' };
 }
 
-function BookingsView({ routeBooking, onOpenBooking }) {
+function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
   const dialog = useDialog();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -4658,7 +4662,7 @@ function BookingsView({ routeBooking, onOpenBooking }) {
 
   // a booking opens as its own page, not the lead editor — the sale is done, so
   // the details are shown rather than offered up for editing
-  if (routeBooking) return <BookingDetail key={routeBooking} id={routeBooking} />;   // Bookings in the sidebar goes back
+  if (routeBooking) return <BookingDetail key={routeBooking} id={routeBooking} rawsel={rawsel} />;   // Bookings in the sidebar goes back
 
   const now = new Date();
   const inMonth = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
@@ -6132,7 +6136,7 @@ function ReferForm() {
  * one marked, and the only things you can change are the ones that genuinely
  * move after a booking — money in, and who is working the day.
  */
-function BookingDetail({ id }) {
+function BookingDetail({ id, rawsel = false }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
@@ -6164,6 +6168,12 @@ function BookingDetail({ id }) {
       await load(); flash('✅ Assigned');
     } catch (e) { flash('⚠️ ' + e.message); }
     finally { assignLock.current = false; setBusy(false); }
+  }
+  /* 📸 Raw Selector (private): this person uploads the booking's photos at /photographer — or, off, the vendor does */
+  async function setUploads(c, uploads) {
+    setD(x => ({ ...x, crew: x.crew.map(k => (k.id === c.id ? { ...k, uploads } : k)) }));   // ticked at once; the save follows
+    try { await api.crewUploads(c.id, uploads); flash(uploads ? `📤 ${c.name} uploads the photos` : '📤 You upload the photos'); }
+    catch (e) { flash(`⚠️ ${e.message}`); load(); }   // not saved: show what is really stored
   }
   async function removeCrew(aid) {
     setBusy(true);
@@ -6271,6 +6281,12 @@ function BookingDetail({ id }) {
                       <button className="bd-x" onClick={() => removeCrew(c.id)} disabled={busy} title="Unassign this team member from the day">✕</button>
                     </div>
                     {(c.duty || c.member_role) && <div className="bd-crew-line">🎬 {[...new Set([c.duty, c.member_role].filter(Boolean))].join(' · ')}</div>}
+                    {rawsel && (
+                      <label className="bd-crew-uploads" title="Signs in at /photographer with the email on their card">
+                        <input type="checkbox" checked={!!c.uploads} disabled={busy} onChange={e => setUploads(c, e.target.checked)} />
+                        📤 Uploads the photos
+                      </label>
+                    )}
                     {(c.arrive_time || c.leave_time) && (
                       <div className="bd-crew-line">🕐 {[c.arrive_time, c.leave_time].filter(Boolean).map(fmtTime).join(' – ')}</div>
                     )}

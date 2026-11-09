@@ -29,6 +29,9 @@ import { clientLinksFor } from '../lib/clientLinks.js';
 import { photoZip, zipParts } from '../lib/photoZip.js';
 import { cookieOf } from '../lib/gateCookie.js';
 import { recordDownload, markIfAllDownloaded } from '../lib/galleryDownloads.js';
+import { tellEditors } from '../lib/shoots.js';
+import { sendAsVendor } from './email.js';
+import { quiet } from '../lib/quiet.js';
 
 /* A guest uploads a selfie here with no account and no token beyond the album
    link, so this is the one upload an anonymous caller can reach. It had no size
@@ -201,6 +204,8 @@ router.param('token', async (req, res, next, token) => {
 });
 
 async function findAlbum(token) {
+  /* 📸 'shoot' too (Raj, 2026-11-09): a Raw Selector shoot is where the client picks for the editor — it has the
+     same two passwords as a gallery and no selfie gate. A live shoot still never opens here. */
   /* ⚠️ kind: gallery, and this one line is load-bearing.
      Every public gallery route resolves its album through here, and without
      the filter a LIVE SHOOT token opened as an ordinary gallery: the whole
@@ -208,7 +213,7 @@ async function findAlbum(token) {
      live shoot does not set. The selfie gate was bypassable by pasting the
      link into /g/ instead of /live/. A live shoot is reached only by its own
      route, which proves who you are before showing you anything. */
-  return prisma.albums.findFirst({ where: { public_token: token, kind: 'gallery' } });
+  return prisma.albums.findFirst({ where: { public_token: token, kind: { in: ['gallery', 'shoot'] } } });
 }
 
 // 🌐 whole-gallery index: list all albums for a vendor (covers + names + album tokens)
@@ -787,6 +792,9 @@ router.post('/:token/selection', limit({ name: 'gallery-selection', max: 60, win
       { type: 'album', id: a.id },
     );
 
+    // 🎞️ Raw Selector: the editors are emailed when the picks have RAWs behind them (lib/shoots.js) — not awaited either
+    tellEditors({ v: a.vendor_id, album: a, count: keep.length, appUrl: (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, ''), sendAsVendor })
+      .catch(quiet('gallery · tellEditors'));
     res.json({ ok: true, count: keep.length });
   } catch (e) { serverError(res, e); }
 });

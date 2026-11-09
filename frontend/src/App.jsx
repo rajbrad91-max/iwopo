@@ -24,6 +24,7 @@ const KnowledgeFill = lazy(() => import('./pages/KnowledgeFill'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const EditorPortal = lazy(() => import('./pages/EditorPortal'));
+const PhotographerPortal = lazy(() => import('./pages/PhotographerPortal'));
 import { getUser, sessionMismatch, clearSession, clearTabSession } from './lib/api';
 
 /* ⚡ Every page loads only when it is visited (2026-10-10). Before, the
@@ -112,6 +113,7 @@ function AppRoutes() {
   // sees only themselves after showing their face once
   // 👨‍💻 the photo editor's portal (Raw Selector) — its own sign-in, nothing else
   if (window.location.pathname.match(/^\/editor\/?$/)) return <EditorPortal />;
+  if (window.location.pathname.match(/^\/photographer\/?$/)) return <PhotographerPortal />;   // 📸 Raw Selector
   // 👀 TEMPORARY (2026-10-11): the tester activity report — unlinked, Super Admin only
   if (window.location.pathname.match(/^\/x\/tester-activity\/?$/)) return user ? <Suspense fallback={null}><TesterActivity /></Suspense> : <Login onLogin={setUser} onBack={() => { window.location.href = '/panel'; }} />;
   const lv = window.location.pathname.match(/^\/live\/([A-Za-z0-9]+)/);

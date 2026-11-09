@@ -18,6 +18,15 @@ import sharp from 'sharp';
 import { withLogo, LOGO_DEFAULTS } from '../lib/rawDelivery.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
+import jwt from 'jsonwebtoken';
+import { tokenStillValid } from '../lib/tokenRevocation.js';
+import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
+import { getFeatures } from '../lib/entitlements.js';
+import { photoZip } from '../lib/photoZip.js';
+import { shootFor, uploadBegin, uploadComplete, announceUpload } from '../lib/shoots.js';
+import { notify } from './notifications.js';
+import { sendAsVendor } from './email.js';
+import { openPassword } from '../lib/sharePassword.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -182,33 +191,150 @@ router.delete('/editors/:id', requireAuth, async (req, res) => {
 });
 
 /** Every album with RAWs or a client selection: where each client stands. */
+/* ── 🛤️ the rail (Raj, 2026-11-09) ──────────────────────────────────────
+   One row per client: every shoot (lib/shoots.js), and any older album with RAWs or a selection. A row keeps its
+   steps — uploaded, told, picked, delivered, RAWs removed — and stays as the client's record until the vendor
+   removes it. */
 router.get('/overview', requireAuth, async (req, res) => {
   try {
     const v = vid(req);
     const albums = await prisma.albums.findMany({
-      where: { vendor_id: v, OR: [{ raw_files: { some: {} } }, { selections: { some: {} } }] },
-      select: { id: true, title: true, selection_notes: { select: { updated_at: true } } },
+      where: { vendor_id: v, OR: [{ kind: 'shoot' }, { raw_files: { some: {} } }, { selections: { some: {} } }] },
+      select: {
+        id: true, title: true, kind: true, uploaded_at: true, editor_note: true, raws_removed_at: true, raws_removed_scope: true,
+        public_token: true, guest_password_enc: true, admin_password_enc: true,
+        selection_notes: { select: { updated_at: true } },
+        leads: { select: { id: true, event_type: true, event_date: true } },
+        deliveries: { where: { kind: 'gallery' }, select: { id: true, created_at: true }, orderBy: { id: 'desc' }, take: 1 },
+        _count: { select: { photos: true } },
+      },
       orderBy: { id: 'desc' },
     });
     const out = [];
     for (const a of albums) {
       await pairAlbum(a.id, v);
       const [raws, picks] = await Promise.all([
-        prisma.raw_files.findMany({ where: { album_id: a.id, vendor_id: v }, select: { photo_id: true, size_bytes: true, delete_after: true } }),
+        prisma.raw_files.findMany({ where: { album_id: a.id, vendor_id: v }, select: { photo_id: true, size_bytes: true } }),
         prisma.selections.findMany({ where: { album_id: a.id }, select: { photo_id: true } }),
       ]);
       const picked = new Set(picks.map(p => p.photo_id));
       out.push({
-        id: a.id, name: a.title,
+        id: a.id, name: a.title, shoot: a.kind === 'shoot', leadId: a.leads?.id || null,
+        event: a.leads?.event_type || '', date: a.leads?.event_date || null,
+        jpegs: a._count.photos,
         raws: raws.length,
         bytes: raws.reduce((t, r) => t + Number(r.size_bytes || 0), 0),
         selected: picked.size,
         selectedWithRaw: raws.filter(r => r.photo_id && picked.has(r.photo_id)).length,
+        uploadedAt: a.uploaded_at,
         sentAt: a.selection_notes?.updated_at || null,
-        deleteAfter: raws.map(r => r.delete_after).filter(Boolean).sort()[0] || null,
+        delivered: a.deliveries[0] ? { id: a.deliveries[0].id, at: a.deliveries[0].created_at } : null,
+        rawsRemoved: a.raws_removed_at ? { at: a.raws_removed_at, scope: a.raws_removed_scope } : null,
+        note: a.editor_note || '',
+        // 🔗 the client's page and both passwords — the vendor's own, to pick on the client's behalf
+        client: a.kind === 'shoot' ? { link: `/g/${a.public_token}`, view: openPassword(a.guest_password_enc) || '', pick: openPassword(a.admin_password_enc) || '' } : null,
       });
     }
     res.json({ clients: out });
+  } catch (e) { serverError(res, e); }
+});
+
+/** 📝 a note for the editor, shown with the client's RAWs */
+router.put('/albums/:albumId/note', requireAuth, async (req, res) => {
+  try {
+    const a = await ownAlbum(req, res); if (!a) return;
+    await prisma.albums.update({ where: { id: a.id }, data: { editor_note: String(req.body?.note || '').trim().slice(0, 2000) || null } });
+    res.json({ ok: true });
+  } catch (e) { serverError(res, e); }
+});
+
+/** 🗑️ remove RAWs — all of them, or only those the client did not pick — and keep the record on the row */
+router.delete('/albums/:albumId/raws', requireAuth, async (req, res) => {
+  try {
+    const a = await ownAlbum(req, res); if (!a) return;
+    const scope = req.query.scope === 'unpicked' ? 'unpicked' : 'all';
+    const where = { album_id: a.id, vendor_id: vid(req) };
+    if (scope === 'unpicked') {
+      const picks = await prisma.selections.findMany({ where: { album_id: a.id }, select: { photo_id: true } });
+      where.OR = [{ photo_id: null }, { photo_id: { notIn: picks.map(p => p.photo_id) } }];
+    }
+    const deleted = await deleteRaws(where);
+    await prisma.albums.update({ where: { id: a.id }, data: { raws_removed_at: new Date(), raws_removed_scope: scope } });
+    res.json({ deleted, scope });
+  } catch (e) { serverError(res, e); }
+});
+
+/** ⬇️ the vendor's Zips: ?what= jpeg (the JPEGs) · raw (every RAW) · picked (RAWs of the client's picks) · both.
+ *  A download is a page visit, so the login comes as ?token= — checked exactly as the selection Zip does. */
+router.get('/albums/:albumId/zip', async (req, res) => {
+  const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
+  let user;
+  try { user = jwt.verify(tok, process.env.JWT_SECRET || 'dev-secret-change-me'); } catch { return downloadFailed(req, res, 401, 'Invalid token', 'Your sign-in has expired — open iwopo and try again.'); }
+  if (!await tokenStillValid(user)) return downloadFailed(req, res, 401, 'Session ended', 'Your sign-in has expired — open iwopo and try again.');
+  try {
+    const feats = await getFeatures(user.vendor_id);
+    if (!feats.has('*') && !feats.has('rawsel')) return downloadFailed(req, res, 402, 'Not enabled', 'The Raw Selector is not enabled on this account.');
+    const a = await prisma.albums.findFirst({ where: { id: Number(req.params.albumId), vendor_id: user.vendor_id }, select: { id: true, title: true } });   // 🔒
+    if (!a) return downloadFailed(req, res, 404, 'Not found', "This isn't available any more.");
+    const what = ['jpeg', 'raw', 'picked', 'both'].includes(req.query.what) ? req.query.what : 'jpeg';
+    const files = [];
+    if (what === 'jpeg' || what === 'both') {
+      const photos = await prisma.photos.findMany({ where: { album_id: a.id, vendor_id: user.vendor_id }, select: { id: true, filename: true, storage_path: true }, orderBy: { filename: 'asc' } });
+      for (const p of photos) {
+        const parts = String(p.storage_path || '').split('/').filter(Boolean);
+        if (parts.length >= 3) files.push({ key: objects.keyFor(user.vendor_id, 'galleries', parts[1], parts[2]), name: `${what === 'both' ? 'JPEG/' : ''}${p.filename || `photo-${p.id}.jpg`}` });
+      }
+    }
+    if (what !== 'jpeg') {
+      const where = { album_id: a.id, vendor_id: user.vendor_id };
+      if (what === 'picked') where.photo_id = { in: (await prisma.selections.findMany({ where: { album_id: a.id }, select: { photo_id: true } })).map(s => s.photo_id) };
+      const raws = await prisma.raw_files.findMany({ where, select: { filename: true, object_key: true }, orderBy: { filename: 'asc' } });
+      for (const r of raws) files.push({ key: r.object_key, name: `${what === 'both' ? 'RAW/' : ''}${r.filename}` });
+    }
+    if (!files.length) return downloadFailed(req, res, 404, 'Nothing to download', 'There is nothing to download here yet.');
+    const label = { jpeg: 'jpegs', raw: 'raws', picked: 'picked-raws', both: 'jpegs-and-raws' }[what];
+    res.attachment(`${`${a.title || 'shoot'}-${label}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.zip`);
+    const archive = photoZip();   // stored: photographs and RAWs are already compressed (lib/photoZip.js)
+    archive.on('error', () => { try { res.status(500).end(); } catch { /* stream already closed */ } });
+    archive.pipe(res);
+    for (const f of files) {
+      try { archive.append((await objects.getStream(objects.PRIVATE, f.key)).stream, { name: f.name }); }
+      catch { /* a missing file is left out rather than ending the Zip */ }
+    }
+    archive.finalize();
+  } catch (e) { downloadCrashed(req, res, e); }
+});
+
+/* ── 📸 the vendor's own upload: a shoot for a booking nobody else uploads (lib/shoots.js, shared with
+   routes/photographer.js) ── */
+router.get('/bookings', requireAuth, async (req, res) => {
+  try {
+    const leads = await prisma.leads.findMany({
+      where: { vendor_id: vid(req), status: 'booked' },
+      select: { id: true, name: true, event_type: true, event_date: true, albums: { where: { kind: 'shoot' }, select: { id: true } } },
+      orderBy: { event_date: 'desc' },
+      take: 300,
+    });
+    res.json({ bookings: leads.map(l => ({ id: l.id, name: l.name || 'Client', event: l.event_type || '', date: l.event_date, hasShoot: l.albums.length > 0 })) });
+  } catch (e) { serverError(res, e); }
+});
+const ownShoot = async (req, res) => {
+  const a = await shootFor(vid(req), Number(req.params.leadId));
+  if (!a) res.status(404).json({ error: 'Booking not found' });
+  return a;
+};
+const answer = (res, out) => (out.status ? res.status(out.status).json(out) : res.json(out));
+router.post('/shoots/:leadId/begin', requireAuth, async (req, res) => {
+  try { const a = await ownShoot(req, res); if (!a) return; answer(res, await uploadBegin(vid(req), a, req.body?.files)); } catch (e) { serverError(res, e); }
+});
+router.post('/shoots/:leadId/complete', requireAuth, async (req, res) => {
+  try { const a = await ownShoot(req, res); if (!a) return; res.json(await uploadComplete(vid(req), a, req.body?.items)); } catch (e) { serverError(res, e); }
+});
+router.post('/shoots/:leadId/notify', requireAuth, async (req, res) => {
+  try {
+    const a = await ownShoot(req, res); if (!a) return;
+    const appUrl = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    answer(res, await announceUpload({ v: vid(req), album: a, who: req.user?.name || 'You', client: !!req.body?.client, appUrl, notify, sendAsVendor }));
   } catch (e) { serverError(res, e); }
 });
 
