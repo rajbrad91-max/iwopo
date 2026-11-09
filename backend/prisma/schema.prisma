@@ -66,6 +66,10 @@ model albums {
 
   raw_files raw_files[]
 
+  /// 🟢 how many photos the gallery held when every Zip had been downloaded (lib/galleryDownloads.js); the 📊 button
+  /// is green while it still holds exactly that many
+  downloads_complete_count Int?
+  gallery_downloads  gallery_downloads[]
   @@index([vendor_id], map: "idx_albums_vendor")
   @@index([vendor_id, kind], map: "idx_albums_kind")
 }
@@ -1735,5 +1739,26 @@ model client_links {
   footer_address String?  @db.VarChar(200)
   updated_at     DateTime @default(now()) @db.Timestamp(6)
   vendors        vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// 📊 A gallery's download log — the Studio feature gallery_insights (Raj, 2026-11-09): which photo, film or Zip was
+/// downloaded, from which IP and when. Written by lib/galleryDownloads.js; rows go with their gallery.
+model gallery_downloads {
+  id         Int      @id @default(autoincrement())
+  album_id   Int
+  photo_id   Int?
+  kind       String   @db.VarChar(10)
+  label      String   @db.VarChar(300)
+  event_id   Int?
+  part       Int?
+  parts      Int?
+  ip         String   @db.VarChar(64)
+  device     String?  @db.VarChar(20)
+  browser    String?  @db.VarChar(20)
+  place      String?  @db.VarChar(120)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  albums     albums   @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([album_id, created_at])
 }
 

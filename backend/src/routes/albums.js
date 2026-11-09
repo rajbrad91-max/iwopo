@@ -25,13 +25,14 @@ import bcrypt from 'bcryptjs';
 import { hashSharePassword, sealPassword, openPassword } from '../lib/sharePassword.js';
 import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { deviceOrAuth } from '../lib/deviceAuth.js';
-import { getFeatures } from '../lib/entitlements.js';
+import { getFeatures, gate } from '../lib/entitlements.js';
 import { renderTiers } from '../lib/photoSizes.js';
 import { enqueuePhotos } from '../lib/photoProcessor.js';
 import { recordObject } from '../lib/storageLedger.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
+import { downloadLog } from '../lib/galleryDownloads.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -227,6 +228,8 @@ router.get('/', requireAuth, async (req, res) => {
         photo_count: k.photo,
         video_count: k.video,
         selected_count: pickedBy.get(a.id) || 0,
+        // 🟢 every Zip downloaded, for the gallery as it is now (lib/galleryDownloads.js)
+        all_downloaded: a.downloads_complete_count != null && a.downloads_complete_count === k.photo + k.video,
       };
     });
     res.json({ albums: rows.map(publicAlbum) });
@@ -1697,6 +1700,18 @@ router.delete('/:id/selection', requireAuth, async (req, res) => {
 });
 
 // 📦 download the client's selected photos as a zip (token via header or ?token= for links)
+// 📊 a gallery's download log — the Studio feature gallery_insights (lib/galleryDownloads.js). Owner only.
+router.get('/:id/downloads', requireAuth, gate('gallery_insights'), async (req, res) => {
+  try {
+    const album = await prisma.albums.findFirst({
+      where: { id: Number(req.params.id), vendor_id: req.user.vendor_id },   // 🔒 tenancy — the vendor from the token
+      select: { id: true },
+    });
+    if (!album) return res.status(404).json({ error: 'Gallery not found' });
+    res.json(await downloadLog(album.id));
+  } catch (e) { serverError(res, e); }
+});
+
 router.get('/:id/selection.zip', async (req, res) => {
   const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;

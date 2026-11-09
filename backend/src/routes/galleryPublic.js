@@ -28,6 +28,7 @@ import { coverCandidates } from '../lib/coverImage.js';
 import { clientLinksFor } from '../lib/clientLinks.js';
 import { photoZip, zipParts } from '../lib/photoZip.js';
 import { cookieOf } from '../lib/gateCookie.js';
+import { recordDownload, markIfAllDownloaded } from '../lib/galleryDownloads.js';
 
 /* A guest uploads a selfie here with no account and no token beyond the album
    link, so this is the one upload an anonymous caller can reach. It had no size
@@ -439,6 +440,8 @@ router.get('/:token/download/:photoId', async (req, res) => {
     if (!p) return res.status(404).end();
 
     recordEvent(req, a.vendor_id, 'photo_download', { targetId: p.id, label: p.filename });
+    // 📊 Studio download log — once per download, not for each later piece of a resumed or streamed film
+    if (!req.headers.range || /^bytes=0-/.test(req.headers.range)) recordDownload(req, a, { kind: 'photo', label: p.filename, photoId: p.id });
 
     /* R2 first. This route was still reading the disk alone, so once storage
        stopped keeping a local copy a couple pressing download on a single
@@ -461,12 +464,23 @@ router.get('/:token/download/:photoId', async (req, res) => {
 /** what a Zip of this gallery holds: one tab (?event=ID) or every photograph, in the gallery's order */
 async function zipScope(a, eventParam) {
   const eventId = eventParam ? parseInt(eventParam, 10) : null;
-  if (!eventId) return { photos: await allPhotoRowsInAlbum(a.id), label: a.title || 'gallery' };
+  if (!eventId) return { photos: await allPhotoRowsInAlbum(a.id), label: a.title || 'gallery', name: 'All photos' };
   const ev = await prisma.album_events.findFirst({
     where: { id: eventId, album_id: a.id },    // 🔒 event must belong to this album
     select: { name: true },
   });
-  return { photos: await photosInEvent(a.id, eventId), label: ev ? `${a.title}-${ev.name}` : (a.title || 'gallery') };
+  return { photos: await photosInEvent(a.id, eventId), label: ev ? `${a.title}-${ev.name}` : (a.title || 'gallery'), name: ev?.name || 'Photos' };
+}
+
+/** 🟢 after a Zip: has every tab (every part) — or the whole gallery — now been downloaded? (lib/galleryDownloads.js) */
+async function checkAllDownloaded(a) {
+  const events = await prisma.album_events.findMany({ where: { album_id: a.id }, select: { id: true } });
+  const tabs = [];
+  for (const ev of events) {
+    const rows = await photosInEvent(a.id, ev.id);
+    if (rows.length) tabs.push({ eventId: ev.id, parts: zipParts(rows).length });
+  }
+  await markIfAllDownloaded(a.id, tabs, zipParts(await allPhotoRowsInAlbum(a.id)).length);
 }
 
 // 📦 how a download comes: one Zip, or parts of up to 4 GB each (lib/photoZip.js) — the gallery asks before it starts
@@ -488,17 +502,23 @@ router.get('/:token/download-all', async (req, res) => {
     if (!a) return downloadFailed(req, res, 404, 'not_found', "This gallery isn't available any more.");
     if (!viewOf(req, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
 
-    let { photos, label: zipLabel } = await zipScope(a, req.query.event);
+    let { photos, label: zipLabel, name: zipName } = await zipScope(a, req.query.event);
+    const eventId = req.query.event ? parseInt(req.query.event, 10) || null : null;
+    let part = null, parts = null;
     if (!photos.length) return downloadFailed(req, res, 404, 'No photos', 'There are no photos to download here yet.');
     if (req.query.part) {   // without ?part the whole set comes as one Zip, as before
-      const parts = zipParts(photos);
+      const cut = zipParts(photos);
       const n = parseInt(req.query.part, 10);
-      if (!(n >= 1 && n <= parts.length)) return downloadFailed(req, res, 404, 'No such part', 'That part of the download does not exist — open the gallery and choose again.');
-      photos = parts[n - 1].rows;
-      if (parts.length > 1) zipLabel = `${zipLabel}-part-${n}-of-${parts.length}`;
+      if (!(n >= 1 && n <= cut.length)) return downloadFailed(req, res, 404, 'No such part', 'That part of the download does not exist — open the gallery and choose again.');
+      photos = cut[n - 1].rows;
+      if (cut.length > 1) { zipLabel = `${zipLabel}-part-${n}-of-${cut.length}`; zipName = `${zipName} · part ${n} of ${cut.length}`; }
+      part = n; parts = cut.length;
     }
 
     recordEvent(req, a.vendor_id, 'zip_download', { targetId: a.id, label: zipLabel });
+    // 📊 Studio download log — and, once every Zip has been downloaded, the gallery's 🟢 mark
+    recordDownload(req, a, { kind: 'zip', label: `${zipName} (${photos.length} files)`, eventId, part, parts })
+      .then(logged => logged && checkAllDownloaded(a));
 
     const safe = zipLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);

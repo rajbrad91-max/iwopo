@@ -56,6 +56,7 @@ import ClientLinksSettings from '../components/ClientLinksSettings';
 import AutoRenewSetting from '../components/AutoRenewSetting';
 import PpmBoard from '../components/PpmBoard';
 import { applyTheme } from '../lib/theme';
+import GalleryDownloadLog from '../components/GalleryDownloadLog';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -460,7 +461,8 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'fileflyer' ? (
           <FileFlyerView />
         ) : tab === 'galleries' ? (
-          <GalleriesView key="galleries" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })} />
+          <GalleriesView key="galleries" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })}
+            shortcuts={has('galleries')} insights={has('gallery_insights')} />
         ) : tab === 'website' ? (
           <WebsiteView />
         ) : tab === 'aichat' ? (
@@ -854,7 +856,7 @@ function FocalPicker({ src, focus, onFocus, view }) {
  * and that happens on the public page. Forking this into a second view would
  * mean every future gallery fix needing to be made twice.
  */
-function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
+function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = false, insights = false }) {
   const dialog = useDialog();
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -920,6 +922,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
     }).catch(() => { dialog.prompt('Select and copy this link:', url, { title: 'Gallery link', readOnly: true, okLabel: 'Done' }); });
   }
   const [sendModal, setSendModal] = useState(null); // { album, email, body, editing }
+  const [logFor, setLogFor] = useState(null);       // 📊 the gallery whose download log is open (Studio)
   const [sendMsg, setSendMsg] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState('');
@@ -1105,6 +1108,13 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
       catch { /* placeholders stay visible */ }
     }
     setSendModal({ album: a, email: (edit?.id === a.id && f.client_email) || a.client_email || '', body: fillTpl(a, pw), editing: false });
+  }
+  /* ⚙️ Manage a tile's gallery. ⚠️ Both, not just edit: startEdit sets showNew too, so clearing edit alone left
+     showNew true — and the page-width "New Album" form appeared, prefilled with the album that had just been
+     closed. Closing a panel must undo everything opening it did. */
+  function manage(a) {
+    if (kind === 'liveshoot' && edit?.id === a.id) { setEdit(null); setShowNew(false); resetForm(); }
+    else startEdit(a);
   }
   async function doSend() {
     if (!sendModal?.email) { setSendMsg('⚠️ Email required'); return; }
@@ -1414,24 +1424,24 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
                   <span>📷 {a.photo_count}</span>
                   {a.selected_count > 0 && <span className="gal-picked">✅ {a.selected_count}</span>}
                 </div>
-                {!selectMode && (
+                {!selectMode && (shortcuts && kind === 'gallery' ? (
+                  /* 📧 Send instructions · 📊 the download log (Studio — gallery_insights) · ⚙️ Manage, sharing the row
+                     equally (Raj, 2026-11-09); a plan with galleries but not the log gets the two */
+                  <div className="gal-card-actions is-icons">
+                    <button className="gal-mini gal-icon" onClick={e => { e.stopPropagation(); openSend(a); }} title="Send instructions" aria-label="Send instructions">📧</button>
+                    {insights && (
+                      <button className={`gal-mini gal-icon${a.all_downloaded ? ' is-done' : ''}`} onClick={e => { e.stopPropagation(); setLogFor(a); }}
+                        title={a.all_downloaded ? 'Download log — every Zip has been downloaded' : 'Download log'} aria-label="Download log">📊</button>
+                    )}
+                    <button className="gal-mini gal-icon" onClick={e => { e.stopPropagation(); manage(a); }} title="Manage" aria-label="Manage">⚙️</button>
+                  </div>
+                ) : (
                   <div className="gal-card-actions">
-                    <button className="gal-mini gal-mini-gear"
-                      onClick={e => {
-                        e.stopPropagation();
-                        /* ⚠️ Both, not just edit. startEdit sets showNew too, so
-                           clearing edit alone left showNew true — and the
-                           page-width "New Album" form appeared, prefilled with
-                           the album that had just been closed. Closing a panel
-                           must undo everything opening it did. */
-                        if (kind === 'liveshoot' && edit?.id === a.id) { setEdit(null); setShowNew(false); resetForm(); }
-                        else startEdit(a);
-                      }}
-                      title="Edit album">
+                    <button className="gal-mini gal-mini-gear" onClick={e => { e.stopPropagation(); manage(a); }} title="Edit album">
                       ⚙️ Manage{kind === 'liveshoot' && edit?.id === a.id ? ' ▲' : kind === 'liveshoot' ? ' ▼' : ''}
                     </button>
                   </div>
-                )}
+                ))}
 
                 {/* 🎯 Inside the card, not across the row. Spanning the grid
                     made it a panel the width of the page that happened to be
@@ -1455,6 +1465,7 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery' }) {
         );
       })()}
 
+      {logFor && <GalleryDownloadLog album={logFor} onClose={() => setLogFor(null)} />}
       {sendModal && (
         <div className="al-overlay" onClick={() => setSendModal(null)}>
           <div className="gal-send-modal" onClick={e => e.stopPropagation()}>
