@@ -268,14 +268,14 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
 });
 
 // 📤 shared helper: send an email to a lead using vendor's email settings
-export async function sendLeadEmail(req, lead, subject, body) {
+export async function sendLeadEmail(req, lead, subject, body, { kind = 'lead' } = {}) {
   const s = await getSettings(lead.vendor_id);
   if (s.mode === 'self') { const e = new Error('You are in self-receive mode — reply from your own inbox 📥'); e.code = 'self_mode'; throw e; }
   const t = await transporterFor(s);
   if (!t) throw new Error('Email isn\u2019t available right now — please try again shortly, or add your own email under Settings → Email ⚙️');
   const who = await senderFor(lead.vendor_id, s);   // ✉️ their address, or "<Business> via iwopo" with replies to them
   await t.sendMail({ from: who.from, replyTo: who.replyTo, to: lead.email, subject, text: body });
-  logEmail(lead.vendor_id, { to: lead.email, subject, kind: 'lead', leadId: lead.id });   // 📧 the email log
+  logEmail(lead.vendor_id, { to: lead.email, subject, kind, leadId: lead.id });   // 📧 the email log
 }
 
 // 📬 helper used by leads route: notify vendor of new lead

@@ -1046,6 +1046,7 @@ export const api = {
   rawselEditors: () => request('/rawsel/editors'),
   rawselAddEditor: (email, name) => request('/rawsel/editors', { method: 'POST', body: JSON.stringify({ email, name }) }),
   rawselRemoveEditor: (id) => request(`/rawsel/editors/${id}`, { method: 'DELETE' }),
+  rawselInviteEditor: (id) => request(`/rawsel/editors/${id}/invite`, { method: 'POST' }),
   rawselSettings: () => request('/rawsel/settings'),
   rawselSaveSettings: (s) => request('/rawsel/settings', { method: 'PUT', body: JSON.stringify(s) }),
   rawselUploadLogo: (dataUrl) => request('/rawsel/settings/logo', { method: 'POST', body: JSON.stringify({ dataUrl }) }),

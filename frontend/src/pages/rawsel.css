@@ -10,6 +10,7 @@
 .rs-strong { font-weight: 600; }
 .rs-warn { color: #c77c0e; font-weight: 600; }
 .rs-err { margin: 10px 0; padding: 9px 12px; border-radius: 9px; background: #fdecec; color: #a23b33; font-size: 13px; }
+.rs-ok { margin: 10px 0; padding: 9px 12px; border-radius: 9px; background: color-mix(in srgb, #4f9a6a 12%, transparent); color: #3f8a5a; font-size: 13px; }   /* ✅ an invitation went out */
 
 .rs-add { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .rs-add input { flex: 1 1 200px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line, #d7dbe0); border-radius: 9px; background: var(--bg, #fff); color: var(--text, #1f2328); font: inherit; font-size: 14px; }

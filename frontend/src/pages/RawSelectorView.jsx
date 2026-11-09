@@ -20,6 +20,7 @@ export default function RawSelectorView() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [msg, setMsg] = useState('');
+  const [note, setNote] = useState('');   // ✅ an invitation went out
   const portal = `${window.location.origin}/editor`;
 
   /* ®️ the logo printed on delivered photos — tried live on one of your own photos */
@@ -61,9 +62,18 @@ export default function RawSelectorView() {
 
   async function addEditor(e) {
     e.preventDefault();
-    setMsg('');
-    try { await api.rawselAddEditor(email, name); setEmail(''); setName(''); load(); }
-    catch (err) { setMsg(err.message || 'Could not add the editor'); }
+    setMsg(''); setNote('');
+    try {
+      const r = await api.rawselAddEditor(email, name);
+      if (r.invited) setNote(`✅ Invite sent to ${email}`);
+      else if (r.inviteError) setMsg(`${email} is added, but the invite email could not be sent: ${r.inviteError}`);
+      setEmail(''); setName(''); load();
+    } catch (err) { setMsg(err.message || 'Could not add the editor'); }
+  }
+  async function resendInvite(ed) {
+    setMsg(''); setNote('');
+    try { await api.rawselInviteEditor(ed.id); setNote(`✅ Invite sent again to ${ed.email}`); }
+    catch (err) { setMsg(err.message || 'Could not send the invite'); }
   }
   async function removeEditor(ed) {
     if (!await dialog.confirm(`${ed.email} will lose access straight away.`, { title: 'Remove this editor?', okLabel: 'Remove', danger: true })) return;
@@ -76,8 +86,9 @@ export default function RawSelectorView() {
       <section className="rs-card">
         <h2 className="rs-h">👨‍💻 Editors</h2>
         <p className="rs-sub">
-          Add your editor's email. They sign up at <a href={portal} target="_blank" rel="noreferrer">{portal}</a> with
-          that email, and see only the RAW files of the photos each client picked — never your galleries or JPEGs.
+          Add your editor's email and iwopo emails them an invitation from your email address. They sign up
+          at <a href={portal} target="_blank" rel="noreferrer">{portal}</a> with that email, and see only the RAW files of
+          the photos each client picked — never your galleries or JPEGs.
         </p>
         <form className="rs-add" onSubmit={addEditor}>
           <input type="email" required placeholder="editor@email.com" value={email} onChange={e => setEmail(e.target.value)} aria-label="Editor email" />
@@ -85,6 +96,7 @@ export default function RawSelectorView() {
           <button className="rs-btn" type="submit">Add editor</button>
         </form>
         {msg && <div className="rs-err">⚠️ {msg}</div>}
+        {note && <div className="rs-ok">{note}</div>}
         {editors === null ? <div className="rs-muted">Loading…</div>
           : editors.length === 0 ? <div className="rs-muted">No editors yet.</div>
             : (
@@ -96,6 +108,7 @@ export default function RawSelectorView() {
                       {ed.name && <div className="rs-muted">{ed.email}</div>}
                     </div>
                     <span className={`rs-pill ${ed.joined ? 'is-on' : ''}`}>{ed.joined ? `Joined${ed.lastLoginAt ? ` · last in ${day(ed.lastLoginAt)}` : ''}` : 'Invited — not signed up yet'}</span>
+                    {!ed.joined && <button className="rs-x" type="button" onClick={() => resendInvite(ed)} aria-label={`Send the invite again to ${ed.email}`}>Send invite again</button>}
                     <button className="rs-x" type="button" onClick={() => removeEditor(ed)} aria-label={`Remove ${ed.email}`}>Remove</button>
                   </li>
                 ))}

@@ -127,6 +127,23 @@ router.get('/editors', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
+/* ✉️ The invitation (Raj, 2026-11-09 — adding an editor used to send nothing, so "Invited" was only a label). It goes
+   from the vendor's own email, as Send Instructions does (sendLeadEmail: their address, or "<Business> via iwopo"
+   with replies to them), says who invited them and where to sign up, and the email log keeps it. */
+async function sendEditorInvite(req, v, ed) {
+  const vendor = await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true } });
+  const biz = vendor?.business_name || 'Your photographer';
+  const portal = `${process.env.APP_URL || 'https://iwopo.com'}/editor`;
+  const body = [
+    `Hi${ed.name ? ` ${ed.name}` : ''},`, '',
+    `${biz} has invited you to edit their photos on iwopo.`, '',
+    `Sign up at ${portal} with this email address (${ed.email}). You will see the RAW files of the photos their clients picked, ready to edit and deliver.`, '',
+    'Thank you,', biz,
+  ].join('\n');
+  const { sendLeadEmail } = await import('./email.js');   // on demand, as albums.js does for Send Instructions
+  await sendLeadEmail(req, { vendor_id: v, email: ed.email, name: ed.name }, `${biz} invited you to edit on iwopo`, body, { kind: 'editor_invite' });
+}
+
 router.post('/editors', requireAuth, async (req, res) => {
   try {
     const email = normEmail(req.body?.email);
@@ -137,7 +154,22 @@ router.post('/editors', requireAuth, async (req, res) => {
       create: { vendor_id: vid(req), email, name },
       update: { name, revoked_at: null },
     });
-    res.json({ id: row.id });
+    if (row.joined_at) return res.json({ id: row.id, invited: false });   // already signed up — nothing to invite
+    // the editor stays added even when the email cannot go; the reply says why, for the panel to show
+    try { await sendEditorInvite(req, vid(req), row); res.json({ id: row.id, invited: true }); }
+    catch (e) { res.json({ id: row.id, invited: false, inviteError: e.message }); }
+  } catch (e) { serverError(res, e); }
+});
+
+// ✉️ send the invitation again — while the editor has not signed up
+router.post('/editors/:id/invite', requireAuth, async (req, res) => {
+  try {
+    const ed = await prisma.raw_editors.findFirst({ where: { id: Number(req.params.id), vendor_id: vid(req), revoked_at: null } });   // 🔒
+    if (!ed) return res.status(404).json({ error: 'Not found' });
+    if (ed.joined_at) return res.status(409).json({ error: `${ed.email} has already signed up` });
+    try { await sendEditorInvite(req, vid(req), ed); }
+    catch (e) { return res.status(400).json({ error: `The invite could not be sent: ${e.message}` }); }
+    res.json({ invited: true });
   } catch (e) { serverError(res, e); }
 });
 
