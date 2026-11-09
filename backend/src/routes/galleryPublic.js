@@ -27,6 +27,7 @@ import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { coverCandidates } from '../lib/coverImage.js';
 import { clientLinksFor } from '../lib/clientLinks.js';
 import { photoZip, zipParts } from '../lib/photoZip.js';
+import { cookieOf } from '../lib/gateCookie.js';
 
 /* A guest uploads a selfie here with no account and no token beyond the album
    link, so this is the one upload an anonymous caller can reach. It had no size
@@ -156,19 +157,35 @@ async function galleryStream(vendorId, rel, range) {
   } catch { return null; }                                // not migrated yet
 }
 
-// short-lived signed view tokens (in-memory; fine for single-node)
-const viewTokens = new Map(); // vt -> { albumId, role, exp }
-function makeViewToken(albumId, role) {
-  const vt = crypto.randomBytes(16).toString('hex');
-  viewTokens.set(vt, { albumId, role, exp: Date.now() + 6 * 3600 * 1000 }); // 6h
-  return vt;
+/* 🔐 The gallery pass (Raj, 2026-11-09). Signing in gives a short-lived random view key, kept here (in memory; fine
+   for one node), and hands it to the browser ONLY as an httpOnly cookie, gallery_pass_<album id> — never in a link,
+   never to the page's scripts. Every gallery request reads it from that cookie, so a copied photo, film or Zip link
+   opens nothing for anyone else. The same pattern as Live Shoot's live_pass_<id> (routes/liveshoot.js):
+   httpOnly so no script can read it, Secure, and SameSite=Lax so another site can neither send it nor see it. */
+const VIEW_MS = 6 * 3600 * 1000;                 // 6 hours, as before
+const viewTokens = new Map();                    // key -> { albumId, role, exp }
+const passName = (albumId) => `gallery_pass_${albumId}`;
+const PASS_COOKIE = { httpOnly: true, sameSite: 'lax', secure: true };
+
+/** sign this browser in to a gallery: a new key, held here, sent as the pass */
+function issuePass(res, albumId, role) {
+  const key = crypto.randomBytes(16).toString('hex');
+  viewTokens.set(key, { albumId, role, exp: Date.now() + VIEW_MS });
+  res.cookie(passName(albumId), key, { ...PASS_COOKIE, maxAge: VIEW_MS });
 }
-function checkViewToken(vt, albumId) {
-  const rec = viewTokens.get(vt);
+/** this request's pass for this gallery — { albumId, role, exp } — or null */
+function viewOf(req, albumId) {
+  const key = cookieOf(req, passName(albumId));
+  const rec = key ? viewTokens.get(key) : null;
   if (!rec) return null;
-  if (rec.exp < Date.now()) { viewTokens.delete(vt); return null; }
-  if (String(rec.albumId) !== String(albumId)) return null;
-  return rec;
+  if (rec.exp < Date.now()) { viewTokens.delete(key); return null; }
+  return String(rec.albumId) === String(albumId) ? rec : null;
+}
+/** sign this browser out of a gallery: the key is forgotten here and the pass removed */
+function endPass(req, res, albumId) {
+  const key = cookieOf(req, passName(albumId));
+  if (key) viewTokens.delete(key);
+  res.clearCookie(passName(albumId), PASS_COOKIE);
 }
 // prune expired hourly
 setInterval(() => { const now = Date.now(); for (const [k, v] of viewTokens) if (v.exp < now) viewTokens.delete(k); }, 3600 * 1000);
@@ -288,14 +305,14 @@ router.get('/:token/cover', async (req, res) => {
   } catch { res.status(404).end(); }
 });
 
-// 🔑 resume with a saved view token — same payload as /auth, no password.
+// 🔑 resume with the gallery pass — same payload as /auth, no password.
 // Lets a client close the browser and come back without logging in again,
-// while the token itself still expires on the server after 6h.
+// while the pass itself still expires on the server after 6h.
 router.get('/:token/session', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Gallery not found' });
-    const rec = checkViewToken(req.query.vt, a.id);          // 🔒 token must match THIS album
+    const rec = viewOf(req, a.id);          // 🔒 token must match THIS album
     if (!rec) return res.status(401).json({ error: 'Session expired' });
 
     const photos = await photosInAlbum(a.id);                // re-read, so edits show up
@@ -307,14 +324,14 @@ router.get('/:token/session', async (req, res) => {
     }).then(orderEvents);
     const faceReady = photos.some(p => (p.face_count || 0) > 0);
     res.json({
-      role: rec.role, vt: req.query.vt, title: a.title, mode: 'per_client', theme, events, faceReady,
+      role: rec.role, title: a.title, mode: 'per_client', theme, events, faceReady,
       photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0,
         kind: p.kind || 'photo', duration_s: p.duration_s || null })),
     });
   } catch (e) { serverError(res, e); }
 });
 
-// 🔑 authenticate with guest/admin password → returns photo list + view token
+// 🔑 authenticate with guest/admin password → returns the photo list and sets the gallery pass
 router.post('/:token/auth',
   // the album password door. Twelve tries per quarter hour per album per
   // address — a couple who mistypes is unaffected; a script is not.
@@ -348,21 +365,30 @@ router.post('/:token/auth',
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     }).then(orderEvents);
     const faceReady = photos.some(p => (p.face_count || 0) > 0);
-    const vt = makeViewToken(a.id, role);
+    issuePass(res, a.id, role);                   // 🔐 the pass, as a cookie — never in the reply
     res.json({
-      role, vt, title: a.title, mode: 'per_client', theme, events, faceReady,
+      role, title: a.title, mode: 'per_client', theme, events, faceReady,
       photos: photos.map(p => ({ id: p.id, name: p.filename, event_id: p.event_id, faces: p.face_count || 0,
         kind: p.kind || 'photo', duration_s: p.duration_s || null })),
     });
   } catch (e) { serverError(res, e); }
 });
 
-// 🖼️ serve a photo (thumb|full|orig) — needs valid view token
+// 🚪 sign out of a gallery (a shared or borrowed device): the pass is forgotten here and removed from the browser
+router.post('/:token/sign-out', async (req, res) => {
+  try {
+    const a = await findAlbum(req.params.token);
+    if (a) endPass(req, res, a.id);
+    res.json({ ok: true });
+  } catch (e) { serverError(res, e); }
+});
+
+// 🖼️ serve a photo (thumb|full|orig) — needs the gallery pass
 router.get('/:token/photo/:photoId/:type', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).end();
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
+    if (!viewOf(req, a.id)) return res.status(401).end();
     const p = await prisma.photos.findFirst({
       where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 photo must be in THIS album
     });
@@ -406,7 +432,7 @@ router.get('/:token/download/:photoId', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return downloadFailed(req, res, 404, 'not_found', "This gallery isn't available any more.");
-    if (!checkViewToken(req.query.vt, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
+    if (!viewOf(req, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
     const p = await prisma.photos.findFirst({
       where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 tenancy
     });
@@ -448,7 +474,7 @@ router.get('/:token/download-parts', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: "This gallery isn't available any more." });
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Open the gallery again — your viewing session has ended.' });
+    if (!viewOf(req, a.id)) return res.status(401).json({ error: 'Open the gallery again — your viewing session has ended.' });
     const { photos } = await zipScope(a, req.query.event);
     const parts = zipParts(photos).map((p, i) => ({ part: i + 1, count: p.rows.length, bytes: p.bytes }));
     res.json({ parts, count: photos.length, bytes: parts.reduce((n, p) => n + p.bytes, 0) });
@@ -460,7 +486,7 @@ router.get('/:token/download-all', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return downloadFailed(req, res, 404, 'not_found', "This gallery isn't available any more.");
-    if (!checkViewToken(req.query.vt, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
+    if (!viewOf(req, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
 
     let { photos, label: zipLabel } = await zipScope(a, req.query.event);
     if (!photos.length) return downloadFailed(req, res, 404, 'No photos', 'There are no photos to download here yet.');
@@ -499,7 +525,7 @@ router.post('/:token/selfie', limit({ name: 'selfie', max: 20, windowMs: 15 * 60
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!checkViewToken(req.query.vt, a.id)) { if (req.file) fs.unlink(req.file.path, () => {}); return res.status(401).json({ error: 'Unauthorized' }); }
+    if (!viewOf(req, a.id)) { if (req.file) fs.unlink(req.file.path, () => {}); return res.status(401).json({ error: 'Unauthorized' }); }
     if (!req.file) return res.status(400).json({ error: 'No selfie' });
 
     // 🔒 use the engine this album was actually indexed with (per-album lock).
@@ -546,7 +572,7 @@ router.get('/:token/faces', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!viewOf(req, a.id)) return res.status(401).json({ error: 'Unauthorized' });
 
     const eventId = req.query.event ? parseInt(req.query.event, 10) : null;
 
@@ -579,7 +605,7 @@ router.get('/:token/face/:clusterId', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).end();
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).end();
+    if (!viewOf(req, a.id)) return res.status(401).end();
 
     let boxRaw = null, relPath = null;
     const isAws = await isAwsAlbum(a.id);
@@ -682,7 +708,7 @@ router.get('/:token/face/:clusterId/photos', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!viewOf(req, a.id)) return res.status(401).json({ error: 'Unauthorized' });
     const ids = await isAwsAlbum(a.id)
       ? await photoIdsForPersonAWS(a.id, req.params.clusterId)
       : await clusterPhotoIds(a.id, req.params.clusterId);
@@ -692,8 +718,8 @@ router.get('/:token/face/:clusterId/photos', async (req, res) => {
 
 // 📩 admin-only: save the admin's selection to the studio, and delete photos.
 // These require the view token to have role 'admin' (admin gallery password).
-function requireAdmin(vt, albumId) {
-  const rec = checkViewToken(vt, albumId);
+function requireAdmin(req, albumId) {
+  const rec = viewOf(req, albumId);
   return rec && rec.role === 'admin' ? rec : null;
 }
 
@@ -702,7 +728,7 @@ router.post('/:token/selection', limit({ name: 'gallery-selection', max: 60, win
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!requireAdmin(req.query.vt, a.id)) return res.status(403).json({ error: 'Admin access required' });
+    if (!requireAdmin(req, a.id)) return res.status(403).json({ error: 'Admin access required' });
     const ids = Array.isArray(req.body?.photo_ids) ? req.body.photo_ids.map(n => parseInt(n, 10)).filter(Boolean) : [];
     // only keep ids that actually belong to this album 🔒
     const valid = await prisma.photos.findMany({
@@ -750,7 +776,7 @@ router.delete('/:token/photo/:photoId', limit({ name: 'gallery-photo-remove', ma
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!requireAdmin(req.query.vt, a.id)) return res.status(403).json({ error: 'Admin access required' });
+    if (!requireAdmin(req, a.id)) return res.status(403).json({ error: 'Admin access required' });
     const where = { id: Number(req.params.photoId), album_id: a.id };   // 🔒 tenancy
     const p = await prisma.photos.findFirst({
       where,
@@ -789,7 +815,7 @@ router.get('/:token/favorites', async (req, res) => {
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!viewOf(req, a.id)) return res.status(401).json({ error: 'Unauthorized' });
     const email = normEmail(req.query.email);
     if (!validEmail(email)) return res.json({ photo_ids: [] });
     const rows = await prisma.favorites.findMany({
@@ -805,7 +831,7 @@ router.post('/:token/favorites', limit({ name: 'gallery-favorite', max: 600, win
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!viewOf(req, a.id)) return res.status(401).json({ error: 'Unauthorized' });
     const email = normEmail(req.body?.email);
     const photoId = parseInt(req.body?.photo_id, 10);
     if (!validEmail(email)) return res.status(400).json({ error: 'A valid email is required' });
@@ -826,7 +852,7 @@ router.delete('/:token/favorites/:photoId', limit({ name: 'gallery-unfavorite', 
   try {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: 'Not found' });
-    if (!checkViewToken(req.query.vt, a.id)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!viewOf(req, a.id)) return res.status(401).json({ error: 'Unauthorized' });
     const email = normEmail(req.query.email);
     const photoId = parseInt(req.params.photoId, 10);
     if (!validEmail(email) || !photoId) return res.status(400).json({ error: 'email and photo_id required' });

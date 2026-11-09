@@ -150,18 +150,14 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   // ⭐ remember the client's email across visits/devices (localStorage, not just session)
   const favEmailKey = `pg-fav-email-${token}`;
 
-  // 🔑 Stay signed in across reloads, back/forward and closing the browser.
-  // The view token is valid for 6h server-side, so we keep it for the same
-  // window and no longer. Two things can still invalidate it early: the API
-  // restarting (view tokens live in memory) and clearing browser data — in both
-  // cases the saved session simply fails its check and the password screen
-  // returns, which is the behaviour people already expect.
+  // 🔑 Stay signed in across reloads, back/forward and closing the browser. The key itself is the gallery pass —
+  // an httpOnly cookie this page never sees (backend routes/galleryPublic.js) — so all that is kept here is THAT this
+  // browser signed in and until when (6h, as the pass). Two things can still end it early: the API restarting (the
+  // keys live in memory) and clearing browser data — either way the check fails and the password screen returns.
   const sessionKey = `pg-session-${token}`;
   const saveSession = (d) => {
     try {
-      window.localStorage?.setItem(sessionKey, JSON.stringify({
-        vt: d.vt, role: d.role, exp: Date.now() + 6 * 3600 * 1000,
-      }));
+      window.localStorage?.setItem(sessionKey, JSON.stringify({ role: d.role, exp: Date.now() + 6 * 3600 * 1000 }));
     } catch { /* storage unavailable — session stays in memory only */ }
   };
 
@@ -170,7 +166,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   // visit shows the current photos.
   /* Only a saved session is worth waiting for: without one, the sign-in shows at once (no "Loading…" first). */
   const [restoring, setRestoring] = useState(() => {
-    try { const s = JSON.parse(window.localStorage?.getItem(sessionKey) || 'null'); return !!(s?.vt && s.exp > Date.now()); }
+    try { const s = JSON.parse(window.localStorage?.getItem(sessionKey) || 'null'); return !!(s?.exp > Date.now()); }
     catch { return false; }
   });
   useEffect(() => {
@@ -178,13 +174,13 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     (async () => {
       let saved = null;
       try { saved = JSON.parse(window.localStorage?.getItem(sessionKey) || 'null'); } catch { /* ignore */ }
-      if (!saved?.vt || !saved.exp || saved.exp < Date.now()) {
+      if (!saved?.exp || saved.exp < Date.now()) {
         try { window.localStorage?.removeItem(sessionKey); } catch { /* ignore */ }
         if (!cancelled) setRestoring(false);
         return;
       }
       try {
-        const r = await fetch(`${API}/${token}/session?vt=${saved.vt}`);
+        const r = await fetch(`${API}/${token}/session`);   // the pass goes along by itself
         if (!r.ok) throw new Error('expired');
         const d = await r.json();
         if (cancelled) return;
@@ -208,12 +204,12 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
 
   // once we have a session + an email, pull this person's favorites from the server
   useEffect(() => {
-    if (!session?.vt || !favEmail) return;
-    fetch(`${API}/${token}/favorites?vt=${session.vt}&email=${encodeURIComponent(favEmail)}`)
+    if (!session || !favEmail) return;
+    fetch(`${API}/${token}/favorites?email=${encodeURIComponent(favEmail)}`)
       .then(r => r.ok ? r.json() : { photo_ids: [] })
       .then(d => setFavs(new Set(d.photo_ids || [])))
       .catch(() => { /* leave favs as-is */ });
-  }, [session?.vt, favEmail, token]);
+  }, [session, favEmail, token]);
 
   const theme = session?.theme || meta?.theme || {};
   /* 🖼️ The cover, as theme variables (Raj, 2026-11-08 — speed first): the banner and the sign-in background read
@@ -267,6 +263,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
 
   // 🚪 leave the gallery — for a shared or borrowed device
   function signOut() {
+    fetch(`${API}/${token}/sign-out`, { method: 'POST' }).catch(() => { /* the pass still ends with its 6 hours */ });
     try { window.localStorage?.removeItem(sessionKey); } catch { /* ignore */ }
     setSession(null);
     setActiveFace(null); setMatchIds(null); setSelfieMsg('');
@@ -284,15 +281,15 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
              : `${m}:${String(r).padStart(2, '0')}`;
   }
 
-  const photoUrl = (id, type) => `${API}/${token}/photo/${id}/${type}?vt=${session.vt}`;
-  const faceUrl = (clusterId) => `${API}/${token}/face/${clusterId}?vt=${session.vt}`;
+  const photoUrl = (id, type) => `${API}/${token}/photo/${id}/${type}`;
+  const faceUrl = (clusterId) => `${API}/${token}/face/${clusterId}`;
 
   // 🧑‍🤝‍🧑 load the face circles once we're in
   useEffect(() => {
     if (!session) return;
     // faces are scoped to the selected event (Wedding faces don't show under Jaggo)
-    const evParam = (activeEvent !== 'all') ? `&event=${activeEvent}` : '';
-    fetch(`${API}/${token}/faces?vt=${session.vt}${evParam}`)
+    const evParam = (activeEvent !== 'all') ? `?event=${activeEvent}` : '';
+    fetch(`${API}/${token}/faces${evParam}`)
       .then(r => r.json())
       .then(d => setFaces(d.faces || []))
       .catch(() => {});
@@ -306,7 +303,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     setActiveFace(f.id);
     setSelfieMsg('');
     try {
-      const r = await fetch(`${API}/${token}/face/${f.id}/photos?vt=${session.vt}`);
+      const r = await fetch(`${API}/${token}/face/${f.id}/photos`);
       const d = await r.json();
       setMatchIds(d.photo_ids || []);
       setPickedOnly(false);
@@ -315,15 +312,15 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   }
   function clearFace() { setActiveFace(null); setMatchIds(null); setSelfieMsg(''); }
 
-  const downloadOne = (id) => { window.location.href = `${API}/${token}/download/${id}?vt=${session.vt}`; };
+  const downloadOne = (id) => { window.location.href = `${API}/${token}/download/${id}`; };
   /* 📦 A big tab comes in parts of up to 4 GB (backend lib/photoZip.js): ask first, then either download the one Zip
      as before or offer the parts — each its own Zip, so a dropped connection repeats one part, not all of it. */
   async function downloadAll(eventId) {
     const key = eventId || 'all';
     setZipBusy(key);
-    const q = eventId && eventId !== 'all' ? `&event=${eventId}` : '';
+    const q = eventId && eventId !== 'all' ? `?event=${eventId}` : '';
     try {
-      const r = await fetch(`${API}/${token}/download-parts?vt=${session.vt}${q}`);
+      const r = await fetch(`${API}/${token}/download-parts${q}`);
       const d = r.ok ? await r.json() : null;
       if (d?.parts?.length > 1) {
         const name = session.events.find(ev => String(ev.id) === String(eventId))?.name;
@@ -332,7 +329,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
         return;
       }
     } catch { /* the one Zip, as before */ }
-    window.location.href = `${API}/${token}/download-all?vt=${session.vt}${q}`;
+    window.location.href = `${API}/${token}/download-all${q}`;
     setTimeout(() => setZipBusy(''), 4000);
   }
   const gb = (bytes) => `${(bytes / 1e9).toFixed(1)} GB`;   // as drives label it, like the 4 GB parts
@@ -357,7 +354,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     if (!picked.size) return;
     setSendBusy(true); setSendMsg('');
     try {
-      const r = await fetch(`${API}/${token}/selection?vt=${session.vt}`, {
+      const r = await fetch(`${API}/${token}/selection`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ photo_ids: [...picked], note: sendNote.trim() }),
       });
@@ -377,7 +374,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     if (delPhoto == null) return;
     setDelBusy(true);
     try {
-      const r = await fetch(`${API}/${token}/photo/${delPhoto}?vt=${session.vt}`, { method: 'DELETE' });
+      const r = await fetch(`${API}/${token}/photo/${delPhoto}`, { method: 'DELETE' });
       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || 'Delete failed'); }
       // drop it from local state so the grid updates immediately
       setSession(s => s ? { ...s, photos: (s.photos || []).filter(p => p.id !== delPhoto) } : s);
@@ -392,12 +389,12 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   async function saveFav(id, email, add) {
     try {
       if (add) {
-        await fetch(`${API}/${token}/favorites?vt=${session.vt}`, {
+        await fetch(`${API}/${token}/favorites`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ photo_id: id, email }),
         });
       } else {
-        await fetch(`${API}/${token}/favorites/${id}?vt=${session.vt}&email=${encodeURIComponent(email)}`, {
+        await fetch(`${API}/${token}/favorites/${id}?email=${encodeURIComponent(email)}`, {
           method: 'DELETE',
         });
       }
@@ -424,7 +421,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     if (favOnly) { setFavOnly(false); return; }
     if (!favEmail) { setPendingFav(null); setFavErr(''); setFavEmailInput(''); setFavModalOpen(true); return; }
     try {
-      const r = await fetch(`${API}/${token}/favorites?vt=${session.vt}&email=${encodeURIComponent(favEmail)}`);
+      const r = await fetch(`${API}/${token}/favorites?email=${encodeURIComponent(favEmail)}`);
       if (r.ok) { const d = await r.json(); setFavs(new Set(d.photo_ids || [])); }
     } catch { /* keep current favs */ }
     setPickedOnly(false);
@@ -441,7 +438,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     // pull any existing favorites saved under this email (cross-device resume)
     let existing = new Set();
     try {
-      const r = await fetch(`${API}/${token}/favorites?vt=${session.vt}&email=${encodeURIComponent(email)}`);
+      const r = await fetch(`${API}/${token}/favorites?email=${encodeURIComponent(email)}`);
       if (r.ok) { const d = await r.json(); existing = new Set(d.photo_ids || []); }
     } catch { /* ignore */ }
     if (pendingFav != null) {
@@ -480,7 +477,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     try {
       for (const id of ids) {
         try {
-          const r = await fetch(`${API}/${token}/photo/${id}?vt=${session.vt}`, { method: 'DELETE' });
+          const r = await fetch(`${API}/${token}/photo/${id}`, { method: 'DELETE' });
           if (r.ok) ok++;
         } catch { /* skip this one */ }
       }
@@ -501,7 +498,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     try {
       const fd = new FormData();
       fd.append('selfie', file);
-      const r = await fetch(`${API}/${token}/selfie?vt=${session.vt}`, { method: 'POST', body: fd });
+      const r = await fetch(`${API}/${token}/selfie`, { method: 'POST', body: fd });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Search failed');
       setMatchIds(d.photo_ids);
@@ -737,7 +734,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
             <div className="pg-modal-acts">
               {zipParts.parts.map(p => (
                 <a key={p.part} className={`pg-btn is-ghost pg-zip-part${zipParts.got.includes(p.part) ? ' is-got' : ''}`}
-                  href={`${API}/${token}/download-all?vt=${session.vt}${zipParts.q}&part=${p.part}`}
+                  href={`${API}/${token}/download-all${zipParts.q || '?'}${zipParts.q ? '&' : ''}part=${p.part}`}
                   onClick={() => setZipParts(z => ({ ...z, got: [...new Set([...z.got, p.part])] }))}>
                   <span>{zipParts.got.includes(p.part) ? '✓ ' : ''}Part {p.part}</span>
                   <span className="pg-zip-part-meta">{p.count} photos · {gb(p.bytes)}</span>
@@ -1047,7 +1044,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
                   <div className="pg-vid-fallback-icon">🎬</div>
                   <h3>This film can&apos;t play in your browser</h3>
                   <p>It&apos;s in a format your browser doesn&apos;t support. Download it to watch.</p>
-                  <a className="pg-vid-dl" href={`${API}/${token}/download/${current.id}?vt=${session.vt}`}>
+                  <a className="pg-vid-dl" href={`${API}/${token}/download/${current.id}`}>
                     Download {current.name || 'film'}
                   </a>
                 </div>
