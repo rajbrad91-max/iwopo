@@ -2603,9 +2603,17 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 /* 📧📊⚙️ gallery tiles: the Manage button's row shared equally by Send instructions, the download log (Studio) and
    Manage, with breathing space between them (Raj, 2026-11-09) */
 .gal-card-actions.is-icons { gap: 10px; }
-.gal-icon { flex: 1 1 0; min-width: 0; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+.gal-icon { flex: 1 1 0; min-width: 0; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.gal-icon svg { width: 17px; height: 17px; }
+/* line icons, slightly colourful (components/TileIcons.jsx): calm blue · warm amber · quiet slate — deeper on the light panel */
+.gal-icon.is-send { color: #5b9fd1; }
+.gal-icon.is-log { color: #c99032; }
+.gal-icon.is-manage { color: #7d929c; }
+[data-theme="light"] .gal-icon.is-send { color: #3d7fb3; }
+[data-theme="light"] .gal-icon.is-log { color: #b07a1f; }
+[data-theme="light"] .gal-icon.is-manage { color: #5f737c; }
 .gal-icon:hover { border-color: #2dd4bf; background: #2dd4bf0d; }
-.gal-icon.is-done { border-color: #4f9a6a; background: color-mix(in srgb, #4f9a6a 22%, var(--panel-2)); }   /* 🟢 every Zip downloaded */
+.gal-icon.is-done, [data-theme="light"] .gal-icon.is-done { border-color: #4f9a6a; background: color-mix(in srgb, #4f9a6a 22%, var(--panel-2)); color: #4f9a6a; }   /* 🟢 every Zip downloaded */
 
 /* 📊 a gallery's download log (components/GalleryDownloadLog.jsx) */
 .gdl { width: 100%; max-width: 760px; max-height: 86vh; overflow-y: auto; padding: 22px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }

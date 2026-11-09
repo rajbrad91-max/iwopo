@@ -57,6 +57,7 @@ import AutoRenewSetting from '../components/AutoRenewSetting';
 import PpmBoard from '../components/PpmBoard';
 import { applyTheme } from '../lib/theme';
 import GalleryDownloadLog from '../components/GalleryDownloadLog';
+import { MailIcon, ChartIcon, GearIcon } from '../components/TileIcons';
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -1440,12 +1441,12 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = 
                   /* 📧 Send instructions · 📊 the download log (Studio — gallery_insights) · ⚙️ Manage, sharing the row
                      equally (Raj, 2026-11-09); a plan with galleries but not the log gets the two */
                   <div className="gal-card-actions is-icons">
-                    <button className="gal-mini gal-icon" onClick={e => { e.stopPropagation(); openSend(a); }} title="Send instructions" aria-label="Send instructions">📧</button>
+                    <button className="gal-mini gal-icon is-send" onClick={e => { e.stopPropagation(); openSend(a); }} title="Send instructions" aria-label="Send instructions"><MailIcon /></button>
                     {insights && (
-                      <button className={`gal-mini gal-icon${a.all_downloaded ? ' is-done' : ''}`} onClick={e => { e.stopPropagation(); setLogFor(a); }}
-                        title={a.all_downloaded ? 'Download log — every Zip has been downloaded' : 'Download log'} aria-label="Download log">📊</button>
+                      <button className={`gal-mini gal-icon is-log${a.all_downloaded ? ' is-done' : ''}`} onClick={e => { e.stopPropagation(); setLogFor(a); }}
+                        title={a.all_downloaded ? 'Download log — every Zip has been downloaded' : 'Download log'} aria-label="Download log"><ChartIcon /></button>
                     )}
-                    <button className="gal-mini gal-icon" onClick={e => { e.stopPropagation(); manage(a); }} title="Manage" aria-label="Manage">⚙️</button>
+                    <button className="gal-mini gal-icon is-manage" onClick={e => { e.stopPropagation(); manage(a); }} title="Manage" aria-label="Manage"><GearIcon /></button>
                   </div>
                 ) : (
                   <div className="gal-card-actions">
