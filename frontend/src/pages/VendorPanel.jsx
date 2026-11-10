@@ -57,7 +57,7 @@ import AutoRenewSetting from '../components/AutoRenewSetting';
 import PpmBoard from '../components/PpmBoard';
 import { applyTheme } from '../lib/theme';
 import GalleryDownloadLog from '../components/GalleryDownloadLog';
-import { MailIcon, ChartIcon, GearIcon } from '../components/TileIcons';
+import { MailIcon, ChartIcon, GearIcon, DownloadedMark } from '../components/TileIcons';
 import CameraFtpBox from '../components/CameraFtpBox';
 
 // 🗝️ tab → required feature (one map controls everything)
@@ -1444,8 +1444,11 @@ function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = 
                   <div className="gal-card-actions is-icons">
                     <button className="gal-mini gal-icon is-send" onClick={e => { e.stopPropagation(); openSend(a); }} title="Send instructions" aria-label="Send instructions"><MailIcon /></button>
                     {insights && (
-                      <button className={`gal-mini gal-icon is-log${a.all_downloaded ? ' is-done' : ''}`} onClick={e => { e.stopPropagation(); setLogFor(a); }}
-                        title={a.all_downloaded ? 'Download log — every Zip has been downloaded' : 'Download log'} aria-label="Download log"><ChartIcon /></button>
+                      <button className="gal-mini gal-icon is-log" onClick={e => { e.stopPropagation(); setLogFor(a); }}
+                        title={a.all_downloaded ? 'Download log — every photo has been downloaded' : 'Download log'} aria-label="Download log">
+                        <ChartIcon />
+                        {a.all_downloaded && <span className="gal-done" aria-hidden="true"><DownloadedMark /></span>}
+                      </button>
                     )}
                     <button className="gal-mini gal-icon is-manage" onClick={e => { e.stopPropagation(); manage(a); }} title="Manage" aria-label="Manage"><GearIcon /></button>
                   </div>

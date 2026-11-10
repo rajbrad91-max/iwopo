@@ -30,3 +30,13 @@ export function GearIcon() {
     </svg>
   );
 }
+
+/** ⬇✓ the client has downloaded every photo — drawn small in the badge on the 📊 button (vendor.css .gal-done) */
+export function DownloadedMark() {
+  return (
+    <>
+      <svg {...LINE}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
+      <svg {...LINE}><path d="M20 6 9 17l-5-5" /></svg>
+    </>
+  );
+}
