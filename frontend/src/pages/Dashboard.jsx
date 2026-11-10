@@ -1590,7 +1590,7 @@ function ChatbotApiKey() {
     <>
       <ApiKeyBox field="anthropic_api_key" modelField="anthropic_model" title="🔑 AI Chatbot key"
         sub="Powers Wopo Assistant for every subscriber, leads from calls and photo descriptions. Kept masked."
-        modelHint="claude-sonnet-4-6"
+        modelHint="claude-haiku-5-5"
         missing="No key — Wopo Assistant replies with a fallback message until you add one." />
     </>
   );

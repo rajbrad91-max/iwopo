@@ -12,11 +12,19 @@ import { getFeatures } from './entitlements.js';
 import { currentPlan } from './billing.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
-export const DEFAULT_MODEL = 'claude-sonnet-4-6';
+/* 🤖 The AI model when Super Admin hasn't chosen one (Raj, 2026-11-10: the cheaper model — on Sonnet 4.6 a Studio
+   vendor using all 2,000 chats cost more in AI than the plan's price). Used by Wopo Assistant, leads from calls and
+   photo descriptions alike. */
+export const DEFAULT_MODEL = 'claude-haiku-5-5';
 
-// Sonnet pricing (USD per token) — used for per-vendor cost tracking
-const PRICE_IN = 3 / 1_000_000;    // $3 / 1M input tokens
-const PRICE_OUT = 15 / 1_000_000;  // $15 / 1M output tokens
+/* 💵 USD per million tokens [input, output], for each vendor's cost tracking. Haiku 5.5's price is for prompts up to
+   100K tokens (Wopo's are ~4K). A model not listed is costed at Sonnet 4.6's price, so cost is never under-counted. */
+const MODEL_PRICES = {
+  'claude-haiku-5-5': [0.10, 0.50],
+  'claude-haiku-4-5': [1, 5],
+  'claude-sonnet-4-6': [3, 15],
+};
+const priceOf = (model) => MODEL_PRICES[model] || MODEL_PRICES['claude-sonnet-4-6'];
 
 export async function getKnowledge(vendorId) {
   const k = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: Number(vendorId) } });
@@ -369,11 +377,12 @@ async function nameSession(vendorId, session, name) {
   } catch { /* naming is a nicety — never break the chat over it */ }
 }
 
-/** Record token usage + cost for this vendor. */
-async function recordUsage(vendorId, session, usage) {
+/** Record token usage + cost for this vendor, at the price of the model that answered. */
+async function recordUsage(vendorId, session, usage, model) {
   const inTok = usage?.input_tokens || 0;
   const outTok = usage?.output_tokens || 0;
-  const cost = inTok * PRICE_IN + outTok * PRICE_OUT;
+  const [pIn, pOut] = priceOf(model);
+  const cost = (inTok * pIn + outTok * pOut) / 1_000_000;
   await prisma.chatbot_usage.create({
     data: {
       vendor_id: Number(vendorId), session: session || null,
@@ -455,7 +464,7 @@ export async function generateReply(vendorId, businessName, text, history = [], 
       return null;
     }
     const body = await res.json();
-    await recordUsage(vendorId, session, body.usage);
+    await recordUsage(vendorId, session, body.usage, model);
     return body;
   }
 
