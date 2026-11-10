@@ -42,6 +42,7 @@ export default function PhotographerPortal() {
   const [busy, setBusy] = useState(false);
   const [told, setTold] = useState('');
   const [ftp, setFtp] = useState(null);        // 📡 his camera FTP login
+  const [drag, setDrag] = useState(false);     // ⬆️ files held over the drop area
 
   const loadAll = () => Promise.all([call('/me'), call('/shoots'), call('/ftp')])
     .then(([m, s, f]) => { setMe(m); setShoots(s.shoots); setFtp(f); setOpen(o => (o ? s.shoots.find(x => x.id === o.id) || null : null)); })
@@ -63,6 +64,13 @@ export default function PhotographerPortal() {
   async function upload(e) {
     const files = [...(e.target.files || [])];
     e.target.value = '';
+    await uploadFiles(files);
+  }
+  function drop(e) {
+    e.preventDefault(); setDrag(false);
+    if (!busy) uploadFiles([...(e.dataTransfer?.files || [])]);
+  }
+  async function uploadFiles(files) {
     if (!files.length) return;
     setBusy(true); setTold(''); setErr('');
     const r = await uploadShootFiles(files, {
@@ -127,7 +135,10 @@ export default function PhotographerPortal() {
           <div className="ep-deliver">
             <h3 className="rs-h">⬆️ Upload RAW + JPEG</h3>
             <p className="rs-sub">Choose both together — the JPEGs are what the client sees, the RAWs are kept for the editor and matched by file name. Using FTP from the camera? You can still upload here any time.</p>
-            <label className={`rs-btn rs-file ${busy ? 'is-off' : ''}`}>Choose photos
+            <label className={`ph-drop${drag ? ' is-over' : ''}${busy ? ' is-busy' : ''}`}
+              onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={drop}>
+              <b>⬆️ Drop RAW + JPEG here</b>
+              <span className="rs-muted">or tap to choose them</span>
               <input type="file" multiple hidden disabled={busy} accept={SHOOT_ACCEPT} onChange={upload} />
             </label>
             {progress && <div className="ep-progress">{progress}</div>}
@@ -158,12 +169,16 @@ export default function PhotographerPortal() {
           {shoots === null ? <div className="rs-muted">Loading…</div>
             : shoots.length === 0 ? <div className="rs-muted">No shoots yet. The studio assigns them to you in Crew Management.</div>
               : (
-                <ul className="rs-list">
+                <ul className="ph-grid">
                   {shoots.map(s => (
-                    <li key={s.id} className="rs-row ep-client">
-                      <button className="ep-open" type="button" onClick={() => { setOpen(s); setProgress(''); setTold(''); }}>
-                        <span className="rs-strong">{s.name}{s.ftp && <span className="rs-pill is-on ep-new">📡 FTP</span>}{s.notified && <span className="rs-pill is-on ep-new">Sent</span>}</span>
-                        <span className="rs-muted">{[s.event, when(s.date)].filter(Boolean).join(' · ')} · {s.jpegs} JPEG · {s.raws} RAW</span>
+                    <li key={s.id}>
+                      <button className="ph-card" type="button" onClick={() => { setOpen(s); setProgress(''); setTold(''); }}>
+                        <span className="ph-card-cover">{s.cover && <img src={s.cover} alt="" loading="lazy" />}</span>
+                        <span className="ph-card-in">
+                          <span className="rs-strong">{s.name}{s.ftp && <span className="rs-pill is-on ep-new">📡 FTP</span>}{s.notified && <span className="rs-pill is-on ep-new">Sent</span>}</span>
+                          <span className="rs-muted">{[s.event, when(s.date)].filter(Boolean).join(' · ')}</span>
+                          <span className="rs-muted">{s.jpegs} JPEG · {s.raws} RAW</span>
+                        </span>
                       </button>
                     </li>
                   ))}

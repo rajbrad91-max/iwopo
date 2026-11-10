@@ -5,36 +5,30 @@ import { uploadShootFiles, uploadSummary, SHOOT_ACCEPT } from '../lib/shootUploa
 import RenameField from './RenameField';
 
 /**
- * 🛤️ The Raw Selector rail (Raj, 2026-11-09) — one row per client, like the PPM board: Uploaded → Told → Picked →
- * Delivered → RAWs removed, green when done and the next step in orange. Open a row for its Zips (the JPEGs, every
- * RAW, the RAWs of the client's picks, or both), a note for the editor, your own upload, and removing the RAWs — all
- * of them or only those the client did not pick — which the row then keeps as its record. A row stays until you
- * remove it. Data: GET /api/rawsel/overview (routes/rawsel.js).
+ * 🎞️ The Raw Selector's clients (Raj, 2026-11-10): the workspace — one line per client with its cover, name and counts;
+ * open it for the photos, name, Zips, the client's page, your own upload, the editor's note and the RAWs. A booking is
+ * listed as soon as its crew is set in Crew Management. The STATUS of every client lives on the PPM board, which these
+ * steps tick (lib/projectStages.js). Data: GET /api/rawsel/overview (routes/rawsel.js).
  */
-const STEPS = ['Uploaded', 'Told', 'Picked', 'Delivered', 'RAWs removed'];
 const gb = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
-const day = (d) => (d ? new Date(String(d).length === 10 ? `${d}T12:00:00` : d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
-
-/** which of the five steps a row has reached */
-function stepsOf(c) {
-  return [c.jpegs > 0, !!c.uploadedAt, !!c.sentAt, !!c.delivered, !!c.rawsRemoved];
-}
+const day = (d) => (d ? new Date(String(d).length === 10 ? `${d}T12:00:00` : d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
 
 export default function ShootRail({ clients, reload }) {
   const dialog = useDialog();
-  const [open, setOpen] = useState(null);         // the row opened
+  const [open, setOpen] = useState(null);          // the line opened (its key)
   const [note, setNote] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const [bookings, setBookings] = useState(null);  // for "Upload a shoot"
+  const [bookings, setBookings] = useState(null);   // for "Upload a shoot"
   const [newLead, setNewLead] = useState('');
-  const [photos, setPhotos] = useState(null);     // 👀 the opened row's photos
+  const [photos, setPhotos] = useState(null);       // 👀 the opened line's photos
 
+  const keyOf = (c) => (c.id ? `a${c.id}` : `l${c.leadId}`);
   function toggle(c) {
     setMsg('');
-    if (open === c.id) { setOpen(null); return; }
-    setOpen(c.id); setNote(c.note || ''); setPhotos(null);
-    api.rawselPhotos(c.id).then(setPhotos).catch(e => setMsg(`⚠️ ${e.message}`));
+    if (open === keyOf(c)) { setOpen(null); return; }
+    setOpen(keyOf(c)); setNote(c.note || ''); setPhotos(null);
+    if (c.id) api.rawselPhotos(c.id).then(setPhotos).catch(e => setMsg(`⚠️ ${e.message}`));
   }
   const zip = (c, what) => `/api/rawsel/albums/${c.id}/zip?what=${what}&token=${encodeURIComponent(getAuthToken() || '')}`;
 
@@ -76,12 +70,17 @@ export default function ShootRail({ clients, reload }) {
     if (bookings) { setBookings(null); return; }
     api.rawselBookings().then(d => setBookings(d.bookings)).catch(e => setMsg(`⚠️ ${e.message}`));
   }
+  const uploadButton = (leadId, label) => (
+    <label className={`rs-x rs-file${busy ? ' is-off' : ''}`}>{label}
+      <input type="file" multiple hidden disabled={busy} accept={SHOOT_ACCEPT} onChange={e => upload(leadId, e)} />
+    </label>
+  );
 
   return (
     <div className="sr">
       <div className="sr-bar">
         <button className="rs-btn" type="button" onClick={startNew}>{bookings ? 'Close' : '➕ Upload a shoot'}</button>
-        <span className="sr-legend"><i className="sr-key is-done" />Done <i className="sr-key is-next" />Next <i className="sr-key" />Not yet</span>
+        <a className="rs-x sr-ppm" href="/panel/ppm">📊 Status of every client: PPM Board</a>
       </div>
       {bookings && (
         <div className="sr-new">
@@ -89,94 +88,102 @@ export default function ShootRail({ clients, reload }) {
             <option value="">Choose the booking…</option>
             {bookings.map(b => <option key={b.id} value={b.id}>{b.name}{b.event ? ` · ${b.event}` : ''}{b.date ? ` · ${day(b.date)}` : ''}{b.hasShoot ? ' (has photos)' : ''}</option>)}
           </select>
-          <label className={`rs-btn rs-file ${!newLead || busy ? 'is-off' : ''}`}>Choose RAW + JPEG
-            <input type="file" multiple hidden disabled={!newLead || busy} accept={SHOOT_ACCEPT} onChange={e => upload(Number(newLead), e)} />
-          </label>
+          {newLead && uploadButton(Number(newLead), 'Choose RAW + JPEG')}
         </div>
       )}
       {msg && !open && <div className="ep-progress">{msg}</div>}
       {clients === null ? <div className="rs-muted">Loading…</div>
-        : clients.length === 0 ? <div className="rs-muted">No shoots yet. Upload one, or assign a photographer to upload in Crew Management.</div>
-          : clients.map(c => {
-            const done = stepsOf(c);
-            const next = done.indexOf(false);
-            return (
-              <div key={c.id} className={`sr-row${open === c.id ? ' is-open' : ''}`}>
-                <button className="sr-head" type="button" onClick={() => toggle(c)} aria-expanded={open === c.id}>
-                  <span className="sr-who"><b>{c.name}</b><span className="rs-muted">{[c.event, day(c.date)].filter(Boolean).join(' · ') || (c.shoot ? '' : 'Gallery')}</span></span>
-                  <ol className="sr-rail" aria-label="Progress">
-                    {STEPS.map((s, i) => <li key={s} className={`sr-step${done[i] ? ' is-done' : i === next ? ' is-next' : ''}`}><i className="sr-dot" /><span>{s}</span></li>)}
-                  </ol>
-                  <span className="sr-counts">📷 {c.jpegs} · RAW {c.raws}{c.selected ? ` · ✅ ${c.selected}` : ''}</span>
-                </button>
-                {open === c.id && (
-                  <div className="sr-body">
-                    <div className="sr-group">
-                      <h4 className="sr-h">🏷️ Name</h4>
-                      <RenameField name={c.name} onSave={async (name) => { await api.rawselRename(c.id, name); reload(); }} />
-                    </div>
-                    <div className="sr-group">
-                      <h4 className="sr-h">👀 Photos{photos ? ` (${photos.total})` : ''}</h4>
-                      {!photos ? <p className="rs-muted">Loading…</p> : photos.photos.length === 0 ? <p className="rs-muted">No photos yet.</p> : (
-                        <ul className="sr-thumbs">
-                          {photos.photos.map(p => (
-                            <li key={p.id} className={`sr-thumb${p.picked ? ' is-picked' : ''}`} title={p.name}>
-                              <a href={p.preview || undefined} target="_blank" rel="noreferrer">{p.thumb ? <img src={p.thumb} alt={p.name} loading="lazy" /> : <span className="sr-thumb-name">{p.name}</span>}</a>
-                              <span className="sr-tags">{p.picked && <i className="sr-tag is-pick">✅</i>}{p.raw && <i className="sr-tag">RAW</i>}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {photos && photos.total > photos.photos.length && <p className="rs-muted">Showing the first {photos.photos.length} — download the JPEGs for all of them.</p>}
-                    </div>
-                    <div className="sr-group">
-                      <h4 className="sr-h">⬇️ Download</h4>
-                      <div className="sr-actions">
-                        {c.jpegs > 0 && <a className="rs-x" href={zip(c, 'jpeg')}>JPEGs ({c.jpegs})</a>}
-                        {c.raws > 0 && <a className="rs-x" href={zip(c, 'raw')}>All RAWs ({c.raws} · {gb(c.bytes)})</a>}
-                        {c.selectedWithRaw > 0 && <a className="rs-x" href={zip(c, 'picked')}>RAWs of the picks ({c.selectedWithRaw})</a>}
-                        {c.raws > 0 && c.jpegs > 0 && <a className="rs-x" href={zip(c, 'both')}>JPEGs + RAWs</a>}
-                        {!c.jpegs && !c.raws && <span className="rs-muted">Nothing uploaded yet.</span>}
-                      </div>
-                    </div>
-                    {c.client && (
-                      <div className="sr-group">
-                        <h4 className="sr-h">🔗 The client's page</h4>
-                        <p className="rs-muted">View password <b>{c.client.view || '—'}</b> · pick password <b>{c.client.pick || '—'}</b> — open it with the pick password to choose for the client.</p>
-                        <div className="sr-actions"><a className="rs-x" href={c.client.link} target="_blank" rel="noreferrer">Open the client's page</a></div>
-                      </div>
-                    )}
-                    {c.shoot && (
-                      <div className="sr-group">
-                        <h4 className="sr-h">⬆️ Upload more</h4>
-                        <div className="sr-actions">
-                          <label className={`rs-x rs-file${busy ? ' is-off' : ''}`}>Choose RAW + JPEG
-                            <input type="file" multiple hidden disabled={busy} accept={SHOOT_ACCEPT} onChange={e => upload(c.leadId, e)} />
-                          </label>
-                          {c.jpegs > 0 && <button className="rs-x" type="button" disabled={busy} onClick={() => tellClient(c)}>📣 Notify the client</button>}
+        : clients.length === 0 ? <div className="rs-muted">No shoots yet. A booking appears here once its crew is set in Crew Management.</div>
+          : (
+            <>
+              {clients.map(c => {
+                const isOpen = open === keyOf(c);
+                return (
+                  <div key={keyOf(c)} className={`sr-row${isOpen ? ' is-open' : ''}`}>
+                    <button className="sr-head" type="button" onClick={() => toggle(c)} aria-expanded={isOpen}>
+                      <span className="sr-cover">{c.cover && <img src={c.cover} alt="" loading="lazy" />}</span>
+                      <span className="sr-who"><b>{c.name}</b><span className="rs-muted">{[c.event, day(c.date)].filter(Boolean).join(' · ')}</span></span>
+                      <span className="sr-counts">{c.id ? `📷 ${c.jpegs} · RAW ${c.raws}${c.selected ? ` · ✅ ${c.selected}` : ''}` : `📤 ${c.uploader || 'You'} upload${c.uploader ? 's' : ''}`}</span>
+                    </button>
+                    {isOpen && !c.id && (
+                      <div className="sr-body">
+                        <div className="sr-group">
+                          <h4 className="sr-h">📤 Upload</h4>
+                          <p className="rs-muted">{c.uploader ? `${c.uploader} uploads this shoot (Crew Management). You can upload too:` : 'Nobody is set to upload in Crew Management — upload it yourself:'}</p>
+                          <div className="sr-actions">{uploadButton(c.leadId, 'Choose RAW + JPEG')}</div>
                         </div>
+                        {msg && <div className="ep-progress">{msg}</div>}
                       </div>
                     )}
-                    <div className="sr-group">
-                      <h4 className="sr-h">📝 Note for the editor</h4>
-                      <textarea className="sr-note" value={note} onChange={e => setNote(e.target.value)} maxLength={2000} placeholder="e.g. Warm tones, remove the exit sign in the first dance" />
-                      <div className="sr-actions"><button className="rs-x" type="button" onClick={() => saveNote(c)}>Save note</button></div>
-                    </div>
-                    <div className="sr-group">
-                      <h4 className="sr-h">🗑️ RAW files</h4>
-                      <p className="rs-muted">{c.rawsRemoved ? `${c.rawsRemoved.scope === 'all' ? 'All RAWs' : 'Unpicked RAWs'} removed ${day(c.rawsRemoved.at)}.` : 'RAWs are kept until you remove them.'}</p>
-                      <div className="sr-actions">
-                        {c.raws > 0 && c.selected > 0 && <button className="rs-x" type="button" onClick={() => removeRaws(c, 'unpicked')}>Delete non-selected</button>}
-                        {c.raws > 0 && <button className="rs-x sr-danger" type="button" onClick={() => removeRaws(c, 'all')}>Delete all RAWs</button>}
-                        {c.shoot && <button className="rs-x sr-danger" type="button" onClick={() => removeRow(c)}>Remove this client</button>}
+                    {isOpen && c.id && (
+                      <div className="sr-body">
+                        <div className="sr-group">
+                          <h4 className="sr-h">🏷️ Name</h4>
+                          <RenameField name={c.name} onSave={async (name) => { await api.rawselRename(c.id, name); reload(); }} />
+                        </div>
+                        <div className="sr-group">
+                          <h4 className="sr-h">👀 Photos{photos ? ` (${photos.total})` : ''}</h4>
+                          {!photos ? <p className="rs-muted">Loading…</p> : photos.photos.length === 0 ? <p className="rs-muted">No photos yet.</p> : (
+                            <ul className="sr-thumbs">
+                              {photos.photos.map(p => (
+                                <li key={p.id} className={`sr-thumb${p.picked ? ' is-picked' : ''}`} title={p.name}>
+                                  <a href={p.preview || undefined} target="_blank" rel="noreferrer">{p.thumb ? <img src={p.thumb} alt={p.name} loading="lazy" /> : <span className="sr-thumb-name">{p.name}</span>}</a>
+                                  <span className="sr-tags">{p.picked && <i className="sr-tag is-pick">✅</i>}{p.raw && <i className="sr-tag">RAW</i>}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {photos && photos.total > photos.photos.length && <p className="rs-muted">Showing the first {photos.photos.length} — download the JPEGs for all of them.</p>}
+                        </div>
+                        <div className="sr-group">
+                          <h4 className="sr-h">⬇️ Download</h4>
+                          <div className="sr-actions">
+                            {c.jpegs > 0 && <a className="rs-x" href={zip(c, 'jpeg')}>JPEGs ({c.jpegs})</a>}
+                            {c.raws > 0 && <a className="rs-x" href={zip(c, 'raw')}>All RAWs ({c.raws} · {gb(c.bytes)})</a>}
+                            {c.selectedWithRaw > 0 && <a className="rs-x" href={zip(c, 'picked')}>RAWs of the picks ({c.selectedWithRaw})</a>}
+                            {c.raws > 0 && c.jpegs > 0 && <a className="rs-x" href={zip(c, 'both')}>JPEGs + RAWs</a>}
+                            {c.gallery && <a className="rs-x" href={`/panel/galleries/${c.gallery}`}>🖼️ Open the delivered gallery</a>}
+                            {!c.jpegs && !c.raws && !c.gallery && <span className="rs-muted">Nothing uploaded yet.</span>}
+                          </div>
+                        </div>
+                        {c.client && (
+                          <div className="sr-group">
+                            <h4 className="sr-h">🔗 The client&apos;s page</h4>
+                            <p className="rs-muted">View password <b>{c.client.view || '—'}</b> · pick password <b>{c.client.pick || '—'}</b> — open it with the pick password to choose for the client.</p>
+                            <div className="sr-actions"><a className="rs-x" href={c.client.link} target="_blank" rel="noreferrer">Open the client&apos;s page</a></div>
+                          </div>
+                        )}
+                        {c.shoot && (
+                          <div className="sr-group">
+                            <h4 className="sr-h">⬆️ Upload more</h4>
+                            <div className="sr-actions">
+                              {uploadButton(c.leadId, 'Choose RAW + JPEG')}
+                              {c.jpegs > 0 && <button className="rs-x" type="button" disabled={busy} onClick={() => tellClient(c)}>📣 Notify the client</button>}
+                            </div>
+                          </div>
+                        )}
+                        <div className="sr-group">
+                          <h4 className="sr-h">📝 Note for the editor</h4>
+                          <textarea className="sr-note" value={note} onChange={e => setNote(e.target.value)} maxLength={2000} placeholder="e.g. Warm tones, remove the exit sign in the first dance" />
+                          <div className="sr-actions"><button className="rs-x" type="button" onClick={() => saveNote(c)}>Save note</button></div>
+                        </div>
+                        <div className="sr-group">
+                          <h4 className="sr-h">🗑️ RAW files</h4>
+                          <p className="rs-muted">{c.rawsRemoved ? `${c.rawsRemoved.scope === 'all' ? 'All RAWs' : 'Unpicked RAWs'} removed ${day(c.rawsRemoved.at)}.` : 'RAWs are kept until you remove them.'}</p>
+                          <div className="sr-actions">
+                            {c.raws > 0 && c.selected > 0 && <button className="rs-x" type="button" onClick={() => removeRaws(c, 'unpicked')}>Delete non-selected</button>}
+                            {c.raws > 0 && <button className="rs-x sr-danger" type="button" onClick={() => removeRaws(c, 'all')}>Delete all RAWs</button>}
+                            {c.shoot && <button className="rs-x sr-danger" type="button" onClick={() => removeRow(c)}>Remove this client</button>}
+                          </div>
+                        </div>
+                        {msg && <div className="ep-progress">{msg}</div>}
                       </div>
-                    </div>
-                    {msg && <div className="ep-progress">{msg}</div>}
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </>
+          )}
     </div>
   );
 }

@@ -65,6 +65,21 @@ function railOf(b) {
   return { steps, next };
 }
 
+/* 🎞️ under a step: its date — or, for a booking that went through the Raw Selector, what happened there (Raj,
+   2026-11-10: the status lives here) — and, under the next step, what comes next */
+const RS_NEXT = { backed_up_at: 'Upload', sent_to_editor_at: 'Editor to download', edited: 'Editor to upload', delivered_at: 'Send to the client' };
+function captionOf(st, i, next, rs) {
+  if (st.state === 'done' || st.state === 'half') {
+    if (rs && st.key === 'backed_up_at' && rs.uploaded_by) return `Uploaded · ${rs.uploaded_by}`;
+    if (rs && st.key === 'sent_to_editor_at' && rs.received_by !== null) return rs.received_by ? `Downloaded · ${rs.received_by}` : 'Downloaded';
+    if (rs?.sent && st.key === 'edited') return st.state === 'half' ? 'Photos uploaded' : 'Uploaded';   // half: the videos are still to come
+    if (rs?.sent && st.key === 'delivered_at') return rs.client_downloaded ? 'Client downloaded' : 'Sent';
+    return st.state === 'half' ? 'Partly' : short(st.at);
+  }
+  if (i !== next) return '';
+  return (rs && RS_NEXT[st.key]) || st.next;
+}
+
 /** where a booking stands — for sorting, the Active filter and the badge */
 function standing(b) {
   const due = ymd(b.delivery_due_at);
@@ -165,22 +180,22 @@ const stripLog = (x) => { const r = { ...x }; delete r.outside_messages; delete 
 function Booking({ b, s, open, log, onPick, onLog }) {
   const { steps, next } = railOf(b);
   const badge = badgeOf(b, s);
-  const nextStep = next >= 0 ? steps[next] : null;
   return (
     <div className={`ppm-row${s.overdue ? ' is-late' : ''}${open ? ' is-open' : ''}`}>
       <div className="ppm-who">
         <b>{b.client}</b>
         <span className="ppm-sub">{[b.event_type, b.shoot_date && short(b.shoot_date)].filter(Boolean).join(' · ')}</span>
+        {b.rawsel?.raws && <span className="ppm-raws">RAWs: {b.rawsel.raws}</span>}
       </div>
       <div className="ppm-track">
         <ol className="ppm-rail">
           {steps.map((st, i) => (
             <li key={st.key} className={`ppm-step is-${st.state}${i === next ? ' is-next' : ''}`}>
               <Knob b={b} st={st} onPick={onPick} />
+              <em className="ppm-cap">{captionOf(st, i, next, b.rawsel)}</em>
             </li>
           ))}
         </ol>
-        {nextStep && <p className={`ppm-next at-${next}`}>Next: {nextStep.next}</p>}
       </div>
       <button type="button" className={`ppm-badge is-${badge.kind}`} onClick={() => onPick({ lead: b, field: 'delivery_due_at', label: '📅 Delivery due' })}
         title="Change the delivery due date">{badge.text}</button>

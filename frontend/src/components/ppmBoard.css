@@ -36,11 +36,11 @@
 .ppm-sub { display: block; font-size: 12.5px; color: var(--muted); }
 
 /* the rail: eight steps, a line joining them, green as far as the work has got */
-.ppm-track { grid-area: track; position: relative; padding-bottom: 22px; }
+.ppm-track { grid-area: track; position: relative; }
 .ppm-rail { display: grid; grid-template-columns: repeat(8, 1fr); margin: 0; padding: 0; list-style: none; }
-.ppm-step { position: relative; display: flex; justify-content: center; }
+.ppm-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .ppm-step + .ppm-step::before {   /* the line from the previous step to this one */
-  content: ""; position: absolute; top: 50%; right: 50%; width: 100%; height: 3px; margin-top: -1.5px; border-radius: 2px;
+  content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 3px; margin-top: -1.5px; border-radius: 2px;   /* through the dots' centres */
   background: var(--ppm-todo);
 }
 .ppm-step.is-done::before, .ppm-step.is-half::before { background: var(--ppm-done); }
@@ -57,17 +57,15 @@ button.ppm-knob:focus-visible { outline: 2px solid var(--teal); outline-offset: 
   content: ""; width: 5px; height: 9px; margin-top: -2px; border: solid var(--panel); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
 }
 .ppm-step.is-half .ppm-knob { border-color: var(--ppm-done); background: linear-gradient(90deg, var(--ppm-done) 50%, var(--panel) 50%); }
-.ppm-step.is-next .ppm-knob { width: 26px; height: 26px; border-color: var(--ppm-next); }
+.ppm-step.is-next .ppm-knob { width: 26px; height: 26px; margin: 0; border-color: var(--ppm-next); }
+.ppm-knob { margin: 2px 0; }   /* a 22px dot centred where the 26px next one is */
+/* the status word under each step (PpmBoard captionOf): a date, what the Raw Selector did, or — orange — what comes next */
+.ppm-cap { min-height: 14px; max-width: 100%; font-size: 10.5px; font-style: normal; line-height: 1.25; text-align: center; color: var(--muted); }
+.ppm-step.is-done .ppm-cap { color: var(--ppm-done); }
+.ppm-step.is-next .ppm-cap { color: var(--ppm-next); font-weight: 700; }
+.ppm-raws { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--ppm-done); }
 .ppm-step.is-next .ppm-knob::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ppm-next); }
 .ppm-step.is-next.is-half .ppm-knob::after { content: none; }
-.ppm-next {   /* "Next: …" under the next step — kept inside the rail at its two ends */
-  position: absolute; bottom: 0; left: calc((var(--at) + .5) * 12.5%); margin: 0; transform: translateX(-50%);
-  font-size: 12.5px; font-weight: 700; color: var(--ppm-next); white-space: nowrap;
-}
-.ppm-next.at-0 { --at: 0; } .ppm-next.at-1 { --at: 1; } .ppm-next.at-2 { --at: 2; } .ppm-next.at-3 { --at: 3; }
-.ppm-next.at-4 { --at: 4; } .ppm-next.at-5 { --at: 5; } .ppm-next.at-6 { --at: 6; } .ppm-next.at-7 { --at: 7; }
-.ppm-next.at-0, .ppm-next.at-1 { left: 0; transform: none; }
-.ppm-next.at-6, .ppm-next.at-7 { left: auto; right: 0; transform: none; }
 
 /* the badge: how the delivery date stands — tap to change it */
 .ppm-badge {
@@ -95,6 +93,8 @@ button.ppm-knob:focus-visible { outline: 2px solid var(--teal); outline-offset: 
   .ppm-track { min-width: 0; }
   .ppm-knob { width: 20px; height: 20px; }
   .ppm-step.is-next .ppm-knob { width: 24px; height: 24px; }
+  .ppm-step + .ppm-step::before { top: 12px; }
+  .ppm-step:not(.is-next) .ppm-cap { display: none; }   /* 📱 only what comes next */
   .ppm-log-in { grid-template-columns: 1fr; }
 }
 

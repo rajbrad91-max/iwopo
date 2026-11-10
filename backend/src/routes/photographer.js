@@ -5,7 +5,7 @@ import prisma from '../config/prisma.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { limit } from '../middleware/rateLimit.js';
 import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
-import { shootFor, uploadBegin, uploadComplete, announceUpload, renameShoot } from '../lib/shoots.js';
+import { shootFor, uploadBegin, uploadComplete, announceUpload, renameShoot, imageLink } from '../lib/shoots.js';
 import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { serverError } from '../lib/httpError.js';
@@ -99,12 +99,13 @@ router.get('/shoots', requirePhotographer, async (req, res) => {
     });
     const albums = await prisma.albums.findMany({
       where: { vendor_id: req.crew.vendor_id, kind: 'shoot', lead_id: { in: jobs.map(j => j.leads.id) } },
-      select: { lead_id: true, title: true, uploaded_at: true, _count: { select: { photos: true, raw_files: true } } },
+      select: { id: true, lead_id: true, title: true, uploaded_at: true, _count: { select: { photos: true, raw_files: true } }, photos: { where: { ready: true }, select: { thumb_path: true }, orderBy: { filename: 'asc' }, take: 1 } },
     });
     const by = new Map(albums.map(a => [a.lead_id, a]));
+    const covers = new Map(await Promise.all(albums.map(async a => [a.lead_id, a.photos[0] ? await imageLink(req.crew.vendor_id, a.photos[0].thumb_path, `${a.id}-cover.webp`) : null])));
     const shoots = jobs.map(({ leads: l }) => {
       const a = by.get(l.id);
-      return { id: l.id, name: a?.title || l.name || 'Client', event: l.event_type || '', date: l.event_date, jpegs: a?._count.photos || 0, raws: a?._count.raw_files || 0, notified: a?.uploaded_at || null, ftp: req.crew.ftp_lead_id === l.id };
+      return { id: l.id, name: a?.title || l.name || 'Client', event: l.event_type || '', date: l.event_date, jpegs: a?._count.photos || 0, raws: a?._count.raw_files || 0, notified: a?.uploaded_at || null, ftp: req.crew.ftp_lead_id === l.id, cover: covers.get(l.id) || null };
     }).sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')));
     res.json({ shoots });
   } catch (e) { serverError(res, e); }
@@ -150,7 +151,7 @@ router.post('/shoots/:leadId/begin', requirePhotographer, async (req, res) => {
 router.post('/shoots/:leadId/complete', requirePhotographer, async (req, res) => {
   try {
     const a = await myShoot(req, res); if (!a) return;
-    res.json(await uploadComplete(req.crew.vendor_id, a, req.body?.items));
+    res.json(await uploadComplete(req.crew.vendor_id, a, req.body?.items, req.crew.name || req.crew.email));
   } catch (e) { serverError(res, e); }
 });
 

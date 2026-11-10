@@ -79,6 +79,12 @@ model albums {
   /// 🗑️ when the vendor removed this shoot's RAWs, and which: 'all' or 'unpicked'
   raws_removed_at          DateTime?        @db.Timestamp(6)
   raws_removed_scope       String?          @db.VarChar(10)
+  /// 🛤️ the rail's steps (Raj, 2026-11-10): who uploaded, when and by whom the RAWs were first downloaded, and when
+  /// the client had downloaded every photo of a delivered gallery
+  uploaded_by              String?          @db.VarChar(80)
+  raws_received_at         DateTime?        @db.Timestamp(6)
+  raws_received_by         String?          @db.VarChar(80)
+  downloads_complete_at    DateTime?        @db.Timestamp(6)
   leads                    leads?           @relation(fields: [lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   source                   albums?          @relation("AlbumDelivery", fields: [source_album_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   deliveries               albums[]         @relation("AlbumDelivery")

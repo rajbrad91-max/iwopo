@@ -96,27 +96,20 @@
 /* 📸 the photographer's portal (PhotographerPortal.jsx): the two notify buttons */
 .ph-notify { display: flex; flex-wrap: wrap; gap: 10px; }
 
-/* 🛤️ the Raw Selector rail (components/ShootRail.jsx) — the PPM board's colour language: green done, orange next */
-.sr { --sr-done: #4f9a6a; --sr-next: #e65c00; --sr-todo: color-mix(in srgb, var(--muted) 55%, transparent); display: flex; flex-direction: column; gap: 10px; }
-.sr-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-.sr-legend { display: inline-flex; align-items: center; gap: 4px 6px; font-size: 12.5px; color: var(--muted); }
-.sr-key { display: inline-block; width: 10px; height: 10px; margin-left: 8px; border-radius: 50%; background: var(--sr-todo); }
-.sr-key.is-done { background: var(--sr-done); } .sr-key.is-next { background: var(--sr-next); }
+/* 🎞️ the Raw Selector's clients (components/ShootRail.jsx) — the workspace; the status lives on the PPM board */
+.sr { display: flex; flex-direction: column; gap: 6px; }
+.sr-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.sr-ppm { display: inline-flex; align-items: center; text-decoration: none; }
 .sr-new { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .sr-input { min-width: 260px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; }
-.sr-row { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.sr-row { border: 1px solid var(--line); border-radius: 11px; background: var(--panel); }
 .sr-row.is-open { border-color: color-mix(in srgb, var(--teal) 50%, var(--line)); }
-.sr-head { display: grid; grid-template-columns: minmax(150px, 220px) 1fr auto; align-items: center; gap: 16px; width: 100%; padding: 14px 16px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sr-head { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: center; width: 100%; padding: 8px 12px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sr-cover { display: block; width: 56px; height: 38px; overflow: hidden; border-radius: 7px; background: color-mix(in srgb, var(--muted) 18%, transparent); }
+.sr-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .sr-who { display: flex; flex-direction: column; min-width: 0; }
-.sr-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sr-rail { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; padding: 0; list-style: none; }
-.sr-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); }
-.sr-step + .sr-step::before { content: ""; position: absolute; top: 7px; right: 50%; width: 100%; height: 3px; border-radius: 2px; background: var(--sr-todo); }
-.sr-step.is-done::before { background: var(--sr-done); }
-.sr-dot { position: relative; z-index: 1; width: 16px; height: 16px; border: 3px solid var(--sr-todo); border-radius: 50%; background: var(--panel); }
-.sr-step.is-done .sr-dot { border-color: var(--sr-done); background: var(--sr-done); }
-.sr-step.is-next .sr-dot { border-color: var(--sr-next); }
-.sr-step.is-next span { color: var(--sr-next); font-weight: 700; }
+.sr-who b { overflow: hidden; font-size: 14.5px; text-overflow: ellipsis; white-space: nowrap; }
+.sr-who .rs-muted { font-size: 12px; }
 .sr-counts { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .sr-body { display: flex; flex-direction: column; gap: 14px; padding: 4px 16px 16px; }
 .sr-group { padding-top: 12px; border-top: 1px solid var(--line); }
@@ -125,10 +118,6 @@
 .sr-actions a.rs-x { text-decoration: none; }
 .sr-note { width: 100%; min-height: 70px; margin-bottom: 8px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text); font: inherit; resize: vertical; }
 .sr-danger { color: #c4524a; }
-@media (max-width: 760px) {
-  .sr-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who counts" "rail rail"; }
-  .sr-who { grid-area: who; } .sr-counts { grid-area: counts; } .sr-rail { grid-area: rail; }
-}
 
 /* 🖼️ the editor's view of a client's picks (EditorPortal.jsx): previews, the studio's note */
 .ep-note { margin: 12px 0; padding: 10px 14px; border-left: 4px solid #c99032; border-radius: 8px; background: color-mix(in srgb, #c99032 10%, transparent); }
@@ -160,4 +149,16 @@
 .sr-tags { position: absolute; right: 4px; bottom: 4px; display: flex; gap: 3px; }
 .sr-tag { padding: 1px 5px; border-radius: 6px; background: #000000a6; color: #fff; font-size: 10.5px; font-style: normal; font-weight: 700; }
 .sr-tag.is-pick { background: #4f9a6acc; }
+
+/* 📸 the photographer's page (PhotographerPortal.jsx): shoots as cover cards, one big drop area */
+.ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.ph-card { display: flex; flex-direction: column; width: 100%; padding: 0; overflow: hidden; border: 1px solid #d5dce1; border-radius: 14px; background: #fff; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ph-card:hover { border-color: #2bb3a3; }
+.ph-card-cover { display: block; height: 130px; background: #00000012; }
+.ph-card-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ph-card-in { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; }
+.ph-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 150px; padding: 18px; border: 2px dashed #b9c4ca; border-radius: 14px; text-align: center; cursor: pointer; }
+.ph-drop b { font-size: 16px; }
+.ph-drop.is-over { border-color: #2bb3a3; background: color-mix(in srgb, #2bb3a3 8%, transparent); }
+.ph-drop.is-busy { cursor: progress; }
 

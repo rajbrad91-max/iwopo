@@ -65,6 +65,30 @@ async function signedAt(leadIds) {
   return m;
 }
 
+/** 🎞️ what the Raw Selector knows about these bookings (Raj, 2026-11-10 — the status lives on the PPM board): who
+ *  uploaded, who first downloaded the RAWs, whether the edited gallery was sent and the client downloaded every photo,
+ *  and what became of the RAWs. Shown as the status words under the board's own steps. */
+async function rawselOf(v, leadIds) {
+  if (!leadIds.length) return new Map();
+  const shoots = await prisma.albums.findMany({
+    where: { vendor_id: v, kind: 'shoot', lead_id: { in: leadIds } },   // 🔒
+    select: {
+      lead_id: true, uploaded_by: true, raws_received_at: true, raws_received_by: true, raws_removed_at: true,
+      deliveries: { where: { kind: 'gallery' }, select: { downloads_complete_count: true, downloads_complete_at: true, _count: { select: { photos: true } } }, orderBy: { id: 'desc' }, take: 1 },
+    },
+  });
+  return new Map(shoots.map(a => {
+    const dl = a.deliveries[0];
+    return [a.lead_id, {
+      uploaded_by: a.uploaded_by || null,
+      received_by: a.raws_received_at ? (a.raws_received_by || '') : null,
+      sent: !!dl,
+      client_downloaded: dl && dl.downloads_complete_count != null && dl.downloads_complete_count === dl._count.photos ? dl.downloads_complete_at : null,
+      raws: a.raws_removed_at ? (a.raws_received_at ? 'Downloaded + removed' : 'Removed') : (a.raws_received_at ? 'Downloaded' : null),
+    }];
+  }));
+}
+
 /** Every booking with its stages (newest shoot first). */
 export async function listStages(vendorId) {
   const v = Number(vendorId);
@@ -72,7 +96,8 @@ export async function listStages(vendorId) {
   const st = await prisma.project_stages.findMany({ where: { vendor_id: v, lead_id: { in: leads.map(l => l.id) } } });   // 🔒
   const by = new Map(st.map(s => [s.lead_id, s]));
   const signed = await signedAt(leads.map(l => l.id));      // ids are this vendor's already
-  return leads.map(l => shape(l, by.get(l.id), signed.get(l.id) || null));
+  const rs = await rawselOf(v, leads.map(l => l.id));
+  return leads.map(l => ({ ...shape(l, by.get(l.id), signed.get(l.id) || null), rawsel: rs.get(l.id) || null }));
 }
 
 /** One booking: its stages, the messages sent outside iwopo, and the emails iwopo sent. */
@@ -88,6 +113,7 @@ export async function stagesFor(vendorId, leadId) {
   const signed = await signedAt([lead.id]);
   return {
     ...shape(lead, st, signed.get(lead.id) || null),
+    rawsel: (await rawselOf(v, [lead.id])).get(lead.id) || null,
     outside_messages: outside.map(m => ({ id: m.id, channel: m.channel, direction: m.direction, text: m.body, sent_at: m.sent_at, recorded_by: m.recorded_by })),
     emails: emails.map(e => ({ id: e.id, to: e.to_email, subject: e.subject, kind: e.kind, ok: e.ok, error: e.error || null, sent_at: e.sent_at })),
   };
@@ -112,6 +138,16 @@ export async function setStages(vendorId, leadId, input = {}) {
     });
   }
   return stagesFor(v, lead.id);
+}
+
+/** 📊 the Raw Selector ticks these stages as its steps happen (Raj, 2026-11-10): only a stage still empty — a date the
+ *  vendor set by hand is never moved. */
+export async function tickStages(vendorId, leadId, fields) {
+  if (!leadId) return;
+  const st = await prisma.project_stages.findFirst({ where: { vendor_id: Number(vendorId), lead_id: Number(leadId) } });   // 🔒
+  const input = {};
+  for (const f of fields) if (DATE_FIELDS.includes(f) && !st?.[f]) input[f] = 'now';
+  if (Object.keys(input).length) await setStages(vendorId, leadId, input);
 }
 
 /** A message he sent (or got) outside iwopo — WhatsApp, Instagram… — recorded by him. */

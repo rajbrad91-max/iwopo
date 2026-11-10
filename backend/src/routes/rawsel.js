@@ -23,7 +23,7 @@ import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { photoZip } from '../lib/photoZip.js';
-import { shootFor, uploadBegin, uploadComplete, announceUpload, renameShoot, imageLink } from '../lib/shoots.js';
+import { shootFor, uploadBegin, uploadComplete, announceUpload, renameShoot, imageLink, markReceived } from '../lib/shoots.js';
 import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { openPassword } from '../lib/sharePassword.js';
@@ -201,16 +201,25 @@ router.get('/overview', requireAuth, async (req, res) => {
     const albums = await prisma.albums.findMany({
       where: { vendor_id: v, OR: [{ kind: 'shoot' }, { raw_files: { some: {} } }, { selections: { some: {} } }] },
       select: {
-        id: true, title: true, kind: true, uploaded_at: true, editor_note: true, raws_removed_at: true, raws_removed_scope: true,
-        public_token: true, guest_password_enc: true, admin_password_enc: true,
-        selection_notes: { select: { updated_at: true } },
+        id: true, title: true, kind: true, lead_id: true,
+        editor_note: true, raws_removed_at: true, raws_removed_scope: true, public_token: true, guest_password_enc: true, admin_password_enc: true,
         leads: { select: { id: true, event_type: true, event_date: true } },
-        deliveries: { where: { kind: 'gallery' }, select: { id: true, created_at: true }, orderBy: { id: 'desc' }, take: 1 },
+        deliveries: { where: { kind: 'gallery' }, select: { id: true }, orderBy: { id: 'desc' }, take: 1 },
+        photos: { where: { ready: true }, select: { thumb_path: true }, orderBy: { filename: 'asc' }, take: 1 },
         _count: { select: { photos: true } },
       },
       orderBy: { id: 'desc' },
     });
-    const out = [];
+    /* 👥 a booking with its crew set in Crew Management is listed from the start, ready to upload — the status of every
+       client lives on the PPM board (lib/projectStages.js), this list is where the work is done */
+    const shot = new Set(albums.map(a => a.lead_id).filter(Boolean));
+    const upcoming = await prisma.leads.findMany({
+      where: { vendor_id: v, status: 'booked', archived_at: null, lead_crew: { some: {} }, id: { notIn: [...shot] } },
+      select: { id: true, name: true, event_type: true, event_date: true, lead_crew: { where: { uploads: true }, select: { crew_members: { select: { name: true } } } } },
+      orderBy: { event_date: 'desc' },
+      take: 100,
+    });
+    const rows = [];
     for (const a of albums) {
       await pairAlbum(a.id, v);
       const [raws, picks] = await Promise.all([
@@ -218,24 +227,27 @@ router.get('/overview', requireAuth, async (req, res) => {
         prisma.selections.findMany({ where: { album_id: a.id }, select: { photo_id: true } }),
       ]);
       const picked = new Set(picks.map(p => p.photo_id));
-      out.push({
-        id: a.id, name: a.title, shoot: a.kind === 'shoot', leadId: a.leads?.id || null,
+      const dl = a.deliveries[0];
+      rows.push({
+        id: a.id, leadId: a.lead_id, name: a.title, shoot: a.kind === 'shoot',
         event: a.leads?.event_type || '', date: a.leads?.event_date || null,
-        jpegs: a._count.photos,
-        raws: raws.length,
-        bytes: raws.reduce((t, r) => t + Number(r.size_bytes || 0), 0),
-        selected: picked.size,
-        selectedWithRaw: raws.filter(r => r.photo_id && picked.has(r.photo_id)).length,
-        uploadedAt: a.uploaded_at,
-        sentAt: a.selection_notes?.updated_at || null,
-        delivered: a.deliveries[0] ? { id: a.deliveries[0].id, at: a.deliveries[0].created_at } : null,
+        cover: a.photos[0] ? await imageLink(v, a.photos[0].thumb_path, `${a.id}-cover.webp`) : null,
+        jpegs: a._count.photos, raws: raws.length, bytes: raws.reduce((t, r) => t + Number(r.size_bytes || 0), 0),
+        selected: picked.size, selectedWithRaw: raws.filter(r => r.photo_id && picked.has(r.photo_id)).length,
+        gallery: dl?.id || null, note: a.editor_note || '',
         rawsRemoved: a.raws_removed_at ? { at: a.raws_removed_at, scope: a.raws_removed_scope } : null,
-        note: a.editor_note || '',
         // 🔗 the client's page and both passwords — the vendor's own, to pick on the client's behalf
         client: a.kind === 'shoot' ? { link: `/g/${a.public_token}`, view: openPassword(a.guest_password_enc) || '', pick: openPassword(a.admin_password_enc) || '' } : null,
       });
     }
-    res.json({ clients: out });
+    for (const l of upcoming) {
+      rows.push({
+        id: null, leadId: l.id, name: l.name || 'Client', shoot: true, event: l.event_type || '', date: l.event_date,
+        uploader: l.lead_crew.map(c => c.crew_members?.name).filter(Boolean).join(', ') || null,
+      });
+    }
+    rows.sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')));
+    res.json({ clients: rows });
   } catch (e) { serverError(res, e); }
 });
 
@@ -325,6 +337,7 @@ router.get('/albums/:albumId/zip', async (req, res) => {
       for (const r of raws) files.push({ key: r.object_key, name: `${what === 'both' ? 'RAW/' : ''}${r.filename}` });
     }
     if (!files.length) return downloadFailed(req, res, 404, 'Nothing to download', 'There is nothing to download here yet.');
+    if (what !== 'jpeg') await markReceived(user.vendor_id, a.id, user.name || 'You');   // 📥 you can be the editor: your RAW download counts
     const label = { jpeg: 'jpegs', raw: 'raws', picked: 'picked-raws', both: 'jpegs-and-raws' }[what];
     res.attachment(`${`${a.title || 'shoot'}-${label}`.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.zip`);
     const archive = photoZip();   // stored: photographs and RAWs are already compressed (lib/photoZip.js)
@@ -361,7 +374,7 @@ router.post('/shoots/:leadId/begin', requireAuth, async (req, res) => {
   try { const a = await ownShoot(req, res); if (!a) return; answer(res, await uploadBegin(vid(req), a, req.body?.files)); } catch (e) { serverError(res, e); }
 });
 router.post('/shoots/:leadId/complete', requireAuth, async (req, res) => {
-  try { const a = await ownShoot(req, res); if (!a) return; res.json(await uploadComplete(vid(req), a, req.body?.items)); } catch (e) { serverError(res, e); }
+  try { const a = await ownShoot(req, res); if (!a) return; res.json(await uploadComplete(vid(req), a, req.body?.items, req.user?.name || 'You')); } catch (e) { serverError(res, e); }
 });
 router.post('/shoots/:leadId/notify', requireAuth, async (req, res) => {
   try {

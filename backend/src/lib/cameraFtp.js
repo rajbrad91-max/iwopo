@@ -89,7 +89,7 @@ export async function ingestFtp() {
     for (const d of dirs) {
       const m = d.isDirectory() && d.name.match(MINE);
       if (!m) continue;   // not one of this site's photographers
-      const cm = await prisma.crew_members.findUnique({ where: { id: Number(m[1]) }, select: { id: true, vendor_id: true, ftp_lead_id: true } });
+      const cm = await prisma.crew_members.findUnique({ where: { id: Number(m[1]) }, select: { id: true, name: true, vendor_id: true, ftp_lead_id: true } });
       if (!cm?.ftp_lead_id) continue;   // no shoot chosen: the files wait
       const f = await getFeatures(cm.vendor_id);
       if (!f.has('*') && !f.has('rawsel')) continue;
@@ -102,7 +102,7 @@ export async function ingestFtp() {
         const key = uploadKey(cm.vendor_id, album, file.name);
         try {
           await objects.putObject(objects.PRIVATE, key, fs.createReadStream(file.path), null, file.size);
-          const done = await uploadComplete(cm.vendor_id, album, [{ key, name: file.name }]);
+          const done = await uploadComplete(cm.vendor_id, album, [{ key, name: file.name }], cm.name);
           if (done.photos + done.raws > 0) fs.unlinkSync(file.path);
         } catch (e) { quiet('cameraFtp · ingest')(e); }
       }

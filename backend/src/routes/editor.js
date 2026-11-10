@@ -30,8 +30,9 @@ import { sendAsVendor } from './email.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
-import { deliveryFor, DELIVERY_KIND, renameShoot, imageLink } from '../lib/shoots.js';
+import { deliveryFor, findDelivery, DELIVERY_KIND, renameShoot, imageLink, markReceived } from '../lib/shoots.js';
 import { openPassword } from '../lib/sharePassword.js';
+import { tickStages } from '../lib/projectStages.js';
 
 const router = express.Router();
 const SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':raw-editor';
@@ -165,6 +166,7 @@ router.get('/raws/:id/link', requireEditor, limit({ name: 'raw-editor-link', max
     // 🔒 only a RAW whose photo the client actually picked
     const picked = r && await prisma.selections.findFirst({ where: { album_id: r.album_id, photo_id: r.photo_id } });
     if (!r || !picked) return res.status(404).json({ error: 'Not found' });
+    await markReceived(v, r.album_id, req.editor.name || req.editor.email);   // 📥 the rail's "Editor received"
     res.json({ url: await objects.signGet(objects.PRIVATE, r.object_key, r.filename), name: r.filename });
   } catch (e) { serverError(res, e); }
 });
@@ -181,7 +183,7 @@ const galleryKey = (v, albumId, name) => objects.keyFor(v, 'galleries', String(a
 const tabName = (t) => String(t || '').trim().replace(/\s+/g, ' ').slice(0, 60);
 
 async function editorAlbum(req, res) {
-  const a = await prisma.albums.findFirst({ where: { id: Number(req.params.albumId), vendor_id: req.editor.vendor_id }, select: { id: true, title: true, kind: true, client_email: true, public_token: true } });
+  const a = await prisma.albums.findFirst({ where: { id: Number(req.params.albumId), vendor_id: req.editor.vendor_id }, select: { id: true, title: true, kind: true, lead_id: true, client_email: true, public_token: true } });
   if (!a) res.status(404).json({ error: 'Not found' });
   return a;
 }
@@ -190,7 +192,8 @@ async function editorAlbum(req, res) {
 router.get('/clients/:albumId/tabs', requireEditor, async (req, res) => {
   try {
     const a = await editorAlbum(req, res); if (!a) return;
-    const d = await deliveryFor(req.editor.vendor_id, a);   // 📁 a shoot's gallery-to-be (lib/shoots.js)
+    const d = await findDelivery(req.editor.vendor_id, a);   // 📁 looked for only: made when he uploads (lib/shoots.js)
+    if (!d) return res.json({ tabs: [] });
     const tabs = await prisma.album_events.findMany({ where: { album_id: d.id, delivery: true }, select: { id: true, name: true, _count: { select: { photos: true } } }, orderBy: { sort_order: 'asc' } });
     res.json({ tabs: tabs.map(t => ({ id: t.id, name: t.name, photos: t._count.photos })) });
   } catch (e) { serverError(res, e); }
@@ -290,7 +293,8 @@ router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) 
   try {
     const a = await editorAlbum(req, res); if (!a) return;
     const v = req.editor.vendor_id;
-    const d = await deliveryFor(v, a);
+    const d = await findDelivery(v, a);
+    if (!d) return res.status(400).json({ error: 'Upload the edited photos first' });
     const tabs = await prisma.album_events.findMany({ where: { album_id: d.id, delivery: true }, select: { id: true } });
     const count = tabs.length ? await prisma.photos.count({ where: { album_id: d.id, event_id: { in: tabs.map(t => t.id) } } }) : 0;
     if (!count) return res.status(400).json({ error: 'Upload the edited photos first' });
@@ -313,6 +317,8 @@ router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) 
         text: `Hi ${gallery.title},\n\nYour edited photos are ready:\n${base}/g/${gallery.public_token}\n\nPassword: ${openPassword(gallery.guest_password_enc) || '(ask us)'}\n\n${studio}`,
       })).ok;
     }
+    // 📊 the PPM board: "Edited" — and "Delivered" when the client was told
+    await tickStages(v, a.lead_id ?? gallery.lead_id, client ? ['editing_photos_done_at', 'delivered_at'] : ['editing_photos_done_at']);
     writeAltTexts().catch(quiet('editor · writeAltTexts'));
     res.json({ ok: true, count, gallery: gallery.id, ownerEmailed, clientEmailed });
   } catch (e) { serverError(res, e); }

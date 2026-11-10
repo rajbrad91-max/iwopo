@@ -63,7 +63,7 @@ export async function markIfAllDownloaded(albumId, tabs, whole) {
     const done = (tabs.length > 0 && tabs.every(t => all(t.eventId, t.parts))) || (whole > 0 && all(null, whole));
     if (!done) return false;
     const count = await prisma.photos.count({ where: { album_id: albumId } });
-    await prisma.albums.update({ where: { id: albumId }, data: { downloads_complete_count: count } });
+    await prisma.albums.update({ where: { id: albumId }, data: { downloads_complete_count: count, downloads_complete_at: new Date() } });
     return true;
   } catch (e) { console.error('[download log]', e.message); return false; }
 }

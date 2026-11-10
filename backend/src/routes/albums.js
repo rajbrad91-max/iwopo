@@ -783,16 +783,22 @@ async function cleanupAlbumObjects(vendorId, albumId) {
 // 🔒 delete album (tenant-checked, cascades photos)
 router.delete('/:id', requireAuth, async (req, res) => {
   const v = vid(req);
+  const id = Number(req.params.id);
   try {
+    /* 📁 a Raw Selector shoot takes its gallery-to-be with it — the editor's upload nobody has sent yet
+       (lib/shoots.js). A delivered gallery stays: it is the client's now. */
+    const ids = [id, ...(await prisma.albums.findMany({ where: { vendor_id: v, source_album_id: id, kind: 'delivery' }, select: { id: true } })).map(x => x.id)];
     const { count } = await prisma.albums.deleteMany({
-      where: { id: Number(req.params.id), vendor_id: v },   // 🔒 tenancy
+      where: { id: { in: ids }, vendor_id: v },   // 🔒 tenancy
     });
     if (!count) return res.status(404).json({ error: 'Not found' });
-    // ☁️ tear down the album's Rekognition collection so AWS isn't left holding
-    // face data (and billing for it) after the album is gone
-    try { await deleteCollection(req.params.id); } catch { /* best effort */ }
-    // remove the album's entire storage folder (all photos + tiers) from disk
-    try { fs.rmSync(path.join(ROOT, String(v), String(req.params.id)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
+    for (const x of ids) {
+      // ☁️ tear down the album's Rekognition collection so AWS isn't left holding
+      // face data (and billing for it) after the album is gone
+      try { await deleteCollection(x); } catch { /* best effort */ }
+      // remove the album's entire storage folder (all photos + tiers) from disk
+      try { fs.rmSync(path.join(ROOT, String(v), String(x)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
+    }
 
     /* The album is gone as far as anyone can see, so answer now. Object storage
        has no folders — removing one means listing the prefix and deleting every
@@ -802,7 +808,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
        Nothing waits on this: the row is deleted, the files are unreachable, and
        what is left is housekeeping. */
     res.json({ ok: true });
-    cleanupAlbumObjects(v, Number(req.params.id));
+    for (const x of ids) cleanupAlbumObjects(v, x);
   } catch (e) { serverError(res, e); }
 });
 

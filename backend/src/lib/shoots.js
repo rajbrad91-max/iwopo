@@ -8,6 +8,7 @@ import { wouldExceed } from './storageQuota.js';
 import { recordObject } from './storageLedger.js';
 import { enqueuePhotos } from './photoProcessor.js';
 import { quiet } from './quiet.js';
+import { tickStages } from './projectStages.js';
 
 /**
  * 📸 Shoots — the Raw Selector's thread (Raj, 2026-11-09).
@@ -106,7 +107,7 @@ export async function uploadBegin(v, album, files) {
 }
 
 /** record what landed: JPEGs become the shoot's photos (previews made next), RAWs are paired to them by name */
-export async function uploadComplete(v, album, items) {
+export async function uploadComplete(v, album, items, who = null) {
   const tab = await prisma.album_events.findFirst({ where: { album_id: album.id }, orderBy: { sort_order: 'asc' }, select: { id: true } });
   const list = Array.isArray(items) ? items.slice(0, MAX_FILES) : [];
   const created = []; let raws = 0; const errors = [];
@@ -145,6 +146,11 @@ export async function uploadComplete(v, album, items) {
   }
   enqueuePhotos(created);
   await pairAlbum(album.id, v);
+  if (created.length + raws) {
+    // 🛤️ the rail's "Uploaded": who, the first time — and the PPM board's "Copied"
+    if (who) await prisma.albums.updateMany({ where: { id: album.id, uploaded_by: null }, data: { uploaded_by: String(who).slice(0, 80) } });
+    await tickStages(v, album.lead_id, ['backed_up_at']);
+  }
   return { photos: created.length, raws, errors };
 }
 
@@ -189,13 +195,19 @@ export async function tellEditors({ v, album, count, appUrl, sendAsVendor }) {
   return sent;
 }
 
+/** the shoot's gallery-to-be or gallery if the editor has begun one — only looked for, never made (an older album
+ *  that is not a shoot is its own). Looking must not leave an empty album behind. */
+export async function findDelivery(v, album) {
+  if (album.kind !== SHOOT_KIND) return album;
+  return prisma.albums.findFirst({ where: { vendor_id: v, source_album_id: album.id, kind: { in: [DELIVERY_KIND, 'gallery'] } }, orderBy: { id: 'asc' } });
+}
+
 /** 📁 where the editor's folders go (Raj, 2026-11-09). A shoot delivers into its own gallery-to-be — kind 'delivery',
  *  hidden while the editor uploads — with the shoot's name, the client's email and the same two passwords (from the
  *  booking). When the editor sends it, it becomes a gallery like any other (routes/editor.js). An older gallery that
  *  is not a shoot delivers into itself, as before. */
 export async function deliveryFor(v, album) {
-  if (album.kind !== SHOOT_KIND) return album;
-  const have = await prisma.albums.findFirst({ where: { vendor_id: v, source_album_id: album.id, kind: { in: [DELIVERY_KIND, 'gallery'] } }, orderBy: { id: 'asc' } });
+  const have = await findDelivery(v, album);
   if (have) return have;
   const s = await prisma.albums.findUnique({
     where: { id: album.id },
@@ -223,5 +235,14 @@ export async function imageLink(v, rel, name) {
   const parts = String(rel || '').split('/').filter(Boolean);
   if (parts.length < 3) return null;
   return objects.signGet(objects.PRIVATE, objects.keyFor(v, 'galleries', parts[1], parts[2]), name).catch(() => null);
+}
+
+/** 📥 the RAWs reached the editor — the editor's first download, or the vendor's own (they can be the editor): the
+ *  rail's "Editor received" (who, the first time) and the PPM board's "To editor" */
+export async function markReceived(v, albumId, who) {
+  const a = await prisma.albums.findFirst({ where: { id: albumId, vendor_id: v }, select: { id: true, lead_id: true, raws_received_at: true } });   // 🔒
+  if (!a) return;
+  if (!a.raws_received_at) await prisma.albums.update({ where: { id: a.id }, data: { raws_received_at: new Date(), raws_received_by: String(who || '').slice(0, 80) || null } });
+  await tickStages(v, a.lead_id, ['sent_to_editor_at']);
 }
 
