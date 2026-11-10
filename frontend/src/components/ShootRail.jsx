@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, getAuthToken } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
 import { uploadShootFiles, uploadSummary, SHOOT_ACCEPT } from '../lib/shootUpload';
+import RenameField from './RenameField';
 
 /**
  * 🛤️ The Raw Selector rail (Raj, 2026-11-09) — one row per client, like the PPM board: Uploaded → Told → Picked →
@@ -27,11 +28,13 @@ export default function ShootRail({ clients, reload }) {
   const [busy, setBusy] = useState(false);
   const [bookings, setBookings] = useState(null);  // for "Upload a shoot"
   const [newLead, setNewLead] = useState('');
+  const [photos, setPhotos] = useState(null);     // 👀 the opened row's photos
 
   function toggle(c) {
     setMsg('');
     if (open === c.id) { setOpen(null); return; }
-    setOpen(c.id); setNote(c.note || '');
+    setOpen(c.id); setNote(c.note || ''); setPhotos(null);
+    api.rawselPhotos(c.id).then(setPhotos).catch(e => setMsg(`⚠️ ${e.message}`));
   }
   const zip = (c, what) => `/api/rawsel/albums/${c.id}/zip?what=${what}&token=${encodeURIComponent(getAuthToken() || '')}`;
 
@@ -108,6 +111,24 @@ export default function ShootRail({ clients, reload }) {
                 </button>
                 {open === c.id && (
                   <div className="sr-body">
+                    <div className="sr-group">
+                      <h4 className="sr-h">🏷️ Name</h4>
+                      <RenameField name={c.name} onSave={async (name) => { await api.rawselRename(c.id, name); reload(); }} />
+                    </div>
+                    <div className="sr-group">
+                      <h4 className="sr-h">👀 Photos{photos ? ` (${photos.total})` : ''}</h4>
+                      {!photos ? <p className="rs-muted">Loading…</p> : photos.photos.length === 0 ? <p className="rs-muted">No photos yet.</p> : (
+                        <ul className="sr-thumbs">
+                          {photos.photos.map(p => (
+                            <li key={p.id} className={`sr-thumb${p.picked ? ' is-picked' : ''}`} title={p.name}>
+                              <a href={p.preview || undefined} target="_blank" rel="noreferrer">{p.thumb ? <img src={p.thumb} alt={p.name} loading="lazy" /> : <span className="sr-thumb-name">{p.name}</span>}</a>
+                              <span className="sr-tags">{p.picked && <i className="sr-tag is-pick">✅</i>}{p.raw && <i className="sr-tag">RAW</i>}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {photos && photos.total > photos.photos.length && <p className="rs-muted">Showing the first {photos.photos.length} — download the JPEGs for all of them.</p>}
+                    </div>
                     <div className="sr-group">
                       <h4 className="sr-h">⬇️ Download</h4>
                       <div className="sr-actions">

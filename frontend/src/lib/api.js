@@ -1011,6 +1011,8 @@ export const api = {
   rawselStatus: (albumId) => request(`/rawsel/albums/${albumId}`),
   rawselDeleteAll: (albumId) => request(`/rawsel/albums/${albumId}`, { method: 'DELETE' }),
   rawselOverview: () => request('/rawsel/overview'),
+  rawselRename: (albumId, name) => request(`/rawsel/albums/${albumId}/name`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  rawselPhotos: (albumId) => request(`/rawsel/albums/${albumId}/photos`),
   rawselNote: (albumId, note) => request(`/rawsel/albums/${albumId}/note`, { method: 'PUT', body: JSON.stringify({ note }) }),
   rawselDeleteRaws: (albumId, scope) => request(`/rawsel/albums/${albumId}/raws?scope=${scope}`, { method: 'DELETE' }),
   rawselBookings: () => request('/rawsel/bookings'),

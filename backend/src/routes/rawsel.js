@@ -23,7 +23,7 @@ import { tokenStillValid } from '../lib/tokenRevocation.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { photoZip } from '../lib/photoZip.js';
-import { shootFor, uploadBegin, uploadComplete, announceUpload } from '../lib/shoots.js';
+import { shootFor, uploadBegin, uploadComplete, announceUpload, renameShoot, imageLink } from '../lib/shoots.js';
 import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { openPassword } from '../lib/sharePassword.js';
@@ -236,6 +236,39 @@ router.get('/overview', requireAuth, async (req, res) => {
       });
     }
     res.json({ clients: out });
+  } catch (e) { serverError(res, e); }
+});
+
+/** 🏷️ rename (the name travels to the shoot's gallery) */
+router.put('/albums/:albumId/name', requireAuth, async (req, res) => {
+  try {
+    const a = await ownAlbum(req, res); if (!a) return;
+    const title = await renameShoot(vid(req), a, req.body?.name);
+    if (!title) return res.status(400).json({ error: 'A name is needed' });
+    res.json({ name: title });
+  } catch (e) { serverError(res, e); }
+});
+
+/** 👀 the shoot's photos for the vendor's own eyes: thumbnails and 2200px previews (15-minute links), the client's
+ *  picks and which have their RAW */
+router.get('/albums/:albumId/photos', requireAuth, async (req, res) => {
+  try {
+    const a = await ownAlbum(req, res); if (!a) return;
+    const v = vid(req);
+    const [photos, total, picks, raws] = await Promise.all([
+      prisma.photos.findMany({ where: { album_id: a.id, vendor_id: v, ready: true }, select: { id: true, filename: true, thumb_path: true, preview_path: true }, orderBy: { filename: 'asc' }, take: 300 }),
+      prisma.photos.count({ where: { album_id: a.id, vendor_id: v } }),
+      prisma.selections.findMany({ where: { album_id: a.id }, select: { photo_id: true } }),
+      prisma.raw_files.findMany({ where: { album_id: a.id, vendor_id: v, photo_id: { not: null } }, select: { photo_id: true } }),
+    ]);
+    const picked = new Set(picks.map(p => p.photo_id)), raw = new Set(raws.map(r => r.photo_id));
+    res.json({
+      total,
+      photos: await Promise.all(photos.map(async p => ({
+        id: p.id, name: p.filename, picked: picked.has(p.id), raw: raw.has(p.id),
+        thumb: await imageLink(v, p.thumb_path, `${p.id}-thumb.webp`), preview: await imageLink(v, p.preview_path, `${p.id}.webp`),
+      }))),
+    });
   } catch (e) { serverError(res, e); }
 });
 

@@ -5,7 +5,7 @@ import prisma from '../config/prisma.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { limit } from '../middleware/rateLimit.js';
 import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
-import { shootFor, uploadBegin, uploadComplete, announceUpload } from '../lib/shoots.js';
+import { shootFor, uploadBegin, uploadComplete, announceUpload, renameShoot } from '../lib/shoots.js';
 import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { serverError } from '../lib/httpError.js';
@@ -99,12 +99,12 @@ router.get('/shoots', requirePhotographer, async (req, res) => {
     });
     const albums = await prisma.albums.findMany({
       where: { vendor_id: req.crew.vendor_id, kind: 'shoot', lead_id: { in: jobs.map(j => j.leads.id) } },
-      select: { lead_id: true, uploaded_at: true, _count: { select: { photos: true, raw_files: true } } },
+      select: { lead_id: true, title: true, uploaded_at: true, _count: { select: { photos: true, raw_files: true } } },
     });
     const by = new Map(albums.map(a => [a.lead_id, a]));
     const shoots = jobs.map(({ leads: l }) => {
       const a = by.get(l.id);
-      return { id: l.id, name: l.name || 'Client', event: l.event_type || '', date: l.event_date, jpegs: a?._count.photos || 0, raws: a?._count.raw_files || 0, notified: a?.uploaded_at || null, ftp: req.crew.ftp_lead_id === l.id };
+      return { id: l.id, name: a?.title || l.name || 'Client', event: l.event_type || '', date: l.event_date, jpegs: a?._count.photos || 0, raws: a?._count.raw_files || 0, notified: a?.uploaded_at || null, ftp: req.crew.ftp_lead_id === l.id };
     }).sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')));
     res.json({ shoots });
   } catch (e) { serverError(res, e); }
@@ -127,6 +127,16 @@ router.post('/shoots/:leadId/ftp', requirePhotographer, async (req, res) => {
     const next = on ? a.lead_id : (req.crew.ftp_lead_id === a.lead_id ? null : req.crew.ftp_lead_id);
     await prisma.crew_members.update({ where: { id: req.crew.id }, data: { ftp_lead_id: next } });
     res.json({ ftp: next === a.lead_id });
+  } catch (e) { serverError(res, e); }
+});
+
+/** 🏷️ rename the shoot (the name travels to its gallery) */
+router.put('/shoots/:leadId/name', requirePhotographer, async (req, res) => {
+  try {
+    const a = await myShoot(req, res); if (!a) return;
+    const title = await renameShoot(req.crew.vendor_id, a, req.body?.name);
+    if (!title) return res.status(400).json({ error: 'A name is needed' });
+    res.json({ name: title });
   } catch (e) { serverError(res, e); }
 });
 

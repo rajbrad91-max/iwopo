@@ -16,6 +16,7 @@
  */
 import { useState, useEffect } from 'react';
 import './rawsel.css';
+import RenameField from '../components/RenameField';
 
 const KEY = 'iwopo_editor_token';
 const mb = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
@@ -188,7 +189,7 @@ export default function EditorPortal() {
       {open ? (
         <section className="ep-card">
           <button className="ep-link" type="button" onClick={() => setOpen(null)}>← All clients</button>
-          <h2 className="rs-h">{open.name}</h2>
+          <h2 className="rs-h"><RenameField name={open.name} onSave={async (name) => { const r = await call(`/clients/${open.id}/name`, { method: 'PUT', body: { name } }); setOpen(o => ({ ...o, name: r.name })); }} /></h2>
           <p className="rs-sub">{open.files.length} RAW file{open.files.length === 1 ? '' : 's'} of the {open.selected} photo{open.selected === 1 ? '' : 's'} the client picked · {mb(open.files.reduce((t, f) => t + f.size, 0))}</p>
           {open.files.length > 0 && <button className="rs-btn" type="button" onClick={downloadAll}>⬇️ Download all{window.showDirectoryPicker ? ' to a folder' : ''}</button>}
           {progress && <div className="ep-progress">{progress}</div>}

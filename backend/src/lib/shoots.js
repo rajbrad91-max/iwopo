@@ -209,3 +209,19 @@ export async function deliveryFor(v, album) {
   });
 }
 
+/** 🏷️ rename a shoot along the way (vendor, photographer or editor): the name travels to its gallery-to-be or gallery.
+ *  An older album that is not a shoot is renamed itself. Returns the new name, or null when it is not a usable one. */
+export async function renameShoot(v, album, name) {
+  const title = String(name || '').trim().slice(0, 160);
+  if (!title) return null;
+  await prisma.albums.updateMany({ where: { vendor_id: v, OR: [{ id: album.id }, { source_album_id: album.id }] }, data: { title } });   // 🔒 this vendor
+  return title;
+}
+
+/** 🖼️ a 15-minute link to one of a gallery's images by its stored path (`<vendor>/<album>/<file>`), to look at only */
+export async function imageLink(v, rel, name) {
+  const parts = String(rel || '').split('/').filter(Boolean);
+  if (parts.length < 3) return null;
+  return objects.signGet(objects.PRIVATE, objects.keyFor(v, 'galleries', parts[1], parts[2]), name).catch(() => null);
+}
+

@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react';
 import './rawsel.css';
 import { uploadShootFiles, uploadSummary, SHOOT_ACCEPT } from '../lib/shootUpload';
+import RenameField from '../components/RenameField';
 
 const KEY = 'iwopo_photographer_token';
 
@@ -121,7 +122,7 @@ export default function PhotographerPortal() {
       {open ? (
         <section className="ep-card">
           <button className="ep-link" type="button" onClick={() => { setOpen(null); setProgress(''); setTold(''); }}>← All my shoots</button>
-          <h2 className="rs-h">{open.name}</h2>
+          <h2 className="rs-h"><RenameField name={open.name} onSave={async (name) => { await call(`/shoots/${open.id}/name`, { method: 'PUT', body: { name } }); loadAll(); }} /></h2>
           <p className="rs-sub">{[open.event, when(open.date)].filter(Boolean).join(' · ')} — {open.jpegs} JPEG{open.jpegs === 1 ? '' : 's'} · {open.raws} RAW{open.raws === 1 ? '' : 's'} uploaded</p>
           <div className="ep-deliver">
             <h3 className="rs-h">⬆️ Upload RAW + JPEG</h3>

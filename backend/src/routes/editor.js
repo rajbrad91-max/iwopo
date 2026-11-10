@@ -30,7 +30,7 @@ import { sendAsVendor } from './email.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
-import { deliveryFor, DELIVERY_KIND } from '../lib/shoots.js';
+import { deliveryFor, DELIVERY_KIND, renameShoot, imageLink } from '../lib/shoots.js';
 import { openPassword } from '../lib/sharePassword.js';
 
 const router = express.Router();
@@ -149,11 +149,7 @@ router.get('/clients/:albumId', requireEditor, async (req, res) => {
     const { selected, raws } = await selectedRaws(album.id, v);
     /* 🖼️ what each RAW looks like: the photo's 2200px preview, a 15-minute link — to look at only; a download is the RAW */
     const photos = await prisma.photos.findMany({ where: { id: { in: raws.map(r => r.photo_id).filter(Boolean) }, album_id: album.id }, select: { id: true, preview_path: true } });
-    const preview = new Map();
-    for (const p of photos) {
-      const parts = String(p.preview_path || '').split('/').filter(Boolean);
-      if (parts.length >= 3) preview.set(p.id, await objects.signGet(objects.PRIVATE, objects.keyFor(v, 'galleries', parts[1], parts[2]), `${p.id}.webp`).catch(() => null));
-    }
+    const preview = new Map(await Promise.all(photos.map(async p => [p.id, await imageLink(v, p.preview_path, `${p.id}.webp`)])));
     res.json({
       id: album.id, name: album.title, selected, studioNote: album.editor_note || '',
       files: raws.map(r => ({ id: r.id, name: r.filename, size: Number(r.size_bytes || 0), preview: preview.get(r.photo_id) || null })),
@@ -280,6 +276,16 @@ router.post('/clients/:albumId/deliver/complete', requireEditor, async (req, res
  * too when the editor chooses "Notify owner + client". The RAWs are marked delivered (a record; they are deleted only
  * when the vendor says so). An older gallery that is not a shoot is told about the same way.
  */
+/** 🏷️ rename the client's shoot (the name travels to its gallery) */
+router.put('/clients/:albumId/name', requireEditor, async (req, res) => {
+  try {
+    const a = await editorAlbum(req, res); if (!a) return;
+    const title = await renameShoot(req.editor.vendor_id, a, req.body?.name);
+    if (!title) return res.status(400).json({ error: 'A name is needed' });
+    res.json({ name: title });
+  } catch (e) { serverError(res, e); }
+});
+
 router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) => {
   try {
     const a = await editorAlbum(req, res); if (!a) return;
