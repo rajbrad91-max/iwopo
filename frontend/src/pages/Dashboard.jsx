@@ -1216,7 +1216,7 @@ function BillingView({ packages, overview }) {
   return (
     <>
       <div className="sa-stats">
-        <StatCard label="MRR" value={o ? (money(o.mrr) || '$0') : '—'} trend="At today's plan prices" cls="up" />
+        <StatCard label="MRR" value={o ? (money(o.mrr) || '$0') : '—'} trend="What subscribers pay, in US dollars at today's rate" cls="up" />
         <StatCard label="ARR" value={o ? (money(o.arr) || '$0') : '—'} trend="A year of today’s subscriptions" cls="up" />
         <StatCard label="Active Trials" value={o?.trial ?? '—'} trend={o ? `${o.trials_ending_soon} ending within 7 days` : 'Loading…'} cls="warn" />
         <StatCard label="Past Due" value={o?.past_due ?? '—'} trend={o ? `${money(o.owed) || '$0'} owed` : 'Loading…'} cls="neutral" />

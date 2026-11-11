@@ -849,6 +849,10 @@ model vendor_subscriptions {
   billing_cycle          String?   @db.VarChar(10)
   current_period_end     DateTime? @db.Timestamptz(6)
   cancel_at_period_end   Boolean   @default(false)
+  /// 💰 what one billing period charges, in the subscription's currency — every item (plan and add-ons), before
+  /// discounts and tax; recorded from Stripe (lib/billing.js recordSubscription), read by lib/adminOverview.js
+  currency             String?   @db.VarChar(3)
+  amount               Decimal?  @db.Decimal(14, 2)
   plans      plans     @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 

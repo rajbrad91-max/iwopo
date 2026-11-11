@@ -45,14 +45,31 @@ function economics(monthlyUsd, annualUsd, plan, domestic) {
   };
 }
 
+/** 🧩 Each add-on's price in a territory: its fixed price there (addon_region_prices), or — the US-dollar territory — its
+ *  own price; and Studio's own where it has one (Instagram & WhatsApp AI). */
+function addonRows(r, addons, rate) {
+  const own = new Map((r.addon_region_prices || []).map(a => [`${a.service_id}|${a.plan_code}`, a]));
+  return addons.map(a => {
+    const base = r.code === 'USD' ? { monthly: a.price, annual: a.price_annual ?? Number(a.price) * 10 } : own.get(`${a.id}|`);
+    const studio = r.code === 'USD' ? (a.plan_prices?.studio != null ? { monthly: a.plan_prices.studio } : null) : own.get(`${a.id}|studio`);
+    if (!base) return { id: a.id, monthly: null };
+    const monthly = Number(base.monthly);
+    return { id: a.id, monthly, annual: Number(base.annual), usd_monthly: rate ? monthly / rate : null, studio_monthly: studio ? Number(studio.monthly) : null };
+  });
+}
+
 /** Every territory with its countries, each paid plan's fixed price there, its USD value today and what iwopo keeps. */
 export async function regionEconomics() {
-  const [plans, regions] = await Promise.all([
+  const [plans, regions, addons] = await Promise.all([
     prisma.plans.findMany({
       where: { price_monthly: { gt: 0 } }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
       select: { id: true, code: true, name: true, price_monthly: true, price_annual: true, storage_gb: true, chat_limit: true },
     }),
-    prisma.price_regions.findMany({ orderBy: [{ sort_order: 'asc' }, { id: 'asc' }], include: { plan_region_prices: true } }),
+    prisma.price_regions.findMany({ orderBy: [{ sort_order: 'asc' }, { id: 'asc' }], include: { plan_region_prices: true, addon_region_prices: true } }),
+    prisma.services.findMany({
+      where: { is_addon: true, price: { gt: 0 }, is_private: false }, orderBy: [{ storage_gb: 'asc' }, { price: 'asc' }, { id: 'asc' }],
+      select: { id: true, name: true, price: true, price_annual: true, plan_prices: true },
+    }),
   ]);
   const out = [];
   for (const r of regions) {
@@ -61,6 +78,7 @@ export async function regionEconomics() {
     const domestic = r.code === 'USD';   // the US row: a US card; every other territory pays the international fees
     out.push({
       code: r.code, name: r.name, currency: r.currency, symbol: r.symbol, countries: r.countries, rate,
+      addons: addonRows(r, addons, rate),   // 🧩 each add-on's price there
       plans: plans.map(p => {
         // the USD territory IS the main pricing table; the others have their own fixed prices
         const price = r.code === 'USD' ? { monthly: p.price_monthly, annual: p.price_annual } : own.get(p.id);
@@ -74,5 +92,5 @@ export async function regionEconomics() {
       }),
     });
   }
-  return { costs: COSTS, regions: out };
+  return { costs: COSTS, regions: out, addons: addons.map(a => ({ id: a.id, name: a.name })) };
 }

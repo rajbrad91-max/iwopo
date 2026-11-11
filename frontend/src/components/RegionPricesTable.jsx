@@ -13,7 +13,7 @@ const countryName = (() => {
   const names = new Intl.DisplayNames(['en'], { type: 'region' });
   return (code) => { try { return names.of(code); } catch { return code; } };
 })();
-const price = (sym, v) => (v == null ? '—' : `${sym}${Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 })}`);
+const price = (sym, v) => (v == null ? '—' : `${sym}${Number(v).toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(Number(v)) ? 0 : 2, maximumFractionDigits: 2 })}`);   // $7.50, not $7.5
 const usd = (v) => (v == null ? '—' : `$${v.toFixed(2)}`);
 const tone = (m) => (m >= 0.25 ? 'is-good' : m >= 0.10 ? 'is-ok' : 'is-low');
 const band = (code) => `rp-band-${code}`;   // 🎨 the plan's column tint (regionPrices.css)
@@ -67,6 +67,30 @@ export default function RegionPricesTable({ rev }) {
                   <td key={`${p.code}m`} className={`rp-num ${band(p.code)}`}>{price(r.symbol, p.monthly)}{r.currency !== 'USD' && <span className="rp-muted">≈ {usd(p.usd_monthly)}</span>}</td>,
                   <td key={`${p.code}y`} className={`rp-num ${band(p.code)}`}>{price(r.symbol, p.annual)}</td>,
                 ])}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="sa-section-title rp-title">Add-on prices by country &amp; region 🧩</div>
+      <p className="rp-help">Fixed in each territory&apos;s currency, a month. Yearly: 10 months; storage 12 (it costs iwopo every month). Shown before tax.</p>
+      <div className="rp-wrap">
+        <table className="rp">
+          <thead>
+            <tr><th>Territory</th>{(data.addons || []).map(a => <th key={a.id} className="rp-plan">{a.name}</th>)}</tr>
+          </thead>
+          <tbody>
+            {data.regions.map(r => (
+              <tr key={r.code}>
+                <td className="rp-region"><b>{r.name}</b><span className="rp-muted">{r.currency}</span></td>
+                {(r.addons || []).map(a => (
+                  <td key={a.id} className="rp-num">
+                    {price(r.symbol, a.monthly)}
+                    {a.studio_monthly != null && <span className="rp-muted">Studio {price(r.symbol, a.studio_monthly)}</span>}
+                    {r.currency !== 'USD' && a.usd_monthly != null && <span className="rp-muted">≈ {usd(a.usd_monthly)}</span>}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

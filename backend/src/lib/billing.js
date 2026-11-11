@@ -151,6 +151,15 @@ export async function stripeCustomerFor(vendorId) {
  * period — and move the vendor's own status with it (trial while Stripe's trial runs, active once paying, expired
  * when it ends). One row per Stripe subscription.
  */
+/** 💰 What a Stripe subscription charges each billing period: its currency, and every item's price times its quantity
+ *  (plan and add-ons), before discounts and tax. */
+export function subscriptionCharge(sub) {
+  const items = sub?.items?.data || [];
+  if (!sub?.currency || !items.length) return { currency: null, amount: null };
+  const cents = items.reduce((t, it) => t + (Number(it.price?.unit_amount) || 0) * (Number(it.quantity) || 1), 0);
+  return { currency: String(sub.currency).toUpperCase(), amount: cents / 100 };
+}
+
 export async function recordSubscription(sub) {
   const vendorId = Number(sub.metadata?.vendor_id) || (await prisma.vendors.findFirst({ where: { stripe_customer_id: String(sub.customer) }, select: { id: true } }))?.id;
   if (!vendorId) return null;
@@ -170,6 +179,7 @@ export async function recordSubscription(sub) {
     current_period_end: periodEnd ? new Date(periodEnd * 1000) : null,
     cancel_at_period_end: !!sub.cancel_at_period_end,
     ends_at: sub.ended_at ? new Date(sub.ended_at * 1000) : null,
+    ...subscriptionCharge(sub),   // 💰 what it charges, for Super Admin's revenue
   };
   const row = await prisma.vendor_subscriptions.findFirst({ where: { stripe_subscription_id: sub.id }, select: { id: true } });
   if (row) await prisma.vendor_subscriptions.update({ where: { id: row.id }, data });
