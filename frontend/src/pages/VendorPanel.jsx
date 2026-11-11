@@ -22,6 +22,7 @@ import { COUNTRIES } from '../lib/countries';
 import { PROFESSIONS, LeadFormBody, PARTIAL_TIME, plainNumber, InquiryShell, BOOKING_FIELDS } from './InquiryForm';
 import { OTHER } from '../lib/formRules';
 import PasswordInput from '../components/PasswordInput';
+import EmailSetup from '../components/EmailSetup';   // 📧 Settings → Setup Email
 import './inquiry.css';
 import './contractdoc.css';
 import SendPackagesModal from './SendPackagesModal.jsx';
@@ -5833,8 +5834,7 @@ function SettingsView({ user, onProfileChange }) {
     <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="set-tabs">
         {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security'], ['address', '🌐 Web address'], ['links', '🔗 Client page links']].map(([k, label]) => (
-          <button key={k} className="refresh" onClick={() => setSub(k)}
-            style={{ background: sub === k ? '#2dd4bf' : 'var(--panel-2)', color: sub === k ? '#06231f' : 'var(--text)' }}>{label}</button>
+          <button key={k} className={`refresh set-tab${sub === k ? ' is-on' : ''}`} onClick={() => setSub(k)}>{label}</button>
         ))}
       </div>
 
@@ -5847,7 +5847,7 @@ function SettingsView({ user, onProfileChange }) {
         <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
           {['12h', '24h'].map(t => (
             <button key={t} onClick={() => savePrefs({ ...s, time_format: t })}
-              className="refresh" style={{ flex: 1, background: s.time_format === t ? '#2dd4bf' : 'var(--panel-2)', color: s.time_format === t ? '#06231f' : 'var(--text)' }}>
+              className={`refresh set-pick${s.time_format === t ? ' is-on' : ''}`}>
               {t === '12h' ? '12-hour (2:30 PM)' : '24-hour (14:30)'}
             </button>
           ))}
@@ -5938,7 +5938,7 @@ function SettingsView({ user, onProfileChange }) {
             <option key={c.code} value={c.code}>{c.name}</option>
           ))}
         </select>
-        <button className="refresh" onClick={saveProfile} style={{ marginTop: 12, background: '#2dd4bf', color: '#06231f' }}>💾 Save profile</button>
+        <button className="refresh set-primary set-save" onClick={saveProfile}>💾 Save profile</button>
 
         <h2 style={{ marginTop: 26 }}>🔐 Account</h2>
         {msg && <div style={{ padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 13, background: msg[0] === '✅' ? '#4ade8018' : '#fb718518', color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</div>}
@@ -6019,61 +6019,6 @@ function HexField({ value, onChange }) {
         color: 'var(--text)', fontSize: 13,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
       }} />
-  );
-}
-
-function EmailSetup() {
-  const [s, setS] = useState(null);
-  const [msg, setMsg] = useState('');
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 10, width: '100%', marginTop: 6 };
-
-  useEffect(() => {
-    api.emailSettings().then(d => setS(d.settings)).catch(() => setS({ mode: 'platform' }));
-  }, []);
-
-  async function save() {
-    setMsg('');
-    try { await api.saveEmailSettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-  }
-
-  if (!s) return null;
-  const MODES = [
-    ['smtp', '🔧 My own SMTP'],
-    ['self', '📥 Self-receive (reply from my inbox)'],
-    ['platform', '🏢 Platform email (noreply)'],
-  ];
-
-  return (
-    <div className="table-wrap" style={{ padding: 22 }}>
-      <h2 style={{ marginTop: 0 }}>📧 Email sending {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
-
-      <label style={{ fontSize: 13, color: '#9fb3b0' }}>How do you want to email clients?</label>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-        {MODES.map(([m, label]) => (
-          <button key={m} className="refresh" onClick={() => setS({ ...s, mode: m })}
-            style={{ textAlign: 'left', background: s.mode === m ? '#2dd4bf' : 'var(--panel-2)', color: s.mode === m ? '#06231f' : 'var(--text)' }}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {s.mode === 'smtp' && (
-        <div style={{ marginTop: 12 }}>
-          <input style={box} placeholder="SMTP host (e.g. smtp.gmail.com)" value={s.smtp_host || ''} onChange={e => setS({ ...s, smtp_host: e.target.value })} />
-          <input style={box} type="number" placeholder="Port (587)" value={s.smtp_port || 587} onChange={e => setS({ ...s, smtp_port: Number(e.target.value) })} />
-          <input style={box} placeholder="SMTP username" value={s.smtp_user || ''} onChange={e => setS({ ...s, smtp_user: e.target.value })} />
-          <PasswordInput style={box} placeholder="SMTP password" value={s.smtp_pass || ''} onChange={e => setS({ ...s, smtp_pass: e.target.value })} />
-          <input style={box} placeholder="From name (e.g. Sunny Studios)" value={s.from_name || ''} onChange={e => setS({ ...s, from_name: e.target.value })} />
-          <input style={box} placeholder="From email" value={s.from_email || ''} onChange={e => setS({ ...s, from_email: e.target.value })} />
-        </div>
-      )}
-
-      <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }}>📬 New-lead alerts go to</label>
-      <input style={box} placeholder="you@email.com" value={s.notify_email || ''} onChange={e => setS({ ...s, notify_email: e.target.value })} />
-
-      <button className="refresh" onClick={save} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save email settings</button>
-    </div>
   );
 }
 

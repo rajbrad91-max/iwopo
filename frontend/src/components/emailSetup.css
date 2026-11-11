@@ -1,0 +1,34 @@
+/* 📧 Settings → Setup Email (components/EmailSetup.jsx). Explanations share the look of "How do you want to email
+   clients?" (13px, #9fb3b0). The chosen way keeps its normal colours and is marked by a teal outline and a filled dot;
+   box titles are plain text, each with a "?" that opens a short explanation. */
+.es { padding: 22px; }
+.es-title { margin-top: 0; }
+.es-msg { font-size: 13px; color: #4ade80; }
+.es-hint { display: block; margin: 0; font-size: 13px; font-weight: 400; line-height: 1.45; color: #9fb3b0; }
+
+.es-modes { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.es-mode { border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); transition: border-color .15s, box-shadow .15s; }
+.es-mode:not(.is-on):hover { border-color: var(--teal); }
+.es-mode.is-on { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); }
+.es-mode-head { display: flex; align-items: flex-start; gap: 11px; width: 100%; padding: 12px 14px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.es-dot { flex: none; width: 16px; height: 16px; margin-top: 3px; border: 2px solid var(--line); border-radius: 50%; box-sizing: border-box; }
+.es-mode.is-on .es-dot { border-color: var(--teal); background: radial-gradient(circle, var(--teal) 0 4px, transparent 4.5px); }
+.es-mode-text { display: grid; gap: 3px; }
+.es-mode-label { font-size: 14.5px; font-weight: 700; color: var(--text); }
+.es-mode-body { display: grid; gap: 12px; padding: 4px 14px 14px 41px; }
+
+.es-field { display: grid; gap: 6px; }
+.es-label-row { display: flex; align-items: center; gap: 6px; }
+.es-label { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.es-input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; font-size: 14px; }
+.es-pw { width: 100%; }
+
+/* "?" — the explanation shows on hover, on tap (the button takes focus) and on keyboard focus */
+.es-help { position: relative; display: inline-flex; }
+.es-help-btn { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--panel); color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 700; line-height: 1; cursor: help; }
+.es-help-btn:hover, .es-help-btn:focus-visible { border-color: var(--teal); color: var(--teal); }
+.es-tip { position: absolute; top: calc(100% + 6px); left: -8px; z-index: 30; display: none; width: min(300px, 70vw); padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, .14); font-size: 12.5px; font-weight: 400; line-height: 1.5; }
+.es-help:hover .es-tip, .es-help:focus-within .es-tip { display: block; }
+
+.es-alerts { margin-top: 16px; }
+.es-save { width: 100%; margin-top: 14px; font-weight: 700; }
