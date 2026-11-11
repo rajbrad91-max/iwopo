@@ -49,18 +49,24 @@ export async function asCountry(country, fn) {
 }
 
 /**
- * Run `fn` with the test vendor's email sending pointed at a server that does not exist, so a test that triggers an
- * email (a new-lead alert) never sends a real one; the vendor's own settings are put back afterwards.
+ * Point the test vendor's email at a server that does not exist, so a test that triggers an email (a new-lead alert,
+ * a signed contract) never sends a real one. Returns the function that puts their own settings back.
  */
-export async function noRealEmail(fn) {
+export async function emailOff() {
   const before = await prisma.email_settings.findFirst({ where: { vendor_id: TEST_VENDOR } });
   const data = { mode: 'smtp', smtp_host: 'unreachable.example.test', smtp_port: 587, smtp_user: 'tests@example.test', smtp_pass: 'x',
     from_email: 'tests@example.test', notify_email: 'tests@example.test' };
   await prisma.email_settings.upsert({ where: { vendor_id: TEST_VENDOR }, update: data, create: { vendor_id: TEST_VENDOR, ...data } });
-  try { return await fn(); } finally {
+  return async () => {
     if (before) {
       const keep = Object.fromEntries(Object.entries(before).filter(([k]) => k !== 'id' && k !== 'vendor_id'));
       await prisma.email_settings.update({ where: { vendor_id: TEST_VENDOR }, data: keep });
-    } else await prisma.email_settings.delete({ where: { vendor_id: TEST_VENDOR } });
-  }
+    } else await prisma.email_settings.deleteMany({ where: { vendor_id: TEST_VENDOR } });
+  };
+}
+
+/** Run `fn` with no real email sent (emailOff), the vendor's settings put back afterwards. */
+export async function noRealEmail(fn) {
+  const restore = await emailOff();
+  try { return await fn(); } finally { await restore(); }
 }
