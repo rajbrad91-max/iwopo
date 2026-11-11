@@ -76,7 +76,7 @@ function normaliseBox(raw, imgW, imgH) {
 // 📶 photos read in filename order, case-insensitive, with digit runs zero-padded
 // so they compare numerically (IMG_2 before IMG_10). This ordering is a Postgres
 // regexp expression that Prisma's orderBy can't express, so these reads use
-// $queryRawUnsafe with bound parameters — the only raw SQL in the app.
+// $queryRawUnsafe with bound parameters ($1, $2 …): values are never glued into the SQL text.
 // NOTE: the regex backslashes must survive JS string escaping, hence \\d / \\1.
 /* Ordered by id in SQL and then properly in JavaScript.
 

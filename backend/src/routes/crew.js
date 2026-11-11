@@ -14,12 +14,9 @@ import { getFeatures } from '../lib/entitlements.js';
 import { FTP_HOST, ftpUser, setFtpLogin, removeFtpLogin } from '../lib/cameraFtp.js';
 import { openPassword } from '../lib/sharePassword.js';
 import { quiet } from '../lib/quiet.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 /** Calendar day in a zone, YYYY-MM-DD. Real instants only — not event dates. */
 function calendarKey(timeZone, when = new Date()) {
@@ -126,7 +123,7 @@ function shapeRow(a) {
 router.get('/', requireAuth, async (req, res) => {
   try {
     const rows = await prisma.crew_members.findMany({
-      where: { vendor_id: Number(vid(req)) },    // 🔒 tenancy
+      where: { vendor_id: Number(actingVendorId(req)) },    // 🔒 tenancy
       orderBy: { name: 'asc' },
       select: { id: true, vendor_id: true, name: true, role: true, phone: true, email: true, created_at: true, password_hash: true, ftp_password_enc: true },
     });
@@ -148,7 +145,7 @@ router.get('/', requireAuth, async (req, res) => {
  */
 router.get('/schedule', requireAuth, async (req, res) => {
   try {
-    const v = Number(vid(req));
+    const v = Number(actingVendorId(req));
     const view = req.query.view === 'past' ? 'past' : 'upcoming';
     const memberId = req.query.member_id ? Number(req.query.member_id) : null;
     const period = ['week', 'biweek', 'month'].includes(req.query.period) ? req.query.period : 'week';
@@ -232,7 +229,7 @@ router.post('/', requireAuth, async (req, res) => {
     if (!name) return res.status(400).json({ error: 'Name required' });
     const member = await prisma.crew_members.create({
       data: {
-        vendor_id: Number(vid(req)),             // 🔒 tenancy
+        vendor_id: Number(actingVendorId(req)),             // 🔒 tenancy
         name, role: role || null, phone: phone || null, email: email || null,
       },
     });
@@ -242,7 +239,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 router.put('/:id', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.crew_members.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -258,7 +255,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.crew_members.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -271,9 +268,9 @@ router.delete('/:id', requireAuth, async (req, res) => {
 
 /* ── 📡 camera FTP (Raw Selector, private): the vendor creates a crew member's login and sets it on the camera ── */
 async function ftpMember(req, res) {
-  const feats = await getFeatures(vid(req));
+  const feats = await getFeatures(actingVendorId(req));
   if (!feats.has('*') && !feats.has('rawsel')) { res.status(402).json({ error: 'The Raw Selector is not enabled on this account.' }); return null; }
-  const cm = await prisma.crew_members.findFirst({ where: { id: Number(req.params.id), vendor_id: vid(req) }, select: { id: true, ftp_password_enc: true } });   // 🔒
+  const cm = await prisma.crew_members.findFirst({ where: { id: Number(req.params.id), vendor_id: actingVendorId(req) }, select: { id: true, ftp_password_enc: true } });   // 🔒
   if (!cm) { res.status(404).json({ error: 'Not found' }); return null; }
   return cm;
 }
@@ -294,7 +291,7 @@ router.post('/:id/ftp', requireAuth, async (req, res) => {
 async function leadOwned(req, res, leadId) {
   const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
   if (!lead) { res.status(404).json({ error: 'Lead not found' }); return null; }
-  if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) {
+  if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) {
     res.status(403).json({ error: 'Forbidden' }); return null;    // 🔒 tenancy
   }
   return lead;
@@ -357,11 +354,11 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
 // 📸 Raw Selector (private): whether this crew member uploads the booking's photos — or the vendor does
 router.patch('/assignment/:id/uploads', requireAuth, async (req, res) => {
   try {
-    const feats = await getFeatures(vid(req));
+    const feats = await getFeatures(actingVendorId(req));
     if (!feats.has('*') && !feats.has('rawsel')) return res.status(402).json({ error: 'The Raw Selector is not enabled on this account.' });
     const id = Number(req.params.id);
     const row = await prisma.lead_crew.findUnique({ where: { id }, select: { leads: { select: { vendor_id: true } } } });
-    if (!row || row.leads?.vendor_id !== vid(req)) return res.status(404).json({ error: 'Not found' });   // 🔒 tenancy
+    if (!row || row.leads?.vendor_id !== actingVendorId(req)) return res.status(404).json({ error: 'Not found' });   // 🔒 tenancy
     const updated = await prisma.lead_crew.update({ where: { id }, data: { uploads: !!req.body?.uploads }, select: { id: true, uploads: true } });
     res.json(updated);
   } catch (e) { serverError(res, e); }
@@ -375,8 +372,8 @@ router.delete('/assignment/:id', requireAuth, async (req, res) => {
       select: { leads: { select: { vendor_id: true } } },
     });
     if (!row) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && row.leads?.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    await prisma.lead_crew.delete({ where: { id, ...mineVia('crew_members', vid(req)) } });
+    if (req.user.role !== 'super_admin' && row.leads?.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    await prisma.lead_crew.delete({ where: { id, ...mineVia('crew_members', actingVendorId(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -402,14 +399,14 @@ router.post('/assignment/:id/remind', requireAuth, async (req, res) => {
     });
     if (!row) return res.status(404).json({ error: 'Not found' });
     const owner = row.leads?.vendor_id ?? row.crew_members?.vendor_id;
-    if (req.user.role !== 'super_admin' && owner !== vid(req)) {
+    if (req.user.role !== 'super_admin' && owner !== actingVendorId(req)) {
       return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     }
 
     let token = row.checkin_token;
     if (!token) {
       token = crypto.randomBytes(16).toString('hex');
-      await prisma.lead_crew.update({ where: { id, ...mineVia('crew_members', vid(req)) }, data: { checkin_token: token } });
+      await prisma.lead_crew.update({ where: { id, ...mineVia('crew_members', actingVendorId(req)) }, data: { checkin_token: token } });
     }
 
     // 🌐 the vendor's own address — the team sees the studio's brand too (lib/vendorHosts.js)

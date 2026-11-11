@@ -3,20 +3,17 @@ import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 const MAX_PACKAGES = 3;   // per template
 const MAX_TEMPLATES = 6;  // per vendor
 
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 // 📁 TEMPLATES
 // GET /api/vendor-packages/templates → templates with their packages nested
 router.get('/templates', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     const tpls = await prisma.package_templates.findMany({
@@ -33,7 +30,7 @@ router.get('/templates', requireAuth, async (req, res) => {
 
 // POST /api/vendor-packages/templates → add template (max 6)
 router.post('/templates', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     const n = await prisma.package_templates.count({ where: { vendor_id: Number(v) } });
@@ -48,7 +45,7 @@ router.post('/templates', requireAuth, async (req, res) => {
 
 // PUT /api/vendor-packages/templates/:id → rename
 router.put('/templates/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.package_templates.findUnique({ where: { id }, select: { vendor_id: true } });
@@ -62,7 +59,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
 
 // DELETE /api/vendor-packages/templates/:id (keeps at least 1)
 router.delete('/templates/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.package_templates.findUnique({ where: { id }, select: { vendor_id: true } });
@@ -78,7 +75,7 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
 
 // GET /api/vendor-packages → my packages
 router.get('/', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     const packages = await prisma.vendor_packages.findMany({
@@ -91,7 +88,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // POST /api/vendor-packages → add (max 3 per template)
 router.post('/', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   const { name, template_id } = req.body;
   if (!template_id) return res.status(400).json({ error: 'template_id required' });
@@ -116,7 +113,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 // PUT /api/vendor-packages/:id → rename / pricing / inclusions
 router.put('/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.vendor_packages.findUnique({ where: { id }, select: { vendor_id: true } });
@@ -139,7 +136,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 
 // DELETE /api/vendor-packages/:id (not the default one)
 router.delete('/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.vendor_packages.findUnique({ where: { id }, select: { vendor_id: true, is_default: true } });

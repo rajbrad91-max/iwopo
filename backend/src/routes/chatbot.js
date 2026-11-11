@@ -6,6 +6,7 @@ import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
 import { generateReply, isActiveSubscriber } from '../lib/wopoAssistant.js';
 import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
+import { ownVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 
@@ -340,19 +341,18 @@ router.post('/chat/:handle', async (req, res) => {
 
 // ── 🧑‍💼 VENDOR (their own chatbot only) ──
 
-function vid(req) { return req.user.vendor_id; }
 
 // am I subscribed? (drives the panel: history vs upsell)
 router.get('/my/status', requireAuth, async (req, res) => {
   try {
-    const on = await isActiveSubscriber(vid(req));   // 🔒 own vendor — the switch if set, else the plan (lib/wopoAssistant)
+    const on = await isActiveSubscriber(ownVendorId(req));   // 🔒 own vendor — the switch if set, else the plan (lib/wopoAssistant)
     res.json({ subscribed: on, active: on });
   } catch (e) { serverError(res, e); }
 });
 
 // 💬 my chat history — grouped into conversations (last 30 days only)
 router.get('/my/history', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   try {
     const sub = await prisma.chatbot_subscribers.findUnique({
       where: { vendor_id: v },                    // 🔒 tenancy
@@ -388,7 +388,7 @@ router.get('/my/history', requireAuth, async (req, res) => {
 // share link, which meant the person who actually knows the answers couldn't
 // correct them from the place they work every day.
 router.get('/my/knowledge', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(ownVendorId(req));
   try {
     const sub = await prisma.chatbot_subscribers.findUnique({
       where: { vendor_id: v },                    // 🔒 tenancy — own row only
@@ -401,7 +401,7 @@ router.get('/my/knowledge', requireAuth, async (req, res) => {
 });
 
 router.put('/my/knowledge', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(ownVendorId(req));
   try {
     const sub = await prisma.chatbot_subscribers.findUnique({
       where: { vendor_id: v },                    // 🔒 tenancy — own row only

@@ -34,6 +34,7 @@ import { quiet } from '../lib/quiet.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { downloadLog } from '../lib/galleryDownloads.js';
 import { noteFailure } from '../lib/noteFailure.js';
+import { ownVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -67,7 +68,6 @@ const uploadVideo = multer({
 });
 
 // which vendor am I?
-function vid(req) { return req.user.vendor_id; }
 
 // 🔒 list my albums
 /**
@@ -81,7 +81,7 @@ function vid(req) { return req.user.vendor_id; }
  * read back through them.
  */
 router.get('/requests', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     const albums = await prisma.albums.findMany({
@@ -151,7 +151,7 @@ router.get('/requests', requireAuth, async (req, res) => {
  * foreign key apart.
  */
 router.delete('/requests/:albumId', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.albumId);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });  // 🔒 tenancy
@@ -168,7 +168,7 @@ router.delete('/requests/:albumId', requireAuth, async (req, res) => {
  * 🖨️ PUT /api/albums/requests/:albumId → mark done, or put it back.
  */
 router.put('/requests/:albumId', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.albumId);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });  // 🔒 tenancy
@@ -185,7 +185,7 @@ router.put('/requests/:albumId', requireAuth, async (req, res) => {
 });
 
 router.get('/', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     /* 🎥 Galleries and live shoots are the same row with a different rule
@@ -239,7 +239,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // 🔒 create album
 router.post('/', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   const { title, category, guest_username, admin_username,
     client_email, exp_enabled, exp_from_date, exp_date, exp_notes, face_ai } = req.body;
@@ -249,7 +249,7 @@ router.post('/', requireAuth, async (req, res) => {
   const guest_password = cleanPw(req.body.guest_password);
   const admin_password = cleanPw(req.body.admin_password);
   if (!title) return res.status(400).json({ error: 'Title required' });
-  const pwErr = await checkGalleryPasswords(vid(req), [guest_password, admin_password]);
+  const pwErr = await checkGalleryPasswords(ownVendorId(req), [guest_password, admin_password]);
   if (pwErr) return res.status(400).json({ error: pwErr });
   try {
     // 16 bytes, matching the rest of the app. Six was 48 bits — short enough
@@ -302,7 +302,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 // 🔒 confirmed bookings (for auto-fill name + phone) — status 'booked'
 router.get('/booking-options', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     const bookings = await prisma.leads.findMany({
@@ -316,7 +316,7 @@ router.get('/booking-options', requireAuth, async (req, res) => {
 
 // 🔒 update album
 router.put('/settings', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const { pw_prefix, spw_prefix, instructions_template } = req.body;
   try {
     const data = {
@@ -335,7 +335,7 @@ router.put('/settings', requireAuth, async (req, res) => {
 
 // 🔒 album settings GET — per vendor
 router.get('/settings', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   try {
     const row = await prisma.album_settings.findUnique({
       where: { vendor_id: v },                    // 🔒 tenancy
@@ -360,7 +360,7 @@ const THEME_DEFAULTS = {
 
 // 🎨 gallery theme GET — per vendor
 router.get('/theme', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   try {
     const theme = await prisma.gallery_theme.findUnique({ where: { vendor_id: v } }); // 🔒 tenancy
     res.json({ theme: theme || { ...THEME_DEFAULTS } });
@@ -369,7 +369,7 @@ router.get('/theme', requireAuth, async (req, res) => {
 
 // 🎨 gallery theme PUT — per vendor
 router.put('/theme', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const t = { ...THEME_DEFAULTS, ...req.body };
   try {
     const data = {
@@ -388,7 +388,7 @@ router.put('/theme', requireAuth, async (req, res) => {
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   const b = req.body || {};
   const guest_password = cleanPw(b.guest_password);
@@ -439,7 +439,7 @@ router.put('/:id', requireAuth, async (req, res) => {
  * existed comes back null with *_set: true — the vendor types a new one.
  */
 router.get('/:id/passwords', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   try {
     const a = await prisma.albums.findFirst({
       where: { id: Number(req.params.id), vendor_id: v },        // 🔒 tenancy
@@ -456,7 +456,7 @@ router.get('/:id/passwords', requireAuth, async (req, res) => {
 
 // 🔒 email gallery instructions to client
 router.post('/:id/email-instructions', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const a = await prisma.albums.findFirst({ where: { id, vendor_id: v } });   // 🔒 tenancy
@@ -508,7 +508,7 @@ Thank you for choosing us! 💛`;
 
 // 🔒 upload/replace cover photo → a WebP master and every rendition (lib/coverImage.js)
 router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
@@ -587,7 +587,7 @@ async function removeOldCover(vendorId, albumId, dir) {
 
 // 🎯 save the cover focal point ("X% Y%") so covers frame well on any aspect ratio
 router.put('/:id/cover-focus', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const focus = (req.body.focus || '50% 50%').trim();
@@ -647,7 +647,7 @@ router.get('/cover/:id', async (req, res) => {
 
 // 🔒 album detail + photos (tenant-checked)
 router.get('/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });   // 🔒 tenancy
@@ -677,7 +677,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 // 🔒 events CRUD (per-client mode)
 router.post('/:id/events', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
@@ -696,7 +696,7 @@ router.post('/:id/events', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const { name } = req.body;
   try {
     const where = { id: Number(req.params.eventId), album_id: Number(req.params.id), vendor_id: v }; // 🔒 tenancy
@@ -722,7 +722,7 @@ router.put('/:id/events/:eventId', requireAuth, async (req, res) => {
  * belong.
  */
 router.delete('/:id/events/:eventId', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const albumId = Number(req.params.id);
   const eventId = Number(req.params.eventId);
   try {
@@ -783,7 +783,7 @@ async function cleanupAlbumObjects(vendorId, albumId) {
 
 // 🔒 delete album (tenant-checked, cascades photos)
 router.delete('/:id', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     /* 📁 a Raw Selector shoot takes its gallery-to-be with it — the editor's upload nobody has sent yet
@@ -819,7 +819,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
    tenancy check below needs no special case because a device is shaped like a
    user with a vendor_id. */
 router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     /* kind comes back too: a live shoot keeps two tiers rather than three,
@@ -941,7 +941,7 @@ async function eventInAlbum(eventId, albumId, vendorId) {
 }
 
 router.post('/:id/photos/begin', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });   // 🔒 tenancy
@@ -972,7 +972,7 @@ router.post('/:id/photos/begin', requireAuth, async (req, res) => {
 });
 
 router.post('/:id/photos/complete', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true, kind: true } });  // 🔒
@@ -1084,7 +1084,7 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
   { name: 'video', maxCount: 1 },
   { name: 'poster', maxCount: 1 },
 ]), async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   const file = req.files?.video?.[0];
   const poster = req.files?.poster?.[0];
@@ -1185,7 +1185,7 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
 
 // begin — reserve a key and hand back an upload id
 router.post('/:id/videos/begin', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
@@ -1224,7 +1224,7 @@ router.post('/:id/videos/begin', requireAuth, async (req, res) => {
 
 // sign — one part at a time, so a resumed upload only re-signs what it needs
 router.post('/:id/videos/sign', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
@@ -1248,7 +1248,7 @@ router.post('/:id/videos/sign', requireAuth, async (req, res) => {
 
 // complete — stitch the parts, then record the film
 router.post('/:id/videos/complete', requireAuth, uploadVideo.single('poster'), async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
@@ -1326,7 +1326,7 @@ router.post('/:id/videos/complete', requireAuth, uploadVideo.single('poster'), a
 
 // abandon — a vendor who cancels should not leave parts costing storage
 router.post('/:id/videos/abort', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒
@@ -1345,7 +1345,7 @@ router.post('/:id/videos/abort', requireAuth, async (req, res) => {
  * fires on its own if this never arrives, which is what covers a closed tab.
  */
 router.post('/:id/uploads-done', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });  // 🔒
@@ -1440,7 +1440,7 @@ async function checkGalleryPasswords(vendorId, values) {
 
 // 🔒 delete a photo (tenant-checked)
 router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const where = { id: Number(req.params.photoId), album_id: Number(req.params.id), vendor_id: v }; // 🔒 tenancy
   try {
     // fetch the file paths first so we can remove all tiers from disk after the row is gone
@@ -1543,7 +1543,7 @@ router.get('/file/:photoId/:type', async (req, res) => {
 
 // 🧠 index faces for an album (runs detection on all un-indexed photos)
 router.post('/:id/index-faces', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
@@ -1556,7 +1556,7 @@ router.post('/:id/index-faces', requireAuth, async (req, res) => {
 
 // 🔍 search album by selfie → returns matching photo IDs (vendor preview/testing)
 router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req, res) => {
-  const v = vid(req);
+  const v = ownVendorId(req);
   const id = Number(req.params.id);
   try {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
@@ -1602,7 +1602,7 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
 // Ownership enforced: the album must belong to the requesting vendor.
 router.get('/:id/favorites', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = ownVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -1638,7 +1638,7 @@ router.get('/:id/favorites', requireAuth, async (req, res) => {
 // 📩 the selection the client's admin sent to the studio, grouped by event.
 router.get('/:id/selection', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = ownVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -1678,7 +1678,7 @@ router.get('/:id/selection', requireAuth, async (req, res) => {
 // ✅ mark the client's selection as handled (or clear that flag)
 router.put('/:id/selection/complete', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = ownVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -1696,7 +1696,7 @@ router.put('/:id/selection/complete', requireAuth, async (req, res) => {
 // 🗑️ clear the sent selection and its note — the photos themselves are untouched
 router.delete('/:id/selection', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = ownVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Not found' });

@@ -4,17 +4,14 @@ import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 // GET /api/bookings → booked leads (calendar-ready)
 router.get('/', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   try {
     // 🔒 tenancy: a vendor is always filtered to their own leads; only a super_admin
     // with no vendor_id selected sees across tenants (same rule as before).
@@ -76,7 +73,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
     const id = Number(req.params.leadId);
     const lead = await prisma.leads.findUnique({ where: { id } });
     if (!lead) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) {
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) {
       return res.status(403).json({ error: 'Forbidden' });           // 🔒 tenancy
     }
     if (lead.status !== 'booked') {
@@ -130,10 +127,10 @@ router.put('/:leadId/status', requireAuth, async (req, res) => {
   try {
     const own = await prisma.leads.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && own.vendor_id !== vid(req))
+    if (req.user.role !== 'super_admin' && own.vendor_id !== actingVendorId(req))
       return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
     const lead = await prisma.leads.update({
-      where: { id, ...mine(vid(req)) },
+      where: { id, ...mine(actingVendorId(req)) },
       data: { status, updated_at: new Date() },
     });
     res.json({ lead });

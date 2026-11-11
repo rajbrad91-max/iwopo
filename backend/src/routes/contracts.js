@@ -17,13 +17,10 @@ import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { limit } from '../middleware/rateLimit.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 export async function audit(contractId, event, ip, meta) {
   await prisma.contract_audit.create({
@@ -610,7 +607,7 @@ router.param('id', (req, res, next, v) => (/^\d+$/.test(v) ? next() : res.status
 
 router.get('/templates', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     if (!v) return res.status(400).json({ error: 'No vendor' });
     const templates = await prisma.contract_templates.findMany({
       where: { vendor_id: Number(v) },          // 🔒 tenancy
@@ -632,7 +629,7 @@ function lookOf({ accent, font_style }, onlyGiven = false) {
 
 router.post('/templates', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     if (!v) return res.status(400).json({ error: 'No vendor' });
     const { name, event_type, header, body, legal_terms, sections, accent, font_style } = req.body;
     const template = await prisma.contract_templates.create({
@@ -656,7 +653,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'That name is too long — 120 characters at most.' });
   }
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -677,7 +674,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
 
 router.delete('/templates/:id', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -709,7 +706,7 @@ router.put('/templates/:id/default', requireAuth, async (req, res) => {
       prisma.contract_templates.updateMany({
         where: { vendor_id: vid, is_default: true }, data: { is_default: false },
       }),
-      prisma.contract_templates.update({ where: { id, ...mine(vid(req)) }, data: { is_default: true } }),
+      prisma.contract_templates.update({ where: { id, ...mine(actingVendorId(req)) }, data: { is_default: true } }),
     ]);
     res.json({ ok: true, default_id: id });
   } catch (e) { serverError(res, e); }
@@ -717,7 +714,7 @@ router.put('/templates/:id/default', requireAuth, async (req, res) => {
 
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     if (!v && req.user.role !== 'super_admin') return res.status(400).json({ error: 'No vendor' });
     const rows = await prisma.contracts.findMany({
       // Voided contracts are history, not work in progress. They pile up on any
@@ -743,7 +740,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
     const leadId = Number(req.params.leadId);
     const lead = await prisma.leads.findUnique({ where: { id: leadId }, select: { vendor_id: true } });
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     const contracts = await prisma.contracts.findMany({
       // same rule as the overview: a superseded contract isn't something the
       // vendor acts on. The lead keeps only its live one.
@@ -760,7 +757,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     const { title, body, template_id } = req.body;
     const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
     // the template is resolved here and the body built below, so both the
     // conditional sections and the placeholders go through one path
@@ -822,7 +819,7 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
   try {
     const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
     /* R1 (2026-10-30): the template THIS lead's contract was built from — not whichever one templateForLead would pick
        for the event type. Before, the vendor previewed the default while the client signed the chosen one. */
@@ -913,9 +910,9 @@ router.delete('/:id', requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     const c = await prisma.contracts.findUnique({ where: { id }, select: { vendor_id: true, status: true } });
     if (!c) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && c.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (req.user.role !== 'super_admin' && c.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     if (c.status === 'signed') return res.status(400).json({ error: 'Signed contracts cannot be deleted (audit)' });
-    await prisma.contracts.delete({ where: { id, ...mine(vid(req)) } });
+    await prisma.contracts.delete({ where: { id, ...mine(actingVendorId(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -926,7 +923,7 @@ router.get('/:id/audit', requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     const c = await prisma.contracts.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!c) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && c.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (req.user.role !== 'super_admin' && c.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     const auditRows = await prisma.contract_audit.findMany({
       where: { contract_id: id },
       orderBy: { created_at: 'asc' },

@@ -7,6 +7,7 @@ import { getAllSettings } from '../lib/settings.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { noteFailure } from '../lib/noteFailure.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -20,10 +21,6 @@ const PLATFORM = {
   from: process.env.PLATFORM_FROM || 'noreply@iwopo.com',
 };
 
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 async function getSettings(v) {
   const s = await prisma.email_settings.findUnique({ where: { vendor_id: Number(v) } }); // 🔒 tenancy
@@ -32,7 +29,7 @@ async function getSettings(v) {
 
 // GET /api/email/settings
 router.get('/settings', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     const s = await getSettings(v);
@@ -43,7 +40,7 @@ router.get('/settings', requireAuth, async (req, res) => {
 
 // PUT /api/email/settings
 router.put('/settings', requireAuth, async (req, res) => {
-  const v = vid(req);
+  const v = actingVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   const b = req.body;
   try {
@@ -139,7 +136,7 @@ async function senderFor(vendorId, s) {
 router.get('/templates', requireAuth, async (req, res) => {
   try {
     const templates = await prisma.email_templates.findMany({
-      where: { vendor_id: Number(vid(req)) },     // 🔒 tenancy
+      where: { vendor_id: Number(actingVendorId(req)) },     // 🔒 tenancy
       orderBy: { id: 'asc' },
     });
     res.json({ templates });
@@ -148,7 +145,7 @@ router.get('/templates', requireAuth, async (req, res) => {
 
 router.post('/templates', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const { name, subject, body } = req.body;
     if (!name || !subject || !body) return res.status(400).json({ error: 'Name, subject, body required' });
     const template = await prisma.email_templates.create({
@@ -160,7 +157,7 @@ router.post('/templates', requireAuth, async (req, res) => {
 
 router.put('/templates/:id', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.email_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -178,7 +175,7 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
 
 router.delete('/templates/:id', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const id = Number(req.params.id);
     const own = await prisma.email_templates.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -195,7 +192,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
   try {
     const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req))
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req))
       return res.status(403).json({ error: 'Forbidden' });     // 🔒 tenancy
     if (!lead.email) return res.status(400).json({ error: 'Lead has no email' });
 

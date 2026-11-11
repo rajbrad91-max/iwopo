@@ -25,6 +25,7 @@ import * as objects from '../lib/objectStore.js';
 import { recordEvent } from '../lib/siteEvents.js';
 import { resolveHost } from '../lib/vendorHosts.js';
 import { serverError } from '../lib/httpError.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 
@@ -48,10 +49,6 @@ function shapePublicSite(site) {
   };
 }
 
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;                       // 🔒 never from the body
-}
 
 /** The five themes. Fixed on purpose — five good ones beat fifty half-finished. */
 export const THEMES = [
@@ -151,7 +148,7 @@ const PUBLIC_FIELDS = {
 
 // GET /api/sites/my → the vendor's site, created empty the first time they look
 router.get('/my', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     let site = await prisma.vendor_sites.findUnique({ where: { vendor_id: v } });   // 🔒 own row
@@ -180,7 +177,7 @@ router.get('/my', requireAuth, async (req, res) => {
 // PUT /api/sites/my → save. Only the fields sent are written, so editing one
 // thing can't blank the rest — the same trap the chatbot knowledge had.
 router.put('/my', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try {
     const data = cleanBody(req.body);
@@ -205,7 +202,7 @@ router.put('/my', requireAuth, async (req, res) => {
 // PUT /api/sites/my/slug → claim a web address. Refused if taken, so two vendors
 // can never point at the same one.
 router.put('/my/slug', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   const slug = slugify(req.body.slug);
   if (!slug) return res.status(400).json({ error: 'Give your site a web address' });
   if (slug.length < 3) return res.status(400).json({ error: 'That address is too short' });
@@ -224,7 +221,7 @@ router.put('/my/slug', requireAuth, async (req, res) => {
 // PUT /api/sites/my/publish → { published: bool }. A site needs an address
 // before it can go live, otherwise there is nowhere for it to be.
 router.put('/my/publish', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   const on = !!req.body.published;
   try {
     const cur = await prisma.vendor_sites.findUnique({
@@ -374,7 +371,7 @@ async function storeImage(vendorId, tmpPath) {
 
 // POST /api/sites/my/cover → the big photo behind the home section
 router.post('/my/cover', requireAuth, upload.single('photo'), async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   if (!v) return res.status(400).json({ error: 'No vendor' });
   if (!req.file) return res.status(400).json({ error: 'No file' });
   try {
@@ -396,7 +393,7 @@ router.post('/my/cover', requireAuth, upload.single('photo'), async (req, res) =
 
 // DELETE /api/sites/my/cover → back to the plain themed background
 router.delete('/my/cover', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   try {
     const cur = await prisma.vendor_sites.findUnique({
       where: { vendor_id: v }, select: { cover_photo: true },     // 🔒 own row
@@ -413,7 +410,7 @@ router.delete('/my/cover', requireAuth, async (req, res) => {
 // it's cropped. A hero is a wide letterbox on a laptop and a tall strip on a
 // phone, so without this the subject's head is the first thing cut off.
 router.put('/my/cover-focus', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   const f = String(req.body.cover_focus || '').trim();
   if (!/^\d{1,3}% \d{1,3}%$/.test(f)) return res.status(400).json({ error: 'Bad focus point' });
   try {
@@ -433,7 +430,7 @@ router.put('/my/cover-focus', requireAuth, async (req, res) => {
  * page would leave the row referring to something they never kept.
  */
 router.post('/my/photo', requireAuth, upload.single('photo'), async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   if (!v) return res.status(400).json({ error: 'No vendor' });
   if (!req.file) return res.status(400).json({ error: 'No file' });
   try {
@@ -529,7 +526,7 @@ function rawPortfolio(list) {
 
 // POST /api/sites/my/portfolio → add one photo to the end of the list
 router.post('/my/portfolio', requireAuth, upload.single('photo'), async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   if (!v) return res.status(400).json({ error: 'No vendor' });
   if (!req.file) return res.status(400).json({ error: 'No file' });
   try {
@@ -563,7 +560,7 @@ router.post('/my/portfolio', requireAuth, upload.single('photo'), async (req, re
  * the collage and lose the words written about it.
  */
 router.post('/my/portfolio/:id/replace', requireAuth, upload.single('photo'), async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   if (!v) return res.status(400).json({ error: 'No vendor' });
   if (!req.file) return res.status(400).json({ error: 'No file' });
   try {
@@ -596,7 +593,7 @@ router.post('/my/portfolio/:id/replace', requireAuth, upload.single('photo'), as
 
 // DELETE /api/sites/my/portfolio/:id → drop one photo, and its file with it
 router.delete('/my/portfolio/:id', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   try {
     const cur = await prisma.vendor_sites.findUnique({
       where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row
@@ -623,7 +620,7 @@ router.delete('/my/portfolio/:id', requireAuth, async (req, res) => {
  * nothing references and nothing will ever tidy up.
  */
 router.put('/my/portfolio', requireAuth, async (req, res) => {
-  const v = Number(vid(req));
+  const v = Number(actingVendorId(req));
   try {
     const cur = await prisma.vendor_sites.findUnique({
       where: { vendor_id: v }, select: { portfolio: true },        // 🔒 own row

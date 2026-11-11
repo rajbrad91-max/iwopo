@@ -17,6 +17,9 @@ const MODES = [
   { mode: 'platform', label: '🏢 Platform email', hint: 'Clients get your emails from iwopo’s no-reply address. Nothing to set up.' },
 ];
 
+// what the server sends back for a saved app password — a stand-in, never the real one (routes/email.js)
+const SAVED_PASSWORD = '••••••';
+
 const HELP = {
   smtp_host: 'Your email company’s sending server. Gmail or Google Workspace: smtp.gmail.com · Outlook or Microsoft 365: smtp.office365.com. For others, search their help pages for “SMTP server”.',
   smtp_port: 'The door that server uses for sending. Use 587 — it works for Gmail and most companies. Change it only if your email company says so (465 is the other common one).',
@@ -89,7 +92,7 @@ export default function EmailSetup() {
                     <input id="es-smtp_user" className="es-input" placeholder="info@yourstudio.com" autoComplete="off" value={s.smtp_user || ''} onChange={set('smtp_user')} />
                   </Field>
                   <Field id="smtp_pass" label="App password">
-                    <PasswordInput id="es-smtp_pass" wrapClassName="es-pw" className="es-input" placeholder="App password" autoComplete="new-password" value={s.smtp_pass || ''} onChange={set('smtp_pass')} />
+                    <PasswordInput id="es-smtp_pass" wrapClassName="es-pw" className="es-input" placeholder="App password" autoComplete="new-password" revealable={!!s.smtp_pass && s.smtp_pass !== SAVED_PASSWORD} value={s.smtp_pass || ''} onChange={set('smtp_pass')} />
                   </Field>
                   <Field id="from_name" label="Sender name">
                     <input id="es-from_name" className="es-input" placeholder="Sunny Studios" autoComplete="off" value={s.from_name || ''} onChange={set('from_name')} />

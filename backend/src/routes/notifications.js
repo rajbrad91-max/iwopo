@@ -5,10 +5,6 @@ import privateDb from '../config/privateDb.js';
 import { quoConfig } from '../lib/quo.js';
 
 const router = express.Router();
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 /* ── 🔔 NOTIFICATIONS ── */
 /**
@@ -25,6 +21,7 @@ import { pushToVendor } from '../lib/agentPush.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
 import { noteFailure } from '../lib/noteFailure.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 export async function notify(vendorId, title, body, type = 'info', link = null) {
   try {
@@ -53,7 +50,7 @@ async function privateOwner(v) {
 
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const v = Number(vid(req));
+    const v = Number(actingVendorId(req));
     const [shared, sharedUnseen] = await Promise.all([
       prisma.notifications.findMany({
         where: { vendor_id: v },                 // 🔒 tenancy
@@ -81,7 +78,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 router.post('/seen', requireAuth, async (req, res) => {
   try {
-    const v = Number(vid(req));
+    const v = Number(actingVendorId(req));
     await prisma.notifications.updateMany({
       where: { vendor_id: v, seen_at: null },   // 🔒 tenancy on the write
       data: { seen_at: new Date() },

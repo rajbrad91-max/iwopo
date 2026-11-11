@@ -7,18 +7,15 @@ import { currencyFor } from '../lib/currencies.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 // GET /api/invoices → all mine
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const v = vid(req);
+    const v = actingVendorId(req);
     const rows = await prisma.invoices.findMany({
       where: v ? { vendor_id: Number(v) } : {},   // 🔒 tenancy (super_admin may span vendors)
       orderBy: { created_at: 'desc' },
@@ -35,7 +32,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
     const leadId = Number(req.params.leadId);
     const lead = await prisma.leads.findUnique({ where: { id: leadId }, select: { vendor_id: true } });
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
     const invoices = await prisma.invoices.findMany({
       where: { lead_id: leadId },
       orderBy: { created_at: 'desc' },
@@ -49,7 +46,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
   try {
     const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
 
     const invoice = await prisma.invoices.create({ data: await invoiceData(lead, req.body.items, req.body.notes) });
     res.status(201).json({ invoice });
@@ -111,8 +108,8 @@ router.delete('/:id', requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     const inv = await prisma.invoices.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!inv) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && inv.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
-    await prisma.invoices.delete({ where: { id, ...mine(vid(req)) } });
+    if (req.user.role !== 'super_admin' && inv.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    await prisma.invoices.delete({ where: { id, ...mine(actingVendorId(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

@@ -5,19 +5,16 @@ import { templateForLead, buildContractBody } from './contracts.js';
 import { ensureInvoice } from './invoices.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 
 const router = express.Router();
 
-function vid(req) {
-  if (req.user.role === 'super_admin') return req.query.vendor_id || req.body.vendor_id || null;
-  return req.user.vendor_id;
-}
 
 // 🔒 tenancy gate: load a lead and refuse it if it isn't this vendor's
 async function leadFor(req, res, leadId) {
   const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
   if (!lead) { res.status(404).json({ error: 'Lead not found' }); return null; }
-  if (req.user.role !== 'super_admin' && lead.vendor_id !== vid(req)) {
+  if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) {
     res.status(403).json({ error: 'Forbidden' }); return null;
   }
   return lead;
@@ -182,7 +179,7 @@ router.put('/lead/:leadId/confirm-claim', requireAuth, async (req, res) => {
     }
 
     await prisma.leads.update({
-      where: { id: lead.id, ...mine(vid(req)) },
+      where: { id: lead.id, ...mine(actingVendorId(req)) },
       data: { payment_claimed_at: null, updated_at: new Date() },
     });
 
@@ -200,9 +197,9 @@ router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const pay = await prisma.payments.findUnique({ where: { id } });
     if (!pay) return res.status(404).json({ error: 'Not found' });
-    if (req.user.role !== 'super_admin' && pay.vendor_id !== vid(req))
+    if (req.user.role !== 'super_admin' && pay.vendor_id !== actingVendorId(req))
       return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
-    await prisma.payments.delete({ where: { id, ...mine(vid(req)) } });
+    await prisma.payments.delete({ where: { id, ...mine(actingVendorId(req)) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -276,7 +273,7 @@ router.put('/lead/:leadId/money', requireAuth, async (req, res) => {
     if (price_override !== undefined) {
       data.price_override = (price_override === null || price_override === '') ? null : Number(price_override);
     }
-    const updated = await prisma.leads.update({ where: { id: lead.id, ...mine(vid(req)) }, data });
+    const updated = await prisma.leads.update({ where: { id: lead.id, ...mine(actingVendorId(req)) }, data });
 
     /**
      * 💸 Redraw any unsigned contract, because its figures are now wrong.
@@ -304,7 +301,7 @@ router.put('/lead/:leadId/web-payment', requireAuth, async (req, res) => {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
     const updated = await prisma.leads.update({
-      where: { id: lead.id, ...mine(vid(req)) },
+      where: { id: lead.id, ...mine(actingVendorId(req)) },
       data: { web_payment_enabled: !!req.body.enabled, updated_at: new Date() },
     });
     res.json({ web_payment_enabled: updated.web_payment_enabled });

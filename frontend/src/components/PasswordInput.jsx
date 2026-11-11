@@ -19,8 +19,9 @@ const EyeClosed = () => (
  * Passes through any input props (value, onChange, placeholder, onKeyDown, className, style, autoFocus).
  * Use anywhere a masked password is typed - EXCEPT the super admin panel.
  * checklist: pass { email, name, business } (or true) on a NEW-password box to show the live rules under it.
+ * revealable: false hides the eye — for a box holding a stand-in, not a password that can be shown (Raj, 2026-11-11).
  */
-export default function PasswordInput({ className = '', style, wrapClassName = '', checklist, ...props }) {
+export default function PasswordInput({ className = '', style, wrapClassName = '', checklist, revealable = true, ...props }) {
   const [show, setShow] = useState(false);
   const rules = checklist && props.value ? passwordChecklist(props.value, checklist === true ? {} : checklist) : null;
   return (
@@ -31,15 +32,17 @@ export default function PasswordInput({ className = '', style, wrapClassName = '
         type={show ? 'text' : 'password'}
         className={`pw-field-input ${className}`}
       />
-      <button
-        type="button"
-        className="pw-field-eye"
-        onClick={() => setShow(s => !s)}
-        aria-label={show ? 'Hide password' : 'Show password'}
-        tabIndex={-1}
-      >
-        {show ? <EyeClosed /> : <EyeOpen />}
-      </button>
+      {revealable && (
+        <button
+          type="button"
+          className="pw-field-eye"
+          onClick={() => setShow(s => !s)}
+          aria-label={show ? 'Hide password' : 'Show password'}
+          tabIndex={-1}
+        >
+          {show ? <EyeClosed /> : <EyeOpen />}
+        </button>
+      )}
     </div>
     {rules && (
       <ul className="pw-rules" aria-label="Password rules">
