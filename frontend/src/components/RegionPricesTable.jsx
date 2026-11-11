@@ -6,7 +6,8 @@ import './regionPrices.css';
  * 🌍 Super Admin → Services & Packages, under the plans table (Raj, 2026-11-11): every territory's fixed prices, the
  * countries it covers, and what iwopo keeps from each plan there — at 95% usage, the floor rather than the average.
  * The "US & other countries" row is the plans table above; the others are plan_region_prices. Data:
- * GET /api/admin/plan-regions (lib/planEconomics.js).
+ * GET /api/admin/plan-regions (lib/planEconomics.js). Each plan's column carries its own light tint, top to bottom,
+ * so a plan stays recognisable while scrolling (Raj, 2026-11-11).
  */
 const countryName = (() => {
   const names = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -15,6 +16,7 @@ const countryName = (() => {
 const price = (sym, v) => (v == null ? '—' : `${sym}${Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 })}`);
 const usd = (v) => (v == null ? '—' : `$${v.toFixed(2)}`);
 const tone = (m) => (m >= 0.25 ? 'is-good' : m >= 0.10 ? 'is-ok' : 'is-low');
+const band = (code) => `rp-band-${code}`;   // 🎨 the plan's column tint (regionPrices.css)
 
 function Countries({ list }) {
   if (!list.length) return <span className="rp-muted">The US and every country not in another row</span>;
@@ -52,9 +54,9 @@ export default function RegionPricesTable({ rev }) {
             <tr>
               <th rowSpan={2}>Territory</th>
               <th rowSpan={2}>Countries</th>
-              {plans.map(p => <th key={p.code} colSpan={2} className="rp-plan">{p.name}</th>)}
+              {plans.map(p => <th key={p.code} colSpan={2} className={`rp-plan ${band(p.code)}`}>{p.name}</th>)}
             </tr>
-            <tr>{plans.map(p => [<th key={`${p.code}m`}>Monthly</th>, <th key={`${p.code}y`}>Yearly</th>])}</tr>
+            <tr>{plans.map(p => [<th key={`${p.code}m`} className={band(p.code)}>Monthly</th>, <th key={`${p.code}y`} className={band(p.code)}>Yearly</th>])}</tr>
           </thead>
           <tbody>
             {data.regions.map(r => (
@@ -62,8 +64,8 @@ export default function RegionPricesTable({ rev }) {
                 <td className="rp-region"><b>{r.name}</b><span className="rp-muted">{r.currency}{r.code === 'USD-R' ? ' · regional' : ''}</span></td>
                 <td className="rp-list"><Countries list={r.countries} /></td>
                 {r.plans.map(p => [
-                  <td key={`${p.code}m`} className="rp-num">{price(r.symbol, p.monthly)}{r.currency !== 'USD' && <span className="rp-muted">≈ {usd(p.usd_monthly)}</span>}</td>,
-                  <td key={`${p.code}y`} className="rp-num">{price(r.symbol, p.annual)}</td>,
+                  <td key={`${p.code}m`} className={`rp-num ${band(p.code)}`}>{price(r.symbol, p.monthly)}{r.currency !== 'USD' && <span className="rp-muted">≈ {usd(p.usd_monthly)}</span>}</td>,
+                  <td key={`${p.code}y`} className={`rp-num ${band(p.code)}`}>{price(r.symbol, p.annual)}</td>,
                 ])}
               </tr>
             ))}
@@ -82,7 +84,7 @@ export default function RegionPricesTable({ rev }) {
       <div className="rp-wrap">
         <table className="rp">
           <thead>
-            <tr><th>Territory</th>{plans.map(p => <th key={p.code} className="rp-plan">{p.name}</th>)}</tr>
+            <tr><th>Territory</th>{plans.map(p => <th key={p.code} className={`rp-plan ${band(p.code)}`}>{p.name}</th>)}</tr>
           </thead>
           <tbody>
             {data.regions.map(r => (
@@ -91,7 +93,7 @@ export default function RegionPricesTable({ rev }) {
                 {r.plans.map(p => {
                   const k = p.keep?.[cycle];
                   return (
-                    <td key={p.code} className="rp-num">
+                    <td key={p.code} className={`rp-num ${band(p.code)}`}>
                       {k ? <><b>{usd(k.profit)}</b><span className={`rp-margin ${tone(k.margin)}`}>{Math.round(k.margin * 100)}%</span></> : <span className="rp-muted">rate unavailable</span>}
                     </td>
                   );
