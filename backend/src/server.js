@@ -85,6 +85,7 @@ import stripeConnectRoutes, { connectWebhook } from './routes/stripeConnect.js';
 import { sweepInactiveFree } from './lib/inactiveFree.js';
 import helpVideosRouter from './routes/helpVideos.js';
 import clientLinksRoutes from './routes/clientLinks.js';
+import { vendorPage } from './lib/vendorPage.js';
 
 dotenv.config();
 
@@ -177,6 +178,9 @@ app.use('/api', apiRoutes);
 /* 🌐 Which vendor this address belongs to (null on the platform), and on a vendor's address only that vendor's
    client pages exist — lib/vendorHosts.js, lib/hostGuard.js */
 app.use(hostContext());
+// 🔗 a page on a vendor's own address (not /api): the app shell with the vendor's own link preview. Only vendor
+// addresses send pages here (nginx location @page, scripts/domainProvisioner.js); iwopo's own host never matches.
+app.use((req, res, next) => (req.hostVendor && (req.method === 'GET' || req.method === 'HEAD') && !req.path.startsWith('/api/') ? vendorPage(req, res) : next()));
 app.use('/api', hostGuard());
 
 app.use('/api/auth', authRoutes);

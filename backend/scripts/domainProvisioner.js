@@ -51,6 +51,7 @@ const due = (row, ms) => !row.domain_checked_at || Date.now() - new Date(row.dom
 function serverBlock({ title, names, canonical, cert, www }) {
   const dist = path.join(APP_DIR, 'frontend/dist');
   const target = canonical ? `https://${canonical}$request_uri` : 'https://$host$request_uri';
+  const robots = ENV === 'staging' ? '"noindex, nofollow"' : '$iwopo_vendor_robots';
   return `# 🌐 ${title} — written by scripts/domainProvisioner.js (${ENV}). Do not edit by hand: it is rewritten.
 server {
     listen 80;
@@ -81,10 +82,22 @@ ${www ? `    if ($host = ${www}) { return 301 ${target}; }\n` : ''}    root ${di
         # a couple's gallery, portal or contract never belongs in search results ($iwopo_vendor_robots is set per
         # path in conf.d/iwopo-vendor-domains.conf; empty = no header). Set here, in the location that finally
         # serves the page, because nginx drops headers from a location it only passes through. Staging: never indexed.
-        add_header X-Robots-Tag ${ENV === 'staging' ? '"noindex, nofollow"' : '$iwopo_vendor_robots'} always;
+        add_header X-Robots-Tag ${robots} always;
         add_header Cache-Control "no-cache, must-revalidate" always;
         include snippets/iwopo-security.conf;
-        try_files $uri $uri/ /index.html;
+        try_files $uri @page;
+    }
+    # 🔗 a page rather than a file: the app shell with this vendor's own name, address and logo in its link preview,
+    # so a shared link never shows iwopo (backend/src/lib/vendorPage.js) — the same headers as above
+    location @page {
+        proxy_pass http://127.0.0.1:${API_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_hide_header X-Powered-By;
+        add_header X-Robots-Tag ${robots} always;
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        include snippets/iwopo-security.conf;
     }
 }
 `;
