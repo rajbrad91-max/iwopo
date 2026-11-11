@@ -407,14 +407,14 @@ export default function VendorPanel({ onLogout }) {
         <BillingBanner onPlans={() => go('plans')} />
         {welcome && <WelcomeSteps plan={welcome} onGo={(t) => { closeWelcome(); go(t); }} onClose={closeWelcome} />}
         <div className="topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="u-display-flex u-align-items-center u-gap-12px">
             <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
             <div>
               <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'ppm' ? 'PPM Board' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
               {tab !== 'fileflyer' && <div className="sub">Welcome back, {user?.name} 👋</div>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="u-display-flex u-gap-8px u-align-items-center">
             {has('calendar') && <button className={`hdr-icon ${tab==='calendar'?'active':''}`} onClick={() => setTab(tab === 'calendar' ? 'dashboard' : 'calendar')} title="Quick Calendar">🗓️</button>}
             <NotifBell onOpen={openNotification} />
             {/* 📞 who is calling, while it rings — only an account holding Calls & messages ever loads this */}
@@ -2940,9 +2940,9 @@ function DashHome({ goTab, openBooking }) {
           </div>
 
           {/* 🟡 Recent Leads */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 10px' }}>
-            <h2 style={{ margin: 0 }}>📋 Recent Leads</h2>
-            <button className="refresh" onClick={() => goTab('leads')} style={{ padding: '6px 14px', fontSize: 12 }}>View all →</button>
+          <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-20px-0-10px">
+            <h2 className="u-margin-0">📋 Recent Leads</h2>
+            <button className="refresh u-padding-6px-14px u-font-size-12px" onClick={() => goTab('leads')}>View all →</button>
           </div>
           <div className="table-wrap">
             <table className="dash-recent">
@@ -2951,7 +2951,7 @@ function DashHome({ goTab, openBooking }) {
                 {recent.length === 0 ? (
                   <tr><td colSpan="4" className="empty">No leads yet. Share your inquiry link! 📨</td></tr>
                 ) : recent.map(l => (
-                  <tr key={l.id} onClick={() => goTab('leads')} style={{ cursor: 'pointer' }}>
+                  <tr className="u-cursor-pointer" key={l.id} onClick={() => goTab('leads')}>
                     <td className="biz">{l.name}</td>
                     <td>{l.event_type}</td>
                     <td>{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
@@ -2965,9 +2965,9 @@ function DashHome({ goTab, openBooking }) {
 
         {/* 🔵 Upcoming Events (right column) */}
         <div className="dash-right">
-          <h2 style={{ margin: '0 0 14px' }}>📅 Upcoming Events</h2>
+          <h2 className="u-margin-0-0-14px">📅 Upcoming Events</h2>
           {upcoming.length === 0 ? (
-            <div className="table-wrap" style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>No upcoming events 🗓️</div>
+            <div className="table-wrap u-padding-30px u-text-align-center u-color-muted">No upcoming events 🗓️</div>
           ) : upcoming.map(b => {
             return <EventCard key={b.id} b={b} onOpen={() => openBooking(b.id)} />;
           })}
@@ -5051,7 +5051,6 @@ const FORM_PRESETS = {
 
 function FieldBuilder({ fields, setFields, onTrade }) {
   const dialog = useDialog();
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 8, width: '100%', fontSize: 13 };
   const uid = () => 'f' + Math.random().toString(36).slice(2, 8);
 
   // 🔗 Which real lead columns a field can feed. Fetched from the API so the
@@ -5191,29 +5190,29 @@ function FieldBuilder({ fields, setFields, onTrade }) {
 
       {/* field list */}
       {fields.map((f, i) => (
-        <div key={f.id} style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>{FIELD_TYPES.find(x => x.t === f.type)?.label}</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-              <button className="refresh" onClick={() => move(i, -1)} style={{ padding: '3px 8px', fontSize: 11 }}>↑</button>
-              <button className="refresh" onClick={() => move(i, 1)} style={{ padding: '3px 8px', fontSize: 11 }}>↓</button>
-              <button className="refresh" onClick={() => del(i)} style={{ padding: '3px 8px', fontSize: 11, color: '#fb7185' }}>🗑️</button>
+        <div className="u-background-panel-2 u-border-1px-solid-line u-border-radius-10px u-padding-12px u-margin-bottom-10px" key={f.id}>
+          <div className="u-display-flex u-align-items-center u-gap-8px u-margin-bottom-8px">
+            <span className="u-font-size-12px u-color-muted">{FIELD_TYPES.find(x => x.t === f.type)?.label}</span>
+            <div className="u-margin-left-auto u-display-flex u-gap-4px">
+              <button className="refresh u-padding-3px-8px u-font-size-11px" onClick={() => move(i, -1)}>↑</button>
+              <button className="refresh u-padding-3px-8px u-font-size-11px" onClick={() => move(i, 1)}>↓</button>
+              <button className="refresh u-padding-3px-8px u-font-size-11px u-color-fb7185" onClick={() => del(i)}>🗑️</button>
             </div>
           </div>
 
-          <input style={box} placeholder="Field label (e.g. Event Type)" value={f.label} onChange={e => upd(i, { label: e.target.value })} />
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-8px u-width-100pct u-font-size-13px" placeholder="Field label (e.g. Event Type)" value={f.label} onChange={e => upd(i, { label: e.target.value })} />
 
           {/* dropdown options */}
           {(f.type === 'dropdown' || f.type === 'pre_events') && (
-            <div style={{ marginTop: 8 }}>
+            <div className="u-margin-top-8px">
               {f.type === 'pre_events' && <p className="fb-hint">🗓️ The event names clients can pick — they can also type their own.</p>}
               {f.options.map((opt, oi) => (
-                <div key={oi} style={{ display: 'flex', gap: 6, marginBottom: 5 }}>
-                  <input style={{ ...box, fontSize: 12 }} value={opt} onChange={e => upd(i, { options: f.options.map((o, x) => x === oi ? e.target.value : o) })} />
-                  <button className="refresh" onClick={() => upd(i, { options: f.options.filter((_, x) => x !== oi) })} style={{ padding: '4px 9px', fontSize: 11 }}>✕</button>
+                <div className="u-display-flex u-gap-6px u-margin-bottom-5px" key={oi}>
+                  <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-8px u-width-100pct u-font-size-12px" value={opt} onChange={e => upd(i, { options: f.options.map((o, x) => x === oi ? e.target.value : o) })} />
+                  <button className="refresh u-padding-4px-9px u-font-size-11px" onClick={() => upd(i, { options: f.options.filter((_, x) => x !== oi) })}>✕</button>
                 </div>
               ))}
-              <button className="refresh" onClick={() => upd(i, { options: [...f.options, 'Option ' + (f.options.length + 1)] })} style={{ padding: '4px 10px', fontSize: 11 }}>+ option</button>
+              <button className="refresh u-padding-4px-10px u-font-size-11px" onClick={() => upd(i, { options: [...f.options, 'Option ' + (f.options.length + 1)] })}>+ option</button>
             </div>
           )}
 
@@ -5356,7 +5355,6 @@ function InqFormSettings() {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState(false);
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   useEffect(() => {
     api.myInquirySettings()
@@ -5385,9 +5383,9 @@ function InqFormSettings() {
   if (!s) return <div className="loading">Loading…</div>;
 
   return (
-    <div style={{ maxWidth: 560 }}>
-      <div className="table-wrap" style={{ padding: 22 }}>
-        <h2 style={{ marginTop: 0 }}>🎨 Customize your inquiry form {msg && <span style={{ fontSize: 13, color: '#4ade80' }}>{msg}</span>}</h2>
+    <div className="u-max-width-560px">
+      <div className="table-wrap u-padding-22px">
+        <h2 className="u-margin-top-0">🎨 Customize your inquiry form {msg && <span className="u-font-size-13px u-color-4ade80">{msg}</span>}</h2>
         <p className="sub inq-link-row">
           Your link: <b className="inq-link">{handle ? inquiryUrl(handle) : '…'}</b> 🔗
           {' · '}
@@ -5400,37 +5398,36 @@ function InqFormSettings() {
           </a>
         </p>
 
-        <label style={{ fontSize: 12, color: 'var(--muted)' }}>Brand name</label>
-        <input style={box} value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
+        <label className="u-font-size-12px u-color-muted">Brand name</label>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
 
         <div className="if-brand-row">
           <div>
-            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block' }}>Brand color</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })}
-                style={{ width: 60, height: 36, border: 'none', background: 'transparent', cursor: 'pointer' }} />
+            <label className="u-font-size-12px u-color-muted u-display-block">Brand color</label>
+            <div className="u-display-flex u-align-items-center u-gap-8px">
+              <input className="u-width-60px u-height-36px u-border-none u-background-transparent u-cursor-pointer" type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })} />
               <HexField value={s.brand_color} onChange={hex => setS({ ...s, brand_color: hex })} />
             </div>
           </div>
           <div className="if-wm">
-            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Background watermark</label>
-            <select style={box} value={s.background || 'none'} onChange={e => setS({ ...s, background: e.target.value })}>
+            <label className="u-font-size-12px u-color-muted u-display-block u-margin-bottom-4px">Background watermark</label>
+            <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.background || 'none'} onChange={e => setS({ ...s, background: e.target.value })}>
               {Object.entries(PROFESSIONS).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
             </select>
           </div>
         </div>
 
-        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 12 }}>Intro text</label>
-        <input style={box} value={s.intro_text || ''} onChange={e => setS({ ...s, intro_text: e.target.value })} />
+        <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-12px">Intro text</label>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.intro_text || ''} onChange={e => setS({ ...s, intro_text: e.target.value })} />
 
-        <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 10 }}>Intro link (optional — makes intro clickable) 🔗</label>
-        <input style={box} value={s.intro_link || ''} placeholder="https://yoursite.com" onChange={e => setS({ ...s, intro_link: e.target.value })} />
+        <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-10px">Intro link (optional — makes intro clickable) 🔗</label>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.intro_link || ''} placeholder="https://yoursite.com" onChange={e => setS({ ...s, intro_link: e.target.value })} />
 
         {/* 🎨 Theme + font */}
-        <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, color: 'var(--muted)' }}>Theme</label>
-            <select style={box} value={s.theme || 'ivory'} onChange={e => setS({ ...s, theme: e.target.value })}>
+        <div className="u-display-flex u-gap-12px u-margin-top-14px">
+          <div className="u-flex-1">
+            <label className="u-font-size-12px u-color-muted">Theme</label>
+            <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.theme || 'ivory'} onChange={e => setS({ ...s, theme: e.target.value })}>
               <option value="ivory">Ivory (calm, classic)</option>
               <option value="classic">Classic</option>
               <option value="modern">Modern</option>
@@ -5439,9 +5436,9 @@ function InqFormSettings() {
               <option value="minimal">Minimal</option>
             </select>
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, color: 'var(--muted)' }}>Font</label>
-            <select style={box} value={s.font || 'Inter'} onChange={e => setS({ ...s, font: e.target.value })}>
+          <div className="u-flex-1">
+            <label className="u-font-size-12px u-color-muted">Font</label>
+            <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.font || 'Inter'} onChange={e => setS({ ...s, font: e.target.value })}>
               <option value="Inter">Inter</option>
               <option value="Poppins">Poppins</option>
               <option value="Playfair Display">Playfair</option>
@@ -5452,11 +5449,11 @@ function InqFormSettings() {
         </div>
 
         {/* 🏗️ Section 2 builder */}
-        <div style={{ borderTop: '1px solid var(--line)', margin: '20px 0 14px', paddingTop: 16 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)' }}>Section 2 heading</label>
-          <input style={box} value={s.details_heading || ''} placeholder="Event Details" onChange={e => setS({ ...s, details_heading: e.target.value })} />
-          <h3 style={{ margin: '16px 0 4px' }}>🏗️ Inquiry Details fields</h3>
-          <p className="sub" style={{ marginBottom: 12 }}>Build your custom questions ⬇️</p>
+        <div className="u-border-top-1px-solid-line u-margin-20px-0-14px u-padding-top-16px">
+          <label className="u-font-size-12px u-color-muted">Section 2 heading</label>
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.details_heading || ''} placeholder="Event Details" onChange={e => setS({ ...s, details_heading: e.target.value })} />
+          <h3 className="u-margin-16px-0-4px">🏗️ Inquiry Details fields</h3>
+          <p className="sub u-margin-bottom-12px">Build your custom questions ⬇️</p>
           <FieldBuilder
             fields={s.custom_fields || []}
             setFields={(f) => setS(prev => ({ ...prev, custom_fields: f }))}
@@ -5464,7 +5461,7 @@ function InqFormSettings() {
           />
         </div>
 
-        <button className="refresh" onClick={save} disabled={saving} style={{ marginTop: 16, width: '100%', background: '#2dd4bf', color: '#06231f' }}>
+        <button className="refresh u-margin-top-16px u-width-100pct u-background-2dd4bf u-color-06231f" onClick={save} disabled={saving}>
           {saving ? '⏳ Saving…' : msg || '💾 Save form settings'}
         </button>
       </div>
@@ -5518,17 +5515,17 @@ function PackagesView() {
 
   // ---- INSIDE A TEMPLATE ----
   if (selTpl) return (
-    <div style={{ maxWidth: 720 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+    <div className="u-max-width-720px">
+      <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-12px">
         <button className="refresh" onClick={() => setSelTpl(null)}>← All templates</button>
         {selTpl.packages.length < 3 && (
-          <button className="refresh" onClick={() => addPkg(selTpl.id)} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Add Package</button>
+          <button className="refresh u-background-2dd4bf u-color-06231f" onClick={() => addPkg(selTpl.id)}>+ Add Package</button>
         )}
       </div>
-      <h2 style={{ margin: '0 0 12px' }}>📁 {selTpl.name}</h2>
+      <h2 className="u-margin-0-0-12px">📁 {selTpl.name}</h2>
       {msg && <div className="err-banner">{msg}</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {selTpl.packages.length === 0 && <div style={{ color: 'var(--muted)' }}>No packages yet — add one 👆</div>}
+      <div className="u-display-flex u-flex-direction-column u-gap-14px">
+        {selTpl.packages.length === 0 && <div className="u-color-muted">No packages yet — add one 👆</div>}
         {selTpl.packages.map(p => <PkgCard key={p.id} pkg={p} onSaved={load} onDelete={() => delPkg(p.id)} />)}
       </div>
     </div>
@@ -5536,20 +5533,20 @@ function PackagesView() {
 
   // ---- TEMPLATE LIST ----
   return (
-    <div style={{ maxWidth: 720 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>📁 Up to 6 event templates · 📦 3 packages each</div>
-        {tpls.length < 6 && <button className="refresh" onClick={addTpl} style={{ background: '#2dd4bf', color: '#06231f' }}>+ Add Template</button>}
+    <div className="u-max-width-720px">
+      <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-12px">
+        <div className="u-color-muted u-font-size-13px">📁 Up to 6 event templates · 📦 3 packages each</div>
+        {tpls.length < 6 && <button className="refresh u-background-2dd4bf u-color-06231f" onClick={addTpl}>+ Add Template</button>}
       </div>
       {msg && <div className="err-banner">{msg}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 14 }}>
+      <div className="u-display-grid u-grid-template-columns-repeat-auto-fill-minmax-210px-1fr u-gap-14px">
         {tpls.map(t => (
-          <div key={t.id} className="table-wrap" style={{ padding: 18, cursor: 'pointer', position: 'relative' }} onClick={() => setSelTpl(t)}>
-            <div style={{ fontSize: 30 }}>📁</div>
+          <div key={t.id} className="table-wrap u-padding-18px u-cursor-pointer u-position-relative" onClick={() => setSelTpl(t)}>
+            <div className="u-font-size-30px">📁</div>
             <TplName tpl={t} onSaved={load} />
-            <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>📦 {t.packages.length}/3 packages</div>
+            <div className="u-color-muted u-font-size-12px u-margin-top-4px">📦 {t.packages.length}/3 packages</div>
             {tpls.length > 1 && (
-              <button className="refresh" style={{ position: 'absolute', top: 10, right: 10, padding: '3px 8px' }}
+              <button className="refresh u-position-absolute u-top-10px u-right-10px u-padding-3px-8px"
                 onClick={e => { e.stopPropagation(); delTpl(t.id); }}>🗑️</button>
             )}
           </div>
@@ -5567,8 +5564,7 @@ function TplName({ tpl, onSaved }) {
     }
   }
   return (
-    <input value={name} onClick={e => e.stopPropagation()} onChange={e => setName(e.target.value)} onBlur={save}
-      style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontWeight: 700, fontSize: 15, width: '100%', marginTop: 6, outline: 'none' }} />
+    <input className="u-background-transparent u-border-none u-color-text u-font-weight-700 u-font-size-15px u-width-100pct u-margin-top-6px u-outline-none" value={name} onClick={e => e.stopPropagation()} onChange={e => setName(e.target.value)} onBlur={save} />
   );
 }
 
@@ -5581,7 +5577,6 @@ function PkgCard({ pkg, onSaved, onDelete }) {
   const [newInc, setNewInc] = useState('');
   const [saved, setSaved] = useState('');
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
 
   async function save() {
     setSaved('');
@@ -5603,47 +5598,47 @@ function PkgCard({ pkg, onSaved, onDelete }) {
   function rmInc(i) { set('inclusions', f.inclusions.filter((_, x) => x !== i)); }
 
   return (
-    <div className="table-wrap" style={{ padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <input style={{ ...box, width: '55%', fontWeight: 700, fontSize: 16 }} value={f.name} onChange={e => set('name', e.target.value)} />
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+    <div className="table-wrap u-padding-20px">
+      <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-10px">
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-55pct u-font-weight-700 u-font-size-16px" value={f.name} onChange={e => set('name', e.target.value)} />
+        <div className="u-display-flex u-gap-8px u-align-items-center">
           {pkg.is_default && <span className="badge active">Default</span>}
-          {saved && <span style={{ fontSize: 12, color: '#4ade80' }}>{saved}</span>}
+          {saved && <span className="u-font-size-12px u-color-4ade80">{saved}</span>}
           {!pkg.is_default && <button className="refresh" onClick={onDelete}>🗑️</button>}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)' }}>💰 Base price ({moneySymbol()})</label>
-          <input style={box} type="number" value={f.base_price} onChange={e => set('base_price', e.target.value)} />
+      <div className="u-display-flex u-gap-10px">
+        <div className="u-flex-1">
+          <label className="u-font-size-12px u-color-muted">💰 Base price ({moneySymbol()})</label>
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" type="number" value={f.base_price} onChange={e => set('base_price', e.target.value)} />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)' }}>⏱️ Included hours</label>
-          <input style={box} type="number" value={f.included_hours} onChange={e => set('included_hours', e.target.value)} />
+        <div className="u-flex-1">
+          <label className="u-font-size-12px u-color-muted">⏱️ Included hours</label>
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" type="number" value={f.included_hours} onChange={e => set('included_hours', e.target.value)} />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: 12, color: 'var(--muted)' }}>➕ Extra {moneySymbol()}/hour</label>
-          <input style={box} type="number" value={f.per_hour_price} onChange={e => set('per_hour_price', e.target.value)} />
+        <div className="u-flex-1">
+          <label className="u-font-size-12px u-color-muted">➕ Extra {moneySymbol()}/hour</label>
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" type="number" value={f.per_hour_price} onChange={e => set('per_hour_price', e.target.value)} />
         </div>
       </div>
 
-      <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 12 }}>📝 Inclusions (your own items)</label>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
+      <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-12px">📝 Inclusions (your own items)</label>
+      <div className="u-display-flex u-flex-wrap-wrap u-gap-6px u-margin-6px-0">
         {f.inclusions.map((inc, i) => (
-          <span key={i} style={{ background: '#2dd4bf18', border: '1px solid #2dd4bf44', color: '#2dd4bf', padding: '4px 10px', borderRadius: 16, fontSize: 12 }}>
-            {inc} <span style={{ cursor: 'pointer', marginLeft: 4 }} onClick={() => rmInc(i)}>✕</span>
+          <span className="u-background-2dd4bf18 u-border-1px-solid-2dd4bf44 u-color-2dd4bf u-padding-4px-10px u-border-radius-16px u-font-size-12px" key={i}>
+            {inc} <span className="u-cursor-pointer u-margin-left-4px" onClick={() => rmInc(i)}>✕</span>
           </span>
         ))}
-        {f.inclusions.length === 0 && <span style={{ color: 'var(--muted)', fontSize: 12 }}>No items yet — add below 👇</span>}
+        {f.inclusions.length === 0 && <span className="u-color-muted u-font-size-12px">No items yet — add below 👇</span>}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input style={box} placeholder="e.g. 8x10 prints, 2 photographers…" value={newInc}
+      <div className="u-display-flex u-gap-8px">
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" placeholder="e.g. 8x10 prints, 2 photographers…" value={newInc}
           onChange={e => setNewInc(e.target.value)} onKeyDown={e => e.key === 'Enter' && addInc()} />
         <button className="refresh" onClick={addInc}>+ Add</button>
       </div>
 
-      <button className="refresh" onClick={save} style={{ marginTop: 14, width: '100%', background: '#2dd4bf', color: '#06231f' }}>💾 Save package</button>
+      <button className="refresh u-margin-top-14px u-width-100pct u-background-2dd4bf u-color-06231f" onClick={save}>💾 Save package</button>
     </div>
   );
 }
@@ -5657,12 +5652,6 @@ function PkgCard({ pkg, onSaved, onDelete }) {
  * the person who lost it, not by waiting for somebody else to do it.
  */
 function DevicesSetup() {
-  /* SettingsView declares its own box style inside itself, so a sibling
-     component cannot see it. Declared here rather than lifted out: moving a
-     shared style out of a two-hundred-line component to serve one new section
-     is a bigger change than it looks. */
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)',
-    borderRadius: 8, color: 'var(--text)', padding: 10, width: '100%', marginTop: 6 };
   const dialog = useDialog();
   const [rows, setRows] = useState([]);
   const [name, setName] = useState('');
@@ -5698,19 +5687,19 @@ function DevicesSetup() {
   }
 
   return (
-    <div className="table-wrap" style={{ padding: 22 }}>
-      <h2 style={{ marginTop: 0 }}>🔑 Devices</h2>
-      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginTop: 0 }}>
+    <div className="table-wrap u-padding-22px">
+      <h2 className="u-margin-top-0">🔑 Devices</h2>
+      <p className="u-font-size-13px u-color-muted u-line-height-1_6 u-margin-top-0">
         A device is a computer allowed to upload photos on its own — the live
         shoot watcher on your editing machine. A device can only upload: it
         cannot read your leads, delete a gallery, or change anything.
       </p>
 
-      <div style={{ display: 'flex', gap: 8, margin: '18px 0' }}>
-        <input style={{ ...box, margin: 0 }} placeholder="Editing desktop"
+      <div className="u-display-flex u-gap-8px u-margin-18px-0">
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-0" placeholder="Editing desktop"
           value={name} onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && add()} />
-        <button className="refresh" disabled={busy} onClick={add} style={{ whiteSpace: 'nowrap' }}>
+        <button className="refresh u-white-space-nowrap" disabled={busy} onClick={add}>
           {busy ? 'Making…' : '+ Add device'}
         </button>
       </div>
@@ -5720,21 +5709,21 @@ function DevicesSetup() {
       {fresh && (
         <div style={{ padding: 16, borderRadius: 10, background: 'var(--teal-soft)',
           border: '1px solid var(--teal)', marginBottom: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+          <div className="u-font-size-13px u-font-weight-700 u-margin-bottom-8px">
             Copy this now — it cannot be shown again
           </div>
           <code style={{ display: 'block', padding: '9px 11px', borderRadius: 7,
             background: 'var(--panel)', fontSize: 12.5, wordBreak: 'break-all' }}>{fresh}</code>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <button className="refresh" style={{ fontSize: 12 }}
+          <div className="u-display-flex u-gap-8px u-margin-top-10px">
+            <button className="refresh u-font-size-12px"
               onClick={() => { navigator.clipboard?.writeText(fresh); }}>📋 Copy</button>
-            <button className="refresh" style={{ fontSize: 12 }} onClick={() => setFresh(null)}>Done</button>
+            <button className="refresh u-font-size-12px" onClick={() => setFresh(null)}>Done</button>
           </div>
         </div>
       )}
 
       {rows.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--muted)' }}>No devices yet.</p>
+        <p className="u-font-size-13px u-color-muted">No devices yet.</p>
       ) : (
         <table className="tbl"><thead><tr>
           <th>Name</th><th>Last used</th><th>Added</th><th></th>
@@ -5842,10 +5831,9 @@ function SettingsView({ user, onProfileChange }) {
   }
 
   if (!s) return <div className="loading">Loading…</div>;
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 10, width: '100%', marginTop: 6 };
 
   return (
-    <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="u-max-width-560px u-display-flex u-flex-direction-column u-gap-16px">
       <div className="set-tabs">
         {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security'], ['address', '🌐 Web address'], ['links', '🔗 Client page links']].map(([k, label]) => (
           <button key={k} className={`refresh set-tab${sub === k ? ' is-on' : ''}`} onClick={() => setSub(k)}>{label}</button>
@@ -5854,11 +5842,11 @@ function SettingsView({ user, onProfileChange }) {
 
       {/* Preferences */}
       {sub === 'prefs' && (
-      <div className="table-wrap" style={{ padding: 22 }}>
-        <h2 style={{ marginTop: 0 }}>🕐 Preferences {saved && <span style={{ fontSize: 13, color: '#4ade80' }}>{saved}</span>}</h2>
+      <div className="table-wrap u-padding-22px">
+        <h2 className="u-margin-top-0">🕐 Preferences {saved && <span className="u-font-size-13px u-color-4ade80">{saved}</span>}</h2>
 
-        <label style={{ fontSize: 13, color: '#9fb3b0' }}>Time format</label>
-        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+        <label className="u-font-size-13px u-color-9fb3b0">Time format</label>
+        <div className="u-display-flex u-gap-8px u-margin-top-6px">
           {['12h', '24h'].map(t => (
             <button key={t} onClick={() => savePrefs({ ...s, time_format: t })}
               className={`refresh set-pick${s.time_format === t ? ' is-on' : ''}`}>
@@ -5875,7 +5863,7 @@ function SettingsView({ user, onProfileChange }) {
           ))}
         </div>
 
-        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }}>Timezone</label>
+        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-14px">Timezone</label>
         {zones.length > 1 ? (
           <select className="pref-static" value={s.timezone || ''} onChange={e => savePrefs({ ...s, timezone: e.target.value })}>
             {zones.map(z => <option key={z.tz} value={z.tz}>{z.city}</option>)}
@@ -5891,15 +5879,15 @@ function SettingsView({ user, onProfileChange }) {
             country, so a bare number on an invoice tells a client in London the
             wrong thing. It follows the country on their profile unless they say
             otherwise — a preference, not a question they have to answer. */}
-        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 14 }} htmlFor="pf-cur">Currency</label>
-        <select id="pf-cur" style={box} value={chosenCurrency || ''}
+        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-14px" htmlFor="pf-cur">Currency</label>
+        <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" id="pf-cur" value={chosenCurrency || ''}
           onChange={e => { setChosenCurrency(e.target.value); savePrefs({ ...s, currency: e.target.value }); }}>
           <option value="">Follow my country{s.currency ? ` (${s.currency})` : ''}</option>
           {currencies.map(c => (
             <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
           ))}
         </select>
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+        <div className="u-font-size-11px u-color-muted u-margin-top-4px">
           💰 Your packages, invoices and what clients see are all shown in {s.currency || 'USD'}.
           {' '}Example: {fmtMoney(1250, { currency: s.currency })}
         </div>
@@ -5921,32 +5909,32 @@ function SettingsView({ user, onProfileChange }) {
 
       {/* Account */}
       {sub === 'account' && (
-      <div className="table-wrap" style={{ padding: 22 }}>
-        <h2 style={{ marginTop: 0 }}>🏢 Business Profile</h2>
+      <div className="table-wrap u-padding-22px">
+        <h2 className="u-margin-top-0">🏢 Business Profile</h2>
         {profMsg && <div style={{ fontSize: 13, color: profMsg[0] === '✅' ? '#4ade80' : 'var(--muted)', marginBottom: 10 }}>{profMsg}</div>}
 
         {/* logo — single source, updates everywhere */}
-        <label style={{ fontSize: 13, color: '#9fb3b0' }}>Logo 🖼️</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '6px 0 14px' }}>
-          {prof?.logo_path && <img src={`/api/me/logo/${prof.logo_path}`} alt="logo" style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--line)' }} />}
-          <label className="refresh" style={{ padding: '7px 14px', fontSize: 12, cursor: 'pointer' }}>
+        <label className="u-font-size-13px u-color-9fb3b0">Logo 🖼️</label>
+        <div className="u-display-flex u-align-items-center u-gap-12px u-margin-6px-0-14px">
+          {prof?.logo_path && <img className="u-width-56px u-height-56px u-border-radius-10px u-object-fit-cover u-border-1px-solid-line" src={`/api/me/logo/${prof.logo_path}`} alt="logo" />}
+          <label className="refresh u-padding-7px-14px u-font-size-12px u-cursor-pointer">
             📤 Upload logo
-            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoPick} />
+            <input className="u-display-none" type="file" accept="image/*" onChange={onLogoPick} />
           </label>
         </div>
 
-        <label style={{ fontSize: 13, color: '#9fb3b0' }}>Company name</label>
-        <input style={box} value={prof?.business_name || ''} onChange={e => setProf({ ...prof, business_name: e.target.value })} />
-        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Phone</label>
-        <input style={box} type="tel" inputMode="tel" value={prof?.phone || ''} onChange={e => setProf({ ...prof, phone: phoneChars(e.target.value) })} />
-        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Business email</label>
-        <input style={box} value={prof?.email || ''} onChange={e => setProf({ ...prof, email: e.target.value })} />
-        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 10 }}>Country</label>
+        <label className="u-font-size-13px u-color-9fb3b0">Company name</label>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" value={prof?.business_name || ''} onChange={e => setProf({ ...prof, business_name: e.target.value })} />
+        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-10px">Phone</label>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" type="tel" inputMode="tel" value={prof?.phone || ''} onChange={e => setProf({ ...prof, phone: phoneChars(e.target.value) })} />
+        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-10px">Business email</label>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" value={prof?.email || ''} onChange={e => setProf({ ...prof, email: e.target.value })} />
+        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-10px">Country</label>
         {/* A select, not a text box: typed countries arrive as "Canada", "canada"
             and "CA" and each becomes its own bucket, so the platform's own
             country breakdown is junk before it has ten sellers. Same list the
             geo pricing uses, so where a seller is and what they pay agree. */}
-        <select style={box} value={prof?.country || ''} onChange={e => setProf({ ...prof, country: e.target.value })}>
+        <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" value={prof?.country || ''} onChange={e => setProf({ ...prof, country: e.target.value })}>
           <option value="">— Select your country —</option>
           {COUNTRIES.filter(c => c.code !== 'default').map(c => (
             <option key={c.code} value={c.code}>{c.name}</option>
@@ -5954,11 +5942,11 @@ function SettingsView({ user, onProfileChange }) {
         </select>
         <button className="refresh set-primary set-save" onClick={saveProfile}>💾 Save profile</button>
 
-        <h2 style={{ marginTop: 26 }}>🔐 Account</h2>
+        <h2 className="u-margin-top-26px">🔐 Account</h2>
         {msg && <div style={{ padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 13, background: msg[0] === '✅' ? '#4ade8018' : '#fb718518', color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</div>}
 
-        <label style={{ fontSize: 13, color: '#9fb3b0' }}>📧 Change email</label>
-        <input style={box} type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={em.email} onChange={e => setEm({ ...em, email: e.target.value })} placeholder="new@email.com" />
+        <label className="u-font-size-13px u-color-9fb3b0">📧 Change email</label>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={em.email} onChange={e => setEm({ ...em, email: e.target.value })} placeholder="new@email.com" />
         {/* ✉️ a heads-up while typing (Raj, 2026-10-23): an address without its @ was once saved and nobody could sign in */}
         {em.email.trim() && !EMAIL_OK(em.email) && <div className="em-warn" role="alert">⚠️ That doesn't look like a valid email address. It needs an @ and a domain, like name@example.com.</div>}
         {EMAIL_OK(em.email) && <div className="pref-hint">You'll sign in with: <b>{em.email.trim().toLowerCase()}</b></div>}
@@ -5966,23 +5954,23 @@ function SettingsView({ user, onProfileChange }) {
             silently moving the account to an attacker's address, so the field
             stays — but it is masked with no reveal. There is nothing useful to
             check by eye here: you either know it or you don't. */}
-        <input type="password" style={box} value={em.password} autoComplete="current-password"
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" type="password" value={em.password} autoComplete="current-password"
           onChange={e => setEm({ ...em, password: e.target.value })} placeholder="Confirm with your current password" />
         <button className="refresh em-btn" onClick={saveEmail} disabled={!EMAIL_OK(em.email) || !em.password}>Update email</button>
         {emCode && (
           <div className="em-confirm">
             <label className="em-confirm-l" htmlFor="em-code">Code sent to {emCode.email}</label>
-            <input id="em-code" style={box} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456"
+            <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" id="em-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456"
               value={emCode.code} onChange={e => setEmCode({ ...emCode, code: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
             {emCode.practice && <div className="pref-hint">🧪 Test site: emails aren't sent here. The code is <b>{emCode.practice}</b>.</div>}
             <button className="refresh em-btn" disabled={emCode.code.length !== 6} onClick={confirmEmail}>Confirm new email</button>
           </div>
         )}
 
-        <label style={{ fontSize: 13, color: '#9fb3b0', display: 'block', marginTop: 18 }}>🔑 Change password</label>
-        <PasswordInput style={box} value={pw.current} onChange={e => setPw({ ...pw, current: e.target.value })} placeholder="Current password" />
-        <PasswordInput style={box} checklist value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} placeholder="New password" />
-        <button className="refresh" onClick={savePw} style={{ marginTop: 8 }}>Change password</button>
+        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-18px">🔑 Change password</label>
+        <PasswordInput wrapClassName="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" value={pw.current} onChange={e => setPw({ ...pw, current: e.target.value })} placeholder="Current password" />
+        <PasswordInput wrapClassName="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" checklist value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} placeholder="New password" />
+        <button className="refresh u-margin-top-8px" onClick={savePw}>Change password</button>
         <AutoRenewSetting />
       </div>
       )}

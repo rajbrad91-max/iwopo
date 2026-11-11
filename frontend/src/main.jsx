@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { DialogProvider } from './lib/dialog.jsx';
 import './styles/index.css';
+import './styles/utilities.css';   // 🎨 one-property classes that replaced fixed inline styles (audit #3)
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
 
 // Makes flag emojis (🇨🇦 🇺🇸 …) render on Windows

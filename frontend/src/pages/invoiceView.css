@@ -1,0 +1,34 @@
+/* 🧾 The client's invoice page (InvoiceView.jsx) — its look moved out of inline styles unchanged (code audit #3,
+   Raj 2026-11-11). It keeps its own light print-friendly colours, separate from the vendor panel's theme. */
+.iv { min-height: 100vh; background: #f4f7f6; display: flex; justify-content: center; padding: 24px; font-family: 'Segoe UI', sans-serif; }
+.iv-card { background: #fff; border-radius: 14px; padding: 30px; width: 100%; box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07); color: #222; height: fit-content; }
+.iv-card.is-doc { max-width: 640px; }
+
+.iv-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.iv-title { margin: 0; font-size: 22px; color: #0f766e; }
+.iv-number { color: #666; font-size: 13px; margin-top: 4px; }
+.iv-from { text-align: right; font-size: 13px; }
+.iv-logo { height: 44px; max-width: 140px; object-fit: contain; display: block; margin-left: auto; margin-bottom: 6px; }
+
+.iv-to { margin: 18px 0; font-size: 14px; }
+
+.iv-items { width: 100%; border-collapse: collapse; font-size: 14px; }
+.iv-items thead tr { border-bottom: 2px solid #0f766e; text-align: left; }
+.iv-items th { padding: 8px 4px; }
+.iv-items tbody tr { border-bottom: 1px solid #eee; }
+.iv-items td { padding: 9px 4px; }
+.iv-items .iv-amount { text-align: right; }
+
+.iv-totals { margin-top: 14px; margin-left: auto; width: 240px; font-size: 14px; }
+.iv-row { display: flex; justify-content: space-between; padding: 5px 0; font-weight: 400; color: #222; }
+.iv-row.is-bold { font-weight: 700; }
+.iv-row.is-green { color: #059669; }
+.iv-row.is-amber { color: #b8860b; }
+
+.iv-notes { margin-top: 16px; font-size: 13px; color: #666; }
+.iv-print { margin-top: 22px; width: 100%; padding: 12px; background: #0f766e; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+
+@media print {
+  .iv-print { display: none; }
+  body { background: #fff; }
+}

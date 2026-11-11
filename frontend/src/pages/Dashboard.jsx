@@ -216,7 +216,7 @@ function DashboardView({ vendors, packages, overview }) {
       <div className="sa-grid-2">
         <div className="sa-box">
           <h3>📈 Seller Growth</h3><div className="sa-box-sub">New sellers each month — last 8 months</div>
-          <div style={{ height: 220 }}>
+          <div className="u-height-220px">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={growth}>
                 <CartesianGrid stroke="#223238" />
@@ -257,7 +257,7 @@ function DashboardView({ vendors, packages, overview }) {
         <div className="sa-box">
           <h3>📦 Plans in Use</h3><div className="sa-box-sub">Sellers on each plan</div>
           {planData.length === 0 ? <div className="sa-cty-empty">{overview ? 'No seller is on a plan yet.' : 'Loading…'}</div> : (
-          <div style={{ minHeight: 180, display: 'flex', alignItems: 'center' }}>
+          <div className="u-min-height-180px u-display-flex u-align-items-center">
             <ResponsiveContainer width="50%" height={210}>
               <PieChart>
                 <Pie data={planData} dataKey="v" nameKey="name" innerRadius={45} outerRadius={70} paddingAngle={2}>
@@ -340,19 +340,19 @@ function ServicesView() {
   return (
     <>
       {/* OFFERS */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div className="sa-section-title" style={{ margin: 0 }}>Offers & Discounts 🎁</div>
+      <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-10px">
+        <div className="sa-section-title u-margin-0">Offers & Discounts 🎁</div>
         <button className="sa-view-btn" onClick={() => setShowOffer(!showOffer)}>
           {showOffer ? '✕ Cancel' : '+ New Offer'}
         </button>
       </div>
 
       {showOffer && (
-        <div className="sa-box" style={{ marginBottom: 12 }}>
+        <div className="sa-box u-margin-bottom-12px">
           <div className="sa-offer-form">
             <input placeholder="CODE (e.g. SUMMER20)" value={nf.code} onChange={e => setNf({ ...nf, code: e.target.value.toUpperCase() })} />
             <input placeholder="Label" value={nf.label} onChange={e => setNf({ ...nf, label: e.target.value })} />
-            <input placeholder="% off" type="number" value={nf.percent_off} onChange={e => setNf({ ...nf, percent_off: e.target.value })} style={{ width: 80 }} />
+            <input className="u-width-80px" placeholder="% off" type="number" value={nf.percent_off} onChange={e => setNf({ ...nf, percent_off: e.target.value })} />
             <input placeholder="Ends" type="date" value={nf.ends_at} onChange={e => setNf({ ...nf, ends_at: e.target.value })} />
             <button className="sa-btn-teal" onClick={addOffer}>Create</button>
           </div>
@@ -393,29 +393,29 @@ function StandaloneServices({ rev = 0 }) {
   function load() { api.adminServices().then(d => setServices((d.services || []).filter(s => Number(s.price) > 0))).catch(() => {}); }
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 22 }}>
-        <div className="sa-section-title" style={{ margin: 0 }}>Standalone Services 🧩</div>
+      <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-4px u-margin-top-22px">
+        <div className="sa-section-title u-margin-0">Standalone Services 🧩</div>
         <button className={`sa-view-btn ${edit ? 'active-btn' : ''}`} onClick={() => setEdit(!edit)}>
           {edit ? '✓ Done' : '✏️ Edit Prices'}
         </button>
       </div>
-      <div className="sa-hint" style={{ marginTop: 0, marginBottom: 14 }}>
+      <div className="sa-hint u-margin-top-0 u-margin-bottom-14px">
         {edit ? 'Click a price to change it, then Save. Shows live on the public page.' : 'Individual services sold on their own.'}
       </div>
       <div className="sa-pkg-grid">
         {services.map(s => (
-          <div key={s.id} className="sa-box" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 26 }}>{s.icon}</div>
-            <div style={{ fontWeight: 700 }}>{s.name}{s.is_addon ? ' · add-on' : ''}</div>
+          <div key={s.id} className="sa-box u-display-flex u-flex-direction-column u-gap-6px">
+            <div className="u-font-size-26px">{s.icon}</div>
+            <div className="u-font-weight-700">{s.name}{s.is_addon ? ' · add-on' : ''}</div>
             {edit
               ? <><ServicePriceEditor service={s} onSaved={load} />{s.tiers && <TierEditor service={s} onSaved={load} />}<CountryPriceEditor type="service" item={s} onSaved={load} /></>
               : <>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{s.tiers ? 'from ' : ''}${s.price}<span style={{ fontSize: 12, color: 'var(--muted)' }}>/mo</span>{s.price_annual ? <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', fontWeight: 600 }}>${s.price_annual}/yr</span> : null}</div>
+                  <div className="u-font-size-22px u-font-weight-800">{s.tiers ? 'from ' : ''}${s.price}<span className="u-font-size-12px u-color-muted">/mo</span>{s.price_annual ? <span className="u-font-size-12px u-color-muted u-display-block u-font-weight-600">${s.price_annual}/yr</span> : null}</div>
                   {s.tiers && (
-                    <div style={{ marginTop: 4 }}>
+                    <div className="u-margin-top-4px">
                       {s.tiers.map(t => (
-                        <div key={t.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0', color: 'var(--muted)' }}>
-                          <span>{t.label}</span><span style={{ color: 'var(--text)', fontWeight: 600 }}>${t.price}/mo{t.price_annual ? ` · $${t.price_annual}/yr` : ''}</span>
+                        <div className="u-display-flex u-justify-content-space-between u-font-size-13px u-padding-2px-0 u-color-muted" key={t.label}>
+                          <span>{t.label}</span><span className="u-color-text u-font-weight-600">${t.price}/mo{t.price_annual ? ` · $${t.price_annual}/yr` : ''}</span>
                         </div>
                       ))}
                     </div>
@@ -441,14 +441,14 @@ function CountryPriceList({ cp }) {
   if (!entries.length) return null;
   const nameOf = (c) => COUNTRIES.find(x => x.code === c)?.name || c;
   return (
-    <div style={{ marginTop: 6, borderTop: '1px dashed var(--line)', paddingTop: 6 }}>
-      <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 3 }}>🌍 Exceptions</div>
+    <div className="u-margin-top-6px u-border-top-1px-dashed-line u-padding-top-6px">
+      <div className="u-font-size-10px u-color-muted u-margin-bottom-3px">🌍 Exceptions</div>
       {entries.map(([c, v]) => {
         const e = cpEntry(v);
         return (
-          <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '1px 0', color: 'var(--muted)' }}>
+          <div className="u-display-flex u-justify-content-space-between u-font-size-12px u-padding-1px-0 u-color-muted" key={c}>
             <span>{nameOf(c)}</span>
-            <span style={{ color: 'var(--text)', fontWeight: 600 }}>${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</span>
+            <span className="u-color-text u-font-weight-600">${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</span>
           </div>
         );
       })}
@@ -479,27 +479,26 @@ function CountryPriceEditor({ type, item, onSaved }) {
     const n = { ...cp }; delete n[code]; save(n);
   }
   const nameOf = (c) => COUNTRIES.find(x => x.code === c)?.name || c;
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', padding: '6px 8px' };
 
   return (
-    <div style={{ marginTop: 8, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
-      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>🌍 Country exceptions (default = USD)</div>
+    <div className="u-margin-top-8px u-border-top-1px-dashed-line u-padding-top-8px">
+      <div className="u-font-size-11px u-color-muted u-margin-bottom-6px">🌍 Country exceptions (default = USD)</div>
       {Object.entries(cp).map(([c, v]) => {
         const e = cpEntry(v);
         return (
-          <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '2px 0' }}>
+          <div className="u-display-flex u-justify-content-space-between u-font-size-12_5px u-padding-2px-0" key={c}>
             <span>{nameOf(c)}</span>
-            <span style={{ display: 'flex', gap: 8 }}><b>${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</b><span style={{ cursor: 'pointer' }} onClick={() => remove(c)}>🗑️</span></span>
+            <span className="u-display-flex u-gap-8px"><b>${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</b><span className="u-cursor-pointer" onClick={() => remove(c)}>🗑️</span></span>
           </div>
         );
       })}
-      <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
-        <select style={{ ...box, flex: 1, fontSize: 12, minWidth: 140 }} value={country} onChange={e => setCountry(e.target.value)}>
+      <div className="u-display-flex u-gap-5px u-margin-top-6px u-flex-wrap-wrap">
+        <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-6px-8px u-flex-1 u-font-size-12px u-min-width-140px" value={country} onChange={e => setCountry(e.target.value)}>
           {COUNTRIES.filter(c => c.code !== 'default').map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
-        <input style={{ ...box, width: 60 }} type="number" placeholder="mo$" value={m} onChange={e => setM(e.target.value)} />
-        <input style={{ ...box, width: 60 }} type="number" placeholder="yr$" value={y} onChange={e => setY(e.target.value)} />
-        <button className="sa-btn-teal" onClick={add} disabled={saving} style={{ padding: '5px 10px' }}>+</button>
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-6px-8px u-width-60px" type="number" placeholder="mo$" value={m} onChange={e => setM(e.target.value)} />
+        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-6px-8px u-width-60px" type="number" placeholder="yr$" value={y} onChange={e => setY(e.target.value)} />
+        <button className="sa-btn-teal u-padding-5px-10px" onClick={add} disabled={saving}>+</button>
       </div>
     </div>
   );
@@ -519,20 +518,19 @@ function TierEditor({ service, onSaved }) {
     } catch (e) { dialog.alert(e.message, { title: 'Save failed', error: true }); }
     finally { setSaving(false); }
   }
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', padding: '5px 7px', width: 62 };
   return (
-    <div style={{ marginTop: 8, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
-      <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>📦 Tiers (mo / yr)</div>
+    <div className="u-margin-top-8px u-border-top-1px-dashed-line u-padding-top-8px">
+      <div className="u-font-size-11px u-color-muted u-margin-bottom-6px">📦 Tiers (mo / yr)</div>
       {tiers.map((t, i) => (
-        <div key={i} style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 5 }}>
-          <span style={{ width: 46, fontSize: 12 }}>{t.label}</span>
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>$</span>
-          <input style={box} type="number" value={t.price} onChange={e => set(i, 'price', e.target.value)} />
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>yr$</span>
-          <input style={box} type="number" placeholder="—" value={t.price_annual ?? ''} onChange={e => set(i, 'price_annual', e.target.value)} />
+        <div className="u-display-flex u-gap-5px u-align-items-center u-margin-bottom-5px" key={i}>
+          <span className="u-width-46px u-font-size-12px">{t.label}</span>
+          <span className="u-font-size-11px u-color-muted">$</span>
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-5px-7px u-width-62px" type="number" value={t.price} onChange={e => set(i, 'price', e.target.value)} />
+          <span className="u-font-size-11px u-color-muted">yr$</span>
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-5px-7px u-width-62px" type="number" placeholder="—" value={t.price_annual ?? ''} onChange={e => set(i, 'price_annual', e.target.value)} />
         </div>
       ))}
-      <button className="sa-btn-teal" onClick={save} disabled={saving} style={{ padding: '5px 12px', marginTop: 4 }}>{saving ? '…' : 'Save tiers'}</button>
+      <button className="sa-btn-teal u-padding-5px-12px u-margin-top-4px" onClick={save} disabled={saving}>{saving ? '…' : 'Save tiers'}</button>
     </div>
   );
 }
@@ -555,17 +553,15 @@ function ServicePriceEditor({ service, onSaved }) {
     finally { setSaving(false); }
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-        <span style={{ color: 'var(--muted)', fontSize: 12 }}>mo $</span>
-        <input type="number" value={p} onChange={e => setP(e.target.value)}
-          style={{ width: 68, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', padding: '5px 8px' }} />
+    <div className="u-display-flex u-flex-direction-column u-gap-6px">
+      <div className="u-display-flex u-gap-5px u-align-items-center">
+        <span className="u-color-muted u-font-size-12px">mo $</span>
+        <input className="u-width-68px u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-5px-8px" type="number" value={p} onChange={e => setP(e.target.value)} />
       </div>
-      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-        <span style={{ color: 'var(--muted)', fontSize: 12 }}>yr $</span>
-        <input type="number" value={pa} onChange={e => setPa(e.target.value)} placeholder="—"
-          style={{ width: 68, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', padding: '5px 8px' }} />
-        <button className="sa-btn-teal" onClick={save} disabled={saving} style={{ padding: '5px 12px' }}>{saving ? '…' : 'Save'}</button>
+      <div className="u-display-flex u-gap-5px u-align-items-center">
+        <span className="u-color-muted u-font-size-12px">yr $</span>
+        <input className="u-width-68px u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-5px-8px" type="number" value={pa} onChange={e => setPa(e.target.value)} placeholder="—" />
+        <button className="sa-btn-teal u-padding-5px-12px" onClick={save} disabled={saving}>{saving ? '…' : 'Save'}</button>
       </div>
     </div>
   );
@@ -693,18 +689,17 @@ function CouponBuilder() {
     return a;
   }
 
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9 };
 
   return (
     <>
-      <div className="sa-section-title" style={{ marginBottom: 8 }}>Coupons 🎟️</div>
-      <div className="sa-box" style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input style={{ ...box, width: 150 }} placeholder="CODE (SUMMER20)" value={f.code}
+      <div className="sa-section-title u-margin-bottom-8px">Coupons 🎟️</div>
+      <div className="sa-box u-margin-bottom-12px">
+        <div className="u-display-flex u-gap-8px u-flex-wrap-wrap u-align-items-center">
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-150px" placeholder="CODE (SUMMER20)" value={f.code}
             onChange={e => setF({ ...f, code: e.target.value.toUpperCase() })} />
-          <input style={{ ...box, width: 90 }} type="number" placeholder="% off" value={f.percent_off}
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-90px" type="number" placeholder="% off" value={f.percent_off}
             onChange={e => setF({ ...f, percent_off: e.target.value })} />
-          <select style={{ ...box, minWidth: 200 }} value={f.applies_to}
+          <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-min-width-200px" value={f.applies_to}
             onChange={e => setF({ ...f, applies_to: e.target.value })}>
             <option value="all">All services & packages</option>
             <optgroup label="Packages">
@@ -714,7 +709,7 @@ function CouponBuilder() {
               {services.map(s => <option key={'s' + s.id} value={`service:${s.id}`}>🧩 {s.name}</option>)}
             </optgroup>
           </select>
-          <input style={{ ...box, width: 150 }} type="date" value={f.ends_at}
+          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-150px" type="date" value={f.ends_at}
             onChange={e => setF({ ...f, ends_at: e.target.value })} title="Expiry (optional)" />
           <button className="sa-btn-teal" onClick={create}>+ Create coupon</button>
           {msg && <span style={{ fontSize: 13, color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</span>}
@@ -722,7 +717,7 @@ function CouponBuilder() {
       </div>
 
       {coupons.length > 0 && (
-        <div className="sa-table-wrap" style={{ marginBottom: 20 }}>
+        <div className="sa-table-wrap u-margin-bottom-20px">
           <table>
             <thead><tr><th>Code</th><th>Discount</th><th>Applies to</th><th>Expires</th><th>Status</th><th></th></tr></thead>
             <tbody>
@@ -733,9 +728,9 @@ function CouponBuilder() {
                   <td>{targetLabel(c.applies_to)}</td>
                   <td>{c.ends_at ? String(c.ends_at).slice(0, 10) : '—'}</td>
                   <td><span className={`sa-badge ${c.active ? 'active' : 'trial'}`}>{c.active ? 'active' : 'off'}</span></td>
-                  <td style={{ display: 'flex', gap: 10 }}>
-                    <span style={{ cursor: 'pointer' }} onClick={async () => { await api.toggleOffer(c.id); load(); }}>{c.active ? '🟢' : '⚪'}</span>
-                    <span style={{ cursor: 'pointer' }} onClick={async () => { if (await dialog.confirm('This coupon will be deleted.', { title: 'Delete coupon?', okLabel: 'Delete' })) { await api.deleteOffer(c.id); load(); } }}>🗑️</span>
+                  <td className="u-display-flex u-gap-10px">
+                    <span className="u-cursor-pointer" onClick={async () => { await api.toggleOffer(c.id); load(); }}>{c.active ? '🟢' : '⚪'}</span>
+                    <span className="u-cursor-pointer" onClick={async () => { if (await dialog.confirm('This coupon will be deleted.', { title: 'Delete coupon?', okLabel: 'Delete' })) { await api.deleteOffer(c.id); load(); } }}>🗑️</span>
                   </td>
                 </tr>
               ))}
@@ -760,13 +755,13 @@ function ReferralsView() {
   return (
     <>
       <CouponBuilder />
-      <div className="sa-section-title" style={{ marginBottom: 8 }}>Referrals 👥</div>
+      <div className="sa-section-title u-margin-bottom-8px">Referrals 👥</div>
       <div className="sa-stats">
         <StatCard label="Total Referrals" value={refs.length} trend="Email-based" cls="up" />
         <StatCard label="Rewarded" value={rewarded} trend="🎁 free month each" cls="up" />
         <StatCard label="Pending" value={refs.length - rewarded} trend="Awaiting paid signup" cls="warn" />
       </div>
-      <div className="sa-hint" style={{ marginBottom: 12 }}>
+      <div className="sa-hint u-margin-bottom-12px">
         🎁 Reward = 1 free month for BOTH — applied when the friend signs up on a <b>paid</b> plan.
       </div>
       <div className="sa-table-wrap">
@@ -817,7 +812,7 @@ function FeatureToggles({ vendorId }) {
     setBusy('');
   }
 
-  if (!feats) return <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>Loading…</div>;
+  if (!feats) return <div className="u-font-size-13px u-color-muted u-padding-6px-0">Loading…</div>;
   return (
     <div>
       {feats.map(f => (
@@ -849,30 +844,28 @@ function VendorDrawer({ vendorId, onClose }) {
   useEffect(() => { load(); }, [load]);
 
   const fmt = (x) => x ? String(x).slice(0, 10) : '—';
-  const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 60 };
-  const panel = { position: 'fixed', top: 0, right: 0, height: '100vh', width: 440, maxWidth: '92vw', background: 'var(--panel)', borderLeft: '1px solid var(--line)', zIndex: 61, padding: 24, overflowY: 'auto' };
   const row = (k, v) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)', fontSize: 13.5 }}>
-      <span style={{ color: 'var(--muted)' }}>{k}</span><span style={{ fontWeight: 600, textAlign: 'right' }}>{v ?? '—'}</span>
+    <div className="u-display-flex u-justify-content-space-between u-padding-8px-0 u-border-bottom-1px-solid-line u-font-size-13_5px">
+      <span className="u-color-muted">{k}</span><span className="u-font-weight-600 u-text-align-right">{v ?? '—'}</span>
     </div>
   );
 
   return (
     <>
-      <div style={overlay} onClick={onClose} />
-      <div style={panel}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0 }}>Vendor details</h2>
-          <span style={{ cursor: 'pointer', fontSize: 20 }} onClick={onClose}>✕</span>
+      <div className="u-position-fixed u-inset-0 u-background-rgba-000_5 u-z-index-60" onClick={onClose} />
+      <div className="u-position-fixed u-top-0 u-right-0 u-height-100vh u-width-440px u-max-width-92vw u-background-panel u-border-left-1px-solid-line u-z-index-61 u-padding-24px u-overflow-y-auto">
+        <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-16px">
+          <h2 className="u-margin-0">Vendor details</h2>
+          <span className="u-cursor-pointer u-font-size-20px" onClick={onClose}>✕</span>
         </div>
         {err && <div className="sa-empty">⚠️ {err}</div>}
         {!d && !err && <div className="sa-loading">Loading…</div>}
         {d && (
           <>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{d.vendor.business_name}</div>
-            <div style={{ marginBottom: 16 }}><span className={`sa-badge ${d.vendor.status}`}>{d.vendor.status}</span></div>
+            <div className="u-font-size-18px u-font-weight-700 u-margin-bottom-4px">{d.vendor.business_name}</div>
+            <div className="u-margin-bottom-16px"><span className={`sa-badge ${d.vendor.status}`}>{d.vendor.status}</span></div>
 
-            <div className="sa-section-title" style={{ fontSize: 12, margin: '6px 0' }}>Account</div>
+            <div className="sa-section-title u-font-size-12px u-margin-6px-0">Account</div>
             {/* from the subscription, not the old vendors.plan column */}
             {row('Plan', d.storage?.limit_source === 'plan' ? d.storage.plan_name : 'Free trial')}
             {row('Country', d.vendor.country)}
@@ -880,7 +873,7 @@ function VendorDrawer({ vendorId, onClose }) {
             {row('Storage', d.vendor.storage_mb ? `${d.vendor.storage_mb} MB` : '—')}
             {row('Joined', fmt(d.vendor.created_at))}
 
-            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Contact</div>
+            <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Contact</div>
             {d.users.map(u => (
               <div key={u.id}>
                 {row('👤 Name', u.name)}
@@ -889,36 +882,36 @@ function VendorDrawer({ vendorId, onClose }) {
               </div>
             ))}
 
-            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Referred by</div>
+            <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Referred by</div>
             {d.referredBy
               ? row('🎁 ' + d.referredBy.referrer_email, d.referredBy.status)
-              : <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>Not referred</div>}
+              : <div className="u-font-size-13px u-color-muted u-padding-6px-0">Not referred</div>}
 
-            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Services subscribed</div>
+            <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Services subscribed</div>
             {d.services.length === 0
-              ? <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>No services yet</div>
+              ? <div className="u-font-size-13px u-color-muted u-padding-6px-0">No services yet</div>
               : d.services.map(s => (
-                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--line)', fontSize: 13.5 }}>
+                <div className="u-display-flex u-justify-content-space-between u-padding-6px-0 u-border-bottom-1px-solid-line u-font-size-13_5px" key={s.id}>
                   <span>{s.icon} {s.name}</span>
                   <span style={{ color: s.enabled ? 'var(--green,#4ade80)' : 'var(--muted)' }}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
                 </div>
               ))}
 
-            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Feature access</div>
+            <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Feature access</div>
             <FeatureToggles vendorId={vendorId} />
 
-            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>File Flyer storage</div>
+            <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">File Flyer storage</div>
             <PlanPicker vendorId={vendorId} storage={d.storage} onChanged={load} />
             <StorageLimit vendorId={vendorId} storage={d.storage} onSaved={load} />
 
             <Membership vendorId={vendorId} membership={d.membership} onChanged={load} />
-            <div className="sa-section-title" style={{ fontSize: 12, margin: '16px 0 6px' }}>Subscription history</div>
+            <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Subscription history</div>
             {d.subscriptions.length === 0
-              ? <div style={{ fontSize: 13, color: 'var(--muted)', padding: '6px 0' }}>No subscription records</div>
+              ? <div className="u-font-size-13px u-color-muted u-padding-6px-0">No subscription records</div>
               : d.subscriptions.map(su => (
-                <div key={su.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
-                  <span>{su.plan_name || 'Plan'} · <span style={{ color: 'var(--muted)' }}>{su.status}</span></span>
-                  <span style={{ color: 'var(--muted)' }}>{fmt(su.started_at)}{su.ends_at ? ` → ${fmt(su.ends_at)}` : ''}</span>
+                <div className="u-display-flex u-justify-content-space-between u-padding-6px-0 u-border-bottom-1px-solid-line u-font-size-13px" key={su.id}>
+                  <span>{su.plan_name || 'Plan'} · <span className="u-color-muted">{su.status}</span></span>
+                  <span className="u-color-muted">{fmt(su.started_at)}{su.ends_at ? ` → ${fmt(su.ends_at)}` : ''}</span>
                 </div>
               ))}
           </>
@@ -1038,13 +1031,13 @@ function PlanPicker({ vendorId, storage, onChanged }) {
   }
 
   return (
-    <div style={{ padding: '6px 0 14px' }}>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
+    <div className="u-padding-6px-0-14px">
+      <div className="u-font-size-13px u-color-muted u-margin-bottom-6px">
         Plan {storage?.limit_source === 'override'
-          ? <span>— <b style={{ color: 'var(--text)' }}>an override is in force</b>, so the plan is not deciding the limit</span>
+          ? <span>— <b className="u-color-text">an override is in force</b>, so the plan is not deciding the limit</span>
           : null}
       </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="u-display-flex u-gap-8px u-align-items-center">
         <select value={current} disabled={busy} onChange={e => pick(e.target.value)}
           style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line)',
                    background: 'var(--panel)', color: 'var(--text)', fontSize: 13 }}>
@@ -1055,7 +1048,7 @@ function PlanPicker({ vendorId, storage, onChanged }) {
             </option>
           ))}
         </select>
-        {msg && <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{msg}</span>}
+        {msg && <span className="u-font-size-12_5px u-color-muted">{msg}</span>}
       </div>
     </div>
   );
@@ -1803,8 +1796,6 @@ function FaceEngineSettings() {
       setTestMsg({ ok: false, text: '⚠️ ' + (e.message || 'Could not send') });
     } finally { setTesting(false); }
   }
-  const box = { background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 8, color: 'var(--text)', padding: 9, width: '100%' };
-  const roBox = { ...box, opacity: 0.7, cursor: 'not-allowed' };
 
   useEffect(() => { api.platformSettings().then(d => setS(d.settings || {})).catch(() => {}); }, []);
   useEffect(() => {
@@ -1858,8 +1849,8 @@ function FaceEngineSettings() {
 
   return (
     <>
-      <div className="sa-section-title" style={{ marginTop: 22 }}>🧠 Face Recognition Engine</div>
-      <div className="sa-box" style={{ padding: 18 }}>
+      <div className="sa-section-title u-margin-top-22px">🧠 Face Recognition Engine</div>
+      <div className="sa-box u-padding-18px">
 
         {/* 3-mode picker */}
         <div className="fr-modes">
@@ -1881,9 +1872,9 @@ function FaceEngineSettings() {
           </div>
         )}
 
-        <div style={{ margin: '14px 0' }}>
-          <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5 }} onClick={reindex}>🔄 Re-index all photos</button>
-          {reMsg && <span style={{ marginLeft: 10, fontSize: 12.5, color: 'var(--muted)' }}>{reMsg}</span>}
+        <div className="u-margin-14px-0">
+          <button className="sa-btn-teal u-padding-7px-14px u-font-size-12_5px" onClick={reindex}>🔄 Re-index all photos</button>
+          {reMsg && <span className="u-margin-left-10px u-font-size-12_5px u-color-muted">{reMsg}</span>}
         </div>
 
         {/* AWS credentials — collapsible, always masked until you choose to edit/show */}
@@ -1896,25 +1887,25 @@ function FaceEngineSettings() {
 
             {credOpen && (
               <div className="fr-cred-body">
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
                   {!editing ? (
-                    <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+                    <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
                   ) : (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => setShow(v => !v)}>{show ? '🙈 Hide' : '👁️ Show'}</button>
-                      <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
-                      <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                    <div className="u-display-flex u-gap-8px">
+                      <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => setShow(v => !v)}>{show ? '🙈 Hide' : '👁️ Show'}</button>
+                      <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                      <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div><label className="lbl">AWS Access Key</label><input style={editing ? box : roBox} readOnly={!editing} value={val('aws_access_key')} onChange={e => setS({ ...s, aws_access_key: e.target.value })} /></div>
-                  <div><label className="lbl">AWS Secret Key</label><input style={editing ? box : roBox} readOnly={!editing} value={val('aws_secret_key')} onChange={e => setS({ ...s, aws_secret_key: e.target.value })} /></div>
-                  <div><label className="lbl">AWS Region</label><input style={editing ? box : roBox} readOnly={!editing} value={val('aws_region')} onChange={e => setS({ ...s, aws_region: e.target.value })} /></div>
+                <div className="u-display-grid u-grid-template-columns-1fr-1fr u-gap-12px">
+                  <div><label className="lbl">AWS Access Key</label><input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing} value={val('aws_access_key')} onChange={e => setS({ ...s, aws_access_key: e.target.value })} /></div>
+                  <div><label className="lbl">AWS Secret Key</label><input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing} value={val('aws_secret_key')} onChange={e => setS({ ...s, aws_secret_key: e.target.value })} /></div>
+                  <div><label className="lbl">AWS Region</label><input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing} value={val('aws_region')} onChange={e => setS({ ...s, aws_region: e.target.value })} /></div>
                 </div>
               </div>
             )}
-            {awsMode === 'aws_safety_net' && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>💡 AWS only kicks in when the local backlog gets deep, then hands back automatically.</div>}
+            {awsMode === 'aws_safety_net' && <div className="u-margin-top-8px u-font-size-12px u-color-muted">💡 AWS only kicks in when the local backlog gets deep, then hands back automatically.</div>}
           </div>
         )}
 
@@ -1925,7 +1916,7 @@ function FaceEngineSettings() {
             identical code looked different, and the settings were unreachable
             on the one that mattered. */}
         <div className="fr-cred">
-              <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
+              <button type="button" className="fr-cred-head u-margin-top-26px"
                 onClick={() => setR2Open(o => !o)} aria-expanded={r2Open}>
                 <span>🪣 Cloudflare R2 storage</span>
                 <span className="fr-cred-chev">{r2Open ? '▲' : '▼'}</span>
@@ -1937,86 +1928,86 @@ function FaceEngineSettings() {
                     with the AWS block above, but that block's Edit button only
                     renders when AWS mode is on — so with AWS off there was no
                     way to type in any of this at all. */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
                   {!editing ? (
-                    <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+                    <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
                   ) : (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
-                      <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                    <div className="u-display-flex u-gap-8px">
+                      <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                      <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                     </div>
                   )}
                 </div>
 
               <div><label className="lbl">Account ID</label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   value={s.r2_account_id || ''}
                   onChange={e => setS({ ...s, r2_account_id: e.target.value })} /></div>
 
               <div><label className="lbl">Shared Access Key ID</label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   placeholder="used by either bucket with no key of its own"
                   value={s.r2_access_key_id || ''}
                   onChange={e => setS({ ...s, r2_access_key_id: e.target.value })} /></div>
 
               <div><label className="lbl">Shared Secret Access Key</label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   value={s.r2_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_secret_access_key: e.target.value })} /></div>
 
               {/* ── 🔒 private ─────────────────────────────────────────── */}
-              <div className="sa-sec-hd" style={{ marginTop: 22 }}>🔒 Private bucket — client galleries &amp; File Flyer</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+              <div className="sa-sec-hd u-margin-top-22px">🔒 Private bucket — client galleries &amp; File Flyer</div>
+              <div className="u-font-size-12px u-color-muted u-margin-bottom-8px">
                 Reached only by album password or share token. Public access must stay OFF on this bucket.
               </div>
 
               <div><label className="lbl">Bucket name</label>
-                <input style={editing ? box : roBox} readOnly={!editing} placeholder="iwopo-private"
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing} placeholder="iwopo-private"
                   value={s.r2_bucket_private || ''}
                   onChange={e => setS({ ...s, r2_bucket_private: e.target.value })} /></div>
 
-              <div><label className="lbl">Access Key ID <span style={{ color: 'var(--muted)' }}>— optional</span></label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+              <div><label className="lbl">Access Key ID <span className="u-color-muted">— optional</span></label>
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   placeholder="leave blank to use the shared key"
                   value={s.r2_private_access_key_id || ''}
                   onChange={e => setS({ ...s, r2_private_access_key_id: e.target.value })} /></div>
 
-              <div><label className="lbl">Secret Access Key <span style={{ color: 'var(--muted)' }}>— optional</span></label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+              <div><label className="lbl">Secret Access Key <span className="u-color-muted">— optional</span></label>
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   placeholder="leave blank to use the shared key"
                   value={s.r2_private_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_private_secret_access_key: e.target.value })} /></div>
 
               {/* ── 🌐 public ──────────────────────────────────────────── */}
-              <div className="sa-sec-hd" style={{ marginTop: 22 }}>🌐 Public bucket — website images &amp; logos</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+              <div className="sa-sec-hd u-margin-top-22px">🌐 Public bucket — website images &amp; logos</div>
+              <div className="u-font-size-12px u-color-muted u-margin-bottom-8px">
                 Deliberately world-readable. Nothing private should ever be written here.
               </div>
 
               <div><label className="lbl">Bucket name</label>
-                <input style={editing ? box : roBox} readOnly={!editing} placeholder="iwopo-public"
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing} placeholder="iwopo-public"
                   value={s.r2_bucket_public || ''}
                   onChange={e => setS({ ...s, r2_bucket_public: e.target.value })} /></div>
 
-              <div><label className="lbl">Access Key ID <span style={{ color: 'var(--muted)' }}>— optional</span></label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+              <div><label className="lbl">Access Key ID <span className="u-color-muted">— optional</span></label>
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   placeholder="leave blank to use the shared key"
                   value={s.r2_public_access_key_id || ''}
                   onChange={e => setS({ ...s, r2_public_access_key_id: e.target.value })} /></div>
 
-              <div><label className="lbl">Secret Access Key <span style={{ color: 'var(--muted)' }}>— optional</span></label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+              <div><label className="lbl">Secret Access Key <span className="u-color-muted">— optional</span></label>
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   placeholder="leave blank to use the shared key"
                   value={s.r2_public_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_public_secret_access_key: e.target.value })} /></div>
 
               <div><label className="lbl">Public URL</label>
-                <input style={editing ? box : roBox} readOnly={!editing}
+                <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                   placeholder="https://cdn.yourdomain.com"
                   value={s.r2_public_url || ''}
                   onChange={e => setS({ ...s, r2_public_url: e.target.value })} /></div>
 
-              <div className="cb-warn" style={{ marginTop: 10 }}>
+              <div className="cb-warn u-margin-top-10px">
                 🔒 The two buckets must be different. Galleries and File Flyer files are reached
                 by password or share token — putting them in the public bucket lets anyone with
                 the file&rsquo;s URL walk past both. Saving the same name for both is refused.
@@ -2039,10 +2030,10 @@ function FaceEngineSettings() {
                   </>}
             </div>
             <div><label className="lbl">Connect client ID (ca_…)</label>
-              <input style={editing ? box : roBox} readOnly={!editing} autoComplete="off" placeholder="ca_…"
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing} autoComplete="off" placeholder="ca_…"
                 value={s.stripe_connect_client_id || ''} onChange={e => setS({ ...s, stripe_connect_client_id: e.target.value })} /></div>
             <div><label className="lbl">Connected-accounts webhook secret (whsec_…)</label>
-              <input style={editing ? box : roBox} readOnly={!editing} autoComplete="off"
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing} autoComplete="off"
                 placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''}
                 value={s.stripe_connect_webhook_secret || ''} onChange={e => setS({ ...s, stripe_connect_webhook_secret: e.target.value })} /></div>
             <p className="sa-connect-note">From the Stripe dashboard → Connect settings (client ID) and Developers → Webhooks (the endpoint listening to connected accounts). Money from clients goes to each vendor&rsquo;s own Stripe — never through iwopo.</p>
@@ -2054,7 +2045,7 @@ function FaceEngineSettings() {
             could set them had to edit a file on the server — so they never were,
             and nothing in the product could send anything at all. */}
         <div className="fr-cred">
-          <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
+          <button type="button" className="fr-cred-head u-margin-top-26px"
             onClick={() => setMailOpen(o => !o)} aria-expanded={mailOpen}>
             <span>📧 Platform email</span>
             <span className="fr-cred-chev">{mailOpen ? '▲' : '▼'}</span>
@@ -2062,64 +2053,64 @@ function FaceEngineSettings() {
 
           {mailOpen && (
           <div className="fr-cred-body">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+            <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
               {!editing ? (
-                <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+                <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
               ) : (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
-                  <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                <div className="u-display-flex u-gap-8px">
+                  <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                 </div>
               )}
             </div>
 
-            <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+            <p className="u-font-size-12_5px u-color-muted u-margin-0-0-14px u-line-height-1_55">
               Used for everything iwopo sends. A vendor who sets their own mail
               account under Setup Email uses that instead, so their clients see
               their address rather than ours.
             </p>
 
             <div><label className="lbl">Host</label>
-              <input style={editing ? box : roBox} readOnly={!editing}
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                 placeholder="smtp.resend.com"
                 value={s.smtp_host || ''}
                 onChange={e => setS({ ...s, smtp_host: e.target.value })} /></div>
 
             <div><label className="lbl">Port</label>
-              <input style={editing ? box : roBox} readOnly={!editing}
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                 placeholder="587"
                 value={s.smtp_port || ''}
                 onChange={e => setS({ ...s, smtp_port: e.target.value })} /></div>
 
             <div><label className="lbl">Username</label>
-              <input style={editing ? box : roBox} readOnly={!editing}
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                 value={s.smtp_user || ''}
                 onChange={e => setS({ ...s, smtp_user: e.target.value })} /></div>
 
             <div><label className="lbl">Password</label>
-              <input type="password" style={editing ? box : roBox} readOnly={!editing}
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} type="password" readOnly={!editing}
                 value={s.smtp_pass || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                 onChange={e => setS({ ...s, smtp_pass: e.target.value })} /></div>
 
             <div><label className="lbl">From address</label>
-              <input style={editing ? box : roBox} readOnly={!editing}
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                 placeholder="noreply@iwopo.com"
                 value={s.smtp_from || ''}
                 onChange={e => setS({ ...s, smtp_from: e.target.value })} /></div>
 
             <div><label className="lbl">From name</label>
-              <input style={editing ? box : roBox} readOnly={!editing}
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
                 placeholder="iwopo"
                 value={s.smtp_from_name || ''}
                 onChange={e => setS({ ...s, smtp_from_name: e.target.value })} /></div>
 
             {/* Mail fails quietly — a wrong port or a rejected password looks
                 exactly like a saved form and silence. This actually sends one. */}
-            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Send a test</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-              <input style={box} placeholder="your@email.com"
+            <div className="sa-sec-hd u-margin-top-22px">Send a test</div>
+            <div className="u-display-flex u-gap-8px u-align-items-center u-margin-top-8px">
+              <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" placeholder="your@email.com"
                 value={testTo} onChange={e => setTestTo(e.target.value)} />
-              <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5, whiteSpace: 'nowrap' }}
+              <button className="sa-btn-teal u-padding-7px-14px u-font-size-12_5px u-white-space-nowrap"
                 disabled={testing} onClick={sendTest}>
                 {testing ? 'Sending…' : 'Send test'}
               </button>
@@ -2137,7 +2128,7 @@ function FaceEngineSettings() {
             2026-10-10). Its own key: the clients' chatbot keeps its key under
             AI Chat → API Key, so the two never share a bill. */}
         <div className="fr-cred">
-          <button type="button" className="fr-cred-head" style={{ marginTop: 26 }}
+          <button type="button" className="fr-cred-head u-margin-top-26px"
             onClick={() => setAiOpen(o => !o)} aria-expanded={aiOpen}>
             <span>🤖 AI Agent</span>
             <span className="fr-cred-chev">{aiOpen ? '▲' : '▼'}</span>
@@ -2145,18 +2136,18 @@ function FaceEngineSettings() {
 
           {aiOpen && (
           <div className="fr-cred-body">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+            <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
               {!editing ? (
-                <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={startEdit}>✏️ Edit</button>
+                <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
               ) : (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="sa-btn-teal" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
-                  <button style={{ padding: '5px 12px', fontSize: 12, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 7, color: 'var(--text)', cursor: 'pointer' }} onClick={stopEdit}>✕</button>
+                <div className="u-display-flex u-gap-8px">
+                  <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                 </div>
               )}
             </div>
 
-            <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.55 }}>
+            <p className="u-font-size-12_5px u-color-muted u-margin-0-0-14px u-line-height-1_55">
               Your private AI Agent (panel → 🤖 AI Agent) — only you use it.
               The clients' chatbot has its own key under AI Chat → API Key. Get a
               key at console.anthropic.com — charged per use, a fraction of a
@@ -2164,14 +2155,14 @@ function FaceEngineSettings() {
             </p>
 
             <div><label className="lbl">API key</label>
-              <input type="password" style={editing ? box : roBox} readOnly={!editing}
+              <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} type="password" readOnly={!editing}
                 placeholder="sk-ant-…"
                 value={s.agent_api_key || ''}
                 onChange={e => setS({ ...s, agent_api_key: e.target.value })} /></div>
 
-            <div className="sa-sec-hd" style={{ marginTop: 22 }}>Check the key</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-              <button className="sa-btn-teal" style={{ padding: '7px 14px', fontSize: 12.5 }}
+            <div className="sa-sec-hd u-margin-top-22px">Check the key</div>
+            <div className="u-display-flex u-gap-8px u-align-items-center u-margin-top-8px">
+              <button className="sa-btn-teal u-padding-7px-14px u-font-size-12_5px"
                 disabled={aiTesting} onClick={testAi}>
                 {aiTesting ? 'Checking…' : 'Say hello to the AI Agent'}
               </button>
@@ -2199,7 +2190,7 @@ function FaceEngineSettings() {
 
         {/* 📞 Calls & texts (Quo) are now each vendor's own: Calls & Messages → Calls & Texts → ⚙️ (2026-10-23) */}
         <p className="sa-hint">📞 Calls &amp; texts (Quo) are set up by each vendor in Calls &amp; Messages → ⚙️.</p>
-        {msg && <div style={{ marginTop: 10, fontSize: 12.5, color: '#4ade80' }}>{msg}</div>}
+        {msg && <div className="u-margin-top-10px u-font-size-12_5px u-color-4ade80">{msg}</div>}
       </div>
     </>
   );
