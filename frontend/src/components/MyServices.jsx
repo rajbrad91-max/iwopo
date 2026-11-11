@@ -20,7 +20,7 @@ export default function MyServicesView({ onPlans }) {
   const trialOrFree = cur.code === 'free' || cur.reason === 'trial';
   const per = (a) => {
     const unit = a.cycle === 'annual' ? '/yr' : '/mo';
-    if (a.local) return `≈ ${fmtMoney(a.cycle === 'annual' ? a.local.price_annual : a.local.price, { currency: a.local.currency })}${unit}`;   // 🌍 their currency
+    if (a.local) return `${fmtMoney(a.cycle === 'annual' ? a.local.price_annual : a.local.price, { currency: a.local.currency })}${unit}`;   // 🌍 the fixed price in their currency
     return `$${a.cycle === 'annual' ? a.price_annual : a.price}${unit}`;
   };
   const planNames = (codes) => codes.map(c => c[0].toUpperCase() + c.slice(1)).join(' & ');

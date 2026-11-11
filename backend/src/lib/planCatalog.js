@@ -1,6 +1,5 @@
 import prisma from '../config/prisma.js';
-import { usdRate, convert } from './localPrice.js';
-import { fixedPricesFor } from './regionalPrice.js';
+import { fixedPricesFor, addonPricesFor, addonPriceFrom } from './regionalPrice.js';
 import { connectReady } from './stripeConnect.js';
 import { priceFor } from './addons.js';
 
@@ -105,16 +104,15 @@ const GROUPS = [
 ];
 export async function planCompare({ country } = {}) {
   const cards = await planCards({ country });
-  // add-ons are shown in the currency the plans are shown in; their fixed prices are not decided yet, so today's rate
-  const currency = cards.find(c => c.local)?.local.currency || 'USD';
-  const rate = await usdRate(currency);
-  const money = (usd) => {   // whole amounts without cents ($5), others with both digits ($7.50)
-    const v = rate ? convert(usd, rate) : Number(usd);
-    const cents = Number.isInteger(v) ? 0 : 2;
-    return new Intl.NumberFormat('en', { style: 'currency', currency: rate ? String(currency).toUpperCase() : 'USD', minimumFractionDigits: cents, maximumFractionDigits: cents }).format(v);
+  // ➕ add-ons at their fixed price where they are (lib/regionalPrice.js), else their own USD price
+  const addonFixed = await addonPricesFor(country);
+  const money = (amount, currency = 'USD') => {   // whole amounts without cents ($5), others with both digits ($7.50)
+    const cents = Number.isInteger(Number(amount)) ? 0 : 2;
+    return new Intl.NumberFormat('en', { style: 'currency', currency, minimumFractionDigits: cents, maximumFractionDigits: cents }).format(amount);
   };
-  const addons = await prisma.services.findMany({ where: { is_addon: true, price: { gt: 0 }, is_private: false }, select: { name: true, feature_key: true, storage_gb: true, price: true, plan_prices: true, plan_codes: true, is_live: true } });
-  const storageFrom = Math.min(...addons.filter(a => a.storage_gb > 0).map(a => Number(a.price)));
+  const addonMoney = (a, code) => { const f = addonPriceFrom(addonFixed, a.id, code); return f ? money(f.monthly, f.currency) : money(priceFor(a, code, 'monthly')); };
+  const addons = await prisma.services.findMany({ where: { is_addon: true, price: { gt: 0 }, is_private: false }, select: { id: true, name: true, feature_key: true, storage_gb: true, price: true, plan_prices: true, plan_codes: true, is_live: true } });
+  const smallestStorage = addons.filter(a => a.storage_gb > 0).sort((x, y) => Number(x.price) - Number(y.price))[0];   // the "from" price
   const addonFor = (key, code) => addons.find(a => a.feature_key === key && (!(a.plan_codes || []).length || a.plan_codes.includes(code)));
   const has = (c, key) => c.lines.some(l => l.key === key);
   // 📸 what a plan's storage roughly holds: a ~9 MB high-resolution photo plus its full-screen and thumbnail copies
@@ -129,10 +127,10 @@ export async function planCompare({ country } = {}) {
     if (key === 'storage') return c.lines.find(l => l.key === 'storage').name.replace(/ storage$/, '');
     if (key === 'capacity') return fits(Number(c.storage_gb) || 0);
     if (key === 'chatbot') return has(c, 'chatbot') ? c.chat_limit.toLocaleString('en-US') : false;
-    if (key === 'extra_storage') return c.price_monthly > 0 && Number.isFinite(storageFrom) ? `Add-on · from ${money(storageFrom)}/mo` : false;
+    if (key === 'extra_storage') return c.price_monthly > 0 && smallestStorage ? `Add-on · from ${addonMoney(smallestStorage, c.code)}/mo` : false;
     if (has(c, key)) return true;
     const a = c.price_monthly > 0 && addonFor(key, c.code);
-    return a ? `Add-on · ${money(priceFor(a, c.code, 'monthly'))}/mo` : false;
+    return a ? `Add-on · ${addonMoney(a, c.code)}/mo` : false;
   };
   const coming = (key) => cards.some(c => c.lines.some(l => l.key === key && l.coming));
   const groups = GROUPS.map(([title, rows]) => ({ title, rows: rows.map(([key, label, star]) => ({ key, label, star, coming: coming(key), cells: Object.fromEntries(cards.map(c => [c.code, cell(c, key)])) })) }));

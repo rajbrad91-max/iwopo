@@ -1,13 +1,14 @@
 import prisma from '../config/prisma.js';
 import { stripe } from './stripe.js';
 import { currentPlan, paidSubscription } from './billing.js';
-import { usdRate, convert } from './localPrice.js';
+import { addonPricesFor, addonPriceFrom, addonPriceForSubscription, vendorCountry } from './regionalPrice.js';
 
 /**
  * ➕ Add-ons (Raj, 2026-11-06): extra storage (+500 GB / +1 TB / +2 TB), Crew on Essential, your own domain on Essential
  * and Pro, Instagram & WhatsApp AI (half price on Studio). Each is a service row with a price; plan_codes says which plans
  * may add it, plan_prices a different price on some. A paying vendor adds one to their Stripe subscription (charged the
  * difference now) and removes it from the next bill — it keeps working until the period it was paid for ends.
+ * Prices are fixed per country since 2026-11-11 (lib/regionalPrice.js): shown and charged without an exchange rate.
  */
 const isAddon = { is_addon: true, price: { gt: 0 }, is_private: false };
 
@@ -16,14 +17,16 @@ export const priceFor = (svc, planCode, cycle) => {
   return cycle === 'annual' ? (svc.plan_prices?.[planCode] != null ? monthly * 10 : Number(svc.price_annual ?? monthly * 10)) : monthly;
 };
 
-/** The add-ons as this vendor sees them: price on their plan, and whether each is included, theirs, open or not yet. */
-export async function addonsFor(vendorId, { currency } = {}) {
+/** The add-ons as this vendor sees them: price on their plan, and whether each is included, theirs, open or not yet.
+ *  `country` picks the fixed local prices (default: the vendor's account country). */
+export async function addonsFor(vendorId, { country } = {}) {
   const vid = Number(vendorId);
-  const rate = await usdRate(currency);   // 🌍 shown in the vendor's currency, as an estimate
-  const [{ plan, reason }, sub, rows, mine] = await Promise.all([
+  const where = country === undefined ? await vendorCountry(vid) : country;
+  const [{ plan, reason }, sub, rows, mine, local] = await Promise.all([
     currentPlan(vid), paidSubscription(vid),
     prisma.services.findMany({ where: isAddon, orderBy: [{ storage_gb: 'asc' }, { price: 'asc' }, { id: 'asc' }] }),
     prisma.vendor_services.findMany({ where: { vendor_id: vid, enabled: true }, select: { service_id: true, ends_at: true } }),   // 🔒 this vendor
+    addonPricesFor(where),   // 🌍 the fixed prices where they are
   ]);
   const cycle = sub?.billing_cycle === 'annual' ? 'annual' : 'monthly';
   const planKeys = new Set((plan?.plan_features || []).map(f => f.feature_key));
@@ -41,16 +44,17 @@ export async function addonsFor(vendorId, { currency } = {}) {
       id: s.id, name: s.name, icon: s.icon, description: s.description, storage_gb: s.storage_gb,
       price: priceFor(s, plan?.code, 'monthly'), price_annual: priceFor(s, plan?.code, 'annual'), cycle,
       plans: codes, state, ends_at: owned.get(s.id) || null, on_trial: reason === 'trial',
-      local: rate ? { currency: String(currency).toUpperCase(), price: convert(priceFor(s, plan?.code, 'monthly'), rate), price_annual: convert(priceFor(s, plan?.code, 'annual'), rate) } : null,
+      local: (f => (f ? { currency: f.currency, price: f.monthly, price_annual: f.annual } : null))(addonPriceFrom(local, s.id, plan?.code)),
     };
   });
 }
 
-async function stripePriceForAddon(svc, planCode, cycle, currency = 'usd') {
-  const cur = String(currency).toLowerCase();
-  const rate = cur === 'usd' ? 1 : await usdRate(cur);
-  if (!rate) throw Object.assign(new Error('Add-ons are not available in this currency yet — please contact support.'), { status: 409 });
-  const cents = Math.round(convert(priceFor(svc, planCode, cycle), rate) * 100);
+/** The Stripe price for an add-on, in the subscription's own currency: its fixed price there, or its own USD price. */
+async function stripePriceForAddon(svc, planCode, cycle, currency, country) {
+  const cur = String(currency || 'usd').toLowerCase();
+  const f = await addonPriceForSubscription(svc.id, planCode, country, cur);
+  if (!f && cur !== 'usd') throw Object.assign(new Error('Add-ons are not available in this currency yet — please contact support.'), { status: 409 });
+  const cents = Math.round((f ? (cycle === 'annual' ? f.annual : f.monthly) : priceFor(svc, planCode, cycle)) * 100);
   const lookup = `iwopo_addon_${svc.id}_${cycle}_${cur}_${cents}`;
   const found = await stripe('GET', '/prices', { lookup_keys: [lookup], active: true, limit: 1 });
   if (found.data?.[0]) return found.data[0].id;
@@ -79,7 +83,7 @@ export async function addAddon(vendorId, serviceId) {
   if (a.state === 'available') {
     const { currency } = await stripe('GET', `/subscriptions/${sub.stripe_subscription_id}`);   // 🌍 the subscription's own currency
     await stripe('POST', '/subscription_items', {
-      subscription: sub.stripe_subscription_id, price: await stripePriceForAddon(svc, plan.code, a.cycle, currency), quantity: 1,
+      subscription: sub.stripe_subscription_id, price: await stripePriceForAddon(svc, plan.code, a.cycle, currency, await vendorCountry(vid)), quantity: 1,
       proration_behavior: 'create_prorations', metadata: { service_id: svc.id, vendor_id: vid },
     }, { idempotencyKey: `addon-${vid}-${svc.id}-${Date.now()}` });
   }

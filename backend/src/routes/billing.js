@@ -20,7 +20,7 @@ import { notify } from './notifications.js';
 import { serverError } from '../lib/httpError.js';
 import { planCompare } from '../lib/planCatalog.js';
 import { addonsFor, addAddon, removeAddon } from '../lib/addons.js';
-import { visitorCurrency, visitorCountry } from '../lib/localPrice.js';
+import { visitorCountry } from '../lib/localPrice.js';
 import { fixedPrice, vendorCountry } from '../lib/regionalPrice.js';
 import { emailInvoice, invoiceSubscription } from '../lib/billingEmails.js';
 import { referralBonus, withBonus, settleCheckout, rewardReferrer } from '../lib/referrals.js';
@@ -91,7 +91,8 @@ router.get('/', async (req, res) => {
   if (!v) return res.status(400).json({ error: 'Not a vendor account' });
   try {
     // 🌍 one country for what is shown here and what checkout charges (billingCountry)
-    const [access, sub, compare] = await Promise.all([billingAccess(v), paidSubscription(v), planCompare({ country: await billingCountry(v, req) })]);
+    const country = await billingCountry(v, req);
+    const [access, sub, compare] = await Promise.all([billingAccess(v), paidSubscription(v), planCompare({ country })]);
     const plans = compare.plans;
     const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
@@ -103,7 +104,7 @@ router.get('/', async (req, res) => {
       trial_ends_at: access.trialEndsAt, trial_days_left: access.reason === 'trial' ? daysLeft : 0,
       subscription: sub ? { plan_id: sub.plan_id, status: sub.status, cycle: sub.billing_cycle, renews_at: sub.current_period_end, cancels: sub.cancel_at_period_end } : null,
       current_plan: await currentPlan(v).then(c => ({ code: c.plan?.code, name: c.plan?.name, reason: c.reason })),
-      addons: await addonsFor(v, { currency: visitorCurrency(req) }),
+      addons: await addonsFor(v, { country }),
       // the paid plans as cards (Free is where an unpaid account rests, never something to check out)
       plans: plans.filter(p => p.price_monthly > 0).map(p => ({
         id: p.id, code: p.code, name: p.name, icon: p.icon, tagline: p.tagline, storage_gb: p.storage_gb,
