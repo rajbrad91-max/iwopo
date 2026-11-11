@@ -712,6 +712,7 @@ export const api = {
   packages: (currency) => request(`/packages${currency ? `?currency=${encodeURIComponent(currency)}` : ''}`),   // a currency code shows prices in it (Super Admin: USD)
   adminServices: () => request('/admin/services'),
   adminPackages: () => request('/admin/packages'),
+  adminPlanRegions: () => request('/admin/plan-regions'),   // 🌍 prices by territory + profit
   // 🔓 what each plan actually unlocks (Super Admin)
   adminPlanUnlocks: () => request('/admin/plan-unlocks'),
   saveAdminPlan: (id, body) => request(`/admin/plans/${id}`, { method: 'PUT', body: JSON.stringify(body) }),   // 📋 the editable pricing table

@@ -18,6 +18,7 @@ import { limit } from '../middleware/rateLimit.js';
 import { serverError } from '../lib/httpError.js';
 import { adminOverview } from '../lib/adminOverview.js';
 import { planCards, planCompare } from '../lib/planCatalog.js';
+import { regionEconomics } from '../lib/planEconomics.js';
 import { syncOffer } from '../lib/stripeCoupons.js';
 import { visitorCurrency } from '../lib/localPrice.js';
 import { stripe, stripeReady } from '../lib/stripe.js';
@@ -406,6 +407,11 @@ router.get('/packages', async (req, res) => {
 // 🔒 Super admin: the same cards, for the price editor
 router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) => {
   try { res.json({ packages: await planCards() }); } catch (e) { serverError(res, e); }
+});
+
+// 🌍 Super admin: every territory's fixed prices and what iwopo keeps from each plan there (lib/planEconomics.js)
+router.get('/admin/plan-regions', requireAuth, requireSuperAdmin, async (req, res) => {
+  try { res.json(await regionEconomics()); } catch (e) { serverError(res, e); }
 });
 
 /* 🔓 What each plan UNLOCKS (2026-11-01, plans the one source since 2026-11-06). plan_features is what a vendor on a plan

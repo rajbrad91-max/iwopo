@@ -11,6 +11,7 @@ import { useDialog } from '../lib/dialog.jsx';
 import { PROFESSIONS } from '../lib/professions';
 import DeleteVendorModal from '../components/DeleteVendor';
 import PlanEditorTable from '../components/PlanEditorTable';
+import RegionPricesTable from '../components/RegionPricesTable';
 
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
@@ -376,6 +377,8 @@ function ServicesView() {
       {/* PACKAGES — the public pricing table, editable in place (components/PlanEditorTable.jsx) */}
       <div className="sa-section-title sa-pt-title">Packages & Pricing 🎁</div>
       <PlanEditorTable onSaved={() => setRev(r => r + 1)} />
+      {/* 🌍 every territory's fixed prices and the profit from each plan (components/RegionPricesTable.jsx) */}
+      <RegionPricesTable rev={rev} />
 
       {/* STANDALONE SERVICES */}
       <StandaloneServices rev={rev} />

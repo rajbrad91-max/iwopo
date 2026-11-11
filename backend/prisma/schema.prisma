@@ -636,6 +636,7 @@ model plans {
   highlights           Json                   @default("[]")
   plan_features        plan_features[]
   vendor_subscriptions vendor_subscriptions[]
+  plan_region_prices   plan_region_prices[]
 }
 
 model platform_settings {
@@ -1790,5 +1791,33 @@ model gallery_downloads {
   albums     albums   @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([album_id, created_at])
+}
+
+/// 🌍 A pricing territory (Raj, 2026-11-11): a currency with fixed prices, or the regional USD price, and the countries
+/// billed in it. "USD" is the main pricing table (plans) and lists no countries — it covers the US and every country
+/// not in another territory. Prices: plan_region_prices. Shown in Super Admin → Services & Packages.
+model price_regions {
+  id                 Int                  @id @default(autoincrement())
+  code               String               @unique @db.VarChar(12)
+  name               String               @db.VarChar(80)
+  currency           String               @db.VarChar(3)
+  symbol             String               @db.VarChar(6)
+  countries          String[]             @default([]) @db.VarChar(2)
+  sort_order         Int                  @default(0)
+  plan_region_prices plan_region_prices[]
+}
+
+/// 🌍 A plan's fixed price in a territory, in that territory's currency — monthly, and yearly (Essential and Pro pay
+/// 10 months, Studio 11). They do not move with exchange rates (Raj, 2026-11-10).
+model plan_region_prices {
+  id        Int           @id @default(autoincrement())
+  region_id Int
+  plan_id   Int
+  monthly   Decimal       @db.Decimal(14, 2)
+  annual    Decimal       @db.Decimal(14, 2)
+  region    price_regions @relation(fields: [region_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plan      plans         @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([region_id, plan_id])
 }
 
