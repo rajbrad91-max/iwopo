@@ -1824,7 +1824,7 @@ model plan_region_prices {
 }
 
 /// 🌍 An add-on's fixed price in a territory, in that territory's currency (Raj, 2026-11-11) — monthly, and yearly
-/// (10 months, like the plans). plan_code '' is the price on every plan; a plan code is a different price on that plan
+/// (10 months like the plans; storage 12, as R2 charges for it every month). plan_code '' is the price on every plan; a plan code is a different price on that plan
 /// (Instagram & WhatsApp AI on Studio). Read by lib/regionalPrice.js.
 model addon_region_prices {
   id         Int           @id @default(autoincrement())
