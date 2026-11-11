@@ -1974,7 +1974,7 @@ function FaceEngineSettings() {
 
               <div><label className="lbl">Secret Access Key <span className="u-color-muted">— optional</span></label>
                 <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
-                  placeholder="leave blank to use the shared key"
+                 
                   value={s.r2_private_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_private_secret_access_key: e.target.value })} /></div>
 
@@ -1997,7 +1997,7 @@ function FaceEngineSettings() {
 
               <div><label className="lbl">Secret Access Key <span className="u-color-muted">— optional</span></label>
                 <input className={editing ? 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct' : 'u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct u-opacity-0_7 u-cursor-not-allowed'} readOnly={!editing}
-                  placeholder="leave blank to use the shared key"
+                 
                   value={s.r2_public_secret_access_key || ''} placeholder={editing ? 'Paste a new one (empty keeps the current)' : ''} autoComplete="off"
                   onChange={e => setS({ ...s, r2_public_secret_access_key: e.target.value })} /></div>
 
