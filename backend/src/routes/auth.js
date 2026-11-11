@@ -19,11 +19,12 @@ import { professionOf } from '../lib/professions.js';
 import { signupTrialEnd } from '../lib/billing.js';
 import { newReferralCode, referrerByCode, linkReferral } from '../lib/referrals.js';
 import { LEGAL_UPDATED } from '../lib/seo/legal.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
    the last 15 minutes" — it opens nothing by itself. A trusted device sends its token and skips the code. */
-const TICKET_SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':two-step';
+const TICKET_SECRET = JWT_SECRET + ':two-step';
 const TRUST_DAYS = 30;
 const sha256 = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
 const twoStepTicket = (user) => jwt.sign({ uid: user.id }, TICKET_SECRET, { expiresIn: '15m' });

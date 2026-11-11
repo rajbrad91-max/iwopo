@@ -2,9 +2,10 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { newJti, tokenStillValid } from '../lib/tokenRevocation.js';
 import { touchSeen } from '../lib/lastSeen.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 dotenv.config();
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const SECRET = JWT_SECRET;
 
 // Verify token, attach req.user = { id, role, vendor_id }
 export async function requireAuth(req, res, next) {

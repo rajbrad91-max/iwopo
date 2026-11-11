@@ -10,10 +10,11 @@ import prisma from '../config/prisma.js';
 import { sendPlatformEmail } from '../routes/email.js';
 import { quiet } from './quiet.js';
 import { emailShell, emailText, emailCode, emailButton, esc } from './emailLayout.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
 const TTL_MS = 15 * 60_000, MAX_TRIES = 5, RESEND_GAP_MS = 45_000;
 export const mailSandbox = () => process.env.MAIL_SANDBOX === '1';
-const keyed = (code, userId, purpose) => crypto.createHmac('sha256', process.env.JWT_SECRET || 'iwopo').update(`${userId}:${purpose}:${code}`).digest('hex');
+const keyed = (code, userId, purpose) => crypto.createHmac('sha256', JWT_SECRET).update(`${userId}:${purpose}:${code}`).digest('hex');
 export const normEmail = (e) => String(e || '').trim().toLowerCase();
 export const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) && e.length <= 254;
 

@@ -31,6 +31,12 @@ export function checkEnv() {
     process.exit(1);
   }
 
+  // 🔑 a short signing secret can be guessed; config/secrets.js refuses it too (security review, 2026-11-11)
+  if (process.env.JWT_SECRET.length < 32) {
+    console.error('\n❌ JWT_SECRET in backend/.env is shorter than 32 characters — use a long random string.\n');
+    process.exit(1);
+  }
+
   const soft = OPTIONAL.filter(([k]) => !process.env[k]);
   if (soft.length) {
     console.warn('⚠️  Optional env vars not set (features below are disabled):');

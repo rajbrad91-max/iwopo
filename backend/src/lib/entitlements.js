@@ -6,9 +6,10 @@ import prisma from '../config/prisma.js';
 import { tokenStillValid } from './tokenRevocation.js';
 import { currentPlan } from './billing.js';
 import { serverError } from './httpError.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 dotenv.config();
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const SECRET = JWT_SECRET;
 
 /** All feature keys a vendor currently has access to.
  *  = (active plan features ∪ enabled standalone services), then per-vendor

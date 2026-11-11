@@ -27,6 +27,7 @@ import { shootFor, uploadBegin, uploadComplete, announceUpload, renameShoot, ima
 import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { openPassword } from '../lib/sharePassword.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -314,7 +315,7 @@ router.delete('/albums/:albumId/raws', requireAuth, async (req, res) => {
 router.get('/albums/:albumId/zip', async (req, res) => {
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
   let user;
-  try { user = jwt.verify(tok, process.env.JWT_SECRET || 'dev-secret-change-me'); } catch { return downloadFailed(req, res, 401, 'Invalid token', 'Your sign-in has expired — open iwopo and try again.'); }
+  try { user = jwt.verify(tok, JWT_SECRET); } catch { return downloadFailed(req, res, 401, 'Invalid token', 'Your sign-in has expired — open iwopo and try again.'); }
   if (!await tokenStillValid(user)) return downloadFailed(req, res, 401, 'Session ended', 'Your sign-in has expired — open iwopo and try again.');
   try {
     const feats = await getFeatures(user.vendor_id);

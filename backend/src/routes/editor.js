@@ -33,9 +33,10 @@ import { quiet } from '../lib/quiet.js';
 import { deliveryFor, findDelivery, DELIVERY_KIND, renameShoot, imageLink, markReceived } from '../lib/shoots.js';
 import { openPassword } from '../lib/sharePassword.js';
 import { tickStages } from '../lib/projectStages.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
 const router = express.Router();
-const SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':raw-editor';
+const SECRET = JWT_SECRET + ':raw-editor';
 const norm = (e) => String(e || '').trim().toLowerCase().slice(0, 160);
 const sign = (row) => jwt.sign({ typ: 'raw_editor', eid: row.id }, SECRET, { expiresIn: '12h' });
 

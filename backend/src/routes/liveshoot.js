@@ -35,6 +35,7 @@ import { isUsableFace } from '../lib/portraitScore.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
 import { limit } from '../middleware/rateLimit.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
 const router = express.Router();
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 } });
@@ -86,7 +87,7 @@ function passFor(req, albumId) {
 function mintPass(albumId, clusterIds) {
   const body = JSON.stringify({ a: albumId, c: clusterIds, exp: Date.now() + PASS_DAYS * 864e5 });
   const payload = Buffer.from(body).toString('base64url');
-  const sig = crypto.createHmac('sha256', process.env.JWT_SECRET || 'iwopo').update(payload).digest('base64url');
+  const sig = crypto.createHmac('sha256', JWT_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }
 
@@ -101,7 +102,7 @@ export function readPass(token, albumId) {
   try {
     const [payload, sig] = String(token || '').split('.');
     if (!payload || !sig) return null;
-    const expect = crypto.createHmac('sha256', process.env.JWT_SECRET || 'iwopo').update(payload).digest('base64url');
+    const expect = crypto.createHmac('sha256', JWT_SECRET).update(payload).digest('base64url');
     const a = Buffer.from(sig), b = Buffer.from(expect);
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
 

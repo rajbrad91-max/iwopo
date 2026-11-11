@@ -91,6 +91,7 @@ import { noteFailure } from './lib/noteFailure.js';
 dotenv.config();
 
 const app = express();
+app.disable('x-powered-by');   // 🔐 do not tell the world which framework answers (security review, 2026-11-11)
 app.set('trust proxy', 'loopback'); // 🌐 only nginx, on this machine, may name the visitor — see lib/clientIp.js
 // 🚫 no ETags. This API serves live data, so a conditional request coming back
 // 304 just makes the client redisplay a stale copy — which is exactly what made

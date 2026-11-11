@@ -16,6 +16,7 @@ import { limit } from '../middleware/rateLimit.js';
 import { getSetting } from '../lib/settings.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
 const router = express.Router();
 
@@ -439,7 +440,7 @@ router.post('/', publicForm(whenLimitsOn(perVisitor)), publicForm(whenLimitsOn(p
      decides the vendor for the panel's own "Add lead", which names no slug. */
   if (!b.vendor_slug && auth.startsWith('Bearer ')) {
     try {
-      const user = jwt.verify(auth.slice(7), process.env.JWT_SECRET || 'dev-secret-change-me');
+      const user = jwt.verify(auth.slice(7), JWT_SECRET);
       // 🎟️ a cancelled token falls back to the public path, same as a bad one
       if (!await tokenStillValid(user)) throw new Error('revoked');
       if (user.role === 'super_admin') vendor_id = b.vendor_id || null;   // super admin must say which vendor

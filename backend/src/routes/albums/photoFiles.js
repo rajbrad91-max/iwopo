@@ -17,6 +17,7 @@ import { serverError } from '../../lib/httpError.js';
 import { noteFailure } from '../../lib/noteFailure.js';
 import { ownVendorId } from '../../lib/vendorScope.js';
 import { ROOT } from './shared.js';
+import { JWT_SECRET } from '../../config/secrets.js';   // 🔑 one secret, no fallback
 
 const router = express.Router();
 
@@ -79,7 +80,7 @@ router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
 
 // 🔒 serve a gallery file — token via header OR ?token= (for <img src>). type = thumb|preview|orig
 router.get('/file/:photoId/:type', async (req, res) => {
-  const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+  const SECRET = JWT_SECRET;
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
   let user;
   try { user = jwt.verify(tok, SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }

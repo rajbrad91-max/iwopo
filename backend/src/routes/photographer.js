@@ -11,6 +11,7 @@ import { sendAsVendor } from './email.js';
 import { serverError } from '../lib/httpError.js';
 import { FTP_HOST, ftpUser, waitingFiles } from '../lib/cameraFtp.js';
 import { openPassword } from '../lib/sharePassword.js';
+import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
 /**
  * 📸 The photographer's door to the Raw Selector (Raj, 2026-11-09). A crew member the vendor has set, in Crew
@@ -20,7 +21,7 @@ import { openPassword } from '../lib/sharePassword.js';
  * Private: only while the vendor has the Raw Selector (rawsel). The editor's door is routes/editor.js; this mirrors it.
  */
 const router = express.Router();
-const SECRET = (process.env.JWT_SECRET || 'dev-secret-change-me') + ':photographer';
+const SECRET = JWT_SECRET + ':photographer';
 const norm = (e) => String(e || '').trim().toLowerCase().slice(0, 200);
 const sign = (row) => jwt.sign({ typ: 'photographer', cid: row.id }, SECRET, { expiresIn: '12h' });
 const hasRawsel = async (vendorId) => { const f = await getFeatures(vendorId); return f.has('*') || f.has('rawsel'); };

@@ -19,6 +19,7 @@ import { downloadFailed, downloadCrashed } from '../../lib/downloadPage.js';
 import { downloadLog } from '../../lib/galleryDownloads.js';
 import { ownVendorId } from '../../lib/vendorScope.js';
 import { ROOT } from './shared.js';
+import { JWT_SECRET } from '../../config/secrets.js';   // 🔑 one secret, no fallback
 
 const router = express.Router();
 
@@ -144,7 +145,7 @@ router.get('/:id/downloads', requireAuth, gate('gallery_insights'), async (req, 
 });
 
 router.get('/:id/selection.zip', async (req, res) => {
-  const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+  const SECRET = JWT_SECRET;
   const tok = (req.headers.authorization?.split(' ')[1]) || req.query.token;
   let user;
   try { user = jwt.verify(tok, SECRET); } catch { return downloadFailed(req, res, 401, 'Invalid token', 'Your sign-in has expired — open iwopo and try again.'); }
