@@ -448,7 +448,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
             <div className="u-margin-left-auto u-display-flex u-gap-4px">
               <button className="refresh u-padding-3px-8px u-font-size-11px" onClick={() => move(i, -1)}>↑</button>
               <button className="refresh u-padding-3px-8px u-font-size-11px" onClick={() => move(i, 1)}>↓</button>
-              <button className="refresh u-padding-3px-8px u-font-size-11px u-color-fb7185" onClick={() => del(i)}>🗑️</button>
+              <button className="refresh u-padding-3px-8px u-font-size-11px u-color-red" onClick={() => del(i)}>🗑️</button>
             </div>
           </div>
 
@@ -637,7 +637,7 @@ export function InqFormSettings() {
   return (
     <div className="u-max-width-560px">
       <div className="table-wrap u-padding-22px">
-        <h2 className="u-margin-top-0">🎨 Customize your inquiry form {msg && <span className="u-font-size-13px u-color-4ade80">{msg}</span>}</h2>
+        <h2 className="u-margin-top-0">🎨 Customize your inquiry form {msg && <span className="u-font-size-13px u-color-green">{msg}</span>}</h2>
         <p className="sub inq-link-row">
           Your link: <b className="inq-link">{handle ? inquiryUrl(handle) : '…'}</b> 🔗
           {' · '}
@@ -713,7 +713,7 @@ export function InqFormSettings() {
           />
         </div>
 
-        <button className="refresh u-margin-top-16px u-width-100pct u-background-2dd4bf u-color-06231f" onClick={save} disabled={saving}>
+        <button className="refresh u-margin-top-16px u-width-100pct u-background-teal u-color-acc-ink" onClick={save} disabled={saving}>
           {saving ? '⏳ Saving…' : msg || '💾 Save form settings'}
         </button>
       </div>

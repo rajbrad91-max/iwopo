@@ -421,7 +421,7 @@ function FaceEngineSettings() {
               </button>
             </div>
             {testMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, color: testMsg.ok ? '#4ade80' : '#f87171' }}>
+              <div style={{ marginTop: 10, fontSize: 12.5, color: testMsg.ok ? 'var(--green)' : 'var(--red)' }}>
                 {testMsg.text}
               </div>
             )}
@@ -484,7 +484,7 @@ function FaceEngineSettings() {
               )}
             </div>
             {aiMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, color: aiMsg.ok ? '#4ade80' : '#f87171' }}>
+              <div style={{ marginTop: 10, fontSize: 12.5, color: aiMsg.ok ? 'var(--green)' : 'var(--red)' }}>
                 {aiMsg.text}
               </div>
             )}
@@ -495,7 +495,7 @@ function FaceEngineSettings() {
 
         {/* 📞 Calls & texts (Quo) are now each vendor's own: Calls & Messages → Calls & Texts → ⚙️ (2026-10-23) */}
         <p className="sa-hint">📞 Calls &amp; texts (Quo) are set up by each vendor in Calls &amp; Messages → ⚙️.</p>
-        {msg && <div className="u-margin-top-10px u-font-size-12_5px u-color-4ade80">{msg}</div>}
+        {msg && <div className="u-margin-top-10px u-font-size-12_5px u-color-green">{msg}</div>}
       </div>
     </>
   );

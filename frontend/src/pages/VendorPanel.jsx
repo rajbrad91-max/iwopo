@@ -93,7 +93,7 @@ function StorageBar({ onUpgrade }) {
 
   const pct = Math.min(100, s.percent ?? 0);
   const near = pct >= 80;
-  const tone = pct >= 95 ? '#f87171' : near ? '#fbbf24' : 'var(--brand, #2dd4bf)';
+  const tone = pct >= 95 ? 'var(--red)' : near ? 'var(--amber)' : 'var(--brand, var(--teal))';
 
   /* Whole gigabytes, both sides (MB only below a gigabyte). A vendor thinks in weddings, not kilobytes —
      "0 KB of 5 GB" is precise and says nothing. Used rounds to the nearest GB;

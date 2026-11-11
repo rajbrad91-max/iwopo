@@ -2,13 +2,12 @@
    Raj 2026-11-11). Each is !important because the inline style it replaced beat every stylesheet rule, so
    nothing on screen changed. For new work, prefer a named class in the page's own stylesheet. */
 .u-align-items-center { align-items: center !important; }
-.u-background-2dd4bf { background: #2dd4bf !important; }
-.u-background-2dd4bf18 { background: #2dd4bf18 !important; }
 .u-background-panel { background: var(--panel) !important; }
 .u-background-panel-2 { background: var(--panel-2) !important; }
 .u-background-rgba-000_5 { background: rgba(0,0,0,.5) !important; }
+.u-background-teal { background: var(--teal) !important; }
+.u-background-teal-soft { background: var(--teal-soft) !important; }
 .u-background-transparent { background: transparent !important; }
-.u-border-1px-solid-2dd4bf44 { border: 1px solid #2dd4bf44 !important; }
 .u-border-1px-solid-line { border: 1px solid var(--line) !important; }
 .u-border-bottom-1px-solid-line { border-bottom: 1px solid var(--line) !important; }
 .u-border-left-1px-solid-line { border-left: 1px solid var(--line) !important; }
@@ -18,14 +17,14 @@
 .u-border-radius-6px { border-radius: 6px !important; }
 .u-border-radius-7px { border-radius: 7px !important; }
 .u-border-radius-8px { border-radius: 8px !important; }
+.u-border-teal-faint { border: 1px solid color-mix(in srgb, var(--teal) 27%, transparent) !important; }
 .u-border-top-1px-dashed-line { border-top: 1px dashed var(--line) !important; }
 .u-border-top-1px-solid-line { border-top: 1px solid var(--line) !important; }
-.u-color-06231f { color: #06231f !important; }
-.u-color-2dd4bf { color: #2dd4bf !important; }
-.u-color-4ade80 { color: #4ade80 !important; }
-.u-color-9fb3b0 { color: #9fb3b0 !important; }
-.u-color-fb7185 { color: #fb7185 !important; }
+.u-color-acc-ink { color: var(--accInk) !important; }
+.u-color-green { color: var(--green) !important; }
 .u-color-muted { color: var(--muted) !important; }
+.u-color-red { color: var(--red) !important; }
+.u-color-teal { color: var(--teal) !important; }
 .u-color-text { color: var(--text) !important; }
 .u-cursor-not-allowed { cursor: not-allowed !important; }
 .u-cursor-pointer { cursor: pointer !important; }

@@ -63,7 +63,7 @@ function CouponBuilder() {
           <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-150px" type="date" value={f.ends_at}
             onChange={e => setF({ ...f, ends_at: e.target.value })} title="Expiry (optional)" />
           <button className="sa-btn-teal" onClick={create}>+ Create coupon</button>
-          {msg && <span style={{ fontSize: 13, color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</span>}
+          {msg && <span style={{ fontSize: 13, color: msg[0] === '✅' ? 'var(--green)' : 'var(--red)' }}>{msg}</span>}
         </div>
       </div>
 

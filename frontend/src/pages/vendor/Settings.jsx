@@ -219,9 +219,9 @@ export function SettingsView({ user, onProfileChange }) {
       {/* Preferences */}
       {sub === 'prefs' && (
       <div className="table-wrap u-padding-22px">
-        <h2 className="u-margin-top-0">🕐 Preferences {saved && <span className="u-font-size-13px u-color-4ade80">{saved}</span>}</h2>
+        <h2 className="u-margin-top-0">🕐 Preferences {saved && <span className="u-font-size-13px u-color-green">{saved}</span>}</h2>
 
-        <label className="u-font-size-13px u-color-9fb3b0">Time format</label>
+        <label className="u-font-size-13px u-color-muted">Time format</label>
         <div className="u-display-flex u-gap-8px u-margin-top-6px">
           {['12h', '24h'].map(t => (
             <button key={t} onClick={() => savePrefs({ ...s, time_format: t })}
@@ -239,7 +239,7 @@ export function SettingsView({ user, onProfileChange }) {
           ))}
         </div>
 
-        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-14px">Timezone</label>
+        <label className="u-font-size-13px u-color-muted u-display-block u-margin-top-14px">Timezone</label>
         {zones.length > 1 ? (
           <select className="pref-static" value={s.timezone || ''} onChange={e => savePrefs({ ...s, timezone: e.target.value })}>
             {zones.map(z => <option key={z.tz} value={z.tz}>{z.city}</option>)}
@@ -255,7 +255,7 @@ export function SettingsView({ user, onProfileChange }) {
             country, so a bare number on an invoice tells a client in London the
             wrong thing. It follows the country on their profile unless they say
             otherwise — a preference, not a question they have to answer. */}
-        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-14px" htmlFor="pf-cur">Currency</label>
+        <label className="u-font-size-13px u-color-muted u-display-block u-margin-top-14px" htmlFor="pf-cur">Currency</label>
         <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" id="pf-cur" value={chosenCurrency || ''}
           onChange={e => { setChosenCurrency(e.target.value); savePrefs({ ...s, currency: e.target.value }); }}>
           <option value="">Follow my country{s.currency ? ` (${s.currency})` : ''}</option>
@@ -287,10 +287,10 @@ export function SettingsView({ user, onProfileChange }) {
       {sub === 'account' && (
       <div className="table-wrap u-padding-22px">
         <h2 className="u-margin-top-0">🏢 Business Profile</h2>
-        {profMsg && <div style={{ fontSize: 13, color: profMsg[0] === '✅' ? '#4ade80' : 'var(--muted)', marginBottom: 10 }}>{profMsg}</div>}
+        {profMsg && <div style={{ fontSize: 13, color: profMsg[0] === '✅' ? 'var(--green)' : 'var(--muted)', marginBottom: 10 }}>{profMsg}</div>}
 
         {/* logo — single source, updates everywhere */}
-        <label className="u-font-size-13px u-color-9fb3b0">Logo 🖼️</label>
+        <label className="u-font-size-13px u-color-muted">Logo 🖼️</label>
         <div className="u-display-flex u-align-items-center u-gap-12px u-margin-6px-0-14px">
           {prof?.logo_path && <img className="u-width-56px u-height-56px u-border-radius-10px u-object-fit-cover u-border-1px-solid-line" src={`/api/me/logo/${prof.logo_path}`} alt="logo" />}
           <label className="refresh u-padding-7px-14px u-font-size-12px u-cursor-pointer">
@@ -299,13 +299,13 @@ export function SettingsView({ user, onProfileChange }) {
           </label>
         </div>
 
-        <label className="u-font-size-13px u-color-9fb3b0">Company name</label>
+        <label className="u-font-size-13px u-color-muted">Company name</label>
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" value={prof?.business_name || ''} onChange={e => setProf({ ...prof, business_name: e.target.value })} />
-        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-10px">Phone</label>
+        <label className="u-font-size-13px u-color-muted u-display-block u-margin-top-10px">Phone</label>
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" type="tel" inputMode="tel" value={prof?.phone || ''} onChange={e => setProf({ ...prof, phone: phoneChars(e.target.value) })} />
-        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-10px">Business email</label>
+        <label className="u-font-size-13px u-color-muted u-display-block u-margin-top-10px">Business email</label>
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" value={prof?.email || ''} onChange={e => setProf({ ...prof, email: e.target.value })} />
-        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-10px">Country</label>
+        <label className="u-font-size-13px u-color-muted u-display-block u-margin-top-10px">Country</label>
         {/* A select, not a text box: typed countries arrive as "Canada", "canada"
             and "CA" and each becomes its own bucket, so the platform's own
             country breakdown is junk before it has ten sellers. Same list the
@@ -319,9 +319,9 @@ export function SettingsView({ user, onProfileChange }) {
         <button className="refresh set-primary set-save" onClick={saveProfile}>💾 Save profile</button>
 
         <h2 className="u-margin-top-26px">🔐 Account</h2>
-        {msg && <div style={{ padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 13, background: msg[0] === '✅' ? '#4ade8018' : '#fb718518', color: msg[0] === '✅' ? '#4ade80' : '#fb7185' }}>{msg}</div>}
+        {msg && <div style={{ padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 13, background: `color-mix(in srgb, ${msg[0] === '✅' ? 'var(--green)' : 'var(--red)'} 9%, transparent)`, color: msg[0] === '✅' ? 'var(--green)' : 'var(--red)' }}>{msg}</div>}
 
-        <label className="u-font-size-13px u-color-9fb3b0">📧 Change email</label>
+        <label className="u-font-size-13px u-color-muted">📧 Change email</label>
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={em.email} onChange={e => setEm({ ...em, email: e.target.value })} placeholder="new@email.com" />
         {/* ✉️ a heads-up while typing (Raj, 2026-10-23): an address without its @ was once saved and nobody could sign in */}
         {em.email.trim() && !EMAIL_OK(em.email) && <div className="em-warn" role="alert">⚠️ That doesn't look like a valid email address. It needs an @ and a domain, like name@example.com.</div>}
@@ -343,7 +343,7 @@ export function SettingsView({ user, onProfileChange }) {
           </div>
         )}
 
-        <label className="u-font-size-13px u-color-9fb3b0 u-display-block u-margin-top-18px">🔑 Change password</label>
+        <label className="u-font-size-13px u-color-muted u-display-block u-margin-top-18px">🔑 Change password</label>
         <PasswordInput wrapClassName="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" value={pw.current} onChange={e => setPw({ ...pw, current: e.target.value })} placeholder="Current password" />
         <PasswordInput wrapClassName="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" checklist value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} placeholder="New password" />
         <button className="refresh u-margin-top-8px" onClick={savePw}>Change password</button>

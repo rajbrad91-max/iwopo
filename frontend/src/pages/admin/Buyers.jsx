@@ -114,7 +114,7 @@ function VendorDrawer({ vendorId, onClose }) {
               : d.services.map(s => (
                 <div className="u-display-flex u-justify-content-space-between u-padding-6px-0 u-border-bottom-1px-solid-line u-font-size-13_5px" key={s.id}>
                   <span>{s.icon} {s.name}</span>
-                  <span style={{ color: s.enabled ? 'var(--green,#4ade80)' : 'var(--muted)' }}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
+                  <span style={{ color: s.enabled ? 'var(--green)' : 'var(--muted)' }}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
                 </div>
               ))}
 
@@ -396,7 +396,7 @@ export function BuyersView({ vendors, overview, onChanged }) {
  */
 function StorageCell({ s }) {
   const pct = Math.min(100, s.percent ?? 0);
-  const tone = pct >= 95 ? '#f87171' : pct >= 80 ? '#fbbf24' : '#2dd4bf';
+  const tone = pct >= 95 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--teal)';
   return (
     <div className="sa-store" title={`${fmtBytes(s.used_bytes)} of ${fmtMb(s.limit_mb)} — limit from ${s.limit_source}`}>
       <div className="sa-store-bar"><span style={{ width: pct + '%', background: tone }} /></div>

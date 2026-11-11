@@ -56,7 +56,7 @@ export function PackagesView() {
       <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-12px">
         <button className="refresh" onClick={() => setSelTpl(null)}>← All templates</button>
         {selTpl.packages.length < 3 && (
-          <button className="refresh u-background-2dd4bf u-color-06231f" onClick={() => addPkg(selTpl.id)}>+ Add Package</button>
+          <button className="refresh u-background-teal u-color-acc-ink" onClick={() => addPkg(selTpl.id)}>+ Add Package</button>
         )}
       </div>
       <h2 className="u-margin-0-0-12px">📁 {selTpl.name}</h2>
@@ -73,7 +73,7 @@ export function PackagesView() {
     <div className="u-max-width-720px">
       <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-12px">
         <div className="u-color-muted u-font-size-13px">📁 Up to 6 event templates · 📦 3 packages each</div>
-        {tpls.length < 6 && <button className="refresh u-background-2dd4bf u-color-06231f" onClick={addTpl}>+ Add Template</button>}
+        {tpls.length < 6 && <button className="refresh u-background-teal u-color-acc-ink" onClick={addTpl}>+ Add Template</button>}
       </div>
       {msg && <div className="err-banner">{msg}</div>}
       <div className="u-display-grid u-grid-template-columns-repeat-auto-fill-minmax-210px-1fr u-gap-14px">
@@ -140,7 +140,7 @@ function PkgCard({ pkg, onSaved, onDelete }) {
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-55pct u-font-weight-700 u-font-size-16px" value={f.name} onChange={e => set('name', e.target.value)} />
         <div className="u-display-flex u-gap-8px u-align-items-center">
           {pkg.is_default && <span className="badge active">Default</span>}
-          {saved && <span className="u-font-size-12px u-color-4ade80">{saved}</span>}
+          {saved && <span className="u-font-size-12px u-color-green">{saved}</span>}
           {!pkg.is_default && <button className="refresh" onClick={onDelete}>🗑️</button>}
         </div>
       </div>
@@ -163,7 +163,7 @@ function PkgCard({ pkg, onSaved, onDelete }) {
       <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-12px">📝 Inclusions (your own items)</label>
       <div className="u-display-flex u-flex-wrap-wrap u-gap-6px u-margin-6px-0">
         {f.inclusions.map((inc, i) => (
-          <span className="u-background-2dd4bf18 u-border-1px-solid-2dd4bf44 u-color-2dd4bf u-padding-4px-10px u-border-radius-16px u-font-size-12px" key={i}>
+          <span className="u-background-teal-soft u-border-teal-faint u-color-teal u-padding-4px-10px u-border-radius-16px u-font-size-12px" key={i}>
             {inc} <span className="u-cursor-pointer u-margin-left-4px" onClick={() => rmInc(i)}>✕</span>
           </span>
         ))}
@@ -175,7 +175,7 @@ function PkgCard({ pkg, onSaved, onDelete }) {
         <button className="refresh" onClick={addInc}>+ Add</button>
       </div>
 
-      <button className="refresh u-margin-top-14px u-width-100pct u-background-2dd4bf u-color-06231f" onClick={save}>💾 Save package</button>
+      <button className="refresh u-margin-top-14px u-width-100pct u-background-teal u-color-acc-ink" onClick={save}>💾 Save package</button>
     </div>
   );
 }
