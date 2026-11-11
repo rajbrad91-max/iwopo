@@ -256,6 +256,9 @@
 .cell-check { cursor: pointer; }
 .row-clickable { cursor: pointer; }
 .lead-check { accent-color: #2dd4bf; pointer-events: none; }
+/* ☑️ select every lead shown (delete mode): in the header on a computer; the bar above the cards shows on phones only */
+.lead-check-all { width: 16px; height: 16px; margin: 0; accent-color: #2dd4bf; cursor: pointer; }
+.lead-selall-bar { display: none; align-items: center; gap: 8px; margin: 0 0 8px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text); font-size: 13.5px; font-weight: 600; cursor: pointer; }
 .lead-restore { cursor: pointer; color: #2dd4bf; font-size: 12px; }
 
 /* 📏 Leads table columns (desktop, 2026-10-11).
@@ -294,6 +297,7 @@
 @media (max-width: 720px) {
   .leads-table, .leads-table tbody, .leads-table tr { display: block; width: 100%; }
   .leads-table thead { display: none; }
+  .lead-selall-bar { display: flex; }   /* the header (and its select-all box) is hidden here */
 
   .leads-table tr {
     position: relative;

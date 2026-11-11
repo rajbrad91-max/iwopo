@@ -3154,6 +3154,19 @@ function LeadsView({ routeLead, onOpenLead }) {
   // column read backwards. Built from the full list, not the visible rows, so
   // filtering or searching never renumbers what's left.
   const seq = new Map(leads.map((l, i) => [l.id, i + 1]));
+
+  // ☑️ Select every lead shown — this tab (Active or History) after the search, never a lead out of sight (Raj,
+  // 2026-11-11). One box, in the table header on a computer and above the cards on a phone. Bookings has none.
+  const allShown = shown.length > 0 && shown.every(l => checked.includes(l.id));
+  const someShown = !allShown && shown.some(l => checked.includes(l.id));
+  function toggleAllShown() {
+    const ids = shown.map(l => l.id);
+    setChecked(c => (allShown ? c.filter(id => !ids.includes(id)) : [...new Set([...c, ...ids])]));
+  }
+  const selectAllBox = (
+    <input type="checkbox" className="lead-check-all" checked={allShown} onChange={toggleAllShown}
+      ref={el => { if (el) el.indeterminate = someShown; }} aria-label={`Select all ${shown.length} leads shown`} />
+  );
   const seqOf = (id) => seq.get(id) ?? '—';
   const TILES = [
     ['all', '📋', 'Total Leads'],
@@ -3243,9 +3256,10 @@ function LeadsView({ routeLead, onOpenLead }) {
         />
       )}
 
+      {selectMode && shown.length > 0 && <label className="lead-selall-bar">{selectAllBox} Select all {shown.length}</label>}
       <div className="table-wrap">
         <table className="leads-table">
-          <thead><tr>{selectMode && <th className="col-check"></th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th className="col-actions">Actions</th></tr></thead>
+          <thead><tr>{selectMode && <th className="col-check">{shown.length > 0 && selectAllBox}</th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Location</th><th>Packages</th><th>Status</th><th className="col-actions">Actions</th></tr></thead>
           <tbody>
             {loading ? (
               <tr><td colSpan="9" className="empty">Loading…</td></tr>
