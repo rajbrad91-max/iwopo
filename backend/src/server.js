@@ -86,6 +86,7 @@ import { sweepInactiveFree } from './lib/inactiveFree.js';
 import helpVideosRouter from './routes/helpVideos.js';
 import clientLinksRoutes from './routes/clientLinks.js';
 import { vendorPage } from './lib/vendorPage.js';
+import { noteFailure } from './lib/noteFailure.js';
 
 dotenv.config();
 
@@ -133,7 +134,7 @@ async function refreshVendorOrigins() {
     const next = new Set();
     for (const r of rows) { next.add('https://' + r.custom_domain); next.add('https://www.' + r.custom_domain); }
     vendorOrigins = next;
-  } catch { /* keep the previous list rather than locking everyone out */ }
+  } catch (e) { noteFailure('refresh the list of vendors’ own domains', e); /* keep the previous list rather than locking everyone out */ }
 }
 
 /**

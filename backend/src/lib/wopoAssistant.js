@@ -10,6 +10,7 @@ import { notify } from '../routes/notifications.js';
 import { TRADE_WORDS, PHOTO_VIDEO_TRADES } from './professions.js';
 import { getFeatures } from './entitlements.js';
 import { currentPlan } from './billing.js';
+import { noteFailure } from './noteFailure.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 /* 🤖 The AI model when Super Admin hasn't chosen one (Raj, 2026-11-10: the cheaper model — on Sonnet 4.6 a Studio
@@ -374,7 +375,7 @@ async function nameSession(vendorId, session, name) {
       where: { vendor_id: Number(vendorId), session },   // 🔒 tenancy on the write
       data: { visitor_name: n },
     });
-  } catch { /* naming is a nicety — never break the chat over it */ }
+  } catch (e) { noteFailure('Wopo chat title', e); /* naming is a nicety — never break the chat over it */ }
 }
 
 /** Record token usage + cost for this vendor, at the price of the model that answered. */
@@ -401,7 +402,7 @@ async function saveTranscript(vendorId, session, userText, botText) {
         { vendor_id: Number(vendorId), session, role: 'assistant', content: botText },
       ],
     });
-  } catch { /* never break the chat over a transcript write */ }
+  } catch (e) { noteFailure('Wopo chat transcript', e); /* never break the chat over a transcript write */ }
 }
 
 /** 🗑️ Delete transcripts older than 30 days (called on a timer). */

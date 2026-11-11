@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { getAllSettings } from '../lib/settings.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
+import { noteFailure } from '../lib/noteFailure.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 
 const router = express.Router();
@@ -293,7 +294,7 @@ export async function notifyNewLead(lead) {
       subject: `🎉 New inquiry from ${lead.name || 'a client'}`,
       text: `You have a new lead!\n\nName: ${lead.name}\nEmail: ${lead.email}\nEvent: ${lead.event_type || '-'}\nDate: ${lead.event_date || '-'}\n\nLog in to view: ${process.env.APP_URL || 'https://iwopo.com'}`,
     });
-  } catch { /* never break lead creation over email */ }
+  } catch (e) { noteFailure('new-lead alert email', e); /* never break lead creation over email */ }
 }
 
 // 🏢 platform transporter (uses env PLATFORM_SMTP_* — set before launch)

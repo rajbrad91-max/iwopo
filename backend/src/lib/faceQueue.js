@@ -22,6 +22,7 @@ import { indexAlbumAWS, groupAlbumFacesAWS } from './faceAWSIndex.js';
 import * as objects from './objectStore.js';
 import { withLocalFile, galleryKeyFromRel } from './localFile.js';
 import { quiet } from './quiet.js';
+import { noteFailure } from './noteFailure.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -103,7 +104,7 @@ async function resolveAlbumEngine(albumId) {
       where: { id: Number(albumId), face_engine_lock: null },
       data: { face_engine_lock: engine },
     });
-  } catch { /* best effort */ }
+  } catch (e) { noteFailure('remember the album’s face engine', e); /* best effort */ }
   return engine;
 }
 

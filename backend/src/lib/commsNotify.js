@@ -16,6 +16,7 @@
 import prisma from '../config/prisma.js';
 import privateDb from '../config/privateDb.js';
 import { notifyPrivate } from './privateNotify.js';
+import { noteFailure } from './noteFailure.js';
 
 const FRESH_MS = 15 * 60_000;
 const MISSED = ['missed', 'no-answer', 'busy', 'failed', 'canceled'];
@@ -58,5 +59,5 @@ export async function announce(vendorId, row, onlyLine = null) {
     const title = isText ? `💬 New text from ${who}` : `📞 Missed call from ${who}`;
     const body = isText ? String(row.body || '').slice(0, 140) : null;
     await notifyPrivate(vendorId, title, body, 'comms', { type: 'comms', id: Number(ev.id) });
-  } catch { /* a notification must never break storing the call */ }
+  } catch (e) { noteFailure('call/text notification', e); /* a notification must never break storing the call */ }
 }

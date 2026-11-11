@@ -24,6 +24,7 @@ function vid(req) {
 import { pushToVendor } from '../lib/agentPush.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
+import { noteFailure } from '../lib/noteFailure.js';
 
 export async function notify(vendorId, title, body, type = 'info', link = null) {
   try {
@@ -37,7 +38,7 @@ export async function notify(vendorId, title, body, type = 'info', link = null) 
         link_id: link?.id != null ? Number(link.id) : null,
       },
     });
-  } catch { /* never break main flow */ }
+  } catch (e) { noteFailure('panel notification', e); /* never break main flow */ }
   // 🔔 also as a pop-up on the vendor's devices (AI Agent, private feature)
   pushToVendor(vendorId, title, body).catch(quiet('notifications · pushToVendor'));
 }

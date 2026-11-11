@@ -19,6 +19,7 @@ import {
 import { portraitScore } from './portraitScore.js';
 import * as objects from './objectStore.js';
 import { withLocalFile, galleryKeyFromRel } from './localFile.js';
+import { noteFailure } from './noteFailure.js';
 
 const ROOT = GALLERIES_ROOT;
 const MATCH_THRESHOLD = 80;   // AWS similarity %, same as PerfectPoses
@@ -242,6 +243,6 @@ export async function forgetPhotoFacesAWS(albumId, photoId) {
   if (!rows.length) return;
   // remove them from the Rekognition collection so AWS stops holding faces
   // whose photo no longer exists
-  try { await deleteFaces(albumId, rows.map(r => r.rekognition_face_id)); } catch { /* best effort */ }
+  try { await deleteFaces(albumId, rows.map(r => r.rekognition_face_id)); } catch (e) { noteFailure('remove an album’s faces from AWS', e); /* best effort */ }
   await prisma.album_faces.deleteMany({ where: { album_id: Number(albumId), photo_id: Number(photoId) } });
 }

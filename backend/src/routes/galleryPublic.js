@@ -32,6 +32,7 @@ import { recordDownload, markIfAllDownloaded } from '../lib/galleryDownloads.js'
 import { tellEditors } from '../lib/shoots.js';
 import { sendAsVendor } from './email.js';
 import { quiet } from '../lib/quiet.js';
+import { noteFailure } from '../lib/noteFailure.js';
 
 /* A guest uploads a selfie here with no account and no token beyond the album
    link, so this is the one upload an anonymous caller can reach. It had no size
@@ -813,7 +814,7 @@ router.delete('/:token/photo/:photoId', limit({ name: 'gallery-photo-remove', ma
     if (!p) return res.status(404).json({ error: 'Not found' });
     // its faces leave the album's Rekognition collection first — that needs the
     // rows that deleting the photo would cascade away
-    try { await forgetPhotoFacesAWS(a.id, Number(req.params.photoId)); } catch { /* best effort */ }
+    try { await forgetPhotoFacesAWS(a.id, Number(req.params.photoId)); } catch (e) { noteFailure('remove a client-deleted photo’s faces from AWS', e); /* best effort */ }
     await prisma.photos.deleteMany({ where });
     /* Every tier from BOTH places. This route only removed the local copy, so
        a photo a couple's admin deleted stayed in R2 for ever — invisible, and

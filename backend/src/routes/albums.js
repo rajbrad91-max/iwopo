@@ -33,6 +33,7 @@ import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { downloadLog } from '../lib/galleryDownloads.js';
+import { noteFailure } from '../lib/noteFailure.js';
 
 const router = express.Router();
 const ROOT = GALLERIES_ROOT;
@@ -795,7 +796,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     for (const x of ids) {
       // ☁️ tear down the album's Rekognition collection so AWS isn't left holding
       // face data (and billing for it) after the album is gone
-      try { await deleteCollection(x); } catch { /* best effort */ }
+      try { await deleteCollection(x); } catch (e) { noteFailure('remove an album’s AWS face collection', e); /* best effort */ }
       // remove the album's entire storage folder (all photos + tiers) from disk
       try { fs.rmSync(path.join(ROOT, String(v), String(x)), { recursive: true, force: true }); } catch { /* folder already gone — fine */ }
     }
@@ -1451,7 +1452,7 @@ router.delete('/:id/photos/:photoId', requireAuth, async (req, res) => {
 
     // ☁️ drop this photo's faces from the album's Rekognition collection too,
     // otherwise AWS keeps storing faces whose photo no longer exists
-    try { await forgetPhotoFacesAWS(req.params.id, req.params.photoId); } catch { /* best effort */ }
+    try { await forgetPhotoFacesAWS(req.params.id, req.params.photoId); } catch (e) { noteFailure('remove a deleted photo’s faces from AWS', e); /* best effort */ }
 
     await prisma.photos.deleteMany({ where });
 
