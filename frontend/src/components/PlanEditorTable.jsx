@@ -184,7 +184,7 @@ export default function PlanEditorTable({ onSaved }) {
                       <>
                         <span className="pt-name">{p.name}</span>
                         <span className="pt-tag">{p.tagline}</span>
-                        <span className="pt-price"><span className="pt-cur">{pr.cur}</span><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
+                        <span className="pt-price"><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
                         <span className="pt-note">{p.price_annual ? `or ${usd(p.price_annual)}/yr` : (pr.sub || ' ')}</span>
                         <span className="pt-trial">{p.trial_days > 0 ? `${p.trial_days}-day free trial` : '\u00A0'}</span>
                       </>

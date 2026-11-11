@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { usdRate, convert } from './localPrice.js';
+import { fixedPricesFor } from './regionalPrice.js';
 import { connectReady } from './stripeConnect.js';
 import { priceFor } from './addons.js';
 
@@ -55,8 +56,14 @@ function planLines(p, liveKeys, connect) {
   return lines;
 }
 
-/** All plans, in their order, as cards: prices, storage, chats, trial days, unlock keys and lines. */
-export async function planCards({ currency } = {}) {
+/** A plan's price where the visitor or vendor is — fixed in their currency, or the regional US-dollar price — or null
+ *  for the plan's own USD price (lib/regionalPrice.js) */
+const localPrice = (f, monthly) => (f && monthly > 0
+  ? { currency: f.currency, monthly: f.monthly, annual: f.annual, region: f.region, regional: f.region === 'USD-R' } : null);
+
+/** All plans, in their order, as cards: prices, storage, chats, trial days, unlock keys and lines. `country` picks the
+ *  fixed local prices (none: the plans' own USD prices, as Super Admin sees them). */
+export async function planCards({ country } = {}) {
   const [plans, live] = await Promise.all([
     prisma.plans.findMany({
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
@@ -66,7 +73,7 @@ export async function planCards({ currency } = {}) {
     prisma.services.findMany({ where: { feature_key: { not: null }, is_private: false, is_live: true }, select: { feature_key: true } }),
   ]);
   const liveKeys = new Set(live.map(s => s.feature_key));
-  const rate = await usdRate(currency);   // 🌍 the visitor's currency, as an estimate (lib/localPrice.js)
+  const fixed = await fixedPricesFor(country);   // 🌍 the fixed prices where they are (lib/regionalPrice.js)
   const connect = await connectReady();   // 💳 card payments are sold once Stripe Connect is set up
   return plans.map(p => {
     const monthly = Number(p.price_monthly);
@@ -75,7 +82,7 @@ export async function planCards({ currency } = {}) {
       id: p.id, key: p.code, code: p.code, name: p.name, tagline: p.tagline, icon: p.icon, sort_order: p.sort_order,
       price_monthly: monthly, price_annual: Number(p.price_annual ?? 0), storage_gb: p.storage_gb, chat_limit: p.chat_limit,
       trial_days: p.trial_days,                 // 🧪 Essential and Pro 30, Studio none
-      local: rate && monthly > 0 ? { currency: String(currency).toUpperCase(), monthly: convert(monthly, rate), annual: convert(Number(p.price_annual ?? 0), rate) } : null,
+      local: localPrice(fixed.get(p.id), monthly),
       features: p.plan_features.map(f => f.feature_key).filter(k => liveKeys.has(k) || k === 'custom_domain'),
       lines,
       // the shape the home page and Super Admin already render: a line is an "included" item; coming ones say so
@@ -96,8 +103,10 @@ const GROUPS = [
   ['Deliver your work', [['galleries', FEATURE_LABEL.galleries], ['fileflyer', FEATURE_LABEL.fileflyer], ['crew', FEATURE_LABEL.crew]]],
   ['Storage & AI', [['storage', 'Pooled storage — photos, videos & large files'], ['capacity', 'Roughly what fits', 1], ['extra_storage', 'Add extra storage anytime'], ['chatbot', `${FEATURE_LABEL.chatbot} chats a month`]]],
 ];
-export async function planCompare({ currency } = {}) {
-  const cards = await planCards({ currency });
+export async function planCompare({ country } = {}) {
+  const cards = await planCards({ country });
+  // add-ons are shown in the currency the plans are shown in; their fixed prices are not decided yet, so today's rate
+  const currency = cards.find(c => c.local)?.local.currency || 'USD';
   const rate = await usdRate(currency);
   const money = (usd) => {   // whole amounts without cents ($5), others with both digits ($7.50)
     const v = rate ? convert(usd, rate) : Number(usd);

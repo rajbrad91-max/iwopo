@@ -12,12 +12,11 @@ const date = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: 'lon
  * Choosing a plan opens Stripe Checkout (in the vendor's own currency); billing starts when the free trial ends, so
  * choosing early never costs free days. Once subscribed, "Manage billing" opens Stripe's portal for the card, plan,
  * monthly ↔ yearly and cancelling. Storage is shown as before.
- * The plans are the shared PlanTable (2026-11-11) — the same table, prices and rows as the pricing page.
+ * The plans are the shared PlanTable (2026-11-11) — the pricing page's table and rows, at the vendor's own prices.
  */
 export default function PlansView() {
   const [d, setD] = useState(null);
   const [b, setB] = useState(null);
-  const [table, setTable] = useState(null);   // 📊 the plans as the pricing page shows them (GET /api/packages)
   const [cycle, setCycle] = useState('monthly');
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
@@ -26,11 +25,8 @@ export default function PlansView() {
   const [back] = useState(() => new URLSearchParams(window.location.search).get('billing'));
   useEffect(() => { if (back) window.history.replaceState(null, '', window.location.pathname); }, [back]);
 
-  const load = () => Promise.all([api.myPlans(), api.billing(), api.packages()])
-    .then(([plans, billing, pkgs]) => {
-      setD(plans); setB(billing); if (billing.subscription?.cycle) setCycle(billing.subscription.cycle);
-      setTable({ plans: (pkgs.packages || []).filter(p => Number(p.price_monthly) > 0), groups: pkgs.compare || [], notes: pkgs.compare_notes || [] });
-    })
+  const load = () => Promise.all([api.myPlans(), api.billing()])
+    .then(([plans, billing]) => { setD(plans); setB(billing); if (billing.subscription?.cycle) setCycle(billing.subscription.cycle); })
     .catch(e => setErr(e.message));
   useEffect(() => {
     load();
@@ -40,7 +36,9 @@ export default function PlansView() {
   }, [back]);
 
   if (err) return <div className="pl-quiet">Could not load plans — {err}</div>;
-  if (!d || !b || !table) return <div className="pl-quiet">Loading…</div>;
+  if (!d || !b) return <div className="pl-quiet">Loading…</div>;
+  // 📊 the pricing table at this vendor's own prices — the same country checkout charges in (GET /api/billing)
+  const table = b.table;
 
   const pct = Math.min(100, d.current.percent ?? 0);
   const gb = (x) => (Number(x) / 1073741824).toFixed(1);
@@ -113,7 +111,7 @@ export default function PlansView() {
       <PlanTable plans={table.plans} groups={table.groups} notes={table.notes} priceOf={(p) => planPriceOf(p, cycle)}
         ctaFor={ctaFor} currentCode={currentCode} showTrial={false} corner={cycleSwitch} />
       {err && <p className="pl-banner is-bad">⚠️ {err}</p>}
-      <p className="pl-foot">Prices are set in US dollars and shown in your currency as an estimate (≈). Checkout charges the exact amount in your currency, or in USD if you choose. Cancel any time; you keep your plan until the end of the period.</p>
+      <p className="pl-foot">Prices are fixed in your country’s currency (in US dollars where iwopo has none) and shown before tax. Cancel any time; you keep your plan until the end of the period.</p>
     </div>
   );
 }

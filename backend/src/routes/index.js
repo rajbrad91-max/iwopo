@@ -20,7 +20,7 @@ import { adminOverview } from '../lib/adminOverview.js';
 import { planCards, planCompare } from '../lib/planCatalog.js';
 import { regionEconomics } from '../lib/planEconomics.js';
 import { syncOffer } from '../lib/stripeCoupons.js';
-import { visitorCurrency } from '../lib/localPrice.js';
+import { visitorCountry } from '../lib/localPrice.js';
 import { stripe, stripeReady } from '../lib/stripe.js';
 import { myReferrals } from '../lib/referrals.js';
 import * as objects from '../lib/objectStore.js';
@@ -398,8 +398,10 @@ router.get('/services', async (req, res) => {
 // 📋 Public: the plans as cards — the ONE list (lib/planCatalog.js), in USD (Raj, 2026-11-06)
 router.get('/packages', async (req, res) => {
   try {
-    const asked = String(req.query.currency || '').toUpperCase();   // an explicit currency (Super Admin asks for USD) beats the visitor's country
-    const { plans, groups, notes } = await planCompare({ currency: /^[A-Z]{3}$/.test(asked) ? asked : visitorCurrency(req) });
+    // 🌍 the visitor's country decides the fixed prices shown (lib/regionalPrice.js); ?currency=USD (Super Admin's
+    //    preview) shows the plans' own USD prices
+    const usdOnly = String(req.query.currency || '').toUpperCase() === 'USD';
+    const { plans, groups, notes } = await planCompare({ country: usdOnly ? null : visitorCountry(req) });
     res.json({ packages: plans, compare: groups, compare_notes: notes });   // 📊 the cards, and the same plans as a table
   } catch (e) { serverError(res, e); }
 });

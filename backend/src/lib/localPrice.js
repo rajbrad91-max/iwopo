@@ -4,10 +4,10 @@ import { clientIp } from './clientIp.js';
 import { COUNTRY_CURRENCY } from './currencies.js';
 
 /**
- * 🌍 Prices in the subscriber's own currency (Raj, 2026-11-06). iwopo's prices are set in USD; a visitor sees them in
- * their currency as an estimate (≈), and Stripe's Adaptive Pricing charges the exact local amount at checkout — so
- * iwopo is still paid in USD. The visitor's currency comes from their country (IP); the rates are fetched once a day
- * and the last good set is kept, so a rate feed that is down never breaks the pricing page.
+ * 🌍 The visitor's country and currency, and today's exchange rates (Raj, 2026-11-06). Plan prices are FIXED per
+ * country since 2026-11-11 (lib/regionalPrice.js); these rates now serve the estimates that remain — add-on prices —
+ * and Super Admin's profit figures. The country comes from the visitor's IP; the rates are fetched once a day and the
+ * last good set is kept, so a rate feed that is down never breaks a page.
  */
 const FEED = 'https://open.er-api.com/v6/latest/USD';
 const DAY = 86_400_000;
@@ -35,10 +35,15 @@ async function loadRates() {
   return loading;
 }
 
+/** The visitor's country (two letters, from their IP), or null when unknown. */
+export function visitorCountry(req) {
+  return geoip.lookup(clientIp(req))?.country || null;
+}
+
 /** The visitor's currency, from their country — USD when unknown. */
 export function visitorCurrency(req) {
-  const g = geoip.lookup(clientIp(req));
-  return (g?.country && COUNTRY_CURRENCY[g.country]) || 'USD';
+  const c = visitorCountry(req);
+  return (c && COUNTRY_CURRENCY[c]) || 'USD';
 }
 
 /** How many of `currency` one US dollar buys today, or null when unknown (or USD itself). */

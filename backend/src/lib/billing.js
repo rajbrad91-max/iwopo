@@ -100,12 +100,18 @@ export async function currentPlan(vendorId) {
   return { plan: await byCode('free'), reason: 'free', access };
 }
 
-/** The Stripe price for a plan and cycle, created once per amount and found again by its lookup key. */
-export async function stripePriceFor(plan, cycle) {
-  const amount = cycle === 'annual' ? Number(plan.price_annual ?? annualOf(plan.price_monthly)) : Number(plan.price_monthly);
+/**
+ * The Stripe price for a plan and cycle, created once per currency and amount and found again by its lookup key.
+ * `local` is the plan's fixed price where the vendor is (lib/regionalPrice.js) — charged in that currency, exactly —
+ * or null for the plan's own USD price. USD lookup keys are unchanged, so the prices made before stay in use.
+ */
+export async function stripePriceFor(plan, cycle, local = null) {
+  const usd = cycle === 'annual' ? Number(plan.price_annual ?? annualOf(plan.price_monthly)) : Number(plan.price_monthly);
+  const amount = local ? (cycle === 'annual' ? local.annual : local.monthly) : usd;
+  const currency = String(local?.currency || 'USD').toLowerCase();
   const cents = Math.round(amount * 100);
   if (!(cents > 0)) throw new Error('This plan has no price yet.');
-  const lookup = `iwopo_${plan.code}_${cycle}_${cents}`;
+  const lookup = currency === 'usd' ? `iwopo_${plan.code}_${cycle}_${cents}` : `iwopo_${plan.code}_${cycle}_${currency}_${cents}`;
   const found = await stripe('GET', '/prices', { lookup_keys: [lookup], active: true, limit: 1 });
   if (found.data?.[0]) return found.data[0].id;
   let productId = plan.stripe_product_id;
@@ -115,8 +121,8 @@ export async function stripePriceFor(plan, cycle) {
     await prisma.plans.update({ where: { id: plan.id }, data: { stripe_product_id: productId } });
   }
   const price = await stripe('POST', '/prices', {
-    product: productId, currency: 'usd', unit_amount: cents, lookup_key: lookup, transfer_lookup_key: true,
-    recurring: { interval: cycle === 'annual' ? 'year' : 'month' }, metadata: { plan_id: plan.id, cycle },
+    product: productId, currency, unit_amount: cents, lookup_key: lookup, transfer_lookup_key: true,
+    recurring: { interval: cycle === 'annual' ? 'year' : 'month' }, metadata: { plan_id: plan.id, cycle, region: local?.region || 'USD' },
   }, { idempotencyKey: `price-${lookup}` });
   return price.id;
 }

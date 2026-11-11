@@ -18,9 +18,10 @@ import { billingAccess, paidSubscription, stripePriceFor, stripeCustomerFor, rec
 import { forgetHosts } from '../lib/vendorHosts.js';
 import { notify } from './notifications.js';
 import { serverError } from '../lib/httpError.js';
-import { planCards } from '../lib/planCatalog.js';
+import { planCompare } from '../lib/planCatalog.js';
 import { addonsFor, addAddon, removeAddon } from '../lib/addons.js';
-import { visitorCurrency } from '../lib/localPrice.js';
+import { visitorCurrency, visitorCountry } from '../lib/localPrice.js';
+import { fixedPrice, vendorCountry } from '../lib/regionalPrice.js';
 import { emailInvoice, invoiceSubscription } from '../lib/billingEmails.js';
 import { referralBonus, withBonus, settleCheckout, rewardReferrer } from '../lib/referrals.js';
 
@@ -82,15 +83,16 @@ billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' })
 const router = express.Router();
 router.use(requireAuth);
 const vendorOf = (req) => Number(req.user.vendor_id) || null;      // 🔒 from the token, never the request
+// 🌍 whose fixed prices a vendor sees AND is charged: their account's country, else where they are now (lib/regionalPrice.js)
+const billingCountry = async (v, req) => (await vendorCountry(v)) || visitorCountry(req);
 
 router.get('/', async (req, res) => {
   const v = vendorOf(req);
   if (!v) return res.status(400).json({ error: 'Not a vendor account' });
   try {
-    const [access, sub, plans] = await Promise.all([
-      billingAccess(v), paidSubscription(v),
-      planCards({ currency: visitorCurrency(req) }),
-    ]);
+    // 🌍 one country for what is shown here and what checkout charges (billingCountry)
+    const [access, sub, compare] = await Promise.all([billingAccess(v), paidSubscription(v), planCompare({ country: await billingCountry(v, req) })]);
+    const plans = compare.plans;
     const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
       marketing_opt_in: !!(await prisma.vendors.findUnique({ where: { id: v }, select: { marketing_opt_in: true } }))?.marketing_opt_in,   // 📬
@@ -107,6 +109,8 @@ router.get('/', async (req, res) => {
         id: p.id, code: p.code, name: p.name, icon: p.icon, tagline: p.tagline, storage_gb: p.storage_gb,
         monthly: p.price_monthly, annual: p.price_annual || annualOf(p.price_monthly), lines: p.lines, local: p.local,
       })),
+      // 📊 the pricing table at this vendor's own prices — Plans & Upgrades shows it (2026-11-11)
+      table: { plans: plans.filter(p => p.price_monthly > 0), groups: compare.groups, notes: compare.notes },
     });
   } catch (e) { serverError(res, e); }
 });
@@ -177,7 +181,8 @@ router.post('/checkout', async (req, res) => {
     const plan = await prisma.plans.findUnique({ where: { id: Number(req.body?.plan_id || pend?.pending_plan_id || 0) } });
     if (!plan) return res.status(404).json({ error: 'Choose a plan first.' });
     const cycle = (req.body?.cycle || pend?.pending_cycle) === 'annual' ? 'annual' : 'monthly';
-    const price = await stripePriceFor(plan, cycle);
+    const local = await fixedPrice(plan.id, await billingCountry(v, req));   // 🌍 the price the Plans page showed them
+    const price = await stripePriceFor(plan, cycle, local);
     // 🧪 the free trial carries over — capped by the chosen plan's own trial days; Studio (0) is charged from day one.
     //    Stripe needs at least 48 hours to schedule a trial end.
     const carried = carriedTrialEnd(vendor, plan);
@@ -192,8 +197,9 @@ router.post('/checkout', async (req, res) => {
       subscription_data: { trial_end, metadata: { vendor_id: v, plan_id: plan.id, cycle, ...refMeta } },
       metadata: { vendor_id: v, plan_id: plan.id, cycle },
       allow_promotion_codes: true,
-      // 🌍 charged in the subscriber's own currency (Stripe Adaptive Pricing — Raj, 2026-11-06); iwopo is paid in USD
-      adaptive_pricing: { enabled: true },
+      // 🌍 a fixed local price is charged exactly as set (Raj, 2026-11-11); a US-dollar price may still be shown in the
+      //    buyer's own currency by Stripe Adaptive Pricing, as before (2026-11-06)
+      adaptive_pricing: { enabled: !local || local.currency === 'USD' },
       // ⚖️ what they agree to, said where they pay (pages: /terms, /refund-policy)
       custom_text: { submit: { message: `By subscribing you agree to iwopo’s Terms of Service (${APP_URL}/terms). Cancel any time in Manage billing; payments are not refunded (${APP_URL}/refund-policy).` } },
       success_url: `${APP_URL}/panel?billing=done`,   // 👋 the dashboard, where the getting-started steps open

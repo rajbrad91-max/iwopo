@@ -11,18 +11,26 @@
 import { fmtMoney } from '../lib/api';
 import './plan-table.css';
 
-/** 🌍 A plan's price for the header: the visitor's own currency first (≈), the USD it is set in as the note. */
+/**
+ * 🌍 A plan's price for the header (2026-11-11): the fixed price where the visitor or vendor is — in their currency, or
+ * the regional US-dollar price — else the plan's own USD price. The server decides which (lib/regionalPrice.js);
+ * `big` is the whole price as one string ($19, CA$25) — one format everywhere. `sub` is a detail for Super Admin's
+ * editor only; clients and vendors are shown the price alone (Raj, 2026-11-11). `text` adds the period, for a line
+ * like the sign-up box's.
+ */
 export function planPriceOf(p, cycle = 'monthly') {
-  if (Number(p.price_monthly) === 0) return { cur: '$', big: '0', unit: '', sub: 'Free forever', note: true };
+  if (Number(p.price_monthly) === 0) return { big: '$0', unit: '', sub: 'Free forever', note: true, text: 'Free' };
   const annual = cycle === 'annual';
-  const usd = Number(annual ? p.price_annual : p.price_monthly);
-  const plain = (n) => Number(n).toFixed(2).replace(/\.00$/, '');
   const unit = annual ? '/yr' : '/mo';
   if (p.local) {
-    return { cur: '≈', big: fmtMoney(annual ? p.local.annual : p.local.monthly, { currency: p.local.currency }), unit,
-      sub: `US$${plain(usd)} · exact amount in your currency at checkout`, note: true };
+    const big = fmtMoney(annual ? p.local.annual : p.local.monthly, { currency: p.local.currency });
+    return { big, unit, note: true, text: `${big}${unit}`,
+      sub: p.local.regional ? 'Regional price, in US dollars' : `Fixed price in ${p.local.currency}` };
   }
-  return { cur: '$', big: plain(usd), unit, sub: annual ? `reg. $${plain(p.price_annual_regular || p.price_monthly * 12)}` : null };
+  const plain = (n) => Number(n).toFixed(2).replace(/\.00$/, '');
+  const usd = Number(annual ? p.price_annual : p.price_monthly);
+  return { big: `$${plain(usd)}`, unit, text: `$${plain(usd)}${unit}`,
+    sub: annual ? `reg. $${plain(p.price_annual_regular || p.price_monthly * 12)}` : null };
 }
 
 const cellView = (v) => (v === true
@@ -55,8 +63,7 @@ export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose
                   {mine ? <span className="pt-ribbon pt-mine">Your plan</span> : pop && <span className="pt-ribbon">Most popular</span>}
                   <span className="pt-name">{p.name}</span>
                   <span className="pt-tag">{p.tagline}</span>
-                  <span className="pt-price"><span className="pt-cur">{pr.cur}</span><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
-                  <span className="pt-note">{pr.sub || ' '}</span>
+                  <span className="pt-price pt-price-solo"><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
                   {/* 🚧 while sign-ups are paused, the table says so too — the server refuses anyway (lib/signups.js) */}
                   {cta && (
                     <button type="button" className={`pt-cta${pop && !cta.disabled ? ' is-solid' : ''}`} onClick={cta.onClick} disabled={cta.disabled}>

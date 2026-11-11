@@ -316,7 +316,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   const chosenPrice = chosen ? planPriceOf(chosen, chosen.cycle || cycle) : null;
   const buyLine = !chosen ? ''
     : Number(chosen.price_monthly) === 0 ? 'Free forever'
-    : `${chosenPrice.cur === '≈' ? `≈ ${chosenPrice.big}` : `$${chosenPrice.big}`}${chosenPrice.unit}`
+    : chosenPrice.text
       + (chosen.trial_days > 0 && trialOk ? ` · ${chosen.trial_days}-day free trial, nothing charged today` : ' · charged today, cancel anytime');
 
   return (
