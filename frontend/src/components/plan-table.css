@@ -27,6 +27,7 @@
 .pt-corner, .pt-feat { position: sticky; left: 0; z-index: 1; text-align: left; background: var(--card); }
 .pt-corner { z-index: 2; min-width: 250px; vertical-align: bottom !important; }
 .pt-corner-t { display: block; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 20px; color: var(--ink); letter-spacing: -0.01em; }
+.pt-corner-x { margin-top: 16px; font-family: inherit; }   /* the panel's billing switch, under the corner title */
 .pt-corner-s { display: block; margin-top: 6px; font-size: 13px; font-weight: 400; color: var(--gray); }
 .pt-plan { position: relative; min-width: 175px; }
 .pt-plan > span { display: block; }
@@ -40,6 +41,9 @@
 .pt .pt-cta { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--ink); background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s; }
 .pt .pt-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 20px -12px rgba(26, 18, 11, .45); }
 .pt .pt-cta.is-solid { border-color: transparent; background: var(--grad); color: #fff; }
+.pt .pt-cta:disabled { cursor: default; transform: none; box-shadow: none; border-color: var(--line); background: var(--bg); color: var(--gray); }   /* e.g. Current plan — a state, not an action */
+.pt-ribbon.pt-mine { background: var(--ink); color: #fff; }   /* the vendor's own plan, on Plans & Upgrades */
+.pt thead .is-mine { box-shadow: inset 0 3px 0 var(--ink); }
 .pt-trial { margin-top: 9px; font-size: 12px; font-weight: 600; color: var(--p-deep); }   /* the trial is a buying condition: by the button, not a feature row */
 .pt .is-pop { background: rgba(230, 92, 0, .045); }
 .pt thead .is-pop { box-shadow: inset 0 3px 0 var(--p); }

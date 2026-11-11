@@ -2,6 +2,11 @@
  * 📊 Every plan side by side (Raj, 2026-11-07). Rows come from the server's planCompare (lib/planCatalog.js) — the same
  * plans as everywhere else — so the table cannot promise what a plan does not give. Pro, the plan most vendors pick,
  * is softly highlighted. On a phone the table scrolls sideways with the feature names pinned.
+ * Used by the pricing page, the Super Admin preview and the vendor's Plans & Upgrades page (2026-11-11), which passes:
+ *   ctaFor(p)    → { label, onClick, disabled } for that plan's button, or null for none (the default: Choose <plan>)
+ *   currentCode  → the vendor's own plan, marked "Your plan" in place of the Most popular ribbon
+ *   showTrial    → false hides the trial line under the buttons (the panel says it once, above the table)
+ *   corner       → shown under "Compare plans" in the top-left cell (the panel's Monthly / Yearly switch)
  */
 import { fmtMoney } from '../lib/api';
 import './plan-table.css';
@@ -25,7 +30,7 @@ const cellView = (v) => (v === true
   : !v ? <span className="pt-no" aria-label="Not included">—</span>
   : <span className="pt-val">{v}</span>);
 
-export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose, open = true }) {
+export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose, open = true, ctaFor, currentCode, showTrial = true, corner }) {
   if (!plans.length) return null;
   return (
     <div className="pt-wrap pt-scope">
@@ -35,22 +40,30 @@ export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose
             <th scope="col" className="pt-corner">
               <span className="pt-corner-t">Compare plans</span>
               <span className="pt-corner-s">Everything each plan includes, side by side.</span>
+              {corner && <div className="pt-corner-x">{corner}</div>}
             </th>
             {plans.map(p => {
               const pr = priceOf(p);
               const pop = p.code === 'pro';
+              const mine = p.code === currentCode;
+              const cta = ctaFor ? ctaFor(p) : {
+                label: !open ? 'Opening soon' : Number(p.price_monthly) === 0 ? 'Start free' : `Choose ${p.name}`,
+                onClick: () => onChoose(p),
+              };
               return (
-                <th key={p.code} scope="col" className={`pt-plan${pop ? ' is-pop' : ''}`}>
-                  {pop && <span className="pt-ribbon">Most popular</span>}
+                <th key={p.code} scope="col" className={`pt-plan${pop ? ' is-pop' : ''}${mine ? ' is-mine' : ''}`}>
+                  {mine ? <span className="pt-ribbon pt-mine">Your plan</span> : pop && <span className="pt-ribbon">Most popular</span>}
                   <span className="pt-name">{p.name}</span>
                   <span className="pt-tag">{p.tagline}</span>
                   <span className="pt-price"><span className="pt-cur">{pr.cur}</span><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
                   <span className="pt-note">{pr.sub || ' '}</span>
                   {/* 🚧 while sign-ups are paused, the table says so too — the server refuses anyway (lib/signups.js) */}
-                  <button type="button" className={`pt-cta${pop ? ' is-solid' : ''}`} onClick={() => onChoose(p)}>
-                    {!open ? 'Opening soon' : Number(p.price_monthly) === 0 ? 'Start free' : `Choose ${p.name}`}
-                  </button>
-                  <span className="pt-trial">{p.trial_days > 0 ? `${p.trial_days}-day free trial` : '\u00A0'}</span>
+                  {cta && (
+                    <button type="button" className={`pt-cta${pop && !cta.disabled ? ' is-solid' : ''}`} onClick={cta.onClick} disabled={cta.disabled}>
+                      {cta.label}
+                    </button>
+                  )}
+                  {showTrial && <span className="pt-trial">{p.trial_days > 0 ? `${p.trial_days}-day free trial` : '\u00A0'}</span>}
                 </th>
               );
             })}
