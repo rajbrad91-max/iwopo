@@ -2,6 +2,18 @@ import { useState } from 'react';
 import './passwordInput.css';
 import { passwordChecklist } from '../lib/passwordRules';
 
+/* 👁️ Raj's pick (2026-11-11): a thin line eye to show the password, a closed eye with lashes to hide it again */
+const EyeOpen = () => (
+  <svg className="pw-eye-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const EyeClosed = () => (
+  <svg className="pw-eye-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M2 10c2.5 3.5 6 5.5 10 5.5S19.5 13.5 22 10" /><path d="M5 13.3 3.4 15.6M9 15.1l-.7 2.7M15 15.1l.7 2.7M19 13.3l1.6 2.3" />
+  </svg>
+);
+
 /**
  * Password field with a show/hide eye toggle.
  * Passes through any input props (value, onChange, placeholder, onKeyDown, className, style, autoFocus).
@@ -26,7 +38,7 @@ export default function PasswordInput({ className = '', style, wrapClassName = '
         aria-label={show ? 'Hide password' : 'Show password'}
         tabIndex={-1}
       >
-        {show ? '\u{1F648}' : '\u{1F441}\u{FE0F}'}
+        {show ? <EyeClosed /> : <EyeOpen />}
       </button>
     </div>
     {rules && (

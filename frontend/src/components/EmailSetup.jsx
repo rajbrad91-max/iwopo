@@ -23,7 +23,7 @@ const HELP = {
   smtp_user: 'Usually your full email address — the one you send from, like info@yourstudio.com.',
   smtp_pass: 'Not your normal sign-in password: an app password made just for iwopo. Gmail or Google Workspace: myaccount.google.com → Security → 2-Step Verification → App passwords → create one named “iwopo”, then paste the 16 letters here.',
   from_name: 'The name clients see in their inbox — usually your studio’s name.',
-  from_email: 'The address clients see and reply to. Usually the same as your username.',
+  from_email: 'The address clients see and reply to. Usually the same as your login email.',
   notify_email: 'Where iwopo emails you the moment a new inquiry arrives. Use the inbox you check most.',
 };
 
@@ -79,22 +79,22 @@ export default function EmailSetup() {
               </button>
               {on && mode === 'smtp' && (
                 <div className="es-mode-body">
-                  <Field id="smtp_host" label="Server">
+                  <Field id="smtp_host" label="Sending server (SMTP)">
                     <input id="es-smtp_host" className="es-input" placeholder="smtp.gmail.com" autoComplete="off" value={s.smtp_host || ''} onChange={set('smtp_host')} />
                   </Field>
-                  <Field id="smtp_port" label="Port">
+                  <Field id="smtp_port" label="Server port">
                     <input id="es-smtp_port" className="es-input" type="number" placeholder="587" autoComplete="off" value={s.smtp_port || 587} onChange={e => setS({ ...s, smtp_port: Number(e.target.value) })} />
                   </Field>
-                  <Field id="smtp_user" label="Username">
+                  <Field id="smtp_user" label="Login email">
                     <input id="es-smtp_user" className="es-input" placeholder="info@yourstudio.com" autoComplete="off" value={s.smtp_user || ''} onChange={set('smtp_user')} />
                   </Field>
-                  <Field id="smtp_pass" label="Password">
+                  <Field id="smtp_pass" label="App password">
                     <PasswordInput id="es-smtp_pass" wrapClassName="es-pw" className="es-input" placeholder="App password" autoComplete="new-password" value={s.smtp_pass || ''} onChange={set('smtp_pass')} />
                   </Field>
-                  <Field id="from_name" label="From name">
+                  <Field id="from_name" label="Sender name">
                     <input id="es-from_name" className="es-input" placeholder="Sunny Studios" autoComplete="off" value={s.from_name || ''} onChange={set('from_name')} />
                   </Field>
-                  <Field id="from_email" label="From email">
+                  <Field id="from_email" label="Sender email">
                     <input id="es-from_email" className="es-input" placeholder="info@yourstudio.com" autoComplete="off" value={s.from_email || ''} onChange={set('from_email')} />
                   </Field>
                 </div>
