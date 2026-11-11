@@ -30,10 +30,11 @@ const HELP = {
   notify_email: 'Where iwopo emails you the moment a new inquiry arrives. Use the inbox you check most.',
 };
 
-/** a title with a "?" that explains the box — shown on hover, on tap and on keyboard focus */
-function Field({ id, label, children }) {
+/** a title with a "?" that explains the box — shown on hover, on tap and on keyboard focus; `missing` outlines the box
+ *  the server said is needed */
+function Field({ id, label, missing, children }) {
   return (
-    <div className="es-field">
+    <div className={`es-field${missing === id ? ' is-missing' : ''}`}>
       <div className="es-label-row">
         <label className="es-label" htmlFor={`es-${id}`}>{label}</label>
         <span className="es-help">
@@ -49,23 +50,27 @@ function Field({ id, label, children }) {
 export default function EmailSetup() {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
+  const [missing, setMissing] = useState('');   // the box the server named as needed (routes/email.js)
 
   useEffect(() => {
     api.emailSettings().then(d => setS(d.settings)).catch(() => setS({ mode: 'platform' }));
   }, []);
 
+  // the box the server named: brought into view and ready to type in
+  useEffect(() => { if (missing) document.getElementById(`es-${missing}`)?.focus(); }, [missing]);
+
   async function save() {
-    setMsg('');
+    setMsg(''); setMissing('');
     try { await api.saveEmailSettings(s); setMsg('✅ Saved'); setTimeout(() => setMsg(''), 1500); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
+    catch (e) { setMsg('⚠️ ' + e.message); setMissing(e.data?.field || ''); }
   }
 
   if (!s) return null;
-  const set = (k) => (e) => setS({ ...s, [k]: e.target.value });
+  const set = (k) => (e) => { setS({ ...s, [k]: e.target.value }); if (missing === k) setMissing(''); };
 
   return (
     <div className="table-wrap es">
-      <h2 className="es-title">📧 Email sending {msg && <span className="es-msg">{msg}</span>}</h2>
+      <h2 className="es-title">📧 Email sending</h2>
 
       <p className="es-hint">How do you want to email clients?</p>
       <div className="es-modes">
@@ -82,22 +87,22 @@ export default function EmailSetup() {
               </button>
               {on && mode === 'smtp' && (
                 <div className="es-mode-body">
-                  <Field id="smtp_host" label="Sending server (SMTP)">
+                  <Field missing={missing} id="smtp_host" label="Sending server (SMTP)">
                     <input id="es-smtp_host" className="es-input" placeholder="smtp.gmail.com" autoComplete="off" value={s.smtp_host || ''} onChange={set('smtp_host')} />
                   </Field>
-                  <Field id="smtp_port" label="Server port">
+                  <Field missing={missing} id="smtp_port" label="Server port">
                     <input id="es-smtp_port" className="es-input" type="number" placeholder="587" autoComplete="off" value={s.smtp_port || 587} onChange={e => setS({ ...s, smtp_port: Number(e.target.value) })} />
                   </Field>
-                  <Field id="smtp_user" label="Login email">
+                  <Field missing={missing} id="smtp_user" label="Login email">
                     <input id="es-smtp_user" className="es-input" placeholder="info@yourstudio.com" autoComplete="off" value={s.smtp_user || ''} onChange={set('smtp_user')} />
                   </Field>
-                  <Field id="smtp_pass" label="App password">
+                  <Field missing={missing} id="smtp_pass" label="App password">
                     <PasswordInput id="es-smtp_pass" wrapClassName="es-pw" className="es-input" placeholder="App password" autoComplete="new-password" revealable={!!s.smtp_pass && s.smtp_pass !== SAVED_PASSWORD} value={s.smtp_pass || ''} onChange={set('smtp_pass')} />
                   </Field>
-                  <Field id="from_name" label="Sender name">
+                  <Field missing={missing} id="from_name" label="Sender name">
                     <input id="es-from_name" className="es-input" placeholder="Sunny Studios" autoComplete="off" value={s.from_name || ''} onChange={set('from_name')} />
                   </Field>
-                  <Field id="from_email" label="Sender email">
+                  <Field missing={missing} id="from_email" label="Sender email">
                     <input id="es-from_email" className="es-input" placeholder="info@yourstudio.com" autoComplete="off" value={s.from_email || ''} onChange={set('from_email')} />
                   </Field>
                 </div>
@@ -108,11 +113,12 @@ export default function EmailSetup() {
       </div>
 
       <div className="es-alerts">
-        <Field id="notify_email" label="📬 New-lead alerts go to">
+        <Field missing={missing} id="notify_email" label="📬 New-lead alerts go to">
           <input id="es-notify_email" className="es-input" type="email" placeholder="you@email.com" value={s.notify_email || ''} onChange={set('notify_email')} />
         </Field>
       </div>
 
+      {msg && <p className={`es-msg${msg.startsWith('⚠') ? ' is-bad' : ''}`} role="status">{msg}</p>}
       <button type="button" className="refresh set-primary es-save" onClick={save}>💾 Save email settings</button>
     </div>
   );

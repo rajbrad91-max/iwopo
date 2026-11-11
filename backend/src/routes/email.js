@@ -46,6 +46,14 @@ router.put('/settings', requireAuth, async (req, res) => {
   try {
     const cur = await getSettings(v);
     const pass = (b.smtp_pass && b.smtp_pass !== '••••••') ? b.smtp_pass : (cur.smtp_pass || null);
+    // 📧 "My own SMTP" cannot send without a server, a login and a password — saved without one, iwopo used to fall back
+    //    to its own no-reply address without telling anyone (Raj, 2026-11-11). The first one missing is named.
+    if (b.mode === 'smtp') {
+      const gap = !String(b.smtp_host || '').trim() ? ['smtp_host', 'Sending server (SMTP)']
+        : !String(b.smtp_user || '').trim() ? ['smtp_user', 'Login email']
+        : !pass ? ['smtp_pass', 'App password'] : null;
+      if (gap) return res.status(400).json({ error: `Add your ${gap[1]} so emails go from your own address.`, field: gap[0] });
+    }
     const data = {
       mode: b.mode || 'platform',
       smtp_host: b.smtp_host || null,
