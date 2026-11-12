@@ -39,7 +39,7 @@
 .ffp-input.is-err { border-color: #dc3545; }
 .ffp-err { color: #dc3545; font-size: 13px; margin: 8px 0 0; }
 .ffp-btn { width: 100%; margin-top: 14px; padding: 12px; border: none; border-radius: 9px;
-  background: #0f766e; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+  background: var(--btn-fill); color: var(--btn-fill-ink); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .ffp-btn:hover { opacity: .92; }
 .ffp-btn:disabled { opacity: .6; cursor: default; }
 
@@ -119,7 +119,7 @@
 .fd-b:hover { border-color: var(--teal); }
 .fd-b:active { transform: scale(.96); }
 .fd-b:disabled { opacity: .5; cursor: default; transform: none; }
-.fd-b.is-primary { background: var(--teal); border-color: var(--teal); color: #06231f; font-weight: 600; }
+.fd-b.is-primary { background: var(--btn-fill); border-color: var(--btn-fill); color: var(--btn-fill-ink); font-weight: 600; }
 
 .fd-view { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-left: 4px; }
 .fd-v { background: var(--panel); border: 0; cursor: pointer; padding: 6px 11px; font-size: 14px; color: var(--muted); }

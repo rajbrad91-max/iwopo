@@ -40,7 +40,7 @@
 .sp-text.is-out .sp-tw { color: var(--teal); }
 
 .sp-open { margin-top: 12px; width: 100%; padding: 9px; border-radius: 10px; border: 0; cursor: pointer;
-  background: var(--teal); color: #fff; font-size: 13px; font-weight: 700; }
+  background: var(--btn-fill); color: var(--btn-fill-ink); font-size: 13px; font-weight: 700; }
 .sp-open:focus-visible, .sp-x:focus-visible, .sp-no:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 
 /* 📋 "Create a lead from this call?" — asked when an answered call ends */

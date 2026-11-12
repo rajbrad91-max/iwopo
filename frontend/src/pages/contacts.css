@@ -14,8 +14,8 @@
   border: 1px solid var(--line); background: var(--panel); color: var(--text); }
 .cts-b:hover:not(:disabled) { border-color: var(--teal); }
 .cts-b:disabled { opacity: .55; cursor: not-allowed; }
-.cts-b.is-primary { background: var(--teal); border-color: var(--teal); color: #fff; }
-.cts-b.is-primary:hover:not(:disabled) { background: var(--teal-2); border-color: var(--teal-2); }
+.cts-b.is-primary { background: var(--btn-fill); border-color: var(--btn-fill); color: var(--btn-fill-ink); }
+.cts-b.is-primary:hover:not(:disabled) { background: var(--btn-fill-hover); border-color: var(--btn-fill-hover); }
 
 .cts-flash { margin-bottom: 12px; font-size: 13px; color: var(--teal); }
 .cts-quiet { color: var(--muted); font-size: 13.5px; padding: 26px 0; }

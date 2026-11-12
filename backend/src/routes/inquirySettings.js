@@ -39,7 +39,7 @@ function cleanCustomFields(list) {
 }
 
 const DEFAULTS = {
-  brand_name: null, brand_color: '#2dd4bf', intro_text: 'Tell us about your event', intro_link: '',
+  brand_name: null, brand_color: '#0d9488', intro_text: 'Tell us about your event', intro_link: '',
   theme: 'classic', font: 'Inter', details_heading: 'Event Details',
   custom_fields: [], background: 'none',
 };
@@ -152,7 +152,7 @@ router.put('/', requireAuth, async (req, res) => {
       brand_name: b.brand_name || null,
       /* ⚠️ A hex colour or the default. Anything else used to be stored as
          typed and quietly became a colour nobody picked. */
-      brand_color: looksLikeColour(b.brand_color) ? b.brand_color : '#2dd4bf',
+      brand_color: looksLikeColour(b.brand_color) ? b.brand_color : '#0d9488',
       intro_text: b.intro_text || DEFAULTS.intro_text,
       intro_link: b.intro_link || '',
       theme: b.theme || 'classic',

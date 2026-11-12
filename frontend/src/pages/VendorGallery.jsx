@@ -34,7 +34,7 @@ export default function VendorGallery({ token }) {
   const styleVars = {
     '--pg-bg': theme.bg_color || '#0f1115',
     '--pg-head': theme.heading_color || '#f3f4f6',
-    '--pg-accent': theme.accent_color || '#2dd4bf',
+    '--pg-accent': theme.accent_color || '#0d9488',
     '--pg-sub': theme.sub_color || '#9ca3af',
     '--pg-hfont': `'${theme.heading_font || 'Playfair Display'}', serif`,
     '--pg-bfont': `'${theme.body_font || 'Jost'}', sans-serif`,

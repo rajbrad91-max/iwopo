@@ -574,7 +574,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
                 </div>
 
                 <div className="gal-theme-colors">
-                  {[['bg_color', 'Background', '#0f1115'], ['heading_color', 'Heading', '#f3f4f6'], ['accent_color', 'Accent', '#2dd4bf'], ['sub_color', 'Subtitle', '#9ca3af']].map(([k, lbl, def]) => (
+                  {[['bg_color', 'Background', '#0f1115'], ['heading_color', 'Heading', '#f3f4f6'], ['accent_color', 'Accent', '#0d9488'], ['sub_color', 'Subtitle', '#9ca3af']].map(([k, lbl, def]) => (
                     <div key={k} className="gal-color-row">
                       <input type="color" className="gal-color" value={theme[k] || def} onChange={e => setT(k, e.target.value)} />
                       <span>{lbl}</span>
@@ -591,7 +591,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
 
                 {/* live preview */}
                 <div className="gal-theme-preview" style={{ background: theme.bg_color || '#0f1115' }}>
-                  <div style={{ textTransform: 'uppercase', letterSpacing: 3, fontSize: 10, color: theme.accent_color || '#2dd4bf', fontFamily: `'${theme.body_font || 'Jost'}',sans-serif` }}>{theme.title_text || 'Client Galleries'}</div>
+                  <div style={{ textTransform: 'uppercase', letterSpacing: 3, fontSize: 10, color: theme.accent_color || '#0d9488', fontFamily: `'${theme.body_font || 'Jost'}',sans-serif` }}>{theme.title_text || 'Client Galleries'}</div>
                   <div style={{ fontFamily: `'${theme.heading_font || 'Playfair Display'}',serif`, fontSize: 22, color: theme.heading_color || '#f3f4f6', margin: '4px 0' }}>Your Studio Name</div>
                   <div style={{ fontSize: 12, color: theme.sub_color || '#9ca3af', fontFamily: `'${theme.body_font || 'Jost'}',sans-serif` }}>{theme.subtitle_text || 'Secure, Password-Protected Memories'}</div>
                 </div>

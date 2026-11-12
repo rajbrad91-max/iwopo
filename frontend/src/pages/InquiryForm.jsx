@@ -53,7 +53,7 @@ export function InquiryShell({ cfg, intro = true, art = true, embedded = false, 
   const links = embedded ? null : c.links;   // 🔗 the vendor's optional links — the client's own page only (components/ClientLinks.jsx)
   const brand = c.brand_name || 'Booking Inquiry';
   return (
-    <div className={`iq-wrap${embedded ? ' is-embedded' : ''}${links ? ' has-links' : ''}`} style={themeStyleObject(c.brand_color || '#2dd4bf', c.theme, c.font || 'Inter')}>
+    <div className={`iq-wrap${embedded ? ' is-embedded' : ''}${links ? ' has-links' : ''}`} style={themeStyleObject(c.brand_color || '#0d9488', c.theme, c.font || 'Inter')}>
       {/* 🖼️ one big drawing for the vendor's trade behind the card ("None": plain) */}
       {art && <ProfessionArt trade={c.background} />}
       {links && <ClientTopBar links={links} variant="form" />}

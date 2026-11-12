@@ -4,25 +4,27 @@
   --sel-line: rgba(13, 148, 136, 0.5);
   --sel-ink: #0f766e;
   --bg:#0a1013; --panel:#141d21; --panel-2:#18242a; --line:#ffffff14;
-  --muted:#8a9ba1; --text:#f1f7f8; --teal:#2dd4bf; --teal-2:#25b8a7;
-  --teal-soft:#2dd4bf1f; --green:#4ade80; --amber:#fbbf24; --red:#fb7185;
+  --muted:#8a9ba1; --text:#f1f7f8; --teal:#0d9488; --teal-2:#0b7c72;
+  --teal-soft:color-mix(in srgb, var(--teal) 12%, transparent); --green:#4ade80; --amber:#fbbf24; --red:#fb7185;
   /* vendor-panel gradient/detail tokens (dark defaults) */
   --v-side-1:#141d21; --v-side-2:#141d21; --v-side-line:#ffffff14;
   --v-navhover:#ffffff0f; --v-card-1:#18242a; --v-card-2:#141d21;
   --v-card-line:#ffffff14; --v-topbar-1:#141d21; --v-topbar-2:#141d21;
   --v-table-1:#18242a; --v-table-2:#18242a; --v-th:#ffffff0f;
-  --v-rowhover:#ffffff0f; --v-wrap-hover:#2dd4bf3d; --v-group:#8a9ba1;
+  --v-rowhover:#ffffff0f; --v-wrap-hover:color-mix(in srgb, var(--teal) 24%, transparent); --v-group:#8a9ba1;
   --v-icon-bg:#ffffff0f; --v-scroll:#ffffff17; --v-shadow:#00000059;
-  --v-brand-2:#2dd4bf; --v-value-2:#f1f7f8;
+  --v-brand-2:var(--teal); --v-value-2:#f1f7f8;
   /* material + motion — translucency, fills and the spring used on press */
   --mat:#141d21e6; --fill:#ffffff0f; --fill2:#ffffff17;
-  --line2:#ffffff0d; --accInk:#04231f;
+  --line2:#ffffff0d; --accInk:#ffffff;
   --amberSoft:#fbbf2422; --greenSoft:#4ade8022;
   --glow1:#ffffff12; --glow2:#ffffff0a; --dot:#ffffff0d;
   --shadow:0 18px 44px #00000059; --shadowSm:0 6px 18px #00000038;
   --dur:.22s; --ease:cubic-bezier(.34,1.4,.64,1);
   /* 🎈 how far things rise on hover — tiles like the dashboard's, buttons like Active / History (Raj, 2026-11-12) */
-  --lift-tile: -4px; --lift-btn: -2px; --glow-btn: 0 4px 14px #2dd4bf22;
+  --lift-tile: -4px; --lift-btn: -2px; --glow-btn: 0 4px 14px color-mix(in srgb, var(--teal) 13%, transparent);
+  /* 🟩 the one button green — the light theme's teal, in light AND dark; never the old bright var(--teal) (Raj, 2026-11-12) */
+  --btn-fill: #0d9488; --btn-fill-hover: #0b7c72; --btn-fill-ink: #ffffff;
 }
 [data-theme="light"] {
   --bg:#eef2f3; --panel:#ffffff; --panel-2:#f7f9fa; --line:#0a151a14;
@@ -74,8 +76,8 @@ body {
 .login-card label { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:6px; margin-top:14px; }
 .login-card input { width:100%; padding:12px 14px; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; color:var(--text); font-size:14px; }
 .login-card input:focus { outline:none; border-color:var(--teal); }
-.login-btn { width:100%; margin-top:22px; padding:13px; background:var(--teal); color:#06231f; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
-.login-btn:hover { background:var(--teal-2); }
+.login-btn { width:100%; margin-top:22px; padding:13px; background:var(--btn-fill); color:var(--btn-fill-ink); border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
+.login-btn:hover { background:var(--btn-fill-hover); }
 .login-btn:disabled { opacity:0.6; cursor:default; }
 .login-error { margin-top:16px; padding:10px 14px; background:#fb718522; color:var(--red); border-radius:10px; font-size:13px; }
 .login-notice { margin-top:16px; padding:10px 14px; background:#4ade8022; color:#16a34a; border-radius:10px; font-size:13px; }
@@ -140,7 +142,7 @@ body {
   transition:transform var(--dur) var(--ease), box-shadow var(--dur) ease,
              border-color var(--dur) ease;
 }
-.card:hover { transform:translateY(-4px); border-color:#2dd4bf3d; box-shadow:var(--shadow); }
+.card:hover { transform:translateY(-4px); border-color:color-mix(in srgb, var(--teal) 24%, transparent); box-shadow:var(--shadow); }
 /* 🪜 hover bridge (2026-10-11). Cards that lift on hover lifted their bottom
    edge away from a pointer resting right on it: the card un-hovered, dropped
    back under the pointer, hovered and lifted again — a fast shake. While a
@@ -192,7 +194,7 @@ tr:last-child td { border-bottom:none; }
   position:relative; cursor:pointer; flex-shrink:0;
   transition:background .24s var(--ease);
 }
-.switch.on { background:var(--teal); }
+.switch.on { background:var(--btn-fill); }
 .switch::after {
   content:''; position:absolute; top:3px; left:3px; width:22px; height:22px;
   background:#fff; border-radius:50%; box-shadow:0 2px 5px #00000033;
@@ -208,8 +210,8 @@ tr:last-child td { border-bottom:none; }
 .signup-box label { display:block; font-size:12px; color:var(--muted); font-weight:600; margin:14px 0 6px; }
 .signup-box input { width:100%; padding:12px 14px; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; color:var(--text); font-size:14px; }
 .signup-box input:focus { outline:none; border-color:var(--teal); }
-.sell-btn { width:100%; margin-top:22px; padding:13px; background:var(--teal); color:#06231f; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
-.sell-btn:hover { background:var(--teal-2); }
+.sell-btn { width:100%; margin-top:22px; padding:13px; background:var(--btn-fill); color:var(--btn-fill-ink); border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
+.sell-btn:hover { background:var(--btn-fill-hover); }
 .sell-btn:disabled { opacity:0.6; }
 
 /* ✉️ "Check your email" code step (VerifyCode.jsx) — inside the sign-in card, and over the sign-up page */

@@ -22,8 +22,8 @@
   text-align: center; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer;
   border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
 .pl-b:disabled { cursor: default; }
-.pl-b.is-primary { background: var(--teal); border-color: var(--teal); color: #fff; }
-.pl-b.is-primary:hover { background: var(--teal-2); border-color: var(--teal-2); }
+.pl-b.is-primary { background: var(--btn-fill); border-color: var(--btn-fill); color: var(--btn-fill-ink); }
+.pl-b.is-primary:hover { background: var(--btn-fill-hover); border-color: var(--btn-fill-hover); }
 
 .pl-quiet { color: var(--muted); font-size: 13px; }
 .pl-foot { margin-top: 20px; font-size: 12.5px; color: var(--muted); }
@@ -31,7 +31,7 @@
 /* the Upgrade button that replaced an "Off" badge in My Services */
 .svc-upgrade { padding: 4px 12px; border-radius: 20px; cursor: pointer; font-size: 12px;
   font-weight: 600; border: 1px solid var(--teal); background: var(--teal-soft); color: var(--teal); }
-.svc-upgrade:hover { background: var(--teal); color: #fff; }
+.svc-upgrade:hover { background: var(--btn-fill); color: var(--btn-fill-ink); }
 
 /* 💳 billing (2026-10-31) */
 .pl-banner { margin: 0 0 14px; padding: 11px 14px; border-radius: 12px; font-size: 13.5px; background: var(--panel-2); border: 1px solid var(--line); }
@@ -44,7 +44,7 @@
 /* 🔁 Monthly / Yearly, in the plans table's corner: two equal buttons, stacked on a phone (2026-11-11) */
 .pl-cycle { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; padding: 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); box-sizing: border-box; }
 .pl-cycle button { border: 0; background: transparent; color: var(--muted); padding: 7px 8px; border-radius: 9px; font: inherit; font-size: 13.5px; font-weight: 600; line-height: 1.25; cursor: pointer; }
-.pl-cycle button.on { background: var(--teal); color: var(--accInk); }   /* the panel's chosen look (Settings, PPM Board) */
+.pl-cycle button.on { background: var(--btn-fill); color: var(--btn-fill-ink); }   /* the panel's chosen look (Settings, PPM Board) */
 .pl-save { display: block; margin-top: 1px; font-size: 10.5px; font-weight: 700; }
 @media (max-width: 720px) { .pl-cycle { grid-template-columns: 1fr; } }
 

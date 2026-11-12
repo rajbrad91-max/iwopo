@@ -51,8 +51,8 @@
   background: #f2f5f7; border: 1px solid #dde3e7; color: #4a5560;
 }
 .dlg-btn:hover { background: #e8edf0; }
-.dlg-btn.is-primary { background: #0f766e; border-color: #0f766e; color: #fff; }
-.dlg-btn.is-primary:hover { background: #0d5f58; }
+.dlg-btn.is-primary { background: var(--btn-fill); border-color: var(--btn-fill); color: var(--btn-fill-ink); }
+.dlg-btn.is-primary:hover { background: var(--btn-fill-hover); }
 /* a destructive confirm should not look like an ordinary one — the button a
    vendor is about to press deletes a client's photos */
 .dlg-btn.is-primary.is-danger { background: #dc2626; border-color: #dc2626; }

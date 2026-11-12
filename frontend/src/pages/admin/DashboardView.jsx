@@ -24,7 +24,7 @@ export function DashboardView({ vendors, packages, overview }) {
      vendors, and it charted trades that existed nowhere else in the product.
      It now comes from what vendors actually picked, using the same list the
      inquiry form and the public page use. */
-  const TYPE_COLOURS = ['#2dd4bf','#4ade80','#60a5fa','#fbbf24','#a78bfa','#f472b6','#22d3ee','#fb923c','#e879f9','#34d399','#f87171','#c084fc','#94a3b8'];
+  const TYPE_COLOURS = ['#0d9488','#4ade80','#60a5fa','#fbbf24','#a78bfa','#f472b6','#22d3ee','#fb923c','#e879f9','#34d399','#f87171','#c084fc','#94a3b8'];
   const vTypes = [
     ...(geo?.professions || []).map((p, i) => ({
       n: `${PROFESSIONS[p.key]?.icon || ''} ${PROFESSIONS[p.key]?.label || p.key}`.trim(),
@@ -38,7 +38,7 @@ export function DashboardView({ vendors, packages, overview }) {
   const maxC = Math.max(1, ...countries.map(c => c[1]));
 
   // 📦 sellers on each plan, as they stand
-  const palette = ['#2dd4bf','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'];
+  const palette = ['#0d9488','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f472b6','#22d3ee','#fb923c'];
   const planData = (overview?.plans || []).filter(p => p.sellers > 0).map((p, i) => ({ name: p.name, v: p.sellers, c: palette[i % palette.length] }));
   const onPlans = planData.reduce((a, p) => a + p.v, 0);
 

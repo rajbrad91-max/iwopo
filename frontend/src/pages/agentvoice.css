@@ -8,4 +8,4 @@
 .av-gap { margin-top: 12px; }
 .av-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .av-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 12.5px; }
-.av-chip.is-on { border-color: var(--teal, #2dd4bf); background: rgba(45, 212, 191, .14); font-weight: 600; }
+.av-chip.is-on { border-color: var(--teal, var(--teal)); background: color-mix(in srgb, var(--teal) 14%, transparent); font-weight: 600; }

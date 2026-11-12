@@ -26,7 +26,7 @@
 .iv-row.is-amber { color: #b8860b; }
 
 .iv-notes { margin-top: 16px; font-size: 13px; color: #666; }
-.iv-print { margin-top: 22px; width: 100%; padding: 12px; background: #0f766e; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.iv-print { margin-top: 22px; width: 100%; padding: 12px; background: var(--btn-fill); color: var(--btn-fill-ink); border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
 
 @media print {
   .iv-print { display: none; }
