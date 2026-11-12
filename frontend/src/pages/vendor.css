@@ -35,7 +35,10 @@
               color var(--dur) ease, border-color var(--dur) ease, box-shadow var(--dur) ease;
 }
 .dash .nav-item:active { transform: scale(.97); }
-.dash .nav-item:hover { background: var(--fill); transform: translate(3px, -5px); box-shadow: var(--glow-btn); }   /* slides, rises 5px, with the Active / History teal glow (Raj, 2026-11-12) */
+.dash .nav-item:hover {   /* slides, rises 5px; a soft teal shadow behind it, all round rather than only below (Raj, 2026-11-12) */
+  background: var(--fill); transform: translate(3px, -5px);
+  box-shadow: 0 1px 14px -1px color-mix(in srgb, var(--teal) 40%, transparent);
+}
 .dash .nav-item .nav-ic { transition: transform var(--dur) var(--ease); }
 .dash .nav-item:hover .nav-ic { transform: scale(1.12); }
 .dash .nav-item.active {
@@ -371,11 +374,11 @@
 .lead-ic-btn:not(:disabled):hover { border-color: #2dd4bf88; transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }   /* rises like Active / History */
 /* 🎈 The panel's other buttons rise like Active / History too (Raj, 2026-11-12): gallery tiles, File Flyer, Calls &
    Messages and the header. One list — a new kind of button joins by adding its class here. */
-.dash :is(.gal-mini, .ff-tab, .fd-b, .fd-v, .fd-chip, .fd-act, .ib-tab, .ib-gear, .ib-btn, .cm-f, .cm-lead, .cm-linkbtn, .cm-send, .bb-btn, .menu-btn) {
+.dash :is(.gal-mini, .ff-tab, .fd-b, .fd-v, .fd-chip, .fd-act, .ib-tab, .ib-gear, .ib-btn, .cm-f, .cm-lead, .cm-linkbtn, .cm-send, .bb-btn, .menu-btn, .pg-ev) {
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) ease, border-color var(--dur) ease,
               background var(--dur) ease, color var(--dur) ease;
 }
-.dash :is(.gal-mini, .ff-tab, .fd-b, .fd-v, .fd-chip, .fd-act, .ib-tab, .ib-gear, .ib-btn, .cm-f, .cm-lead, .cm-linkbtn, .cm-send, .bb-btn, .menu-btn):not(:disabled):hover { transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
+.dash :is(.gal-mini, .ff-tab, .fd-b, .fd-v, .fd-chip, .fd-act, .ib-tab, .ib-gear, .ib-btn, .cm-f, .cm-lead, .cm-linkbtn, .cm-send, .bb-btn, .menu-btn, .pg-ev):not(:disabled):hover { transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
 .lead-ic-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .lead-ic-btn:disabled { opacity: .4; cursor: default; }
 .lead-ic-del:hover:not(:disabled) { border-color: #fb7185; }
@@ -1029,7 +1032,7 @@
 .gal-set-save { margin-top: 16px; width: 100%; }
 
 /* 📧 Send Instructions popup */
-.gal-mini-send:hover { border-color: #2dd4bf; background: #2dd4bf0d; }
+.gal-act:hover { border-color: #2dd4bf; background: #2dd4bf0d; }   /* Edit Album: Save, Send Instructions and Copy Gallery Link are one button style (Raj, 2026-11-12) */
 .gal-send-modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 540px; padding: 22px 24px; }
 .gal-send-msghead { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
 .gal-send-ta { min-height: 220px; margin-top: 6px; font-family: inherit; line-height: 1.5; resize: vertical; }
@@ -1053,7 +1056,7 @@
 .ad-back { font-size: 12px; margin-bottom: 6px; }
 .ad-title { margin: 0; }
 .ad-count { color: var(--muted); font-size: 12px; }
-.ad-upload { background: #2dd4bf; color: #06231f; cursor: pointer; }
+.ad-upload { cursor: pointer; }   /* Upload to this event / Add Videos look like the album's other buttons (Raj, 2026-11-12) */
 .ad-prog { margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 .ad-empty { padding: 40px; text-align: center; color: var(--muted); }
 /* 📤 big click-or-drop upload zone shown when an event has no photos yet */
@@ -1169,6 +1172,7 @@
 
 /* 🗂️ Album detail — event manager (per-client) */
 .ad-upload-off { opacity: .5; cursor: not-allowed; }
+.dash .refresh.ad-upload-off:hover { transform: none; box-shadow: none; }   /* not available here: it does not rise */
 .ad-events { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
 .ad-events .pg-ev {
   display: inline-flex; align-items: center; gap: 8px;

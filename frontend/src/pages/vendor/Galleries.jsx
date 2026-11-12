@@ -459,7 +459,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
           </div>
 
           <div className="gal-form-foot">
-            <button className="refresh gal-save" onClick={create}>{edit ? '💾 Save changes' : '✅ Create album'}</button>
+            <button className="refresh gal-act" onClick={create}>{edit ? '💾 Save changes' : '✅ Create album'}</button>
             {/* ⚠️ Both of these are GALLERY buttons and neither makes sense for a
                 live shoot. Copy Gallery Link copies /g/<token> — the
                 password-protected gallery page, which a live shoot does not
@@ -468,8 +468,8 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
                 A live shoot has one address, /live/<token>, and it is already
                 on this panel with its own Copy. Three buttons offering two
                 wrong answers and one right one is worse than one button. */}
-            {edit && kind !== 'liveshoot' && <button className="refresh gal-mini-send" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
-            {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-copy-url" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
+            {edit && kind !== 'liveshoot' && <button className="refresh gal-act" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
+            {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-act" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
             {/* 🔗 the client's link itself, to open and check (Muse F-14: it was only ever copied, never shown) */}
             {edit?.public_token && kind !== 'liveshoot' && <a className="gal-link" href={`${clientBase()}/g/${edit.public_token}`} target="_blank" rel="noreferrer">{`${clientBase()}/g/${edit.public_token}`}</a>}
             {msg && <span className={`gal-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}

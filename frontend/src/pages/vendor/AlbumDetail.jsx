@@ -572,14 +572,14 @@ export function AlbumDetail({ albumId, onBack }) {
                 title={onlyPhotos || 'Delete the selected event'}>🗑️ Delete</button>
             </div>
           )}
-          <label className={`refresh ad-upload ${(isPerClient && activeEvent === 'all') || inVideos ? 'ad-upload-off' : ''}`}
+          <label className={`refresh ad-ev-btn ad-upload ${(isPerClient && activeEvent === 'all') || inVideos ? 'ad-upload-off' : ''}`}
             title={onlyPhotos || undefined}>
             {uploadLabel}
             <input type="file" accept={raw ? `image/*,${RAW_ACCEPT}` : 'image/*'} multiple hidden onChange={onFiles} disabled={uploading || inVideos || (isPerClient && activeEvent === 'all')} />
           </label>
           {/* Films go to their own Videos folder wherever you are, so unlike
               photographs this is never disabled by which tab is open. */}
-          <label className="refresh ad-upload ad-upload-vid">
+          <label className="refresh ad-ev-btn ad-upload ad-upload-vid">
             {vidLabel}
             <input type="file" accept="video/*" multiple hidden onChange={onVideos} disabled={uploading || !!vidBusy} />
           </label>
