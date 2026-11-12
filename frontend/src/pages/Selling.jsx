@@ -192,7 +192,9 @@ export default function Selling({ onSignup, onGoLogin }) {
   const [loading, setLoading] = useState(false);
   const [verify, setVerify] = useState(null);   // ✉️ { email, code } after sign-up: the emailed code comes next
   const [trialOk, setTrialOk] = useState(true);
-  const [open, setOpen] = useState(true);   // 🚧 false while sign-ups are paused before launch
+  /* 🚧 false while sign-ups are paused before launch. It starts false and opens only when the server says so
+     (Raj, 2026-11-12): starting true showed "Choose your plan" until the answer came — for seconds on a slow phone. */
+  const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState(null);
   const [buying, setBuying] = useState(false);   // 💳 the sign-up window a plan's button opens
   const [faqOpen, setFaqOpen] = useState(0);
@@ -210,7 +212,7 @@ export default function Selling({ onSignup, onGoLogin }) {
 
   useEffect(() => {
     api.packages().then(d => { setPackages(d.packages || []); setCompare(d.compare || []); setCompareNotes(d.compare_notes || []); }).catch(() => {});
-    api.trialEligible().then(d => { setTrialOk(d.eligible); setOpen(d.open !== false); }).catch(() => {});
+    api.trialEligible().then(d => { setTrialOk(d.eligible); setOpen(d.open === true); }).catch(() => {});
     const t = setTimeout(() => setHeroSeen(true), 250);
     return () => clearTimeout(t);
   }, []);

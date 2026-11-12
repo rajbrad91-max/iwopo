@@ -28,7 +28,7 @@ const UPDATED = '2026-10-31';   // when the marketing copy last changed — the 
 export const TAGLINE = 'Run your whole wedding business in one place';
 export const BLURB =
   'Inquiries, contracts, deposits, bookings, client galleries, crew scheduling and a portfolio website — ' +
-  'one platform for wedding photographers and videographers worldwide. Start free.';
+  'one platform for wedding photographers and videographers worldwide.';
 
 const HOME_FAQ = [
   ['What is iwopo?', 'iwopo is an all-in-one platform for wedding photographers and videographers: inquiry forms, a lead list, contracts with e-signatures, deposits, bookings, a calendar, crew scheduling, client galleries, large-file delivery and a portfolio website.'],
