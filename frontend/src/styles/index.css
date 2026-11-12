@@ -21,6 +21,8 @@
   --glow1:#ffffff12; --glow2:#ffffff0a; --dot:#ffffff0d;
   --shadow:0 18px 44px #00000059; --shadowSm:0 6px 18px #00000038;
   --dur:.22s; --ease:cubic-bezier(.34,1.4,.64,1);
+  /* 🎈 how far things rise on hover — tiles like the dashboard's, buttons like Active / History (Raj, 2026-11-12) */
+  --lift-tile: -4px; --lift-btn: -2px; --glow-btn: 0 4px 14px #2dd4bf22;
 }
 [data-theme="light"] {
   --bg:#eef2f3; --panel:#ffffff; --panel-2:#f7f9fa; --line:#0a151a14;

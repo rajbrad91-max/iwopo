@@ -385,7 +385,7 @@ export function ContractSetup() {
         <div className="cs-bar">
           <button className="refresh" onClick={() => setViewSample(false)}>← Back</button>
           <div className="cs-bar-right">
-            <button className="refresh cs-save-top" onClick={copySample}>📋 Make my own copy</button>
+            <button className="refresh cs-copy-cta" onClick={copySample}>📋 Make my own copy</button>
           </div>
         </div>
         <p className="cs-sample-note">📖 A sample {professionLabel(trade)} contract — an example to read, not legal advice. Make your own copy to edit it, and have it reviewed by a lawyer before you use it.</p>
@@ -418,9 +418,9 @@ export function ContractSetup() {
           {/* 🔓 Account-wide, not per template: it answers "do I want to read my
               contracts before they go out", which is a habit rather than a
               property of one document. */}
-          <AutoReleaseToggle className="cs-auto" on={autoRelease.on} disabled={!autoRelease.ready} onChange={saveAutoRelease} />
+          <AutoReleaseToggle className="refresh cs-auto" on={autoRelease.on} disabled={!autoRelease.ready} onChange={saveAutoRelease} />
           <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
-          <button className="refresh cs-save-top" onClick={save} disabled={saving}>
+          <button className="refresh" onClick={save} disabled={saving}>
             {saving ? '⏳ Saving…' : '💾 Save contract'}
           </button>
         </div>
