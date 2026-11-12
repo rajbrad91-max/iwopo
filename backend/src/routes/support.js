@@ -24,9 +24,10 @@ const SHOT_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'web
 const shot = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (req, f, cb) => cb(null, !!SHOT_TYPES[f.mimetype]) });
 const APP_URL = process.env.APP_URL || 'https://iwopo.com';
+import { OWNER_INBOX } from '../lib/ownerInbox.js';
 
 const router = express.Router();
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'sales@iwopo.com';
+const SUPPORT_EMAIL = OWNER_INBOX;
 const TOPICS = { question: 'Question', problem: 'Something isn’t working', billing: 'Billing', idea: 'Feature idea' };
 
 router.post('/message', requireAuth, limit({ name: 'support', max: 5, windowMs: 60 * 60 * 1000, perAccount: true }), (req, res, next) => shot.single('screenshot')(req, res, (e) => (e ? res.status(400).json({ error: e.code === 'LIMIT_FILE_SIZE' ? 'That screenshot is over 5 MB — try a smaller one.' : 'That screenshot could not be read.' }) : next())), async (req, res) => {

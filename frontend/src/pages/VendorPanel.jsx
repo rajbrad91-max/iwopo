@@ -136,6 +136,10 @@ function StorageBar({ onUpgrade }) {
   );
 }
 
+/* 📐 the sidebar's two choices, remembered on this device (private mode simply forgets them) */
+const navPref = (k) => { try { return localStorage.getItem(`iwopo_nav_${k}`) === '1'; } catch { return false; } };
+const saveNavPref = (k, on) => { try { localStorage.setItem(`iwopo_nav_${k}`, on ? '1' : '0'); } catch { /* private mode */ } };
+
 export default function VendorPanel({ onLogout }) {
   useActivityPing();                 // 👀 TEMPORARY — records pages only for the tracked tester
   // seeded from the last session so the sidebar and tab render immediately;
@@ -150,7 +154,13 @@ export default function VendorPanel({ onLogout }) {
   const { route, navigate } = useAppRoute('dashboard');
   const tab = route.tab;
   const setTab = (t) => navigate({ tab: t });
-  const [collapsed, setCollapsed] = useState(() => window.innerWidth <= 820);
+  /* 📐 the sidebar (Raj, 2026-11-12): the handle on its edge collapses it to icons or opens it; "Auto-hide menu" keeps
+     it as icons that open while the pointer is over them. Both are remembered on this device. A phone always starts
+     with the drawer closed. */
+  const [autoHide, setAutoHide] = useState(() => navPref('auto'));
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth <= 820 || navPref('auto') || navPref('collapsed'));
+  useEffect(() => { if (window.innerWidth > 820) saveNavPref('collapsed', collapsed && !autoHide); }, [collapsed, autoHide]);
+  function toggleAutoHide() { const on = !autoHide; setAutoHide(on); setCollapsed(on); saveNavPref('auto', on); }
   const swipeX = useRef(0);   // 👆 where a swipe on the phone drawer started
   const [profile, setProfile] = useState(null);
   const user = getUser();
@@ -318,7 +328,7 @@ export default function VendorPanel({ onLogout }) {
   useEffect(() => { applyBrandTone(dashRef.current, brandHex, themeMode); }, [brandHex, themeMode]);
 
   return (
-    <div ref={dashRef} className={`dash ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <div ref={dashRef} className={`dash ${collapsed ? 'sidebar-collapsed' : ''} ${autoHide ? 'sidebar-auto' : ''}`}>
       <div className={`sidebar-backdrop ${collapsed ? '' : 'is-open'}`} onClick={() => setCollapsed(true)} />
       <aside className="sidebar"
         onTouchStart={e => { swipeX.current = e.touches[0].clientX; }}
@@ -378,22 +388,28 @@ export default function VendorPanel({ onLogout }) {
         <a href={navHref('help')} className={`nav-item ${tab==='help'?'active':''}`} aria-current={tab==='help' ? 'page' : undefined} onClick={navClick('help')}><span className="nav-ic"><img className="nav-emo" src="/emoji/1f6df.svg" alt="" /></span><span className="nav-txt">Help &amp; Support</span></a>
         {/* ⚠️ This went to 'packages', which is the vendor's own client-facing
             price list — nothing to do with their subscription. */}
+        <div className="nav-auto" role="switch" aria-checked={autoHide} tabIndex={0} title="Keep the menu as icons; it opens when you point at it"
+          onClick={toggleAutoHide} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && toggleAutoHide()}>
+          <span className="nav-txt">Auto-hide menu</span><span className={`nav-switch ${autoHide ? 'on' : ''}`} />
+        </div>
         <StorageBar onUpgrade={() => go('plans')} />
         <div className="logout" onClick={handleLogout}><span className="nav-ic"><img className="nav-emo" src="/emoji/21aa.svg" alt="" /></span><span className="nav-txt">Log out</span></div>
       </aside>
+      {/* ◀ on the sidebar's edge: collapse to icons / open again (not shown on a phone, or while Auto-hide is on) */}
+      <button type="button" className="side-handle" onClick={() => setCollapsed(c => !c)}
+        title={collapsed ? 'Open the menu' : 'Collapse the menu'} aria-label={collapsed ? 'Open the menu' : 'Collapse the menu'}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d={collapsed ? 'm9 6 6 6-6 6' : 'm15 6-6 6 6 6'} /></svg>
+      </button>
 
       <main className="main">
         <BillingBanner onPlans={() => go('plans')} />
         {welcome && <WelcomeSteps plan={welcome} onGo={(t) => { closeWelcome(); go(t); }} onClose={closeWelcome} />}
-        <div className="topbar">
-          <div className="u-display-flex u-align-items-center u-gap-12px">
-            <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
-            <div>
-              <h1>{tab === 'dashboard' ? 'Dashboard' : tab === 'ppm' ? 'PPM Board' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
-              {tab !== 'fileflyer' && <div className="sub">Welcome back, {user?.name} 👋</div>}
-            </div>
-          </div>
-          <div className="u-display-flex u-gap-8px u-align-items-center">
+        {/* 📐 no top strip (Raj, 2026-11-12): calendar and bell in the top-right corner; the page's name is kept for
+            screen readers; the menu button shows on a phone only, where it opens the drawer */}
+        <div className="top-actions">
+          <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
+          <h1 className="top-title">{tab === 'dashboard' ? 'Dashboard' : tab === 'ppm' ? 'PPM Board' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+          <div className="top-icons">
             {has('calendar') && <button className={`hdr-icon ${tab==='calendar'?'active':''}`} onClick={() => setTab(tab === 'calendar' ? 'dashboard' : 'calendar')} title="Quick Calendar">🗓️</button>}
             <NotifBell onOpen={openNotification} />
             {/* 📞 who is calling, while it rings — only an account holding Calls & messages ever loads this */}

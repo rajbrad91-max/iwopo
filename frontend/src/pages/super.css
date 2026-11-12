@@ -451,3 +451,8 @@
 .sa-hv-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .sa-hv-link { margin-left: 8px; font-size: 12px; color: var(--muted); }
 
+/* 📝 Super Admin → Waitlist (2026-11-12) */
+.sa-wl-count { margin-left: 10px; font-size: .85em; font-weight: 500; opacity: .7; }
+.sa-wl-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 12px; }
+.sa-wl-alert { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+.sa-wl-act { text-align: right; }

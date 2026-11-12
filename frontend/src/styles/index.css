@@ -112,17 +112,6 @@ body {
 .logout:hover { background:#fb718522; color:var(--red); }
 
 .main { flex:1; padding:24px 30px; overflow-y:auto; }
-.topbar {
-  display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;
-  position:sticky; top:14px; z-index:20;
-  background:var(--mat);
-  -webkit-backdrop-filter:blur(24px) saturate(160%);
-          backdrop-filter:blur(24px) saturate(160%);
-  border:1px solid var(--line); border-radius:22px;
-  padding:16px 20px; box-shadow:var(--shadowSm);
-}
-.topbar h1 { font-size:22px; }
-.topbar .sub { color:var(--muted); font-size:13px; margin-top:2px; }
 .refresh {
   background:var(--fill); border:1px solid var(--line); color:var(--text);
   padding:8px 14px; border-radius:12px; cursor:pointer; font-weight:600;

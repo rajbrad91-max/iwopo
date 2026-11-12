@@ -712,6 +712,9 @@ export const api = {
   packages: (currency) => request(`/packages${currency ? `?currency=${encodeURIComponent(currency)}` : ''}`),   // a currency code shows prices in it (Super Admin: USD)
   adminServices: () => request('/admin/services'),
   adminPackages: () => request('/admin/packages'),
+  adminWaitlist: () => request('/admin/waitlist'),   // 📝 who asked to be told when iwopo opens
+  adminWaitlistAlerts: (on) => request('/admin/waitlist/alerts', { method: 'PUT', body: JSON.stringify({ on }) }),
+  adminWaitlistRemove: (id) => request(`/admin/waitlist/${id}`, { method: 'DELETE' }),
   adminPlanRegions: () => request('/admin/plan-regions'),   // 🌍 prices by territory + profit
   // 🔓 what each plan actually unlocks (Super Admin)
   adminPlanUnlocks: () => request('/admin/plan-unlocks'),

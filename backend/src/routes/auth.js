@@ -20,6 +20,7 @@ import { signupTrialEnd } from '../lib/billing.js';
 import { newReferralCode, referrerByCode, linkReferral } from '../lib/referrals.js';
 import { LEGAL_UPDATED } from '../lib/seo/legal.js';
 import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
+import { joinWaitlist } from '../lib/waitlist.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -172,7 +173,7 @@ router.post('/waitlist', waitlistLimit, async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
     if (req.body?.website) return res.json({ ok: true });
-    await prisma.waitlist.createMany({ data: [{ email }], skipDuplicates: true });
+    await joinWaitlist(email);   // kept once; the owner is told about a new one
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

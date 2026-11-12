@@ -16,6 +16,7 @@ import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
 import { clientIp } from '../lib/clientIp.js';
 import { limit } from '../middleware/rateLimit.js';
 import { serverError } from '../lib/httpError.js';
+import { WAITLIST_ALERTS, waitlistAlertsOn } from '../lib/waitlist.js';
 import { adminOverview } from '../lib/adminOverview.js';
 import { planCards, planCompare } from '../lib/planCatalog.js';
 import { regionEconomics } from '../lib/planEconomics.js';
@@ -412,6 +413,23 @@ router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) =
 });
 
 // 🌍 Super admin: every territory's fixed prices and what iwopo keeps from each plan there (lib/planEconomics.js)
+/* 📝 Super Admin → Waitlist (Raj, 2026-11-12): everyone who asked to be told when iwopo opens, newest first; whether
+   the owner is emailed for each new one; and removing an address (a typo, spam). */
+router.get('/admin/waitlist', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const people = await prisma.waitlist.findMany({ orderBy: { created_at: 'desc' }, take: 5000 });
+    res.json({ total: await prisma.waitlist.count(), alerts: await waitlistAlertsOn(), people });
+  } catch (e) { serverError(res, e); }
+});
+router.put('/admin/waitlist/alerts', requireAuth, requireSuperAdmin, async (req, res) => {
+  try { await setSetting(WAITLIST_ALERTS, req.body?.on ? 'true' : 'false'); res.json({ alerts: !!req.body?.on }); }
+  catch (e) { serverError(res, e); }
+});
+router.delete('/admin/waitlist/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try { await prisma.waitlist.deleteMany({ where: { id: Number(req.params.id) } }); res.json({ ok: true }); }
+  catch (e) { serverError(res, e); }
+});
+
 router.get('/admin/plan-regions', requireAuth, requireSuperAdmin, async (req, res) => {
   try { res.json(await regionEconomics()); } catch (e) { serverError(res, e); }
 });

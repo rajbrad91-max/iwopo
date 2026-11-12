@@ -8,6 +8,7 @@ import { DashboardView } from './admin/DashboardView';
 import { ServicesView } from './admin/Services';
 import { ManageServicesView } from './admin/ManageServices';
 import { ReferralsView } from './admin/Referrals';
+import { WaitlistView } from './admin/Waitlist';
 import { BuyersView } from './admin/Buyers';
 import { BillingView } from './admin/Billing';
 import { SupportView } from './admin/Support';
@@ -21,6 +22,7 @@ const NAV = [
   { id: 'manage', icon: '🛠️', label: 'Manage Services', group: 'PLATFORM' },
   { id: 'buyers', icon: '🛒', label: 'Buyers', group: 'PLATFORM' },
   { id: 'referrals', icon: '👥', label: 'Referrals', group: 'PLATFORM' },
+  { id: 'waitlist', icon: '📝', label: 'Waitlist', group: 'PLATFORM' },
   { id: 'billing', icon: '💳', label: 'Billing & Plans', group: 'PLATFORM' },
   { id: 'aichat', icon: '🤖', label: 'AI Chat', group: 'OPERATE' },
   { id: 'support', icon: '🎫', label: 'Support', group: 'OPERATE' },
@@ -97,6 +99,7 @@ export default function Dashboard({ onLogout }) {
             {view === 'manage' && <ManageServicesView />}
             {view === 'buyers' && <BuyersView vendors={vendors} overview={overview} onChanged={load} />}
             {view === 'referrals' && <ReferralsView />}
+            {view === 'waitlist' && <WaitlistView />}
             {view === 'billing' && <BillingView packages={packages} overview={overview} />}
             {view === 'aichat' && <AiChatView vendors={vendors} />}
             {view === 'support' && <SupportView />}
