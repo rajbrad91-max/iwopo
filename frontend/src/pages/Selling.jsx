@@ -388,7 +388,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         <div className="sl-hero-grid">
           <div className="sl-hero-copy">
             <h1>Run your wedding business in <em>one place.</em></h1>   {/* no "iwopo" above it: the logo already says it (Raj, 2026-11-12) */}
-            <p className="sl-lede">Galleries, bookings, contracts, payments and AI — built for wedding vendors who are done juggling six tools.</p>
+            <p className="sl-lede">The complete wedding business platform: bookings, contracts with e-signatures, crew, calendar, storage and face-recognition galleries.</p>
             <div className="sl-hero-btns">
               <button type="button" className="sl-cta" onClick={goSignup}>{open ? 'Choose your plan' : 'Join the waitlist'}</button>
               <a href="#features" className="sl-ghost lg">See features</a>
