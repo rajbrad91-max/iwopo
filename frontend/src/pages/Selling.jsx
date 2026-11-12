@@ -429,7 +429,7 @@ export default function Selling({ onSignup, onGoLogin }) {
                 </div>
               </div>
               <div className="sl-float f1"><b>Payment received</b><i>Deposit · $1,200</i></div>
-              <div className="sl-float f2"><b>Gallery delivered</b><i>Sharma wedding</i></div>
+              <div className="sl-float f2"><b>Gallery delivered</b><i>Maya &amp; Adam’s wedding</i></div>
               <div className="sl-float f3"><b>Contract signed</b><i>June 14 booked</i></div>
             </div>
           </div>
