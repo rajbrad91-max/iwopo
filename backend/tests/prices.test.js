@@ -66,16 +66,29 @@ test('storage add-ons are never sold at a loss: 20% cushion with the storage 100
   }
 });
 
-test('Pro + 500 GB stays cheaper than Studio, and Pro + 1 TB never is', async () => {
-  const half = storage.find(s => s.storage_gb === 500), tb = storage.find(s => s.storage_gb === 1000);
-  const own = { pro: Number(byCode.pro.price_monthly), studio: Number(byCode.studio.price_monthly), half: Number(half.price), tb: Number(tb.price) };
-  assert.ok(own.pro + own.half < own.studio && own.pro + own.tb >= own.studio, 'USD');
+test('Pro + 500 GB stays cheaper than Studio', async () => {
+  // Raj, 2026-11-12: Studio's monthly price went up so yearly saves ~17%; the old "Pro + 1 TB never below Studio" rule
+  // was retired with it, by his choice. Pro + 500 GB stays the cheaper step up.
+  const half = storage.find(s => s.storage_gb === 500);
+  assert.ok(Number(byCode.pro.price_monthly) + Number(half.price) < Number(byCode.studio.price_monthly), 'USD');
   for (const r of regions.filter(x => x.code !== 'USD')) {
     const plan = (code) => Number(r.plan_region_prices.find(x => x.plan_id === byCode[code].id).monthly);
     const add = await addonPricesFor(r.countries[0]);
-    const a = (s) => add.get(`${s.id}|`).monthly;
-    assert.ok(plan('pro') + a(half) < plan('studio'), `${r.code}: Pro + 500 GB below Studio`);
-    assert.ok(plan('pro') + a(tb) >= plan('studio'), `${r.code}: Pro + 1 TB not below Studio`);
+    assert.ok(plan('pro') + add.get(`${half.id}|`).monthly < plan('studio'), `${r.code}: Pro + 500 GB below Studio`);
+  }
+});
+
+test('paying yearly saves about 17% on every paid plan, in every territory (Raj, 2026-11-12)', () => {
+  const saves = (label, monthly, annual) => {
+    const s = 1 - annual / (monthly * 12);
+    assert.ok(s >= 0.165, `${label}: yearly saves only ${(s * 100).toFixed(1)}%`);
+  };
+  for (const code of ['essential', 'pro', 'studio']) saves(`USD ${code}`, Number(byCode[code].price_monthly), Number(byCode[code].price_annual));
+  for (const r of regions.filter(x => x.code !== 'USD')) {
+    for (const code of ['essential', 'pro', 'studio']) {
+      const row = r.plan_region_prices.find(x => x.plan_id === byCode[code].id);
+      saves(`${r.code} ${code}`, Number(row.monthly), Number(row.annual));
+    }
   }
 });
 
