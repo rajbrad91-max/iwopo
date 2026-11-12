@@ -1,38 +1,40 @@
 /**
- * ⚖️ Comparison pages (2026-10-31). Facts about other products come ONLY from their own public pages, dated, and are
- * kept to what was verified — a wrong claim about a competitor is worse than no page. Re-check before editing.
- *   HoneyBook availability: honeybook.com ("Currently, HoneyBook only supports professionals located in these
- *   countries": the U.S., Canada, the UK and Australia) and its May 28, 2026 launch announcement for the UK/Australia.
+ * ⚖️ Comparison pages. iwopo never names a competitor (Raj, 2026-11-12): these pages compare iwopo with other studio
+ * software and with separate tools in general, and say only what is true of iwopo. Other products may be called
+ * "other studio software", "separate tools" or "competitors" — never by name. The old named page's address
+ * redirects here (MOVED, used by routes/seo.js).
  */
 export const COMPARISONS = {
-  'honeybook-alternative': {
-    title: 'HoneyBook alternative for wedding photographers worldwide',
-    h1: 'A HoneyBook alternative for wedding photographers in every country',
-    lead: 'HoneyBook is built for the United States, Canada, the UK and Australia. iwopo is an all-in-one platform for wedding photographers and videographers wherever they work — and it includes client galleries and a portfolio website.',
-    checked: 'October 2026',
+  'iwopo-vs-other-studio-software': {
+    title: 'iwopo compared with other studio software for wedding photographers',
+    h1: 'iwopo compared with other studio software',
+    lead: 'Many wedding photographers and videographers pay for several tools — one for inquiries and contracts, another for galleries, another for large files, another for a website — and some of the best-known studio platforms only accept businesses in a handful of countries. iwopo puts it all in one subscription and works wherever you do.',
     sections: [
       { h2: 'Available where you work', p: [
-        'As of October 2026, HoneyBook’s own website says it only supports professionals located in the U.S., Canada, the United Kingdom and Australia. Photographers in India, Pakistan, Bangladesh, Sri Lanka, Nepal, the Gulf, Europe, Latin America and elsewhere cannot sign up.',
-        'iwopo works in any country. Each business sets its own time zone and currency, and clients can pay your deposit the way they already pay locally — then you confirm it.',
+        'Before signing up for any studio software, check that it accepts businesses in your country: several popular platforms only support a few countries.',
+        'iwopo works in every country. Each business sets its own time zone and currency, prices are shown in local currency in many countries, and clients can pay your deposit the way they already pay locally — then you confirm it.',
       ] },
-      { h2: 'Made for wedding photographers and videographers', p: [
-        'HoneyBook serves many kinds of independent businesses — consultants, coaches, designers, planners. iwopo is built around weddings: multi-day events, getting-ready coverage for each side, pre-wedding shoots and pre-events such as a Mehndi or rehearsal dinner, each with its own times and hours in the contract.',
+      { h2: 'Made for weddings, not for every kind of business', p: [
+        'General business tools serve consultants, coaches and designers as much as photographers. iwopo is built around weddings: multi-day events, getting-ready coverage for each side, pre-wedding shoots and pre-events such as a Mehndi or rehearsal dinner, each with its own times and hours in the contract.',
       ] },
-      { h2: 'Galleries and your website included', ul: [
+      { h2: 'One subscription instead of several', ul: [
+        'Inquiries, packages, contracts with initials and e-signature, deposits, bookings, calendar and crew.',
         'Client galleries with automatic face grouping, so guests find their own photos.',
         'Large-file delivery for films and raw footage, with links that keep working.',
         'A portfolio website on your own domain, with your inquiry form built in.',
-        'Inquiries, packages, contracts with initials and e-signature, deposits, bookings, calendar and crew — in the same subscription.',
       ] },
       { h2: 'Moving over', p: [
-        'Start with a free trial, set up your inquiry form and contract template, and run new inquiries through iwopo while existing bookings finish where they are.',
-        'Information about other products comes from their public websites as checked in October 2026 and may change; check their sites for current details.',
+        'Set up your inquiry form and contract template, then run new inquiries through iwopo while existing bookings finish where they are. Essential and Pro start with a free trial, no card needed.',
       ] },
     ],
     faq: [
-      ['Is HoneyBook available in India or Pakistan?', 'As of October 2026, HoneyBook’s website says it only supports professionals in the U.S., Canada, the UK and Australia. iwopo is available in every country.'],
-      ['Does iwopo include client galleries?', 'Yes. Galleries, large-file delivery and a website builder are included alongside inquiries, contracts, deposits and bookings.'],
+      ['Is iwopo available in my country?', 'Yes. iwopo works in every country, with your own time zone and currency.'],
+      ['Does iwopo include client galleries and a website?', 'Yes. Galleries, large-file delivery and a website builder are included alongside inquiries, contracts, deposits and bookings.'],
+      ['Can I keep my current bookings where they are?', 'Yes. Many studios run new inquiries through iwopo and let existing bookings finish in their old tools.'],
     ],
     related: ['/pricing', '/features', '/locations', '/for/south-asian-weddings'],
   },
 };
+
+/** Old comparison addresses → their replacement (a permanent redirect, so links and search results keep working). */
+export const MOVED = { '/compare/honeybook-alternative': '/compare/iwopo-vs-other-studio-software' };

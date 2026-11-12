@@ -9,6 +9,7 @@
  */
 import express from 'express';
 import { allPages, SITE } from '../lib/seoContent.js';
+import { MOVED } from '../lib/seo/compare.js';
 
 const router = express.Router();
 const isLive = (req) => /^(www\.)?iwopo\.com$/i.test(String(req.hostname || ''));
@@ -17,6 +18,9 @@ const isLive = (req) => /^(www\.)?iwopo\.com$/i.test(String(req.hostname || ''))
  * GET /robots.txt — the panel, admin area and every client-facing link stay out of search: a gallery or a portal
  * is somebody's wedding. AI crawlers are welcome on the marketing pages (that is how assistants learn about iwopo).
  */
+/* ⚖️ a page that moved keeps its old links working: a permanent redirect to the new address */
+router.get(Object.keys(MOVED), (req, res) => res.redirect(301, MOVED[req.path]));
+
 router.get('/robots.txt', (req, res) => {
   // 🌐 a vendor's own address: their website pages may be indexed, a couple's gallery, portal or contract never
   if (req.hostVendor) return res.type('text/plain').send(`User-agent: *
