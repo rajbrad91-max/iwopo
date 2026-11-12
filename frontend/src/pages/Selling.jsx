@@ -51,17 +51,18 @@ function useCountUp(target, run) {
 
 const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700&display=swap';
 
+/* the feature cards (Raj, 2026-11-12): premium and inviting, every claim true; no "AI", nothing only for photographers */
 const FEATURES = [
-  { id: 'gallery', name: 'Advanced Galleries', desc: 'Private, watermarked galleries clients love — face search, favorites, one-click downloads.' },
-  { id: 'leads', name: 'Lead management', desc: 'Every inquiry captured, qualified, and tracked from first message to signed booking.' },
-  { id: 'bookings', name: 'Bookings & calendar', desc: 'See every event, hold, and deadline in one calendar built around wedding season.' },
-  { id: 'contracts', name: 'Contracts', desc: 'Send, e-sign, and store agreements with a signing certificate on every one.' },
-  { id: 'invoices', name: 'Invoices & payments', desc: 'Deposits, balances, and payment records — always know who owes what.' },
-  { id: 'crew', name: 'Crew management', desc: 'Assign shooters, editors, and assistants to events and keep everyone in sync.' },
-  { id: 'cloud', name: 'Cloud storage', desc: 'Room for raw footage and full-resolution galleries, scaling as you grow.' },
-  { id: 'video', name: 'Video uploads', desc: 'Deliver films and highlight reels alongside photos in the same gallery.' },
-  { id: 'transfer', name: 'Large file transfer', desc: 'Move multi-gigabyte deliveries without wrestling with third-party tools.' },
-  { id: 'ai', name: 'AI assistant', desc: 'Answers inquiries, qualifies leads, and books meetings around the clock.' },
+  { id: 'gallery', name: 'Advanced Galleries', desc: 'Face-recognition galleries where every guest finds their own photos in seconds, saves favourites and downloads in one click.' },
+  { id: 'leads', name: 'Lead Management', desc: 'Every inquiry captured the moment it arrives and followed from first message to signed booking, so no client slips away.' },
+  { id: 'bookings', name: 'Bookings & Calendar', desc: 'Every event, hold and deadline in one live calendar, built for the busiest wedding season.' },
+  { id: 'contracts', name: 'Contracts & E-Signatures', desc: 'Send, sign and store contracts online. Every signature is sealed with a tamper-proof record of who signed, when and where.' },
+  { id: 'invoices', name: 'Invoices & Payments', desc: 'Deposits and balances paid online, straight to your account, with a clear record of who has paid and who hasn’t.' },
+  { id: 'crew', name: 'Crew Management', desc: 'Assign your team to every event and keep everyone on the same schedule, from the first call time to the final delivery.' },
+  { id: 'cloud', name: 'Cloud Storage', desc: 'Secure cloud space for full-resolution galleries and raw footage that grows with your business.' },
+  { id: 'video', name: 'Video in Galleries', desc: 'Films and highlight reels stream beautifully alongside the photos, in the same gallery.' },
+  { id: 'transfer', name: 'Large File Delivery', desc: 'Send multi-gigabyte files in a single link that stays fast and never expires early.' },
+  { id: 'ai', name: 'Smart Chat Assistant', desc: 'Replies to new inquiries day and night and answers your clients’ questions instantly, even while you’re at a wedding.' },
 ];
 
 /**
