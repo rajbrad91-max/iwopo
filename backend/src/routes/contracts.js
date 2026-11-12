@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { questionsForLead } from '../lib/leadQuestions.js';
 import { requireAuth } from '../middleware/auth.js';
-import { moneySummary, pickedOffer } from './payments.js';
+import { moneySummary, pickedOffer, rebuildUnsignedContract } from './payments.js';
 import { currencyFor } from '../lib/currencies.js';
 import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
@@ -36,13 +36,19 @@ export async function audit(contractId, event, ip, meta) {
  * regeneration path so all three draw from the same template.
  */
 export async function templateForLead(lead, templateId = null) {
+  /* ✏️ 0 · this client's own version, made with "Edit this contract" on their preview — it wins wherever the contract
+         is drawn (preview, build, the portal, a payment), for this lead only (Raj, 2026-11-12) */
+  const own = await prisma.contract_templates.findFirst({
+    where: { vendor_id: lead.vendor_id, lead_id: lead.id },           // 🔒 tenancy
+  });
+  if (own) return own;
   if (templateId) {
     return prisma.contract_templates.findFirst({
-      where: { id: Number(templateId), vendor_id: lead.vendor_id },   // 🔒 tenancy
+      where: { id: Number(templateId), vendor_id: lead.vendor_id, lead_id: null },   // 🔒 tenancy · never another client's version
     });
   }
   const tpls = await prisma.contract_templates.findMany({
-    where: { vendor_id: lead.vendor_id },                             // 🔒 tenancy
+    where: { vendor_id: lead.vendor_id, lead_id: null },              // 🔒 tenancy · the vendor's own templates only
     orderBy: { id: 'asc' },
   });
   if (!tpls.length) return null;
@@ -60,6 +66,16 @@ export async function templateForLead(lead, templateId = null) {
   /* 3 · the oldest, as a last resort */
   return tpls[0];
 }
+
+/** The template a contract records as built from. A client's own version is never recorded — the template it was
+    copied from is — so "Use my template again" goes back to it. */
+export const builtFromId = (tpl) => (tpl?.lead_id ? tpl.copied_from_id ?? null : tpl?.id ?? null);
+
+/** True when this lead's agreement is signed: an executed agreement never changes. */
+async function contractSigned(leadId) {
+  return !!(await prisma.contracts.findFirst({ where: { lead_id: leadId, voided_at: null, status: 'signed' }, select: { id: true } }));
+}
+const SIGNED = 'This contract is signed, so it can no longer change.';
 
 /** Only what a section may hold, each trimmed to what the page can show. */
 function cleanSections(list) {
@@ -612,7 +628,7 @@ router.get('/templates', requireAuth, async (req, res) => {
     const v = actingVendorId(req);
     if (!v) return res.status(400).json({ error: 'No vendor' });
     const templates = await prisma.contract_templates.findMany({
-      where: { vendor_id: Number(v) },          // 🔒 tenancy
+      where: { vendor_id: Number(v), lead_id: null },   // 🔒 tenancy · clients' own versions are not templates
       orderBy: { id: 'asc' },
     });
     res.json({ templates });
@@ -657,9 +673,10 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
   try {
     const v = actingVendorId(req);
     const id = Number(req.params.id);
-    const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
+    const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true, lead_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (own.lead_id && await contractSigned(own.lead_id)) return res.status(409).json({ error: SIGNED });
     const { name, event_type, header, body, legal_terms, sections, accent, font_style } = req.body;
     // COALESCE($n, col): only overwrite what was supplied (event_type is always set)
     const data = { event_type: event_type ?? null, updated_at: new Date() };
@@ -670,6 +687,8 @@ router.put('/templates/:id', requireAuth, async (req, res) => {
     Object.assign(data, lookOf({ accent, font_style }, true));
     if (sections !== undefined) data.sections = cleanSections(sections);
     const template = await prisma.contract_templates.update({ where: { id, ...mine(v) }, data });
+    // ✏️ a client's own version: their built contract shows the edit straight away
+    if (own.lead_id) await rebuildUnsignedContract(await prisma.leads.findUnique({ where: { id: own.lead_id } }));
     res.json({ template });
   } catch (e) { serverError(res, e); }
 });
@@ -678,10 +697,13 @@ router.delete('/templates/:id', requireAuth, async (req, res) => {
   try {
     const v = actingVendorId(req);
     const id = Number(req.params.id);
-    const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true } });
+    const own = await prisma.contract_templates.findUnique({ where: { id }, select: { vendor_id: true, lead_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (req.user.role !== 'super_admin' && own.vendor_id !== v) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (own.lead_id && await contractSigned(own.lead_id)) return res.status(409).json({ error: SIGNED });
     await prisma.contract_templates.delete({ where: { id, ...mine(v) } });
+    // ✏️ a client's own version removed ("Use my template again"): their contract follows the template once more
+    if (own.lead_id) await rebuildUnsignedContract(await prisma.leads.findUnique({ where: { id: own.lead_id } }));
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -698,10 +720,11 @@ router.put('/templates/:id/default', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   try {
     const own = await prisma.contract_templates.findUnique({
-      where: { id }, select: { vendor_id: true },
+      where: { id }, select: { vendor_id: true, lead_id: true },
     });
     if (!own) return res.status(404).json({ error: 'Not found' });
     if (own.vendor_id !== vid) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+    if (own.lead_id) return res.status(400).json({ error: 'A client’s own contract cannot be your default.' });
 
     /* ⚠️ Both writes or neither. A gap with two defaults is the bug. */
     await prisma.$transaction([
@@ -768,7 +791,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       tpl = await templateForLead(lead, template_id);
       if (!tpl) return res.status(400).json({ error: 'Template not found' });
       ctTitle = title || tpl.name;
-      tplId = tpl.id;
+      tplId = builtFromId(tpl);
     }
     if (!tpl && !String(body || '').trim()) {
       return res.status(400).json({ error: 'Contract text required' });
@@ -895,6 +918,7 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
         logo_path: vendor?.logo_path || null,
         released_at: existing?.released_at || null,
         status: existing?.status || 'draft',
+        own_version: !!t.lead_id,   // ✏️ edited for this client
       },
       packages: pkgs.map(p => ({
         id: p.id,
@@ -904,6 +928,34 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
       })),
       active_package_id: active?.id ?? null,
     });
+  } catch (e) { serverError(res, e); }
+});
+
+/**
+ * ✏️ POST /api/contracts/lead/:leadId/own-version → this client's own version of the contract, made on first use
+ * (Raj, 2026-11-12). "Edit this contract" on the preview opens it in the contract editor; preview, build, the portal
+ * and a payment then draw this client's contract from it, and the vendor's template and other clients stay as they
+ * are. Copied from the template this lead's contract uses. An executed agreement never changes.
+ */
+router.post('/lead/:leadId/own-version', requireAuth, async (req, res) => {
+  try {
+    const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' }); // 🔒 tenancy
+    if (await contractSigned(lead.id)) return res.status(409).json({ error: SIGNED });
+    const existing = await prisma.contract_templates.findFirst({ where: { vendor_id: lead.vendor_id, lead_id: lead.id } });   // 🔒 tenancy
+    if (existing) return res.json({ template: existing, created: false });
+    const built = await prisma.contracts.findFirst({ where: { lead_id: lead.id }, orderBy: { id: 'desc' }, select: { template_id: true } });   // 🔒 the lead was checked above
+    const base = await templateForLead(lead, built?.template_id ?? null);
+    if (!base) return res.status(400).json({ error: 'There is no contract template to start from yet.' });
+    const template = await prisma.contract_templates.create({
+      data: {
+        vendor_id: lead.vendor_id, lead_id: lead.id, copied_from_id: base.id,   // 🔒 stamped from the owning lead
+        name: base.name, event_type: base.event_type, header: base.header, body: base.body, legal_terms: base.legal_terms,
+        sections: base.sections ?? [], accent: base.accent, font_style: base.font_style, is_default: false,
+      },
+    });
+    res.status(201).json({ template, created: true });
   } catch (e) { serverError(res, e); }
 });
 

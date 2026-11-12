@@ -8,9 +8,12 @@ import { ContractSetup } from './ContractSetup';
 
 export function ContractsTab() {
   const [sub, setSub] = useState('list'); // list | setup | invoices
+  /* ✏️ "Edit this contract" on a lead's contract preview opens here with ?lead=<id>: the editor, for that client only */
+  const ownFor = Number(new URLSearchParams(window.location.search).get('lead')) || null;
   const btn = (k, label) => (
     <button className={`refresh ct-tab ${sub === k ? 'is-on' : ''}`} onClick={() => setSub(k)}>{label}</button>
   );
+  if (ownFor) return <div className="ct-wrap"><ContractSetup leadId={ownFor} /></div>;
   return (
     <div className="ct-wrap">
       <div className="ct-tabs">

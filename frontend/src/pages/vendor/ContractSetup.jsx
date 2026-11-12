@@ -204,7 +204,12 @@ function paintPlaceholdersHtml(html) {
 }
 
 
-export function ContractSetup() {
+/**
+ * leadId (optional): ✏️ one client's own version of the contract, opened from "Edit this contract" on their preview
+ * (Raj, 2026-11-12). The same editor, without the template list; Back returns to the preview, and "Use my template
+ * again" removes the client's version.
+ */
+export function ContractSetup({ leadId = null } = {}) {
   const [studio, setStudio] = useState('');   // the vendor's own name for the sample preview
   const [trade, setTrade] = useState('other');   // 🧑‍💼 their trade — which sample contract they see
   useEffect(() => { api.myProfile().then(d => { setStudio(d.profile?.business_name || ''); setTrade(d.profile?.profession || 'other'); }).catch(() => {}); }, []);
@@ -256,7 +261,29 @@ export function ContractSetup() {
   // 🔓 account-wide (lib/useAutoRelease — the contract preview shares it)
   const autoRelease = useAutoRelease();
 
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on open: the template list, or this client's own version
+  useEffect(() => { if (leadId) openOwnVersion(); else load(); }, []);
+  /* ✏️ this client's own version — made on first use; left untouched, it is removed again on the way out */
+  async function openOwnVersion() {
+    try {
+      const d = await api.ownContract(leadId);
+      setSel(d.template);
+      setSelClean(JSON.stringify(d.template));
+      if (d.created) setJustCreated(d.template.id);
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    setLoading(false);
+  }
+  /* back to the client's contract preview, once the page has stopped guarding unsaved changes */
+  function backToPreview() {
+    setSelClean(JSON.stringify(sel));
+    setTimeout(() => window.location.assign(`/contract-preview/${leadId}`), 0);
+  }
+  async function useTemplateAgain() {
+    if (!await dialog.confirm('This client’s contract goes back to your template, and the changes made here are removed.',
+      { title: 'Use your template again?', okLabel: 'Use my template' })) return;
+    try { await api.deleteCtTemplate(sel.id); backToPreview(); }
+    catch (e) { dialog.alert(e.message, { error: true }); }
+  }
   async function load() {
     try { const d = await api.ctTemplates(); setTpls(d.templates || []); } catch { /* list stays */ }
     setLoading(false);
@@ -397,6 +424,14 @@ export function ContractSetup() {
     );
   }
 
+  /* ✏️ this client's contract could not open (signed, or no template yet): say so, and the way back */
+  if (leadId && !sel) return (
+    <div className="cs-wide">
+      <button className="refresh" onClick={() => window.location.assign(`/contract-preview/${leadId}`)}>← Back to the contract</button>
+      <p className="cs-hint">{msg || 'Opening this client’s contract…'}</p>
+    </div>
+  );
+
   if (sel) return (
     <div className="cs-wide">
       <div className="cs-bar">
@@ -411,21 +446,27 @@ export function ContractSetup() {
           if (justCreated && justCreated === sel?.id && !csDirty) {
             await api.deleteCtTemplate(justCreated).catch(() => {});
           }
+          if (leadId) { backToPreview(); return; }
           setSel(null); setSelClean(null); setJustCreated(null); load();
-        }}>← All templates</button>
+        }}>{leadId ? '← Back to the contract' : '← All templates'}</button>
         <div className="cs-bar-right">
           {msg && <span className={`cs-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
-          {/* 🔓 Account-wide, not per template: it answers "do I want to read my
-              contracts before they go out", which is a habit rather than a
-              property of one document. */}
-          <AutoReleaseToggle className="refresh cs-auto" on={autoRelease.on} disabled={!autoRelease.ready} onChange={saveAutoRelease} />
-          <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
+          {leadId
+            ? <button className="refresh" onClick={useTemplateAgain}>↩️ Use my template again</button>
+            : <>
+              {/* 🔓 Account-wide, not per template: it answers "do I want to read my
+                  contracts before they go out", which is a habit rather than a
+                  property of one document. */}
+              <AutoReleaseToggle className="refresh cs-auto" on={autoRelease.on} disabled={!autoRelease.ready} onChange={saveAutoRelease} />
+              <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
+            </>}
           <button className="refresh" onClick={save} disabled={saving}>
             {saving ? '⏳ Saving…' : '💾 Save contract'}
           </button>
         </div>
       </div>
 
+      {leadId && <p className="cs-hint">✏️ This client’s own contract. Changes here are for them only; your template stays as it is.</p>}
       <div className="cs-split">
         <div className="cs-edit">
           {/* ── the template's own settings, one compact row ── */}

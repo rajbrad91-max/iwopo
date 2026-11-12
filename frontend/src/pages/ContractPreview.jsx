@@ -105,6 +105,12 @@ export default function ContractPreview({ leadId }) {
      before the switch went on still has its Release button, or it could never reach the client. */
   const previewActions = (ct) => (
     <div className="ct-prev-actions">
+      {ct?.own_version && <span className="ct-prev-own">✏️ Edited for this client</span>}
+      {/* ✏️ this client's own version, in the contract editor (Raj, 2026-11-12); an executed agreement never changes */}
+      {ct?.status !== 'signed' && (
+        <button type="button" className="ct-prev-edit" disabled={busy}
+          onClick={() => window.location.assign(`/panel/contracts?lead=${leadId}`)}>✏️ Edit this contract</button>
+      )}
       <AutoReleaseToggle className="ct-prev-auto" on={autoRelease.on} disabled={!autoRelease.ready || busy}
         onChange={(on) => toggleAutoRelease(on, ct)} />
       <button type="button" className="ct-prev-release" onClick={() => release(ct?.id)}

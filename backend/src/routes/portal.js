@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { moneySummary } from './payments.js';
 import { notify } from './notifications.js';
-import { audit, templateForLead, buildContractBody, upgradeDeliverables } from './contracts.js';
+import { audit, templateForLead, builtFromId, buildContractBody, upgradeDeliverables } from './contracts.js';
 import { currencyFor } from '../lib/currencies.js';
 import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 import { limit } from '../middleware/rateLimit.js';
@@ -89,7 +89,7 @@ async function reconcileContract(lead, newPackageId, ip) {
         vendor_id: lead.vendor_id, lead_id: lead.id,
         token: crypto.randomBytes(24).toString('hex'),
         title: tpl.name, body, status: 'sent',
-        package_id: newPackageId, template_id: tpl.id,
+        package_id: newPackageId, template_id: builtFromId(tpl),
         ...(approved ? { released_at: new Date() } : {}),   // the vendor already approved this lead's contract
       },
     });

@@ -208,7 +208,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
  * Redraw a lead's unsigned contract from its template, so its figures match the
  * money as it now stands. Returns what happened, so the caller can say so.
  */
-async function rebuildUnsignedContract(lead) {
+export async function rebuildUnsignedContract(lead) {
   const ct = await prisma.contracts.findFirst({
     where: { lead_id: lead.id, voided_at: null },
     orderBy: { id: 'desc' },

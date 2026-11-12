@@ -838,6 +838,7 @@ export const api = {
   addCtTemplate: (data) => request('/contracts/templates', { method: 'POST', body: JSON.stringify(data) }),
   updateCtTemplate: (id, data) => request(`/contracts/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCtTemplate: (id) => request(`/contracts/templates/${id}`, { method: 'DELETE' }),
+  ownContract: (leadId) => request(`/contracts/lead/${leadId}/own-version`, { method: 'POST' }),   // ✏️ this client's own version
   createContractFromTemplate: (leadId, template_id) => request(`/contracts/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ template_id }) }),
   allInvoices: () => request('/invoices'),
   leadInvoices: (leadId) => request(`/invoices/lead/${leadId}`),
