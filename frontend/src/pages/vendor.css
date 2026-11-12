@@ -49,15 +49,6 @@
   background: var(--teal-soft); border-color: #0d948840;
 }
 
-/* Topbar → hero header */
-.dash .topbar {
-  position: sticky; top: 14px; z-index: 20;
-  background: var(--mat);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-          backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid var(--line); border-radius: 22px;
-  padding: 16px 20px; margin-bottom: 26px; box-shadow: var(--shadowSm);
-}
 .dash .refresh { border-radius: 12px; }
 .dash .refresh:hover { transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
 
