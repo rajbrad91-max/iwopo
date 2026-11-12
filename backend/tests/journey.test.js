@@ -5,9 +5,12 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { prisma, staging, tokens, call, emailOff, TEST_VENDOR } from './helpers.js';
+import crypto from 'node:crypto';
+import { setTimeout as wait } from 'node:timers/promises';
+import { prisma, staging, tokens, call, emailOff, API, TEST_VENDOR } from './helpers.js';
 
 staging();
+const objects = await import('../src/lib/objectStore.js');
 const { signToken } = await import('../src/middleware/auth.js');
 const t = await tokens();
 const otherUser = await prisma.users.findFirst({ where: { vendor_id: 1 }, orderBy: { id: 'asc' }, select: { id: true, role: true, vendor_id: true, email: true, name: true } });
@@ -22,7 +25,9 @@ const cleanup = async () => {
   if (!ids.length) return;
   const where = { lead_id: { in: ids } };
   for (const model of ['payments', 'invoices']) await prisma[model].deleteMany({ where });
-  const cts = (await prisma.contracts.findMany({ where, select: { id: true } })).map(c => c.id);
+  const rows = await prisma.contracts.findMany({ where, select: { id: true, pdf_key: true } });
+  for (const r of rows) if (r.pdf_key) await objects.deleteObject(objects.PRIVATE, r.pdf_key);   // the frozen PDF too
+  const cts = rows.map(c => c.id);
   for (const [model, key] of [['contract_audit', 'contract_id'], ['contract_events', 'contract_id']]) {
     if (prisma[model] && cts.length) await prisma[model].deleteMany({ where: { [key]: { in: cts } } });
   }
@@ -68,6 +73,26 @@ test('released, the client opens it and signs; it cannot be signed twice', async
   assert.equal(s.status, 200, JSON.stringify(s.body));
   assert.equal((await prisma.contracts.findUnique({ where: { id: contract.id }, select: { status: true } })).status, 'signed');
   assert.equal((await call('POST', `/contracts/sign/${contract.token}`, { body: { signed_name: 'Journey Test', signature_data: PNG } })).status, 400);
+});
+
+test('the signed PDF is frozen at signing, and a download is that very copy', async () => {
+  let row = null;
+  for (let i = 0; i < 45 && !row?.pdf_sha256; i++) { await wait(1000); row = await prisma.contracts.findUnique({ where: { id: contract.id }, select: { pdf_key: true, pdf_sha256: true } }); }
+  assert.ok(row?.pdf_key && row.pdf_sha256, 'a frozen copy is kept');
+  const r = await fetch(`${API}/contracts/download/${contract.token}`);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type') || '', /application\/pdf/);
+  const pdf = Buffer.from(await r.arrayBuffer());
+  assert.equal(pdf.subarray(0, 4).toString(), '%PDF');
+  assert.equal(crypto.createHash('sha256').update(pdf).digest('hex'), row.pdf_sha256, 'the download is the frozen copy, byte for byte');
+  const trail = await prisma.contract_audit.findMany({ where: { contract_id: contract.id }, select: { event: true, meta: true } });
+  assert.ok(trail.some(t => t.event === 'archived'), 'the audit trail records it');
+  assert.ok(typeof trail.find(t => t.event === 'signed')?.meta?.user_agent === 'string', 'and the signer’s browser');
+});
+
+test('signing sends no email — the client gets their copy after payment, as before', async () => {
+  await wait(3000);
+  assert.equal(await prisma.contract_audit.count({ where: { contract_id: contract.id, event: 'copies_emailed' } }), 0);
 });
 
 test('the signed contract’s certificate opens', async () => {

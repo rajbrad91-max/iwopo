@@ -18,6 +18,8 @@ import { mine } from '../lib/tenancy.js';
 import { limit } from '../middleware/rateLimit.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
+import * as objects from '../lib/objectStore.js';
+import { noteFailure } from '../lib/noteFailure.js';
 
 const router = express.Router();
 
@@ -1038,12 +1040,67 @@ router.post('/sign/:token', limit({ name: 'contract-sign', max: 20, windowMs: 60
         signed_at: new Date(), updated_at: new Date(),
       },
     });
-    await audit(c.id, 'signed', ip, { signed_name: signed_name.trim(), sha256: docHash });
+    await audit(c.id, 'signed', ip, { signed_name: signed_name.trim(), sha256: docHash, user_agent: String(req.headers['user-agent'] || '').slice(0, 300) });   // 🖥️ the signer's browser too
     // ✍️ R2 (2026-10-30): the vendor is told straight away — signing used to leave no trace in the panel
     if (c.lead_id) notify(c.vendor_id, `✍️ ${signed_name.trim()} signed the contract`, `${c.title || 'Contract'} · payment is next`, 'contract', { type: 'lead', id: c.lead_id });
     res.json({ contract: updated });
+    // 🧊 freeze the signed PDF — after the answer, so the client is not kept waiting. Nothing is emailed here: the
+    //    client gets their copy after payment (online, or when the vendor confirms the deposit), as before.
+    archiveSignedContract(c.id).catch(e => noteFailure('freeze a signed contract', e));
   } catch (e) { serverError(res, e); }
 });
+
+/** The file name a signed contract is given: the client's name and the signing date. */
+function signedFilename(c) {
+  return `contract-${c.leads?.name || c.id}-${c.signed_at ? new Date(c.signed_at).toISOString().slice(0, 10) : 'signed'}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+/**
+ * 📄 A signed contract as a document — the body with the initials the client entered, and the acceptance block.
+ * One place, so the download and the copy frozen at signing are the same document. `c` carries leads { name }.
+ */
+async function signedDoc(c) {
+  /**
+   * The stored body is already HTML — it must NOT be escaped again here.
+   *
+   * This escaped the whole document and then split on a literal [INITIAL]
+   * marker, both of which were correct when a contract was plain text. Left
+   * as it was against the new format, a downloaded SIGNED CONTRACT would
+   * render its own markup as visible text: a client opening the copy of the
+   * agreement they just signed would see table tags instead of the document.
+   *
+   * The gold tap boxes are swapped for the initials the client actually
+   * entered, so the download is a record of what was signed rather than an
+   * invitation to sign it again.
+   */
+  const initials = (c.signed_name || '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase();
+  const body = upgradeDeliverables(c.body).replace(
+    /<span class="ct-init-tap"[^>]*>.*?<\/span>/g,
+    `<span class="ct-signed-init ct-hand">${esc(initials)}</span>`
+  );
+
+  return { filename: signedFilename(c), title: c.title, inner: `
+    <div class="ct-doc">${body}${acceptanceHtml(c, await signedZone(c.vendor_id))}</div>
+  ` };
+}
+
+/**
+ * 🧊 The signed contract, frozen (Raj, 2026-11-11): at signing its PDF is made once and kept privately with its own
+ * SHA-256, so the copy anyone downloads later — or shows in a dispute — is the very one that was signed, not a new
+ * rendering that later code or styling could change. Returns the file, or null for a contract not signed.
+ */
+export async function archiveSignedContract(contractId) {
+  const c = await prisma.contracts.findUnique({ where: { id: Number(contractId) }, include: { leads: { select: { name: true, email: true } } } });
+  if (!c || c.status !== 'signed') return null;
+  const d = await signedDoc(c);
+  const pdf = Buffer.from(await htmlToPdf(pdfHtml(d.title, d.inner)));
+  const sha = crypto.createHash('sha256').update(pdf).digest('hex');
+  const key = objects.keyFor(c.vendor_id, 'contracts', `${c.id}-signed.pdf`);
+  await objects.putObject(objects.PRIVATE, key, pdf, 'application/pdf', pdf.length);
+  await prisma.contracts.update({ where: { id: c.id }, data: { pdf_key: key, pdf_sha256: sha } });
+  await audit(c.id, 'archived', null, { pdf_sha256: sha, bytes: pdf.length });
+  return { pdf, sha, filename: `${d.filename}.pdf`, contract: c };
+}
 
 /**
  * 📥 PUBLIC: download the signed contract, or its certificate, as a file.
@@ -1119,11 +1176,14 @@ const PDF_CSS = `
   .ct-doc h1,.ct-doc h2,.ct-doc h3{break-after:avoid;page-break-after:avoid}
   .ct-doc .ct-init,.ct-doc tr,.ct-doc .ct-accept-doc{break-inside:avoid;page-break-inside:avoid}   /* the whole Acceptance & Signature block stays on one page, like the reference */
 `;
-async function sendPdf(res, filename, title, inner) {
-  const html = `<!doctype html><html><head><meta charset="utf-8"><base href="${process.env.APP_URL || 'https://iwopo.com'}/">
+/** the whole page a contract PDF is printed from */
+function pdfHtml(title, inner) {
+  return `<!doctype html><html><head><meta charset="utf-8"><base href="${process.env.APP_URL || 'https://iwopo.com'}/">
 <title>${esc(title)}</title><style>${DOC_CSS}${PDF_CSS}</style></head><body>${inner}</body></html>`;
+}
+async function sendPdf(res, filename, title, inner) {
   try {
-    const pdf = await htmlToPdf(html);
+    const pdf = await htmlToPdf(pdfHtml(title, inner));
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf"`);
     res.send(pdf);
@@ -1153,29 +1213,19 @@ router.get('/download/:token', async (req, res) => {
     });
     if (!c) return downloadFailed(req, res, 404, 'not_found', "This contract isn't available.");
 
-    /**
-     * The stored body is already HTML — it must NOT be escaped again here.
-     *
-     * This escaped the whole document and then split on a literal [INITIAL]
-     * marker, both of which were correct when a contract was plain text. Left
-     * as it was against the new format, a downloaded SIGNED CONTRACT would
-     * render its own markup as visible text: a client opening the copy of the
-     * agreement they just signed would see table tags instead of the document.
-     *
-     * The gold tap boxes are swapped for the initials the client actually
-     * entered, so the download is a record of what was signed rather than an
-     * invitation to sign it again.
-     */
-    const initials = (c.signed_name || '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').toUpperCase();
-    const body = upgradeDeliverables(c.body).replace(
-      /<span class="ct-init-tap"[^>]*>.*?<\/span>/g,
-      `<span class="ct-signed-init ct-hand">${esc(initials)}</span>`
-    );
-
+    // 🧊 the copy frozen at signing — exactly what was signed; a contract signed before 2026-11-11 is rendered as before
+    if (c.pdf_key && req.query.format !== 'html') {
+      try {
+        const f = await objects.getStream(objects.PRIVATE, c.pdf_key);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${signedFilename(c)}.pdf"`);
+        if (f.size) res.setHeader('Content-Length', f.size);
+        return f.stream.pipe(res);
+      } catch (e) { noteFailure('read a signed contract’s frozen PDF', e); /* rendered below instead */ }
+    }
+    const d = await signedDoc(c);
     const deliver = req.query.format === 'html' ? (rs, f, t, i) => sendDoc(rs, `${f}.html`, t, i) : sendPdf;
-    await deliver(res, `contract-${c.leads?.name || c.id}-${c.signed_at ? new Date(c.signed_at).toISOString().slice(0, 10) : 'signed'}`, c.title, `
-      <div class="ct-doc">${body}${acceptanceHtml(c, await signedZone(c.vendor_id))}</div>
-    `);
+    await deliver(res, d.filename, d.title, d.inner);
   } catch (e) { downloadCrashed(req, res, e); }
 });
 
@@ -1222,9 +1272,10 @@ router.get('/certificate/:token/download', async (req, res) => {
 
     const trail = await prisma.contract_audit.findMany({
       where: { contract_id: c.id },
-      select: { event: true, ip: true, created_at: true },
+      select: { event: true, ip: true, created_at: true, meta: true },
       orderBy: { created_at: 'asc' },
     });
+    const ua = trail.find(t => t.event === 'signed')?.meta?.user_agent || null;   // 🖥️ recorded since 2026-11-11
     // every time here is UTC and says so: a record that reads differently
     // depending on who opens it is worth nothing in a dispute
     const utc = (d) => (d ? new Date(d).toUTCString() : '—');
@@ -1234,6 +1285,8 @@ router.get('/certificate/:token/download', async (req, res) => {
       ['Signed at', utc(c.signed_at)], ['First viewed', utc(c.viewed_at)],
       ['Created', utc(c.created_at)], ['Signer IP', c.signed_ip],
       ['Fingerprint (SHA-256)', c.doc_sha256],
+      ...(c.pdf_sha256 ? [['Signed PDF fingerprint (SHA-256)', c.pdf_sha256]] : []),
+      ...(ua ? [['Signer browser', ua]] : []),
     ].map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v || '—')}</td></tr>`).join('');
 
     const audit = trail.map(t =>

@@ -235,6 +235,9 @@ model contracts {
   initials       Json?            @default("[]")
   viewed_at      DateTime?        @db.Timestamp(6)
   doc_sha256     String?          @db.VarChar(64)
+  /// 🧊 the signed PDF, made once at signing and kept privately (R2), and its own SHA-256 (2026-11-11)
+  pdf_key        String?   @db.VarChar(300)
+  pdf_sha256     String?   @db.VarChar(64)
   package_id     Int?
   template_id    Int?
   voided_at      DateTime?        @db.Timestamp(6)
