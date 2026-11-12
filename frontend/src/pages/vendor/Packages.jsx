@@ -2,7 +2,7 @@
  * 📦 My Packages: package templates and their cards.
  * Moved out of pages/VendorPanel.jsx unchanged (code audit #2, Raj 2026-11-11).
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDialog } from '../../lib/dialog.jsx';
 import { api, moneySymbol } from '../../lib/api';
 
@@ -50,22 +50,10 @@ export function PackagesView() {
 
   if (loading) return <div className="loading">Loading…</div>;
 
-  // ---- INSIDE A TEMPLATE ----
+  // ---- INSIDE A TEMPLATE: the packages, the editor, and what the client sees ----
   if (selTpl) return (
-    <div className="u-max-width-720px">
-      <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-12px">
-        <button className="refresh" onClick={() => setSelTpl(null)}>← All templates</button>
-        {selTpl.packages.length < 3 && (
-          <button className="refresh u-background-teal u-color-acc-ink" onClick={() => addPkg(selTpl.id)}>+ Add Package</button>
-        )}
-      </div>
-      <h2 className="u-margin-0-0-12px">📁 {selTpl.name}</h2>
-      {msg && <div className="err-banner">{msg}</div>}
-      <div className="u-display-flex u-flex-direction-column u-gap-14px">
-        {selTpl.packages.length === 0 && <div className="u-color-muted">No packages yet — add one 👆</div>}
-        {selTpl.packages.map(p => <PkgCard key={p.id} pkg={p} onSaved={load} onDelete={() => delPkg(p.id)} />)}
-      </div>
-    </div>
+    <PackagesFolder tpl={selTpl} msg={msg} onBack={() => setSelTpl(null)}
+      onAdd={() => addPkg(selTpl.id)} onDelete={delPkg} onSaved={load} />
   );
 
   // ---- TEMPLATE LIST ----
@@ -105,77 +93,173 @@ function TplName({ tpl, onSaved }) {
   );
 }
 
-function PkgCard({ pkg, onSaved, onDelete }) {
-  const [f, setF] = useState({
-    name: pkg.name, base_price: pkg.base_price, included_hours: pkg.included_hours,
-    per_hour_price: pkg.per_hour_price,
-    inclusions: Array.isArray(pkg.inclusions) ? pkg.inclusions : [],
-  });
+/* small line icons for this page (the panel's own sidebar and header keep theirs) */
+const Icon = ({ d, className = 'pk-ic' }) => (
+  <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>
+);
+const GRIP = 'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01';
+const CROSS = 'M18 6 6 18M6 6l12 12';
+const CHECK = 'M20 6 9 17l-5-5';
+const PLUS = 'M12 5v14M5 12h14';
+
+const money = (v) => `${moneySymbol()}${(Number(v) || 0).toLocaleString()}`;
+const formOf = (pkg) => ({
+  name: pkg.name, base_price: pkg.base_price, included_hours: pkg.included_hours,
+  per_hour_price: pkg.per_hour_price,
+  inclusions: Array.isArray(pkg.inclusions) ? pkg.inclusions : [],
+});
+
+/**
+ * 📦 Inside a folder (Raj, 2026-11-12): the packages listed on the left, the chosen one edited in the middle, and on
+ * the right exactly how it reads to a client. Leaving a package with unsaved changes asks first.
+ */
+function PackagesFolder({ tpl, msg, onBack, onAdd, onDelete, onSaved }) {
+  const dialog = useDialog();
+  const pkgs = tpl.packages;
+  const [selId, setSelId] = useState(pkgs[0]?.id ?? null);
+  const dirty = useRef(false);
+  const count = useRef(pkgs.length);
+  // a package just added is opened; a deleted one hands over to the first
+  useEffect(() => {
+    if (pkgs.length > count.current) setSelId(pkgs[pkgs.length - 1].id);
+    else if (!pkgs.some(p => p.id === selId)) setSelId(pkgs[0]?.id ?? null);
+    count.current = pkgs.length;
+  }, [pkgs, selId]);
+  const sel = pkgs.find(p => p.id === selId) || null;
+
+  async function leaveOk() {
+    return !dirty.current || dialog.confirm('Your changes to this package are not saved yet.', { title: 'Leave without saving?', okLabel: 'Leave' });
+  }
+  async function pick(id) { if (id !== selId && await leaveOk()) { dirty.current = false; setSelId(id); } }
+
+  return (
+    <div className="pk-page">
+      <div className="pk-top">
+        <button className="refresh" onClick={async () => { if (await leaveOk()) onBack(); }}>← All templates</button>
+      </div>
+      {msg && <div className="err-banner">{msg}</div>}
+      <div className="pk-panes">
+        <div className="pk-card pk-list">
+          <div className="pk-head"><h3>{tpl.name}</h3><span className="pk-faint">{pkgs.length} of 3</span></div>
+          {pkgs.map(p => (
+            <button type="button" key={p.id} className={`pk-item ${p.id === selId ? 'is-on' : ''}`} onClick={() => pick(p.id)}>
+              <span className="pk-item-name"><b>{p.name}</b>
+                <small>{(p.inclusions || []).length} item{(p.inclusions || []).length === 1 ? '' : 's'}{p.is_default ? ' · default' : ''}</small></span>
+              <span className="pk-item-price">{money(p.base_price)}</span>
+            </button>
+          ))}
+          {pkgs.length < 3 && (
+            <button type="button" className="pk-item pk-add" onClick={async () => { if (await leaveOk()) { dirty.current = false; onAdd(); } }}>
+              <Icon d={PLUS} />Add a package
+            </button>
+          )}
+        </div>
+        {sel
+          ? <PkgEditor key={sel.id} pkg={sel} folder={tpl.name} onSaved={onSaved} onDelete={() => onDelete(sel.id)}
+              onDirty={v => { dirty.current = v; }} />
+          : <div className="pk-card pk-empty">No packages in this folder yet. Add the first one on the left.</div>}
+      </div>
+    </div>
+  );
+}
+
+function PkgEditor({ pkg, folder, onSaved, onDelete, onDirty }) {
+  const [f, setF] = useState(() => formOf(pkg));
   const [newInc, setNewInc] = useState('');
-  const [saved, setSaved] = useState('');
-  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+  const [state, setState] = useState('');      // '' | 'saved' | error text
+  const [drag, setDrag] = useState(null);       // the item being moved
+  const set = (k, v) => { setF(s => ({ ...s, [k]: v })); setState(''); };
+  const isDirty = JSON.stringify(f) !== JSON.stringify(formOf(pkg));
+  useEffect(() => { onDirty(isDirty); }, [isDirty, onDirty]);
 
   async function save() {
-    setSaved('');
     try {
       await api.updateVendorPackage(pkg.id, {
         ...f, base_price: Number(f.base_price) || 0,
         included_hours: Number(f.included_hours) || 0,
         per_hour_price: Number(f.per_hour_price) || 0,
       });
-      setSaved('✅ Saved'); setTimeout(() => setSaved(''), 1500);
+      setState('saved');
       onSaved && onSaved();
-    } catch (e) { setSaved('⚠️ ' + e.message); }
+    } catch (e) { setState(e.message); }
   }
   function addInc() {
     if (!newInc.trim()) return;
     set('inclusions', [...f.inclusions, newInc.trim()]);
     setNewInc('');
   }
-  function rmInc(i) { set('inclusions', f.inclusions.filter((_, x) => x !== i)); }
+  const rmInc = (i) => set('inclusions', f.inclusions.filter((_, x) => x !== i));
+  function moveTo(i) {
+    if (drag === null || drag === i) return;
+    const next = [...f.inclusions];
+    const [item] = next.splice(drag, 1);
+    next.splice(i, 0, item);
+    set('inclusions', next);
+    setDrag(i);
+  }
+  const hours = Number(f.included_hours) || 0, extra = Number(f.per_hour_price) || 0;
 
   return (
-    <div className="table-wrap u-padding-20px">
-      <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-10px">
-        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-55pct u-font-weight-700 u-font-size-16px" value={f.name} onChange={e => set('name', e.target.value)} />
-        <div className="u-display-flex u-gap-8px u-align-items-center">
-          {pkg.is_default && <span className="badge active">Default</span>}
-          {saved && <span className="u-font-size-12px u-color-green">{saved}</span>}
-          {!pkg.is_default && <button className="refresh" onClick={onDelete}>🗑️</button>}
+    <>
+      <div className="pk-card pk-edit">
+        <div className="pk-head">
+          <h3>{f.name || 'Untitled package'}</h3>
+          {pkg.is_default ? <span className="badge active">Default</span>
+            : <button type="button" className="pk-link" onClick={onDelete}>Delete package</button>}
         </div>
-      </div>
-
-      <div className="u-display-flex u-gap-10px">
-        <div className="u-flex-1">
-          <label className="u-font-size-12px u-color-muted">💰 Base price ({moneySymbol()})</label>
-          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" type="number" value={f.base_price} onChange={e => set('base_price', e.target.value)} />
+        <div className="pk-form">
+          <label className="pk-field"><span>Package name</span>
+            <input value={f.name} onChange={e => set('name', e.target.value)} /></label>
+          <div className="pk-row3">
+            <label className="pk-field"><span>Price</span>
+              <span className="pk-money"><em>{moneySymbol()}</em><input type="number" value={f.base_price} onChange={e => set('base_price', e.target.value)} /></span></label>
+            <label className="pk-field"><span>Hours included</span>
+              <input type="number" value={f.included_hours} onChange={e => set('included_hours', e.target.value)} /></label>
+            <label className="pk-field"><span>Extra hour</span>
+              <span className="pk-money"><em>{moneySymbol()}</em><input type="number" value={f.per_hour_price} onChange={e => set('per_hour_price', e.target.value)} /></span></label>
+          </div>
+          <div className="pk-field"><span>What’s included</span>
+            <ul className="pk-incs">
+              {f.inclusions.map((inc, i) => (
+                <li key={`${i}-${inc}`} draggable className={`pk-inc ${drag === i ? 'is-drag' : ''}`}
+                  onDragStart={() => setDrag(i)} onDragEnter={() => moveTo(i)} onDragOver={e => e.preventDefault()} onDragEnd={() => setDrag(null)}>
+                  <Icon d={GRIP} className="pk-ic pk-grip" />
+                  <span className="pk-inc-text">{inc}</span>
+                  <button type="button" className="pk-x" title="Remove" onClick={() => rmInc(i)}><Icon d={CROSS} /></button>
+                </li>
+              ))}
+            </ul>
+            {f.inclusions.length === 0 && <p className="pk-faint">Nothing listed yet. Add what your clients get with this package.</p>}
+            <div className="pk-add-row">
+              <input placeholder="Add an item, then press Enter" value={newInc}
+                onChange={e => setNewInc(e.target.value)} onKeyDown={e => e.key === 'Enter' && addInc()} />
+              <button type="button" className="refresh" onClick={addInc}><Icon d={PLUS} />Add</button>
+            </div>
+          </div>
         </div>
-        <div className="u-flex-1">
-          <label className="u-font-size-12px u-color-muted">⏱️ Included hours</label>
-          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" type="number" value={f.included_hours} onChange={e => set('included_hours', e.target.value)} />
-        </div>
-        <div className="u-flex-1">
-          <label className="u-font-size-12px u-color-muted">➕ Extra {moneySymbol()}/hour</label>
-          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" type="number" value={f.per_hour_price} onChange={e => set('per_hour_price', e.target.value)} />
-        </div>
-      </div>
-
-      <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-12px">📝 Inclusions (your own items)</label>
-      <div className="u-display-flex u-flex-wrap-wrap u-gap-6px u-margin-6px-0">
-        {f.inclusions.map((inc, i) => (
-          <span className="u-background-teal-soft u-border-teal-faint u-color-teal u-padding-4px-10px u-border-radius-16px u-font-size-12px" key={i}>
-            {inc} <span className="u-cursor-pointer u-margin-left-4px" onClick={() => rmInc(i)}>✕</span>
+        <div className="pk-foot">
+          <span className={`pk-status ${state && state !== 'saved' ? 'is-err' : ''}`}>
+            {state && state !== 'saved' ? state : isDirty ? 'Unsaved changes' : state === 'saved' ? 'Saved' : 'All changes saved'}
           </span>
-        ))}
-        {f.inclusions.length === 0 && <span className="u-color-muted u-font-size-12px">No items yet — add below 👇</span>}
-      </div>
-      <div className="u-display-flex u-gap-8px">
-        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" placeholder="e.g. 8x10 prints, 2 photographers…" value={newInc}
-          onChange={e => setNewInc(e.target.value)} onKeyDown={e => e.key === 'Enter' && addInc()} />
-        <button className="refresh" onClick={addInc}>+ Add</button>
+          <span className="pk-foot-btns">
+            {isDirty && <button type="button" className="refresh" onClick={() => { setF(formOf(pkg)); setState(''); }}>Discard</button>}
+            <button type="button" className="refresh pk-save" disabled={!isDirty} onClick={save}>Save changes</button>
+          </span>
+        </div>
       </div>
 
-      <button className="refresh u-margin-top-14px u-width-100pct u-background-teal u-color-acc-ink" onClick={save}>💾 Save package</button>
-    </div>
+      <div className="pk-card pk-preview">
+        <div className="pk-tag">What your client sees</div>
+        <h4>{f.name || 'Untitled package'}</h4>
+        <div className="pk-faint">{folder}</div>
+        <div className="pk-price">{money(f.base_price)}</div>
+        {(hours > 0 || extra > 0) && (
+          <div className="pk-hours">{hours > 0 && `${hours} hours included`}{hours > 0 && extra > 0 && ' · '}{extra > 0 && `${money(extra)} per extra hour`}</div>
+        )}
+        <ul>
+          {f.inclusions.map((inc, i) => <li key={i}><Icon d={CHECK} />{inc}</li>)}
+        </ul>
+      </div>
+    </>
   );
 }
