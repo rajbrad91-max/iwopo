@@ -161,6 +161,22 @@ router.post('/login/resend', limit({ name: 'login-resend', max: 6, windowMs: 60 
 });
 
 // GET /api/auth/trial-eligible  → tells frontend if this IP can still start a trial
+/**
+ * 📝 POST /api/auth/waitlist { email } — "Join the waitlist" on the public page while sign-ups are paused
+ * (Raj, 2026-11-12). Public, so it is rate-limited and takes only an email address; the address is kept once, and
+ * asking again is not an error. `website` is a box people never see: only a bot fills it, and it is quietly ignored.
+ */
+const waitlistLimit = limit({ name: 'waitlist', max: 20, windowMs: 60 * 60_000 });
+router.post('/waitlist', waitlistLimit, async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+    if (req.body?.website) return res.json({ ok: true });
+    await prisma.waitlist.createMany({ data: [{ email }], skipDuplicates: true });
+    res.json({ ok: true });
+  } catch (e) { serverError(res, e); }
+});
+
 router.get('/trial-eligible', async (req, res) => {
   const used = await trialCount(clientIp(req));
   res.json({ eligible: used < TRIAL_LIMIT, used, limit: TRIAL_LIMIT, open: await signupsOpen() });   // 🚧 sign-ups paused?

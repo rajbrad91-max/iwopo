@@ -718,6 +718,7 @@ export const api = {
   saveAdminPlan: (id, body) => request(`/admin/plans/${id}`, { method: 'PUT', body: JSON.stringify(body) }),   // 📋 the editable pricing table
   saveAdminPlanUnlocks: (code, features) => request(`/admin/plan-unlocks/${code}`, { method: 'PUT', body: JSON.stringify({ features }) }),
   trialEligible: () => request('/auth/trial-eligible'),
+  joinWaitlist: (email, website) => request('/auth/waitlist', { method: 'POST', body: JSON.stringify({ email, website }) }),   // 📝 while sign-ups are paused
   // 🎫 plans — what a subscription grants, including its storage
   plansList: () => request('/vendors/plans'),
   // 🗑️ Super Admin: delete a vendor for good

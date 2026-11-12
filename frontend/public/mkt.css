@@ -62,11 +62,15 @@ body.mk { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 
 
 /* footer */
 .mk-foot { border-top: 1px solid var(--line); padding: 30px 0 22px; margin-top: 30px; font-size: .92rem; }
-.mk-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; }
+.mk-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 18px 16px; }   /* all seven lists on one row on a computer — no empty corner (2026-11-12) */
 .mk-foot h2 { font-size: .95rem; margin: 0 0 8px; }
 .mk-foot ul { list-style: none; padding: 0; margin: 0; }
 .mk-foot a { color: var(--gray); text-decoration: none; }
 .mk-foot a:hover { color: var(--ink); }
+.mk-more summary { cursor: pointer; color: var(--ink); font-weight: 600; list-style: none; }   /* the rest of a long footer list */
+.mk-more summary::-webkit-details-marker { display: none; }
+.mk-more summary::after { content: ' +'; }
+.mk-more[open] summary::after { content: ' −'; }
 .mk-copy { color: var(--gray); margin-top: 18px; }
 
 @media (max-width: 640px) {

@@ -56,7 +56,15 @@ function schema(page, pages) {
 }
 
 /** The <head> every marketing page shares. */
-const EN = { fFeatures: 'Features', fWho: 'Who it’s for', fGuides: 'Guides', fLegal: 'Legal', fCountries: 'Countries', soon: 'Opening soon', soonSub: 'New studios can join very soon · Already a member? Log in', features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
+/**
+ * A footer list shows its first few links; the rest open under "More" (Raj, 2026-11-12: long lists left the footer
+ * mostly empty space). <details> needs no script, and every link stays in the page for search engines.
+ */
+const MORE = { en: 'More', it: 'Altro', de: 'Mehr', es: 'Más', fr: 'Plus', pt: 'Mais', nl: 'Meer' };
+const firstFew = (items, n, page, li) => items.slice(0, n).map(li).join('')
+  + (items.length > n ? `<li><details class="mk-more"><summary>${MORE[page.lang] || MORE.en}</summary><ul>${items.slice(n).map(li).join('')}</ul></details></li>` : '');
+
+const EN = { fFeatures: 'Features', fWho: 'Who it’s for', fGuides: 'Guides', fLegal: 'Legal', fCountries: 'Countries', soon: 'Join the waitlist', soonSub: 'New studios can join very soon · Already a member? Log in', features: 'Features', pricing: 'Pricing', login: 'Log in', trial: 'Start free trial', faq: 'Frequently asked questions', cta: 'Run your whole wedding business in one place', ctaSub: 'Free trial · No card required · Cancel anytime', month: '/month', storage: 'GB storage · every feature included', other: 'Other languages' };
 /* 🚧 while sign-ups are paused, every "start" button says so (seoRender passes page.signupsOpen) */
 const L = (page) => { const l = { ...EN, ...(page.labels || {}) }; return page.signupsOpen === false ? { ...l, trial: l.soon || EN.soon, ctaSub: l.soonSub || EN.soonSub } : l; };
 
@@ -161,10 +169,10 @@ export function renderPage(page, pages) {
     <div class="mk-wrap mk-cols">
       <div><h2>${esc(L(page).fFeatures)}</h2><ul>${feats.map(p => `<li><a href="${p.path}">${esc(p.crumbs.at(-1).name)}</a></li>`).join('')}</ul></div>
       <div><h2>${esc(L(page).fWho)}</h2><ul>${auds.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
-      <div><h2>${esc(L(page).fGuides)}</h2><ul>${guides.map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).fGuides)}</h2><ul>${firstFew(guides, 5, page, p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`)}</ul></div>
       <div><h2>${esc(L(page).other)}</h2><ul><li><a href="/" hreflang="en">English</a></li>${pages.filter(p => p.kind === 'intl' && p.path !== page.path).map(p => `<li><a href="${p.path}" hreflang="${p.lang}">${esc(p.langName)}</a></li>`).join('')}</ul></div>
       <div><h2>${esc(L(page).fLegal)}</h2><ul>${pages.filter(p => p.kind === 'legal').map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
-      <div><h2>${esc(L(page).fCountries)}</h2><ul>${places.map(p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`).join('')}</ul></div>
+      <div><h2>${esc(L(page).fCountries)}</h2><ul>${firstFew(places, 6, page, p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`)}</ul></div>
       <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/compare/honeybook-alternative">HoneyBook alternative</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>
     <p class="mk-wrap mk-copy">© ${new Date().getFullYear()} IWOPO, LLC · 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804 · <a href="mailto:sales@iwopo.com">sales@iwopo.com</a></p>

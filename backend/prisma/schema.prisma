@@ -1852,3 +1852,10 @@ model addon_region_prices {
   @@unique([region_id, service_id, plan_code])
 }
 
+/// 📝 People who asked to be told when iwopo opens — "Join the waitlist" on the public page (Raj, 2026-11-12).
+/// No account: only the email address, kept once.
+model waitlist {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique @db.VarChar(254)
+  created_at DateTime @default(now())
+}

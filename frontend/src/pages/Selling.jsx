@@ -25,9 +25,9 @@ function useReveal() {
   }, []);
   return ref;
 }
-function Reveal({ children, className = '', style, as: Tag = 'div' }) {
+function Reveal({ children, className = '', style, id, as: Tag = 'div' }) {
   const ref = useReveal();
-  return <Tag ref={ref} className={`reveal ${className}`} style={style}>{children}</Tag>;
+  return <Tag ref={ref} id={id} className={`reveal ${className}`} style={style}>{children}</Tag>;   // id: where a menu link lands (#faq)
 }
 
 function useCountUp(target, run) {
@@ -238,6 +238,14 @@ export default function Selling({ onSignup, onGoLogin }) {
   function goSignup() {
     document.getElementById(open ? 'packages' : 'signup')?.scrollIntoView({ behavior: 'smooth' });
   }
+  /* 📝 the waitlist, while sign-ups are paused: one email box, kept once on the server */
+  const [wl, setWl] = useState({ email: '', website: '', busy: false, done: false, error: '' });
+  async function joinWaitlist() {
+    if (wl.busy) return;
+    setWl(w => ({ ...w, busy: true, error: '' }));
+    try { await api.joinWaitlist(wl.email, wl.website); setWl(w => ({ ...w, busy: false, done: true })); }
+    catch (e) { setWl(w => ({ ...w, busy: false, error: e.message })); }
+  }
   function goPackages() { document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' }); }
   /* 💳 A plan's button opens the sign-up right where the visitor is (it used to scroll to the bottom of the page) */
   function choosePlan(item, kind) { setChosen({ ...item, kind, cycle }); if (open) setBuying(true); else goSignup(); }
@@ -280,7 +288,7 @@ export default function Selling({ onSignup, onGoLogin }) {
   // 🌍 the price, shared with the table everywhere it appears (PlanTable), plus — here only — what yearly saves
   const priceOf = (p) => {
     const s = planSaving(p);
-    const save = !s ? '\u00A0' : cycle === 'annual' ? `You save ${s.money} a year (${s.pct}%)` : `Save ${s.money} a year with annual`;
+    const save = !s ? '\u00A0' : cycle === 'annual' ? `You save ${s.money} (${s.pct}%)` : `Save ${s.money}/yr on annual`;   // short: it must fit one line in the narrowest column
     return { ...planPriceOf(p, cycle), save };
   };
   const bestSave = Math.max(0, ...realPkgs.map(p => planSaving(p)?.pct || 0));   // 💰 for the Annual switch
@@ -365,7 +373,7 @@ export default function Selling({ onSignup, onGoLogin }) {
           </div>
           <div className="sl-nav-actions">
             <button type="button" className="sl-ghost" onClick={onGoLogin}>Log in</button>
-            <button type="button" className="sl-cta-sm" onClick={goSignup}>{open ? 'Choose your plan' : 'Opening soon'}</button>
+            <button type="button" className="sl-cta-sm" onClick={goSignup}>{open ? 'Choose your plan' : 'Join the waitlist'}</button>
           </div>
         </div>
       </nav>
@@ -381,7 +389,7 @@ export default function Selling({ onSignup, onGoLogin }) {
             <h1>Run your wedding business in <em>one place.</em></h1>
             <p className="sl-lede">Galleries, bookings, contracts, payments and AI — built for wedding vendors who are done juggling six tools.</p>
             <div className="sl-hero-btns">
-              <button type="button" className="sl-cta" onClick={goSignup}>{open ? 'Choose your plan' : 'Opening soon'}</button>
+              <button type="button" className="sl-cta" onClick={goSignup}>{open ? 'Choose your plan' : 'Join the waitlist'}</button>
               <a href="#features" className="sl-ghost lg">See features</a>
             </div>
             <p className="sl-hero-trust">No card required · Live the same day · Cancel anytime</p>
@@ -509,9 +517,18 @@ export default function Selling({ onSignup, onGoLogin }) {
           <Reveal className="sl-signup-box">
             {!open ? (
               <>
-                <h3>Opening very soon</h3>
-                <p className="sl-signup-sub">We’re finishing up and will open iwopo to new studios very soon. Want to hear the moment we do?</p>
-                <a className="sl-cta full" href="mailto:info@iwopo.com?subject=Tell%20me%20when%20iwopo%20opens">Tell me when you open</a>
+                <h3>Join the waitlist</h3>
+                <p className="sl-signup-sub">We’re finishing up and will open iwopo to new studios very soon. Leave your email and we’ll tell you the moment we do.</p>
+                {wl.done ? <p className="sl-wl-done">You’re on the list. We’ll email you the moment iwopo opens.</p> : (
+                  <>
+                    <label htmlFor="wl-email">Email</label>
+                    <input id="wl-email" type="email" autoComplete="email" placeholder="you@studio.com" value={wl.email}
+                      onChange={e => setWl({ ...wl, email: e.target.value, error: '' })} onKeyDown={e => e.key === 'Enter' && joinWaitlist()} />
+                    <input className="sl-wl-trap" tabIndex={-1} autoComplete="off" aria-hidden="true" value={wl.website} onChange={e => setWl({ ...wl, website: e.target.value })} />
+                    {wl.error && <p className="sl-wl-err">{wl.error}</p>}
+                    <button type="button" className="sl-cta full" onClick={joinWaitlist} disabled={wl.busy}>{wl.busy ? 'Adding you…' : 'Join the waitlist'}</button>
+                  </>
+                )}
                 <div className="sl-login-row">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></div>
               </>
             ) : (
@@ -540,7 +557,7 @@ export default function Selling({ onSignup, onGoLogin }) {
             <a href="#packages">Pricing</a>
             <a href="#industries">Solutions</a>
             <a href="#faq">FAQ</a>
-            <button type="button" onClick={goSignup}>{open ? 'Choose your plan' : 'Opening soon'}</button>
+            <button type="button" onClick={goSignup}>{open ? 'Choose your plan' : 'Join the waitlist'}</button>
             <button type="button" onClick={onGoLogin}>Log in</button>
             <a href="mailto:sales@iwopo.com">sales@iwopo.com</a>
           </div>

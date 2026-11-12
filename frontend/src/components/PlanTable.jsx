@@ -70,7 +70,7 @@ export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose
               const pop = p.code === 'pro';
               const mine = p.code === currentCode;
               const cta = ctaFor ? ctaFor(p) : {
-                label: !open ? 'Opening soon' : Number(p.price_monthly) === 0 ? 'Start free' : `Choose ${p.name}`,
+                label: !open ? 'Join the waitlist' : Number(p.price_monthly) === 0 ? 'Start free' : `Choose ${p.name}`,
                 onClick: () => onChoose(p),
               };
               return (

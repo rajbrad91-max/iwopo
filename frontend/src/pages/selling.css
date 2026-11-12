@@ -696,3 +696,9 @@
 /* the password checklist's ticks in the site's own green, not the panel's teal */
 .sl .pw-rules li.is-ok { color: #1F7A4D; }
 
+/* 📝 the waitlist box, while sign-ups are paused (Raj, 2026-11-12) */
+.sl-wl-trap { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.sl-wl-done { margin: 6px 0 14px; padding: 12px 14px; border-radius: 10px; background: #FCE7D6; color: #7A3410; font-weight: 600; }
+.sl-wl-err { margin: 8px 0 0; color: #b91c1c; font-size: 0.86rem; }
+.sl-signup-box .sl-cta.full { margin-top: 14px; }
+.sl-faq-block { scroll-margin-top: 96px; }   /* the FAQ menu link lands below the fixed top bar, not under it */
