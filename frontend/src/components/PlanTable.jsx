@@ -7,6 +7,7 @@
  *   currentCode  → the vendor's own plan, marked "Your plan" in place of the Most popular ribbon
  *   showTrial    → false hides the trial line under the buttons (the panel says it once, above the table)
  *   corner       → shown under "Compare plans" in the top-left cell (the panel's Monthly / Yearly switch)
+ * and priceOf(p) may add `save`, a line under the price (the public page's yearly saving).
  */
 import { fmtMoney } from '../lib/api';
 import './plan-table.css';
@@ -31,6 +32,20 @@ export function planPriceOf(p, cycle = 'monthly') {
   const usd = Number(annual ? p.price_annual : p.price_monthly);
   return { big: `$${plain(usd)}`, unit, text: `$${plain(usd)}${unit}`,
     sub: annual ? `reg. $${plain(p.price_annual_regular || p.price_monthly * 12)}` : null };
+}
+
+/**
+ * 💰 What paying yearly saves against twelve monthly payments (Raj, 2026-11-12), in the price's own currency — the
+ * public pricing page shows it under each price and the biggest one on its Monthly / Annual switch. null when yearly
+ * saves nothing (or the plan is free).
+ */
+export function planSaving(p) {
+  const m = Number(p.local ? p.local.monthly : p.price_monthly);
+  const a = Number(p.local ? p.local.annual : p.price_annual);
+  const amount = Math.round((m * 12 - a) * 100) / 100;
+  if (!(m > 0) || !(a > 0) || amount <= 0) return null;
+  const money = p.local ? fmtMoney(amount, { currency: p.local.currency }) : `$${amount.toFixed(2).replace(/\.00$/, '')}`;
+  return { amount, money, pct: Math.round((amount / (m * 12)) * 100) };
 }
 
 const cellView = (v) => (v === true
@@ -63,7 +78,8 @@ export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose
                   {mine ? <span className="pt-ribbon pt-mine">Your plan</span> : pop && <span className="pt-ribbon">Most popular</span>}
                   <span className="pt-name">{p.name}</span>
                   <span className="pt-tag">{p.tagline}</span>
-                  <span className="pt-price pt-price-solo"><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
+                  <span className={`pt-price${pr.save ? '' : ' pt-price-solo'}`}><span className="pt-big">{pr.big}</span><span className="pt-unit">{pr.unit}</span></span>
+                  {pr.save && <span className="pt-save">{pr.save}</span>}
                   {/* 🚧 while sign-ups are paused, the table says so too — the server refuses anyway (lib/signups.js) */}
                   {cta && (
                     <button type="button" className={`pt-cta${pop && !cta.disabled ? ' is-solid' : ''}`} onClick={cta.onClick} disabled={cta.disabled}>

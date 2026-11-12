@@ -5,7 +5,7 @@ import { api, setSession } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import { PROFESSION_LIST } from '../lib/professions';
 import './selling.css';
-import PlanTable, { planPriceOf } from '../components/PlanTable';
+import PlanTable, { planPriceOf, planSaving } from '../components/PlanTable';
 
 /**
  * Reveal-on-scroll. Skipped for reduced-motion via CSS; observer still adds
@@ -277,7 +277,13 @@ export default function Selling({ onSignup, onGoLogin }) {
   }
 
   const realPkgs = packages.filter(p => p.price_monthly != null);
-  const priceOf = (p) => planPriceOf(p, cycle);   // 🌍 shared with the table everywhere it appears (PlanTable)
+  // 🌍 the price, shared with the table everywhere it appears (PlanTable), plus — here only — what yearly saves
+  const priceOf = (p) => {
+    const s = planSaving(p);
+    const save = !s ? '\u00A0' : cycle === 'annual' ? `You save ${s.money} a year (${s.pct}%)` : `Save ${s.money} a year with annual`;
+    return { ...planPriceOf(p, cycle), save };
+  };
+  const bestSave = Math.max(0, ...realPkgs.map(p => planSaving(p)?.pct || 0));   // 💰 for the Annual switch
 
   /* ✍️ The sign-up fields, in the one sign-up window (p = id prefix) */
   const signupForm = (p) => (
@@ -463,7 +469,7 @@ export default function Selling({ onSignup, onGoLogin }) {
           <p className="sl-sub">Every plan side by side. Start free, move up when you need more.</p>
           <div className="sl-toggle" role="group" aria-label="Billing cycle">
             <button type="button" className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>Monthly</button>
-            <button type="button" className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Annual <span className="save">Save</span></button>
+            <button type="button" className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Annual{bestSave > 0 && <span className="save">Save up to {bestSave}%</span>}</button>
           </div>
         </Reveal>
 

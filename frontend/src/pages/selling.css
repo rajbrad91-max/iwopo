@@ -565,10 +565,12 @@
   padding: 9px 16px; border-radius: 9px; font-weight: 600; font-size: 0.88rem; color: var(--gray);
 }
 .sl-toggle button.on { background: var(--grad); color: #fff; }
+/* 💰 a tag on Annual, not a third button: how much yearly saves (Raj, 2026-11-12) */
 .sl-toggle .save {
-  margin-left: 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: .04em;
-  background: color-mix(in srgb, #fff 22%, transparent); padding: 2px 7px; border-radius: 6px;
+  margin-left: 8px; font-size: 0.72rem; font-weight: 700;
+  background: #FCE7D6; color: #A9481A; padding: 3px 8px; border-radius: 999px;
 }
+.sl-toggle button.on .save { background: color-mix(in srgb, #fff 24%, transparent); color: #fff; }
 
 .sl-split {
   max-width: var(--maxw); margin: 0 auto;
