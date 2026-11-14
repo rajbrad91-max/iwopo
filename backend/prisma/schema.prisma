@@ -19,13 +19,17 @@ model album_events {
   delivery   Boolean?  @default(false)
   albums     albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos     photos[]
+  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@index([vendor_id])
+  @@index([album_id])
 }
 
 model album_settings {
-  vendor_id             Int     @id
-  pw_prefix             String? @default("") @db.VarChar(40)
-  spw_prefix            String? @default("") @db.VarChar(40)
+  vendor_id  Int     @id
+  pw_prefix  String? @default("") @db.VarChar(40)
+  spw_prefix String? @default("") @db.VarChar(40)
+  vendors    vendors @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model albums {
@@ -68,28 +72,31 @@ model albums {
   /// 🟢 how many photos the gallery held when every Zip had been downloaded (lib/galleryDownloads.js); the 📊 button
   /// is green while it still holds exactly that many
   downloads_complete_count Int?
-  gallery_downloads  gallery_downloads[]
+  gallery_downloads        gallery_downloads[]
   /// 📸 Raw Selector (lib/shoots.js): the booking a shoot or its delivered gallery belongs to, the shoot a delivered
   /// gallery came from, the owner's note for the editor, and when the upload was announced
   lead_id                  Int?
   source_album_id          Int?
   editor_note              String?
-  uploaded_at              DateTime?        @db.Timestamp(6)
+  uploaded_at              DateTime?           @db.Timestamp(6)
   /// 🗑️ when the vendor removed this shoot's RAWs, and which: 'all' or 'unpicked'
-  raws_removed_at          DateTime?        @db.Timestamp(6)
-  raws_removed_scope       String?          @db.VarChar(10)
+  raws_removed_at          DateTime?           @db.Timestamp(6)
+  raws_removed_scope       String?             @db.VarChar(10)
   /// 🛤️ the rail's steps (Raj, 2026-11-10): who uploaded, when and by whom the RAWs were first downloaded, and when
   /// the client had downloaded every photo of a delivered gallery
-  uploaded_by              String?          @db.VarChar(80)
-  raws_received_at         DateTime?        @db.Timestamp(6)
-  raws_received_by         String?          @db.VarChar(80)
-  downloads_complete_at    DateTime?        @db.Timestamp(6)
-  leads                    leads?           @relation(fields: [lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  source                   albums?          @relation("AlbumDelivery", fields: [source_album_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  deliveries               albums[]         @relation("AlbumDelivery")
+  uploaded_by              String?             @db.VarChar(80)
+  raws_received_at         DateTime?           @db.Timestamp(6)
+  raws_received_by         String?             @db.VarChar(80)
+  downloads_complete_at    DateTime?           @db.Timestamp(6)
+  leads                    leads?              @relation(fields: [lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  source                   albums?             @relation("AlbumDelivery", fields: [source_album_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  deliveries               albums[]            @relation("AlbumDelivery")
+  vendors                  vendors             @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@index([vendor_id], map: "idx_albums_vendor")
   @@index([vendor_id, kind], map: "idx_albums_kind")
   @@index([lead_id], map: "idx_albums_lead")
+  @@index([source_album_id])
 }
 
 model chatbot_knowledge {
@@ -124,6 +131,7 @@ model chatbot_messages {
   session    String?   @db.VarChar(64)
   created_at DateTime? @default(now()) @db.Timestamp(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@index([vendor_id])
 }
 
@@ -136,6 +144,7 @@ model chatbot_pending {
   session    String?   @db.VarChar(64)
   created_at DateTime? @default(now()) @db.Timestamp(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@index([vendor_id])
 }
 
@@ -190,26 +199,26 @@ model contract_audit {
 }
 
 model contract_templates {
-  id          Int       @id @default(autoincrement())
-  vendor_id   Int
-  name        String    @default("My Contract") @db.VarChar(120)
-  event_type  String?   @db.VarChar(100)
-  header      String?   @default("")
-  body        String    @default("")
-  legal_terms String?   @default("")
+  id             Int       @id @default(autoincrement())
+  vendor_id      Int
+  name           String    @default("My Contract") @db.VarChar(120)
+  event_type     String?   @db.VarChar(100)
+  header         String?   @default("")
+  body           String    @default("")
+  legal_terms    String?   @default("")
   /// 🎨 the template's look, chosen by the vendor: accent colour and font style (Raj, 2026-10-24)
-  accent      String    @default("gold") @db.VarChar(20)
-  font_style  String    @default("classic") @db.VarChar(20)
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
-  updated_at  DateTime? @default(now()) @db.Timestamp(6)
-  sections    Json      @default("[]")
-  vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  is_default  Boolean   @default(false)
+  accent         String    @default("gold") @db.VarChar(20)
+  font_style     String    @default("classic") @db.VarChar(20)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  sections       Json      @default("[]")
+  vendors        vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  is_default     Boolean   @default(false)
   /// ✏️ "Edit this contract": one client's own version of the agreement, copied from copied_from_id. It is never
   /// listed in Contract setup and only that lead's contract is drawn from it (Raj, 2026-11-12).
-  lead_id        Int?   @unique
+  lead_id        Int?      @unique
   copied_from_id Int?
-  leads          leads? @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  leads          leads?    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   /**
    * ⚠️ One default per vendor. Without a marked default the system picked
@@ -223,34 +232,34 @@ model contract_templates {
 }
 
 model contracts {
-  id             Int              @id @default(autoincrement())
-  vendor_id      Int
-  lead_id        Int
-  token          String           @unique @db.VarChar(64)
-  title          String?          @default("Service Agreement") @db.VarChar(200)
-  body           String
-  status         String?          @default("draft") @db.VarChar(20)
-  signed_name    String?          @db.VarChar(200)
-  signed_ip      String?          @db.VarChar(64)
-  signed_at      DateTime?        @db.Timestamp(6)
-  created_at     DateTime?        @default(now()) @db.Timestamp(6)
-  updated_at     DateTime?        @default(now()) @db.Timestamp(6)
-  signature_data String?
-  initials       Json?            @default("[]")
-  viewed_at      DateTime?        @db.Timestamp(6)
-  doc_sha256     String?          @db.VarChar(64)
+  id                  Int              @id @default(autoincrement())
+  vendor_id           Int
+  lead_id             Int
+  token               String           @unique @db.VarChar(64)
+  title               String?          @default("Service Agreement") @db.VarChar(200)
+  body                String
+  status              String?          @default("draft") @db.VarChar(20)
+  signed_name         String?          @db.VarChar(200)
+  signed_ip           String?          @db.VarChar(64)
+  signed_at           DateTime?        @db.Timestamp(6)
+  created_at          DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?        @default(now()) @db.Timestamp(6)
+  signature_data      String?
+  initials            Json?            @default("[]")
+  viewed_at           DateTime?        @db.Timestamp(6)
+  doc_sha256          String?          @db.VarChar(64)
   /// 🧊 the signed PDF, made once at signing and kept privately (R2), and its own SHA-256 (2026-11-11)
-  pdf_key        String?   @db.VarChar(300)
-  pdf_sha256     String?   @db.VarChar(64)
-  package_id     Int?
-  template_id    Int?
-  voided_at      DateTime?        @db.Timestamp(6)
-  released_at    DateTime?        @db.Timestamp(6)
+  pdf_key             String?          @db.VarChar(300)
+  pdf_sha256          String?          @db.VarChar(64)
+  package_id          Int?
+  template_id         Int?
+  voided_at           DateTime?        @db.Timestamp(6)
+  released_at         DateTime?        @db.Timestamp(6)
   /// 📧 when the client was emailed their signed copy — sent once, by itself, when the booking is confirmed (2026-11-14)
-  client_copy_sent_at DateTime?   @db.Timestamp(6)
-  contract_audit contract_audit[]
-  leads          leads            @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  vendors        vendors          @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  client_copy_sent_at DateTime?        @db.Timestamp(6)
+  contract_audit      contract_audit[]
+  leads               leads            @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors             vendors          @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([lead_id], map: "idx_ct_lead")
   @@index([token], map: "idx_ct_token")
@@ -269,14 +278,16 @@ model crew_members {
   lead_crew  lead_crew[]
 
   /// 📸 a photographer's own sign-in at /photographer (routes/photographer.js)
-  password_hash String?     @db.VarChar(100)
-  joined_at     DateTime?   @db.Timestamp(6)
-  last_login_at DateTime?   @db.Timestamp(6)
+  password_hash    String?   @db.VarChar(100)
+  joined_at        DateTime? @db.Timestamp(6)
+  last_login_at    DateTime? @db.Timestamp(6)
   /// 📡 camera FTP (lib/cameraFtp.js): the login's password, sealed, and the shoot the camera's uploads go to
   ftp_password_enc String?
   ftp_lead_id      Int?
   ftp_lead         leads?    @relation("CrewFtpShoot", fields: [ftp_lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
   @@index([vendor_id], map: "idx_crew_vendor")
+  @@index([ftp_lead_id])
 }
 
 model email_settings {
@@ -336,6 +347,7 @@ model face_clusters {
   event_id       Int?
   albums         albums        @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photo_faces    photo_faces[]
+  vendors        vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([album_id, photo_count(sort: Desc)], map: "idx_fc_album")
   @@index([album_id, event_id], map: "idx_fc_album_event")
@@ -354,6 +366,7 @@ model favorites {
   @@unique([album_id, photo_id, email])
   @@index([album_id], map: "idx_favorites_album")
   @@index([album_id, email], map: "idx_favorites_album_email")
+  @@index([photo_id])
 }
 
 model gallery_theme {
@@ -368,6 +381,7 @@ model gallery_theme {
   subtitle_text String? @default("Secure, Password-Protected Memories") @db.VarChar(160)
   tagline_text  String? @default("Ready to view, share and download.") @db.VarChar(200)
   default_mode  String? @default("per_event") @db.VarChar(20)
+  vendors       vendors @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model inquiry_settings {
@@ -429,8 +443,10 @@ model lead_crew {
   leads          leads        @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   /// 📸 this crew member uploads the booking's photos (Raw Selector) — set in Crew Management
-  uploads        Boolean      @default(false)
+  uploads Boolean @default(false)
+
   @@index([lead_id], map: "idx_lc_lead")
+  @@index([crew_member_id])
 }
 
 model leads {
@@ -498,45 +514,47 @@ model leads {
   occasion_greetings      occasion_greetings[]
   payments                payments[]
 
-  albums                  albums[]
-  crew_ftp                crew_members[] @relation("CrewFtpShoot")
+  albums   albums[]
+  crew_ftp crew_members[] @relation("CrewFtpShoot")
+
   @@index([vendor_id], map: "idx_leads_vendor")
   @@index([vendor_id, seen_at], map: "idx_leads_vendor_seen")
   @@index([package_template_id], map: "idx_leads_pkg_tpl")
+  @@index([package_id])
 }
 
 model notifications {
-  id         Int       @id @default(autoincrement())
-  vendor_id  Int
-  type       String?   @default("info") @db.VarChar(40)
-  title      String    @db.VarChar(200)
-  body       String?   @db.VarChar(400)
-  seen_at    DateTime? @db.Timestamp(6)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  id          Int       @id @default(autoincrement())
+  vendor_id   Int
+  type        String?   @default("info") @db.VarChar(40)
+  title       String    @db.VarChar(200)
+  body        String?   @db.VarChar(400)
+  seen_at     DateTime? @db.Timestamp(6)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
   /// when it actually happened (e.g. the email's own time) — created_at is when iwopo noticed it
   occurred_at DateTime? @db.Timestamp(6)
-  link_type  String?   @db.VarChar(20)
-  link_id    Int?
-  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  link_type   String?   @db.VarChar(20)
+  link_id     Int?
+  vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, seen_at], map: "idx_notif_vendor")
 }
 
 model offers {
-  id          Int       @id @default(autoincrement())
-  code        String    @unique @db.VarChar(50)
-  label       String?   @db.VarChar(120)
-  percent_off Int
-  active      Boolean?  @default(true)
-  starts_at   DateTime? @db.Date
-  ends_at     DateTime? @db.Date
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
-  applies_to  String?   @default("all") @db.VarChar(40)
+  id               Int       @id @default(autoincrement())
+  code             String    @unique @db.VarChar(50)
+  label            String?   @db.VarChar(120)
+  percent_off      Int
+  active           Boolean?  @default(true)
+  starts_at        DateTime? @db.Date
+  ends_at          DateTime? @db.Date
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  applies_to       String?   @default("all") @db.VarChar(40)
+  /// 🎟️ the same coupon in Stripe, so checkout accepts it (lib/stripeCoupons.js)
+  stripe_coupon_id String?   @db.VarChar(64)
+  stripe_promo_id  String?   @db.VarChar(64)
 
   @@index([code], map: "idx_offers_code")
-  /// 🎟️ the same coupon in Stripe, so checkout accepts it (lib/stripeCoupons.js)
-  stripe_coupon_id     String?                @db.VarChar(64)
-  stripe_promo_id      String?                @db.VarChar(64)
 }
 
 model package_templates {
@@ -581,11 +599,11 @@ model payments {
   created_at DateTime? @default(now()) @db.Timestamp(6)
   leads      leads     @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  /// 💳 the Stripe Checkout session a card payment came from — recorded once, however often Stripe tells us
+  reference  String?   @unique @db.VarChar(100)
 
   @@index([lead_id], map: "idx_pay_lead")
   @@index([vendor_id], map: "idx_pay_vendor")
-  /// 💳 the Stripe Checkout session a card payment came from — recorded once, however often Stripe tells us
-  reference            String?                @unique @db.VarChar(100)
 }
 
 model photo_faces {
@@ -629,10 +647,12 @@ model photos {
   selections   selections[]
 
   raw_files raw_files[]
+  vendors   vendors     @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([album_id], map: "idx_photos_album")
   @@index([vendor_id], map: "idx_photos_vendor")
   @@index([album_id, kind], map: "idx_photos_kind")
+  @@index([event_id])
 }
 
 model plan_features {
@@ -686,18 +706,19 @@ model referrals {
   friend_rewarded_at   DateTime? @db.Timestamp(6)
   /// 🎁 the referrer's free month was given (a Stripe credit, or at their own first checkout)
   referrer_rewarded_at DateTime? @db.Timestamp(6)
-  id               Int       @id @default(autoincrement())
-  referrer_email   String    @db.VarChar(200)
-  friend_email     String    @db.VarChar(200)
-  status           String?   @default("pending") @db.VarChar(30)
-  reward           String?   @default("1 free month") @db.VarChar(60)
-  friend_vendor_id Int?
-  created_at       DateTime? @default(now()) @db.Timestamp(6)
-  rewarded_at      DateTime? @db.Timestamp(6)
-  vendors          vendors?  @relation(fields: [friend_vendor_id], references: [id], onUpdate: NoAction)
+  id                   Int       @id @default(autoincrement())
+  referrer_email       String    @db.VarChar(200)
+  friend_email         String    @db.VarChar(200)
+  status               String?   @default("pending") @db.VarChar(30)
+  reward               String?   @default("1 free month") @db.VarChar(60)
+  friend_vendor_id     Int?
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+  rewarded_at          DateTime? @db.Timestamp(6)
+  vendors              vendors?  @relation(fields: [friend_vendor_id], references: [id], onUpdate: NoAction)
 
   @@index([friend_email], map: "idx_ref_friend")
   @@index([referrer_email], map: "idx_ref_referrer")
+  @@index([friend_vendor_id])
 }
 
 model selection_notes {
@@ -718,47 +739,52 @@ model selections {
 
   @@unique([album_id, photo_id])
   @@index([album_id], map: "idx_selections_album")
+  @@index([photo_id])
 }
 
 model services {
-  id                   Int               @id @default(autoincrement())
-  name                 String            @db.VarChar(100)
-  icon                 String?           @db.VarChar(20)
-  price                Decimal           @db.Decimal(8, 2)
-  is_addon             Boolean?          @default(false)
+  id                   Int                   @id @default(autoincrement())
+  name                 String                @db.VarChar(100)
+  icon                 String?               @db.VarChar(20)
+  price                Decimal               @db.Decimal(8, 2)
+  is_addon             Boolean?              @default(false)
   requires_service_id  Int?
-  feature_key          String?           @unique @db.VarChar(40)
-  price_annual         Decimal?          @db.Decimal(8, 2)
-  price_annual_regular Decimal?          @db.Decimal(8, 2)
+  feature_key          String?               @unique @db.VarChar(40)
+  price_annual         Decimal?              @db.Decimal(8, 2)
+  price_annual_regular Decimal?              @db.Decimal(8, 2)
   tiers                Json?
-  country_prices       Json?             @default("{}")
-  is_live              Boolean           @default(true)
-  description          String?           @db.VarChar(200)
-  is_private           Boolean           @default(false)
-  services             services?         @relation("servicesToservices", fields: [requires_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  other_services       services[]        @relation("servicesToservices")
+  country_prices       Json?                 @default("{}")
+  is_live              Boolean               @default(true)
+  description          String?               @db.VarChar(200)
+  is_private           Boolean               @default(false)
+  services             services?             @relation("servicesToservices", fields: [requires_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_services       services[]            @relation("servicesToservices")
   vendor_services      vendor_services[]
   /// ➕ an add-on's extra storage in GB (+500 GB / +1 TB / +2 TB) — counted into the vendor's space (lib/storageQuota.js)
   storage_gb           Int?
   /// ➕ the plans that can add it (["essential"]); empty = any paid plan
-  plan_codes           Json                   @default("[]")
+  plan_codes           Json                  @default("[]")
   /// ➕ a different monthly price on some plans ({ "studio": 7.5 })
-  plan_prices          Json                   @default("{}")
-  addon_region_prices addon_region_prices[]
+  plan_prices          Json                  @default("{}")
+  addon_region_prices  addon_region_prices[]
+
+  @@index([requires_service_id])
 }
 
 model support_messages {
-  id         Int       @id @default(autoincrement())
-  vendor_id  Int?
-  from_email String?   @db.VarChar(160)
-  subject    String?   @db.VarChar(200)
-  body       String?
+  id              Int       @id @default(autoincrement())
+  vendor_id       Int?
+  from_email      String?   @db.VarChar(160)
+  subject         String?   @db.VarChar(200)
+  body            String?
   /// 📎 a screenshot the vendor attached (private storage; Super Admin opens it) — Raj, 2026-11-07
-  attachment_key  String? @db.VarChar(300)
-  attachment_type String? @db.VarChar(40)
-  status     String?   @default("open") @db.VarChar(20)
-  seen       Boolean?  @default(false)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  attachment_key  String?   @db.VarChar(300)
+  attachment_type String?   @db.VarChar(40)
+  status          String?   @default("open") @db.VarChar(20)
+  seen            Boolean?  @default(false)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  vendors         vendors?  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
   @@index([vendor_id])
 }
 
@@ -776,8 +802,8 @@ model trial_signups {
 
 model users {
   /// 📜 agreed to the Terms of Service and Privacy Policy at sign-up — when, and which version (LEGAL_UPDATED)
-  terms_accepted_at    DateTime? @db.Timestamp(6)
-  terms_version        String?   @db.VarChar(20)
+  terms_accepted_at     DateTime?               @db.Timestamp(6)
+  terms_version         String?                 @db.VarChar(20)
   id                    Int                     @id @default(autoincrement())
   name                  String                  @db.VarChar(200)
   email                 String                  @unique @db.VarChar(200)
@@ -793,10 +819,10 @@ model users {
   password_reset_tokens password_reset_tokens[]
   revoked_tokens        revoked_tokens[]
   vendors               vendors?                @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  /// 👣 last time this person used the panel (at most hourly) — the Free clean-up counts from it (lib/inactiveFree.js)
+  last_seen_at          DateTime?               @db.Timestamptz(6)
 
   @@index([vendor_id], map: "idx_users_vendor")
-  /// 👣 last time this person used the panel (at most hourly) — the Free clean-up counts from it (lib/inactiveFree.js)
-  last_seen_at         DateTime?              @db.Timestamptz(6)
 }
 
 model vendor_feature_overrides {
@@ -836,20 +862,22 @@ model vendor_packages {
   vendors           vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_vpkg_vendor")
+  @@index([template_id])
 }
 
 model vendor_services {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   vendor_id  Int
   service_id Int
-  enabled    Boolean? @default(true)
-  services   services @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  enabled    Boolean?  @default(true)
+  services   services  @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  /// ➕ a removed add-on keeps working until the period it was paid for ends (Raj: downgrades apply from the next bill)
+  ends_at    DateTime? @db.Timestamptz(6)
 
   @@unique([vendor_id, service_id])
   @@index([vendor_id], map: "idx_vendor_services_vendor")
-  /// ➕ a removed add-on keeps working until the period it was paid for ends (Raj: downgrades apply from the next bill)
-  ends_at              DateTime?              @db.Timestamptz(6)
+  @@index([service_id])
 }
 
 model vendor_settings {
@@ -865,24 +893,24 @@ model vendor_settings {
   storage_limit_mb        Int?
   vendors                 vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   /// 📏 when this vendor's files went over their plan + add-ons; cleared when back under (lib/overLimit.js)
-  over_limit_since     DateTime?              @db.Timestamptz(6)
+  over_limit_since        DateTime? @db.Timestamptz(6)
   /// 📏 which reminder went last: 0 none · 1 day 0 · 2 day 7 · 3 day 13 · 4 locked
-  over_limit_stage     Int                    @default(0)
+  over_limit_stage        Int       @default(0)
   /// 💳 the vendor's OWN Stripe account (Stripe Connect, Standard, OAuth) — client card payments go straight to it
-  stripe_account_id    String?                @db.VarChar(64)
-  stripe_connected_at  DateTime?              @db.Timestamptz(6)
+  stripe_account_id       String?   @db.VarChar(64)
+  stripe_connected_at     DateTime? @db.Timestamptz(6)
   /// 🧹 Free clean-up: 0 none · 1 six-month notice · 2 final notice · 3 data removed — and when the first notice went
-  inactive_stage       Int                    @default(0)
-  inactive_notice_at   DateTime?              @db.Timestamptz(6)
+  inactive_stage          Int       @default(0)
+  inactive_notice_at      DateTime? @db.Timestamptz(6)
 }
 
 model vendor_subscriptions {
-  id         Int       @id @default(autoincrement())
-  vendor_id  Int
-  plan_id    Int
-  status     String?   @default("active") @db.VarChar(20)
-  started_at DateTime? @default(now()) @db.Timestamp(6)
-  ends_at    DateTime? @db.Timestamp(6)
+  id                     Int       @id @default(autoincrement())
+  vendor_id              Int
+  plan_id                Int
+  status                 String?   @default("active") @db.VarChar(20)
+  started_at             DateTime? @default(now()) @db.Timestamp(6)
+  ends_at                DateTime? @db.Timestamp(6)
   /// 💳 the Stripe subscription behind this row (only these count once a trial is over) — lib/billing.js
   stripe_subscription_id String?   @unique @db.VarChar(64)
   billing_cycle          String?   @db.VarChar(10)
@@ -890,34 +918,35 @@ model vendor_subscriptions {
   cancel_at_period_end   Boolean   @default(false)
   /// 💰 what one billing period charges, in the subscription's currency — every item (plan and add-ons), before
   /// discounts and tax; recorded from Stripe (lib/billing.js recordSubscription), read by lib/adminOverview.js
-  currency             String?   @db.VarChar(3)
-  amount               Decimal?  @db.Decimal(14, 2)
-  plans      plans     @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  currency               String?   @db.VarChar(3)
+  amount                 Decimal?  @db.Decimal(14, 2)
+  plans                  plans     @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendors                vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, status], map: "idx_vsub_vendor")
+  @@index([plan_id])
 }
 
 model vendors {
-  client_links         client_links?
+  client_links             client_links?
   /// 👋 the getting-started steps were shown after their first payment (once)
-  welcome_seen_at      DateTime? @db.Timestamp(6)
+  welcome_seen_at          DateTime?                  @db.Timestamp(6)
   /// 💳 the plan chosen at sign-up, until it is paid for — so confirming the email anywhere leads to payment
-  pending_plan_id      Int?
-  pending_cycle        String?   @db.VarChar(10)
+  pending_plan_id          Int?
+  pending_cycle            String?                    @db.VarChar(10)
   /// 🎟️ the code a vendor shares — iwopo.com/?ref=CODE (Raj, 2026-11-07)
-  referral_code        String?   @unique @db.VarChar(24)
+  referral_code            String?                    @unique @db.VarChar(24)
   /// 📬 agreed to occasional offers and news (unticked at sign-up; switch in My Services) — Raj, 2026-11-07
-  marketing_opt_in     Boolean   @default(false)
-  marketing_opt_in_at  DateTime? @db.Timestamp(6)
-  email_inquiries         email_inquiries[]
-  followups               followups[]
+  marketing_opt_in         Boolean                    @default(false)
+  marketing_opt_in_at      DateTime?                  @db.Timestamp(6)
+  email_inquiries          email_inquiries[]
+  followups                followups[]
   project_stages           project_stages[]
   outside_messages         outside_messages[]
   email_log                email_log[]
   id                       Int                        @id @default(autoincrement())
   business_name            String                     @db.VarChar(200)
-  profession               String?                    @db.VarChar(40)   // 🧑‍💼 the vendor's trade (lib/professions)
+  profession               String?                    @db.VarChar(40) // 🧑‍💼 the vendor's trade (lib/professions)
   status                   String?                    @default("trial") @db.VarChar(50)
   storage_mb               Int?                       @default(0)
   country                  String?                    @db.VarChar(100)
@@ -942,7 +971,7 @@ model vendors {
   device_tokens            device_tokens[]
   email_settings           email_settings?
   email_templates          email_templates[]
-  vendor_email_templates vendor_email_templates[]
+  vendor_email_templates   vendor_email_templates[]
   file_folders             file_folders[]
   file_share_items         file_share_items[]
   file_shares              file_shares[]
@@ -991,6 +1020,16 @@ model vendors {
   trial_ends_at            DateTime?                  @db.Timestamptz(6)
   billing_exempt           Boolean                    @default(false)
   trial_reminders          Int                        @default(0)
+  albums                   albums[]
+  photos                   photos[]
+  album_events             album_events[]
+  album_settings           album_settings[]
+  album_faces              album_faces[]
+  face_clusters            face_clusters[]
+  gallery_theme            gallery_theme[]
+  lead_packages            lead_packages[]
+  storage_objects          storage_objects[]
+  support_messages         support_messages[]
 }
 
 model album_faces {
@@ -1011,6 +1050,7 @@ model album_faces {
   album_faces         album_faces?  @relation("album_facesToalbum_faces", fields: [matched_face_id], references: [id], onUpdate: NoAction)
   other_album_faces   album_faces[] @relation("album_facesToalbum_faces")
   photos              photos        @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors             vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([album_id, rekognition_face_id])
   @@index([album_id], map: "idx_album_faces_album")
@@ -1044,6 +1084,7 @@ model lead_packages {
   tax_mode          String   @default("none") @db.VarChar(10)
   tax_rate          Decimal? @db.Decimal(5, 2)
   leads             leads    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendors           vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([lead_id, sort_order], map: "idx_lead_pkg_lead")
   @@index([vendor_id], map: "idx_lead_pkg_vendor")
@@ -1177,6 +1218,7 @@ model pending_uploads {
   vendors      vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, created_at(sort: Desc)], map: "idx_pending_vendor")
+  @@index([folder_id])
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -1219,6 +1261,7 @@ model storage_objects {
   object_key String
   bytes      BigInt
   created_at DateTime @default(now()) @db.Timestamp(6)
+  vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([cls, object_key], map: "idx_storage_key")
   @@index([vendor_id], map: "idx_storage_vendor")
@@ -1588,6 +1631,7 @@ model pc_devices {
   created_at DateTime  @default(now()) @db.Timestamp(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pc_jobs    pc_jobs[]
+
   @@index([vendor_id])
 }
 
@@ -1681,6 +1725,7 @@ model outside_messages {
   leads       leads    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, lead_id], map: "idx_outside_msgs_lead")
+  @@index([lead_id])
 }
 
 /// 📧 Every email iwopo sent a client (written only for vendors with the AI Agent).
@@ -1699,6 +1744,7 @@ model email_log {
 
   @@index([vendor_id, lead_id], map: "idx_email_log_lead")
   @@index([vendor_id, to_email], map: "idx_email_log_to")
+  @@index([lead_id])
 }
 
 /// ✉️ one-time codes that prove a person owns an email address (sign-up, change of address)
@@ -1770,11 +1816,11 @@ model trusted_devices {
 
 /// 🎬 Video guides on the vendors' Help & Support page — added in Super Admin → Support (Raj, 2026-11-07)
 model help_videos {
-  id          Int       @id @default(autoincrement())
-  title       String    @db.VarChar(140)
-  youtube_id  String    @db.VarChar(20)
-  sort_order  Int       @default(0)
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  id         Int       @id @default(autoincrement())
+  title      String    @db.VarChar(140)
+  youtube_id String    @db.VarChar(20)
+  sort_order Int       @default(0)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
 }
 
 /// 🔗 Optional links on a vendor's client pages — the inquiry form and the galleries (Raj, 2026-11-08): the business
@@ -1826,14 +1872,14 @@ model gallery_downloads {
 /// billed in it. "USD" is the main pricing table (plans) and lists no countries — it covers the US and every country
 /// not in another territory. Prices: plan_region_prices. Shown in Super Admin → Services & Packages.
 model price_regions {
-  id                 Int                  @id @default(autoincrement())
-  code               String               @unique @db.VarChar(12)
-  name               String               @db.VarChar(80)
-  currency           String               @db.VarChar(3)
-  symbol             String               @db.VarChar(6)
-  countries          String[]             @default([]) @db.VarChar(2)
-  sort_order         Int                  @default(0)
-  plan_region_prices plan_region_prices[]
+  id                  Int                   @id @default(autoincrement())
+  code                String                @unique @db.VarChar(12)
+  name                String                @db.VarChar(80)
+  currency            String                @db.VarChar(3)
+  symbol              String                @db.VarChar(6)
+  countries           String[]              @default([]) @db.VarChar(2)
+  sort_order          Int                   @default(0)
+  plan_region_prices  plan_region_prices[]
   addon_region_prices addon_region_prices[]
 }
 
@@ -1849,6 +1895,7 @@ model plan_region_prices {
   plan      plans         @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([region_id, plan_id])
+  @@index([plan_id])
 }
 
 /// 🌍 An add-on's fixed price in a territory, in that territory's currency (Raj, 2026-11-11) — monthly, and yearly
@@ -1865,6 +1912,7 @@ model addon_region_prices {
   service    services      @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([region_id, service_id, plan_code])
+  @@index([service_id])
 }
 
 /// 📝 People who asked to be told when iwopo opens — "Join the waitlist" on the public page (Raj, 2026-11-12).

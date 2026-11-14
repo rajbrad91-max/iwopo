@@ -8,11 +8,10 @@ import { quiet } from './quiet.js';
 /**
  * 🗑️ Delete a vendor for good (Super Admin, Raj, 2026-11-06). Never an owner account. A paying vendor's Stripe
  * subscription is cancelled first, and only when Super Admin ticks that it should be (2026-11-07) — never silently. Their Stripe is disconnected, their stored photos and files are removed from storage,
- * and the account with everything it holds is deleted: 58 kinds of record go with the vendor through the database; the
- * few with no link (galleries and through them their photos, faces and folders, gallery settings and theme, support
- * messages, stored-file records) are removed here first. The security log is kept — it is the audit trail.
+ * and the account with everything it holds is deleted: every kind of record goes with the vendor through the
+ * database's foreign keys (the last ten — galleries, photos, faces, gallery settings and theme, lead packages, support
+ * messages, stored-file records — were linked 2026-11-14).
  */
-const UNLINKED = ['album_settings', 'gallery_theme', 'support_messages', 'storage_objects'];
 
 export async function deletePreview(vendorId) {
   const v = Number(vendorId);
@@ -43,11 +42,7 @@ export async function deleteVendor(vendorId, confirmName, { cancelSubscription =
     await stripe('DELETE', `/subscriptions/${sub.stripe_subscription_id}`);     // billing stops today, no refund
   }
   await disconnect(v).catch(quiet('disconnect a deleted vendor’s Stripe'));                                        // 💳 their own Stripe, if connected
-  await prisma.$transaction([
-    prisma.albums.deleteMany({ where: { vendor_id: v } }),                          // photos, faces, folders cascade
-    ...UNLINKED.map(t => prisma[t].deleteMany({ where: { vendor_id: v } })),
-    prisma.vendors.delete({ where: { id: v } }),                                    // everything linked to the vendor
-  ]);
+  await prisma.vendors.delete({ where: { id: v } });                               // everything of theirs goes with it
   removeStoredFiles(v);                                                             // in the background — Super Admin is answered now
   return p.counts;
 }
