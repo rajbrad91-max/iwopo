@@ -9,6 +9,7 @@ import { questionsForLead } from '../lib/leadQuestions.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary, pickedOffer, rebuildUnsignedContract, QUOTE_FIELDS } from './payments.js';
 import { quotePackage, extraNamesInBooking, taxOf } from '../lib/packageQuote.js';
+import { formAnswer, gettingReadyRows, extraScheduleGroups, SERVICE_RE, SIDE_RE } from '../lib/leadEvents.js';   // 🗓️ shared with the client's link
 import { currencyFor } from '../lib/currencies.js';
 import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
@@ -177,17 +178,6 @@ function kvTable(cls, rows) {
 }
 
 /** What was booked, at a glance. */
-/** a lead's answer to an inquiry-form question, found by the question's wording */
-function formAnswer(lead, re) {
-  const qs = lead.questions || [];
-  const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
-  // the first question so worded that this lead ANSWERED — a form can word several that way
-  for (const f of qs.filter(x => re.test(x.label || ''))) {
-    const v = f.maps_to && lead[f.maps_to] != null ? lead[f.maps_to] : cd[f.id];
-    if (v != null && v !== '' && typeof v !== 'object') return String(v);
-  }
-  return '';
-}
 const COUNT_WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
 /** "Two Photographers" from the crew on the booking (nothing when nobody of that kind is booked) */
 function crewCount(crew, re, one, many) {
@@ -203,40 +193,11 @@ function bookingDetailsHtml(lead, pkgName, crew) {
     ['Email', lead.email],
     ['Event Type', formAnswer(lead, /type of event|event type/i) || lead.event_type],
     ['Package', pkgName === '—' ? '' : pkgName],
-    ['Coverage Type', formAnswer(lead, /what do you need|coverage type|services? needed/i)],
-    ['Sides Covered', formAnswer(lead, /side/i)],
+    ['Coverage Type', formAnswer(lead, SERVICE_RE)],
+    ['Sides Covered', formAnswer(lead, SIDE_RE)],
     ['Photographers', crewCount(crew, /photo/i, 'Photographer', 'Photographers')],
     ['Videographers', crewCount(crew, /video|cine/i, 'Videographer', 'Videographers')],
   ]);
-}
-
-/**
- * Getting-ready rows for what this inquiry asked.
- * A "Getting-ready coverage" tick is the answer — bride and groom rows
- * are not printed under it. A lead with no questions still prints both rows. A form
- * that never asked, with a Yes already stored, prints both rows too.
- */
-function gettingReadyRows(lead) {
-  const qs = lead.questions || [];
-  const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
-  const yesNo = (on, venue) => (on ? (venue ? `Yes — ${venue}` : 'Yes') : 'No');   // B4: the venue the client gave
-  const both = () => [
-    ['Bride Getting Ready', yesNo(lead.gr_bride, lead.gr_bride_venue)],
-    ['Groom Getting Ready', yesNo(lead.gr_groom, lead.gr_groom_venue)],
-  ];
-  if (!qs.length) return both();
-  const rows = [];
-  if (qs.some(f => f.maps_to === 'gr_bride')) rows.push(['Bride Getting Ready', yesNo(lead.gr_bride, lead.gr_bride_venue)]);
-  if (qs.some(f => f.maps_to === 'gr_groom')) rows.push(['Groom Getting Ready', yesNo(lead.gr_groom, lead.gr_groom_venue)]);
-  for (const f of qs) {
-    if (f.type !== 'checkbox') continue;
-    if (f.maps_to === 'gr_bride' || f.maps_to === 'gr_groom') continue;
-    if (!/getting[- ]?ready/i.test(f.label || '')) continue;
-    rows.push([f.label, yesNo(cd[f.id] === true)]);
-  }
-  if (rows.length) return rows;
-  if (lead.gr_bride || lead.gr_groom) return both();
-  return [];
 }
 
 /** a time column as "HH:MM" — Prisma hands TIME columns back as Dates on 1970-01-01 */
@@ -272,17 +233,11 @@ function preEventsHtml(lead, fmtTime, fmtDate) {
  * the client did not ask for (or that was hidden for them) never appears.
  */
 function extraScheduleHtml(lead, fmtDate) {
-  const qs = lead.questions || [];
-  const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
-  const split = (label) => { const m = String(label || '').match(/^(.+?)\s+[—–-]\s+(.+)$/); return m ? [m[1].trim(), m[2].trim()] : [String(label || '').trim(), '']; };
   const out = [];
-  for (const d of qs) {
-    if (d.type !== 'date' || d.maps_to === 'event_date' || !cd[d.id]) continue;
-    const [head] = split(d.label);
-    const rows = qs.filter(f => split(f.label)[0] === head && cd[f.id] !== undefined && cd[f.id] !== '' && cd[f.id] !== null)
-      .map(f => [split(f.label)[1] || f.label, f.type === 'date' ? fmtDate(new Date(`${cd[f.id]}T12:00:00Z`)) : (cd[f.id] === true ? 'Yes' : cd[f.id] === false ? 'No' : String(cd[f.id]))]);
+  for (const g of extraScheduleGroups(lead)) {
+    const rows = g.rows.map(r => [r.label, r.type === 'date' ? fmtDate(new Date(`${r.value}T12:00:00Z`)) : (r.value === true ? 'Yes' : r.value === false ? 'No' : String(r.value))]);
     const table = kvTable('ct-kv', rows);
-    if (table) out.push(`<h3>${escapeHtml(head)}</h3>${table}`);
+    if (table) out.push(`<h3>${escapeHtml(g.head)}</h3>${table}`);
   }
   return out.join('');
 }
@@ -294,7 +249,7 @@ function coverageScheduleHtml(lead, fmtTime, fmtDate) {
     ['Hours', String(hoursLabel(lead) || '').replace(/\bhrs\b/g, 'hours').replace(/\bhr\b/g, 'hour') || hoursBetween(hhmm(lead.timing_from), hhmm(lead.timing_to))],
     ['Location', lead.location],
     ['Est Guests', lead.guests],
-    ['Service', formAnswer(lead, /what do you need|coverage type|services? needed/i)],
+    ['Service', formAnswer(lead, SERVICE_RE)],
   ]);
   if (!main) return '';
   const getting = kvTable('ct-kv', gettingReadyRows(lead));
@@ -379,22 +334,20 @@ function servicesSummaryHtml(inclusions, pkg) {
 /**
  * Extras — what this booking costs beyond the package itself (Raj, 2026-11-13).
  *
- * The package line, any hours beyond those it covers, and each extra the vendor
- * added or the client chose, with its amount and the total. Nothing to add
+ * The package line and each extra the vendor added or the client chose, with
+ * its amount and the total. Nothing to add
  * beyond the package, no table: the block drops out like any empty one.
  */
 function extrasHtml(pkg, quote, cash, money, agreedPrice, tax) {
   const taxRow = tax?.text ? [[tax.mode === 'included' ? `Includes ${tax.rate}% tax` : 'Tax', tax.mode === 'included' ? cash(tax.amount) : 'Plus tax']] : [];
-  if (!pkg || !quote || (!quote.extras.length && !quote.extra_hours)) return '';
+  if (!pkg || !quote || !quote.extras.length) return '';
   const unitWord = { per_item: '', per_hour: 'hr', per_guest: 'guests' };
-  const hoursLabel = `Extra coverage — ${quote.extra_hours} hr beyond the ${quote.included_hours} included`;
   const extraLabel = (l) => (l.qty > 1 || l.unit === 'per_guest'
     ? `${l.name} × ${l.qty}${unitWord[l.unit] ? ` ${unitWord[l.unit]}` : ''}` : l.name);
   // a price the vendor agreed by hand covers everything — the lines are listed, the agreed figure is what's owed
   if (agreedPrice) {
     return kvTable('ct-kv ct-extras', [
       [pkg.name || 'Package', 'Included'],
-      ...(quote.extra_hours ? [[hoursLabel, 'Included']] : []),
       ...quote.extras.map(l => [extraLabel(l), 'Included']),
       ...taxRow,
       ['Agreed price', cash(money.final_total)],
@@ -403,8 +356,6 @@ function extrasHtml(pkg, quote, cash, money, agreedPrice, tax) {
   const rows = [
     [pkg.name || 'Package', quote.price_mode === 'per_guest'
       ? `${cash(quote.base)} (${quote.guests} guests × ${cash(quote.price)})` : cash(quote.base)],
-    ...(quote.extra_hours ? [[hoursLabel,
-      `${cash(quote.extra_hours_amount)} (${quote.extra_hours} × ${cash(quote.extra_hour_price)})`]] : []),
     ...quote.extras.map(l => [extraLabel(l), cash(l.amount)]),
     ...(Number(money?.discount_amount) > 0 ? [[`Discount (${Number(money.discount_percent) || 0}%)`, `− ${cash(money.discount_amount)}`]] : []),
     ...taxRow,
@@ -566,8 +517,6 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
   const includedExtras = (Array.isArray(chosen?.extras) ? chosen.extras : [])
     .filter(x => x?.mode === 'included').map(x => String(x.name || '').trim()).filter(Boolean);
   const pkgName = chosen?.name || '—';
-  const inclHours = Number(chosen?.included_hours) || 0;
-  const hoursLine = inclHours > 0 && !inclusions.some(t => /\b(hours?|hrs?)\b/i.test(t)) ? [`${inclHours} hours of coverage`] : [];
 
   const fmtDate = fmtContractDate;
   const pref = vset?.time_format === '24h' ? '24h' : '12h';
@@ -596,9 +545,9 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
     '{{hours}}': lead.hours ?? 'agreed',
     '{{guests}}': lead.guests ?? 'the expected number of',
     '{{package_name}}': chosen?.name || 'custom',   // no package chosen: "under the custom package", never "under the — package"
-    // the package alone, and everything added on top of it (extra hours + extras)
+    // the package alone, and the extras added on top of it
     '{{package_price}}': quote ? cash(quote.base) : '',
-    '{{extras_total}}': quote ? cash(quote.extra_hours_amount + quote.extras_total) : cash(0),
+    '{{extras_total}}': quote ? cash(quote.extras_total) : cash(0),
     // 🧾 the total says what the package says about tax: "CA$3,600, including 5% tax (CA$171)" / "CA$3,600 plus tax"
     '{{total_cost}}': tax.mode === 'included' ? `${cash(money.final_total)}, including ${tax.rate}% tax (${cash(tax.amount)})`
       : tax.mode === 'excluded' ? `${cash(money.final_total)} plus tax` : cash(money.final_total),
@@ -615,9 +564,9 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
   const blocks = {
     booking_details: bookingDetailsHtml(lead, pkgName, crew),
     coverage_schedule: coverageScheduleHtml(lead, fmtTime, fmtDate),
-    /* everything the chosen package says goes into the contract: its hours (unless a line already states them), every
-       line of what's included, and the extras it includes at no charge */
-    deliverables: deliverablesHtml([...hoursLine, ...inclusions, ...includedExtras]),
+    /* everything the chosen package says goes into the contract: every line of what's included, and the extras it
+       includes at no charge */
+    deliverables: deliverablesHtml([...inclusions, ...includedExtras]),
     services_summary: servicesSummaryHtml(booked, chosen),
     crew: crewHtml(crew, fmtTime),
     extras,

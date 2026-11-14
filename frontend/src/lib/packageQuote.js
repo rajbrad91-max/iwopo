@@ -43,10 +43,6 @@ export function quotePackage(pkg, lead) {
   const perGuest = pkg?.price_mode === 'per_guest';
   const guests = perGuest ? Math.max(whole(lead?.guests), whole(pkg?.min_guests)) : 0;
   const base = perGuest ? price * guests : price;
-  const included = whole(pkg?.included_hours);
-  const rate = num(pkg?.per_hour_price);
-  const asked = whole(lead?.hours);
-  const extraHours = pkg?.auto_extra_hours !== false && included > 0 && rate > 0 && asked > included ? asked - included : 0;
   const lines = (Array.isArray(pkg?.extras) ? pkg.extras : [])
     .filter(x => x && (x.mode === 'added' || (x.mode === 'optional' && x.chosen)))
     .map(x => {
@@ -56,10 +52,8 @@ export function quotePackage(pkg, lead) {
   const extrasTotal = lines.reduce((s, l) => s + l.amount, 0);
   return {
     price, price_mode: perGuest ? 'per_guest' : 'fixed', guests, base: money2(base),
-    included_hours: included, hours_asked: asked, extra_hour_price: rate,
-    extra_hours: extraHours, extra_hours_amount: money2(extraHours * rate),
     extras: lines, extras_total: money2(extrasTotal),
-    total: money2(base + extraHours * rate + extrasTotal),
+    total: money2(base + extrasTotal),
   };
 }
 

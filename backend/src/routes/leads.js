@@ -110,7 +110,7 @@ router.get('/', requireAuth, async (req, res) => {
         package_templates: { select: { name: true, vendor_packages: { select: { name: true, base_price: true }, orderBy: { sort_order: 'asc' } } } },
         // 📦 everything the price is worked out from — the card shows what THIS client would pay (lib/packageQuote.js)
         lead_packages: {
-          select: { name: true, price: true, is_selected: true, extras: true, price_mode: true, min_guests: true, included_hours: true, per_hour_price: true, auto_extra_hours: true },
+          select: { name: true, price: true, is_selected: true, extras: true, price_mode: true, min_guests: true },
           orderBy: { sort_order: 'asc' },
         },
       },

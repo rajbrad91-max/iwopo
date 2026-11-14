@@ -13,6 +13,8 @@ import { serverError } from '../lib/httpError.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { accountOf, connectReady, cardCheckout } from '../lib/stripeConnect.js';
 import { quotePackage, publicExtra, extraQty } from '../lib/packageQuote.js';
+import { eventsForLead } from '../lib/leadEvents.js';
+import { questionsForLead } from '../lib/leadQuestions.js';
 
 const router = express.Router();
 
@@ -258,7 +260,6 @@ router.get('/:token', async (req, res) => {
       packages = leadPkgs.map(p => ({
         id: p.id, name: p.name, base_price: p.price, description: p.description || '', badge: p.badge,
         inclusions: p.inclusions, price_mode: p.price_mode, min_guests: p.min_guests,
-        included_hours: p.included_hours, per_hour_price: p.per_hour_price, auto_extra_hours: p.auto_extra_hours,
         tax_mode: p.tax_mode, tax_rate: p.tax_rate,   // 🧾 "Includes 5% tax" / "Plus tax" / nothing
         extras: (Array.isArray(p.extras) ? p.extras : []).filter(x => x && x.mode !== 'off').map(x => publicExtra(x, lead)),
         quote: quotePackage(p, lead),
@@ -335,6 +336,9 @@ router.get('/:token', async (req, res) => {
         timer_enabled: lead.timer_enabled, timer_hours: lead.timer_hours,
         timer_started_at: lead.timer_started_at, created_at: lead.created_at,
       },
+      // 🗓️ every event of the booking — main event, dated parts the form asked about, pre-events — in date order,
+      // read exactly as the contract's coverage schedule reads them (lib/leadEvents.js)
+      events: eventsForLead({ ...lead, questions: await questionsForLead(lead) }),
       business_name: vendor?.business_name,
       white_label: await ownDomainAllowed(lead.vendor_id),
       // the vendor's own currency, so a client in London isn't shown dollars
@@ -419,7 +423,6 @@ router.post('/:token/pick', limit({ name: 'portal-pick', max: 60, windowMs: 60 *
       // a record of the moment: what was picked and what it came to
       const snapshot = {
         name: own.name, base_price: own.price, inclusions: own.inclusions,
-        extra_hours: q.extra_hours, extra_hours_amount: q.extra_hours_amount,
         extras: q.extras.map(l => ({ name: l.name, qty: l.qty, amount: l.amount })),
         total: q.total, picked_at: new Date().toISOString(),
       };

@@ -39,12 +39,9 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove, onSave }) {
   const extras = (Array.isArray(p.extras) ? p.extras : []).filter(x => x.mode !== 'off');
   const priced = new Set(q.extras.map(l => l.id));
   const others = extras.filter(x => !priced.has(x.id));          // included, or offered and not taken
-  const asked = Number(lead.hours) || 0;
   const pre = locked ? [] : preEventExtras(lead, p);
-  const showQuote = q.extra_hours > 0 || q.extras.length > 0 || q.price_mode === 'per_guest';
+  const showQuote = q.extras.length > 0 || q.price_mode === 'per_guest';
 
-  // ⏱ said only when hours were actually added to the price (older offers that still price by the hour)
-  const hoursNote = q.extra_hours > 0 ? `${q.included_hours} hrs included · client asked for ${asked} → +${q.extra_hours} hr added` : '';
 
   return (
     <div className={`ld-pkg ${p.is_selected ? 'is-chosen' : ''}`}>
@@ -55,13 +52,11 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove, onSave }) {
       </div>
       {p.description && <div className="ld-pkg-desc">{p.description}</div>}
       {taxOf(p.tax_mode, p.tax_rate, q.total, fmtMoney).text && <div className="ld-pkg-desc">🧾 {taxOf(p.tax_mode, p.tax_rate, q.total, fmtMoney).text}</div>}
-      {hoursNote && <div className="ld-pkg-hrs">⏱ {hoursNote}</div>}
 
       {/* 🧾 how the figure is made up, when it is more than one price */}
       {showQuote && (
         <div className="ld-pkg-quote">
           <div><span>{q.price_mode === 'per_guest' ? `Package · ${q.guests} guests × ${fmtMoney(q.price)}` : 'Package'}</span><b>{fmtMoney(q.base)}</b></div>
-          {q.extra_hours > 0 && <div><span>{q.extra_hours} extra hr × {fmtMoney(q.extra_hour_price)}</span><b>{fmtMoney(q.extra_hours_amount)}</b></div>}
           {q.extras.map(l => (
             <div key={l.id}><span>{lineLabel(l)} <em className={`ld-xtag ${l.mode === 'optional' ? 'is-client' : ''}`}>{l.mode === 'optional' ? 'CLIENT ADDED' : 'ADDED'}</em></span><b>{fmtMoney(l.amount)}</b></div>
           ))}
@@ -92,7 +87,7 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove, onSave }) {
           <button type="button" onClick={onEdit}>✏️ Edit</button>
           {pre.length > 0 && (
             <button type="button" title="Each pre-event's hours at this package's extra-hour price — edit them after"
-              onClick={() => onSave({ extras: [...(p.extras || []), ...pre] })}>➕ Pre-events as extras ({pre.length})</button>
+              onClick={() => onSave({ extras: [...(p.extras || []), ...pre] })}>➕ Add {pre.length} pre-event{pre.length === 1 ? '' : 's'} as extras</button>
           )}
           <button type="button" className="is-danger" onClick={onRemove}>🗑️ Remove</button>
         </div>

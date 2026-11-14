@@ -270,7 +270,7 @@
 /* one "Main event" panel rather than a full-width band of separate cells */
 .po-strip {
   max-width: 1000px; margin: 26px auto 0;
-  display: flex; flex-wrap: wrap; gap: 8px 22px;
+  display: flex; flex-direction: column; gap: 12px;   /* the package line, then the events (2026-11-13) */
   padding: 18px 22px; background: #fffefb;
   border: 1px solid var(--line); border-radius: 20px;
   box-shadow: 0 4px 14px #2a1c0a0f;
@@ -282,6 +282,22 @@
   color: var(--soft);
 }
 .po-strip-v { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+/* 🗓️ the booking's events, one line each, in date order (Raj, 2026-11-13) */
+.po-strip-row { display: flex; flex-wrap: wrap; gap: 8px 22px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.po-events { list-style: none; margin: 0; padding: 0; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif; }
+.po-events li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; padding: 9px 0; border-bottom: 1px solid #f2ece0; font-size: 14px; color: var(--body); line-height: 1.5; }
+.po-events li:last-child { border-bottom: 0; padding-bottom: 0; }
+.po-events li:first-child { padding-top: 0; }
+.po-ev-day { min-width: 92px; margin-right: 10px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.po-ev-name { font-weight: 600; color: var(--ink); }
+.po-ev-name em { margin-left: 8px; padding: 1px 8px; border-radius: 20px; font-style: normal; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; background: var(--tint); color: var(--brandText, var(--brand, #b8922a)); }
+.po-ev-part::before { content: '·'; margin: 0 8px; color: #c9bca6; }
+.po-events li.is-main { color: var(--ink); }
+@media (max-width: 600px) {
+  .po-ev-day { flex-basis: 100%; min-width: 0; margin: 0 0 1px; font-size: 12.5px; color: var(--soft); }
+  .po-events li { font-size: 13.5px; }
+}
 
 /* the agreement itself is .ct-sheet in contractdoc.css — same sheet as
    the standalone sign page */

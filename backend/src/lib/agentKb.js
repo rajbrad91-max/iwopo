@@ -241,7 +241,7 @@ export async function leadPrices(vendorId, where = {}) {
   const ids = leads.map(l => l.id);
   const [lpRaw, vp, pays] = await Promise.all([
     // 📦 everything the price is worked out from: a package's price for this client includes its hours and extras
-    prisma.lead_packages.findMany({ where: { vendor_id: v, lead_id: { in: ids } }, select: { lead_id: true, name: true, price: true, is_selected: true, extras: true, price_mode: true, min_guests: true, included_hours: true, per_hour_price: true, auto_extra_hours: true } }),
+    prisma.lead_packages.findMany({ where: { vendor_id: v, lead_id: { in: ids } }, select: { lead_id: true, name: true, price: true, is_selected: true, extras: true, price_mode: true, min_guests: true } }),
     prisma.vendor_packages.findMany({ where: { vendor_id: v }, select: { id: true, name: true, base_price: true } }),
     prisma.payments.groupBy({ by: ['lead_id'], where: { vendor_id: v, lead_id: { in: ids } }, _sum: { amount: true } }),
   ]);

@@ -207,7 +207,7 @@ function PackagesBoard({ tpl, msg, onBack, onAdd, onDelete, onSaved, justSaved }
           description: f.description,
           base_price: Number(f.base_price) || 0,
           // one price, nothing worked out from hours or guests (Raj, 2026-11-13)
-          price_mode: 'fixed', min_guests: null, included_hours: 0, per_hour_price: 0, auto_extra_hours: false,
+          price_mode: 'fixed', min_guests: null,
           inclusions: f.inclusions.map(s => s.trim()).filter(Boolean),
           extras_state: Object.fromEntries(Object.entries(states[p.id] || {}).filter(([k]) => ids.has(k))),
         });

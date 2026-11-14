@@ -95,10 +95,8 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
           price: m.base_price ?? 0,
           inclusions: m.inclusions ?? [],
           sort_order: m.sort_order ?? i,
-          // 📦 everything that prices it travels too — before 2026-11-13 the hours were dropped here, so a
-          // 12-hour day on a 10-hour package was quoted as 10
-          price_mode: m.price_mode, min_guests: m.min_guests,
-          included_hours: m.included_hours, per_hour_price: m.per_hour_price, auto_extra_hours: m.auto_extra_hours,
+          // 📦 everything that prices it travels too; the extra-hour rate only prices pre-events added as extras
+          price_mode: m.price_mode, min_guests: m.min_guests, per_hour_price: m.per_hour_price,
           description: m.description, badge: m.badge,
           extras: extrasForLead(tpl.extras, m.extras_state),   // the folder's extras, as this package offers them
           tax_mode: tpl.tax_mode, tax_rate: tpl.tax_rate,       // 🧾 the folder's tax wording, kept with the offer
@@ -117,7 +115,7 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
 
 // PUT /api/lead-packages/:leadId/:id → edit one package for this client
 router.put('/:leadId/:id', requireAuth, async (req, res) => {
-  const { name, price, inclusions, admin_notes, included_hours, per_hour_price, extras } = req.body;
+  const { name, price, inclusions, admin_notes, per_hour_price, extras } = req.body;
   try {
     const lead = await ownedLead(req, req.params.leadId);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
@@ -131,7 +129,6 @@ router.put('/:leadId/:id', requireAuth, async (req, res) => {
     if (price !== undefined) data.price = nonNeg(price);
     if (Array.isArray(inclusions)) data.inclusions = inclusions.map(s => String(s).trim()).filter(Boolean);
     if (admin_notes !== undefined) data.admin_notes = admin_notes || null;
-    if (included_hours !== undefined) data.included_hours = included_hours === null || included_hours === '' ? null : Math.round(nonNeg(included_hours));
     if (per_hour_price !== undefined) data.per_hour_price = per_hour_price === null || per_hour_price === '' ? null : nonNeg(per_hour_price);
     // this client's extras; a client's tick on an optional one survives the vendor editing the rest
     if (extras !== undefined) data.extras = cleanLeadExtras(extras);

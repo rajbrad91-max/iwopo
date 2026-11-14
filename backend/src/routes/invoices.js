@@ -69,7 +69,6 @@ async function invoiceData(lead, givenItems, notes) {
         const q = quotePackage(picked, lead);
         items = [
           { label: `${picked.name} — ${when}${q.price_mode === 'per_guest' ? ` · ${q.guests} guests` : ''}`, amount: q.base },
-          ...(q.extra_hours ? [{ label: `${q.extra_hours} extra hour${q.extra_hours === 1 ? '' : 's'}`, amount: q.extra_hours_amount }] : []),
           ...q.extras.map(x => ({ label: x.qty > 1 ? `${x.name} × ${x.qty}` : x.name, amount: x.amount })),
         ];
       } else {

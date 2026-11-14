@@ -13,8 +13,7 @@ const router = express.Router();
 /** The lead_packages columns a price is worked out from (lib/packageQuote.js) — one list, so no caller prices from half a row. */
 export const QUOTE_FIELDS = {
   id: true, name: true, price: true, is_selected: true, inclusions: true, extras: true,
-  price_mode: true, min_guests: true, included_hours: true, per_hour_price: true, auto_extra_hours: true,
-  tax_mode: true, tax_rate: true,
+  price_mode: true, min_guests: true, tax_mode: true, tax_rate: true,
 };
 
 

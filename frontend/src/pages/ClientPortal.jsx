@@ -457,11 +457,17 @@ export default function ClientPortal({ token }) {
   const draftN = draft ? Object.keys(picksFor(draft)).length : 0;
   // the chosen package line by line, for the pay step — not when the vendor set the price by hand
   const chosenQ = chosen && !data.custom_price ? quoteFor(chosen, savedPicks(chosen)) : null;
-  const showBreak = chosenQ && (chosenQ.extras.length > 0 || chosenQ.extra_hours > 0 || chosenQ.price_mode === 'per_guest');
-  // ⏱ the hours asked for, and when — "12 hrs (5:00 PM – 5:00 AM)"
+  const showBreak = chosenQ && (chosenQ.extras.length > 0 || chosenQ.price_mode === 'per_guest');
+  /* 🗓️ every event, one line each: "Wed Dec 2 · Mendhi · 2:00 PM – 5:00 PM · 3 hrs · 2084 meadows st · 50 guests · Only Photos"
+     — empty parts are left out (lib/leadEvents.js on the server decides what the events are) */
   const clock = (t) => { const x = String(t || '').match(/^(\d{1,2}):(\d{2})/); if (!x) return ''; const h = Number(x[1]); return `${h % 12 || 12}:${x[2]} ${h < 12 ? 'AM' : 'PM'}`; };
-  const coverage = lead.hours ? `${lead.hours} hrs${lead.timing_from && lead.timing_to ? ` (${clock(lead.timing_from)} – ${clock(lead.timing_to)})` : ''}` : '';
-  const perGuestAny = packages.some(p => p.price_mode === 'per_guest' || (p.extras || []).some(x => x.unit === 'per_guest'));
+  const dayOf = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '');
+  const partsOf = (e) => [
+    e.from ? `${clock(e.from)}${e.to ? ` – ${clock(e.to)}` : ''}` : '',
+    e.hours ? `${e.hours} hr${e.hours === 1 ? '' : 's'}` : '',
+    e.location, e.guests ? `${e.guests} guests` : '', e.service, e.side, ...(e.notes || []),
+  ].filter(Boolean);
+  const events = Array.isArray(data.events) ? data.events : [];
 
   return (
     <div className="po-page" style={{ '--brand': branding.brand_color || '#C9A86A',
@@ -492,14 +498,25 @@ export default function ClientPortal({ token }) {
         </ol>
       </header>
 
-      {(chosen || eventDate || lead.location || coverage) && (
+      {(chosen || events.length > 0) && (
         <div className="po-strip">
-          {chosen && <div className="po-strip-i"><span className="po-strip-l">Package</span><span className="po-strip-v">{chosen.name}</span></div>}
-          {chosen && <div className="po-strip-i"><span className="po-strip-l">Total</span><span className="po-strip-v">{cash(money.final_total)}</span></div>}
-          {eventDate && <div className="po-strip-i"><span className="po-strip-l">Date</span><span className="po-strip-v">{eventDate}</span></div>}
-          {coverage && <div className="po-strip-i"><span className="po-strip-l">Coverage</span><span className="po-strip-v">{coverage}</span></div>}
-          {perGuestAny && lead.guests ? <div className="po-strip-i"><span className="po-strip-l">Guests</span><span className="po-strip-v">{lead.guests}</span></div> : null}
-          {lead.location && <div className="po-strip-i"><span className="po-strip-l">Location</span><span className="po-strip-v">{lead.location}</span></div>}
+          {chosen && (
+            <div className="po-strip-row">
+              <div className="po-strip-i"><span className="po-strip-l">Package</span><span className="po-strip-v">{chosen.name}</span></div>
+              <div className="po-strip-i"><span className="po-strip-l">Total</span><span className="po-strip-v">{cash(money.final_total)}</span></div>
+            </div>
+          )}
+          {events.length > 0 && (
+            <ul className="po-events">
+              {events.map((e, i) => (
+                <li key={i} className={e.main ? 'is-main' : ''}>
+                  <span className="po-ev-day">{dayOf(e.date) || 'Date to be set'}</span>
+                  <span className="po-ev-name">{e.name}{e.main && <em>Main event</em>}</span>
+                  {partsOf(e).map((t, k) => <span key={k} className="po-ev-part">{t}</span>)}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -587,9 +604,6 @@ export default function ClientPortal({ token }) {
                       {taxOf(p.tax_mode, p.tax_rate, q0.total, cash).text && <p className="po-pkg-tax">{taxOf(p.tax_mode, p.tax_rate, q0.total, cash).text}</p>}
                       {q0.price_mode === 'per_guest' && (
                         <p className="po-pkg-sub">{q0.guests} guests × {cash(q0.price)}{p.min_guests && Number(lead.guests || 0) < p.min_guests ? ` · minimum ${p.min_guests}` : ''}</p>
-                      )}
-                      {q0.included_hours > 0 && (
-                        <p className="po-pkg-sub">⏱ {q0.included_hours} hours of coverage{q0.extra_hours > 0 ? ` + ${q0.extra_hours} more for your ${q0.hours_asked}-hour day (${cash(q0.extra_hours_amount)})` : ''}</p>
                       )}
                     </div>
                     <div className="po-pkg-body">
@@ -711,7 +725,6 @@ export default function ClientPortal({ token }) {
                   {showBreak && (
                     <>
                       <div className="is-line"><dt>{chosen.name}{chosenQ.price_mode === 'per_guest' ? ` · ${chosenQ.guests} guests` : ''}</dt><dd>{cash(chosenQ.base)}</dd></div>
-                      {chosenQ.extra_hours > 0 && <div className="is-line"><dt>{chosenQ.extra_hours} extra hour{chosenQ.extra_hours > 1 ? 's' : ''}</dt><dd>{cash(chosenQ.extra_hours_amount)}</dd></div>}
                       {chosenQ.extras.map(l => <div key={l.id} className="is-line"><dt>{l.name}{l.unit === 'per_guest' ? ` × ${l.qty} guests` : l.unit === 'per_hour' ? ` × ${l.qty} hr` : l.qty > 1 ? ` × ${l.qty}` : ''}</dt><dd>{cash(l.amount)}</dd></div>)}
                       {money.discount_amount > 0 && <div className="is-line"><dt>Discount ({money.discount_percent}%)</dt><dd>−{cash(money.discount_amount)}</dd></div>}
                     </>

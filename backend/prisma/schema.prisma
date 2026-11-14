@@ -809,8 +809,6 @@ model vendor_packages {
   /// 💲 'fixed' or 'per_guest' (price × guests, at least min_guests) — so caterers and bakers price the way they do (2026-11-13)
   price_mode        String             @default("fixed") @db.VarChar(20)
   min_guests        Int?
-  /// ⏱️ add (hours asked for − included_hours) × per_hour_price when the inquiry is longer than the package
-  auto_extra_hours  Boolean            @default(false)
   /// one line shown under the package name, and a ribbon ("Most popular"…; null = automatic, 'none' = no ribbon)
   description       String?            @db.VarChar(300)
   badge             String?            @db.VarChar(40)
@@ -1016,12 +1014,10 @@ model lead_packages {
   is_selected       Boolean  @default(false)
   created_at        DateTime @default(now()) @db.Timestamp(6)
   updated_at        DateTime @default(now()) @db.Timestamp(6)
-  /// 📦 the master's pricing travels with the copy, so a 12-hour day on a 10-hour package is priced as 12 (2026-11-13)
+  /// 📦 the master's pricing travels with the copy; per_hour_price only prices pre-events added as extras (2026-11-13)
   price_mode        String   @default("fixed") @db.VarChar(20)
   min_guests        Int?
-  included_hours    Int?
   per_hour_price    Decimal? @db.Decimal(10, 2)
-  auto_extra_hours  Boolean  @default(false)
   description       String?  @db.VarChar(300)
   badge             String?  @db.VarChar(40)
   /// [{ id, name, description, price, unit, max_qty, mode: optional|added|included|off, chosen, qty, source }] — the client's picks live here

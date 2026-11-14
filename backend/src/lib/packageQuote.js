@@ -6,10 +6,11 @@
  * and charged another.
  *
  *   base         the price, or price × guests when the package is priced per guest
- *   extra hours  (hours asked for − hours included) × the extra-hour price, when
- *                the package says to add them automatically
  *   extras       every extra the vendor added to the price, and every optional
  *                one the client chose
+ *
+ * Hours never price a package (Raj, 2026-11-13): the client's hours reach the
+ * vendor before they quote, and anything a package provides is a line in it.
  *
  * ⚠️ frontend/src/lib/packageQuote.js is this same function, used for the live
  * total while a client ticks extras. Change both together. The server always
@@ -43,10 +44,6 @@ export function quotePackage(pkg, lead) {
   const perGuest = pkg?.price_mode === 'per_guest';
   const guests = perGuest ? Math.max(whole(lead?.guests), whole(pkg?.min_guests)) : 0;
   const base = perGuest ? price * guests : price;
-  const included = whole(pkg?.included_hours);
-  const rate = num(pkg?.per_hour_price);
-  const asked = whole(lead?.hours);
-  const extraHours = pkg?.auto_extra_hours !== false && included > 0 && rate > 0 && asked > included ? asked - included : 0;
   const lines = (Array.isArray(pkg?.extras) ? pkg.extras : [])
     .filter(x => x && (x.mode === 'added' || (x.mode === 'optional' && x.chosen)))
     .map(x => {
@@ -56,10 +53,8 @@ export function quotePackage(pkg, lead) {
   const extrasTotal = lines.reduce((s, l) => s + l.amount, 0);
   return {
     price, price_mode: perGuest ? 'per_guest' : 'fixed', guests, base: money2(base),
-    included_hours: included, hours_asked: asked, extra_hour_price: rate,
-    extra_hours: extraHours, extra_hours_amount: money2(extraHours * rate),
     extras: lines, extras_total: money2(extrasTotal),
-    total: money2(base + extraHours * rate + extrasTotal),
+    total: money2(base + extrasTotal),
   };
 }
 
@@ -141,7 +136,6 @@ export function cleanPricing(body) {
   const out = {};
   if (body?.price_mode !== undefined) out.price_mode = PRICE_MODES.includes(body.price_mode) ? body.price_mode : 'fixed';
   if (body?.min_guests !== undefined) out.min_guests = body.min_guests === null || body.min_guests === '' ? null : Math.min(whole(body.min_guests), 100000);
-  if (body?.auto_extra_hours !== undefined) out.auto_extra_hours = !!body.auto_extra_hours;
   if (body?.description !== undefined) out.description = text(body.description, 300) || null;
   if (body?.badge !== undefined) out.badge = body.badge === null || body.badge === '' ? null : text(body.badge, 40) || null;
   return out;
