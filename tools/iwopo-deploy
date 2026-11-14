@@ -93,7 +93,7 @@ else
 fi | head -2
 echo "  staging: $(git rev-parse --short HEAD)"
 git push -q origin staging
-git checkout -q main && git merge -q staging && git push -q origin main && git checkout -q staging
+git checkout -q main && git merge -q staging && git push -q origin main && git push -q live main && git checkout -q staging
 echo "  main: pushed"
 
 echo
