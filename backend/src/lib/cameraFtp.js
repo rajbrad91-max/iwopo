@@ -13,8 +13,9 @@ import { quiet } from './quiet.js';
  * 📡 Camera FTP — the Raw Selector's other way in (Raj, 2026-11-09).
  *
  * vsftpd (/etc/vsftpd.conf) runs on this server at ftp.iwopo.com:21, encrypted (FTPS required), with virtual users
- * only: each photographer has a login in /etc/vsftpd/iwopo.passwd (written here, the password hashed) and is jailed in
- * /srv/iwopo-ftp/<user>. The vendor creates the login in Crew Management; the photographer chooses, per shoot in his
+ * only: each photographer has a login in /etc/vsftpd/iwopo-users/iwopo.passwd (written here, the password hashed) and is
+ * jailed in /srv/iwopo-ftp/<user>. iwopo runs as its own user, not root: vsftpd writes as `ftp`, and the FTP root is the
+ * ftp group's with setgid, so the folders made here are shared with it (tools/iwopo-server-user.sh). The vendor creates the login in Crew Management; the photographer chooses, per shoot in his
  * portal, that the camera's uploads go to that shoot (crew_members.ftp_lead_id). ingestFtp() then files what the camera
  * has finished sending into that shoot — the same JPEG + RAW handling as an upload in the browser — and removes it
  * from the FTP folder. With no shoot chosen, files wait in the folder.
@@ -23,7 +24,7 @@ import { quiet } from './quiet.js';
  */
 export const FTP_HOST = process.env.FTP_HOST || 'ftp.iwopo.com';
 const ROOT = process.env.FTP_ROOT || '/srv/iwopo-ftp';
-const PASSWD = process.env.FTP_PASSWD_FILE || '/etc/vsftpd/iwopo.passwd';
+const PASSWD = process.env.FTP_PASSWD_FILE || '/etc/vsftpd/iwopo-users/iwopo.passwd';
 const PREFIX = process.env.FTP_USER_PREFIX || '';
 const SETTLE_MS = 60 * 1000;   // a file untouched this long has finished arriving
 const MINE = new RegExp(`^${PREFIX.replace(/[^\w-]/g, '')}crew(\\d+)$`);
@@ -48,9 +49,8 @@ export async function setFtpLogin(crewId) {
   if (hashed.status !== 0 || !hashed.stdout.startsWith('$6$')) throw new Error('Could not set the FTP password');
   rewriteLogins(user, `${user}:${hashed.stdout.trim()}`);
   const dir = folderOf(crewId);
-  fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
-  const uid = spawnSync('id', ['-u', 'ftp'], { encoding: 'utf8' }), gid = spawnSync('id', ['-g', 'ftp'], { encoding: 'utf8' });
-  if (uid.status === 0 && gid.status === 0) fs.chownSync(dir, Number(uid.stdout), Number(gid.stdout));   // vsftpd writes as the ftp user
+  fs.mkdirSync(dir, { recursive: true });
+  fs.chmodSync(dir, 0o2775);   // the ftp group (vsftpd) writes here, and what it writes stays in that group
   await prisma.crew_members.update({ where: { id: crewId }, data: { ftp_password_enc: sealPassword(password) } });
   return { user, password };
 }

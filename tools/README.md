@@ -27,10 +27,21 @@ duplicate CSS, and four guards: admin tokens leaking to a client page, a bare
 brand gold ignoring the vendor's own colour, a native browser dialog, and a
 clean boot.
 
-**`iwopo-deploy <message-file>`** — refuses to commit if verify fails, then
-commits, pushes staging, merges main, pulls on live, rebuilds, restarts and
-reports parity. `--force-truncation "<reason>"` overrides the diff-sanity check
-and records the reason in the commit, so skipping it leaves a trace.
+**`iwopo-deploy <message-file>`** — refuses to commit if verify fails or a
+test fails (staging restarts on the new code and `backend/tests` run against
+it), then commits, pushes staging, merges main, pulls on live, rebuilds,
+restarts and reports parity. On live, packages are installed beside the running
+app and swapped in with one rename (skipped when `package-lock.json` is
+unchanged), so a restart never meets half-installed packages.
+`--force-truncation "<reason>"` overrides the diff-sanity check and records the
+reason in the commit, so skipping it leaves a trace.
+
+**`pm2.iwopo.config.cjs`** — how PM2 runs both sites: as the unprivileged
+`iwopo` user, with the shared PDF browser folder. Deploys restart through it.
+
+**`iwopo-server-user.sh staging|live`** — creates and repairs what that user
+needs (storage, `.env` read access, camera-FTP folders and logins file, upload
+scratch folders, the PDF browser). Safe to run again.
 
 **`iwopo-consumers <symbol>`** — every file that reads a field, class or
 function. Run it before changing anything shared; it exists because changing a

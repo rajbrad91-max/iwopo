@@ -11,7 +11,6 @@ import 'dotenv/config';
 
 const REQUIRED = [
   ['DATABASE_URL', 'Prisma connection string, e.g. postgresql://postgres:PASS@localhost:5432/iwopo?schema=public'],
-  ['DB_PASSWORD', 'PostgreSQL password'],
   ['DB_NAME', 'database name — iwopo (live) or iwopo_staging'],
   ['JWT_SECRET', 'long random string used to sign login tokens'],
   ['STORAGE_BASE', 'absolute path where galleries and logos are written'],

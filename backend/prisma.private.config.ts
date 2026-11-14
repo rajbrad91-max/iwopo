@@ -15,7 +15,9 @@ export default defineConfig({
   migrations: {
     path: 'prisma/private/migrations',
   },
+  /* 🔐 Migrations change tables, so they sign in as the database owner. The running app uses PRIVATE_DATABASE_URL, a login
+     that can only read and write rows (audit 2026-11-14). One login for both still works, e.g. on a laptop. */
   datasource: {
-    url: process.env.PRIVATE_DATABASE_URL,
+    url: process.env.PRIVATE_MIGRATE_DATABASE_URL || process.env.PRIVATE_DATABASE_URL,
   },
 });

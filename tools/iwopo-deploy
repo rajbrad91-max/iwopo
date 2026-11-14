@@ -60,6 +60,15 @@ LINT=$(npx eslint backend/src frontend/src 2>&1 | tail -1)
 echo "$LINT" | grep -qE "[1-9][0-9]* error" && { echo "  $LINT"; echo "❌ LINT ERRORS — nothing committed"; exit 1; }
 echo "  lint: ${LINT:-clean}"
 
+# 🧪 The test suite (backend/tests) talks to the staging server, so staging first restarts on this very code.
+# Ten files: tenancy, contracts, payments, prices, inquiry, albums, zips, email, waitlist, a full journey.
+pm2 startOrRestart $S/tools/pm2.iwopo.config.cjs --only iwopo-staging-api >/dev/null 2>&1
+sleep 6
+TESTS=$(cd $S/backend && npm test 2>&1)
+FAILED=$(echo "$TESTS" | grep -oE '^# fail [0-9]+' | grep -oE '[0-9]+$')
+[ "${FAILED:-1}" = "0" ] || { echo "$TESTS" | grep -E '^not ok' | head -10; echo "❌ TESTS FAILED — nothing committed"; exit 1; }
+echo "  tests: $(echo "$TESTS" | grep -oE '^# pass [0-9]+' | grep -oE '[0-9]+$') passed"
+
 # a file that loses far more than it gains is how a stylesheet gets truncated
 TRUNC=$(git diff --numstat | awk '$2 > 200 && $1 < ($2/10) {print $3 " lost " $2 " gained " $1}')
 if [ -n "$TRUNC" ]; then
@@ -130,8 +139,23 @@ fetch_model() {
 fetch_model models/auraface/glintr100.onnx https://huggingface.co/fal/AuraFace-v1/resolve/main/glintr100.onnx a7933ea5330113b01c9b60351d8f4c33003f145d8470ac5f0e52ee2effe25c60
 fetch_model models/yunet/face_detection_yunet_2023mar.onnx https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx 8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4
 fetch_model models/facemesh/face_landmarks_detector.onnx https://huggingface.co/senty-au/face_landmarks_detector-ONNX/resolve/main/onnx/model.onnx 7d6e82dee82a1dca5fbddb282b3cc74571833a530de317fc22ae325c3358beeb
-# packages follow package-lock.json exactly (a removed library really goes)
-npm ci --no-audit --no-fund 2>&1 | tail -1 | sed 's/^/  npm: /'
+# 📦 Packages follow package-lock.json exactly (a removed library really goes). They are installed BESIDE the running
+# app and swapped in with one rename, so live never meets a half-installed node_modules — a restart in the middle of a
+# plain `npm ci` once crashed it with "Cannot find package 'express'". Nothing is reinstalled when the lock file is
+# unchanged (node_modules/.iwopo-lock remembers which one is installed).
+LOCK_SUM=$(sha256sum package-lock.json | cut -c1-64)
+if [ "$(cat node_modules/.iwopo-lock 2>/dev/null)" != "$LOCK_SUM" ]; then
+  NEXT=$(mktemp -d "$L/backend/.packages.XXXXXX")
+  trap 'rm -rf "$NEXT"' EXIT
+  cp package.json package-lock.json "$NEXT/"
+  (cd "$NEXT" && npm ci --no-audit --no-fund 2>&1 | tail -1 | sed 's/^/  npm: /')
+  echo "$LOCK_SUM" > "$NEXT/node_modules/.iwopo-lock"
+  mv node_modules "$NEXT/replaced_modules" && mv "$NEXT/node_modules" node_modules
+else
+  echo "  npm: packages unchanged"
+fi
+# 🖨️ the browser that renders signed-contract PDFs, matched to playwright-core, in the shared folder the app reads
+PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright npx --no-install playwright-core install chromium-headless-shell >/dev/null 2>&1 && chmod -R a+rX /opt/ms-playwright
 # 🗄️ Database changes come from Prisma's migration history (prisma/migrations
 # and prisma/private/migrations), not from hand-written ALTERs that depend on
 # somebody remembering them. `migrate deploy` applies only migrations live has
@@ -143,8 +167,8 @@ npx prisma generate 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed
 npx prisma generate --config prisma.private.config.ts 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma (private): /'
 cd $L/frontend && npm run build 2>&1 | grep -oE '✓ built in [0-9.]+s' | sed 's/^/  build: /'
 systemctl reload nginx
-# --cwd: without it pm2 can keep the process rooted in a stale directory
-pm2 restart iwopo-api --cwd $L/backend --update-env >/dev/null 2>&1
+# 👤 the app runs as the unprivileged iwopo user, with its folder and settings from tools/pm2.iwopo.config.cjs
+pm2 startOrRestart $L/tools/pm2.iwopo.config.cjs --only iwopo-api >/dev/null 2>&1
 sleep 4
 
 echo

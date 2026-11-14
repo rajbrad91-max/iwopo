@@ -5,3 +5,6 @@ node_modules/
 # 🔒 settings backups and temp copies hold secrets too — never commit them (2026-10-31)
 .env.*
 !.env.example
+
+# iwopo-deploy installs packages here before swapping them in
+.packages.*/
