@@ -680,7 +680,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
 
             <div className="gal-send-msghead">
               <label className="lbl">Email</label>
-              {onEditEmail && <button className="gal-gen" onClick={() => { setSendModal(null); onEditEmail(); }}>✏️ Edit email template</button>}
+              {onEditEmail && <button className="gal-gen" onClick={() => { setSendModal(null); onEditEmail(); }}>Edit template</button>}
             </div>
             <div className="gal-send-subj">{sendModal.subject}</div>
             {sendModal.html
