@@ -7,7 +7,8 @@ import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { questionsForLead } from '../lib/leadQuestions.js';
 import { requireAuth } from '../middleware/auth.js';
-import { moneySummary, pickedOffer, rebuildUnsignedContract } from './payments.js';
+import { moneySummary, pickedOffer, rebuildUnsignedContract, QUOTE_FIELDS } from './payments.js';
+import { quotePackage, extraNamesInBooking, taxOf } from '../lib/packageQuote.js';
 import { currencyFor } from '../lib/currencies.js';
 import { calendarYmd, formatWallTime } from '../lib/wallClock.js';
 import { resolveTimezone } from '../lib/timezones.js';
@@ -351,7 +352,21 @@ const OPTIONAL_SERVICES = [
   ['Live Streaming', ['live stream', 'live-stream', 'streaming']],
   ['Next Day Edit (NDE)', ['next day edit', 'nde']],
 ];
-function servicesSummaryHtml(inclusions) {
+/**
+ * 📋 Included / Not included, from the package's own extras (Raj, 2026-11-13): no guessing from words. Every extra this
+ * package offers gets a row — Included when the package includes it, the vendor added it or the client chose it; Not
+ * Included when the client could have added it and didn't. A package with no extras keeps the older word-based table.
+ */
+function servicesSummaryHtml(inclusions, pkg) {
+  const extras = (Array.isArray(pkg?.extras) ? pkg.extras : []).filter(x => x && x.mode !== 'off' && String(x.name || '').trim());
+  if (extras.length) {
+    const rows = extras.map(x => {
+      const has = x.mode === 'included' || x.mode === 'added' || (x.mode === 'optional' && x.chosen);
+      const badge = has ? '<span class="ct-inc">Included</span>' : '<span class="ct-notinc">Not Included</span>';
+      return `<tr><th>${escapeHtml(String(x.name).trim())}</th><td>${badge}</td></tr>`;
+    }).join('');
+    return `<table class="ct-svc"><tbody>${rows}</tbody></table>`;
+  }
   const hay = inclusions.join(' ').toLowerCase();
   const rows = OPTIONAL_SERVICES.map(([label, keys]) => {
     const has = keys.some(k => hay.includes(k));
@@ -359,6 +374,43 @@ function servicesSummaryHtml(inclusions) {
     return `<tr><th>${escapeHtml(label)}</th><td>${badge}</td></tr>`;
   }).join('');
   return `<table class="ct-svc"><tbody>${rows}</tbody></table>`;
+}
+
+/**
+ * Extras — what this booking costs beyond the package itself (Raj, 2026-11-13).
+ *
+ * The package line, any hours beyond those it covers, and each extra the vendor
+ * added or the client chose, with its amount and the total. Nothing to add
+ * beyond the package, no table: the block drops out like any empty one.
+ */
+function extrasHtml(pkg, quote, cash, money, agreedPrice, tax) {
+  const taxRow = tax?.text ? [[tax.mode === 'included' ? `Includes ${tax.rate}% tax` : 'Tax', tax.mode === 'included' ? cash(tax.amount) : 'Plus tax']] : [];
+  if (!pkg || !quote || (!quote.extras.length && !quote.extra_hours)) return '';
+  const unitWord = { per_item: '', per_hour: 'hr', per_guest: 'guests' };
+  const hoursLabel = `Extra coverage — ${quote.extra_hours} hr beyond the ${quote.included_hours} included`;
+  const extraLabel = (l) => (l.qty > 1 || l.unit === 'per_guest'
+    ? `${l.name} × ${l.qty}${unitWord[l.unit] ? ` ${unitWord[l.unit]}` : ''}` : l.name);
+  // a price the vendor agreed by hand covers everything — the lines are listed, the agreed figure is what's owed
+  if (agreedPrice) {
+    return kvTable('ct-kv ct-extras', [
+      [pkg.name || 'Package', 'Included'],
+      ...(quote.extra_hours ? [[hoursLabel, 'Included']] : []),
+      ...quote.extras.map(l => [extraLabel(l), 'Included']),
+      ...taxRow,
+      ['Agreed price', cash(money.final_total)],
+    ]);
+  }
+  const rows = [
+    [pkg.name || 'Package', quote.price_mode === 'per_guest'
+      ? `${cash(quote.base)} (${quote.guests} guests × ${cash(quote.price)})` : cash(quote.base)],
+    ...(quote.extra_hours ? [[hoursLabel,
+      `${cash(quote.extra_hours_amount)} (${quote.extra_hours} × ${cash(quote.extra_hour_price)})`]] : []),
+    ...quote.extras.map(l => [extraLabel(l), cash(l.amount)]),
+    ...(Number(money?.discount_amount) > 0 ? [[`Discount (${Number(money.discount_percent) || 0}%)`, `− ${cash(money.discount_amount)}`]] : []),
+    ...taxRow,
+    ['Total', cash(money ? money.final_total : quote.total)],
+  ];
+  return kvTable('ct-kv ct-extras', rows);
 }
 
 /** Who is coming, and what they are doing. */
@@ -406,7 +458,7 @@ function headingText(t) {
   }).join('');
 }
 
-const BLOCK_TOKEN = /\{\{(booking_details|coverage_schedule|deliverables|services_summary|crew)\}\}/;
+const BLOCK_TOKEN = /\{\{(booking_details|coverage_schedule|deliverables|services_summary|crew|extras)\}\}/;
 
 function renderSectionBody(rawText, values, blocks) {
   if (!BLOCK_TOKEN.test(rawText)) return proseHtml(substitute(rawText, values));
@@ -484,7 +536,7 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
   const [offeredPkgs, crew, moneyRaw, vset, vrow] = await Promise.all([
     prisma.lead_packages.findMany({
       where: { lead_id: lead.id },                         // 🔒 tenancy via the lead
-      select: { id: true, name: true, price: true, inclusions: true, is_selected: true },
+      select: QUOTE_FIELDS,                                // 📦 everything the price is worked out from
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
     }),
     prisma.lead_crew.findMany({
@@ -503,9 +555,19 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
   const chosen = forceId
     ? (offeredPkgs.find(p => p.id === forceId) || null)
     : pickedOffer(offeredPkgs);
-  const money = (forceId && chosen) ? moneyForPackage(lead, chosen.price, moneyRaw) : moneyRaw;
+  // 📦 the package priced for this client — hours beyond those included, per-guest pricing and every extra
+  const quote = chosen ? quotePackage(chosen, lead) : null;
+  const agreedPrice = lead.price_override != null;
+  const money = (forceId && chosen && !agreedPrice) ? moneyForPackage(lead, quote.total, moneyRaw) : moneyRaw;
   const inclusions = Array.isArray(chosen?.inclusions) ? chosen.inclusions.map(String).filter(Boolean) : [];
+  /* extras that are part of this booking count as what the package includes — "Drone" chosen by the client
+     ticks Drone Coverage as Included and brings in a section shown only when drone is booked */
+  const booked = [...inclusions, ...extraNamesInBooking(chosen)];
+  const includedExtras = (Array.isArray(chosen?.extras) ? chosen.extras : [])
+    .filter(x => x?.mode === 'included').map(x => String(x.name || '').trim()).filter(Boolean);
   const pkgName = chosen?.name || '—';
+  const inclHours = Number(chosen?.included_hours) || 0;
+  const hoursLine = inclHours > 0 && !inclusions.some(t => /\b(hours?|hrs?)\b/i.test(t)) ? [`${inclHours} hours of coverage`] : [];
 
   const fmtDate = fmtContractDate;
   const pref = vset?.time_format === '24h' ? '24h' : '12h';
@@ -521,6 +583,7 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
       return num.toLocaleString('en', { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 });
     } catch { return `${num} ${code}`; }
   };
+  const tax = taxOf(chosen?.tax_mode, chosen?.tax_rate, money.final_total, cash);
 
   const values = {
     '{{client_name}}': lead.name || '—',
@@ -533,7 +596,12 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
     '{{hours}}': lead.hours ?? 'agreed',
     '{{guests}}': lead.guests ?? 'the expected number of',
     '{{package_name}}': chosen?.name || 'custom',   // no package chosen: "under the custom package", never "under the — package"
-    '{{total_cost}}': cash(money.final_total),
+    // the package alone, and everything added on top of it (extra hours + extras)
+    '{{package_price}}': quote ? cash(quote.base) : '',
+    '{{extras_total}}': quote ? cash(quote.extra_hours_amount + quote.extras_total) : cash(0),
+    // 🧾 the total says what the package says about tax: "CA$3,600, including 5% tax (CA$171)" / "CA$3,600 plus tax"
+    '{{total_cost}}': tax.mode === 'included' ? `${cash(money.final_total)}, including ${tax.rate}% tax (${cash(tax.amount)})`
+      : tax.mode === 'excluded' ? `${cash(money.final_total)} plus tax` : cash(money.final_total),
     '{{deposit}}': cash(money.deposit_amount),
     // on a contract this means what's left AFTER the deposit, not what's
     // outstanding today — see the note on the earlier fix for why
@@ -543,16 +611,27 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
     '{{company_phone}}': vrow?.phone || '',
     '{{company_email}}': vrow?.email || '',
   };
+  const extras = extrasHtml(chosen, quote, cash, money, agreedPrice, tax);
   const blocks = {
     booking_details: bookingDetailsHtml(lead, pkgName, crew),
     coverage_schedule: coverageScheduleHtml(lead, fmtTime, fmtDate),
-    deliverables: deliverablesHtml(inclusions),
-    services_summary: servicesSummaryHtml(inclusions),
+    /* everything the chosen package says goes into the contract: its hours (unless a line already states them), every
+       line of what's included, and the extras it includes at no charge */
+    deliverables: deliverablesHtml([...hoursLine, ...inclusions, ...includedExtras]),
+    services_summary: servicesSummaryHtml(booked, chosen),
     crew: crewHtml(crew, fmtTime),
+    extras,
   };
 
   const sections = (Array.isArray(template.sections) ? template.sections : [])
-    .filter(x => sectionApplies(x, inclusions));
+    .filter(x => sectionApplies(x, booked));
+  /* a template written before {{extras}} existed still shows them — under the first of these blocks it uses —
+     so a client never signs for a price whose parts the contract doesn't name */
+  if (extras && !sections.some(x => /\{\{extras\}\}/.test(x.text || ''))) {
+    const host = ['deliverables', 'booking_details', 'services_summary']
+      .find(k => sections.some(x => new RegExp(`\\{\\{${k}\\}\\}`).test(x.text || '')));
+    if (host) blocks[host] += `<h3>Extras</h3>${extras}`;
+  }
   const initCounter = { n: 0 };
   const secHtml = sections.map(x => sectionHtml(x, values, blocks, initCounter)).filter(Boolean).join('');
   const legal = (template.legal_terms || '').replace(/^\s*terms\s*(&|and)\s*conditions\s*\n+/i, '');
@@ -865,7 +944,7 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
     const pkgs = await prisma.lead_packages.findMany({
       where: { lead_id: lead.id },
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
-      select: { id: true, name: true, price: true, is_selected: true },
+      select: QUOTE_FIELDS,                                  // 📦 priced the way the contract prices them
     });
     const requested = req.query.package;
     let active = null;
@@ -923,7 +1002,7 @@ router.get('/preview/:leadId', requireAuth, async (req, res) => {
       packages: pkgs.map(p => ({
         id: p.id,
         name: p.name,
-        price_label: priceLabel(p.price),
+        price_label: priceLabel(quotePackage(p, lead).total),   // hours + extras, the figure the contract states
         is_selected: p.is_selected,
       })),
       active_package_id: active?.id ?? null,

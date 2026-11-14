@@ -7,7 +7,7 @@ const API = '/api/chatbot';
 
 const KFIELDS = [
   { k: 'business_name', label: '🏢 Business name', type: 'input', ph: 'e.g. Perfect Poses Media' },
-  { k: 'tagline', label: '✨ Tagline', type: 'input', ph: 'One line about what you do' },
+  { k: 'tagline', label: 'Tagline', type: 'input', ph: 'One line about what you do' },
   { k: 'service_area', label: '📍 City / service area', type: 'input', ph: 'e.g. Surrey, Abbotsford, Greater Vancouver' },
   { k: 'contact', label: '📞 Contact (phone / email)', type: 'input', ph: 'How clients reach you' },
   { k: 'hours', label: '🕒 Hours', type: 'input', ph: 'e.g. Mon–Sat 9am–7pm' },

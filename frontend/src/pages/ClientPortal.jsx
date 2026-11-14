@@ -7,6 +7,7 @@ import './portal.css';
 import './contractdoc.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useBrandIcon } from '../lib/useBrandIcon';
+import { quotePackage, unitText, taxOf } from '../lib/packageQuote';
 
 /**
  * 🌐 The client's view of their booking: choose → sign → pay.
@@ -274,6 +275,10 @@ export default function ClientPortal({ token }) {
   // itself moves on, so the page returns to wherever they actually are
   const [back, setBack] = useState(null);
   const [celebrate, setCelebrate] = useState(false);
+  // ticks on optional extras not saved yet, per package — { [packageId]: { [extraId]: qty } } — and the package
+  // the client is shaping (the running total follows it). Both clear when a choice is saved.
+  const [edits, setEdits] = useState({});
+  const [draftId, setDraftId] = useState(null);
 
   /**
    * 🔄 Only the very first load of a browser session asks for a reset.
@@ -309,14 +314,21 @@ export default function ClientPortal({ token }) {
   }, []);
 
   async function pick(id) {
-    // R4 (2026-10-30): changing package after signing cancels that signature — say so first
     const next = packages.find(p => p.id === id);
-    if (signed && chosen && id !== chosen.id && !await dialog.confirm(
-      `You signed the contract for ${chosen.name}. Choosing ${next?.name || 'another package'} cancels that signature — you\u2019ll read and sign a new contract for it.`,
-      { title: 'Change your package?', okLabel: 'Change package', danger: true })) return;
+    if (!next) return;
+    const pk = picksFor(next);
+    const extrasChanged = !samePicks(pk, savedPicks(next));
+    if (chosen && id === chosen.id && !extrasChanged) { setDraftId(null); setBack(null); return; }   // nothing to change
+    // R4 (2026-10-30): changing package — or now its extras — after signing cancels that signature; say so first
+    if (signed && chosen && !await dialog.confirm(
+      id !== chosen.id
+        ? `You signed the contract for ${chosen.name}. Choosing ${next.name} cancels that signature — you\u2019ll read and sign a new contract for it.`
+        : 'You signed the contract with your current extras. Changing them cancels that signature — you\u2019ll read and sign a new contract with the new ones.',
+      { title: id !== chosen.id ? 'Change your package?' : 'Change your extras?', okLabel: 'Yes, change it', danger: true })) return;
     setBusy(true); setMsg('');
     try {
-      await api.portalPick(token, id);
+      await api.portalPick(token, id, Object.entries(pk).map(([xid, qty]) => ({ id: xid, qty })));
+      setEdits({}); setDraftId(null);
       setBack(null);            // picking moves them on, so stop looking back
       load();
     }
@@ -401,6 +413,56 @@ export default function ClientPortal({ token }) {
 
   const eventDate = lead.event_date ? fmtEventDate(lead.event_date, { long: true }) : null;
 
+  /* extras and prices (lib/packageQuote.js — the same function the server charges by; it re-prices on save) */
+  const optionalOf = (p) => (p.extras || []).filter(x => x.mode === 'optional');
+  function savedPicks(p) { return Object.fromEntries(optionalOf(p).filter(x => x.chosen).map(x => [x.id, x.qty || 1])); }
+  function picksFor(p) { return edits[p.id] ?? savedPicks(p); }
+  function samePicks(a, b) { const k = (o) => JSON.stringify(Object.entries(o).sort()); return k(a) === k(b); }
+  function quoteFor(p, pk = picksFor(p)) {
+    return quotePackage({
+      ...p, price: p.base_price,
+      extras: (p.extras || []).map(x => (x.mode === 'optional' ? { ...x, chosen: pk[x.id] != null, qty: pk[x.id] ?? x.qty } : x)),
+    }, lead);
+  }
+  function toggleExtra(p, x) {
+    setEdits(e => {
+      const cur = { ...(e[p.id] ?? savedPicks(p)) };
+      if (cur[x.id] != null) delete cur[x.id]; else cur[x.id] = 1;
+      return { ...e, [p.id]: cur };
+    });
+    setDraftId(p.id);
+  }
+  function setQty(p, x, n) {
+    const qty = Math.min(Math.max(n, 1), x.max_qty || 99);
+    setEdits(e => ({ ...e, [p.id]: { ...(e[p.id] ?? savedPicks(p)), [x.id]: qty } }));
+    setDraftId(p.id);
+  }
+  /* what a total comes to after the discount, and the deposit on it — the same rules as the server's money summary */
+  function owedOn(total) {
+    const final = Math.max(total - total * (Number(money?.discount_percent) || 0) / 100, 0);
+    const dep = money?.deposit_mode === 'amount' ? Number(money.deposit_amount) || 0 : final * (Number(money?.deposit_percent) || 0) / 100;
+    return { final, dep };
+  }
+  /* "Every package includes": lines all the packages share, said once so each card shows only its differences */
+  const norm = (t) => String(t).trim().toLowerCase();
+  const incOf = (p) => (Array.isArray(p.inclusions) ? p.inclusions : []).map(String).filter(t => t.trim());
+  const shared = packages.length >= 2 ? incOf(packages[0]).filter(t => packages.every(p => incOf(p).some(u => norm(u) === norm(t)))) : [];
+  const common = shared.length >= 2 ? shared : [];
+  const commonSet = new Set(common.map(norm));
+  // the package being shaped, while it differs from what is saved
+  const draftPkg = packages.find(p => p.id === draftId);
+  const draft = draftPkg && (lead.package_id !== draftPkg.id || !samePicks(picksFor(draftPkg), savedPicks(draftPkg))) ? draftPkg : null;
+  const draftQ = draft ? quoteFor(draft) : null;
+  const draftOwed = draftQ ? owedOn(draftQ.total) : null;
+  const draftN = draft ? Object.keys(picksFor(draft)).length : 0;
+  // the chosen package line by line, for the pay step — not when the vendor set the price by hand
+  const chosenQ = chosen && !data.custom_price ? quoteFor(chosen, savedPicks(chosen)) : null;
+  const showBreak = chosenQ && (chosenQ.extras.length > 0 || chosenQ.extra_hours > 0 || chosenQ.price_mode === 'per_guest');
+  // ⏱ the hours asked for, and when — "12 hrs (5:00 PM – 5:00 AM)"
+  const clock = (t) => { const x = String(t || '').match(/^(\d{1,2}):(\d{2})/); if (!x) return ''; const h = Number(x[1]); return `${h % 12 || 12}:${x[2]} ${h < 12 ? 'AM' : 'PM'}`; };
+  const coverage = lead.hours ? `${lead.hours} hrs${lead.timing_from && lead.timing_to ? ` (${clock(lead.timing_from)} – ${clock(lead.timing_to)})` : ''}` : '';
+  const perGuestAny = packages.some(p => p.price_mode === 'per_guest' || (p.extras || []).some(x => x.unit === 'per_guest'));
+
   return (
     <div className="po-page" style={{ '--brand': branding.brand_color || '#C9A86A',
       '--brandText': readableBrand(branding.brand_color || '#C9A86A') }}>
@@ -430,11 +492,13 @@ export default function ClientPortal({ token }) {
         </ol>
       </header>
 
-      {(chosen || eventDate || lead.location) && (
+      {(chosen || eventDate || lead.location || coverage) && (
         <div className="po-strip">
           {chosen && <div className="po-strip-i"><span className="po-strip-l">Package</span><span className="po-strip-v">{chosen.name}</span></div>}
           {chosen && <div className="po-strip-i"><span className="po-strip-l">Total</span><span className="po-strip-v">{cash(money.final_total)}</span></div>}
           {eventDate && <div className="po-strip-i"><span className="po-strip-l">Date</span><span className="po-strip-v">{eventDate}</span></div>}
+          {coverage && <div className="po-strip-i"><span className="po-strip-l">Coverage</span><span className="po-strip-v">{coverage}</span></div>}
+          {perGuestAny && lead.guests ? <div className="po-strip-i"><span className="po-strip-l">Guests</span><span className="po-strip-v">{lead.guests}</span></div> : null}
           {lead.location && <div className="po-strip-i"><span className="po-strip-l">Location</span><span className="po-strip-v">{lead.location}</span></div>}
         </div>
       )}
@@ -448,12 +512,24 @@ export default function ClientPortal({ token }) {
             <h2 className="po-h">{chosen ? 'Your package' : 'Choose your package'}</h2>
             <p className="po-lead">
               {chosen
-                ? (signed ? `You signed for ${chosen.name}. Choosing another package cancels that signature and you\u2019ll sign again.` : 'Pick a different one any time before you pay — your contract is rewritten to match.')
-                : 'Tap the one you\u2019d like. Nothing is confirmed until you sign.'}
+                ? (signed ? `You signed for ${chosen.name}. Choosing another package or changing your extras cancels that signature and you’ll sign again.` : 'Pick a different one, or change your extras, any time before you pay — your contract is rewritten to match.')
+                : 'Tap the one you’d like. Nothing is confirmed until you sign.'}
             </p>
 
             {lead.timer_enabled && (lead.timer_started_at || lead.created_at) && (
               <Countdown startedAt={lead.timer_started_at || lead.created_at} hours={lead.timer_hours} />
+            )}
+
+            {/* what every package has, said once — so each card shows only what makes it different */}
+            {common.length > 0 && (
+              <div className="po-common">
+                <p className="po-inc-label">Every package includes</p>
+                <ul className="po-inc po-inc-cols">
+                  {common.map((x, k) => (
+                    <li key={k}><span className="po-inc-ic" aria-hidden="true">{incIcon(x) || '✦'}</span><span className="po-inc-t">{x}</span></li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             <div className="po-grid">
@@ -462,31 +538,35 @@ export default function ClientPortal({ token }) {
               )}
               {packages.map((p, i) => {
                 const isChosen = lead.package_id === p.id;
-                const inc = Array.isArray(p.inclusions) ? p.inclusions : [];
-                /* Derived from position, which is what the reference does: the
-                   middle option is the one it calls popular and the dearest the
-                   one it calls best value. Worth being plain that array order
-                   cannot actually know either — if these should reflect
-                   something real, they want a vendor-set flag rather than an
-                   index. Only shown with three or more to choose between,
-                   because "most popular of two" says nothing. */
-                const ribbon = packages.length >= 3 && i === 1 ? 'Most popular'
-                             : packages.length >= 3 && i === packages.length - 1 ? 'Best value'
-                             : null;
-                /* A div rather than a button, because the Choose control below
-                   is itself a button and a button cannot nest inside one. That
-                   costs the native keyboard behaviour, so it is put back
-                   explicitly: role, tabindex AND a key handler. The brief said
-                   role and tabindex were enough for "keyboard parity" — they
-                   are not, Enter and Space do not fire onClick on a div. */
-                const choose = () => { if (!busy) pick(p.id); };
+                const pk = picksFor(p);
+                const changed = isChosen && !samePicks(pk, savedPicks(p));
+                const opts = optionalOf(p);
+                const ticked = Object.keys(pk).length;
+                const own = incOf(p).filter(s => !commonSet.has(norm(s)));
+                const inPrice = (p.extras || []).filter(x => x.mode === 'included' || x.mode === 'added');
+                const q0 = quoteFor(p, {});             // the package for this client, before anything optional
+                /* the vendor's own ribbon wins ("none" hides it); without one, the middle of three is the popular one
+                   and the dearest the best value — only with three or more, since "most popular of two" says nothing */
+                const ribbon = p.badge === 'none' ? null
+                  : p.badge ? p.badge
+                  : packages.length >= 3 && i === 1 ? 'Most popular'
+                  : packages.length >= 3 && i === packages.length - 1 ? 'Best value'
+                  : null;
+                /* A div rather than a button, because the Choose control below is itself a button and a button cannot
+                   nest inside one — role, tabindex AND a key handler put the keyboard back. A package with optional
+                   extras is opened for shaping on a tap; one without is chosen at once. */
+                const tap = () => { if (busy) return; if (opts.length && !isChosen) setDraftId(p.id); else if (!opts.length) pick(p.id); };
+                const cta = isChosen ? (changed ? 'Save my extras' : `✓ ${p.name} chosen`)
+                  : `Choose ${p.name}${ticked ? ` + ${ticked} extra${ticked > 1 ? 's' : ''}` : ''}`;
+                const m = moneyParts(q0.total, { currency: data?.currency });
                 return (
                   <div key={p.id} role="button" tabIndex={0}
                     aria-pressed={isChosen}
-                    className={`po-pkg ${isChosen ? 'is-chosen' : ''} ${busy ? 'is-busy' : ''}`}
-                    onClick={choose}
+                    className={`po-pkg ${isChosen ? 'is-chosen' : ''} ${draftId === p.id && !isChosen ? 'is-draft' : ''} ${busy ? 'is-busy' : ''}`}
+                    onClick={tap}
                     onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); }
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(); }
                     }}>
                     {isChosen && <span className="po-pkg-badge">Selected</span>}
                     {ribbon && !isChosen && (
@@ -494,55 +574,84 @@ export default function ClientPortal({ token }) {
                     )}
                     <div className="po-pkg-hd">
                       <h3 className="po-pkg-name">{p.name}</h3>
-                      {/* three parts on one baseline, matching the reference: the
-                          symbol small and in the brand colour, the number large
-                          and dark, the currency code small and grey. Split by
-                          Intl rather than by slicing the formatted string, so a
-                          currency that puts its symbol after the number still
-                          renders in the right order. */}
+                      {p.description && <p className="po-pkg-desc">{p.description}</p>}
+                      {/* symbol small in the brand colour, the number large and dark, the code small and grey — split by
+                          Intl so a currency that puts its symbol after the number still reads right */}
                       <p className="po-pkg-price">
-                        {(() => {
-                          const m = moneyParts(p.base_price, { currency: data?.currency });
-                          return (
-                            <>
-                              {m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
-                              <span className="po-pkg-amt">{m.amount}</span>
-                              {!m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
-                              {/* the code only when the symbol doesn't already say it (a bare "$") */}
-                              {m.code && !/[A-Za-z]/.test(m.symbol || '') && <span className="po-pkg-code">{m.code}</span>}
-                            </>
-                          );
-                        })()}
+                        {m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
+                        <span className="po-pkg-amt">{m.amount}</span>
+                        {!m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
+                        {m.code && !/[A-Za-z]/.test(m.symbol || '') && <span className="po-pkg-code">{m.code}</span>}
                       </p>
+                      {/* 🧾 what the price says about tax */}
+                      {taxOf(p.tax_mode, p.tax_rate, q0.total, cash).text && <p className="po-pkg-tax">{taxOf(p.tax_mode, p.tax_rate, q0.total, cash).text}</p>}
+                      {q0.price_mode === 'per_guest' && (
+                        <p className="po-pkg-sub">{q0.guests} guests × {cash(q0.price)}{p.min_guests && Number(lead.guests || 0) < p.min_guests ? ` · minimum ${p.min_guests}` : ''}</p>
+                      )}
+                      {q0.included_hours > 0 && (
+                        <p className="po-pkg-sub">⏱ {q0.included_hours} hours of coverage{q0.extra_hours > 0 ? ` + ${q0.extra_hours} more for your ${q0.hours_asked}-hour day (${cash(q0.extra_hours_amount)})` : ''}</p>
+                      )}
                     </div>
-                    {inc.length > 0 && (
-                      <div className="po-pkg-body">
-                        <p className="po-inc-label">What&apos;s included</p>
-                        <ul className="po-inc">
-                          {inc.map((x, k) => {
-                            const icon = incIcon(x);
+                    <div className="po-pkg-body">
+                      {(own.length > 0 || inPrice.length > 0) && (
+                        <>
+                          <p className="po-inc-label">{common.length ? 'In this package' : 'What’s included'}</p>
+                          <ul className="po-inc">
+                            {own.map((x, k) => (
+                              <li key={k}><span className="po-inc-ic" aria-hidden="true">{incIcon(x) || '✦'}</span><span className="po-inc-t">{x}</span></li>
+                            ))}
+                            {inPrice.map(x => (
+                              <li key={x.id}><span className="po-inc-ic" aria-hidden="true">{incIcon(x.name) || '✦'}</span>
+                                <span className="po-inc-t">{x.name}{x.mode === 'added' && x.qty > 1 ? ` × ${x.qty}` : ''}</span></li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                      {own.length === 0 && inPrice.length === 0 && common.length > 0 && (
+                        <p className="po-inc-none">Everything every package includes, above.</p>
+                      )}
+
+                      {/* Make it yours — the extras this client can add, priced as they tick */}
+                      {opts.length > 0 && (
+                        <div className="po-xs" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+                          <p className="po-inc-label">Make it yours</p>
+                          {opts.map(x => {
+                            const on = pk[x.id] != null;
+                            const qtyable = x.unit === 'per_item' || x.unit === 'per_hour';
+                            const n = on ? pk[x.id] : 1;
                             return (
-                              <li key={k}>
-                                <span className="po-inc-ic" aria-hidden="true">{icon || '✦'}</span>
-                                <span className="po-inc-t">{x}</span>
-                              </li>
+                              <div key={x.id} className={`po-x ${on ? 'is-on' : ''}`}>
+                                <label className="po-x-row">
+                                  <input type="checkbox" checked={on} disabled={busy} onChange={() => toggleExtra(p, x)} />
+                                  <span className="po-x-t"><b>{x.name}</b>{x.description && <small>{x.description}</small>}</span>
+                                  <span className="po-x-p">+{unitText(x.unit, cash(x.price))}</span>
+                                </label>
+                                {on && qtyable && (
+                                  <div className="po-x-qty">
+                                    <button type="button" aria-label="Fewer" disabled={busy || n <= 1} onClick={() => setQty(p, x, n - 1)}>−</button>
+                                    <span>{n}{x.unit === 'per_hour' ? ' hr' : ''}</span>
+                                    <button type="button" aria-label="More" disabled={busy || n >= (x.max_qty || 99)} onClick={() => setQty(p, x, n + 1)}>+</button>
+                                    <em>{cash(x.price * n)}</em>
+                                  </div>
+                                )}
+                                {on && x.unit === 'per_guest' && <div className="po-x-qty"><span>{x.qty} guests</span><em>{cash(x.price * x.qty)}</em></div>}
+                              </div>
                             );
                           })}
-                        </ul>
-                      </div>
-                    )}
-                    {/* the card is still clickable anywhere; this is the obvious
-                        place to press, and it names what it will choose */}
+                        </div>
+                      )}
+                    </div>
+                    {/* the card takes a tap anywhere; this is the obvious place, and it names what it will do */}
                     <button type="button" className="po-pkg-cta" disabled={busy}
-                      onClick={e => { e.stopPropagation(); choose(); }}>
-                      {isChosen ? `✓ ${p.name} chosen` : `Choose ${p.name}`}
+                      onClick={e => { e.stopPropagation(); if (!isChosen || changed) pick(p.id); }}>
+                      {cta}
                     </button>
                   </div>
                 );
               })}
             </div>
 
-            {chosen && reached > 1 && (
+            {chosen && reached > 1 && !draft && (
               <button type="button" className="po-next" onClick={() => setBack(null)}>
                 Continue with {chosen.name} →
               </button>
@@ -599,7 +708,18 @@ export default function ClientPortal({ token }) {
                 <p className="po-lead">A deposit confirms your booking. The balance is due closer to the day.</p>
 
                 <dl className="po-bill">
-                  <div><dt>Package total</dt><dd>{cash(money.final_total)}</dd></div>
+                  {showBreak && (
+                    <>
+                      <div className="is-line"><dt>{chosen.name}{chosenQ.price_mode === 'per_guest' ? ` · ${chosenQ.guests} guests` : ''}</dt><dd>{cash(chosenQ.base)}</dd></div>
+                      {chosenQ.extra_hours > 0 && <div className="is-line"><dt>{chosenQ.extra_hours} extra hour{chosenQ.extra_hours > 1 ? 's' : ''}</dt><dd>{cash(chosenQ.extra_hours_amount)}</dd></div>}
+                      {chosenQ.extras.map(l => <div key={l.id} className="is-line"><dt>{l.name}{l.unit === 'per_guest' ? ` × ${l.qty} guests` : l.unit === 'per_hour' ? ` × ${l.qty} hr` : l.qty > 1 ? ` × ${l.qty}` : ''}</dt><dd>{cash(l.amount)}</dd></div>)}
+                      {money.discount_amount > 0 && <div className="is-line"><dt>Discount ({money.discount_percent}%)</dt><dd>−{cash(money.discount_amount)}</dd></div>}
+                    </>
+                  )}
+                  <div><dt>{showBreak ? 'Total' : 'Package total'}</dt><dd>{cash(money.final_total)}</dd></div>
+                  {chosen && taxOf(chosen.tax_mode, chosen.tax_rate, money.final_total, cash).text && (
+                    <div className="is-line"><dt>{taxOf(chosen.tax_mode, chosen.tax_rate, money.final_total, cash).text}</dt><dd /></div>
+                  )}
                   {money.paid > 0 && (
                     <div className="is-paid"><dt>Already paid</dt><dd>{cash(money.paid)}</dd></div>
                   )}
@@ -626,6 +746,24 @@ export default function ClientPortal({ token }) {
           </section>
         )}
       </main>
+
+      {step === 1 && draft && (
+        <div className="po-bar" role="region" aria-label="Your choice">
+          <div className="po-bar-in">
+            <div className="po-bar-what"><b>{draft.name}</b>{draftN ? ` + ${draftN} extra${draftN > 1 ? 's' : ''}` : ''}</div>
+            {!data.custom_price && (
+              <div className="po-bar-sum">
+                <span>Total <b>{cash(draftOwed.final)}</b></span>
+                {draftOwed.dep > 0 && <span>Deposit <b>{cash(draftOwed.dep)}</b></span>}
+                {taxOf(draft.tax_mode, draft.tax_rate, draftOwed.final, cash).text && <span>{taxOf(draft.tax_mode, draft.tax_rate, draftOwed.final, cash).text}</span>}
+              </div>
+            )}
+            <button type="button" className="po-bar-btn" disabled={busy} onClick={() => pick(draft.id)}>
+              {lead.package_id === draft.id ? 'Save my extras' : `Choose ${draft.name}`}
+            </button>
+          </div>
+        </div>
+      )}
 
       {celebrate && (
         <div className="po-cheer">

@@ -6,8 +6,16 @@ import { ensureInvoice } from './invoices.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
+import { quotePackage } from '../lib/packageQuote.js';
 
 const router = express.Router();
+
+/** The lead_packages columns a price is worked out from (lib/packageQuote.js) — one list, so no caller prices from half a row. */
+export const QUOTE_FIELDS = {
+  id: true, name: true, price: true, is_selected: true, inclusions: true, extras: true,
+  price_mode: true, min_guests: true, included_hours: true, per_hour_price: true, auto_extra_hours: true,
+  tax_mode: true, tax_rate: true,
+};
 
 
 // 🔒 tenancy gate: load a lead and refuse it if it isn't this vendor's
@@ -32,22 +40,32 @@ export function pickedOffer(pkgs) {
 // 💰 Money summary for a lead: total, discount, deposit, paid, balance
 export async function moneySummary(lead) {
   let total = lead.price_override != null ? Number(lead.price_override) : null;
+  /* 📦 The lead's own copy of the chosen package, priced live: hours, per-guest pricing and every extra
+     (lib/packageQuote.js). It comes before the snapshot taken at the client's pick — a snapshot is a record
+     of the moment, and pricing from it ignored any later edit the vendor made to this client's offer. */
+  if (total == null) {
+    const pkgs = await prisma.lead_packages.findMany({
+      where: { lead_id: lead.id },                       // 🔒 tenancy via the lead
+      select: QUOTE_FIELDS,
+    });
+    const picked = pickedOffer(pkgs);
+    if (picked) total = quotePackage(picked, lead).total;
+  }
+  /* the snapshot taken at the client's pick: an older lead priced from a vendor master package, or one whose pick
+     flag was later cleared (some booked leads are priced by nothing else — keep it, 2026-11-13) */
+  if (total == null && lead.package_snapshot) {
+    // ⚠️ worked out exactly as it always was, so no older booking changes price. A pick made since 2026-11-13
+    // records its own total (package, hours and extras) — that is the figure the client was shown
+    const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
+    if (p.total != null && Number.isFinite(Number(p.total))) total = Number(p.total);
+  }
   if (total == null && lead.package_snapshot) {
     const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
     const base = Number(p.base_price) || 0;
     const inclHrs = Number(p.included_hours) || 0;
     const perHr = Number(p.per_hour_price) || 0;
     const hrs = Number(lead.hours) || 0;
-    const extra = hrs > inclHrs ? (hrs - inclHrs) * perHr : 0;
-    total = base + extra;
-  }
-  if (total == null) {
-    const pkgs = await prisma.lead_packages.findMany({
-      where: { lead_id: lead.id },
-      select: { price: true, is_selected: true },
-    });
-    const picked = pickedOffer(pkgs);
-    if (picked) total = Number(picked.price) || 0;
+    total = base + (hrs > inclHrs ? (hrs - inclHrs) * perHr : 0);
   }
   if (total == null) total = 0;
 

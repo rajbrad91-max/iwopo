@@ -128,7 +128,7 @@
 /* larger, softer cards that lift — from the reference layout */
 .po-pkg {
   position: relative; display: flex; flex-direction: column;
-  text-align: left; font-family: inherit; cursor: pointer;
+  text-align: left; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif; cursor: pointer;   /* the contract's fonts (Raj, 2026-11-13) */
   background: #fff; border: 1px solid var(--line); border-radius: 16px;
   padding: 0;   /* no overflow:hidden — the tier ribbon deliberately sits
                         above the card's top edge and was being clipped away */
@@ -159,21 +159,21 @@
 .po-pkg-hd:has(+ .po-pkg-cta) { padding-bottom: 22px; }   /* a package with no inclusions still keeps its space above the button */
 /* sized against Perfect Poses' own tier label: 17px, .2em tracking */
 .po-pkg-name {
-  margin: 0 0 6px; font-size: 30px; font-weight: 400;
-  font-family: 'Playfair Display', Georgia, serif;
+  margin: 0 0 6px; font-size: 30px; font-weight: 600;
+  font-family: Lora, Georgia, serif;
   letter-spacing: normal; text-transform: none;
   color: var(--ink);
 }
 .po-pkg-price {
   margin: 0; display: flex; align-items: baseline; gap: 6px;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Lora, Georgia, serif;
 }
 .po-pkg-cur {
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
   font-size: 23px; font-weight: 500; color: var(--brandText, var(--brand, #b8922a));
 }
 .po-pkg-code {
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
   font-size: 16px; font-weight: 400; color: var(--soft);
   letter-spacing: .02em;
 }
@@ -207,7 +207,7 @@
 
 /* ── money ────────────────────────────────────────────────── */
 .po-bill {
-  max-width: 480px; margin: 0 auto 24px; padding: 0;
+  max-width: 480px; margin: 0 auto 24px; padding: 0; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
   background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
 }
 .po-bill > div {
@@ -225,7 +225,7 @@
 .po-bill .is-due { background: var(--tint); }
 .po-bill .is-due dt { color: var(--ink); font-weight: 600; }
 .po-bill .is-due dd {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: Lora, Georgia, serif;
   font-size: 24px; font-weight: 700; color: var(--brand, #b8922a);
 }
 
@@ -289,8 +289,8 @@
 /* ── continue button on a revisited step ──────────────────── */
 .po-next {
   display: block; margin: 28px auto 0; padding: 13px 30px;
-  background: none; border: 1.5px solid var(--brand, #b8922a); border-radius: 10px;
-  font-size: 15px; font-weight: 600; color: var(--brand, #b8922a); cursor: pointer;
+  background: none; border: 1.5px solid var(--brandText, var(--brand, #b8922a)); border-radius: 10px;
+  font-size: 15px; font-weight: 600; color: var(--brandText, var(--brand, #b8922a)); cursor: pointer;
 }
 .po-next:hover { background: color-mix(in srgb, var(--brand, #b8922a) 10%, #fff); }
 
@@ -468,6 +468,77 @@
 }
 /* no packages on this link yet */
 .po-empty { grid-column: 1 / -1; margin: 10px 0 0; text-align: center; color: var(--muted, #8a7a66); font-size: 15px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Extras, differences first, and the running total (Raj, 2026-11-13)
+   ══════════════════════════════════════════════════════════════════════ */
+.po-common {
+  max-width: 1000px; margin: 0 auto 26px; padding: 18px 22px; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
+  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+}
+.po-inc-cols { columns: 2 260px; column-gap: 28px; }
+.po-inc-cols li { break-inside: avoid; }
+.po-pkg-desc { margin: -2px 0 10px; font-size: 14px; color: var(--soft); line-height: 1.45; }
+.po-pkg-tax { margin: 6px 0 0; font-size: 13px; color: var(--soft); }   /* 🧾 "Includes 5% tax (CA$171)" / "Plus tax" */
+.po-pkg-sub { margin: 8px 0 0; font-size: 13px; color: var(--soft); line-height: 1.45; }
+.po-inc-none { margin: 0; font-size: 14px; color: var(--soft); font-style: italic; }
+.po-pkg.is-draft { border-color: color-mix(in srgb, var(--brand, #b8922a) 55%, #fff); }
+
+.po-xs { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); cursor: default; }
+.po-x { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: #fffefb; transition: border-color .15s, background .15s; }
+.po-x.is-on { border-color: color-mix(in srgb, var(--brand, #b8922a) 55%, #fff); background: var(--tint); }
+.po-x-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; cursor: pointer; }
+.po-x-row input { width: 18px; height: 18px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--brandText, var(--brand, #b8922a)); cursor: pointer; }
+.po-x-t { flex: 1; min-width: 0; font-size: 14px; color: var(--ink); line-height: 1.4; }
+.po-x-t b { font-weight: 600; }
+.po-x-t small { display: block; font-size: 12.5px; color: var(--soft); }
+.po-x-p { font-size: 13px; font-weight: 600; color: var(--brandText, var(--brand, #b8922a)); white-space: nowrap; }
+.po-x-qty { display: flex; align-items: center; gap: 8px; padding: 0 12px 10px 40px; font-size: 13px; color: var(--body); }
+.po-x-qty button {
+  width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: 16px; line-height: 1; color: var(--ink); cursor: pointer;
+}
+.po-x-qty button:disabled { opacity: .4; cursor: default; }
+.po-x-qty span { min-width: 34px; text-align: center; font-weight: 600; color: var(--ink); }
+.po-x-qty em { margin-left: auto; font-style: normal; font-weight: 600; color: var(--ink); }
+
+/* the running total, pinned to the bottom while a package is being shaped */
+.po-bar {
+  position: sticky; bottom: 0; z-index: 30;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, #fff 97%, transparent); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line); box-shadow: 0 -6px 24px #2a1c0a12;
+}
+.po-bar-in { font-family: "Open Sans", "Segoe UI", system-ui, sans-serif; max-width: 1000px; margin: 0 auto; display: flex; align-items: center; gap: 12px 22px; flex-wrap: wrap; }
+.po-bar-what { font-size: 15px; color: var(--ink); }
+.po-bar-what b { font-family: Lora, Georgia, serif; font-size: 18px; font-weight: 600; }
+.po-bar-sum { display: flex; gap: 18px; font-size: 13px; color: var(--soft); }
+.po-bar-sum b { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.po-bar-btn {
+  margin-left: auto; padding: 12px 24px; border: none; border-radius: 50px;
+  background: var(--brand, #b8922a); color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand, #b8922a) 32%, transparent);
+}
+.po-bar-btn:disabled { opacity: .6; cursor: default; }
+@media (max-width: 600px) {
+  .po-bar-btn { width: 100%; margin-left: 0; }
+  .po-x-qty { padding-left: 12px; }
+}
+
+/* the pay step's bill, line by line */
+.po-bill .is-line { padding-top: 11px; padding-bottom: 11px; }
+.po-bill .is-line dt { font-size: 13.5px; }
+.po-bill .is-line dd { font-size: 15px; font-weight: 500; }
+
+/* 🎨 text in the vendor's colour uses the readable version (a pale brand colour stays for fills only) */
+.po-biz, .po-title em, .po-eyebrow, .po-step-hit:not(:disabled):hover .po-step-lbl,
+.po-steps li.is-done .po-dot-n, .po-ft a, .po-timer-num { color: var(--brandText, var(--brand, #b8922a)); }
+/* white words on a brand fill need the readable version too — a pale colour behind white text says nothing */
+.po-cta, .po-bar-btn, .po-pkg-badge, .po-ribbon:not(.is-value), .po-steps li.is-now .po-dot-n, .po-check, .po-gate-btn {
+  background: var(--brandText, var(--brand, #b8922a));
+}
+.po-steps li.is-now .po-dot-n { border-color: var(--brandText, var(--brand, #b8922a)); }
+.po-cta.is-alt { background: transparent; }
 
 /* 🏦 the second way to pay, beside card (Stripe Connect) */
 .po-cta.is-alt { margin-top: 10px; background: transparent; color: var(--text, #2b2620); border: 1px solid currentColor; }

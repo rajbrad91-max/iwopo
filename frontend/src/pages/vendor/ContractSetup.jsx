@@ -28,10 +28,10 @@ export let csLeaveGuard = null;
  */
 const CT_BLOCKS = [
   '{{booking_details}}', '{{coverage_schedule}}', '{{deliverables}}',
-  '{{services_summary}}', '{{crew}}',
+  '{{services_summary}}', '{{crew}}', '{{extras}}',
 ];
 
-const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{client_phone}}', '{{deposit_percent}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
+const CT_PLACEHOLDERS = ['{{client_name}}', '{{client_email}}', '{{client_phone}}', '{{deposit_percent}}', '{{event_type}}', '{{event_date}}', '{{location}}', '{{hours}}', '{{guests}}', '{{package_name}}', '{{package_price}}', '{{extras_total}}', '{{total_cost}}', '{{deposit}}', '{{balance}}', '{{today_date}}', '{{company_name}}'];
 
 // 👁️ Stand-in values so a template can be previewed before any client exists.
 // Deliberately obvious rather than realistic, so nothing here is mistaken for a
@@ -76,8 +76,10 @@ const CT_SAMPLE = {
   booking_details: '[ the booking table — filled from their booking ]',
   coverage_schedule: '[ the running order of the day — filled from the booking ]',
   deliverables: '[ what they receive — filled from the package ]',
-  services_summary: '[ what the package includes — filled from the package ]',
+  services_summary: '[ each extra, Included or Not included — filled from the package ]',
   crew: '[ the crew assigned — filled from the booking ]',
+  // the package line, extra hours and each extra with its price, and the total (Raj, 2026-11-13)
+  extras: '[ the extras they chose, with prices — filled from the package ]',
 };
 
 function fillSample(text, overrides) {
@@ -85,7 +87,7 @@ function fillSample(text, overrides) {
      for a client's details — it must not contradict what this template says
      it is for, which is how a Reception template previewed as a Wedding. */
   // 💱 example amounts in the vendor's own currency (fmtMoney), as a real contract shows them
-  const values = { ...CT_SAMPLE, total_cost: fmtMoney(4200), deposit: fmtMoney(1260), balance: fmtMoney(2940), ...(overrides || {}) };
+  const values = { ...CT_SAMPLE, total_cost: fmtMoney(4200), deposit: fmtMoney(1260), balance: fmtMoney(2940), package_price: fmtMoney(3700), extras_total: fmtMoney(500), ...(overrides || {}) };
   // {{deposit_percent}} reads "30%" — as on a real contract, a "%" written after it is not printed twice (Muse F-11)
   return String(text || '').replace(/\{\{deposit_percent\}\}\s*%/g, '{{deposit_percent}}').replace(/\{\{(\w+)\}\}/g, (m, k) =>
     values[k] !== undefined && values[k] !== '' ? values[k] : m);
@@ -186,6 +188,7 @@ const PH_KIND = {
   '{{event_date}}': 'when', '{{today_date}}': 'when',
   '{{location}}': 'where', '{{event_type}}': 'what', '{{package_name}}': 'what',
   '{{total_cost}}': 'money', '{{deposit}}': 'money', '{{balance}}': 'money',
+  '{{package_price}}': 'money', '{{extras_total}}': 'money',
 };
 
 /** Split a string on {{placeholders}} and wrap each in its own colour. */

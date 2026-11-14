@@ -14,6 +14,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
+import { quotePackage, extrasForLead, cleanLeadExtras, cleanPricing } from '../lib/packageQuote.js';
+import { rebuildUnsignedContract, pickedOffer } from './payments.js';
 
 const router = express.Router();
 
@@ -22,11 +24,30 @@ const router = express.Router();
 async function ownedLead(req, leadId) {
   const lead = await prisma.leads.findUnique({
     where: { id: Number(leadId) },
-    select: { id: true, vendor_id: true, packages_sent_at: true, status: true },
+    select: { id: true, vendor_id: true, packages_sent_at: true, status: true, hours: true, guests: true },
   });
   if (!lead) return null;
   if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req, { body: false })) return null;
   return lead;
+}
+
+/** 📦 Each package with its price for THIS client worked out (lib/packageQuote.js), so the panel never prices on its own. */
+const withQuote = (lead) => (p) => ({ ...p, quote: quotePackage(p, lead) });
+async function offerOf(lead) {
+  const rows = await prisma.lead_packages.findMany({
+    where: { lead_id: lead.id },                        // 🔒 tenancy via the lead
+    orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map(withQuote(lead));
+}
+
+/** 💸 An unsigned contract quotes the package in force; redraw it after that package (or the offer) changes. */
+async function redrawIfInForce(leadId, pkgId) {
+  const rows = await prisma.lead_packages.findMany({ where: { lead_id: leadId }, select: { id: true, is_selected: true } });   // 🔒 via the lead
+  const inForce = pickedOffer(rows);
+  if (!inForce || (pkgId && inForce.id !== pkgId)) return;   // nothing chosen yet: the pick itself builds the figures
+  const full = await prisma.leads.findUnique({ where: { id: leadId } });
+  if (full) await rebuildUnsignedContract(full);
 }
 
 // GET /api/lead-packages/:leadId → this lead's packages
@@ -34,11 +55,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
   try {
     const lead = await ownedLead(req, req.params.leadId);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
-    const packages = await prisma.lead_packages.findMany({
-      where: { lead_id: lead.id },                      // 🔒 tenancy via the lead
-      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
-    });
-    res.json({ packages, locked: !!lead.packages_sent_at, sent_at: lead.packages_sent_at });
+    res.json({ packages: await offerOf(lead), locked: !!lead.packages_sent_at, sent_at: lead.packages_sent_at });
   } catch (e) { serverError(res, e); }
 });
 
@@ -56,7 +73,7 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
 
     const tpl = await prisma.package_templates.findFirst({
       where: { id: Number(template_id), vendor_id: lead.vendor_id },   // 🔒 tenancy
-      select: { id: true, name: true },
+      select: { id: true, name: true, extras: true, tax_mode: true, tax_rate: true },
     });
     if (!tpl) return res.status(404).json({ error: 'Package folder not found' });
 
@@ -78,6 +95,13 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
           price: m.base_price ?? 0,
           inclusions: m.inclusions ?? [],
           sort_order: m.sort_order ?? i,
+          // 📦 everything that prices it travels too — before 2026-11-13 the hours were dropped here, so a
+          // 12-hour day on a 10-hour package was quoted as 10
+          price_mode: m.price_mode, min_guests: m.min_guests,
+          included_hours: m.included_hours, per_hour_price: m.per_hour_price, auto_extra_hours: m.auto_extra_hours,
+          description: m.description, badge: m.badge,
+          extras: extrasForLead(tpl.extras, m.extras_state),   // the folder's extras, as this package offers them
+          tax_mode: tpl.tax_mode, tax_rate: tpl.tax_rate,       // 🧾 the folder's tax wording, kept with the offer
         })),
       }),
       prisma.leads.update({
@@ -86,17 +110,14 @@ router.post('/:leadId/load', requireAuth, async (req, res) => {
       }),
     ]);
 
-    const packages = await prisma.lead_packages.findMany({
-      where: { lead_id: lead.id },
-      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
-    });
-    res.json({ packages, folder: tpl.name });
+    await redrawIfInForce(lead.id, null);   // a contract built for the old offer quotes the new one
+    res.json({ packages: await offerOf(lead), folder: tpl.name });
   } catch (e) { serverError(res, e); }
 });
 
 // PUT /api/lead-packages/:leadId/:id → edit one package for this client
 router.put('/:leadId/:id', requireAuth, async (req, res) => {
-  const { name, price, inclusions, admin_notes } = req.body;
+  const { name, price, inclusions, admin_notes, included_hours, per_hour_price, extras } = req.body;
   try {
     const lead = await ownedLead(req, req.params.leadId);
     if (!lead) return res.status(404).json({ error: 'Lead not found' });
@@ -104,11 +125,16 @@ router.put('/:leadId/:id', requireAuth, async (req, res) => {
       return res.status(423).json({ error: 'These packages have been sent. Unlock them first to make changes.' });
     }
 
-    const data = { updated_at: new Date() };
-    if (name !== undefined) data.name = String(name).trim().slice(0, 120);
-    if (price !== undefined) data.price = Number(price) || 0;
+    const nonNeg = (v) => Math.max(Number(v) || 0, 0);
+    const data = { updated_at: new Date(), ...cleanPricing(req.body) };   // 💲 price mode, minimum guests, auto hours, line, ribbon
+    if (name !== undefined) data.name = String(name).trim().slice(0, 120) || 'Package';
+    if (price !== undefined) data.price = nonNeg(price);
     if (Array.isArray(inclusions)) data.inclusions = inclusions.map(s => String(s).trim()).filter(Boolean);
     if (admin_notes !== undefined) data.admin_notes = admin_notes || null;
+    if (included_hours !== undefined) data.included_hours = included_hours === null || included_hours === '' ? null : Math.round(nonNeg(included_hours));
+    if (per_hour_price !== undefined) data.per_hour_price = per_hour_price === null || per_hour_price === '' ? null : nonNeg(per_hour_price);
+    // this client's extras; a client's tick on an optional one survives the vendor editing the rest
+    if (extras !== undefined) data.extras = cleanLeadExtras(extras);
 
     // scoped by lead_id too, so an id from another lead can't be edited here
     const { count } = await prisma.lead_packages.updateMany({
@@ -118,7 +144,8 @@ router.put('/:leadId/:id', requireAuth, async (req, res) => {
     if (!count) return res.status(404).json({ error: 'Package not found' });
 
     const pkg = await prisma.lead_packages.findUnique({ where: { id: Number(req.params.id) } });
-    res.json({ package: pkg });
+    await redrawIfInForce(lead.id, pkg.id);
+    res.json({ package: withQuote(lead)(pkg) });
   } catch (e) { serverError(res, e); }
 });
 
@@ -134,6 +161,7 @@ router.delete('/:leadId/:id', requireAuth, async (req, res) => {
       where: { id: Number(req.params.id), lead_id: lead.id, ...mine(actingVendorId(req, { body: false })) },          // 🔒 tenancy on the write
     });
     if (!count) return res.status(404).json({ error: 'Package not found' });
+    await redrawIfInForce(lead.id, null);   // one left now means that one is in force
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

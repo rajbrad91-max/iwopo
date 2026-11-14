@@ -791,6 +791,10 @@ export const api = {
   pkgTemplates: () => request('/vendor-packages/templates'),
   addTemplate: (name) => request('/vendor-packages/templates', { method: 'POST', body: JSON.stringify({ name }) }),
   renameTemplate: (id, name) => request(`/vendor-packages/templates/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  // a folder's extras — shared by its packages, each package offers / includes / hides them
+  saveTemplateExtras: (id, extras) => request(`/vendor-packages/templates/${id}`, { method: 'PUT', body: JSON.stringify({ extras }) }),
+  // 🧾 how the folder's prices speak about tax: { tax_mode: 'none'|'included'|'excluded', tax_rate }
+  saveTemplateTax: (id, tax_mode, tax_rate) => request(`/vendor-packages/templates/${id}`, { method: 'PUT', body: JSON.stringify({ tax_mode, tax_rate }) }),
   deleteTemplate: (id) => request(`/vendor-packages/templates/${id}`, { method: 'DELETE' }),
   addVendorPackage: (name, template_id) => request('/vendor-packages', { method: 'POST', body: JSON.stringify({ name, template_id }) }),
   updateVendorPackage: (id, data) => request(`/vendor-packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -961,7 +965,8 @@ export const api = {
   deleteEmailTemplate: (id) => request(`/email/templates/${id}`, { method: 'DELETE' }),
   portal: (token, fresh) => request(`/portal/${token}${fresh ? '?fresh=1' : ''}`),
   portalVerify: (token, email) => request(`/portal/${token}/verify`, { method: 'POST', body: JSON.stringify({ email }) }),
-  portalPick: (token, package_id) => request(`/portal/${token}/pick`, { method: 'POST', body: JSON.stringify({ package_id }) }),
+  // extras: [{ id, qty }] — the optional extras the client ticked on that package (the server checks them)
+  portalPick: (token, package_id, extras = []) => request(`/portal/${token}/pick`, { method: 'POST', body: JSON.stringify({ package_id, extras }) }),
   // client says they've paid directly — a claim the vendor confirms separately
   portalPayDirect: (token) => request(`/portal/${token}/pay-direct`, { method: 'POST' }),
   portalPayCard: (token) => request(`/portal/${token}/pay-card`, { method: 'POST' }),   // 💳 on the vendor's own Stripe

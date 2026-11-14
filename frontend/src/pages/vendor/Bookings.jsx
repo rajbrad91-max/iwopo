@@ -228,8 +228,18 @@ function BookingDetail({ id, rawsel = false }) {
                       {/* the column is `price` — this read `base_price`, which
                           doesn't exist on a lead's package, so every one showed
                           $0 while the leads page showed the real figure */}
-                      <p className="bd-pkg-price">{fmtMoney(p.price)}</p>
+                      {/* 📦 what this client pays for it — hours and extras in (lib/packageQuote.js, priced by the server) */}
+                      <p className="bd-pkg-price">{fmtMoney(p.quote?.total ?? p.price)}</p>
                       {inc.length > 0 && <ul className="bd-inc">{inc.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+                      {p.quote && (p.quote.extra_hours > 0 || p.quote.extras.length > 0) && (
+                        <ul className="bd-inc bd-extras">
+                          {p.quote.extra_hours > 0 && <li>⏱ {p.quote.extra_hours} extra hour{p.quote.extra_hours > 1 ? 's' : ''} · {fmtMoney(p.quote.extra_hours_amount)}</li>}
+                          {p.quote.extras.map(l => <li key={l.id}>{l.name}{l.qty > 1 ? ` × ${l.qty}` : ''} · {fmtMoney(l.amount)}</li>)}
+                        </ul>
+                      )}
+                      {(p.extras || []).some(x => x.mode === 'included') && (
+                        <ul className="bd-inc">{p.extras.filter(x => x.mode === 'included').map(x => <li key={x.id}>{x.name}</li>)}</ul>
+                      )}
                     </div>
                   );
                 })}

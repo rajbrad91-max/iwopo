@@ -2,6 +2,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { moneySummary } from './payments.js';
+import { quotePackage } from '../lib/packageQuote.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
@@ -114,7 +115,9 @@ router.get('/:leadId', requireAuth, async (req, res) => {
       member_phone: byId.get(a.crew_member_id)?.phone ?? null,
     }));
 
-    res.json({ booking: lead, money, packages, payments, contract, invoices, crew, roster });
+    // 📦 each package priced for this client, line by line — the booking page lists the extras that were booked
+    const priced = packages.map(p => ({ ...p, quote: quotePackage(p, lead) }));
+    res.json({ booking: lead, money, packages: priced, payments, contract, invoices, crew, roster });
   } catch (e) { serverError(res, e); }
 });
 

@@ -294,7 +294,7 @@ const FORM_PRESETS = {
     { type: 'text', label: 'Special requests' },
   ] },
   // ✨ any other trade (Muse F-24: "Other" had no preset) — the event, and what they would like from us
-  other: { label: '✨ Other', fields: [
+  other: { label: 'Other', fields: [
     ...CORE_EVENT,
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'text', label: 'What would you like from us?' },

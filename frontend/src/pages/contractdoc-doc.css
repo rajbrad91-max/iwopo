@@ -124,6 +124,10 @@
 .ct-doc .ct-kv tr:last-child th,
 .ct-doc .ct-kv tr:last-child td { border: 0; background: transparent; padding: 3px 0; font-size: 14px; }
 .ct-doc .ct-kv th { width: 170px; font-weight: 600; color: #374151; padding-right: 18px; }   /* label column like the reference (~125pt) */
+/* {{extras}}: the price, line by line — wider labels, and the total ruled off (Raj, 2026-11-13) */
+.ct-doc .ct-extras th { width: 60%; }
+.ct-doc .ct-extras tr:last-child th,
+.ct-doc .ct-extras tr:last-child td { border-top: 1px solid #d1d5db; padding-top: 6px; font-weight: 700; color: #111827; }
 
 .ct-doc .ct-inc { font-weight: 700; color: #156434; }
 .ct-doc .ct-notinc { font-weight: 700; color: #9ca2ae; }

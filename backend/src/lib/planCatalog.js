@@ -50,7 +50,7 @@ function planLines(p, liveKeys, connect) {
     if (key === 'contracts' && Number(p.price_monthly) > 0) lines.push({ ...CARD_PAYMENTS, coming: !connect });
   }
   for (const [i, h] of (Array.isArray(p.highlights) ? p.highlights : []).entries()) {
-    if (h?.label) lines.push({ key: `highlight-${i}`, icon: '✨', name: String(h.label), coming: !!h.coming });
+    if (h?.label) lines.push({ key: `highlight-${i}`, icon: '✅', name: String(h.label), coming: !!h.coming });
   }
   return lines;
 }

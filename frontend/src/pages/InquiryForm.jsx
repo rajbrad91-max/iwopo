@@ -326,7 +326,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
       {/* Section 2: Inquiry Details (custom fields) */}
       {(c.custom_fields || []).length > 0 && (
         <div className="iq-section">
-          <div className="iq-section-title"><span className="iq-emoji">✨ </span>{c.details_heading || 'Inquiry Details'}</div>
+          <div className="iq-section-title"><span className="iq-emoji">📝 </span>{c.details_heading || 'Inquiry Details'}</div>
           <div className="iq-grid">
             {fieldsShown().map(fld => (
               <div key={fld.id} {...box(`f:${fld.id}`, FULL_WIDTH.has(fld.type) ? 'iq-full' : '')}>

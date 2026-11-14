@@ -2,20 +2,21 @@
  * 📋 Leads: the list, adding one, and a lead’s detail (packages, contracts, money).
  * Moved out of pages/VendorPanel.jsx unchanged (code audit #2, Raj 2026-11-11).
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import LeadCard from '../../components/LeadCard';
 import { MdSwapVert } from 'react-icons/md';
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../../components/LeadListingMenu';
 import { LeadContact, LeadEvents } from '../../components/LeadOverview';
 import LeadEditor from '../../components/LeadEditor';
 import { useDialog } from '../../lib/dialog.jsx';
-import { api, getUser, fmtDateTime, fmtMoney } from '../../lib/api';
+import { api, getUser, fmtDateTime } from '../../lib/api';
 import { LeadFormBody, PARTIAL_TIME, plainNumber } from '../InquiryForm';
 import SendPackagesModal from '../SendPackagesModal.jsx';
 import SendPackagesButton, { markPackagesSent } from '../../components/SendPackages';
 import { clientBase } from '../../lib/clientBase';
 import { S_LABEL } from './statuses';
 import { MoneySection } from './MoneySection';
+import { LeadPkgRow, PackageEditor } from './LeadPackage';
 
 // ➕ Manual add-lead modal (mirrors the public inquiry form fields)
 function AddLeadModal({ vendorId, onClose, onSaveDone }) {
@@ -352,42 +353,6 @@ export function LeadsView({ routeLead, onOpenLead }) {
   );
 }
 
-/** ✏️ Inline editor for one of a lead's packages — name, price and the bullet
- *  list the client sees. Edits the lead's own copy, never the vendor's master. */
-function PackageEditor({ pkg, onSave, onCancel }) {
-  const [name, setName] = useState(pkg.name);
-  const [price, setPrice] = useState(String(pkg.price ?? 0));
-  const [items, setItems] = useState((pkg.inclusions || []).join('\n'));
-
-  return (
-    <div className="ld-pkg-edit">
-      <label className="fb-label">Package name</label>
-      <input className="fb-select" value={name} onChange={e => setName(e.target.value)} />
-
-      <label className="fb-label">Price for this client</label>
-      <input className="fb-select" type="number" min="0" step="1"
-        value={price} onChange={e => setPrice(e.target.value)} />
-
-      <label className="fb-label">What&apos;s included — one per line</label>
-      <textarea className="fb-select ld-pkg-ta" rows="5"
-        value={items} onChange={e => setItems(e.target.value)} />
-
-      <div className="ld-pkg-acts">
-        <button type="button" className="is-primary"
-          onClick={() => onSave({
-            name,
-            price: Number(price) || 0,
-            inclusions: items.split('\n').map(s => s.trim()).filter(Boolean),
-          })}>
-          ✓ Save
-        </button>
-        <button type="button" onClick={onCancel}>Cancel</button>
-      </div>
-    </div>
-  );
-}
-
-
 function LeadDetail({ lead, onSaved }) {
   const dialog = useDialog();
   const [edit, setEdit] = useState(false);
@@ -430,6 +395,14 @@ function LeadDetail({ lead, onSaved }) {
     catch (e) { setGateway(!next); setPkgMsg('⚠️ ' + e.message); }
   }
   const [moneyTick, setMoneyTick] = useState(0);   // 💰 Payments reloads when it moves (Muse F-21)
+  // ⏱ hours and guests price the package (extra hours, per guest, per-guest extras) — the total follows an edit to them
+  const sizeKey = `${lead.hours ?? ''}|${lead.guests ?? ''}`;
+  const lastSize = useRef(sizeKey);
+  useEffect(() => {
+    if (lastSize.current === sizeKey) return;
+    lastSize.current = sizeKey;
+    setMoneyTick(t => t + 1);
+  }, [sizeKey]);
   // 📤 a message under the packages for a few seconds (components/SendPackages and the package tools use it)
   const flashPkg = (m) => { setPkgMsg(m); setTimeout(() => setPkgMsg(''), 3000); };
 
@@ -478,6 +451,7 @@ function LeadDetail({ lead, onSaved }) {
     try {
       await api.deleteLeadPackage(lead.id, id);
       setLeadPkgs(ps => ps.filter(p => p.id !== id));
+      setMoneyTick(t => t + 1);   // one package left is the one in force
     } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
   }
 
@@ -505,10 +479,12 @@ function LeadDetail({ lead, onSaved }) {
       <div className="lead-grid">
       <div className="lead-left">
       <LeadEvents lead={lead} cfg={cfg} onSaved={onSaved} onEdit={() => setEdit(true)} />
+      </div>
 
+      <div className="lead-right">
 
-      {/* 📦 Packages — in the left column under the event details, since it's
-          part of reading the enquiry rather than a side action */}
+      {/* 📦 Packages — at the top of the right column, beside the money they decide (Raj, 2026-11-13: before, they sat
+          at the bottom of the left column, far from Payments) */}
       <div className="ld-card">
         <div className="ld-card-h">
           📦 Packages
@@ -534,31 +510,10 @@ function LeadDetail({ lead, onSaved }) {
         )}
 
         {/* the client's own copies — editable per client, master list untouched */}
-        {leadPkgs.map(p => (
-          <div key={p.id} className={`ld-pkg ${p.is_selected ? 'is-chosen' : ''}`}>
-            {editPkg === p.id ? (
-              <PackageEditor pkg={p} onSave={patch => savePkg(p.id, patch)} onCancel={() => setEditPkg(null)} />
-            ) : (
-              <>
-                <div className="ld-pkg-head">
-                  <span className="ld-pkg-name">{p.name}</span>
-                  {p.is_selected && <span className="ld-pkg-picked">✓ client picked this</span>}
-                  <span className="ld-pkg-amt">{fmtMoney(p.price)}</span>
-                </div>
-                {(p.inclusions || []).length > 0 && (
-                  <ul className="ld-pkg-incl">
-                    {p.inclusions.map((it, i) => <li key={i}>{it}</li>)}
-                  </ul>
-                )}
-                {!pkgLocked && (
-                  <div className="ld-pkg-acts">
-                    <button type="button" onClick={() => setEditPkg(p.id)}>✏️ Edit</button>
-                    <button type="button" className="is-danger" onClick={() => removePkg(p.id, p.name)}>🗑️ Remove</button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+        {leadPkgs.map(p => (editPkg === p.id
+          ? <div key={p.id} className="ld-pkg"><PackageEditor pkg={p} onSave={patch => savePkg(p.id, patch)} onCancel={() => setEditPkg(null)} /></div>
+          : <LeadPkgRow key={p.id} pkg={p} lead={lead} locked={pkgLocked}
+              onEdit={() => setEditPkg(p.id)} onRemove={() => removePkg(p.id, p.name)} onSave={patch => savePkg(p.id, patch)} />
         ))}
 
         {!leadPkgs.length && tplId && !pkgBusy && (
@@ -577,10 +532,6 @@ function LeadDetail({ lead, onSaved }) {
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
       </div>
 
-
-      </div>
-
-      <div className="lead-right">
 
       {/* 💰 Payment */}
       <MoneySection lead={lead} refresh={moneyTick} />

@@ -10,7 +10,7 @@ import { useDialog } from '../../lib/dialog.jsx';
 // 🤖 AI Chat — subscribers + knowledge pages
 const KFIELDS = [
   { k: 'business_name', label: '🏢 Business name', type: 'input' },
-  { k: 'tagline', label: '✨ About us / tagline', type: 'area' },
+  { k: 'tagline', label: 'About us / tagline', type: 'area' },
   { k: 'about_team', label: '👥 About the team', type: 'area' },
   { k: 'service_area', label: '📍 City / service area', type: 'input' },
   { k: 'contact', label: '📞 Contact (phone / email / socials)', type: 'area' },

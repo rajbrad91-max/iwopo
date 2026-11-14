@@ -12,6 +12,7 @@ import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { accountOf, connectReady, cardCheckout } from '../lib/stripeConnect.js';
+import { quotePackage, publicExtra, extraQty } from '../lib/packageQuote.js';
 
 const router = express.Router();
 
@@ -29,6 +30,44 @@ function gateOpen(req, lead) {
   return gatePassed(cookieOf(req, 'pkg_verified_' + lead.id), 'pkg', lead.id,
     String(lead.email || '').trim().toLowerCase());
 }
+
+/* 🔄 Start the client's choice over: no package picked and none of the optional extras ticked.
+   Extras the VENDOR added or included stay exactly as the vendor set them. */
+async function clearChoice(leadId) {
+  const rows = await prisma.lead_packages.findMany({
+    where: { lead_id: leadId },                                   // 🔒 tenancy via the lead
+    select: { id: true, extras: true },
+  });
+  await prisma.$transaction([
+    prisma.lead_packages.updateMany({ where: { lead_id: leadId }, data: { is_selected: false } }),
+    ...rows
+      .filter(r => Array.isArray(r.extras) && r.extras.some(x => x?.chosen))
+      .map(r => prisma.lead_packages.update({
+        where: { id: r.id },
+        data: { extras: r.extras.map(x => (x?.chosen ? { ...x, chosen: false } : x)) },
+      })),
+  ]);
+}
+
+/* The client's ticks, checked against the package's own list: only extras the vendor offered as optional, with a
+   quantity inside the vendor's limit. Anything else posted is ignored — the price is never the client's to set. */
+function applyPicks(extras, picks) {
+  const want = new Map();
+  for (const p of Array.isArray(picks) ? picks : []) {
+    if (p && typeof p.id === 'string') want.set(p.id, p.qty);
+  }
+  return (Array.isArray(extras) ? extras : []).map(x => {
+    if (!x || x.mode !== 'optional') return x;
+    if (!want.has(x.id)) return { ...x, chosen: false };
+    const qty = extraQty({ ...x, qty: want.get(x.id) }, null);
+    return { ...x, chosen: true, qty: x.unit === 'per_item' || x.unit === 'per_hour' ? qty : 1 };
+  });
+}
+
+/* the client's own choices on one package, for "did anything change?" */
+const picksKey = (extras) => (Array.isArray(extras) ? extras : [])
+  .filter(x => x?.mode === 'optional' && x.chosen)
+  .map(x => `${x.id}:${x.qty || 1}`).sort().join(',');
 
 
 
@@ -48,7 +87,7 @@ function gateOpen(req, lead) {
  * Best effort: a portal that can't rebuild the contract should still let the
  * client change their mind, so failures are logged rather than thrown.
  */
-async function reconcileContract(lead, newPackageId, ip) {
+async function reconcileContract(lead, newPackageId, ip, { extrasChanged = false } = {}) {
   // A voided contract must never be treated as "the active one" — it isn't
   // one any more, and a stray match here was capable of quietly un-voiding a
   // SIGNED contract and overwriting its signature with nulls the moment
@@ -61,7 +100,9 @@ async function reconcileContract(lead, newPackageId, ip) {
   // nothing stamped to compare against — always build, whether that's the
   // first contract this lead has ever had or the first since a reset voided
   // the last one
-  if (latest && latest.package_id != null && Number(latest.package_id) === Number(newPackageId)) return;
+  // same package but different extras is a different agreement too — the contract lists them and their prices
+  if (!extrasChanged && latest && latest.package_id != null && Number(latest.package_id) === Number(newPackageId)) return;
+  const why = extrasChanged && latest && Number(latest.package_id) === Number(newPackageId) ? 'extras' : 'package';
 
   const fresh = await prisma.leads.findUnique({ where: { id: lead.id } });
   const vendor = await prisma.vendors.findUnique({
@@ -102,10 +143,10 @@ async function reconcileContract(lead, newPackageId, ip) {
       where: { id: latest.id },
       data: { status: 'voided', voided_at: new Date(), updated_at: new Date() },
     });
-    await audit(latest.id, 'voided', ip, { reason: 'package_changed_after_signing', from: latest.package_id, to: newPackageId });
+    await audit(latest.id, 'voided', ip, { reason: `${why}_changed_after_signing`, from: latest.package_id, to: newPackageId });
     /* R4 (2026-10-30): a claimed payment belonged to the cancelled contract; the vendor hears what happened */
     await prisma.leads.update({ where: { id: lead.id }, data: { payment_claimed_at: null, updated_at: new Date() } });
-    notify(lead.vendor_id, `🔁 ${lead.name || 'Client'} changed package after signing`, 'The signed contract was cancelled — a new one for the new package is waiting for their signature', 'contract', { type: 'lead', id: lead.id });
+    notify(lead.vendor_id, `🔁 ${lead.name || 'Client'} changed ${why === 'extras' ? 'their extras' : 'package'} after signing`, `The signed contract was cancelled — a new one for the new ${why === 'extras' ? 'choice' : 'package'} is waiting for their signature`, 'contract', { type: 'lead', id: lead.id });
     const replacement = await prisma.contracts.create({
       data: {
         vendor_id: lead.vendor_id, lead_id: lead.id,
@@ -115,7 +156,7 @@ async function reconcileContract(lead, newPackageId, ip) {
         ...(approved ? { released_at: new Date() } : {}),   // same template the vendor approved
       },
     });
-    await audit(replacement.id, 'created', ip, { reason: 'package_changed', replaces: latest.id });
+    await audit(replacement.id, 'created', ip, { reason: `${why}_changed`, replaces: latest.id });
     return;
   }
 
@@ -127,7 +168,7 @@ async function reconcileContract(lead, newPackageId, ip) {
       status: 'sent', viewed_at: null, updated_at: new Date(),
     },
   });
-  await audit(latest.id, 'package_changed', ip, { from: latest.package_id, to: newPackageId });
+  await audit(latest.id, `${why}_changed`, ip, { from: latest.package_id, to: newPackageId });
 }
 
 /* 🌐 PUBLIC: GET /api/portal/:token → lead + vendor packages + money */
@@ -196,10 +237,7 @@ router.get('/:token', async (req, res) => {
           });
           await audit(active.id, 'voided', clientIp(req), { reason: 'portal_reopened_before_payment' });
         }
-        await prisma.lead_packages.updateMany({
-          where: { lead_id: lead.id },                           // 🔒 tenancy via the lead
-          data: { is_selected: false },
-        });
+        await clearChoice(lead.id);
       }
     }
     // The packages this client was actually offered — their own copy, taken
@@ -215,9 +253,15 @@ router.get('/:token', async (req, res) => {
     // packages existed, so an old link doesn't suddenly show nothing.
     let templates = [], packages = [], selectedId = lead.package_id;
     if (leadPkgs.length) {
+      /* 📦 each package priced for this client (lib/packageQuote.js) and its extras as the client may see them —
+         'off' ones never leave the server, nor do the vendor's own notes */
       packages = leadPkgs.map(p => ({
-        id: p.id, name: p.name, base_price: p.price,
-        inclusions: p.inclusions, included_hours: null, per_hour_price: null,
+        id: p.id, name: p.name, base_price: p.price, description: p.description || '', badge: p.badge,
+        inclusions: p.inclusions, price_mode: p.price_mode, min_guests: p.min_guests,
+        included_hours: p.included_hours, per_hour_price: p.per_hour_price, auto_extra_hours: p.auto_extra_hours,
+        tax_mode: p.tax_mode, tax_rate: p.tax_rate,   // 🧾 "Includes 5% tax" / "Plus tax" / nothing
+        extras: (Array.isArray(p.extras) ? p.extras : []).filter(x => x && x.mode !== 'off').map(x => publicExtra(x, lead)),
+        quote: quotePackage(p, lead),
       }));
       // leads.package_id has a foreign key to vendor_packages so it can't hold
       // one of these ids — the chosen one is flagged on the row instead
@@ -279,10 +323,13 @@ router.get('/:token', async (req, res) => {
       // 🎉 can this vendor take the booking here (contracts in their plan)? Free: the pick becomes a request (Raj, 2026-11-06)
       books: (await getFeatures(lead.vendor_id)).has('contracts'),
       card_pay: !!(await accountOf(lead.vendor_id)) && await connectReady(),   // 💳 the vendor's own Stripe is connected
+      // 💲 the vendor set this booking's price by hand — the page shows that figure, not one worked out from the package
+      custom_price: lead.price_override != null,
       lead: {
         name: lead.name, event_type: lead.event_type, event_date: lead.event_date,
         location: lead.location,
-        hours: lead.hours, package_id: selectedId, status: lead.status,
+        hours: lead.hours, guests: lead.guests, timing_from: lead.timing_from, timing_to: lead.timing_to,
+        package_id: selectedId, status: lead.status,
         payment_claimed_at: lead.payment_claimed_at,
         // ⏳ the countdown a vendor turns on around a limited-time offer
         timer_enabled: lead.timer_enabled, timer_hours: lead.timer_hours,
@@ -335,20 +382,23 @@ router.post('/:token/verify',
 /* 🎉 The catch on the Free plan (Raj, 2026-11-06): when a client picks a package from a vendor whose plan has no contracts,
    no contract is prepared — the vendor is told the client wants to book and that Essential sends the contract and takes
    the deposit; the client is told the vendor will be in touch to confirm. The moment money is near is the moment to upgrade. */
-async function afterPick(lead, packageId, packageName, req) {
+async function afterPick(lead, packageId, packageName, req, { extrasChanged = false, changed = true } = {}) {
   if ((await getFeatures(lead.vendor_id)).has('contracts')) {
-    await reconcileContract(lead, packageId, clientIp(req));
-    notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${packageName}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
+    await reconcileContract(lead, packageId, clientIp(req), { extrasChanged });
+    // the same choice confirmed again (a Continue tap with nothing changed) is not news to the vendor
+    if (changed) notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${packageName}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
     return true;
   }
+  if (!changed) return false;
   notify(lead.vendor_id, `🎉 ${lead.name || 'A client'} wants to book "${packageName}"!`,
     'Upgrade to Essential to send the contract and take the deposit.', 'package', { type: 'lead', id: lead.id });
   return false;
 }
 
-/* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package */
-router.post('/:token/pick', limit({ name: 'portal-pick', max: 30, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
-  const { package_id } = req.body;
+/* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package
+   body: { package_id, extras?: [{ id, qty }] } — the optional extras the client ticked on THAT package */
+router.post('/:token/pick', limit({ name: 'portal-pick', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
+  const { package_id } = req.body || {};
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
@@ -361,11 +411,33 @@ router.post('/:token/pick', limit({ name: 'portal-pick', max: 30, windowMs: 60 *
       where: { id: Number(package_id), lead_id: lead.id },      // 🔒 tenancy via the lead
     });
     if (own) {
-      const snapshot = { name: own.name, base_price: own.price, inclusions: own.inclusions };
+      // the client's ticks on this package, checked against what the vendor offered
+      const extras = applyPicks(own.extras, req.body?.extras);
+      const extrasChanged = picksKey(extras) !== picksKey(own.extras);
+      const changed = !own.is_selected || extrasChanged;
+      const q = quotePackage({ ...own, extras }, lead);
+      // a record of the moment: what was picked and what it came to
+      const snapshot = {
+        name: own.name, base_price: own.price, inclusions: own.inclusions,
+        extra_hours: q.extra_hours, extra_hours_amount: q.extra_hours_amount,
+        extras: q.extras.map(l => ({ name: l.name, qty: l.qty, amount: l.amount })),
+        total: q.total, picked_at: new Date().toISOString(),
+      };
+      // the OTHER packages lose any ticks — only the chosen one's extras are part of the booking
+      const others = await prisma.lead_packages.findMany({
+        where: { lead_id: lead.id, id: { not: own.id } },          // 🔒 tenancy via the lead
+        select: { id: true, extras: true },
+      });
       await prisma.$transaction([
         // exactly one package can be the chosen one
         prisma.lead_packages.updateMany({ where: { lead_id: lead.id }, data: { is_selected: false } }),
-        prisma.lead_packages.update({ where: { id: own.id }, data: { is_selected: true } }),
+        prisma.lead_packages.update({ where: { id: own.id }, data: { is_selected: true, extras } }),
+        ...others
+          .filter(r => Array.isArray(r.extras) && r.extras.some(x => x?.chosen))
+          .map(r => prisma.lead_packages.update({
+            where: { id: r.id },
+            data: { extras: r.extras.map(x => (x?.chosen ? { ...x, chosen: false } : x)) },
+          })),
         prisma.leads.update({
           where: { id: lead.id },
           // package_id is left alone: it has a foreign key to vendor_packages,
@@ -375,7 +447,10 @@ router.post('/:token/pick', limit({ name: 'portal-pick', max: 30, windowMs: 60 *
         }),
       ]);
       const updated = await prisma.leads.findUnique({ where: { id: lead.id } });
-      const books = await afterPick(lead, own.id, own.name, req);
+      // "Cine Lux + Drone, Rush delivery" — the vendor sees what the client added at a glance
+      const ticked = q.extras.filter(l => l.mode === 'optional').map(l => (l.qty > 1 ? `${l.name} ×${l.qty}` : l.name));
+      const label = ticked.length ? `${own.name} + ${ticked.join(', ')}` : own.name;
+      const books = await afterPick(lead, own.id, label.slice(0, 160), req, { extrasChanged, changed });
       return res.json({ lead: updated, money: await moneySummary(updated), books });
     }
 
@@ -475,14 +550,16 @@ router.post('/:token/pay-direct', limit({ name: 'portal-pay', max: 30, windowMs:
       data: { payment_claimed_at: new Date(), updated_at: new Date() },
     });
 
-    /* R3 (2026-10-30): the amount the client was asked to pay — the deposit — and the total for context */
-    const total = Number(chosen?.price ?? 0);
-    const deposit = lead.deposit_amount_override != null ? Number(lead.deposit_amount_override) : (Number(lead.deposit_percent) || 0) / 100 * total;
+    /* R3 (2026-10-30): the amount the client was asked to pay — the deposit — and the total for context. Both from
+       moneySummary, the one place money is worked out: hours, extras, discount and any fixed deposit included */
+    const sum = await moneySummary(lead);
+    const total = Number(sum.final_total) || 0;
+    const due = Number(sum.paid) > 0 ? Number(sum.balance) : Number(sum.deposit_amount);
     const money = (n) => `$${Math.round(n).toLocaleString('en')}`;
     notify(
       lead.vendor_id,
       `💰 ${lead.name || 'Client'} says they've paid`,
-      `${chosen?.name || 'Booking'}${total ? ` · deposit ${money(deposit)} of ${money(total)}` : ''} · confirm when the funds arrive`,
+      `${chosen?.name || 'Booking'}${total ? ` · ${Number(sum.paid) > 0 ? 'balance' : 'deposit'} ${money(due)} of ${money(total)}` : ''} · confirm when the funds arrive`,
       'payment',
       { type: 'lead', id: lead.id },   // the confirm/deny banner lives on the lead
     );

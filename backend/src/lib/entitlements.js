@@ -99,7 +99,7 @@ export function gate(featureKey) {
       return res.status(402).json({
         error: 'feature_locked',
         feature: featureKey,
-        message: 'This feature is not part of your current plan. Upgrade or add it in My Services. ✨',
+        message: 'This feature is not part of your current plan. Upgrade or add it in My Services.',
       });
     } catch (e) { return serverError(res, e); }
   };

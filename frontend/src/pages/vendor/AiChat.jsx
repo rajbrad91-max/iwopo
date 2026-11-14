@@ -104,7 +104,7 @@ export function AiChatVendorView({ goServices }) {
           <li>🌍 Replies in your client's language</li>
           <li>📨 Passes messages straight to you</li>
         </ul>
-        <button className="refresh ac-upsell-btn" onClick={goServices}>✨ Add AI Chat to my plan</button>
+        <button className="refresh ac-upsell-btn" onClick={goServices}>Add AI Chat to my plan</button>
       </div>
     );
   }

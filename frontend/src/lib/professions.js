@@ -24,7 +24,7 @@ export const PROFESSIONS = {
   planner: { label: 'Wedding Planner', icon: '📋' },
   musician: { label: 'Musician / Singer', icon: '🎶' },
   transportation: { label: 'Transportation', icon: '🚗' },
-  other: { label: 'Other', icon: '✨' },
+  other: { label: 'Other', icon: '📌' },
 };
 
 /** Every real profession — everything except "None", which means no watermark. */

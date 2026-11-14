@@ -12,6 +12,7 @@
  */
 import prisma from '../config/prisma.js';
 import { emailWarning } from './emailCheck.js';
+import { quotePackage } from './packageQuote.js';
 
 export const SECTIONS = [
   ['leads', '📋 Leads'], ['bookings', '📅 Bookings'], ['money', '💰 Contracts & Invoices'], ['calls', '📞 Calls & Messages'],
@@ -27,8 +28,9 @@ const STATUS = { new: 'a new inquiry (not booked)', contacted: 'contacted, not b
 
 /** What a lead is worth: the package they chose, an override, the assigned package, or the quoted range. */
 function priceOf(l, chosen, quoted, pkg) {
-  if (chosen) return { value: Number(chosen.price), text: `${money(chosen.price)} (${chosen.name}, chosen)` };
+  // the same order the money summary uses (routes/payments.js): a price the vendor set by hand wins
   if (l.price_override !== null && l.price_override !== undefined) return { value: Number(l.price_override), text: `${money(l.price_override)} (custom price)` };
+  if (chosen) return { value: Number(chosen.price), text: `${money(chosen.price)} (${chosen.name}${chosen.extrasText ? ` + ${chosen.extrasText}` : ''}, chosen)` };
   if (pkg?.base_price) return { value: Number(pkg.base_price), text: `${money(pkg.base_price)} (${pkg.name})` };
   if (quoted?.length) {
     const p = quoted.map(q => Number(q.price)).filter(x => x > 0);
@@ -146,7 +148,22 @@ async function buildSections(v, only) {
 
   if (want('packages')) {
     const pk = await prisma.vendor_packages.findMany({ where: { vendor_id: v }, orderBy: { sort_order: 'asc' } });
-    for (const p of pk) add('packages', p.id, `${p.name} — package`, [['price', money(p.base_price)], ['hours included', p.included_hours], ['extra hour', money(p.per_hour_price)], ['default', p.is_default ? 'yes' : null]]);
+    // the folder's extras, and which of them each package offers, includes or hides
+    const folders = new Map((await prisma.package_templates.findMany({ where: { vendor_id: v }, select: { id: true, extras: true } })).map(t => [t.id, Array.isArray(t.extras) ? t.extras : []]));
+    const unitWord = { once: '', per_item: ' each', per_hour: ' per hour', per_guest: ' per guest' };
+    for (const p of pk) {
+      const st = p.extras_state && typeof p.extras_state === 'object' ? p.extras_state : {};
+      const ex = (folders.get(p.template_id) || []).filter(x => (st[x.id] || 'offered') !== 'hidden');
+      const offered = ex.filter(x => st[x.id] !== 'included').map(x => `${x.name} ${money(x.price)}${unitWord[x.unit] || ''}`);
+      const included = ex.filter(x => st[x.id] === 'included').map(x => x.name);
+      add('packages', p.id, `${p.name} — package`, [
+        ['price', p.price_mode === 'per_guest' ? `${money(p.base_price)} per guest${p.min_guests ? ` (minimum ${p.min_guests})` : ''}` : money(p.base_price)],
+        ['hours included', p.included_hours], ['extra hour', money(p.per_hour_price)],
+        ['about', p.description ? clip(p.description, 160) : null],
+        ['extras offered', offered.length ? offered.join(', ') : null],
+        ['extras included', included.length ? included.join(', ') : null],
+        ['default', p.is_default ? 'yes' : null]]);
+    }
   }
 
   if (want('fileflyer')) {
@@ -220,13 +237,19 @@ export async function searchKb(vendorId, query, section = null, take = 10) {
 /** Every lead's price (lesson 8: "check ALL leads for a total price, not just those with payments"). */
 export async function leadPrices(vendorId, where = {}) {
   const v = Number(vendorId);
-  const leads = await prisma.leads.findMany({ where: { vendor_id: v, ...where }, select: { id: true, name: true, status: true, event_type: true, event_date: true, price_override: true, package_id: true } });
+  const leads = await prisma.leads.findMany({ where: { vendor_id: v, ...where }, select: { id: true, name: true, status: true, event_type: true, event_date: true, price_override: true, package_id: true, hours: true, guests: true } });
   const ids = leads.map(l => l.id);
-  const [lp, vp, pays] = await Promise.all([
-    prisma.lead_packages.findMany({ where: { vendor_id: v, lead_id: { in: ids } }, select: { lead_id: true, name: true, price: true, is_selected: true } }),
+  const [lpRaw, vp, pays] = await Promise.all([
+    // 📦 everything the price is worked out from: a package's price for this client includes its hours and extras
+    prisma.lead_packages.findMany({ where: { vendor_id: v, lead_id: { in: ids } }, select: { lead_id: true, name: true, price: true, is_selected: true, extras: true, price_mode: true, min_guests: true, included_hours: true, per_hour_price: true, auto_extra_hours: true } }),
     prisma.vendor_packages.findMany({ where: { vendor_id: v }, select: { id: true, name: true, base_price: true } }),
     prisma.payments.groupBy({ by: ['lead_id'], where: { vendor_id: v, lead_id: { in: ids } }, _sum: { amount: true } }),
   ]);
+  const byId = new Map(leads.map(l => [l.id, l]));
+  const lp = lpRaw.map(x => {
+    const qt = quotePackage(x, byId.get(x.lead_id));
+    return { lead_id: x.lead_id, name: x.name, is_selected: x.is_selected, price: qt.total, extrasText: qt.extras.map(e => e.name).join(', ') };
+  });
   return leads.map(l => {
     const q = lp.filter(x => x.lead_id === l.id);
     const p = priceOf(l, q.find(x => x.is_selected), q, vp.find(x => x.id === l.package_id));

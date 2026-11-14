@@ -2,7 +2,8 @@ import express from 'express';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { moneySummary } from './payments.js';
+import { moneySummary, pickedOffer, QUOTE_FIELDS } from './payments.js';
+import { quotePackage } from '../lib/packageQuote.js';
 import { currencyFor } from '../lib/currencies.js';
 import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
@@ -58,12 +59,27 @@ async function invoiceData(lead, givenItems, notes) {
     const money = await moneySummary(lead);
     let items = givenItems;
     if (!Array.isArray(items) || !items.length) {
-      let pkgName = 'Services';
-      if (lead.package_snapshot) {
-        const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
-        pkgName = p.name || 'Services';
+      const when = `${lead.event_type || 'Event'}${lead.event_date ? ' (' + String(lead.event_date).slice(0, 10) + ')' : ''}`;
+      /* 📦 the chosen package line by line — the package, its extra hours, each extra — so the invoice lists
+         what the client agreed to rather than one lump (lib/packageQuote.js). A vendor's own total wins. */
+      const picked = lead.price_override == null
+        ? pickedOffer(await prisma.lead_packages.findMany({ where: { lead_id: lead.id }, select: QUOTE_FIELDS }))   // 🔒 via the lead
+        : null;
+      if (picked) {
+        const q = quotePackage(picked, lead);
+        items = [
+          { label: `${picked.name} — ${when}${q.price_mode === 'per_guest' ? ` · ${q.guests} guests` : ''}`, amount: q.base },
+          ...(q.extra_hours ? [{ label: `${q.extra_hours} extra hour${q.extra_hours === 1 ? '' : 's'}`, amount: q.extra_hours_amount }] : []),
+          ...q.extras.map(x => ({ label: x.qty > 1 ? `${x.name} × ${x.qty}` : x.name, amount: x.amount })),
+        ];
+      } else {
+        let pkgName = 'Services';
+        if (lead.package_snapshot) {
+          const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
+          pkgName = p.name || 'Services';
+        }
+        items = [{ label: `${pkgName} — ${when}`, amount: money.base_total }];
       }
-      items = [{ label: `${pkgName} — ${lead.event_type || 'Event'}${lead.event_date ? ' (' + String(lead.event_date).slice(0, 10) + ')' : ''}`, amount: money.base_total }];
     }
     const subtotal = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
     const discount = money.discount_amount;

@@ -251,7 +251,7 @@ export const TOOLS = [
   },
   {
     name: 'list_packages',
-    description: "The vendor's own packages (the ones they send to clients), with prices and hours.",
+    description: "The vendor's own packages (the ones they send to clients), with prices, hours and the extras each offers or includes.",
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
   },
   ...PANEL_TOOLS,
@@ -583,7 +583,22 @@ export async function runTool(name, input, vendorId) {
     }
     case 'list_packages': {
       const rows = await prisma.vendor_packages.findMany({ where: { vendor_id: v }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }], take: 60 });
-      return { packages: rows.map(p => ({ id: p.id, name: p.name, price: p.base_price ? Number(p.base_price) : null, hours: p.included_hours, extra_hour: p.per_hour_price ? Number(p.per_hour_price) : null })) };
+      // each package's extras from its folder: offered (the client can add), included, hidden ones left out
+      const folders = new Map((await prisma.package_templates.findMany({ where: { vendor_id: v }, select: { id: true, extras: true } }))   // 🔒 tenancy
+        .map(t => [t.id, Array.isArray(t.extras) ? t.extras : []]));
+      return {
+        packages: rows.map(p => {
+          const st = p.extras_state && typeof p.extras_state === 'object' ? p.extras_state : {};
+          const ex = (folders.get(p.template_id) || []).filter(x => (st[x.id] || 'offered') !== 'hidden');
+          return {
+            id: p.id, name: p.name, price: p.base_price ? Number(p.base_price) : null,
+            priced: p.price_mode === 'per_guest' ? 'per guest' : 'fixed', min_guests: p.min_guests ?? null,
+            hours: p.included_hours, extra_hour: p.per_hour_price ? Number(p.per_hour_price) : null,
+            description: p.description || null,
+            extras: ex.map(x => ({ name: x.name, price: Number(x.price) || 0, unit: x.unit, included: st[x.id] === 'included' })),
+          };
+        }),
+      };
     }
     default:
       return { error: `Unknown tool ${name}` };

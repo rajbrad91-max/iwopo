@@ -60,7 +60,7 @@ export function DashHome({ goTab, openBooking }) {
               but not act on just makes you go and find it yourself. */}
           <div className="stats dash-stats-4">
             <StatTile icon="📋" value={leads.length} label="Total Leads" onOpen={() => goTab('leads')} />
-            <StatTile icon="✨" value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
+            <StatTile icon="📥" value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
             <StatTile icon="✅" value={booked} label="Booked" onOpen={() => goTab('bookings')} />
             {/* 🖼️ Straight to the page that lists them, not to Galleries.
                 It sent you to a list of albums to go and find the selections

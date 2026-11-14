@@ -17,6 +17,8 @@ import { getSetting } from '../lib/settings.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
+import { quotePackage } from '../lib/packageQuote.js';
+import { rebuildUnsignedContract } from './payments.js';
 
 const router = express.Router();
 
@@ -106,7 +108,11 @@ router.get('/', requireAuth, async (req, res) => {
       include: {
         vendor_packages: { select: { name: true } },
         package_templates: { select: { name: true, vendor_packages: { select: { name: true, base_price: true }, orderBy: { sort_order: 'asc' } } } },
-        lead_packages: { select: { name: true, price: true, is_selected: true }, orderBy: { sort_order: 'asc' } },
+        // 📦 everything the price is worked out from — the card shows what THIS client would pay (lib/packageQuote.js)
+        lead_packages: {
+          select: { name: true, price: true, is_selected: true, extras: true, price_mode: true, min_guests: true, included_hours: true, per_hour_price: true, auto_extra_hours: true },
+          orderBy: { sort_order: 'asc' },
+        },
       },
     });
     // keep the old shape: package_name flattened onto the lead, plus the folder
@@ -118,7 +124,7 @@ router.get('/', requireAuth, async (req, res) => {
       package_name: vendor_packages?.name ?? null,
       template_name: package_templates?.name ?? null,
       pkgs: lead_packages?.length
-        ? lead_packages.map(p => ({ name: p.name, price: hideMoney ? null : Number(p.price || 0), picked: !!p.is_selected }))
+        ? lead_packages.map(p => ({ name: p.name, price: hideMoney ? null : quotePackage(p, l).total, picked: !!p.is_selected }))
         : (package_templates?.vendor_packages || []).map(p => ({ name: p.name, price: hideMoney ? null : Number(p.base_price || 0), picked: false })),
       service: serviceAsked(leadQuestions(l.form_snapshot, forms.get(l.vendor_id), l.custom_data), l),
     }));
@@ -593,6 +599,9 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (!Object.keys(data).length) return res.json({ ok: true });
     data.updated_at = new Date();
     const lead = await prisma.leads.update({ where: { id, ...mine(vid) }, data });
+    /* 💸 hours and guests now price the package (extra hours, per-guest pricing and extras — lib/packageQuote.js), so an
+       unsigned contract quoting the old figures is redrawn. A signed one is never touched. */
+    if (data.hours !== undefined || data.guests !== undefined) await rebuildUnsignedContract(lead);
     if (lead.status === 'booked') await ensureInvoice(lead.id);   // 🧾 F2: booked by hand — invoice ready, never sent
     res.json({ lead });
   } catch (e) { serverError(res, e); }
