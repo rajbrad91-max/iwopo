@@ -28,12 +28,15 @@ export const TAG_LABELS = {
   gallery_name: 'Gallery name',
   view_password: 'Password to view',
   pick_password: 'Password to pick',
+  admin_password: 'Admin password',
+  guest_password: 'Guest password',
 };
 
 /** sample values, for the preview only */
 export const SAMPLE = {
   client_first_name: 'Priya', client_name: 'Priya Sharma', link: 'https://yourname.iwopo.com/portal/…',
   contract_title: 'Videography Agreement', gallery_name: 'Priya & Arjun', view_password: 'rose24', pick_password: 'lily57',
+  admin_password: 'rose24', guest_password: 'lily57',
 };
 
 /** the order on the page is the order a booking goes through. `button` = the words on the link's button in a design */
@@ -97,6 +100,24 @@ Your edited photos are ready:
 Password: {view_password}
 
 {business_name}`,
+  },
+  gallery_shared: {
+    label: 'Gallery shared',
+    when: 'When you press Send on a gallery. The link opens your client section, where your galleries are listed. You can still change the words before it goes.',
+    tags: [...COMMON, 'link', 'admin_password', 'guest_password'],
+    button: 'Open your gallery',
+    subject: 'Your Photos Are Ready 📸',
+    body: `Dear {client_name},
+
+Your photos are now ready to view and download! 🎉
+
+Guest Password: {guest_password}
+(Share this with friends and family)
+
+Admin Password: {admin_password}
+(Use this to manage or remove photos)
+
+Thank you for choosing us! 💛`,
   },
 };
 

@@ -884,6 +884,7 @@ export const api = {
   saveAlbumSettings: (data) => request('/albums/settings', { method: 'PUT', body: JSON.stringify(data) }),
   galleryTheme: () => request('/albums/theme'),
   saveGalleryTheme: (data) => request('/albums/theme', { method: 'PUT', body: JSON.stringify(data) }),
+  albumEmailPreview: (id, pw) => request(`/albums/${id}/email-instructions/preview`, { method: 'POST', body: JSON.stringify(pw || {}) }),   // 📧 the gallery email as it will go
   emailAlbumInstructions: (id, payload) => request(`/albums/${id}/email-instructions`, { method: 'POST', body: JSON.stringify(payload || {}) }),
   uploadAlbumCover: async (albumId, file, focus) => {
     const fd = new FormData();

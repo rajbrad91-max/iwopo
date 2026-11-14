@@ -155,12 +155,11 @@ router.get('/booking-options', requireAuth, async (req, res) => {
 // 🔒 update album
 router.put('/settings', requireAuth, async (req, res) => {
   const v = ownVendorId(req);
-  const { pw_prefix, spw_prefix, instructions_template } = req.body;
+  const { pw_prefix, spw_prefix } = req.body;
   try {
     const data = {
       pw_prefix: pw_prefix || '',
       spw_prefix: spw_prefix || '',
-      instructions_template: instructions_template || null,
     };
     await prisma.album_settings.upsert({
       where: { vendor_id: v },                    // 🔒 tenancy
@@ -177,13 +176,13 @@ router.get('/settings', requireAuth, async (req, res) => {
   try {
     const row = await prisma.album_settings.findUnique({
       where: { vendor_id: v },                    // 🔒 tenancy
-      select: { pw_prefix: true, spw_prefix: true, instructions_template: true },
+      select: { pw_prefix: true, spw_prefix: true },
     });
     const vendor = await prisma.vendors.findUnique({
       where: { id: v },
       select: { gallery_token: true },
     });
-    const settings = row || { pw_prefix: '', spw_prefix: '', instructions_template: null };
+    const settings = row || { pw_prefix: '', spw_prefix: '' };
     settings.gallery_token = vendor?.gallery_token || null;
     res.json({ settings });
   } catch (e) { serverError(res, e); }

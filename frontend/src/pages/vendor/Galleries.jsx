@@ -71,7 +71,6 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
   const [coverFocus, setCoverFocus] = useState('50% 50%'); // "X% Y%" focal point for cover framing
   const [focusView, setFocusView] = useState('desktop'); // preview aspect toggle
   const [showSettings, setShowSettings] = useState(false);
-  const [tpl, setTpl] = useState('');
   const [showPw, setShowPw] = useState({ guest: false, admin: false });
   /* true where a password exists but was set before readable copies were kept,
      so the box is blank for a reason the vendor should be told */
@@ -175,7 +174,6 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
     api.albumSettings().then(d => {
       const s = d.settings || {};
       setPwPrefix(s.pw_prefix || ''); setSpwPrefix(s.spw_prefix || '');
-      setTpl(s.instructions_template || '');
       setGalleryToken(s.gallery_token || '');
     }).catch(() => {});
     api.galleryTheme().then(d => setTheme(d.theme || {})).catch(() => {});
@@ -296,24 +294,16 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
     } catch { /* the boxes stay blank, which still means "keep" */ }
   }
 
-  // 📧 fill instructions template with this album's real passwords
-  function fillTpl(a, pw, raw) {
-    const base = raw || tpl || DEFAULT_GALLERY_TPL;
-    return base
-      .replaceAll('{client_name}', a.title || 'Client')
-      .replaceAll('{guest_password}', pw.guest || '(type the password here)')
-      .replaceAll('{admin_password}', pw.admin || '(type the password here)');
-  }
+  /* 📧 The Send window shows the gallery email exactly as it will go: the server fills the vendor's "Gallery shared"
+     email (Settings → Email templates) for this album. What is in the form wins for the passwords — it may hold
+     ones typed but not saved yet. Words changed here are for this send only. */
   async function openSend(a) {
     setSendMsg('');
-    /* What is in the form wins — it may hold a password typed but not saved
-       yet; otherwise the stored readable copy. */
-    let pw = edit?.id === a.id ? { guest: f.guest_password, admin: f.admin_password } : {};
-    if (!pw.guest || !pw.admin) {
-      try { const p = await api.albumPasswords(a.id); pw = { guest: pw.guest || p.guest, admin: pw.admin || p.admin }; }
-      catch { /* placeholders stay visible */ }
-    }
-    setSendModal({ album: a, email: (edit?.id === a.id && f.client_email) || a.client_email || '', body: fillTpl(a, pw), editing: false });
+    const pw = edit?.id === a.id ? { guest: f.guest_password || undefined, admin: f.admin_password || undefined } : {};
+    try {
+      const m = await api.albumEmailPreview(a.id, pw);
+      setSendModal({ album: a, pw, email: (edit?.id === a.id && f.client_email) || m.to || '', body: m.body, html: m.html, edited: false, editing: false });
+    } catch (e) { dialog.alert(e.message, { error: true }); }
   }
   /* ⚙️ Manage a tile's gallery. ⚠️ Both, not just edit: startEdit sets showNew too, so clearing edit alone left
      showNew true — and the page-width "New Album" form appeared, prefilled with the album that had just been
@@ -326,12 +316,12 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
     if (!sendModal?.email) { setSendMsg('⚠️ Email required'); return; }
     setSendMsg('Sending…');
     try {
-      await api.emailAlbumInstructions(sendModal.album.id, { email: sendModal.email, body: sendModal.body });
+      await api.emailAlbumInstructions(sendModal.album.id, { email: sendModal.email, ...sendModal.pw, ...(sendModal.edited ? { body: sendModal.body } : {}) });
       setSendMsg('✅ Sent!'); setTimeout(() => setSendModal(null), 1200);
     } catch (e) { setSendMsg('⚠️ ' + e.message); }
   }
   async function saveSettingsOnly() {
-    try { await api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix, instructions_template: tpl }); setShowSettings(false); }
+    try { await api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix }); setShowSettings(false); }
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
@@ -531,9 +521,8 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
                   <input className="gal-input" value={spwPrefix} onChange={e => setSpwPrefix(e.target.value)} placeholder="Admin prefix" />
                 </div>
 
-                <label className="lbl gal-set-lbl">📧 Email instructions template</label>
-                <div className="gal-set-hint">Placeholders: <code>{'{client_name}'}</code> <code>{'{guest_password}'}</code> <code>{'{admin_password}'}</code></div>
-                <textarea className="gal-input gal-set-ta" value={tpl} onChange={e => setTpl(e.target.value)} placeholder="Dear {client_name}, your photos are ready…" />
+                <label className="lbl gal-set-lbl">📧 Gallery email</label>
+                <div className="gal-set-hint">The email a client gets when you press Send is in Settings → Setup Email → Email templates → Gallery shared.</div>
                 <button className="refresh gal-save gal-set-save" onClick={saveSettingsOnly}>💾 Save Settings</button>
               </div>
 
@@ -690,16 +679,14 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
             <input className="gal-input" value={sendModal.email} onChange={e => setSendModal(m => ({ ...m, email: e.target.value }))} placeholder="client@email.com" />
 
             <div className="gal-send-msghead">
-              <label className="lbl">Instructions</label>
-              {sendModal.editing
-                ? <button className="gal-gen" onClick={() => {
-                    // save edited body back as the reusable template (re-insert placeholders isn't needed; save raw text with current values)
-                    api.saveAlbumSettings({ pw_prefix: pwPrefix, spw_prefix: spwPrefix, instructions_template: sendModal.body }).then(() => setTpl(sendModal.body)).catch(() => {});
-                    setSendModal(m => ({ ...m, editing: false }));
-                  }}>💾 Save</button>
-                : <button className="gal-gen" onClick={() => setSendModal(m => ({ ...m, editing: true }))}>✏️ Edit</button>}
+              <label className="lbl">{sendModal.html ? 'Your HTML design' : 'Instructions'}</label>
+              {!sendModal.html && !sendModal.editing && <button className="gal-gen" onClick={() => setSendModal(m => ({ ...m, editing: true }))}>✏️ Edit</button>}
             </div>
-            <textarea className="gal-input gal-send-ta" readOnly={!sendModal.editing} value={sendModal.body} onChange={e => setSendModal(m => ({ ...m, body: e.target.value }))} />
+            {sendModal.html
+              /* sandbox with nothing allowed: the design shows, nothing in it can run */
+              ? <iframe className="et-frame" title="Email preview" sandbox="" srcDoc={sendModal.html} />
+              : <textarea className="gal-input gal-send-ta" readOnly={!sendModal.editing} value={sendModal.body} onChange={e => setSendModal(m => ({ ...m, body: e.target.value, edited: true }))} />}
+            <div className="gal-set-hint">{sendModal.editing ? 'Your changes are for this email only. ' : ''}To change the words for every gallery: Settings → Setup Email → Email templates.</div>
 
             <div className="gal-send-foot">
               <button className="refresh gal-save" onClick={doSend}>📨 Send</button>
@@ -713,14 +700,3 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
   );
 }
 
-const DEFAULT_GALLERY_TPL = `Dear {client_name},
-
-Your photos are now ready to view and download! 🎉
-
-Guest Password: {guest_password}
-(Share this with friends and family)
-
-Admin Password: {admin_password}
-(Use this to manage or remove photos)
-
-Thank you for choosing us! 💛`;

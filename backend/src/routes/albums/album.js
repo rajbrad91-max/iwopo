@@ -3,6 +3,9 @@
  * Moved out of routes/albums.js unchanged (code audit #2, Raj 2026-11-11). Mounted by routes/albums.js in
  * the original order.
  */
+import { renderEmail } from '../../lib/emailTemplates.js';   // ✉️ the vendor's "Gallery shared" email
+import { clientBaseUrl } from '../../lib/vendorHosts.js';
+import { sendLeadEmail } from '../email.js';   // 📤 a static import: a wrong path fails at start-up, not when a client is waiting
 import express from 'express';
 import * as objects from '../../lib/objectStore.js';
 import { orderEvents } from '../../lib/albumEvents.js';
@@ -23,17 +26,6 @@ import { ROOT, galleryKey, upload, cleanPw, cleanCategory, publicAlbum, checkGal
 
 const router = express.Router();
 
-const DEFAULT_INSTRUCTIONS = `Dear {client_name},
-
-Your photos are now ready to view and download! 🎉
-
-Guest Password: {guest_password}
-(Share this with friends and family)
-
-Admin Password: {admin_password}
-(Use this to manage or remove photos)
-
-Thank you for choosing us! 💛`;
 
 /**
  * Covers live in R2 too. They were never wired across when the rest of the
@@ -164,7 +156,39 @@ router.get('/:id/passwords', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-// 🔒 email gallery instructions to client
+/**
+ * 📧 The gallery email for one album: the vendor's "Gallery shared" email (Settings → Email templates) filled with
+ * this album's name, its passwords and the vendor's client-section link — plain text, or their HTML design.
+ * `pw` may carry passwords typed in the form and not saved yet; otherwise the stored readable copies. An album
+ * set before those existed has none, so its placeholder stays visible — a blank line is worse than an obvious gap.
+ */
+async function galleryEmail(v, a, pw = {}) {
+  const [ven, base] = await Promise.all([
+    prisma.vendors.findUnique({ where: { id: v }, select: { gallery_token: true } }),
+    clientBaseUrl(v),
+  ]);
+  return renderEmail(v, 'gallery_shared', {
+    client_name: a.title || 'Client',
+    link: ven?.gallery_token ? `${base}/gallery/${ven.gallery_token}` : base,
+    admin_password: pw.admin || openPassword(a.admin_password_enc) || '(type the password here)',
+    guest_password: pw.guest || openPassword(a.guest_password_enc) || '(type the password here)',
+  });
+}
+const typedPasswords = (b) => ({ guest: typeof b?.guest === 'string' ? b.guest : undefined, admin: typeof b?.admin === 'string' ? b.admin : undefined });
+
+// 📧 the gallery email as it will go — what the Send window shows
+router.post('/:id/email-instructions/preview', requireAuth, async (req, res) => {
+  const v = ownVendorId(req);
+  try {
+    const a = await prisma.albums.findFirst({ where: { id: Number(req.params.id), vendor_id: v } });   // 🔒 tenancy
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    const m = await galleryEmail(v, a, typedPasswords(req.body));
+    res.set('Cache-Control', 'no-store');   // it carries the passwords
+    res.json({ to: a.client_email || '', subject: m.subject, body: m.body, html: m.html || null });
+  } catch (e) { serverError(res, e); }
+});
+
+// 🔒 email the gallery to the client
 router.post('/:id/email-instructions', requireAuth, async (req, res) => {
   const v = ownVendorId(req);
   const id = Number(req.params.id);
@@ -172,25 +196,13 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     const a = await prisma.albums.findFirst({ where: { id, vendor_id: v } });   // 🔒 tenancy
     if (!a) return res.status(404).json({ error: 'Not found' });
 
-    // recipient: explicit override from popup, else album's stored client_email
+    // recipient: explicit override from the Send window, else the album's stored client_email
     const to = (req.body.email || a.client_email || '').trim();
     if (!to) return res.status(400).json({ error: 'No recipient email' });
 
-    // body: popup sends already-filled text; otherwise fall back to template + fill
-    let body = req.body.body;
-    if (!body) {
-      const st = await prisma.album_settings.findUnique({
-        where: { vendor_id: v },                // 🔒 tenancy
-        select: { instructions_template: true },
-      });
-      /* The readable copies fill the passwords in. An album set before those
-         existed has none, so its placeholder stays visible — a blank line in a
-         client's email is worse than an obvious gap. */
-      body = (st?.instructions_template || DEFAULT_INSTRUCTIONS)
-        .replaceAll('{client_name}', a.title || 'Client')
-        .replaceAll('{admin_password}', openPassword(a.admin_password_enc) || '(type the password here)')
-        .replaceAll('{guest_password}', openPassword(a.guest_password_enc) || '(type the password here)');
-    }
+    // the vendor's email for this album — or, when they changed the words in the Send window, their text as typed
+    const m = await galleryEmail(v, a, typedPasswords(req.body));
+    const typed = typeof req.body.body === 'string' && req.body.body.trim() ? req.body.body : null;
 
     // remember the entered email on the album for next time
     if (req.body.email && req.body.email !== a.client_email) {
@@ -198,8 +210,7 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     }
 
     const lead = { vendor_id: v, email: to, name: a.title };
-    const { sendLeadEmail } = await import('./email.js');
-    await sendLeadEmail(req, lead, 'Your Photos Are Ready 📸', body);
+    await sendLeadEmail(req, lead, m.subject, typed || m.body, { html: typed ? undefined : m.html });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

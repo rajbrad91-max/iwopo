@@ -26,7 +26,6 @@ model album_settings {
   vendor_id             Int     @id
   pw_prefix             String? @default("") @db.VarChar(40)
   spw_prefix            String? @default("") @db.VarChar(40)
-  instructions_template String?
 }
 
 model albums {
