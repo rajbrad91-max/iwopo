@@ -415,6 +415,7 @@ export default function ClientPortal({ token }) {
 
   /* extras and prices (lib/packageQuote.js — the same function the server charges by; it re-prices on save) */
   const optionalOf = (p) => (p.extras || []).filter(x => x.mode === 'optional');
+  const onlyOne = packages.length === 1;   // one package sent — nothing to choose between
   function savedPicks(p) { return Object.fromEntries(optionalOf(p).filter(x => x.chosen).map(x => [x.id, x.qty || 1])); }
   function picksFor(p) { return edits[p.id] ?? savedPicks(p); }
   function samePicks(a, b) { const k = (o) => JSON.stringify(Object.entries(o).sort()); return k(a) === k(b); }
@@ -526,9 +527,14 @@ export default function ClientPortal({ token }) {
         {step === 1 && (
           <section className="po-sec">
             <p className="po-eyebrow">Step one</p>
-            <h2 className="po-h">{chosen ? 'Your package' : 'Choose your package'}</h2>
+            {/* one package sent: there is nothing to choose between, so the words don't ask the client to (Raj, 2026-11-13) */}
+            <h2 className="po-h">{chosen || onlyOne ? 'Your package' : 'Choose your package'}</h2>
             <p className="po-lead">
-              {chosen
+              {onlyOne
+                ? (signed ? `You signed for ${chosen?.name || packages[0].name}.${optionalOf(packages[0]).length ? ' Changing your extras cancels that signature and you’ll sign again.' : ''}`
+                  : chosen ? (optionalOf(packages[0]).length ? 'You can change your extras any time before you pay — your contract is rewritten to match.' : 'Next, read and sign your contract.')
+                  : 'Here’s the package prepared for you. Nothing is confirmed until you sign.')
+                : chosen
                 ? (signed ? `You signed for ${chosen.name}. Choosing another package or changing your extras cancels that signature and you’ll sign again.` : 'Pick a different one, or change your extras, any time before you pay — your contract is rewritten to match.')
                 : 'Tap the one you’d like. Nothing is confirmed until you sign.'}
             </p>
@@ -574,7 +580,7 @@ export default function ClientPortal({ token }) {
                    extras is opened for shaping on a tap; one without is chosen at once. */
                 const tap = () => { if (busy) return; if (opts.length && !isChosen) setDraftId(p.id); else if (!opts.length) pick(p.id); };
                 const cta = isChosen ? (changed ? 'Save my extras' : `✓ ${p.name} chosen`)
-                  : `Choose ${p.name}${ticked ? ` + ${ticked} extra${ticked > 1 ? 's' : ''}` : ''}`;
+                  : `${onlyOne ? 'Continue with' : 'Choose'} ${p.name}${ticked ? ` + ${ticked} extra${ticked > 1 ? 's' : ''}` : ''}`;
                 const m = moneyParts(q0.total, { currency: data?.currency });
                 return (
                   <div key={p.id} role="button" tabIndex={0}
@@ -772,7 +778,7 @@ export default function ClientPortal({ token }) {
               </div>
             )}
             <button type="button" className="po-bar-btn" disabled={busy} onClick={() => pick(draft.id)}>
-              {lead.package_id === draft.id ? 'Save my extras' : `Choose ${draft.name}`}
+              {lead.package_id === draft.id ? 'Save my extras' : `${onlyOne ? 'Continue with' : 'Choose'} ${draft.name}`}
             </button>
           </div>
         </div>
