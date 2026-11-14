@@ -212,8 +212,6 @@ tr:last-child td { border-bottom:none; }
 .vc-link:disabled { color: #9ca3af; cursor: default; }
 .vc-overlay { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .55); }
 
-/* 🎨 sidebar icons: the same Fluent emoji artwork on every device, sized like the text emoji they replace */
-.nav-emo { display: block; width: 1.2em; height: 1.2em; }
 /* 🎨 the same artwork beside text in the panel's cards (components/Emo.jsx) */
 .emo { display: inline-block; flex: none; width: 1.15em; height: 1.15em; margin-right: .4em; vertical-align: -.2em; }
 

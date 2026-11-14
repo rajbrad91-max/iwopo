@@ -627,6 +627,10 @@
 /* nav item = icon + text */
 .dash .nav-item, .dash .logout { display:flex; align-items:center; gap:10px; }
 .dash .nav-ic { width:20px; text-align:center; flex-shrink:0; }
+/* 🎨 the drawn sidebar icons (components/NavIcon): the thin cut lines between their parts are the panel's colour */
+.dash .sidebar { --nav-cut: var(--panel); }
+.dash .nav-svg { display:flex; align-items:center; justify-content:center; height:20px; }
+.dash .nav-svg svg { display:block; width:20px; height:20px; }
 
 .sidebar-backdrop { display:none; }
 
