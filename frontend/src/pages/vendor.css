@@ -2412,7 +2412,6 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .pref-toggle input { width: 18px; height: 18px; accent-color: var(--teal); }
 
 /* ✉️ heads-up under "Change email" when the address is not a real one */
-.em-warn { margin-top: 6px; font-size: 12.5px; color: #dc2626; }
 
 /* ✉️ Change email: the code from the new address */
 
@@ -2600,7 +2599,6 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 /* ⚙️ Settings: the chosen tab or option and the main save button share one look — the theme's teal with its ink,
    the same as the PPM Board's chosen view (Raj, 2026-11-11) */
 .set-pick { flex: 1; background: var(--panel-2); color: var(--text); }
-.set-save { margin-top: 12px; }
 .set-pick.is-on, .set-theme-btn.is-on { border-color: var(--btn-fill); background: var(--btn-fill); color: var(--btn-fill-ink); }
 
 /* 👋 Getting started, after the first payment (components/WelcomeSteps.jsx) */

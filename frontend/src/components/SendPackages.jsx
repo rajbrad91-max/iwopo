@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { clientBase } from '../lib/clientBase';
 import SendPackagesModal from '../pages/SendPackagesModal.jsx';
+import { whySendBlocked, useSendPackagesRequest } from '../lib/sendPackages';
 
 /**
  * 📤 What sending packages does once the email has gone: the lead is marked quoted and its offer timer starts, and its
@@ -14,16 +15,23 @@ export async function markPackagesSent(leadId) {
 
 /**
  * 📤 Send Packages — the button, its checks, the compose window (a vendor sees and can adjust what their client
- * receives) and what sending does. The lead page and the contract preview both use it (2026-11-05).
+ * receives) and what sending does. The lead page uses it; the contract preview hands over to it (lib/sendPackages.js).
  * `packageCount`: the packages loaded on the lead. `onMessage(text)`: what to tell the vendor. `onSent()`: after a send.
  */
 export default function SendPackagesButton({ lead, packageCount, onMessage, onSent, className, disabled }) {
   const [open, setOpen] = useState(false);
+  const [asked, doneAsking] = useSendPackagesRequest(lead?.id);
   function start() {
-    if (!lead?.email) return onMessage('⚠️ This lead has no email address');
-    if (!packageCount) return onMessage('⚠️ Load a package folder first');
+    const why = whySendBlocked(lead, packageCount);
+    if (why) return onMessage(why);
     setOpen(true);
   }
+  /* the contract preview asked for this window: open it once the packages have loaded */
+  useEffect(() => {
+    if (!asked || !packageCount || disabled) return;
+    doneAsking();
+    start();
+  }, [asked, packageCount, disabled]); // eslint-disable-line react-hooks/exhaustive-deps
   async function sent() {
     await markPackagesSent(lead.id);
     onSent?.();

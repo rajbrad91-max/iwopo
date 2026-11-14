@@ -4,7 +4,7 @@ import SignContract from './SignContract';
 import './contractpreview.css';
 import AutoReleaseToggle from '../components/AutoReleaseToggle';
 import { useAutoRelease } from '../lib/useAutoRelease';
-import SendPackagesButton from '../components/SendPackages';
+import { whySendBlocked, goSendPackages } from '../lib/sendPackages';
 
 /**
  * 👁️ A vendor reading their own contract before it goes to a client.
@@ -50,6 +50,12 @@ export default function ContractPreview({ leadId }) {
       || templates[0];
     if (pick) setChosen(String(pick.id));
   }, [templates, previewName]);
+
+  function sendPackages() {
+    const why = whySendBlocked(lead, pkgCount);
+    if (why) return setSendMsg(why);
+    goSendPackages(lead.id);
+  }
 
   function onLoaded(ct) {
     setNeedsBuilding(!ct?.id);
@@ -156,11 +162,11 @@ export default function ContractPreview({ leadId }) {
         <SignContract key={docKey} previewLeadId={leadId} previewActions={previewActions} onLoaded={onLoaded} />
       </div>
 
-      {/* 📤 read the contract, then send the packages from here — the same Send Packages as the lead page */}
+      {/* 📤 read the contract, then send the packages — the lead page's send window opens (lib/sendPackages.js) */}
       {lead && (
         <div className="cp-send">
           <p className="cp-send-note">Happy with the contract? Send {lead.name || 'your client'} their packages.</p>
-          <SendPackagesButton lead={lead} packageCount={pkgCount} className="cp-build-btn cp-send-btn" onMessage={setSendMsg} />
+          <button type="button" className="cp-build-btn cp-send-btn" onClick={sendPackages}>📤 Send Packages</button>
           {sendMsg && <div className={`cp-msg ${sendMsg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{sendMsg}</div>}
         </div>
       )}
