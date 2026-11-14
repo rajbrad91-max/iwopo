@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import { api, eventDateValue } from '../../lib/api';
 import { EventCard } from './Calendar';
 import { S_LABEL } from './statuses';
+import NavIcon from '../../components/NavIcon';
+import WeatherCard from './WeatherCard';
 
 /**
  * 📊 One dashboard tile. Every tile opens the list it counts.
@@ -58,15 +60,19 @@ export function DashHome({ goTab, openBooking }) {
         <div className="dash-left">
           {/* 🟢 4 tiles — each opens the list it counts. A number you can see
               but not act on just makes you go and find it yourself. */}
+          <div className="dash-top">
           <div className="stats dash-stats-4">
-            <StatTile icon="📋" value={leads.length} label="Total Leads" onOpen={() => goTab('leads')} />
-            <StatTile icon="📥" value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
-            <StatTile icon="✅" value={booked} label="Booked" onOpen={() => goTab('bookings')} />
+            <StatTile icon={<NavIcon name="leads-all" />} value={leads.length} label="Total Leads" onOpen={() => goTab('leads')} />
+            <StatTile icon={<NavIcon name="leads" />} value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
+            <StatTile icon={<NavIcon name="bookings" />} value={booked} label="Booked" onOpen={() => goTab('bookings')} />
             {/* 🖼️ Straight to the page that lists them, not to Galleries.
                 It sent you to a list of albums to go and find the selections
                 yourself — one more step than the tile implied, and the reason
                 there appeared to be several places to look. */}
-            <StatTile icon="🖼️" value={photoSel} label="Photo Selection" onOpen={() => goTab('requests')} />
+            <StatTile icon={<NavIcon name="requests" />} value={photoSel} label="Photo Selection" onOpen={() => goTab('requests')} />
+          </div>
+          {/* 🌦️ next event's forecast, or today + tomorrow (Raj, 2026-11-14) */}
+          <WeatherCard openBooking={openBooking} />
           </div>
 
           {/* 🟡 Recent Leads */}

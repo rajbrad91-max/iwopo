@@ -814,6 +814,7 @@ export const api = {
   saveMoney: (leadId, data) => request(`/payments/lead/${leadId}/money`, { method: 'PUT', body: JSON.stringify(data) }),
   setWebPayment: (leadId, enabled) => request(`/payments/lead/${leadId}/web-payment`, { method: 'PUT', body: JSON.stringify({ enabled }) }),
   bookings: () => request('/bookings'),
+  weatherDashboard: () => request('/weather/dashboard'),   // 🌦️ next event's forecast, or today + tomorrow
   booking: (leadId) => request(`/bookings/${leadId}`),
   setLeadStatus: (leadId, status) => request(`/bookings/${leadId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   inquirySettings: (handle) => cachedGet(`/inquiry-settings/${handle}`),

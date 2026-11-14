@@ -2317,6 +2317,40 @@ a.nav-item { color: inherit; text-decoration: none; }
   .dash .stats .card .label { font-size: 10px; }
 }
 
+/* 🌦️ The counters and the weather share one row; the weather wraps under them when there is no room (Raj, 2026-11-14).
+   Tile icons are the sidebar's own drawings: Total Leads is the leads tray without its star, New Leads keeps the star. */
+.dash-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 28px; }
+.dash-top > .stats { margin-bottom: 0; flex: none; }
+.dash .stats .card { --nav-cut: var(--panel-2); }
+.dash .stats .card .ic .nav-svg { width: auto; height: auto; }
+.dash .stats .card .ic .nav-svg svg { width: 30px; height: 30px; }
+.dash .wx-card { --wx-accent: #E2622A; flex: 1 1 210px; max-width: 290px; min-width: 0; display: flex; flex-direction: column;
+  justify-content: center; gap: 4px; padding: 12px 14px; color: var(--text); }
+.dash .wx-card.is-link { width: auto; display: flex; align-items: flex-start; }
+/* only the event card opens something, so only it lifts */
+.dash .wx-days:hover { transform: none; box-shadow: none; border-color: var(--line); }
+.wx-kick { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--wx-accent); }
+.wx-kick.is-muted { color: var(--muted); }
+.wx-row, .wx-two, .wx-day { display: flex; align-items: center; }
+.wx-row { gap: 10px; }
+.wx-two { gap: 14px; }
+.wx-day { gap: 7px; }
+.wx-ic { display: flex; flex: none; }
+.wx-ic svg { display: block; width: 26px; height: 26px; }
+.wx-ic.is-big svg { width: 36px; height: 36px; }
+.wx-now, .wx-day > span { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.wx-now b { font-size: 26px; font-weight: 800; line-height: 1; }
+.wx-now small, .wx-day i { font-size: 11px; color: var(--muted); font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx-day b { font-size: 17px; font-weight: 800; line-height: 1.1; }
+.wx-day u { text-decoration: none; font-size: 12px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.wx-note { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx-note.is-tip { color: var(--teal); }
+@media (max-width: 600px) {
+  .dash-top { flex-direction: column; }
+  .dash .wx-card { max-width: none; flex: none; }
+  .dash .stats .card .ic .nav-svg svg { width: 20px; height: 20px; }
+}
+
 /* 📋 Recent Leads: four on phones */
 @media (max-width: 720px) { .dash-recent tbody tr:nth-child(n+5) { display: none; } }
 

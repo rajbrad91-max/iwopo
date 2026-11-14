@@ -20,6 +20,7 @@ import meRoutes from './routes/me.js';
 import vendorPackageRoutes from './routes/vendorPackages.js';
 import paymentRoutes from './routes/payments.js';
 import bookingRoutes from './routes/bookings.js';
+import weatherRoutes from './routes/weather.js';
 import inquirySettingsRoutes from './routes/inquirySettings.js';
 import emailRoutes from './routes/email.js';
 import contractRoutes from './routes/contracts.js';
@@ -195,6 +196,7 @@ app.use('/api/me', meRoutes);
 app.use('/api/vendor-packages', vendorPackageRoutes);
 app.use('/api/payments', gate('leads'), paymentRoutes);
 app.use('/api/bookings', gate('leads'), bookingRoutes);
+app.use('/api/weather', gate('leads'), weatherRoutes);   // 🌦️ forecast beside the dashboard tiles
 app.use('/api/inquiry-settings', gate('leads'), inquirySettingsRoutes);
 app.use('/api/email', gate('leads'), emailRoutes);
 app.use('/api/contracts', gate('contracts'), contractRoutes);
