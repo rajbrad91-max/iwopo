@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { passwordReady } from '../lib/passwordRules';
 import VerifyCode from '../components/VerifyCode';
 import { api, setSession } from '../lib/api';
@@ -6,6 +6,11 @@ import PasswordInput from '../components/PasswordInput';
 import { PROFESSION_LIST } from '../lib/professions';
 import './selling.css';
 import PlanTable, { planPriceOf, planSaving } from '../components/PlanTable';
+import { newHomePreview, homeDesign } from '../lib/previewFlags';
+
+/* ✨ the new home page, shown on staging only while it is refined (lib/previewFlags.js); loaded only where it is shown */
+const HomeNew = lazy(() => import('./home/HomeNew'));
+const HomeDark = lazy(() => import('./home/HomeDark'));
 
 /**
  * Reveal-on-scroll. Skipped for reduced-motion via CSS; observer still adds
@@ -336,8 +341,9 @@ export default function Selling({ onSignup, onGoLogin }) {
     : chosenPrice.text
       + (chosen.trial_days > 0 && trialOk ? ` · ${chosen.trial_days}-day free trial, nothing charged today` : ' · charged today, cancel anytime');
 
-  return (
-    <div className="sl">
+  /* the confirm-your-email step and the sign-up window a plan's button opens — shared by both home pages */
+  const overlays = (
+    <>
       {verify && (
         <div className="vc-overlay" role="dialog" aria-label="Confirm your email">
           <div className="sl-signup-box sl-buy auth-public">
@@ -362,6 +368,29 @@ export default function Selling({ onSignup, onGoLogin }) {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (newHomePreview()) return (
+    <>
+      {overlays}
+      <Suspense fallback={null}>
+        {homeDesign() === 'light' ? (
+          <HomeNew open={open} trialOk={trialOk} cycle={cycle} setCycle={setCycle} plans={realPkgs} compare={compare} compareNotes={compareNotes}
+            priceOf={priceOf} bestSave={bestSave} choosePlan={choosePlan} goSignup={goSignup} goPackages={goPackages} onGoLogin={onGoLogin}
+            wl={wl} setWl={setWl} joinWaitlist={joinWaitlist} features={FEATURES} trades={INDUSTRIES.map(([, name]) => name)} />
+        ) : (
+          <HomeDark open={open} trialOk={trialOk} cycle={cycle} setCycle={setCycle} plans={realPkgs} compare={compare} compareNotes={compareNotes}
+            priceOf={priceOf} bestSave={bestSave} choosePlan={choosePlan} goPackages={goPackages} onGoLogin={onGoLogin}
+            wl={wl} setWl={setWl} joinWaitlist={joinWaitlist} />
+        )}
+      </Suspense>
+    </>
+  );
+
+  return (
+    <div className="sl">
+      {overlays}
       <nav className="sl-nav">
         <div className="sl-nav-inner">
           <a href="/" className="sl-logo" aria-label="iwopo home">
