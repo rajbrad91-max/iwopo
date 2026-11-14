@@ -2413,11 +2413,8 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 
 /* ✉️ heads-up under "Change email" when the address is not a real one */
 .em-warn { margin-top: 6px; font-size: 12.5px; color: #dc2626; }
-.em-btn { margin-top: 8px; }
 
 /* ✉️ Change email: the code from the new address */
-.em-confirm { margin-top: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); }
-.em-confirm-l { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 
 /* 📱 Mobile audit (Raj, 2026-10-23) */
 /* 5 · Inquiry Form: brand colour and watermark share a row while there's room, the watermark takes its own row when not */
@@ -2604,7 +2601,7 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
    the same as the PPM Board's chosen view (Raj, 2026-11-11) */
 .set-pick { flex: 1; background: var(--panel-2); color: var(--text); }
 .set-save { margin-top: 12px; }
-.set-pick.is-on, .set-theme-btn.is-on, .set-primary { border-color: var(--btn-fill); background: var(--btn-fill); color: var(--btn-fill-ink); }
+.set-pick.is-on, .set-theme-btn.is-on { border-color: var(--btn-fill); background: var(--btn-fill); color: var(--btn-fill-ink); }
 
 /* 👋 Getting started, after the first payment (components/WelcomeSteps.jsx) */
 .ws-back { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .55); }
@@ -2824,34 +2821,25 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .set-body { max-width: 560px; display: flex; flex-direction: column; gap: 16px; }
 .set-split { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 1100px) { .set-split { grid-template-columns: 1fr; } }
-.set-note { margin-bottom: 10px; font-size: 13px; color: var(--muted); }
-.set-note.is-ok { color: var(--green); }
-.set-alert { margin-bottom: 10px; padding: 10px; border-radius: 8px; font-size: 13px; }
-.set-alert.is-ok { background: color-mix(in srgb, var(--green) 9%, transparent); color: var(--green); }
-.set-alert.is-bad { background: color-mix(in srgb, var(--red) 9%, transparent); color: var(--red); }
 .dev-fresh { margin-bottom: 18px; padding: 16px; border: 1px solid var(--teal); border-radius: 10px; background: var(--teal-soft); }
 .dev-token { display: block; padding: 9px 11px; border-radius: 7px; background: var(--panel); font-size: 12.5px; word-break: break-all; }
 
 /* ✉️ Email templates, beside the mail settings (components/EmailTemplates.jsx) */
 .et { padding: 22px; }
 .et-intro { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.6; }
-.et-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.et-item {
-  display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; cursor: pointer;
-  border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--text);
-  font: inherit; font-size: 12.5px; font-weight: 600;
-}
-.et-item:hover { border-color: var(--teal); }
-.et-item.is-on { border-color: var(--btn-fill); background: var(--btn-fill); color: var(--btn-fill-ink); }
+/* every control here is the panel's .refresh button — white, rises and glows on hover — with the soft tint of
+   Active · History on Leads when chosen (Raj, 2026-11-14) */
+.et-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.et-list { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+.et-item { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12.5px; }
+.et-item.is-on, .et-mode-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .et-badge { padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
-.et-item.is-on .et-badge { background: color-mix(in srgb, var(--btn-fill-ink) 22%, transparent); color: var(--btn-fill-ink); }
 .et-when { margin: 4px 0 14px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
 .et-gap { margin-top: 12px; }
 .et-body { min-height: 190px; resize: vertical; font-family: inherit; line-height: 1.55; }
 .et-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .et-tags-l { font-size: 11.5px; color: var(--muted); }
-.et-tag { padding: 4px 9px; cursor: pointer; border: 1px dashed var(--line); border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 12px; }
-.et-tag:hover { border-color: var(--teal); color: var(--teal); }
+.et-tag, .et-small { padding: 5px 10px; font-size: 12px; font-weight: 500; }
 .et-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
 .et-msg { font-size: 12.5px; }
 .et-preview { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
@@ -2861,11 +2849,33 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .et-attach { display: inline-block; margin-top: 12px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; }
 
 /* 🧑‍💻 Email templates, HTML mode (private for now — lib/emailTemplates.js) */
-.et-mode { display: inline-flex; gap: 2px; margin: 0 0 14px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); }
-.et-mode-btn { padding: 6px 14px; cursor: pointer; border: none; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; }
-.et-mode-btn.is-on { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.et-mode { display: inline-flex; flex: none; gap: 6px; }
+.et-mode-btn { padding: 7px 12px; font-size: 12.5px; }
 .et-code-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.et-link { padding: 0; cursor: pointer; border: none; background: none; color: var(--teal); font: inherit; font-size: 12px; text-decoration: underline; }
 .et-code { min-height: 300px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
 .et-hint { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
 .et-frame { display: block; width: 100%; height: 520px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+
+/* 👤 Settings → Account (Raj, 2026-11-14): the business profile beside sign-in & security. One field style, the
+   panel's own buttons, plain labels. */
+.acct-card { padding: 22px; }
+.acct-h { margin: 0 0 4px; font-size: 18px; }
+.acct-sub { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.acct-sec { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.acct-sec-h { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text); }
+.acct-label { display: block; margin: 12px 0 6px; font-size: 13px; color: var(--muted); }
+.acct-input { display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 14px; }
+.acct-input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 15%, transparent); }
+.acct-logo { display: flex; align-items: center; gap: 12px; }
+.acct-logo img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; border: 1px solid var(--line); }
+.acct-upload { display: inline-block; }
+.acct-upload input { display: none; }
+.acct-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.acct-msg { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.acct-actions .acct-msg { margin: 0; }
+.acct-msg.is-ok { color: var(--green); }
+.acct-msg.is-bad { color: var(--red); }
+.acct-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.acct-row-text { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.acct-confirm { margin-top: 12px; padding: 4px 14px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.acct-confirm .acct-input { background: var(--panel); }

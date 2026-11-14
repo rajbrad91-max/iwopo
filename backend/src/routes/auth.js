@@ -10,7 +10,7 @@ import { signToken } from '../middleware/auth.js';
 import { sendPlatformEmail } from './email.js';
 import { revokeToken, revokeAllForUser } from '../lib/tokenRevocation.js';
 import { requireAuth } from '../middleware/auth.js';
-import { logSecurity, deviceOf } from '../lib/securityLog.js';
+import { deviceOf, newDeviceAlert } from '../lib/signInAlert.js';   // ✉️ the "new sign-in" email
 import jwt from 'jsonwebtoken';
 import { signupsOpen, SIGNUPS_CLOSED_MESSAGE } from '../lib/signups.js';
 import { clientIp } from '../lib/clientIp.js';
@@ -38,6 +38,15 @@ async function trusted(userId, token) {
   if (!token) return false;
   const row = await prisma.trusted_devices.findFirst({ where: { user_id: userId, token_hash: sha256(token), expires_at: { gt: new Date() } }, select: { id: true } }).catch(() => null);
   return !!row;
+}
+/** remember this browser for TRUST_DAYS: only a hash of its token is kept here; the browser keeps the token */
+async function rememberDevice(user, req) {
+  const token = crypto.randomBytes(32).toString('hex');
+  await prisma.trusted_devices.create({ data: {
+    user_id: user.id, token_hash: sha256(token), device: deviceOf(req.headers['user-agent']).slice(0, 120),
+    expires_at: new Date(Date.now() + TRUST_DAYS * 864e5),
+  } });
+  return token;
 }
 const sessionFor = (user) => ({ token: signToken(user), user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id } });
 
@@ -72,17 +81,12 @@ router.get('/qa-session', limit({ name: 'qa-session', max: 30, windowMs: 60_000 
   res.json({ token: signToken(user), user: { id: user.id, name: user.name, email: user.email, role: user.role, vendor_id: user.vendor_id } });
 });
 
-/** 🛡️ the account a paused sign-in was aimed at gets a line in its security log */
-async function lockedOut(req) {
-  const u = await prisma.users.findFirst({ where: { email: { equals: String(req.body?.email || '').trim(), mode: 'insensitive' } }, select: { id: true, vendor_id: true } }).catch(() => null);
-  logSecurity(req, u, 'login_locked');
-}
 
 router.post('/login',
   // per address, so one machine cannot grind through a password list
   limit({ name: 'login-ip', max: 20, windowMs: 15 * 60_000 }),
   // and per account, so a spread of addresses cannot gang up on one inbox
-  limit({ name: 'login-user', max: 8, windowMs: 15 * 60_000, key: r => String(r.body?.email || '').trim().toLowerCase(), perAccount: true, onBlock: lockedOut }),
+  limit({ name: 'login-user', max: 8, windowMs: 15 * 60_000, key: r => String(r.body?.email || '').trim().toLowerCase(), perAccount: true }),
   async (req, res) => {
   const { password } = req.body;
   const email = String(req.body.email || '').trim();   // ✉️ "Info@…" from a phone keyboard is the same address
@@ -92,7 +96,7 @@ router.post('/login',
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
   const ok = await bcrypt.compare(password, user.password_hash);
-  if (!ok) { logSecurity(req, user, 'login_failed'); return res.status(401).json({ error: 'Invalid credentials' }); }
+  if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
   if (!user.email_verified_at) {   // ✉️ right password, address not confirmed yet: send (or re-send) the code
     const sent = await issueCode(user.id, 'verify', { to: user.email });
     return res.status(403).json({ error: 'Please confirm your email first — enter the code we sent you.', verify: true, email: user.email, ...(sent.code ? { sandbox_code: sent.code } : {}) });
@@ -115,17 +119,20 @@ router.post('/login',
     }
   }
 
-  /* ✉️ a device this account hasn't trusted: the emailed code first.
+  /* ✉️ a device this account hasn't trusted: the emailed code first — unless the account holder turned two-step
+     sign-in off (Settings → Account; on unless they do).
      🚨 Emergency switch: TWO_STEP=off in backend/.env (then restart) turns this off for everyone — for when email
      can't be sent at all and no one could receive a code. Off only by choice; anything else leaves it on. */
-  if (process.env.TWO_STEP !== 'off' && !(await trusted(user.id, req.body.device_token))) {
+  const known = await trusted(user.id, req.body.device_token);
+  if (process.env.TWO_STEP !== 'off' && user.two_step_enabled && !known) {
     const sent = await issueCode(user.id, 'login', { to: user.email });
     if (sent.error) return res.status(502).json({ error: 'We could not send your sign-in code just now. Please try again in a minute.' });
-    if (!sent.tooSoon) logSecurity(req, user, 'two_step_sent');   // within 45 s the code already sent still works
     return res.json({ two_step: true, ticket: twoStepTicket(user), email: maskEmail(user.email), ...(sent.code ? { sandbox_code: sent.code } : {}) });
   }
-  logSecurity(req, user, 'login_ok');
-  res.json(sessionFor(user));
+  // a device this account has not used before: remembered from now on, and the account holder is emailed
+  const device_token = known ? null : await rememberDevice(user, req);
+  if (!known) newDeviceAlert(req, user);
+  res.json({ ...sessionFor(user), ...(device_token ? { device_token } : {}) });
 });
 
 /* ✉️ POST /api/auth/login/code { ticket, code, remember } — the emailed code finishes the sign-in */
@@ -135,17 +142,9 @@ router.post('/login/code', limit({ name: 'login-code', max: 15, windowMs: 15 * 6
   const user = await prisma.users.findUnique({ where: { id: uid } });
   if (!user) return res.status(400).json({ error: 'This sign-in has expired — please sign in again.' });
   try { await useCode(user.id, 'login', req.body.code); }
-  catch (e) { logSecurity(req, user, 'two_step_failed'); return res.status(400).json({ error: e.message }); }
-  let device_token;
-  if (req.body.remember) {
-    device_token = crypto.randomBytes(32).toString('hex');
-    await prisma.trusted_devices.create({ data: {
-      user_id: user.id, token_hash: sha256(device_token), device: deviceOf(req.headers['user-agent']).slice(0, 120),
-      expires_at: new Date(Date.now() + TRUST_DAYS * 864e5),
-    } });
-    logSecurity(req, user, 'device_remembered');
-  }
-  logSecurity(req, user, 'login_ok');
+  catch (e) { return res.status(400).json({ error: e.message }); }
+  const device_token = req.body.remember ? await rememberDevice(user, req) : null;
+  newDeviceAlert(req, user);   // the code was asked for because this device was not known
   res.json({ ...sessionFor(user), ...(device_token ? { device_token } : {}) });
 });
 
@@ -157,7 +156,6 @@ router.post('/login/resend', limit({ name: 'login-resend', max: 6, windowMs: 60 
   const sent = await issueCode(user.id, 'login', { to: user.email });
   if (sent.tooSoon) return res.status(429).json({ error: 'Please wait a little before asking for another code.' });
   if (sent.error) return res.status(502).json({ error: 'We could not send a new code just now. Please try again in a minute.' });
-  logSecurity(req, user, 'two_step_sent');
   res.json({ ok: true, ...(sent.code ? { sandbox_code: sent.code } : {}) });
 });
 
@@ -330,8 +328,7 @@ router.post('/reset', limit({ name: 'reset', max: 10, windowMs: 60 * 60_000 }), 
        working for another seven days defeats the point. PUT /me/password
        already did this; the reset path did not. */
     await revokeAllForUser(row.user_id);
-    const who = await prisma.users.findUnique({ where: { id: row.user_id }, select: { email: true, vendor_id: true } });
-    logSecurity(req, { id: row.user_id, vendor_id: who?.vendor_id }, 'password_reset');
+    const who = await prisma.users.findUnique({ where: { id: row.user_id }, select: { email: true } });
     notice(who?.email, 'Your iwopo password was changed', ['The password for your iwopo account was just reset, and every device was signed out.']);
     res.json({ ok: true, message: 'Password updated — you can log in now. ✅' });
   } catch (e) { serverError(res, e); }
@@ -360,7 +357,6 @@ router.post('/verify', limit({ name: 'verify', max: 20, windowMs: 15 * 60_000 })
     if (user.email_verified_at) return res.status(400).json({ error: 'already_confirmed', message: 'This email is already confirmed — log in to carry on.' });
     await useCode(user.id, 'verify', req.body.code);
     const done = await prisma.users.update({ where: { id: user.id }, data: { email_verified_at: new Date() } });
-    logSecurity(req, done, 'email_confirmed');
     const v = done.vendor_id ? await prisma.vendors.findUnique({ where: { id: done.vendor_id }, select: { pending_plan_id: true } }) : null;
     res.json({ token: signToken(done), user: { id: done.id, name: done.name, email: done.email, role: done.role, vendor_id: done.vendor_id },
       pay_next: !!v?.pending_plan_id });   // 💳 a chosen plan waits: the next stop is Stripe's payment page

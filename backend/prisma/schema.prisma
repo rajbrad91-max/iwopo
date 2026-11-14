@@ -789,6 +789,8 @@ model users {
   created_at            DateTime?               @default(now()) @db.Timestamp(6)
   tokens_valid_from     DateTime?               @db.Timestamp(6)
   email_verified_at     DateTime?               @default(now()) @db.Timestamp(6)
+  /// 🔐 two-step sign-in for this account — on unless its holder turns it off in Settings → Account (2026-11-14)
+  two_step_enabled      Boolean                 @default(true)
   email_codes           email_codes[]
   password_reset_tokens password_reset_tokens[]
   revoked_tokens        revoked_tokens[]
@@ -1769,19 +1771,6 @@ model email_inquiries {
 
 /// 🛡️ Sign-ins, wrong passwords, lock-outs, password changes and email confirmations per account (2026-10-30).
 /// Shown only to the account holder (Settings → Security). Kept 180 days (lib/securityLog.js).
-model security_events {
-  id         Int      @id @default(autoincrement())
-  user_id    Int?
-  vendor_id  Int?
-  event      String   @db.VarChar(40)
-  ip         String?  @db.VarChar(64)
-  device     String?  @db.VarChar(120)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  @@index([user_id, created_at])
-  @@index([vendor_id])
-}
-
 /// ✉️ Two-step sign-in: a device an account chose to remember for 30 days (2026-10-30). Only a hash of the device's
 /// token is kept. A password change or reset forgets them all (lib/tokenRevocation.js).
 model trusted_devices {

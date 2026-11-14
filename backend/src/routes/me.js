@@ -16,7 +16,7 @@ import { CURRENCIES, CURRENCY_CODES, currencyFor } from '../lib/currencies.js';
 import { resolveTimezone, timezoneToStore } from '../lib/timezones.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { revokeAllForUser } from '../lib/tokenRevocation.js';
-import { logSecurity } from '../lib/securityLog.js';
+import { limit } from '../middleware/rateLimit.js';
 import { serverError } from '../lib/httpError.js';
 import { PROFESSION_KEYS } from '../lib/professions.js';
 import { refreshLimit } from '../lib/overLimit.js';
@@ -278,21 +278,41 @@ router.put('/password', requireAuth, async (req, res) => {
        because you fear someone has it is pointless if their session survives
        the change — which is exactly what happened before. */
     await revokeAllForUser(req.user.id);
-    logSecurity(req, req.user, 'password_changed');
     notice(me.email, 'Your iwopo password was changed', ['The password for your iwopo account was just changed, and every other device was signed out.']);
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
 
-// 🛡️ GET /api/me/security → this account's own security log, newest first
-router.get('/security', requireAuth, async (req, res) => {
+/**
+ * 🔐 GET / PUT /api/me/two-step — this account's own two-step sign-in (Raj, 2026-11-14). On for everyone unless they
+ * turn it off here. Changing it in either direction takes the account's password again; the account holder is
+ * emailed about it, so a change they did not make does not go unnoticed. Only the signed-in account is ever touched:
+ * its id comes from the token, never the body.
+ */
+router.get('/two-step', requireAuth, async (req, res) => {
   try {
-    const events = await prisma.security_events.findMany({
-      where: { user_id: req.user.id },                 // 🔒 own account only — the id comes from the token
-      orderBy: { created_at: 'desc' }, take: 50,
-      select: { event: true, ip: true, device: true, created_at: true },
-    });
-    res.json({ events });
+    const me = await prisma.users.findUnique({ where: { id: req.user.id }, select: { two_step_enabled: true } });   // 🔒 own account only
+    res.json({ enabled: me?.two_step_enabled !== false });
+  } catch (e) { serverError(res, e); }
+});
+
+router.put('/two-step', requireAuth,
+  // a stolen session cannot sit guessing the password here
+  limit({ name: 'two-step-change', max: 6, windowMs: 15 * 60_000, key: r => String(r.user.id), perAccount: true }),
+  async (req, res) => {
+  const enabled = req.body?.enabled;
+  const password = req.body?.password;
+  if (typeof enabled !== 'boolean' || typeof password !== 'string' || !password) return res.status(400).json({ error: 'Enter your password to change two-step sign-in.' });
+  try {
+    const me = await prisma.users.findUnique({ where: { id: req.user.id } });   // 🔒 own account only
+    if (!me || !(await bcrypt.compare(password, me.password_hash))) return res.status(401).json({ error: 'Wrong password' });
+    if (me.two_step_enabled !== enabled) {
+      await prisma.users.update({ where: { id: me.id }, data: { two_step_enabled: enabled } });
+      notice(me.email, enabled ? 'Two-step sign-in is on' : 'Two-step sign-in was turned off', [enabled
+        ? 'Two-step sign-in was just turned on for your iwopo account. Signing in on a new device will now also ask for a code we email you.'
+        : 'Two-step sign-in was just turned off for your iwopo account. Your password alone now signs you in.']);
+    }
+    res.json({ enabled });
   } catch (e) { serverError(res, e); }
 });
 

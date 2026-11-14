@@ -7,7 +7,6 @@ import { storageFor } from '../lib/storageQuota.js';
 import { serverError } from '../lib/httpError.js';
 import { deletePreview, deleteVendor } from '../lib/deleteVendor.js';
 import { membershipOf, changeMembership, formerSubscribers } from '../lib/membership.js';
-import { logSecurity } from '../lib/securityLog.js';
 
 const router = express.Router();
 
@@ -159,7 +158,6 @@ router.get('/:id/delete-preview', requireAuth, requireSuperAdmin, async (req, re
 router.delete('/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const removed = await deleteVendor(req.params.id, req.body?.confirm, { cancelSubscription: req.body?.cancel_subscription === true });
-    logSecurity(req, req.user, `vendor_deleted:${Number(req.params.id)}`);
     res.json({ ok: true, removed });
   } catch (e) { if (e.status) return res.status(e.status).json({ error: e.message }); serverError(res, e); }
 });
@@ -173,7 +171,6 @@ router.get('/former', requireAuth, requireSuperAdmin, async (req, res) => {
 router.post('/:id/membership', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const m = await changeMembership(Number(req.params.id), String(req.body?.when || ''));
-    logSecurity(req, req.user, `membership_${req.body?.when}:${req.params.id}`);
     res.json({ membership: m });
   } catch (e) { e.status ? res.status(e.status).json({ error: e.message }) : serverError(res, e); }
 });

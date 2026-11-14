@@ -87,24 +87,26 @@ export default function EmailTemplates({ startKind = null }) {
       <h2 className="es-title">✉️ Email templates</h2>
       <p className="et-intro">The words iwopo uses when it emails your clients. Change them here once and every email of that kind uses them.</p>
 
-      <div className="et-list" role="tablist">
-        {data.emails.map(e => (
-          <button key={e.kind} type="button" role="tab" aria-selected={e.kind === kind}
-            className={`et-item${e.kind === kind ? ' is-on' : ''}`} onClick={() => setKind(e.kind)}>
-            {e.label}{e.edited && <span className="et-badge">{e.mode === 'html' ? 'HTML' : 'Edited'}</span>}
-          </button>
-        ))}
-      </div>
-      <p className="et-when">{cur.when}</p>
-
-      {canHtml && (
-        <div className="et-mode" role="radiogroup" aria-label="Send this email as">
-          {[['text', 'Plain text'], ['html', 'HTML']].map(([m, label]) => (
-            <button key={m} type="button" role="radio" aria-checked={draft.mode === m}
-              className={`et-mode-btn${draft.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
+      {/* the emails, and — for an account allowed HTML — how the chosen one is sent, on the same row */}
+      <div className="et-head">
+        <div className="et-list" role="tablist">
+          {data.emails.map(e => (
+            <button key={e.kind} type="button" role="tab" aria-selected={e.kind === kind}
+              className={`refresh et-item${e.kind === kind ? ' is-on' : ''}`} onClick={() => setKind(e.kind)}>
+              {e.label}{e.edited && <span className="et-badge">{e.mode === 'html' ? 'HTML' : 'Edited'}</span>}
+            </button>
           ))}
         </div>
-      )}
+        {canHtml && (
+          <div className="et-mode" role="radiogroup" aria-label="Send this email as">
+            {[['text', 'Plain text'], ['html', 'HTML']].map(([m, label]) => (
+              <button key={m} type="button" role="radio" aria-checked={draft.mode === m}
+                className={`refresh et-mode-btn${draft.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="et-when">{cur.when}</p>
 
       <label className="fb-label" htmlFor="et-subject">Subject</label>
       <input id="et-subject" ref={subjRef} className="fb-input" maxLength={200} value={draft.subject}
@@ -114,7 +116,7 @@ export default function EmailTemplates({ startKind = null }) {
         <>
           <div className="et-code-head">
             <label className="fb-label et-gap" htmlFor="et-html">HTML</label>
-            <button type="button" className="et-link" onClick={() => setDraft({ ...draft, html: cur.starter_html })}>Start again from the simple design</button>
+            <button type="button" className="refresh et-small" onClick={() => setDraft({ ...draft, html: cur.starter_html })}>Start again from the simple design</button>
           </div>
           <textarea id="et-html" ref={bodyRef} className="fb-input et-body et-code" rows={16} spellCheck={false} value={draft.html}
             onFocus={() => { lastField.current = 'body'; }} onChange={e => setDraft({ ...draft, html: e.target.value })} />
@@ -131,14 +133,14 @@ export default function EmailTemplates({ startKind = null }) {
       <div className="et-tags">
         <span className="et-tags-l">Insert:</span>
         {cur.tags.map(t => (
-          <button key={t} type="button" className="et-tag" onMouseDown={e => e.preventDefault()} onClick={() => insert(t)}>
+          <button key={t} type="button" className="refresh et-tag" onMouseDown={e => e.preventDefault()} onClick={() => insert(t)}>
             {data.tag_labels[t] || t}
           </button>
         ))}
       </div>
 
       <div className="et-actions">
-        <button type="button" className="refresh set-primary" disabled={!dirty || busy} onClick={save}>{busy ? 'Saving…' : '💾 Save'}</button>
+        <button type="button" className="refresh" disabled={!dirty || busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
         {dirty && <button type="button" className="refresh" disabled={busy} onClick={() => setDraft(saved)}>Undo changes</button>}
         {cur.edited && !dirty && <button type="button" className="refresh" disabled={busy} onClick={reset}>Reset to default</button>}
         {msg && <span className={`et-msg ${msg[0] === '⚠' ? 'u-color-red' : 'u-color-green'}`}>{msg}</span>}

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { api, setSession } from '../lib/api';
+import { api, setSession, rememberDevice } from '../lib/api';
 import PasswordInput from '../components/PasswordInput';
 import VerifyCode from '../components/VerifyCode';
 import ResetPassword from './ResetPassword';
@@ -29,6 +29,7 @@ export default function Login({ onLogin, onBack }) {
     try {
       const r = await api.login(email, password);
       if (r.two_step) { setTwoStep(r); return; }   // ✉️ a device this account hasn't trusted
+      if (r.device_token) rememberDevice(email, r.device_token);   // a new device, now known: no second "new sign-in" email
       setSession(r.token, r.user);
       onLogin(r.user);
     } catch (err) {
@@ -63,7 +64,7 @@ export default function Login({ onLogin, onBack }) {
   if (upgrade) return (
     <ResetPassword token={upgrade} heading="Please choose a stronger password 🔐"
       intro="Your password doesn't meet iwopo's new security rules. Choose a new one to continue — you'll go straight in."
-      onDone={async (pw) => { const r = await api.login(email, pw); if (r.two_step) { setUpgrade(null); setTwoStep(r); return; } setSession(r.token, r.user); onLogin(r.user); }} />
+      onDone={async (pw) => { const r = await api.login(email, pw); if (r.two_step) { setUpgrade(null); setTwoStep(r); return; } if (r.device_token) rememberDevice(email, r.device_token); setSession(r.token, r.user); onLogin(r.user); }} />
   );
 
   return (

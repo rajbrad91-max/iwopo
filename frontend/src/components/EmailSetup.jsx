@@ -119,7 +119,7 @@ export default function EmailSetup() {
       </div>
 
       {msg && <p className={`es-msg${msg.startsWith('⚠') ? ' is-bad' : ''}`} role="status">{msg}</p>}
-      <button type="button" className="refresh set-primary es-save" onClick={save}>💾 Save email settings</button>
+      <button type="button" className="refresh es-save" onClick={save}>Save email settings</button>
     </div>
   );
 }

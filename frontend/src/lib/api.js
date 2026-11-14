@@ -989,7 +989,8 @@ export const api = {
   analytics: (days) => request('/analytics?days=' + (days || 30)),
   // 🔑 machines allowed to upload — the live shoot watcher
   devices: () => request('/devices'),
-  securityLog: () => request('/me/security'),   // 🛡️ this account's sign-ins and password changes
+  twoStep: () => request('/me/two-step'),   // 🔐 this account's two-step sign-in
+  setTwoStep: (enabled, password) => request('/me/two-step', { method: 'PUT', body: JSON.stringify({ enabled, password }) }),
   addDevice: (name) => request('/devices', { method: 'POST', body: JSON.stringify({ name }) }),
   deleteDevice: (id) => request('/devices/' + id, { method: 'DELETE' }),
   // 📞 the timeline; 'since' is what keeps the open page live

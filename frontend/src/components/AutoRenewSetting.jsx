@@ -16,7 +16,7 @@ export default function AutoRenewSetting() {
   async function setRenew(on) {
     setBusy(true); setMsg('');
     try { await api.billingAutoRenew(on); await load(); setMsg(on ? 'Your plan renews automatically.' : 'Your plan ends with this billing period.'); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
+    catch (e) { setMsg(e.message); }
     finally { setBusy(false); }
   }
   const when = sub.renews_at ? fmtDateTime(sub.renews_at, { dateOnly: true }) : null;
