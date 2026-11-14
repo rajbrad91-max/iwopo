@@ -15,7 +15,7 @@ export function startDarkHome(root) {
 
   /* ---------- gallery: 12 real photos, faces from iwopo's engine ---------- */
   const byFile = Object.fromEntries(FACES.map(f => [f.file.replace('.jpg', ''), f]));
-  const ORDER = ['g01', 'g06', 'g02', 'g10', 'g07', 'g03', 'g04', 'g13', 'g05', 'g08', 'g17', 'g18'];
+  const ORDER = ['g01', 'g06', 'g02', 'g10', 'g05', 'g03', 'g04', 'g13', 'g16', 'g11', 'g17', 'g18'];   /* 5 and 7: the two Indian photos Raj keeps */
   const grid = $('grid'), cells = [];
   ORDER.forEach((n, i) => { const c = document.createElement('div'); c.className = 'cell'; c.dataset.bg = IMG(n); grid.appendChild(c);
     const f = byFile[n] || { faces: [] }; cells.push({ el: c, n, i, row: Math.floor(i / 4), match: f.faces.some(x => x.m), faces: f.faces, rings: [] }); });
@@ -26,7 +26,7 @@ export function startDarkHome(root) {
         if (cx < 0 || cy < 0 || cx > cw || cy > ch || d < 10) return; const r = document.createElement('span'); r.className = 'ring' + (fc.m ? ' m' : '');
         Object.assign(r.style, { width: d + 'px', height: d + 'px', left: (cx - d / 2) + 'px', top: (cy - d / 2) + 'px' }); c.el.appendChild(r); c.rings.push({ el: r, m: fc.m }); }); });
   }
-  const MATCHES = FACES.filter(f => f.faces.some(x => x.m)).map(f => f.file.replace('.jpg', ''));
+  const MATCHES = cells.filter(c => c.match).map(c => c.n);   /* the gallery's own photos of the guest — never the selfie itself */
   const rrow = $('rrow'); MATCHES.slice(0, 8).forEach(n => { const i = document.createElement('i'); i.dataset.bg = IMG(n); rrow.appendChild(i); });
 
   /* ---------- pipeline cards ---------- */
