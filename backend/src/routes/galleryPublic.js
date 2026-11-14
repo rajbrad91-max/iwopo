@@ -33,6 +33,7 @@ import { tellEditors } from '../lib/shoots.js';
 import { sendAsVendor } from './email.js';
 import { quiet } from '../lib/quiet.js';
 import { noteFailure } from '../lib/noteFailure.js';
+import { withDescriptors } from '../lib/faceVectors.js';
 
 /* A guest uploads a selfie here with no account and no token beyond the album
    link, so this is the one upload an anonymous caller can reach. It had no size
@@ -576,7 +577,7 @@ router.post('/:token/selfie', limit({ name: 'selfie', max: 20, windowMs: 15 * 60
     } else {
       const photos = await prisma.photos.findMany({
         where: { album_id: a.id, face_indexed: true, face_count: { gt: 0 } },
-        select: { id: true, faces: true },
+        select: { id: true, faces: true, face_vectors: true },
       });
       const q = await getFaceDescriptors(req.file.path);
       fs.unlink(req.file.path, () => {});
@@ -584,7 +585,7 @@ router.post('/:token/selfie', limit({ name: 'selfie', max: 20, windowMs: 15 * 60
       const candidates = [];
       // 👤 the same "is it really a face" rule the circles use — a back-of-head
       // fingerprint must not be what a guest's selfie matches
-      for (const p of photos) for (const f of (p.faces || [])) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
+      for (const p of photos) for (const f of withDescriptors(p)) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
       const matches = findMatches(q[0].descriptor, candidates)   // the engine's own "same person" limit;
       const seen = new Set();
       for (const m of matches) if (!seen.has(m.photo_id)) { seen.add(m.photo_id); ids.push(m.photo_id); }

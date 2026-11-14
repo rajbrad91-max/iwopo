@@ -36,6 +36,7 @@ import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
 import { limit } from '../middleware/rateLimit.js';
 import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
+import { withDescriptors } from '../lib/faceVectors.js';
 
 const router = express.Router();
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: 12 * 1024 * 1024 } });
@@ -228,14 +229,14 @@ router.post('/:token/match', limit({ name: 'liveshoot-selfie', max: 60, windowMs
        matching let strangers through. Same method here now. */
     const indexed = await prisma.photos.findMany({
       where: { album_id: a.id, face_indexed: true, face_count: { gt: 0 } },  // 🔒 this album only
-      select: { id: true, faces: true },
+      select: { id: true, faces: true, face_vectors: true },
     });
 
     const limit = selfieLimit(a.selfie_strictness);
 
     const ranked = [];
     for (const p of indexed) {
-      (p.faces || []).forEach((f, k) => {
+      withDescriptors(p).forEach((f, k) => {
         // 👤 same rule as the circles: a back-of-head fingerprint is not a face
         if (!f.descriptor || !isUsableFace(f)) return;
         const d = faceDistance(me, f.descriptor);

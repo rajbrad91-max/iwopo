@@ -10,6 +10,7 @@
 import prisma from '../config/prisma.js';
 import { portraitScore, isUsableFace, boxSize, presentable, coverReady } from './portraitScore.js';
 import { DIST, DESCRIPTOR_LENGTH, faceDistance } from './faceEngine.js';
+import { withDescriptors } from './faceVectors.js';
 
 
 // A face must be at least this confident to be clustered — weak detections
@@ -100,12 +101,12 @@ function meanDescriptor(list) {
 async function collectFaces(albumId) {
   const rows = await prisma.photos.findMany({
     where: { album_id: Number(albumId), face_indexed: true, face_count: { gt: 0 } },
-    select: { id: true, faces: true, face_engine: true, event_id: true },
+    select: { id: true, faces: true, face_vectors: true, face_engine: true, event_id: true },
   });
 
   const faces = [];
   for (const p of rows) {
-    (p.faces || []).forEach((f, k) => {
+    withDescriptors(p).forEach((f, k) => {
       if ((f.score ?? 1) < MIN_SCORE) return;
       /* 👤 Size AND "is it really a face" in one place — isUsableFace().
          ⚠️ The size check that used to sit here read box.width, but stored

@@ -114,6 +114,7 @@ export async function indexAlbumAWS(albumId) {
             // Prisma, which silently kept stale local descriptors on an album that
             // had previously been indexed locally.
             faces: Prisma.DbNull,
+            face_vectors: null,
           },
         });
 

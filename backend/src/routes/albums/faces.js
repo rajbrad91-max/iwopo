@@ -15,6 +15,7 @@ import { getSetting } from '../../lib/settings.js';
 import { serverError } from '../../lib/httpError.js';
 import { ownVendorId } from '../../lib/vendorScope.js';
 import { upload } from './shared.js';
+import { withDescriptors } from '../../lib/faceVectors.js';
 
 const router = express.Router();
 
@@ -57,7 +58,7 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
     } else {
       const photos = await prisma.photos.findMany({
         where: { album_id: id, vendor_id: v, face_indexed: true, face_count: { gt: 0 } }, // 🔒 tenancy
-        select: { id: true, faces: true },
+        select: { id: true, faces: true, face_vectors: true },
       });
       // @vladmandic: descriptor vectors
       const q = await getFaceDescriptors(req.file.path);
@@ -65,7 +66,7 @@ router.post('/:id/face-search', requireAuth, upload.single('selfie'), async (req
       if (!q.length) return res.status(400).json({ error: 'No face found in selfie' });
       const candidates = [];
       for (const p of photos) {
-        for (const f of (p.faces || [])) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
+        for (const f of withDescriptors(p)) if (f.descriptor && isUsableFace(f)) candidates.push({ photo_id: p.id, descriptor: f.descriptor });
       }
       const matches = findMatches(q[0].descriptor, candidates)   // the engine's own "same person" limit;
       const seen = new Set();

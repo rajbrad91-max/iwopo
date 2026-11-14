@@ -23,6 +23,7 @@ import * as objects from './objectStore.js';
 import { withLocalFile, galleryKeyFromRel } from './localFile.js';
 import { quiet } from './quiet.js';
 import { noteFailure } from './noteFailure.js';
+import { splitFaces } from './faceVectors.js';
 
 const ROOT = GALLERIES_ROOT;
 
@@ -298,7 +299,7 @@ async function indexPhoto(p, engine) {
   if (!found) return;                            // not on disk, not in R2
   await prisma.photos.update({
     where: { id: p.id },
-    data: { faces: found, face_count: found.length, face_indexed: true, face_engine: engine },
+    data: { ...splitFaces(found), face_count: found.length, face_indexed: true, face_engine: engine },
   });
 }
 

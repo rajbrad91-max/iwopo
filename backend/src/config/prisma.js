@@ -21,7 +21,9 @@ if (!connectionString) {
 
 const adapter = new PrismaPg({ connectionString });
 
-const prisma = new PrismaClient({ adapter });
+/* 🧬 photos.face_vectors (the faces' fingerprints, ~4 KB a face) only ever travels when the face code asks for it
+   with select: { face_vectors: true } — every other read of a photo leaves it behind. */
+const prisma = new PrismaClient({ adapter, omit: { photos: { face_vectors: true } } });
 
 export default prisma;
 export { prisma };
