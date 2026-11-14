@@ -1,3 +1,4 @@
+import { renderEmail } from '../lib/emailTemplates.js';   // ✉️ the vendor's own wording
 import express from 'express';
 import { leadListing } from '../lib/leadListing.js';
 import { phoneProblem } from '../lib/phone.js';
@@ -668,9 +669,8 @@ router.post('/:id/send-packages', requireAuth, async (req, res) => {
     // 🌐 the vendor's own address (their domain, their subdomain, or the platform) — lib/vendorHosts.js
     const base = await clientBaseUrl(lead.vendor_id);
     const link = `${base}/portal/${lead.client_token}`;
-    const subject = 'Your packages are ready 🎉';
-    const body = `Hi ${lead.name},\n\nView your custom packages and book here:\n${link}\n\nThank you!`;
-    await sendLeadEmail(req, lead, subject, body);
+    const { subject, body, html } = await renderEmail(lead.vendor_id, 'packages', { client_name: lead.name, link });   // ✉️ Settings → Email templates
+    await sendLeadEmail(req, lead, subject, body, { html });
     // ⏳ auto-start the offer countdown if enabled and not yet started
     if (lead.timer_enabled && !lead.timer_started_at) {
       await prisma.leads.update({ where: { id: lead.id, ...mine(vendorIdFor(req)) }, data: { timer_started_at: new Date() } });

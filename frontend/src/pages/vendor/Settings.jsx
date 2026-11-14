@@ -9,6 +9,7 @@ import { api, fmtDateTime, fmtMoney, applyVendorClock } from '../../lib/api';
 import { COUNTRIES } from '../../lib/countries';
 import PasswordInput from '../../components/PasswordInput';
 import EmailSetup from '../../components/EmailSetup';
+import EmailTemplates from '../../components/EmailTemplates';
 import SecurityLog from '../../components/SecurityLog';
 import DomainSettings from '../../components/DomainSettings';
 import StripeConnectCard from '../../components/StripeConnect';
@@ -83,13 +84,11 @@ function DevicesSetup() {
       {/* Shown once and never again — there is no route that can reveal it,
           because a list that can show its own credentials is a list of keys. */}
       {fresh && (
-        <div style={{ padding: 16, borderRadius: 10, background: 'var(--teal-soft)',
-          border: '1px solid var(--teal)', marginBottom: 18 }}>
+        <div className="dev-fresh">
           <div className="u-font-size-13px u-font-weight-700 u-margin-bottom-8px">
             Copy this now — it cannot be shown again
           </div>
-          <code style={{ display: 'block', padding: '9px 11px', borderRadius: 7,
-            background: 'var(--panel)', fontSize: 12.5, wordBreak: 'break-all' }}>{fresh}</code>
+          <code className="dev-token">{fresh}</code>
           <div className="u-display-flex u-gap-8px u-margin-top-10px">
             <button className="refresh u-font-size-12px"
               onClick={() => { navigator.clipboard?.writeText(fresh); }}>📋 Copy</button>
@@ -209,12 +208,14 @@ export function SettingsView({ user, onProfileChange }) {
   if (!s) return <div className="loading">Loading…</div>;
 
   return (
-    <div className="u-max-width-560px u-display-flex u-flex-direction-column u-gap-16px">
-      <div className="set-tabs">
+    <div className="set-page">
+      {/* tabs across the top, the page below; Setup Email uses the width for the templates (Raj, 2026-11-14) */}
+      <div className="set-tabbar" role="tablist">
         {[['prefs', '🕐 Preferences'], ['account', '🔐 Account'], ['email', '📧 Setup Email'], ['devices', '🔑 Devices'], ['security', '🛡️ Security'], ['address', '🌐 Web address'], ['links', '🔗 Client page links']].map(([k, label]) => (
-          <button key={k} className={`refresh set-tab${sub === k ? ' is-on' : ''}`} onClick={() => setSub(k)}>{label}</button>
+          <button key={k} type="button" role="tab" aria-selected={sub === k} className={`set-tab${sub === k ? ' is-on' : ''}`} onClick={() => setSub(k)}>{label}</button>
         ))}
       </div>
+      <div className={sub === 'email' ? 'set-split' : 'set-body'}>
 
       {/* Preferences */}
       {sub === 'prefs' && (
@@ -287,7 +288,7 @@ export function SettingsView({ user, onProfileChange }) {
       {sub === 'account' && (
       <div className="table-wrap u-padding-22px">
         <h2 className="u-margin-top-0">🏢 Business Profile</h2>
-        {profMsg && <div style={{ fontSize: 13, color: profMsg[0] === '✅' ? 'var(--green)' : 'var(--muted)', marginBottom: 10 }}>{profMsg}</div>}
+        {profMsg && <div className={`set-note${profMsg[0] === '✅' ? ' is-ok' : ''}`}>{profMsg}</div>}
 
         {/* logo — single source, updates everywhere */}
         <label className="u-font-size-13px u-color-muted">Logo 🖼️</label>
@@ -319,7 +320,7 @@ export function SettingsView({ user, onProfileChange }) {
         <button className="refresh set-primary set-save" onClick={saveProfile}>💾 Save profile</button>
 
         <h2 className="u-margin-top-26px">🔐 Account</h2>
-        {msg && <div style={{ padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 13, background: `color-mix(in srgb, ${msg[0] === '✅' ? 'var(--green)' : 'var(--red)'} 9%, transparent)`, color: msg[0] === '✅' ? 'var(--green)' : 'var(--red)' }}>{msg}</div>}
+        {msg && <div className={`set-alert ${msg[0] === '✅' ? 'is-ok' : 'is-bad'}`}>{msg}</div>}
 
         <label className="u-font-size-13px u-color-muted">📧 Change email</label>
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-10px u-width-100pct u-margin-top-6px" type="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={em.email} onChange={e => setEm({ ...em, email: e.target.value })} placeholder="new@email.com" />
@@ -351,11 +352,12 @@ export function SettingsView({ user, onProfileChange }) {
       </div>
       )}
 
-      {sub === 'email' && <EmailSetup />}
+      {sub === 'email' && <><EmailSetup /><EmailTemplates /></>}
       {sub === 'devices' && <DevicesSetup />}
       {sub === 'security' && <SecurityLog />}
       {sub === 'address' && <DomainSettings />}
       {sub === 'links' && <ClientLinksSettings />}
+      </div>
     </div>
   );
 }

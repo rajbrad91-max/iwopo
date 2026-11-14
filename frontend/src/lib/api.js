@@ -829,7 +829,7 @@ export const api = {
   uploadLogo: (file) => { const fd = new FormData(); fd.append('logo', file); return request('/me/logo', { method: 'POST', body: fd }); },
   emailSettings: () => request('/email/settings'),
   saveEmailSettings: (data) => request('/email/settings', { method: 'PUT', body: JSON.stringify(data) }),
-  emailLead: (leadId, subject, body, cc, kind) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body, cc, kind }) }),
+  emailLead: (leadId, subject, body, cc, kind, use_design) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body, cc, kind, use_design }) }),
   leadContracts: (leadId) => request(`/contracts/lead/${leadId}`),
   releaseContract: (id) => request(`/contracts/${id}/release`, { method: 'PUT' }),
   emailContractCopy: (id) => request(`/contracts/${id}/email-copy`, { method: 'POST' }),   // 📧 the signed contract to the client
@@ -961,6 +961,9 @@ export const api = {
   notifications: () => request('/notifications'),
   notificationsSeen: () => request('/notifications/seen', { method: 'POST' }),
   emailTemplates: () => request('/email/templates'),
+  clientEmails: () => request('/email/client-emails'),   // ✉️ Settings → Email templates
+  saveClientEmail: (kind, subject, body, design = {}) => request(`/email/client-emails/${kind}`, { method: 'PUT', body: JSON.stringify({ subject, body, ...design }) }),
+  resetClientEmail: (kind) => request(`/email/client-emails/${kind}`, { method: 'DELETE' }),
   addEmailTemplate: (data) => request('/email/templates', { method: 'POST', body: JSON.stringify(data) }),
   updateEmailTemplate: (id, data) => request(`/email/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteEmailTemplate: (id) => request(`/email/templates/${id}`, { method: 'DELETE' }),

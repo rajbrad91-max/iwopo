@@ -17,6 +17,7 @@
  *
  * Never throws: a mail problem must never undo a payment or a signature. Returns what happened.
  */
+import { renderEmail } from './emailTemplates.js';
 import prisma from '../config/prisma.js';
 import * as objects from './objectStore.js';
 import { sendLeadEmail, sendPlatformEmail } from '../routes/email.js';
@@ -96,19 +97,12 @@ export async function sendSignedCopy(leadId, { force = false, contractId = null 
     try {
       const pdf = await pdfOf(c);
       if (!pdf) throw new Error('The signed contract PDF could not be made');
-      const biz = c.vendors?.business_name || 'us';
-      const first = String(lead.name || '').trim().split(/\s+/)[0] || 'there';
-      const subject = `Your signed contract — ${c.title || 'Service Agreement'}`;
-      const body = [
-        `Hi ${first},`,
-        '',
-        `Thank you, your booking is confirmed. Your signed contract is attached for your records.`,
-        '',
-        `Warm regards,`,
-        biz,
-      ].join('\n');
+      const { subject, body, html } = await renderEmail(lead.vendor_id, 'signed_contract', {   // ✉️ Settings → Email templates
+        client_name: lead.name, client_first_name: String(lead.name || '').trim().split(/\s+/)[0] || 'there',
+        business_name: c.vendors?.business_name || '', contract_title: c.title || 'Service Agreement',
+      });
       await sendLeadEmail(null, lead, subject, body, {
-        kind: 'signed_contract', allowSelf: true,
+        kind: 'signed_contract', allowSelf: true, html,
         attachments: [{ filename: fileName(c), content: pdf, contentType: 'application/pdf' }],
       });
       if (force) await prisma.contracts.update({ where: { id: c.id }, data: { client_copy_sent_at: new Date() } });

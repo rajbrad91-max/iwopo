@@ -1,3 +1,5 @@
+import { EMAILS, TAG_LABELS, SAMPLE, SUBJECT_MAX, BODY_MAX, HTML_MAX, htmlAllowed, cleanEmailHtml, starterHtml, renderEmail } from '../lib/emailTemplates.js';   // ✉️ the client emails and their defaults
+import { clientBaseUrl } from '../lib/vendorHosts.js';
 import express from 'express';
 import { logEmail } from '../lib/projectStages.js';
 import nodemailer from 'nodemailer';
@@ -140,6 +142,70 @@ async function senderFor(vendorId, s) {
   };
 }
 
+/* ── ✉️ THE EMAILS IWOPO SENDS TO CLIENTS — each vendor's own wording (lib/emailTemplates.js) ── */
+async function clientEmailsFor(v) {
+  const [own, ven, allowed] = await Promise.all([
+    prisma.vendor_email_templates.findMany({ where: { vendor_id: Number(v) } }),   // 🔒 tenancy
+    prisma.vendors.findUnique({ where: { id: Number(v) }, select: { business_name: true, logo_path: true } }),
+    htmlAllowed(v),   // 🧑‍💻 HTML mode, private for now
+  ]);
+  const biz = ven?.business_name || '';
+  const logoUrl = ven?.logo_path ? `${(process.env.APP_URL || 'https://iwopo.com').replace(/\/$/, '')}/api/me/logo/${encodeURIComponent(ven.logo_path)}` : '';
+  const emails = Object.entries(EMAILS).map(([kind, d]) => {
+    const o = own.find(x => x.kind === kind);
+    const body = o?.body || d.body;
+    return {
+      kind, label: d.label, when: d.when, tags: d.tags, subject: o?.subject || d.subject, body, edited: !!o,
+      ...(allowed ? { mode: o?.mode || 'text', html: o?.html || '', starter_html: starterHtml(kind, body, { logoUrl, businessName: biz }) } : {}),
+    };
+  });
+  return { emails, tag_labels: TAG_LABELS, business_name: biz, html_allowed: allowed, sample: { ...SAMPLE, business_name: biz || 'Your business' } };
+}
+const oneEmail = async (v, kind) => (await clientEmailsFor(v)).emails.find(e => e.kind === kind);
+
+router.get('/client-emails', requireAuth, async (req, res) => {
+  const v = actingVendorId(req);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  try { res.json(await clientEmailsFor(v)); } catch (e) { serverError(res, e); }
+});
+
+router.put('/client-emails/:kind', requireAuth, async (req, res) => {
+  const v = actingVendorId(req);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  const kind = String(req.params.kind);
+  const d = EMAILS[kind];
+  if (!d) return res.status(404).json({ error: 'No such email' });
+  const subject = String(req.body?.subject || '').replace(/\s+/g, ' ').trim();
+  const body = String(req.body?.body || '').replace(/\r\n/g, '\n').trim();
+  if (!subject || !body) return res.status(400).json({ error: 'Write a subject and a message' });
+  if (subject.length > SUBJECT_MAX) return res.status(400).json({ error: `The subject is too long (${SUBJECT_MAX} characters at most)` });
+  if (body.length > BODY_MAX) return res.status(400).json({ error: `The message is too long (${BODY_MAX} characters at most)` });
+  try {
+    // 🧑‍💻 HTML mode only for the accounts allowed it; anyone else's mode and html are ignored and their stored ones kept
+    const allowed = await htmlAllowed(v);
+    const mode = allowed && req.body?.mode === 'html' ? 'html' : 'text';
+    const html = allowed && typeof req.body?.html === 'string' ? cleanEmailHtml(req.body.html).trim() : '';
+    if (html.length > HTML_MAX) return res.status(400).json({ error: 'The HTML is too long' });
+    if (mode === 'html' && !html) return res.status(400).json({ error: 'Paste your HTML, or start from the simple design' });
+    const design = allowed ? { mode, html: html || null } : {};
+    const where = { vendor_id_kind: { vendor_id: Number(v), kind } };   // 🔒 the vendor from the login, never the body
+    if (subject === d.subject && body === d.body.trim() && (!allowed || (mode === 'text' && !html))) await prisma.vendor_email_templates.deleteMany({ where: { vendor_id: Number(v), kind } });   // the default again
+    else await prisma.vendor_email_templates.upsert({ where, update: { subject, body, ...design, updated_at: new Date() }, create: { vendor_id: Number(v), kind, subject, body, ...design } });
+    res.json(await oneEmail(v, kind));
+  } catch (e) { serverError(res, e); }
+});
+
+router.delete('/client-emails/:kind', requireAuth, async (req, res) => {
+  const v = actingVendorId(req);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  const kind = String(req.params.kind);
+  if (!EMAILS[kind]) return res.status(404).json({ error: 'No such email' });
+  try {
+    await prisma.vendor_email_templates.deleteMany({ where: { vendor_id: Number(v), kind } });   // 🔒
+    res.json(await oneEmail(v, kind));
+  } catch (e) { serverError(res, e); }
+});
+
 /* ── 📑 EMAIL TEMPLATES ── */
 router.get('/templates', requireAuth, async (req, res) => {
   try {
@@ -243,6 +309,14 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'That CC address does not look right' });
     }
 
+    // 🧑‍💻 packages sent as the vendor's HTML design (Settings → Email templates), built here for this lead
+    let html;
+    let text = body;
+    if (kind === 'packages' && req.body.use_design) {
+      const r = await renderEmail(lead.vendor_id, 'packages', { client_name: lead.name, link: `${await clientBaseUrl(lead.vendor_id)}/portal/${lead.client_token}` });
+      if (r.html) { html = r.html; text = r.body; }
+    }
+
     const s = await getSettings(lead.vendor_id);
     if (s.mode === 'self')
       return res.status(400).json({ error: 'self_mode', message: 'You are in self-receive mode — reply from your own inbox 📥' });
@@ -266,7 +340,8 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
       to: lead.email,
       ...(ccEmail ? { cc: ccEmail } : {}),
       subject,
-      text: body,
+      text,
+      ...(html ? { html } : {}),
     });
     logEmail(lead.vendor_id, { to: lead.email, subject, kind: 'lead_reply', leadId: lead.id });   // 📧 the email log
     res.json({ ok: true, sent_to: lead.email, cc: ccEmail || null });
@@ -274,7 +349,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
 });
 
 // 📤 shared helper: send an email to a lead using vendor's email settings
-export async function sendLeadEmail(req, lead, subject, body, { kind = 'lead', attachments, allowSelf = false } = {}) {
+export async function sendLeadEmail(req, lead, subject, body, { kind = 'lead', attachments, allowSelf = false, html } = {}) {
   let s = await getSettings(lead.vendor_id);
   // 📎 allowSelf: a message the system sends by itself (the signed contract) goes "<Business> via iwopo" for a vendor in self-receive mode
   if (s.mode === 'self' && allowSelf) s = { ...s, mode: 'platform' };
@@ -282,7 +357,7 @@ export async function sendLeadEmail(req, lead, subject, body, { kind = 'lead', a
   const t = await transporterFor(s);
   if (!t) throw new Error('Email isn\u2019t available right now — please try again shortly, or add your own email under Settings → Email ⚙️');
   const who = await senderFor(lead.vendor_id, s);   // ✉️ their address, or "<Business> via iwopo" with replies to them
-  await t.sendMail({ from: who.from, replyTo: who.replyTo, to: lead.email, subject, text: body, ...(attachments?.length ? { attachments } : {}) });
+  await t.sendMail({ from: who.from, replyTo: who.replyTo, to: lead.email, subject, text: body, ...(html ? { html } : {}), ...(attachments?.length ? { attachments } : {}) });
   logEmail(lead.vendor_id, { to: lead.email, subject, kind, leadId: lead.id });   // 📧 the email log
 }
 

@@ -11,6 +11,7 @@
  *    an editor, or switching the vendor's Raw Selector off, locks them out at
  *    once. The vendor is always the editor's own row's vendor.
  */
+import { renderEmail } from '../lib/emailTemplates.js';   // ✉️ the vendor's own wording
 import express from 'express';
 import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
 import jwt from 'jsonwebtoken';
@@ -312,11 +313,12 @@ router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) 
       : false;
     let clientEmailed = false;
     if (client && gallery.client_email && gallery.public_token) {
-      clientEmailed = (await sendAsVendor(v, {
-        to: gallery.client_email,
-        subject: `Your edited photos are ready — ${gallery.title}`,
-        text: `Hi ${gallery.title},\n\nYour edited photos are ready:\n${base}/g/${gallery.public_token}\n\nPassword: ${openPassword(gallery.guest_password_enc) || '(ask us)'}\n\n${studio}`,
-      })).ok;
+      const mail = await renderEmail(v, 'edited_ready', {   // ✉️ Settings → Email templates
+        client_name: gallery.title, gallery_name: gallery.title, business_name: studio,
+        link: `${base}/g/${gallery.public_token}`,
+        view_password: openPassword(gallery.guest_password_enc) || '(ask us)',
+      });
+      clientEmailed = (await sendAsVendor(v, { to: gallery.client_email, subject: mail.subject, text: mail.body, html: mail.html })).ok;
     }
     // 📊 the PPM board: "Edited" — and "Delivered" when the client was told
     await tickStages(v, a.lead_id ?? gallery.lead_id, client ? ['editing_photos_done_at', 'delivered_at'] : ['editing_photos_done_at']);

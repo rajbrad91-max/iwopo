@@ -1,3 +1,4 @@
+import { renderEmail } from './emailTemplates.js';   // ✉️ the vendor's own wording
 import crypto from 'node:crypto';
 import path from 'node:path';
 import prisma from '../config/prisma.js';
@@ -168,11 +169,13 @@ export async function announceUpload({ v, album, who, client, appUrl, notify, se
     ownerEmailed = (await sendAsVendor(v, { to: ven.email, subject: `📸 ${album.title}: photos uploaded`, text: `${who} uploaded ${counts.photos} JPEGs and ${counts.raws} RAWs for ${album.title}.\n\nRaw Selector: ${appUrl}/panel/rawsel` })).ok;
   }
   if (client && album.client_email) {
-    clientEmailed = (await sendAsVendor(v, {
-      to: album.client_email,
-      subject: `Your photos are ready to view — ${album.title}`,
-      text: `Hi ${album.title},\n\nYour photos are ready to view and pick your favourites:\n${appUrl}/g/${album.public_token}\n\nPassword to view: ${openPassword(album.guest_password_enc) || '(ask us)'}\nPassword to pick your photos: ${openPassword(album.admin_password_enc) || '(ask us)'}\n\n${studio}`,
-    })).ok;
+    const mail = await renderEmail(v, 'photos_ready', {   // ✉️ Settings → Email templates
+      client_name: album.title, gallery_name: album.title, business_name: studio,
+      link: `${appUrl}/g/${album.public_token}`,
+      view_password: openPassword(album.guest_password_enc) || '(ask us)',
+      pick_password: openPassword(album.admin_password_enc) || '(ask us)',
+    });
+    clientEmailed = (await sendAsVendor(v, { to: album.client_email, subject: mail.subject, text: mail.body, html: mail.html })).ok;
   }
   return { ok: true, ownerEmailed: !!ownerEmailed, clientEmailed: !!clientEmailed };
 }

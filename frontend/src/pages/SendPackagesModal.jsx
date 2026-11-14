@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
+import { fillTags, escHtml } from '../lib/emailTags';
 
 const DEFAULT_SUBJECT = 'Your packages are ready 🎉';
 const DEFAULT_BODY =
@@ -63,14 +64,27 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [def, setDef] = useState(null);   // ✉️ the vendor's "Packages sent" wording (Settings → Email templates)
+  const [design, setDesign] = useState('');   // 🧑‍💻 their HTML design for it, filled for this client — when they send it as HTML
   useEffect(() => {
     api.emailTemplates().then(d => setTpls(d.templates || [])).catch(() => {});
-  }, []);
+    api.clientEmails().then(d => {
+      const t = (d.emails || []).find(e => e.kind === 'packages');
+      if (!t) return;
+      const vals = { client_name: lead.name || '', client_first_name: String(lead.name || '').trim().split(/\s+/)[0] || '', business_name: d.business_name || '', link };
+      const next = { subject: fillTags(t.subject, vals), body: fillTags(t.body, vals) };
+      setDef(next);
+      if (d.html_allowed && t.mode === 'html' && t.html) setDesign(fillTags(t.html, vals, escHtml));
+      // only while the vendor has not started typing
+      setSubject(s => (s === fill(DEFAULT_SUBJECT, ctx) ? next.subject : s));
+      setBody(b => (b === fill(DEFAULT_BODY, ctx) ? next.body : b));
+    }).catch(() => {});
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   function applyTpl(id) {
     setTplId(id);
     // back to the default, filled in — the editor never shows raw tokens
-    if (!id) { setSubject(fill(DEFAULT_SUBJECT, ctx)); setBody(fill(DEFAULT_BODY, ctx)); return; }
+    if (!id) { setSubject(def?.subject ?? fill(DEFAULT_SUBJECT, ctx)); setBody(def?.body ?? fill(DEFAULT_BODY, ctx)); return; }
     const t = tpls.find(x => String(x.id) === String(id));
     if (t) { setSubject(fill(t.subject, ctx)); setBody(fill(t.body, ctx)); }
   }
@@ -110,7 +124,7 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
       // tokens are resolved here, so what the client receives has real values
       // already the real message — filling again would do nothing but could
       // mangle a client whose own name contains a token-like string
-      await api.emailLead(lead.id, subject, body, cc.trim() || undefined, 'packages');
+      await api.emailLead(lead.id, subject, body, cc.trim() || undefined, 'packages', useDesign);
       onSent?.();
       onClose();
     } catch (e) {
@@ -121,6 +135,8 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
       setBusy(false);
     }
   }
+
+  const useDesign = !!design && !tplId;   // a saved plain template picked above sends plain text
 
   return (
     <div className="em-backdrop" onClick={onClose}>
@@ -150,13 +166,27 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
           <label className="fb-label">Subject</label>
           <input className="fb-select" value={subject} onChange={e => setSubject(e.target.value)} />
 
-          <label className="fb-label">Message</label>
-          <textarea className="fb-select em-ta" rows="11"
-            value={body} onChange={e => setBody(e.target.value)} />
-          <p className="fb-hint">
-            This is exactly what {lead.name || 'your client'} will receive. Saving it as a template
-            swaps their name and link back to placeholders, so it fits the next enquiry.
-          </p>
+          {useDesign ? (
+            <>
+              <label className="fb-label">Message · your HTML design</label>
+              {/* sandbox with nothing allowed: the design shows, nothing in it can run */}
+              <iframe className="et-frame" title="Email preview" sandbox="" srcDoc={design} />
+              <p className="fb-hint">
+                This is your design from Settings → Email templates, with {lead.name || 'your client'}'s name and link in it.
+                Pick a saved template above to send plain text instead.
+              </p>
+            </>
+          ) : (
+            <>
+              <label className="fb-label">Message</label>
+              <textarea className="fb-select em-ta" rows="11"
+                value={body} onChange={e => setBody(e.target.value)} />
+              <p className="fb-hint">
+                This is exactly what {lead.name || 'your client'} will receive. Saving it as a template
+                swaps their name and link back to placeholders, so it fits the next enquiry.
+              </p>
+            </>
+          )}
 
           <div className="em-link">
             <span>🔗 {link}</span>

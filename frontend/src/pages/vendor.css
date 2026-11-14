@@ -2445,8 +2445,6 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
   .table-wrap .ct-table td.empty { grid-column: 1 / -1; }
 }
 
-/* ⚙️ Settings sub-tabs: wrap onto a second line on narrow phones instead of running off the edge */
-.set-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* 📊 phones: the four Leads tiles share the full width equally; a long label may take two lines */
 @media (max-width: 600px) {
@@ -2602,10 +2600,9 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .set-theme-btn { flex: 1; min-width: 140px; background: var(--panel-2); color: var(--text); }
 /* ⚙️ Settings: the chosen tab or option and the main save button share one look — the theme's teal with its ink,
    the same as the PPM Board's chosen view (Raj, 2026-11-11) */
-.set-tab { background: var(--panel-2); color: var(--text); }
 .set-pick { flex: 1; background: var(--panel-2); color: var(--text); }
 .set-save { margin-top: 12px; }
-.set-tab.is-on, .set-pick.is-on, .set-theme-btn.is-on, .set-primary { border-color: var(--btn-fill); background: var(--btn-fill); color: var(--btn-fill-ink); }
+.set-pick.is-on, .set-theme-btn.is-on, .set-primary { border-color: var(--btn-fill); background: var(--btn-fill); color: var(--btn-fill-ink); }
 
 /* 👋 Getting started, after the first payment (components/WelcomeSteps.jsx) */
 .ws-back { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .55); }
@@ -2810,3 +2807,63 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
   .dash .top-actions .menu-btn { display: flex; }
   .dash .side-handle, .dash .nav-auto { display: none; }
 }
+
+/* ⚙️ Settings: tabs across the top, the page below (Raj, 2026-11-14). A phone scrolls the tabs sideways. */
+.set-page { display: flex; flex-direction: column; gap: 18px; }
+.set-tabbar { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.set-tabbar::-webkit-scrollbar { display: none; }
+.set-tab {
+  flex: none; padding: 10px 16px; margin-bottom: -1px; white-space: nowrap; cursor: pointer;
+  border: 1px solid transparent; border-bottom: none; border-radius: 10px 10px 0 0;
+  background: transparent; color: var(--muted); font: inherit; font-size: 13.5px; font-weight: 600;
+}
+.set-tab:hover { color: var(--text); }
+.set-tab.is-on { background: var(--panel); border-color: var(--line); color: var(--text); box-shadow: inset 0 2px 0 var(--btn-fill); }
+.set-body { max-width: 560px; display: flex; flex-direction: column; gap: 16px; }
+.set-split { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1100px) { .set-split { grid-template-columns: 1fr; } }
+.set-note { margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.set-note.is-ok { color: var(--green); }
+.set-alert { margin-bottom: 10px; padding: 10px; border-radius: 8px; font-size: 13px; }
+.set-alert.is-ok { background: color-mix(in srgb, var(--green) 9%, transparent); color: var(--green); }
+.set-alert.is-bad { background: color-mix(in srgb, var(--red) 9%, transparent); color: var(--red); }
+.dev-fresh { margin-bottom: 18px; padding: 16px; border: 1px solid var(--teal); border-radius: 10px; background: var(--teal-soft); }
+.dev-token { display: block; padding: 9px 11px; border-radius: 7px; background: var(--panel); font-size: 12.5px; word-break: break-all; }
+
+/* ✉️ Email templates, beside the mail settings (components/EmailTemplates.jsx) */
+.et { padding: 22px; }
+.et-intro { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.et-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.et-item {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--text);
+  font: inherit; font-size: 12.5px; font-weight: 600;
+}
+.et-item:hover { border-color: var(--teal); }
+.et-item.is-on { border-color: var(--btn-fill); background: var(--btn-fill); color: var(--btn-fill-ink); }
+.et-badge { padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
+.et-item.is-on .et-badge { background: color-mix(in srgb, var(--btn-fill-ink) 22%, transparent); color: var(--btn-fill-ink); }
+.et-when { margin: 4px 0 14px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+.et-gap { margin-top: 12px; }
+.et-body { min-height: 190px; resize: vertical; font-family: inherit; line-height: 1.55; }
+.et-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.et-tags-l { font-size: 11.5px; color: var(--muted); }
+.et-tag { padding: 4px 9px; cursor: pointer; border: 1px dashed var(--line); border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 12px; }
+.et-tag:hover { border-color: var(--teal); color: var(--teal); }
+.et-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.et-msg { font-size: 12.5px; }
+.et-preview { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.et-preview-h { margin-bottom: 10px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.et-preview-subj { margin-bottom: 10px; font-size: 14px; font-weight: 700; }
+.et-preview-body { white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; }
+.et-attach { display: inline-block; margin-top: 12px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; }
+
+/* 🧑‍💻 Email templates, HTML mode (private for now — lib/emailTemplates.js) */
+.et-mode { display: inline-flex; gap: 2px; margin: 0 0 14px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); }
+.et-mode-btn { padding: 6px 14px; cursor: pointer; border: none; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; }
+.et-mode-btn.is-on { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.et-code-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.et-link { padding: 0; cursor: pointer; border: none; background: none; color: var(--teal); font: inherit; font-size: 12px; text-decoration: underline; }
+.et-code { min-height: 300px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+.et-hint { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.et-frame { display: block; width: 100%; height: 520px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
