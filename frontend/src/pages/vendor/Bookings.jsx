@@ -2,6 +2,7 @@
  * 📅 Bookings: the list, the calendar view, and a booking’s detail.
  * Moved out of pages/VendorPanel.jsx unchanged (code audit #2, Raj 2026-11-11).
  */
+import { EmailCopyButton } from './EmailCopyButton';   // 📧 the signed contract to the client
 import { useState, useEffect, useRef } from 'react';
 import { LeadContact, LeadEvents } from '../../components/LeadOverview';
 import LeadEditor from '../../components/LeadEditor';
@@ -266,6 +267,7 @@ function BookingDetail({ id, rawsel = false }) {
                   <a className="bd-doc" href={`/api/contracts/certificate/${d.contract.token}/download`} target="_blank" rel="noreferrer">
                     📜 Signing certificate
                   </a>
+                  <EmailCopyButton contract={d.contract} className="bd-doc" />
                 </>
               ) : <p className="bd-empty">No signed contract on file.</p>}
               {d.invoices.map(i => (

@@ -90,7 +90,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
       prisma.contracts.findFirst({
         where: { lead_id: id, status: 'signed' },
         orderBy: { id: 'desc' },
-        select: { id: true, title: true, token: true, signed_at: true, signed_name: true },
+        select: { id: true, title: true, token: true, signed_at: true, signed_name: true, client_copy_sent_at: true },
       }),
       prisma.invoices.findMany({
         where: { lead_id: id },

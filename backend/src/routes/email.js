@@ -274,13 +274,15 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
 });
 
 // 📤 shared helper: send an email to a lead using vendor's email settings
-export async function sendLeadEmail(req, lead, subject, body, { kind = 'lead' } = {}) {
-  const s = await getSettings(lead.vendor_id);
+export async function sendLeadEmail(req, lead, subject, body, { kind = 'lead', attachments, allowSelf = false } = {}) {
+  let s = await getSettings(lead.vendor_id);
+  // 📎 allowSelf: a message the system sends by itself (the signed contract) goes "<Business> via iwopo" for a vendor in self-receive mode
+  if (s.mode === 'self' && allowSelf) s = { ...s, mode: 'platform' };
   if (s.mode === 'self') { const e = new Error('You are in self-receive mode — reply from your own inbox 📥'); e.code = 'self_mode'; throw e; }
   const t = await transporterFor(s);
   if (!t) throw new Error('Email isn\u2019t available right now — please try again shortly, or add your own email under Settings → Email ⚙️');
   const who = await senderFor(lead.vendor_id, s);   // ✉️ their address, or "<Business> via iwopo" with replies to them
-  await t.sendMail({ from: who.from, replyTo: who.replyTo, to: lead.email, subject, text: body });
+  await t.sendMail({ from: who.from, replyTo: who.replyTo, to: lead.email, subject, text: body, ...(attachments?.length ? { attachments } : {}) });
   logEmail(lead.vendor_id, { to: lead.email, subject, kind, leadId: lead.id });   // 📧 the email log
 }
 
@@ -315,11 +317,11 @@ async function platformTransporter() {
 
 // 📤 send a platform-level email (password resets, system notices).
 // Throws { code:'no_platform_smtp' } when env creds aren't set yet.
-export async function sendPlatformEmail(to, subject, text, html, { replyTo } = {}) {
+export async function sendPlatformEmail(to, subject, text, html, { replyTo, attachments } = {}) {
   const p = await platformTransporter();
   if (!p) { const e = new Error('Platform email is not configured yet.'); e.code = 'no_platform_smtp'; throw e; }
   try {
-    await p.t.sendMail({ from: `"${p.m.fromName}" <${p.m.from || p.m.user}>`, to, subject, text, html, ...(replyTo ? { replyTo } : {}) });
+    await p.t.sendMail({ from: `"${p.m.fromName}" <${p.m.from || p.m.user}>`, to, subject, text, html, ...(replyTo ? { replyTo } : {}), ...(attachments?.length ? { attachments } : {}) });
   } catch (err) {
     // the mail server's own words go to the log; the person sees what to do
     console.error('platform email failed:', err.message);

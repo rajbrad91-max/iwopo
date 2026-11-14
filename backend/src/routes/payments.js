@@ -7,6 +7,7 @@ import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 import { quotePackage } from '../lib/packageQuote.js';
+import { sendSignedCopy } from '../lib/signedCopy.js';   // 📧 the client's signed contract, once the deposit is accepted
 
 const router = express.Router();
 
@@ -136,6 +137,9 @@ export async function markBooked(leadId) {
     data: { status: 'booked', updated_at: new Date() },
   });
   await ensureInvoice(lead.id);   // 🧾 ready, never sent
+  // 📧 booking confirmed (deposit accepted by the vendor, or paid online): the client gets the contract they signed,
+  //    by itself, once. In the background, so a slow mail server never holds up the payment.
+  sendSignedCopy(lead.id);
 }
 
 // POST /api/payments/lead/:leadId → add payment

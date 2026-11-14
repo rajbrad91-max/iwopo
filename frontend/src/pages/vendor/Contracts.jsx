@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { api, fmtDateTime, fmtMoney } from '../../lib/api';
 import { ContractSetup } from './ContractSetup';
+import { EmailCopyButton } from './EmailCopyButton';
 
 export function ContractsTab() {
   const [sub, setSub] = useState('list'); // list | setup | invoices
@@ -106,6 +107,7 @@ function AllContracts() {
               <td className="ct-dl">
                 <a href={`/api/contracts/download/${c.token}`} target="_blank" rel="noreferrer" className="ct-dl-btn">📄 Contract</a>
                 <a href={`/api/contracts/certificate/${c.token}/download`} target="_blank" rel="noreferrer" className="ct-dl-btn">📜 Certificate</a>
+                {c.status === 'signed' && <EmailCopyButton contract={c} className="ct-dl-btn" />}
               </td>
             </tr>
           ))}

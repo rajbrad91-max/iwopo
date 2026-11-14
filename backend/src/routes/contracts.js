@@ -22,6 +22,7 @@ import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 import * as objects from '../lib/objectStore.js';
 import { noteFailure } from '../lib/noteFailure.js';
+import { sendSignedCopy } from '../lib/signedCopy.js';
 
 const router = express.Router();
 
@@ -1124,9 +1125,11 @@ router.post('/sign/:token', limit({ name: 'contract-sign', max: 20, windowMs: 60
     // ✍️ R2 (2026-10-30): the vendor is told straight away — signing used to leave no trace in the panel
     if (c.lead_id) notify(c.vendor_id, `✍️ ${signed_name.trim()} signed the contract`, `${c.title || 'Contract'} · payment is next`, 'contract', { type: 'lead', id: c.lead_id });
     res.json({ contract: updated });
-    // 🧊 freeze the signed PDF — after the answer, so the client is not kept waiting. Nothing is emailed here: the
-    //    client gets their copy after payment (online, or when the vendor confirms the deposit), as before.
-    archiveSignedContract(c.id).catch(e => noteFailure('freeze a signed contract', e));
+    // 🧊 freeze the signed PDF — after the answer, so the client is not kept waiting. The client's copy is emailed
+    //    when the booking is confirmed (lib/signedCopy.js); if it already is (paid before signing), it goes now.
+    archiveSignedContract(c.id)
+      .catch(e => noteFailure('freeze a signed contract', e))
+      .then(() => c.lead_id && sendSignedCopy(c.lead_id));
   } catch (e) { serverError(res, e); }
 });
 
@@ -1338,18 +1341,9 @@ function acceptanceHtml(c, zone) {
 </div>`;
 }
 
-// PUBLIC: GET /api/contracts/certificate/:token/download → certificate as a file
-router.get('/certificate/:token/download', async (req, res) => {
-  try {
-    const c = await prisma.contracts.findFirst({
-      where: { token: req.params.token, status: 'signed' },
-      include: {
-        leads: { select: { name: true, email: true, event_type: true, event_date: true } },
-        vendors: { select: { business_name: true, logo_path: true } },
-      },
-    });
-    if (!c) return downloadFailed(req, res, 404, 'not_found', "This certificate isn't available.");
-
+/** 📜 The signing certificate as a document — one place, so the download and the vendor's emailed copy are the same.
+ *  `c` carries leads { name, email, event_type, event_date } and vendors { business_name, logo_path }. */
+async function certificateInner(c, token, base) {
     const trail = await prisma.contract_audit.findMany({
       where: { contract_id: c.id },
       select: { event: true, ip: true, created_at: true, meta: true },
@@ -1373,19 +1367,49 @@ router.get('/certificate/:token/download', async (req, res) => {
       `<tr><th>${esc(t.event)}</th><td>${utc(t.created_at)}${t.ip ? ` · ${esc(t.ip)}` : ''}</td></tr>`).join('');
 
     const logo = c.vendors?.logo_path
-      ? `<img src="${req.protocol}://${req.get('host')}/api/me/logo/${esc(c.vendors.logo_path)}" alt="">` : '';
+      ? `<img src="${base}/api/me/logo/${esc(c.vendors.logo_path)}" alt="">` : '';
 
-    sendDoc(res, `certificate-${c.leads?.name || c.id}.html`, 'Certificate of Completion', `
+    return `
       <div class="hd">${logo}<p class="biz">${esc(c.vendors?.business_name || '')}</p>
         <h1>Certificate of Completion</h1>
-        <p class="meta">Reference ${esc(String(req.params.token).slice(0, 16).toUpperCase())}</p></div>
+        <p class="meta">Reference ${esc(String(token).slice(0, 16).toUpperCase())}</p></div>
       <table>${rows}</table>
       ${c.signature_data ? `<div class="sig"><img src="${esc(c.signature_data)}" alt="Signature"><p class="meta"><b>${esc(c.signed_name || '')}</b></p></div>` : ''}
       <h2 style="font-size:16px;margin-top:30px">Audit trail</h2>
       <table>${audit || '<tr><td>No events recorded</td></tr>'}</table>
       <p class="fine">All times shown in UTC. Downloaded ${new Date().toUTCString()}.
       Keep this copy for your own records.</p>
-    `);
+    `;
+}
+
+/** 📜 The certificate as a PDF, for the vendor's own copy (lib/signedCopy.js). Never sent to the client. */
+export async function certificatePdf(contractId) {
+  const c = await prisma.contracts.findFirst({
+    where: { id: Number(contractId), status: 'signed' },
+    include: {
+      leads: { select: { name: true, email: true, event_type: true, event_date: true } },
+      vendors: { select: { business_name: true, logo_path: true } },
+    },
+  });
+  if (!c) return null;
+  const inner = await certificateInner(c, c.token, process.env.APP_URL || 'https://iwopo.com');
+  return Buffer.from(await htmlToPdf(pdfHtml('Certificate of Completion', inner)));
+}
+
+// PUBLIC: GET /api/contracts/certificate/:token/download → certificate as a file
+router.get('/certificate/:token/download', async (req, res) => {
+  try {
+    const c = await prisma.contracts.findFirst({
+      where: { token: req.params.token, status: 'signed' },
+      include: {
+        leads: { select: { name: true, email: true, event_type: true, event_date: true } },
+        vendors: { select: { business_name: true, logo_path: true } },
+      },
+    });
+    if (!c) return downloadFailed(req, res, 404, 'not_found', "This certificate isn't available.");
+
+    sendDoc(res, `certificate-${c.leads?.name || c.id}.html`, 'Certificate of Completion',
+      await certificateInner(c, req.params.token, `${req.protocol}://${req.get('host')}`));
   } catch (e) { downloadCrashed(req, res, e); }
 });
 
@@ -1430,6 +1454,22 @@ router.get('/certificate/:token', async (req, res) => {
  * approving it, and a step that completes by accident is not a review. Releasing
  * is recorded rather than toggled, so "when was this approved" has an answer.
  */
+/* 📧 POST /api/contracts/:id/email-copy — the vendor sends the client their signed contract (again) on purpose.
+   The certificate is never attached. */
+router.post('/:id/email-copy', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const ct = await prisma.contracts.findUnique({ where: { id }, select: { vendor_id: true, lead_id: true, status: true, voided_at: true } });
+    if (!ct) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && ct.vendor_id !== actingVendorId(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
+    if (ct.status !== 'signed' || ct.voided_at) return res.status(409).json({ error: 'Only a signed contract can be emailed' });
+    const r = await sendSignedCopy(ct.lead_id, { force: true, contractId: id });
+    if (!r.sent) return res.status(r.reason === 'no_email' ? 400 : 502).json({ error: r.reason === 'no_email' ? 'This client has no email address' : (r.error || 'The email could not be sent') });
+    const fresh = await prisma.contracts.findUnique({ where: { id }, select: { client_copy_sent_at: true } });
+    res.json({ ok: true, to: r.to, client_copy_sent_at: fresh?.client_copy_sent_at });
+  } catch (e) { serverError(res, e); }
+});
+
 router.put('/:id/release', requireAuth, async (req, res) => {
   const v = req.user.vendor_id;
   const id = Number(req.params.id);

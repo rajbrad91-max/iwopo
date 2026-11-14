@@ -247,6 +247,8 @@ model contracts {
   template_id    Int?
   voided_at      DateTime?        @db.Timestamp(6)
   released_at    DateTime?        @db.Timestamp(6)
+  /// 📧 when the client was emailed their signed copy — sent once, by itself, when the booking is confirmed (2026-11-14)
+  client_copy_sent_at DateTime?   @db.Timestamp(6)
   contract_audit contract_audit[]
   leads          leads            @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors        vendors          @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)

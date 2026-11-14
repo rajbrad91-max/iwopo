@@ -1513,9 +1513,10 @@
   color: var(--text); text-decoration: none;
 }
 .bd-doc:hover { border-color: var(--teal); color: var(--teal); }
-
-@media (max-width: 900px) {
-}
+/* 📧 "Email to client" — a button dressed as its neighbouring document links */
+.ecb { font-family: inherit; text-align: left; cursor: pointer; }
+.ecb:disabled { cursor: progress; }
+.bd-doc.ecb { width: 100%; }
 
 /* ── contract setup: editor and live preview side by side ──── */
 .cs-preview {
