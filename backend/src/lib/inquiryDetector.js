@@ -109,16 +109,6 @@ export async function scanInquiries(v, { lookback } = {}) {
   return { checked, found };
 }
 
-/** look again at earlier AI picks with the current rules — only a clear "no" (or machine mail) removes one */
-export async function recheckInquiries(v) {
-  let removed = 0;
-  for (const r of await prisma.email_inquiries.findMany({ where: { vendor_id: Number(v), source: 'ai', is_inquiry: true } })) {
-    const no = machineMail(addrOf(r.from_addr), r.subject || '') || (await aiVerdict(r.from_addr, r.subject, '')) === 'no';
-    if (no) { await prisma.email_inquiries.update({ where: { id: r.id }, data: { is_inquiry: false, source: 'none' } }); removed++; }
-  }
-  return removed;
-}
-
 /** every vendor whose email is connected */
 export async function scanAllInquiries() {
   try {
@@ -155,11 +145,3 @@ export async function notAnInquiry(v, threadId) {
   return { ok: true, sender };
 }
 
-/** one-off: conversations the owner started were never judged on the client's replies — look at them again */
-export async function rejudgeOwnerStarted(v) {
-  const st = await status(v);
-  const me = String(st.email || '').toLowerCase();
-  const rows = await prisma.email_inquiries.findMany({ where: { vendor_id: Number(v), is_inquiry: false, source: 'none', from_addr: { contains: me, mode: 'insensitive' } } });
-  await prisma.email_inquiries.updateMany({ where: { id: { in: rows.map(r => r.id) } }, data: { last_at: new Date(0) } });   // "a new reply since" for every one of them
-  return rows.length;
-}

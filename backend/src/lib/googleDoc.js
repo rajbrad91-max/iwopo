@@ -142,8 +142,3 @@ export async function syncDocs() {
     catch (e) { await setSetting('gdoc_last_error', String(e.message).slice(0, 300)); }
   }
 }
-
-/** What the doc would say right now (for checking, without touching Google). */
-export async function previewDoc(vendorId) {
-  return (await docText(Number(vendorId))).map(p => p.text);
-}

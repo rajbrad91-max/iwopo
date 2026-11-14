@@ -47,16 +47,6 @@ export async function forgetObject(cls, key) {
   } catch { /* the object is already gone; the row will be caught by reconcile */ }
 }
 
-/** Note a whole prefix going at once — deleting an album is hundreds of keys. */
-export async function forgetPrefix(cls, prefix) {
-  if (!prefix) return;
-  try {
-    await prisma.storage_objects.deleteMany({
-      where: { cls: String(cls), object_key: { startsWith: String(prefix) } },
-    });
-  } catch { /* reconcile will catch it */ }
-}
-
 /** What this vendor is storing, in bytes. */
 export async function ledgerBytesFor(vendorId) {
   try {

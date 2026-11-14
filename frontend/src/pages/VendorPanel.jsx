@@ -5,7 +5,6 @@ import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import { api, getUser, logout, applyVendorClock } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
-import { useActivityPing } from '../lib/activityPing';
 import './inquiry.css';
 import './contractdoc.css';
 import PlansView from './PlansView.jsx';
@@ -142,7 +141,6 @@ const navPref = (k) => { try { return localStorage.getItem(`iwopo_nav_${k}`) ===
 const saveNavPref = (k, on) => { try { localStorage.setItem(`iwopo_nav_${k}`, on ? '1' : '0'); } catch { /* private mode */ } };
 
 export default function VendorPanel({ onLogout }) {
-  useActivityPing();                 // 👀 TEMPORARY — records pages only for the tracked tester
   // seeded from the last session so the sidebar and tab render immediately;
   // the network copy replaces it a moment later and the server decides regardless
   const [features, setFeatures] = useState(() => {

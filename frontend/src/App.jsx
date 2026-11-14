@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 const Selling = lazy(() => import('./pages/Selling'));
-const TesterActivity = lazy(() => import('./pages/TesterActivity'));   // 👀 TEMPORARY
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const VendorPanel = lazy(() => import('./pages/VendorPanel'));
@@ -114,8 +113,6 @@ function AppRoutes() {
   // 👨‍💻 the photo editor's portal (Raw Selector) — its own sign-in, nothing else
   if (window.location.pathname.match(/^\/editor\/?$/)) return <EditorPortal />;
   if (window.location.pathname.match(/^\/photographer\/?$/)) return <PhotographerPortal />;   // 📸 Raw Selector
-  // 👀 TEMPORARY (2026-10-11): the tester activity report — unlinked, Super Admin only
-  if (window.location.pathname.match(/^\/x\/tester-activity\/?$/)) return user ? <Suspense fallback={null}><TesterActivity /></Suspense> : <Login onLogin={setUser} onBack={() => { window.location.href = '/panel'; }} />;
   const lv = window.location.pathname.match(/^\/live\/([A-Za-z0-9]+)/);
   if (lv) return <Suspense fallback={null}><LiveShootPublic token={lv[1]} /></Suspense>;
 
@@ -153,7 +150,6 @@ function AppRoutes() {
   // so a vendor's published address advertised us instead of them.
   const st = window.location.pathname.match(/^\/site\/([a-z0-9-]+)(?:\/([a-z]+))?/i);
   if (st) return <PublicSite slug={st[1]} page={st[2] || 'home'} />;
-
 
   /* 🪟 /panel?switch — sign in as someone else in THIS tab.
      Opening it in a new tab gives a login screen while the tab you came from

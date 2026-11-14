@@ -38,7 +38,6 @@ export const COVER_SIZES = {
 /* Sizes no longer made — their files are removed with the cover (routes/albums.js) and cleared from storage by
    scripts/coverSizes.mjs, so none is left behind. '_tiny': dropped 2026-11-08. */
 export const RETIRED_COVER_TAGS = ['_tiny'];
-export const CROP_EDGE = COVER_SIZES.full.edge;
 
 /* The hero is the full width of the screen and as tall as the viewport, so its
    shape is opposite on the two devices: about 2:1 on a laptop and about 9:16 on

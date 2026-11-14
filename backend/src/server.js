@@ -58,7 +58,6 @@ import editorRoutes from './routes/editor.js';
 import photographerRoutes from './routes/photographer.js';
 import agentRoutes from './routes/agent.js';
 import pcRoutes from './routes/pc.js';
-import activityRoutes from './routes/activity.js';     // 👀 TEMPORARY — tester activity
 import { sweepRaws } from './lib/rawFiles.js';
 import { ingestFtp } from './lib/cameraFtp.js';
 import { writeAltTexts } from './lib/rawDelivery.js';
@@ -230,8 +229,6 @@ app.use('/api/photographer', photographerRoutes);   // 📸 Raw Selector: the ph
 // 🤖 AI Agent — private like comms: the vendor's own AI agent, reading their panel
 app.use('/api/agent', gate('agent'), agentRoutes);
 app.use('/api/pc', pcRoutes);
-// 👀 TEMPORARY (2026-10-11): which pages a tracked tester visited — Super Admin report at /x/tester-activity
-app.use('/api/activity', activityRoutes);
 // 🔑 device tokens for the live-shoot watcher — managed by a person, never a device
 app.use('/api/ppsite', gate('ppsite'), ppsiteRoutes);
 app.use('/api/devices', deviceRoutes);

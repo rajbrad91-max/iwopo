@@ -1,7 +1,6 @@
 import geoip from 'geoip-lite';
 import prisma from '../config/prisma.js';
 import { clientIp } from './clientIp.js';
-import { COUNTRY_CURRENCY } from './currencies.js';
 
 /**
  * 🌍 The visitor's country and currency, and today's exchange rates (Raj, 2026-11-06). Plan prices are FIXED per
@@ -38,12 +37,6 @@ async function loadRates() {
 /** The visitor's country (two letters, from their IP), or null when unknown. */
 export function visitorCountry(req) {
   return geoip.lookup(clientIp(req))?.country || null;
-}
-
-/** The visitor's currency, from their country — USD when unknown. */
-export function visitorCurrency(req) {
-  const c = visitorCountry(req);
-  return (c && COUNTRY_CURRENCY[c]) || 'USD';
 }
 
 /** How many of `currency` one US dollar buys today, or null when unknown (or USD itself). */

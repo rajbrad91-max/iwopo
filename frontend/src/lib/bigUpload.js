@@ -101,12 +101,3 @@ export async function uploadInParts(file, io, onProgress, resume) {
     throw err;
   }
 }
-
-/** Bytes a person can read, for progress text. */
-export function humanSize(n) {
-  const b = Number(n) || 0;
-  if (b >= 1099511627776) return (b / 1099511627776).toFixed(2) + ' TB';
-  if (b >= 1073741824) return (b / 1073741824).toFixed(1) + ' GB';
-  if (b >= 1048576) return Math.round(b / 1048576) + ' MB';
-  return Math.max(1, Math.round(b / 1024)) + ' KB';
-}

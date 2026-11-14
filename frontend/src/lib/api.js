@@ -500,8 +500,6 @@ export const api = {
     request(`/vendors/${vendorId}/storage`, { method: 'PUT', body: JSON.stringify({ storage_limit_mb }) }),
 
   // 📤 File Flyer — shares a vendor hands to a client, either direction
-  fileShares: () => request('/files'),
-
   // 📁 one level of the vendor's own drive — no share involved
   drive: (folderId) =>
     request(`/files/drive${folderId ? '?folder=' + folderId : ''}`),
@@ -523,8 +521,6 @@ export const api = {
     request(`/files/folder/${folderId}`, { method: 'DELETE' }),
   emailShare: (id, body) =>
     request(`/files/${id}/email`, { method: 'POST', body: JSON.stringify(body) }),
-  updateFileShare: (id, body) => request(`/files/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-  deleteFileShare: (id) => request(`/files/${id}`, { method: 'DELETE' }),
   /**
    * Send files, routing by size.
    *
@@ -620,7 +616,6 @@ export const api = {
   saveDomain: (domain) => request('/domain', { method: 'PUT', body: JSON.stringify({ domain }) }),
   checkDomain: () => request('/domain/check', { method: 'POST' }),
   uploadSiteCover: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/cover', { method: 'POST', body: fd }); },
-  removeSiteCover: () => request('/sites/my/cover', { method: 'DELETE' }),
   setSiteCoverFocus: (cover_focus) => request('/sites/my/cover-focus', { method: 'PUT', body: JSON.stringify({ cover_focus }) }),
   addPortfolioPhoto: (file) => { const fd = new FormData(); fd.append('photo', file); return request('/sites/my/portfolio', { method: 'POST', body: fd }); },
   removePortfolioPhoto: (id) => request(`/sites/my/portfolio/${id}`, { method: 'DELETE' }),
@@ -645,8 +640,6 @@ export const api = {
   deleteContact: (id) => request(`/contacts/${id}`, { method: 'DELETE' }),
   // 📨 who a share is for
   shareRecipients: (shareId) => request(`/files/shares/${shareId}/recipients`),
-  setShareRecipients: (shareId, contactIds) =>
-    request(`/files/shares/${shareId}/recipients`, { method: 'PUT', body: JSON.stringify({ contact_ids: contactIds }) }),
 
   bigPending: () => request('/files/big/pending'),
   bigResume: (id) => request('/files/big/resume', { method: 'POST', body: JSON.stringify({ id }) }),
@@ -708,7 +701,6 @@ export const api = {
   billingMarketing: (on) => request('/billing/marketing', { method: 'POST', body: JSON.stringify({ on }) }),   // 📬
   vendorFeatures: (id) => request(`/vendors/${id}/features`),
   setVendorFeature: (id, key, body) => request(`/vendors/${id}/features/${key}`, { method: 'PUT', body: JSON.stringify(body) }),
-  services: () => request('/services'),
   packages: (currency) => request(`/packages${currency ? `?currency=${encodeURIComponent(currency)}` : ''}`),   // a currency code shows prices in it (Super Admin: USD)
   adminServices: () => request('/admin/services'),
   adminPackages: () => request('/admin/packages'),
@@ -756,8 +748,6 @@ export const api = {
   setVendorPlan: (vendorId, planId) =>
     request(`/vendors/${vendorId}/plan`, { method: 'PUT', body: JSON.stringify({ plan_id: planId }) }),
 
-  updateItemPrice: (id, prices) =>
-    request(`/package-items/${id}/price`, { method: 'PUT', body: JSON.stringify(prices) }),
   updateServicePrice: (id, prices) =>
     request(`/services/${id}/price`, { method: 'PUT', body: JSON.stringify(prices) }),
   updateCountryPrices: (type, id, country_prices) =>
@@ -787,7 +777,6 @@ export const api = {
   updateMyName: (name) => request('/me/account', { method: 'PUT', body: JSON.stringify({ name }) }),
   changeEmail: (email, password) => request('/me/email', { method: 'PUT', body: JSON.stringify({ email, password }) }),
   changePassword: (current, next) => request('/me/password', { method: 'PUT', body: JSON.stringify({ current, next }) }),
-  vendorPackages: () => request('/vendor-packages'),
   pkgTemplates: () => request('/vendor-packages/templates'),
   addTemplate: (name) => request('/vendor-packages/templates', { method: 'POST', body: JSON.stringify({ name }) }),
   renameTemplate: (id, name) => request(`/vendor-packages/templates/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
@@ -831,14 +820,11 @@ export const api = {
   emailSettings: () => request('/email/settings'),
   saveEmailSettings: (data) => request('/email/settings', { method: 'PUT', body: JSON.stringify(data) }),
   emailLead: (leadId, subject, body, cc, kind, use_design) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body, cc, kind, use_design }) }),
-  leadContracts: (leadId) => request(`/contracts/lead/${leadId}`),
   releaseContract: (id) => request(`/contracts/${id}/release`, { method: 'PUT' }),
   emailContractCopy: (id) => request(`/contracts/${id}/email-copy`, { method: 'POST' }),   // 📧 the signed contract to the client
   previewContract: (leadId, packageId) => request(
     `/contracts/preview/${leadId}` + (packageId ? `?package=${encodeURIComponent(packageId)}` : '')
   ),
-  createContract: (leadId, title, body) => request(`/contracts/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ title, body }) }),
-  voidContract: (id) => request(`/contracts/${id}`, { method: 'DELETE' }),
   viewContract: (token) => request(`/contracts/sign/${token}`),
   signContract: (token, signed_name, signature_data, initials) => request(`/contracts/sign/${token}`, { method: 'POST', body: JSON.stringify({ signed_name, signature_data, initials }) }),
   allContracts: () => request('/contracts'),
@@ -851,9 +837,6 @@ export const api = {
   ownContract: (leadId) => request(`/contracts/lead/${leadId}/own-version`, { method: 'POST' }),   // ✏️ this client's own version
   createContractFromTemplate: (leadId, template_id) => request(`/contracts/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ template_id }) }),
   allInvoices: () => request('/invoices'),
-  leadInvoices: (leadId) => request(`/invoices/lead/${leadId}`),
-  createInvoice: (leadId, data) => request(`/invoices/lead/${leadId}`, { method: 'POST', body: JSON.stringify(data || {}) }),
-  deleteInvoice: (id) => request(`/invoices/${id}`, { method: 'DELETE' }),
   viewInvoice: (token) => request(`/invoices/view/${token}`),
   leadsHistory: (listing) => request(`/leads/history${listingQs(listing)}`),
   bulkArchive: (ids) => request('/leads/bulk-archive', { method: 'POST', body: JSON.stringify({ ids }) }),
@@ -862,7 +845,6 @@ export const api = {
   setGateway: (id, enabled) => request(`/leads/${id}/gateway`, { method: 'PUT', body: JSON.stringify({ enabled }) }),
   sendPackages: (id) => request(`/leads/${id}/send-packages`, { method: 'POST' }),
   saveTimer: (id, data) => request(`/leads/${id}/timer`, { method: 'PUT', body: JSON.stringify(data) }),
-  leadFlags: (id, data) => request(`/leads/${id}/flags`, { method: 'PUT', body: JSON.stringify(data) }),
   crew: () => request('/crew'),
   addCrew: (data) => request('/crew', { method: 'POST', body: JSON.stringify(data) }),
   // 📸 galleries
@@ -911,43 +893,14 @@ export const api = {
   clearSelection: (id) => request(`/albums/${id}/selection`, { method: 'DELETE' }),
   deleteAlbum: (id) => request(`/albums/${id}`, { method: 'DELETE' }),
   deletePhoto: (albumId, photoId) => request(`/albums/${albumId}/photos/${photoId}`, { method: 'DELETE' }),
-  uploadPhotos: async (albumId, files, eventId) => {
-    const fd = new FormData();
-    [...files].forEach(f => fd.append('photos', f));
-    if (eventId) fd.append('event_id', eventId);
-    const token = localStorage.getItem('iwopo_token');
-    const res = await fetch(`/api/albums/${albumId}/photos`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: fd,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
-    return data;
-  },
   addAlbumEvent: (albumId, name) => request(`/albums/${albumId}/events`, { method: 'POST', body: JSON.stringify({ name }) }),
   renameAlbumEvent: (albumId, eventId, name) => request(`/albums/${albumId}/events/${eventId}`, { method: 'PUT', body: JSON.stringify({ name }) }),
   deleteAlbumEvent: (albumId, eventId) => request(`/albums/${albumId}/events/${eventId}`, { method: 'DELETE' }),
   fileUrl: (photoId, type) => `/api/albums/file/${photoId}/${type}`,
-  indexFaces: (albumId) => request(`/albums/${albumId}/index-faces`, { method: 'POST' }),
-  faceSearch: async (albumId, selfieFile) => {
-    const fd = new FormData();
-    fd.append('selfie', selfieFile);
-    const token = localStorage.getItem('iwopo_token');
-    const res = await fetch(`/api/albums/${albumId}/face-search`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: fd,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Search failed');
-    return data;
-  },
   updateCrew: (id, data) => request(`/crew/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCrew: (id) => request(`/crew/${id}`, { method: 'DELETE' }),
   crewFtp: (id) => request(`/crew/${id}/ftp`),   // 📡 camera FTP (Raw Selector)
   crewFtpReset: (id) => request(`/crew/${id}/ftp`, { method: 'POST' }),
-  leadCrew: (leadId) => request(`/crew/lead/${leadId}`),
   assignCrew: (leadId, data) => request(`/crew/lead/${leadId}`, { method: 'POST', body: JSON.stringify(data) }),
   crewUploads: (id, uploads) => request(`/crew/assignment/${id}/uploads`, { method: 'PATCH', body: JSON.stringify({ uploads }) }),   // 📸 Raw Selector
   unassignCrew: (id) => request(`/crew/assignment/${id}`, { method: 'DELETE' }),
@@ -967,8 +920,6 @@ export const api = {
   saveClientEmail: (kind, subject, body, design = {}) => request(`/email/client-emails/${kind}`, { method: 'PUT', body: JSON.stringify({ subject, body, ...design }) }),
   resetClientEmail: (kind) => request(`/email/client-emails/${kind}`, { method: 'DELETE' }),
   addEmailTemplate: (data) => request('/email/templates', { method: 'POST', body: JSON.stringify(data) }),
-  updateEmailTemplate: (id, data) => request(`/email/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteEmailTemplate: (id) => request(`/email/templates/${id}`, { method: 'DELETE' }),
   portal: (token, fresh) => request(`/portal/${token}${fresh ? '?fresh=1' : ''}`),
   portalVerify: (token, email) => request(`/portal/${token}/verify`, { method: 'POST', body: JSON.stringify({ email }) }),
   // extras: [{ id, qty }] — the optional extras the client ticked on that package (the server checks them)
@@ -978,7 +929,6 @@ export const api = {
   portalPayCard: (token) => request(`/portal/${token}/pay-card`, { method: 'POST' }),   // 💳 on the vendor's own Stripe
   confirmPaymentClaim: (leadId, data) => request(`/payments/lead/${leadId}/confirm-claim`,
     { method: 'PUT', body: JSON.stringify(data) }),
-  myServices: () => request('/vendors/me/services'),
   // 💳 the upgrade page — current plan, what else exists, what each grants
   myPlans: () => request('/me/plans'),
   limitState: () => request('/me/limit-state'),
@@ -1044,9 +994,6 @@ export const api = {
   agentPushSubscribe: (sub) => request('/agent/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
   agentPushUnsubscribe: (endpoint) => request('/agent/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) }),
   agentConfirm: (id) => request('/agent/confirm', { method: 'POST', body: JSON.stringify({ id }) }),
-  // 👀 TEMPORARY — tester activity
-  activityPing: (path) => request('/activity/ping', { method: 'POST', body: JSON.stringify({ path }) }),
-  testerActivity: () => request('/activity/report'),
   agentKnowledge: () => request('/agent/knowledge'),
   agentAddFact: (text) => request('/agent/knowledge', { method: 'POST', body: JSON.stringify({ text }) }),
   agentDeleteFact: (id) => request(`/agent/knowledge/${id}`, { method: 'DELETE' }),
@@ -1091,10 +1038,6 @@ export const api = {
   // 🟢 answer "sounds booked — approve?"
   commsBooking: (id, approve) => request('/comms/' + id + '/booking', { method: 'POST', body: JSON.stringify({ approve }) }),
   myFeatures: () => request('/me/features'),
-  toggleService: (vendorId, serviceId, enabled) =>
-    request(`/vendors/${vendorId}/services/${serviceId}/toggle`, {
-      method: 'POST', body: JSON.stringify({ enabled }),
-    }),
 
   /* 🚪 A one-time proof for the Perfect Poses admin. */
   ppsiteEnter: () => request('/ppsite/enter'),

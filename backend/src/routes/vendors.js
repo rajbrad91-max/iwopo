@@ -1,7 +1,6 @@
 import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth, requireSuperAdmin } from '../middleware/auth.js';
-import { tenantScope } from '../middleware/tenant.js';
 import { getFeatures } from '../lib/entitlements.js';
 import { storageFor } from '../lib/storageQuota.js';
 import { serverError } from '../lib/httpError.js';
@@ -236,41 +235,6 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
       : [];
 
     res.json({ membership, vendor, users, services, subscriptions, storage, referredBy: referral[0] || null });
-  } catch (e) { serverError(res, e); }
-});
-
-// GET /api/vendors/me/services → a vendor's own services (tenant-scoped)
-router.get('/me/services', requireAuth, tenantScope, async (req, res) => {
-  if (!req.tenantId) return res.status(400).json({ error: 'No tenant' });
-  try {
-    // LEFT JOIN vendor_services ON service_id AND vendor_id: every service row is
-    // returned, with `enabled` coming only from THIS tenant's row (false if none).
-    /* 🔒 A private feature is not part of the product and must not appear in a
-       vendor's list — not even switched off, because a locked row is an advert
-       for something they cannot have. */
-    const services = await prisma.services.findMany({ where: { is_private: false }, orderBy: { id: 'asc' } });
-    const mine = await prisma.vendor_services.findMany({
-      where: { vendor_id: req.tenantId },        // 🔒 locked to this tenant
-      select: { service_id: true, enabled: true },
-    });
-    const enabledBy = new Map(mine.map(r => [r.service_id, r.enabled]));
-    res.json({ services: services.map(s => ({ ...s, enabled: enabledBy.get(s.id) ?? false })) });
-  } catch (e) { serverError(res, e); }
-});
-
-// POST /api/vendors/:vendorId/services/:serviceId/toggle → super admin toggles
-router.post('/:vendorId/services/:serviceId/toggle',
-  requireAuth, requireSuperAdmin, async (req, res) => {
-  const vendorId = Number(req.params.vendorId);
-  const serviceId = Number(req.params.serviceId);
-  const { enabled } = req.body;
-  try {
-    await prisma.vendor_services.upsert({
-      where: { vendor_id_service_id: { vendor_id: vendorId, service_id: serviceId } },
-      update: { enabled },
-      create: { vendor_id: vendorId, service_id: serviceId, enabled },
-    });
-    res.json({ ok: true, vendorId, serviceId, enabled });
   } catch (e) { serverError(res, e); }
 });
 
