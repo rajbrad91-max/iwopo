@@ -21,6 +21,7 @@ import { commsBus } from '../lib/commsPop.js';
 import { requestLead, answerBooking } from '../lib/callLeads.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
+import { sameNumber } from '../lib/commsSql.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -137,10 +138,8 @@ router.post('/contact', requireAuth, async (req, res) => {
 
     /* 🔒 Only a number this vendor has actually spoken with — the endpoint
        must not become a way to write anything at all into Quo. */
-    const known = await privateDb.$queryRawUnsafe(
-      `SELECT 1 FROM comms_events WHERE vendor_id = $1
-          AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
-            OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2) LIMIT 1`, v, key10);
+    const known = await privateDb.$queryRaw`
+      SELECT 1 FROM comms_events WHERE vendor_id = ${v} AND ${sameNumber(key10)} LIMIT 1`;
     if (!known.length) return res.status(404).json({ error: 'No calls or texts with that number.' });
 
     forgetContacts();                                            // read Quo's contacts fresh, so an existing one is found
@@ -152,10 +151,8 @@ router.post('/contact', requireAuth, async (req, res) => {
     addToGoogle(v, { firstName, lastName, email, number: e164 }).catch(quiet('comms · addToGoogle'));   // 📇 saved once → in Google too
 
     const name = [firstName, lastName].filter(Boolean).join(' ');
-    await privateDb.$executeRawUnsafe(
-      `UPDATE comms_events SET contact_name = $3 WHERE vendor_id = $1
-          AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
-            OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)`, v, key10, name);
+    await privateDb.$executeRaw`
+      UPDATE comms_events SET contact_name = ${name} WHERE vendor_id = ${v} AND ${sameNumber(key10)}`;
     res.json({ ok: true, name, updated: saved.updated });
   } catch (e) {
     res.status(e.status && e.status < 500 ? 400 : 500).json({ error: `Quo did not save the contact: ${e.message}` });
@@ -204,11 +201,9 @@ router.post('/message', requireAuth,
       /* Which of our lines to send from: the one chosen in Super Admin, or —
          with "every number" — the line this person last spoke to, so the
          reply lands in the same thread on their phone. */
-      const last = await privateDb.$queryRawUnsafe(
-        `SELECT line_id FROM comms_events WHERE vendor_id = $1 AND line_id IS NOT NULL
-            AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
-              OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)
-          ORDER BY occurred_at DESC LIMIT 1`, v, key10);
+      const last = await privateDb.$queryRaw`
+        SELECT line_id FROM comms_events WHERE vendor_id = ${v} AND line_id IS NOT NULL AND ${sameNumber(key10)}
+          ORDER BY occurred_at DESC LIMIT 1`;
       let from;
       if (last.length) from = cfg.phoneNumberId || last[0].line_id;
       else if (req.body?.start === true) from = cfg.phoneNumberId || (await listPhoneNumbers(cfg.key))[0]?.id;
@@ -384,11 +379,9 @@ router.post('/lead-request', requireAuth, async (req, res) => {
       ev = await privateDb.comms_events.findFirst({ where: { external_id: String(b.call_id), vendor_id: v, kind: 'call' }, select: { id: true } });
     } else if (b.number) {
       const ten = tenDigits(b.number);
-      const rows = await privateDb.$queryRawUnsafe(
-        `SELECT id FROM comms_events WHERE vendor_id = $1 AND kind = 'call' AND status = 'completed'
-            AND (right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
-              OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)
-          ORDER BY occurred_at DESC LIMIT 1`, v, ten);           // 🔒 this vendor's calls only
+      const rows = await privateDb.$queryRaw`
+        SELECT id FROM comms_events WHERE vendor_id = ${v} AND kind = 'call' AND status = 'completed' AND ${sameNumber(ten)}
+          ORDER BY occurred_at DESC LIMIT 1`;           // 🔒 this vendor's calls only
       ev = rows[0] || null;
     }
     if (!ev) return res.status(404).json({ error: 'No answered call with this person to make a lead from.' });

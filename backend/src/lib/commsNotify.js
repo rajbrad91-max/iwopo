@@ -25,10 +25,10 @@ const MISSED = ['missed', 'no-answer', 'busy', 'failed', 'canceled'];
 async function whoIs(vendorId, number) {
   const ten = String(number || '').replace(/\D/g, '').slice(-10);
   if (ten.length !== 10) return 'an unknown number';
-  const lead = await prisma.$queryRawUnsafe(
-    `SELECT name FROM leads WHERE vendor_id = $1 AND name IS NOT NULL
-        AND right(regexp_replace(coalesce(phone,''),'\\D','','g'),10) = $2
-      ORDER BY created_at DESC LIMIT 1`, Number(vendorId), ten).catch(() => []);
+  const lead = await prisma.$queryRaw`
+    SELECT name FROM leads WHERE vendor_id = ${Number(vendorId)} AND name IS NOT NULL
+        AND right(regexp_replace(coalesce(phone,''),'\\D','','g'),10) = ${ten}
+      ORDER BY created_at DESC LIMIT 1`.catch(() => []);
   if (lead[0]?.name) return lead[0].name;
   return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
 }

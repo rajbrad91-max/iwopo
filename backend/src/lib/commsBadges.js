@@ -20,13 +20,12 @@ export const tenDigits = (n) => String(n || '').replace(/\D/g, '').slice(-10);
 export async function badgesFor(vendorId, rawNumbers) {
   const keys = [...new Set(rawNumbers.map(tenDigits).filter(k => k.length === 10))].slice(0, 500);
   if (!keys.length) return {};
-  const rows = await prisma.$queryRawUnsafe(
-    `SELECT id, name, email, status, event_date, created_at,
+  const rows = await prisma.$queryRaw`
+    SELECT id, name, email, status, event_date, created_at,
             right(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), 10) AS k
        FROM leads
-      WHERE vendor_id = $1
-        AND right(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), 10) = ANY($2::text[])`,
-    Number(vendorId), keys);
+      WHERE vendor_id = ${Number(vendorId)}
+        AND right(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), 10) = ANY(${keys}::text[])`;
   const out = {};
   for (const r of rows) {
     const booked = BOOKED.includes(r.status);

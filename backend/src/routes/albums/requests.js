@@ -8,6 +8,7 @@ import prisma from '../../config/prisma.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { serverError } from '../../lib/httpError.js';
 import { ownVendorId } from '../../lib/vendorScope.js';
+import { mineVia } from '../../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -101,8 +102,8 @@ router.delete('/requests/:albumId', requireAuth, async (req, res) => {
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } });  // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Not found' });
 
-    const { count } = await prisma.selections.deleteMany({ where: { album_id: id } });
-    await prisma.selection_notes.deleteMany({ where: { album_id: id } });
+    const { count } = await prisma.selections.deleteMany({ where: { album_id: id, ...mineVia('albums', v) } });
+    await prisma.selection_notes.deleteMany({ where: { album_id: id, ...mineVia('albums', v) } });
 
     res.json({ ok: true, removed: count });
   } catch (e) { serverError(res, e); }

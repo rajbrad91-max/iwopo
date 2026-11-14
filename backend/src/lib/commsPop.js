@@ -15,14 +15,13 @@
 import { EventEmitter } from 'node:events';
 import privateDb from '../config/privateDb.js';
 import { badgesFor, tenDigits } from './commsBadges.js';
+import { sameNumber } from './commsSql.js';
 
 export const commsBus = new EventEmitter();
 commsBus.setMaxListeners(50);                       // a few open tabs, not thousands
 
 const RINGING = ['ringing', 'initiated', 'queued', 'in-progress'];
 const MISSED = ['missed', 'no-answer', 'busy', 'failed', 'canceled'];
-const sameNumber = `(right(regexp_replace(coalesce(from_number,''),'\\D','','g'),10) = $2
-                  OR right(regexp_replace(coalesce(to_number,''),'\\D','','g'),10) = $2)`;
 
 function summaryPoints(body, n = 3) {
   const [main] = String(body || '').split(/\n\s*Next steps:\s*\n/);
@@ -39,21 +38,21 @@ export async function buildPop(vendorId, number, { skipExternalId } = {}) {
   if (ten.length !== 10) return { number, name: null };
   const [badges, lastCall, texts, named, counts] = await Promise.all([
     badgesFor(v, [ten]),
-    privateDb.$queryRawUnsafe(
-      `SELECT id, occurred_at, duration_sec, status, body, transcript FROM comms_events
-        WHERE vendor_id = $1 AND kind = 'call' AND ${sameNumber} AND external_id <> $3
+    privateDb.$queryRaw`
+      SELECT id, occurred_at, duration_sec, status, body, transcript FROM comms_events
+        WHERE vendor_id = ${v} AND kind = 'call' AND ${sameNumber(ten)} AND external_id <> ${String(skipExternalId || '')}
           AND (body IS NOT NULL OR transcript IS NOT NULL)
-        ORDER BY occurred_at DESC LIMIT 1`, v, ten, String(skipExternalId || '')),
-    privateDb.$queryRawUnsafe(
-      `SELECT direction, body, occurred_at FROM comms_events
-        WHERE vendor_id = $1 AND kind = 'message' AND ${sameNumber}
-        ORDER BY occurred_at DESC LIMIT 3`, v, ten),
-    privateDb.$queryRawUnsafe(
-      `SELECT contact_name FROM comms_events WHERE vendor_id = $1 AND contact_name IS NOT NULL AND ${sameNumber}
-        ORDER BY occurred_at DESC LIMIT 1`, v, ten),
-    privateDb.$queryRawUnsafe(
-      `SELECT count(*) FILTER (WHERE kind = 'call')::int AS calls, count(*) FILTER (WHERE kind = 'message')::int AS texts
-         FROM comms_events WHERE vendor_id = $1 AND ${sameNumber}`, v, ten),
+        ORDER BY occurred_at DESC LIMIT 1`,
+    privateDb.$queryRaw`
+      SELECT direction, body, occurred_at FROM comms_events
+        WHERE vendor_id = ${v} AND kind = 'message' AND ${sameNumber(ten)}
+        ORDER BY occurred_at DESC LIMIT 3`,
+    privateDb.$queryRaw`
+      SELECT contact_name FROM comms_events WHERE vendor_id = ${v} AND contact_name IS NOT NULL AND ${sameNumber(ten)}
+        ORDER BY occurred_at DESC LIMIT 1`,
+    privateDb.$queryRaw`
+      SELECT count(*) FILTER (WHERE kind = 'call')::int AS calls, count(*) FILTER (WHERE kind = 'message')::int AS texts
+         FROM comms_events WHERE vendor_id = ${v} AND ${sameNumber(ten)}`,
   ]);
   const badge = badges[ten] || null;
   const call = lastCall[0];

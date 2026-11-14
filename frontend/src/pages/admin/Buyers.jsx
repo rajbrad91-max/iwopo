@@ -114,7 +114,7 @@ function VendorDrawer({ vendorId, onClose }) {
               : d.services.map(s => (
                 <div className="u-display-flex u-justify-content-space-between u-padding-6px-0 u-border-bottom-1px-solid-line u-font-size-13_5px" key={s.id}>
                   <span>{s.icon} {s.name}</span>
-                  <span style={{ color: s.enabled ? 'var(--green)' : 'var(--muted)' }}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
+                  <span className={`sa-svc-state ${s.enabled ? 'is-on' : ''}`}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
                 </div>
               ))}
 
@@ -259,9 +259,7 @@ function PlanPicker({ vendorId, storage, onChanged }) {
           : null}
       </div>
       <div className="u-display-flex u-gap-8px u-align-items-center">
-        <select value={current} disabled={busy} onChange={e => pick(e.target.value)}
-          style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line)',
-                   background: 'var(--panel)', color: 'var(--text)', fontSize: 13 }}>
+        <select className="sa-plan-select" value={current} disabled={busy} onChange={e => pick(e.target.value)}>
           <option value="">Free trial</option>
           {plans.map(p => (
             <option key={p.id} value={p.id}>

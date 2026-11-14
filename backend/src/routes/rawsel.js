@@ -28,6 +28,7 @@ import { notify } from './notifications.js';
 import { sendAsVendor } from './email.js';
 import { openPassword } from '../lib/sharePassword.js';
 import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
+import { mine } from '../lib/tenancy.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
@@ -289,7 +290,7 @@ router.get('/albums/:albumId/photos', requireAuth, async (req, res) => {
 router.put('/albums/:albumId/note', requireAuth, async (req, res) => {
   try {
     const a = await ownAlbum(req, res); if (!a) return;
-    await prisma.albums.update({ where: { id: a.id }, data: { editor_note: String(req.body?.note || '').trim().slice(0, 2000) || null } });
+    await prisma.albums.update({ where: { id: a.id, ...mine(vid(req)) }, data: { editor_note: String(req.body?.note || '').trim().slice(0, 2000) || null } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -305,7 +306,7 @@ router.delete('/albums/:albumId/raws', requireAuth, async (req, res) => {
       where.OR = [{ photo_id: null }, { photo_id: { notIn: picks.map(p => p.photo_id) } }];
     }
     const deleted = await deleteRaws(where);
-    await prisma.albums.update({ where: { id: a.id }, data: { raws_removed_at: new Date(), raws_removed_scope: scope } });
+    await prisma.albums.update({ where: { id: a.id, ...mine(vid(req)) }, data: { raws_removed_at: new Date(), raws_removed_scope: scope } });
     res.json({ deleted, scope });
   } catch (e) { serverError(res, e); }
 });

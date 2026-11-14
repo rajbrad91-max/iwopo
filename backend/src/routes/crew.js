@@ -359,7 +359,7 @@ router.patch('/assignment/:id/uploads', requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     const row = await prisma.lead_crew.findUnique({ where: { id }, select: { leads: { select: { vendor_id: true } } } });
     if (!row || row.leads?.vendor_id !== actingVendorId(req)) return res.status(404).json({ error: 'Not found' });   // 🔒 tenancy
-    const updated = await prisma.lead_crew.update({ where: { id }, data: { uploads: !!req.body?.uploads }, select: { id: true, uploads: true } });
+    const updated = await prisma.lead_crew.update({ where: { id, ...mineVia('leads', actingVendorId(req)) }, data: { uploads: !!req.body?.uploads }, select: { id: true, uploads: true } });
     res.json(updated);
   } catch (e) { serverError(res, e); }
 });

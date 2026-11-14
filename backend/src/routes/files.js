@@ -921,7 +921,7 @@ router.post('/big/complete', requireAuth, async (req, res) => {
         uploaded_by: 'vendor',
       },
     });
-    await prisma.pending_uploads.deleteMany({ where: { object_key: key } });   // finished
+    await prisma.pending_uploads.deleteMany({ where: { object_key: key, ...mine(v) } });   // finished
     res.status(201).json({ item: { ...row, size_bytes: Number(row.size_bytes) }, storage: await storageFor(v) });
   } catch (e) { serverError(res, e); }
 });
@@ -934,7 +934,7 @@ router.post('/big/abort', requireAuth, async (req, res) => {
     if (!key || !uploadId) return res.status(400).json({ error: 'key and upload_id required' });
     if (key !== fileKey(v, path.basename(key))) return res.status(403).json({ error: 'Not your key' });
     await objects.abortMultipart(objects.PRIVATE, key, uploadId);
-    await prisma.pending_uploads.deleteMany({ where: { object_key: key } });   // abandoned
+    await prisma.pending_uploads.deleteMany({ where: { object_key: key, ...mine(v) } });   // abandoned
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -966,7 +966,7 @@ router.get('/big/pending', requireAuth, async (req, res) => {
         /* R2 has forgotten it — its own rule clears abandoned parts after seven
            days. The row is stale, so it goes rather than offering the vendor a
            resume that cannot work. */
-        await prisma.pending_uploads.delete({ where: { id: r.id } }).catch(quiet('files · pending_uploads.delete'));
+        await prisma.pending_uploads.delete({ where: { id: r.id, ...mine(v) } }).catch(quiet('files · pending_uploads.delete'));
         continue;
       }
       out.push({
@@ -1003,7 +1003,7 @@ router.post('/big/resume', requireAuth, async (req, res) => {
     try {
       parts = await objects.listParts(objects.PRIVATE, row.object_key, row.upload_id);
     } catch {
-      await prisma.pending_uploads.delete({ where: { id: row.id } }).catch(quiet('files · pending_uploads.delete'));
+      await prisma.pending_uploads.delete({ where: { id: row.id, ...mine(v) } }).catch(quiet('files · pending_uploads.delete'));
       return res.status(410).json({ error: 'expired', message: 'This upload is too old to resume — please start it again.' });
     }
 
@@ -1026,7 +1026,7 @@ router.delete('/big/pending/:id', requireAuth, async (req, res) => {
     });
     if (!row) return res.status(404).json({ error: 'Not found' });
     try { await objects.abortMultipart(objects.PRIVATE, row.object_key, row.upload_id); } catch { /* already gone */ }
-    await prisma.pending_uploads.delete({ where: { id: row.id } });
+    await prisma.pending_uploads.delete({ where: { id: row.id, ...mine(v) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
@@ -1079,14 +1079,14 @@ router.put('/shares/:id/recipients', requireAuth, async (req, res) => {
        Without it, a caller could attach somebody else's contact to their own
        share — and once client logins exist, that would hand a stranger's
        account a view of these files. */
-    const mine = await prisma.contacts.findMany({
+    const owned = await prisma.contacts.findMany({
       where: { id: { in: ids }, vendor_id: v },
       select: { id: true },
     });
-    const allowed = mine.map(c => c.id);
+    const allowed = owned.map(c => c.id);
 
     await prisma.share_recipients.deleteMany({
-      where: { share_id: share.id, contact_id: { notIn: allowed.length ? allowed : [0] } },
+      where: { share_id: share.id, contact_id: { notIn: allowed.length ? allowed : [0] }, ...mine(v) },
     });
     for (const cid of allowed) {
       await prisma.share_recipients.upsert({

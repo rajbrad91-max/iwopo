@@ -20,6 +20,7 @@ import { downloadLog } from '../../lib/galleryDownloads.js';
 import { ownVendorId } from '../../lib/vendorScope.js';
 import { ROOT } from './shared.js';
 import { JWT_SECRET } from '../../config/secrets.js';   // 🔑 one secret, no fallback
+import { mineVia } from '../../lib/tenancy.js';
 
 const router = express.Router();
 
@@ -125,8 +126,8 @@ router.delete('/:id/selection', requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     const own = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { id: true } }); // 🔒 tenancy
     if (!own) return res.status(404).json({ error: 'Not found' });
-    await prisma.selections.deleteMany({ where: { album_id: id } });
-    await prisma.selection_notes.deleteMany({ where: { album_id: id } });
+    await prisma.selections.deleteMany({ where: { album_id: id, ...mineVia('albums', v) } });
+    await prisma.selection_notes.deleteMany({ where: { album_id: id, ...mineVia('albums', v) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });
