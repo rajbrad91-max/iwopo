@@ -1,7 +1,7 @@
 #!/bin/bash
 # 🔐 Limited database logins for the iwopo app (audit 2026-11-14).
 # The app reads and writes rows; only migrations (run by iwopo-deploy) keep the owner login.
-# Usage: db_roles.sh staging|live      — idempotent: an existing role keeps its password.
+# Usage: iwopo-db-roles.sh staging|live      — idempotent: an existing role keeps its password.
 set -euo pipefail
 shopt -s inherit_errexit
 ENVIRONMENT=$1

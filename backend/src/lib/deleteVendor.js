@@ -3,6 +3,7 @@ import * as objects from './objectStore.js';
 import { paidSubscription } from './billing.js';
 import { disconnect } from './stripeConnect.js';
 import { stripe } from './stripe.js';
+import { quiet } from './quiet.js';
 
 /**
  * 🗑️ Delete a vendor for good (Super Admin, Raj, 2026-11-06). Never an owner account. A paying vendor's Stripe
@@ -41,7 +42,7 @@ export async function deleteVendor(vendorId, confirmName, { cancelSubscription =
     const sub = await paidSubscription(v);
     await stripe('DELETE', `/subscriptions/${sub.stripe_subscription_id}`);     // billing stops today, no refund
   }
-  await disconnect(v).catch(() => {});                                              // 💳 their own Stripe, if connected
+  await disconnect(v).catch(quiet('disconnect a deleted vendor’s Stripe'));                                        // 💳 their own Stripe, if connected
   await prisma.$transaction([
     prisma.albums.deleteMany({ where: { vendor_id: v } }),                          // photos, faces, folders cascade
     ...UNLINKED.map(t => prisma[t].deleteMany({ where: { vendor_id: v } })),
@@ -56,7 +57,7 @@ function removeStoredFiles(v) {
   (async () => {
     for (const cls of [objects.PRIVATE, objects.PUBLIC]) {
       const keys = await objects.listAll(cls, `vendor/${v}/`).catch(() => []);
-      for (const k of keys) await objects.deleteObject(cls, k.key || k).catch(() => {});
+      for (const k of keys) await objects.deleteObject(cls, k.key || k).catch(quiet('remove a deleted vendor’s stored file'));
     }
   })().catch(e => console.error(`[deleteVendor] storage clean-up for vendor ${v}:`, e.message));
 }

@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js';
 import { storageFor } from './storageQuota.js';
 import { notify } from '../routes/notifications.js';
 import { sendPlatformEmail } from '../routes/email.js';
+import { quiet } from './quiet.js';
 
 /**
  * 📏 Over the limit (Raj, 2026-11-06). When a vendor's files are more than their plan + add-ons allow — after moving to a
@@ -72,7 +73,7 @@ export async function sweepOverLimit() {
     const [stage, , title, body] = due;
     await notify(id, title, body(s), 'billing', { type: 'tab', id: 'services' });
     const owner = await prisma.users.findFirst({ where: { vendor_id: id }, orderBy: { id: 'asc' }, select: { email: true } });   // 🔒 this vendor
-    if (owner?.email) await sendPlatformEmail(owner.email, title.replace(/^\S+\s/, ''), `${body(s)}\n\nManage your plan and storage: https://iwopo.com/panel/services`).catch(() => {});
+    if (owner?.email) await sendPlatformEmail(owner.email, title.replace(/^\S+\s/, ''), `${body(s)}\n\nManage your plan and storage: https://iwopo.com/panel/services`).catch(quiet('email the over-the-limit notice'));
     await prisma.vendor_settings.update({ where: { vendor_id: id }, data: { over_limit_stage: stage } });
   }
 }

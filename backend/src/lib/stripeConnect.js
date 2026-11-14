@@ -4,6 +4,7 @@ import { stripe, stripeReady, verifyWebhook } from './stripe.js';
 import { getSetting } from './settings.js';
 import { notify } from '../routes/notifications.js';
 import { markBooked } from '../routes/payments.js';
+import { quiet } from './quiet.js';
 
 /**
  * 💳 Stripe Connect (Raj, 2026-11-06). A vendor signs in to THEIR OWN Stripe account (Standard account, OAuth — Stripe's
@@ -67,7 +68,7 @@ export async function disconnect(vendorId) {
   const vid = Number(vendorId);
   const s = await prisma.vendor_settings.findUnique({ where: { vendor_id: vid }, select: { stripe_account_id: true } });   // 🔒 this vendor
   if (s?.stripe_account_id) {
-    await oauth('deauthorize', { client_id: await getSetting('stripe_connect_client_id', ''), stripe_user_id: s.stripe_account_id }).catch(() => {});
+    await oauth('deauthorize', { client_id: await getSetting('stripe_connect_client_id', ''), stripe_user_id: s.stripe_account_id }).catch(quiet('tell Stripe a vendor disconnected'));
     await prisma.vendor_settings.update({ where: { vendor_id: vid }, data: { stripe_account_id: null, stripe_connected_at: null } });
   }
 }

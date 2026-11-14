@@ -22,6 +22,7 @@ import prisma from '../config/prisma.js';
 import * as objects from './objectStore.js';
 import { sendLeadEmail, sendPlatformEmail } from '../routes/email.js';
 import { noteFailure } from './noteFailure.js';
+import { quiet } from './quiet.js';
 
 async function pdfOf(contract) {
   if (contract.pdf_key) {
@@ -109,8 +110,10 @@ export async function sendSignedCopy(leadId, { force = false, contractId = null 
       else await vendorCopy(c, lead, pdf);   // the button resends to the client only
       return { sent: true, to: lead.email };
     } catch (e) {
-      if (!force) await prisma.contracts.updateMany({ where: { id: c.id }, data: { client_copy_sent_at: before } }).catch(() => {});   // give the claim back
-      try { (await import('./projectStages.js')).logEmail(lead.vendor_id, { to: lead.email, subject: 'Your signed contract', kind: 'signed_contract', ok: false, error: e.message, leadId: lead.id }); } catch {}
+      if (!force) await prisma.contracts.updateMany({ where: { id: c.id }, data: { client_copy_sent_at: before } }).catch(quiet('give back the signed-copy claim'));   // give the claim back
+      await import('./projectStages.js')
+        .then(m => m.logEmail(lead.vendor_id, { to: lead.email, subject: 'Your signed contract', kind: 'signed_contract', ok: false, error: e.message, leadId: lead.id }))
+        .catch(quiet('log the failed signed-contract email'));
       noteFailure('email the signed contract', e);
       return { sent: false, reason: 'send_failed', error: e.message };
     }

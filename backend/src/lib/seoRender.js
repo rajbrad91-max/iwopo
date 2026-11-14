@@ -50,10 +50,9 @@ export function seoMiddleware() {
       const pages = await allPages();
       const page = pages.find(p => p.path === reqPath);
       if (!page) return next();
-      /* Only the home address is shared with something that is not a person: a monitor asking for / wants the JSON
-         status. Every other marketing page answers however it is asked — Google's URL Inspection and several crawlers
-         send "Accept: *\/*", and until 2026-10-31 that got a 404 for /pricing, /features and every guide. */
-      if (!page.standalone && !String(req.headers.accept || '').includes('text/html')) return next();
+      /* Every marketing page, the home page too, answers however it is asked: Google's URL Inspection, link previews
+         and several crawlers send "Accept: *\/*" (2026-10-31 for /pricing and the guides; the home page 2026-11-14 —
+         the monitor's status now lives at /api/health). */
 
       res.set('Cache-Control', 'public, max-age=300');
       if (page.standalone) return res.type('html').send(renderPage({ ...page, signupsOpen: await signupsOpen() }, pages));

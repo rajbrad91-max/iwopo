@@ -23,6 +23,7 @@ import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor t
 import * as objects from '../lib/objectStore.js';
 import { noteFailure } from '../lib/noteFailure.js';
 import { sendSignedCopy } from '../lib/signedCopy.js';
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 
@@ -1128,7 +1129,7 @@ router.post('/sign/:token', limit({ name: 'contract-sign', max: 20, windowMs: 60
     // 🧊 freeze the signed PDF — after the answer, so the client is not kept waiting. The client's copy is emailed
     //    when the booking is confirmed (lib/signedCopy.js); if it already is (paid before signing), it goes now.
     archiveSignedContract(c.id)
-      .catch(e => noteFailure('freeze a signed contract', e))
+      .catch(quiet('freeze a signed contract'))
       .then(() => c.lead_id && sendSignedCopy(c.lead_id));
   } catch (e) { serverError(res, e); }
 });

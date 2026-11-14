@@ -256,12 +256,9 @@ app.use('/api/billing', billingRoutes);   // 💳 plans, Stripe checkout and bil
 app.use('/api/support', supportRoutes);   // 🛟 vendors' help messages
 app.use('/api', helpVideosRouter);   // 🎬 /api/help/videos, /api/admin/help-videos
 
-/* ⚠️ Only answers the health check when nothing wants HTML. A browser or a
-   crawler asking for / wants the marketing page; a monitor wants JSON. */
-app.get('/', (req, res, next) => {
-  if (String(req.headers.accept || '').includes('text/html')) return next();
-  res.json({ status: 'ok', service: 'iwopo API', version: '2.0.0' });
-});
+/* 🩺 A monitor's health check. The home address itself is always the home page: link previews (Facebook, WhatsApp,
+   LinkedIn, Slack) ask for it with "Accept: *\/*" and used to be given this JSON instead (audit 2026-11-14). */
+app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'iwopo API', version: '2.0.0' }));
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 

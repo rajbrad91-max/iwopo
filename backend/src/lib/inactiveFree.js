@@ -3,6 +3,7 @@ import * as objects from './objectStore.js';
 import { currentPlan } from './billing.js';
 import { notify } from '../routes/notifications.js';
 import { sendPlatformEmail } from '../routes/email.js';
+import { quiet } from './quiet.js';
 
 /**
  * 🧹 Free accounts nobody uses (Raj, 2026-11-06). FREE plan only — never an owner, a paying vendor or one in a trial.
@@ -22,7 +23,7 @@ const lastSeen = async (vid) => (await prisma.users.aggregate({ where: { vendor_
 async function tell(vid, title, body) {
   await notify(vid, title, body, 'billing', { type: 'tab', id: 'plans' });
   const owner = await prisma.users.findFirst({ where: { vendor_id: vid }, orderBy: { id: 'asc' }, select: { email: true } });   // 🔒 this vendor
-  if (owner?.email) await sendPlatformEmail(owner.email, title, `${body}\n\nSign in: https://iwopo.com/panel`).catch(() => {});
+  if (owner?.email) await sendPlatformEmail(owner.email, title, `${body}\n\nSign in: https://iwopo.com/panel`).catch(quiet('email an inactive Free account'));
 }
 
 /** What a removal takes — counted only (dryRun) or removed. The account itself is never touched. */
@@ -42,7 +43,7 @@ async function purgeFree(vendorId, { dryRun = false } = {}) {
   await prisma.$transaction(steps.map(([, model]) => model().deleteMany({ where })));
   for (const part of ['galleries', 'files']) {                                      // then their stored files
     const keys = await objects.listAll(objects.PRIVATE, `vendor/${v}/${part}/`).catch(() => []);
-    for (const k of keys) await objects.deleteObject(objects.PRIVATE, k.key || k).catch(() => {});
+    for (const k of keys) await objects.deleteObject(objects.PRIVATE, k.key || k).catch(quiet('remove an inactive account’s stored file'));
     counts[`stored ${part}`] = keys.length;
   }
   return counts;
