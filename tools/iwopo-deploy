@@ -102,7 +102,9 @@ else
 fi | head -2
 echo "  staging: $(git rev-parse --short HEAD)"
 git push -q origin staging
-git checkout -q main && git merge -q staging && git push -q origin main && git push -q live main && git checkout -q staging
+# ⏩ main moves forward to staging without switching branches: a checkout rewrote every file that differed under the
+#    running staging app (same content, new times — the "client is OLDER than its schema" warning). Fast-forward only.
+git push -q . staging:main && git push -q origin main && git push -q live main
 echo "  main: pushed"
 
 echo

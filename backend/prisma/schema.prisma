@@ -13,7 +13,7 @@ model album_events {
   vendor_id  Int
   name       String    @db.VarChar(120)
   sort_order Int?      @default(0)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   /// 🎞️ Raw Selector: a tab of EDITED photos the editor delivered. Shown to the
   /// client like any tab, but never face-scanned (lib/faceQueue.js FACE_PHOTOS).
   delivery   Boolean?  @default(false)
@@ -44,7 +44,7 @@ model albums {
   admin_password     String?          @db.VarChar(120)
   guest_password_enc String?
   admin_password_enc String?
-  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  created_at         DateTime?        @default(now()) @db.Timestamptz(6)
   exp_enabled        Boolean?         @default(false)
   exp_from_date      DateTime?        @db.Date
   exp_date           DateTime?        @db.Date
@@ -78,16 +78,16 @@ model albums {
   lead_id                  Int?
   source_album_id          Int?
   editor_note              String?
-  uploaded_at              DateTime?           @db.Timestamp(6)
+  uploaded_at              DateTime?           @db.Timestamptz(6)
   /// 🗑️ when the vendor removed this shoot's RAWs, and which: 'all' or 'unpicked'
-  raws_removed_at          DateTime?           @db.Timestamp(6)
+  raws_removed_at          DateTime?           @db.Timestamptz(6)
   raws_removed_scope       String?             @db.VarChar(10)
   /// 🛤️ the rail's steps (Raj, 2026-11-10): who uploaded, when and by whom the RAWs were first downloaded, and when
   /// the client had downloaded every photo of a delivered gallery
   uploaded_by              String?             @db.VarChar(80)
-  raws_received_at         DateTime?           @db.Timestamp(6)
+  raws_received_at         DateTime?           @db.Timestamptz(6)
   raws_received_by         String?             @db.VarChar(80)
-  downloads_complete_at    DateTime?           @db.Timestamp(6)
+  downloads_complete_at    DateTime?           @db.Timestamptz(6)
   leads                    leads?              @relation(fields: [lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   source                   albums?             @relation("AlbumDelivery", fields: [source_album_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   deliveries               albums[]            @relation("AlbumDelivery")
@@ -111,7 +111,7 @@ model chatbot_knowledge {
   faqs          String?
   policies      String?
   notes         String?
-  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
   about_team    String?
   languages     String?   @db.VarChar(240)
   avoid_topics  String?
@@ -129,7 +129,7 @@ model chatbot_messages {
   contact    String?   @db.VarChar(160)
   status     String?   @default("unread") @db.VarChar(20)
   session    String?   @db.VarChar(64)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id])
@@ -142,7 +142,7 @@ model chatbot_pending {
   answer     String?
   status     String?   @default("pending") @db.VarChar(20)
   session    String?   @db.VarChar(64)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id])
@@ -154,7 +154,7 @@ model chatbot_subscribers {
   active        Boolean?  @default(true)
   share_token   String?   @unique @db.VarChar(24)
   access_code   String?   @db.VarChar(60)
-  subscribed_at DateTime? @default(now()) @db.Timestamp(6)
+  subscribed_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -164,7 +164,7 @@ model chatbot_transcripts {
   session      String    @db.VarChar(64)
   role         String    @db.VarChar(12)
   content      String
-  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
   visitor_name String?   @db.VarChar(120)
   vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -180,7 +180,7 @@ model chatbot_usage {
   input_tokens  Int?      @default(0)
   output_tokens Int?      @default(0)
   cost_usd      Decimal?  @default(0) @db.Decimal(10, 6)
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
   vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, created_at], map: "idx_cbusage_vendor")
@@ -192,7 +192,7 @@ model contract_audit {
   event       String    @db.VarChar(40)
   ip          String?   @db.VarChar(64)
   meta        Json?
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
   contracts   contracts @relation(fields: [contract_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([contract_id], map: "idx_ctaudit")
@@ -209,8 +209,8 @@ model contract_templates {
   /// 🎨 the template's look, chosen by the vendor: accent colour and font style (Raj, 2026-10-24)
   accent         String    @default("gold") @db.VarChar(20)
   font_style     String    @default("classic") @db.VarChar(20)
-  created_at     DateTime? @default(now()) @db.Timestamp(6)
-  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @default(now()) @db.Timestamptz(6)
   sections       Json      @default("[]")
   vendors        vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   is_default     Boolean   @default(false)
@@ -241,22 +241,22 @@ model contracts {
   status              String?          @default("draft") @db.VarChar(20)
   signed_name         String?          @db.VarChar(200)
   signed_ip           String?          @db.VarChar(64)
-  signed_at           DateTime?        @db.Timestamp(6)
-  created_at          DateTime?        @default(now()) @db.Timestamp(6)
-  updated_at          DateTime?        @default(now()) @db.Timestamp(6)
+  signed_at           DateTime?        @db.Timestamptz(6)
+  created_at          DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?        @default(now()) @db.Timestamptz(6)
   signature_data      String?
   initials            Json?            @default("[]")
-  viewed_at           DateTime?        @db.Timestamp(6)
+  viewed_at           DateTime?        @db.Timestamptz(6)
   doc_sha256          String?          @db.VarChar(64)
   /// 🧊 the signed PDF, made once at signing and kept privately (R2), and its own SHA-256 (2026-11-11)
   pdf_key             String?          @db.VarChar(300)
   pdf_sha256          String?          @db.VarChar(64)
   package_id          Int?
   template_id         Int?
-  voided_at           DateTime?        @db.Timestamp(6)
-  released_at         DateTime?        @db.Timestamp(6)
+  voided_at           DateTime?        @db.Timestamptz(6)
+  released_at         DateTime?        @db.Timestamptz(6)
   /// 📧 when the client was emailed their signed copy — sent once, by itself, when the booking is confirmed (2026-11-14)
-  client_copy_sent_at DateTime?        @db.Timestamp(6)
+  client_copy_sent_at DateTime?        @db.Timestamptz(6)
   contract_audit      contract_audit[]
   leads               leads            @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors             vendors          @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -273,14 +273,14 @@ model crew_members {
   role       String?     @db.VarChar(80)
   phone      String?     @db.VarChar(40)
   email      String?     @db.VarChar(200)
-  created_at DateTime?   @default(now()) @db.Timestamp(6)
+  created_at DateTime?   @default(now()) @db.Timestamptz(6)
   vendors    vendors     @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   lead_crew  lead_crew[]
 
   /// 📸 a photographer's own sign-in at /photographer (routes/photographer.js)
   password_hash    String?   @db.VarChar(100)
-  joined_at        DateTime? @db.Timestamp(6)
-  last_login_at    DateTime? @db.Timestamp(6)
+  joined_at        DateTime? @db.Timestamptz(6)
+  last_login_at    DateTime? @db.Timestamptz(6)
   /// 📡 camera FTP (lib/cameraFtp.js): the login's password, sealed, and the shoot the camera's uploads go to
   ftp_password_enc String?
   ftp_lead_id      Int?
@@ -300,7 +300,7 @@ model email_settings {
   from_name    String?   @db.VarChar(120)
   from_email   String?   @db.VarChar(200)
   notify_email String?   @db.VarChar(200)
-  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
   vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -310,7 +310,7 @@ model email_templates {
   name       String    @db.VarChar(120)
   subject    String    @db.VarChar(200)
   body       String
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_et_vendor")
@@ -326,7 +326,7 @@ model vendor_email_templates {
   /// 🧑‍💻 "text" or "html" — HTML mode is private to the accounts lib/emailTemplates.js allows
   mode       String    @default("text") @db.VarChar(10)
   html       String?
-  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, kind])
@@ -341,7 +341,7 @@ model face_clusters {
   cover_photo_id Int?
   cover_box      Json?
   photo_count    Int?          @default(0)
-  created_at     DateTime?     @default(now()) @db.Timestamp(6)
+  created_at     DateTime?     @default(now()) @db.Timestamptz(6)
   /// the tab (album_events) this circle belongs to — each tab is its own set of
   /// people; null for an album without tabs
   event_id       Int?
@@ -359,7 +359,7 @@ model favorites {
   album_id   Int
   photo_id   Int
   email      String    @db.VarChar(160)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   albums     albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos     photos    @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -396,7 +396,7 @@ model inquiry_settings {
   show_getting_ready Boolean?  @default(true)
   show_notes         Boolean?  @default(true)
   event_types        Json?     @default("[\"Wedding\", \"Engagement\", \"Portrait\", \"Event\", \"Other\"]")
-  updated_at         DateTime? @default(now()) @db.Timestamp(6)
+  updated_at         DateTime? @default(now()) @db.Timestamptz(6)
   custom_fields      Json?     @default("[]")
   theme              String?   @default("classic") @db.VarChar(30)
   font               String?   @default("Inter") @db.VarChar(60)
@@ -420,7 +420,7 @@ model invoices {
   balance        Decimal?  @default(0) @db.Decimal(10, 2)
   notes          String?   @db.VarChar(300)
   status         String?   @default("issued") @db.VarChar(20)
-  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
   leads          leads     @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors        vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -436,9 +436,9 @@ model lead_crew {
   arrive_time    String?      @db.VarChar(20)
   leave_time     String?      @db.VarChar(20)
   checkin_token  String?      @unique @db.VarChar(64)
-  checked_in_at  DateTime?    @db.Timestamp(6)
-  checked_out_at DateTime?    @db.Timestamp(6)
-  created_at     DateTime?    @default(now()) @db.Timestamp(6)
+  checked_in_at  DateTime?    @db.Timestamptz(6)
+  checked_out_at DateTime?    @db.Timestamptz(6)
+  created_at     DateTime?    @default(now()) @db.Timestamptz(6)
   crew_members   crew_members @relation(fields: [crew_member_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   leads          leads        @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -472,14 +472,14 @@ model leads {
   notes                   String?
   internal_notes          String?
   status                  String?              @default("new") @db.VarChar(50)
-  created_at              DateTime?            @default(now()) @db.Timestamp(6)
-  updated_at              DateTime?            @default(now()) @db.Timestamp(6)
+  created_at              DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime?            @default(now()) @db.Timestamptz(6)
   package_id              Int?
   package_snapshot        Json?
   deposit_percent         Int?                 @default(30)
   discount_percent        Decimal?             @default(0) @db.Decimal(5, 2)
   price_override          Decimal?             @db.Decimal(10, 2)
-  archived_at             DateTime?            @db.Timestamp(6)
+  archived_at             DateTime?            @db.Timestamptz(6)
   billed                  Boolean?             @default(false)
   delivered               Boolean?             @default(false)
   booking_notes           String?
@@ -496,11 +496,11 @@ model leads {
   timer_enabled           Boolean?             @default(false)
   timer_hours             Int?                 @default(72)
   timer_started_at        DateTime?            @db.Timestamptz(6)
-  seen_at                 DateTime?            @db.Timestamp(6)
+  seen_at                 DateTime?            @db.Timestamptz(6)
   form_snapshot           Json?
   package_template_id     Int?
-  packages_sent_at        DateTime?            @db.Timestamp(6)
-  payment_claimed_at      DateTime?            @db.Timestamp(6)
+  packages_sent_at        DateTime?            @db.Timestamptz(6)
+  payment_claimed_at      DateTime?            @db.Timestamptz(6)
   deposit_amount_override Decimal?             @db.Decimal(10, 2)
   client_birthday         DateTime?            @db.Date
   contracts               contracts[]
@@ -529,10 +529,10 @@ model notifications {
   type        String?   @default("info") @db.VarChar(40)
   title       String    @db.VarChar(200)
   body        String?   @db.VarChar(400)
-  seen_at     DateTime? @db.Timestamp(6)
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  seen_at     DateTime? @db.Timestamptz(6)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
   /// when it actually happened (e.g. the email's own time) — created_at is when iwopo noticed it
-  occurred_at DateTime? @db.Timestamp(6)
+  occurred_at DateTime? @db.Timestamptz(6)
   link_type   String?   @db.VarChar(20)
   link_id     Int?
   vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -548,7 +548,7 @@ model offers {
   active           Boolean?  @default(true)
   starts_at        DateTime? @db.Date
   ends_at          DateTime? @db.Date
-  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
   applies_to       String?   @default("all") @db.VarChar(40)
   /// 🎟️ the same coupon in Stripe, so checkout accepts it (lib/stripeCoupons.js)
   stripe_coupon_id String?   @db.VarChar(64)
@@ -562,7 +562,7 @@ model package_templates {
   vendor_id       Int
   name            String            @default("My Event") @db.VarChar(120)
   sort_order      Int?              @default(1)
-  created_at      DateTime?         @default(now()) @db.Timestamp(6)
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
   /// extras every package in this folder can offer: [{ id, name, description, price, unit, max_qty }] (Raj, 2026-11-13)
   extras          Json              @default("[]")
   /// how these prices speak about tax: 'included' (tax_rate %), 'excluded' ("plus tax") or 'none' (Raj, 2026-11-13)
@@ -595,8 +595,8 @@ model payments {
   amount     Decimal   @db.Decimal(10, 2)
   method     String?   @default("manual") @db.VarChar(40)
   note       String?   @db.VarChar(200)
-  paid_at    DateTime? @default(now()) @db.Timestamp(6)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  paid_at    DateTime? @default(now()) @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   leads      leads     @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   /// 💳 the Stripe Checkout session a card payment came from — recorded once, however often Stripe tells us
@@ -626,8 +626,8 @@ model photos {
   storage_path String?       @db.VarChar(400)
   thumb_path   String?       @db.VarChar(400)
   is_selected  Boolean?      @default(false)
-  selected_at  DateTime?     @db.Timestamp(6)
-  created_at   DateTime?     @default(now()) @db.Timestamp(6)
+  selected_at  DateTime?     @db.Timestamptz(6)
+  created_at   DateTime?     @default(now()) @db.Timestamptz(6)
   preview_path String?       @db.VarChar(400)
   faces        Json?
   face_indexed Boolean?      @default(false)
@@ -671,7 +671,7 @@ model plans {
   /// 💳 yearly price (20% off by default) and the Stripe product it is sold as — lib/billing.js
   price_annual         Decimal?               @db.Decimal(8, 2)
   stripe_product_id    String?                @db.VarChar(64)
-  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
   storage_gb           Int?
   /// 📋 the plan card: a line under the name, its icon and its place in the row
   tagline              String?                @db.VarChar(160)
@@ -691,29 +691,29 @@ model plans {
 model platform_settings {
   key        String    @id @db.VarChar(60)
   value      String?
-  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
 model poll_votes {
   id         Int       @id @default(autoincrement())
   choice     String    @db.VarChar(120)
   ip         String    @unique @db.VarChar(64)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
 model referrals {
   /// 🎁 the friend's free month was given (at their first checkout)
-  friend_rewarded_at   DateTime? @db.Timestamp(6)
+  friend_rewarded_at   DateTime? @db.Timestamptz(6)
   /// 🎁 the referrer's free month was given (a Stripe credit, or at their own first checkout)
-  referrer_rewarded_at DateTime? @db.Timestamp(6)
+  referrer_rewarded_at DateTime? @db.Timestamptz(6)
   id                   Int       @id @default(autoincrement())
   referrer_email       String    @db.VarChar(200)
   friend_email         String    @db.VarChar(200)
   status               String?   @default("pending") @db.VarChar(30)
   reward               String?   @default("1 free month") @db.VarChar(60)
   friend_vendor_id     Int?
-  created_at           DateTime? @default(now()) @db.Timestamp(6)
-  rewarded_at          DateTime? @db.Timestamp(6)
+  created_at           DateTime? @default(now()) @db.Timestamptz(6)
+  rewarded_at          DateTime? @db.Timestamptz(6)
   vendors              vendors?  @relation(fields: [friend_vendor_id], references: [id], onUpdate: NoAction)
 
   @@index([friend_email], map: "idx_ref_friend")
@@ -724,8 +724,8 @@ model referrals {
 model selection_notes {
   album_id     Int       @id
   note         String?
-  updated_at   DateTime? @default(now()) @db.Timestamp(6)
-  completed_at DateTime? @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+  completed_at DateTime? @db.Timestamptz(6)
   albums       albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -733,7 +733,7 @@ model selections {
   id         Int       @id @default(autoincrement())
   album_id   Int
   photo_id   Int
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   albums     albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos     photos    @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -782,7 +782,7 @@ model support_messages {
   attachment_type String?   @db.VarChar(40)
   status          String?   @default("open") @db.VarChar(20)
   seen            Boolean?  @default(false)
-  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
   vendors         vendors?  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id])
@@ -793,7 +793,7 @@ model trial_signups {
   ip_address String    @db.VarChar(64)
   email      String?   @db.VarChar(200)
   vendor_id  Int?
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors?  @relation(fields: [vendor_id], references: [id], onUpdate: NoAction)
 
   @@index([ip_address], map: "idx_trial_ip")
@@ -802,7 +802,7 @@ model trial_signups {
 
 model users {
   /// 📜 agreed to the Terms of Service and Privacy Policy at sign-up — when, and which version (LEGAL_UPDATED)
-  terms_accepted_at     DateTime?               @db.Timestamp(6)
+  terms_accepted_at     DateTime?               @db.Timestamptz(6)
   terms_version         String?                 @db.VarChar(20)
   id                    Int                     @id @default(autoincrement())
   name                  String                  @db.VarChar(200)
@@ -810,9 +810,9 @@ model users {
   password_hash         String                  @db.VarChar(255)
   role                  String                  @default("vendor") @db.VarChar(50)
   vendor_id             Int?
-  created_at            DateTime?               @default(now()) @db.Timestamp(6)
-  tokens_valid_from     DateTime?               @db.Timestamp(6)
-  email_verified_at     DateTime?               @default(now()) @db.Timestamp(6)
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  tokens_valid_from     DateTime?               @db.Timestamptz(6)
+  email_verified_at     DateTime?               @default(now()) @db.Timestamptz(6)
   /// 🔐 two-step sign-in for this account — on unless its holder turns it off in Settings → Account (2026-11-14)
   two_step_enabled      Boolean                 @default(true)
   email_codes           email_codes[]
@@ -830,7 +830,7 @@ model vendor_feature_overrides {
   vendor_id   Int
   feature_key String    @db.VarChar(40)
   enabled     Boolean
-  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
   vendors     vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, feature_key])
@@ -846,8 +846,8 @@ model vendor_packages {
   inclusions        Json?              @default("[]")
   is_default        Boolean?           @default(false)
   sort_order        Int?               @default(1)
-  created_at        DateTime?          @default(now()) @db.Timestamp(6)
-  updated_at        DateTime?          @default(now()) @db.Timestamp(6)
+  created_at        DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?          @default(now()) @db.Timestamptz(6)
   template_id       Int?
   /// 💲 'fixed' or 'per_guest' (price × guests, at least min_guests) — so caterers and bakers price the way they do (2026-11-13)
   price_mode        String             @default("fixed") @db.VarChar(20)
@@ -885,7 +885,7 @@ model vendor_settings {
   time_format             String?   @default("12h") @db.VarChar(5)
   timezone                String?   @default("America/Vancouver") @db.VarChar(80)
   theme                   String?   @default("system") @db.VarChar(10)
-  updated_at              DateTime? @default(now()) @db.Timestamp(6)
+  updated_at              DateTime? @default(now()) @db.Timestamptz(6)
   currency                String?   @db.VarChar(3)
   auto_release_contract   Boolean   @default(false)
   hide_payments           Boolean   @default(false)
@@ -909,8 +909,8 @@ model vendor_subscriptions {
   vendor_id              Int
   plan_id                Int
   status                 String?   @default("active") @db.VarChar(20)
-  started_at             DateTime? @default(now()) @db.Timestamp(6)
-  ends_at                DateTime? @db.Timestamp(6)
+  started_at             DateTime? @default(now()) @db.Timestamptz(6)
+  ends_at                DateTime? @db.Timestamptz(6)
   /// 💳 the Stripe subscription behind this row (only these count once a trial is over) — lib/billing.js
   stripe_subscription_id String?   @unique @db.VarChar(64)
   billing_cycle          String?   @db.VarChar(10)
@@ -930,7 +930,7 @@ model vendor_subscriptions {
 model vendors {
   client_links             client_links?
   /// 👋 the getting-started steps were shown after their first payment (once)
-  welcome_seen_at          DateTime?                  @db.Timestamp(6)
+  welcome_seen_at          DateTime?                  @db.Timestamptz(6)
   /// 💳 the plan chosen at sign-up, until it is paid for — so confirming the email anywhere leads to payment
   pending_plan_id          Int?
   pending_cycle            String?                    @db.VarChar(10)
@@ -938,7 +938,7 @@ model vendors {
   referral_code            String?                    @unique @db.VarChar(24)
   /// 📬 agreed to occasional offers and news (unticked at sign-up; switch in My Services) — Raj, 2026-11-07
   marketing_opt_in         Boolean                    @default(false)
-  marketing_opt_in_at      DateTime?                  @db.Timestamp(6)
+  marketing_opt_in_at      DateTime?                  @db.Timestamptz(6)
   email_inquiries          email_inquiries[]
   followups                followups[]
   project_stages           project_stages[]
@@ -950,7 +950,7 @@ model vendors {
   status                   String?                    @default("trial") @db.VarChar(50)
   storage_mb               Int?                       @default(0)
   country                  String?                    @db.VarChar(100)
-  created_at               DateTime?                  @default(now()) @db.Timestamp(6)
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
   signup_ip                String?                    @db.VarChar(60)
   seen_by_admin            Boolean?                   @default(false)
   logo_path                String?                    @default("") @db.VarChar(300)
@@ -1044,7 +1044,7 @@ model album_faces {
   occurrence_count    Int           @default(1)
   matched_face_id     Int?
   is_processed        Boolean       @default(false)
-  created_at          DateTime      @default(now()) @db.Timestamp(6)
+  created_at          DateTime      @default(now()) @db.Timestamptz(6)
   portrait_score      Decimal?      @db.Decimal(5, 4)
   albums              albums        @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   album_faces         album_faces?  @relation("album_facesToalbum_faces", fields: [matched_face_id], references: [id], onUpdate: NoAction)
@@ -1070,8 +1070,8 @@ model lead_packages {
   admin_notes       String?
   sort_order        Int      @default(0)
   is_selected       Boolean  @default(false)
-  created_at        DateTime @default(now()) @db.Timestamp(6)
-  updated_at        DateTime @default(now()) @db.Timestamp(6)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
   /// 📦 the master's pricing travels with the copy; per_hour_price only prices pre-events added as extras (2026-11-13)
   price_mode        String   @default("fixed") @db.VarChar(20)
   min_guests        Int?
@@ -1108,9 +1108,9 @@ model vendor_sites {
   sections           Json      @default("[]")
   slug               String?   @unique @db.VarChar(60)
   published          Boolean   @default(false)
-  published_at       DateTime? @db.Timestamp(6)
-  created_at         DateTime  @default(now()) @db.Timestamp(6)
-  updated_at         DateTime  @default(now()) @db.Timestamp(6)
+  published_at       DateTime? @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @default(now()) @db.Timestamptz(6)
   cover_photo        String?   @db.VarChar(300)
   cover_focus        String    @default("50% 50%") @db.VarChar(20)
   portfolio          Json      @default("[]")
@@ -1140,7 +1140,7 @@ model file_share_items {
   mime          String?       @db.VarChar(150)
   uploaded_by   String        @default("vendor") @db.VarChar(10)
   uploader_name String?       @db.VarChar(120)
-  created_at    DateTime      @default(now()) @db.Timestamp(6)
+  created_at    DateTime      @default(now()) @db.Timestamptz(6)
   folder_id     Int?
   file_folders  file_folders? @relation(fields: [folder_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors       vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1158,9 +1158,9 @@ model file_shares {
   note             String?
   password         String?            @db.VarChar(120)
   allow_upload     Boolean            @default(true)
-  expires_at       DateTime?          @db.Timestamp(6)
-  created_at       DateTime           @default(now()) @db.Timestamp(6)
-  updated_at       DateTime           @default(now()) @db.Timestamp(6)
+  expires_at       DateTime?          @db.Timestamptz(6)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
   folder_id        Int?
   file_folders     file_folders?      @relation(fields: [folder_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors          vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1177,8 +1177,8 @@ model file_folders {
   vendor_id          Int
   parent_id          Int?
   name               String             @db.VarChar(200)
-  created_at         DateTime           @default(now()) @db.Timestamp(6)
-  updated_at         DateTime           @default(now()) @db.Timestamp(6)
+  created_at         DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime           @default(now()) @db.Timestamptz(6)
   file_folders       file_folders?      @relation("file_foldersTofile_folders", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   other_file_folders file_folders[]     @relation("file_foldersTofile_folders")
   vendors            vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1193,8 +1193,8 @@ model file_folders {
 model revoked_tokens {
   jti        String   @id @db.VarChar(64)
   user_id    Int
-  expires_at DateTime @db.Timestamp(6)
-  revoked_at DateTime @default(now()) @db.Timestamp(6)
+  expires_at DateTime @db.Timestamptz(6)
+  revoked_at DateTime @default(now()) @db.Timestamptz(6)
   users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([expires_at], map: "idx_revoked_expires")
@@ -1212,8 +1212,8 @@ model pending_uploads {
   mime         String?       @db.VarChar(150)
   part_size    Int
   source       String        @default("vendor") @db.VarChar(16)
-  created_at   DateTime      @default(now()) @db.Timestamp(6)
-  updated_at   DateTime      @default(now()) @db.Timestamp(6)
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime      @default(now()) @db.Timestamptz(6)
   file_folders file_folders? @relation(fields: [folder_id], references: [id], onUpdate: NoAction)
   vendors      vendors       @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -1229,8 +1229,8 @@ model contacts {
   email            String             @db.VarChar(320)
   phone            String?            @db.VarChar(60)
   note             String?            @db.VarChar(500)
-  created_at       DateTime           @default(now()) @db.Timestamp(6)
-  updated_at       DateTime           @default(now()) @db.Timestamp(6)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
   vendors          vendors            @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   share_recipients share_recipients[]
 
@@ -1242,9 +1242,9 @@ model share_recipients {
   share_id    Int
   contact_id  Int
   vendor_id   Int
-  sent_at     DateTime?   @db.Timestamp(6)
-  opened_at   DateTime?   @db.Timestamp(6)
-  created_at  DateTime    @default(now()) @db.Timestamp(6)
+  sent_at     DateTime?   @db.Timestamptz(6)
+  opened_at   DateTime?   @db.Timestamptz(6)
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
   contacts    contacts    @relation(fields: [contact_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   file_shares file_shares @relation(fields: [share_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors     vendors     @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1260,7 +1260,7 @@ model storage_objects {
   cls        String   @db.VarChar(16)
   object_key String
   bytes      BigInt
-  created_at DateTime @default(now()) @db.Timestamp(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
   vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([cls, object_key], map: "idx_storage_key")
@@ -1277,7 +1277,7 @@ model site_events {
   country    String?  @db.VarChar(2)
   referrer   String?  @db.VarChar(300)
   ua_kind    String?  @db.VarChar(16)
-  created_at DateTime @default(now()) @db.Timestamp(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
   vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, kind, created_at(sort: Desc)], map: "idx_events_kind")
@@ -1290,10 +1290,10 @@ model device_tokens {
   name       String    @db.VarChar(120)
   token_hash String    @unique(map: "idx_device_hash") @db.VarChar(120)
   scope      String    @default("upload") @db.VarChar(32)
-  last_used  DateTime? @db.Timestamp(6)
+  last_used  DateTime? @db.Timestamptz(6)
   last_ip    String?   @db.VarChar(45)
-  revoked_at DateTime? @db.Timestamp(6)
-  created_at DateTime  @default(now()) @db.Timestamp(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_device_vendor")
@@ -1307,7 +1307,7 @@ model occasion_greetings {
   occasion_on DateTime @db.Date
   subject     String?  @db.VarChar(300)
   body        String?
-  sent_at     DateTime @default(now()) @db.Timestamp(6)
+  sent_at     DateTime @default(now()) @db.Timestamptz(6)
   leads       leads    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   vendors     vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -1332,9 +1332,9 @@ model raw_files {
   stem         String    @db.VarChar(200)
   object_key   String    @db.VarChar(400)
   size_bytes   BigInt?
-  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
   /// when the edited photos reached the client; RAWs go 30 days after
-  delivered_at DateTime? @db.Timestamp(6)
+  delivered_at DateTime? @db.Timestamptz(6)
   vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   albums       albums    @relation(fields: [album_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   photos       photos?   @relation(fields: [photo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1356,11 +1356,11 @@ model raw_editors {
   name          String?   @db.VarChar(120)
   /// set when the editor signs up; null = invited, not joined yet
   password_hash String?   @db.VarChar(100)
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
-  joined_at     DateTime? @db.Timestamp(6)
-  last_login_at DateTime? @db.Timestamp(6)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  joined_at     DateTime? @db.Timestamptz(6)
+  last_login_at DateTime? @db.Timestamptz(6)
   /// a removed editor: their login stops working at once
-  revoked_at    DateTime? @db.Timestamp(6)
+  revoked_at    DateTime? @db.Timestamptz(6)
   vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, email], map: "raw_editors_vendor_email")
@@ -1381,7 +1381,7 @@ model rawsel_settings {
   logo_opacity Int       @default(85)
   /// distance from the edge, percentage of the photo's shorter side
   logo_margin  Int       @default(3)
-  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
   vendors      vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -1396,7 +1396,7 @@ model agent_usage {
   /// millionths of a US dollar
   cost_micro    BigInt    @default(0)
   requests      Int       @default(0)
-  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
   vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([vendor_id, month])
@@ -1410,7 +1410,7 @@ model push_subscriptions {
   endpoint   String    @unique @db.VarChar(700)
   p256dh     String    @db.VarChar(200)
   auth       String    @db.VarChar(100)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_push_subscriptions_vendor")
@@ -1427,11 +1427,11 @@ model agent_reminders {
   title         String    @db.VarChar(200)
   /// delivery | task | alarm
   kind          String    @default("task") @db.VarChar(12)
-  due_at        DateTime  @db.Timestamp(6)
-  done_at       DateTime? @db.Timestamp(6)
+  due_at        DateTime  @db.Timestamptz(6)
+  done_at       DateTime? @db.Timestamptz(6)
   /// the latest alert already put on the bell
-  last_alert_at DateTime? @db.Timestamp(6)
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  last_alert_at DateTime? @db.Timestamptz(6)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
   vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, done_at], map: "idx_agent_reminders_open")
@@ -1445,7 +1445,7 @@ model agent_memory {
   /// fact (written by the owner) | memory (saved by the agent when asked)
   kind       String    @default("memory") @db.VarChar(10)
   text       String    @db.VarChar(600)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id], map: "idx_agent_memory_vendor")
@@ -1456,7 +1456,7 @@ model agent_memory {
 model agent_briefing {
   vendor_id  Int      @id
   text       String
-  updated_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
   vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -1468,8 +1468,8 @@ model agent_conversations {
   vendor_id  Int
   summary    String
   transcript String?
-  started_at DateTime? @db.Timestamp(6)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  started_at DateTime? @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, created_at], map: "idx_agent_conversations_vendor")
@@ -1487,8 +1487,8 @@ model agent_contacts {
   phone      String?   @db.VarChar(20)
   email      String?   @db.VarChar(200)
   line       String
-  last_seen  DateTime? @db.Timestamp(6)
-  updated_at DateTime  @default(now()) @db.Timestamp(6)
+  last_seen  DateTime? @db.Timestamptz(6)
+  updated_at DateTime  @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, key], map: "uq_agent_contacts_vendor_key")
@@ -1508,7 +1508,7 @@ model agent_voice_usage {
   out_audio  BigInt    @default(0)
   /// millionths of a US dollar
   cost_micro BigInt    @default(0)
-  updated_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([vendor_id, day])
@@ -1525,7 +1525,7 @@ model agent_kb {
   /// section:record — e.g. leads:95
   ref        String   @db.VarChar(120)
   text       String
-  updated_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
   vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, ref], map: "uq_agent_kb_vendor_ref")
@@ -1557,7 +1557,7 @@ model agent_rules {
   text       String
   sort       Int      @default(0)
   protected  Boolean  @default(false)
-  updated_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
   vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, key], map: "uq_agent_rules_vendor_key")
@@ -1577,7 +1577,7 @@ model agent_rule_history {
   reason    String   @default("")
   protected Boolean  @default(false)
   sort      Int      @default(0)
-  at        DateTime @default(now()) @db.Timestamp(6)
+  at        DateTime @default(now()) @db.Timestamptz(6)
   vendors   vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, run_id], map: "idx_agent_rule_history_run")
@@ -1587,7 +1587,7 @@ model agent_rule_history {
 model agent_training_runs {
   id            Int       @id @default(autoincrement())
   vendor_id     Int
-  at            DateTime  @default(now()) @db.Timestamp(6)
+  at            DateTime  @default(now()) @db.Timestamptz(6)
   manual        Boolean   @default(false)
   /// running | done | failed
   status        String    @db.VarChar(10)
@@ -1597,7 +1597,7 @@ model agent_training_runs {
   conversations Int?
   cost_usd      Float?
   refused       String?
-  undone_at     DateTime? @db.Timestamp(6)
+  undone_at     DateTime? @db.Timestamptz(6)
   vendors       vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, at], map: "idx_agent_training_runs_vendor")
@@ -1607,7 +1607,7 @@ model agent_training_runs {
 model agent_tool_log {
   id        Int      @id @default(autoincrement())
   vendor_id Int
-  at        DateTime @default(now()) @db.Timestamp(6)
+  at        DateTime @default(now()) @db.Timestamptz(6)
   tool      String   @db.VarChar(60)
   args      String   @default("")
   result    String   @default("")
@@ -1624,11 +1624,11 @@ model pc_devices {
   vendor_id  Int
   name       String    @db.VarChar(80)
   token_hash String    @unique @db.VarChar(64)
-  last_seen  DateTime? @db.Timestamp(6)
+  last_seen  DateTime? @db.Timestamptz(6)
   /// what the agent last reported: drives, free space, Resolve running…
   info       String?
-  revoked_at DateTime? @db.Timestamp(6)
-  created_at DateTime  @default(now()) @db.Timestamp(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
   vendors    vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pc_jobs    pc_jobs[]
 
@@ -1649,8 +1649,8 @@ model pc_jobs {
   summary    String?
   /// the owner has heard the result (Tornado's answer or an inbox [Update])
   notified   Boolean    @default(false)
-  created_at DateTime   @default(now()) @db.Timestamp(6)
-  updated_at DateTime   @default(now()) @db.Timestamp(6)
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at DateTime   @default(now()) @db.Timestamptz(6)
   vendors    vendors    @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pc_devices pc_devices @relation(fields: [device_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -1678,7 +1678,7 @@ model agent_delivery_log {
   /// what the owner charged for this delivery, if anything (e.g. a re-delivery fee)
   fee          Decimal? @db.Decimal(10, 2)
   note         String   @default("")
-  at           DateTime @default(now()) @db.Timestamp(6)
+  at           DateTime @default(now()) @db.Timestamptz(6)
   vendors      vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([vendor_id, client_email], map: "idx_delivery_email")
@@ -1691,17 +1691,17 @@ model project_stages {
   id                     Int       @id @default(autoincrement())
   vendor_id              Int
   lead_id                Int       @unique
-  backed_up_at           DateTime? @db.Timestamp(6)
+  backed_up_at           DateTime? @db.Timestamptz(6)
   backed_up_by           String    @default("") @db.VarChar(80)
-  sent_to_editor_at      DateTime? @db.Timestamp(6)
-  editing_photos_done_at DateTime? @db.Timestamp(6)
-  editing_videos_done_at DateTime? @db.Timestamp(6)
+  sent_to_editor_at      DateTime? @db.Timestamptz(6)
+  editing_photos_done_at DateTime? @db.Timestamptz(6)
+  editing_videos_done_at DateTime? @db.Timestamptz(6)
   /// 📊 the rest of the PPM board's stages (Raj, 2026-11-07): when delivery is due, delivered, review asked, download reminder sent
-  delivery_due_at        DateTime? @db.Timestamp(6)
-  delivered_at           DateTime? @db.Timestamp(6)
-  review_asked_at        DateTime? @db.Timestamp(6)
-  download_reminder_at   DateTime? @db.Timestamp(6)
-  updated_at             DateTime  @default(now()) @db.Timestamp(6)
+  delivery_due_at        DateTime? @db.Timestamptz(6)
+  delivered_at           DateTime? @db.Timestamptz(6)
+  review_asked_at        DateTime? @db.Timestamptz(6)
+  download_reminder_at   DateTime? @db.Timestamptz(6)
+  updated_at             DateTime  @default(now()) @db.Timestamptz(6)
   vendors                vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   leads                  leads     @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -1718,9 +1718,9 @@ model outside_messages {
   /// out | in
   direction   String   @default("out") @db.VarChar(4)
   body        String
-  sent_at     DateTime @default(now()) @db.Timestamp(6)
+  sent_at     DateTime @default(now()) @db.Timestamptz(6)
   recorded_by String   @default("") @db.VarChar(80)
-  created_at  DateTime @default(now()) @db.Timestamp(6)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
   vendors     vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   leads       leads    @relation(fields: [lead_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -1738,7 +1738,7 @@ model email_log {
   kind      String   @default("") @db.VarChar(40)
   ok        Boolean  @default(true)
   error     String   @default("")
-  sent_at   DateTime @default(now()) @db.Timestamp(6)
+  sent_at   DateTime @default(now()) @db.Timestamptz(6)
   vendors   vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   leads     leads?   @relation(fields: [lead_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
@@ -1755,9 +1755,9 @@ model email_codes {
   code_hash  String    @db.VarChar(64)
   new_email  String?   @db.VarChar(254)
   attempts   Int       @default(0)
-  expires_at DateTime  @db.Timestamp(6)
-  used_at    DateTime? @db.Timestamp(6)
-  created_at DateTime  @default(now()) @db.Timestamp(6)
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
   users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id, purpose])
@@ -1772,11 +1772,11 @@ model followups {
   who             String    @db.VarChar(160)
   contact         String?   @db.VarChar(200)
   snippet         String?
-  last_inbound_at DateTime  @db.Timestamp(6)
+  last_inbound_at DateTime  @db.Timestamptz(6)
   status          String    @default("open") @db.VarChar(12)
-  snooze_until    DateTime? @db.Timestamp(6)
-  created_at      DateTime  @default(now()) @db.Timestamp(6)
-  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  snooze_until    DateTime? @db.Timestamptz(6)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
   vendors         vendors   @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, channel, thread_key])
@@ -1791,8 +1791,8 @@ model email_inquiries {
   source     String   @db.VarChar(8)
   from_addr  String?  @db.VarChar(200)
   subject    String?  @db.VarChar(300)
-  last_at    DateTime @db.Timestamp(6)
-  checked_at DateTime @default(now()) @db.Timestamp(6)
+  last_at    DateTime @db.Timestamptz(6)
+  checked_at DateTime @default(now()) @db.Timestamptz(6)
   vendors    vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([vendor_id, thread_id])
@@ -1820,7 +1820,7 @@ model help_videos {
   title      String    @db.VarChar(140)
   youtube_id String    @db.VarChar(20)
   sort_order Int       @default(0)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
 /// 🔗 Optional links on a vendor's client pages — the inquiry form and the galleries (Raj, 2026-11-08): the business
@@ -1843,7 +1843,7 @@ model client_links {
   footer_phone   String?  @db.VarChar(40)
   footer_email   String?  @db.VarChar(160)
   footer_address String?  @db.VarChar(200)
-  updated_at     DateTime @default(now()) @db.Timestamp(6)
+  updated_at     DateTime @default(now()) @db.Timestamptz(6)
   vendors        vendors  @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -1920,5 +1920,5 @@ model addon_region_prices {
 model waitlist {
   id         Int      @id @default(autoincrement())
   email      String   @unique @db.VarChar(254)
-  created_at DateTime @default(now())
+  created_at DateTime @default(now()) @db.Timestamptz(3)
 }

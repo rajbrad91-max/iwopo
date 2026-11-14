@@ -39,15 +39,15 @@ model comms_events {
   transcript    String?
   recording_url String?   @db.VarChar(500)
   duration_sec  Int?
-  occurred_at   DateTime  @db.Timestamp(6)
-  created_at    DateTime  @default(now()) @db.Timestamp(6)
-  enriched_at   DateTime? @db.Timestamp(6)
+  occurred_at   DateTime  @db.Timestamptz(6)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  enriched_at   DateTime? @db.Timestamptz(6)
   lead_state    String?   @db.VarChar(12)
-  lead_asked_at DateTime? @db.Timestamp(6)
+  lead_asked_at DateTime? @db.Timestamptz(6)
   lead_id       Int?
   booking_state String?   @db.VarChar(12)
   booking_hint  String?   @db.VarChar(300)
-  checked_at    DateTime? @db.Timestamp(6)
+  checked_at    DateTime? @db.Timestamptz(6)
 
   @@index([vendor_id, from_number, to_number], map: "idx_comms_party")
   @@index([vendor_id, occurred_at(sort: Desc)], map: "idx_comms_vendor")
@@ -63,10 +63,10 @@ model comms_notices {
   type       String?   @default("comms") @db.VarChar(40)
   title      String    @db.VarChar(200)
   body       String?   @db.VarChar(400)
-  seen_at    DateTime? @db.Timestamp(6)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+  seen_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
   /// when the call or text actually happened (Quo's time) — created_at is when iwopo imported it
-  occurred_at DateTime? @db.Timestamp(6)
+  occurred_at DateTime? @db.Timestamptz(6)
   link_type  String?   @db.VarChar(20)
   link_id    Int?
 
