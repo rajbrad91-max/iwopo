@@ -103,7 +103,7 @@ Password: {view_password}
   },
   gallery_shared: {
     label: 'Gallery shared',
-    when: 'When you press Send on a gallery. The link opens your client section, where your galleries are listed. You can still change the words before it goes.',
+    when: 'When you press Send on a gallery. The link opens your client section, where your galleries are listed.',
     tags: [...COMMON, 'link', 'admin_password', 'guest_password'],
     button: 'Open your gallery',
     subject: 'Your Photos Are Ready 📸',
