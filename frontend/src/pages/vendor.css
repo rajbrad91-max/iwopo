@@ -1053,8 +1053,10 @@
 .gal-act:hover { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 5%, transparent); }   /* Edit Album: Save, Send Instructions and Copy Gallery Link are one button style (Raj, 2026-11-12) */
 .gal-send-modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 540px; padding: 22px 24px; }
 .gal-send-msghead { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
-.gal-send-ta { min-height: 220px; margin-top: 6px; font-family: inherit; line-height: 1.5; resize: vertical; }
-.gal-send-ta[readonly] { opacity: .85; cursor: default; }
+/* 📧 the Send window shows the email as it will go — a short, scrollable preview */
+.gal-send-subj { margin-top: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.gal-send-preview { margin-top: 8px; max-height: 260px; overflow-y: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; color: var(--text); }
+.gal-send-frame { margin-top: 8px; height: 340px; }
 .gal-send-foot { display: flex; gap: 14px; align-items: center; margin-top: 16px; }
 .gal-send-copy { margin-left: auto; }   /* 📋 Copy, at the bottom right */
 

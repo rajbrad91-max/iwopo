@@ -200,9 +200,8 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     const to = (req.body.email || a.client_email || '').trim();
     if (!to) return res.status(400).json({ error: 'No recipient email' });
 
-    // the vendor's email for this album — or, when they changed the words in the Send window, their text as typed
+    // the vendor's "Gallery shared" email for this album — its words are changed in Settings → Email templates
     const m = await galleryEmail(v, a, typedPasswords(req.body));
-    const typed = typeof req.body.body === 'string' && req.body.body.trim() ? req.body.body : null;
 
     // remember the entered email on the album for next time
     if (req.body.email && req.body.email !== a.client_email) {
@@ -210,7 +209,7 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     }
 
     const lead = { vendor_id: v, email: to, name: a.title };
-    await sendLeadEmail(req, lead, m.subject, typed || m.body, { html: typed ? undefined : m.html });
+    await sendLeadEmail(req, lead, m.subject, m.body, { html: m.html });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

@@ -12,9 +12,9 @@ import { fillTags, escHtml } from '../lib/emailTags';
 
 const fromRow = (e) => ({ subject: e.subject, body: e.body, mode: e.mode || 'text', html: e.html || '' });
 
-export default function EmailTemplates() {
+export default function EmailTemplates({ startKind = null }) {
   const [data, setData] = useState(null);
-  const [kind, setKind] = useState('packages');
+  const [kind, setKind] = useState(startKind || 'packages');
   const [draft, setDraft] = useState({ subject: '', body: '', mode: 'text', html: '' });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);

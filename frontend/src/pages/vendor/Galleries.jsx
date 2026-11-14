@@ -54,7 +54,7 @@ function FocalPicker({ src, focus, onFocus, view }) {
  * and that happens on the public page. Forking this into a second view would
  * mean every future gallery fix needing to be made twice.
  */
-export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', shortcuts = false, insights = false }) {
+export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'gallery', shortcuts = false, insights = false }) {
   const dialog = useDialog();
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +126,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
       setCopiedUrl(true); setTimeout(() => setCopiedUrl(false), 2000);
     }).catch(() => { dialog.prompt('Select and copy this link:', url, { title: 'Gallery link', readOnly: true, okLabel: 'Done' }); });
   }
-  const [sendModal, setSendModal] = useState(null); // { album, email, body, editing }
+  const [sendModal, setSendModal] = useState(null); // { album, pw, email, subject, body, html } — the email as it will go
   const [logFor, setLogFor] = useState(null);       // 📊 the gallery whose download log is open (Studio)
   const [sendMsg, setSendMsg] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -296,13 +296,13 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
 
   /* 📧 The Send window shows the gallery email exactly as it will go: the server fills the vendor's "Gallery shared"
      email (Settings → Email templates) for this album. What is in the form wins for the passwords — it may hold
-     ones typed but not saved yet. Words changed here are for this send only. */
+     ones typed but not saved yet. The words themselves are changed in one place only: the template. */
   async function openSend(a) {
     setSendMsg('');
     const pw = edit?.id === a.id ? { guest: f.guest_password || undefined, admin: f.admin_password || undefined } : {};
     try {
       const m = await api.albumEmailPreview(a.id, pw);
-      setSendModal({ album: a, pw, email: (edit?.id === a.id && f.client_email) || m.to || '', body: m.body, html: m.html, edited: false, editing: false });
+      setSendModal({ album: a, pw, email: (edit?.id === a.id && f.client_email) || m.to || '', subject: m.subject, body: m.body, html: m.html });
     } catch (e) { dialog.alert(e.message, { error: true }); }
   }
   /* ⚙️ Manage a tile's gallery. ⚠️ Both, not just edit: startEdit sets showNew too, so clearing edit alone left
@@ -316,7 +316,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
     if (!sendModal?.email) { setSendMsg('⚠️ Email required'); return; }
     setSendMsg('Sending…');
     try {
-      await api.emailAlbumInstructions(sendModal.album.id, { email: sendModal.email, ...sendModal.pw, ...(sendModal.edited ? { body: sendModal.body } : {}) });
+      await api.emailAlbumInstructions(sendModal.album.id, { email: sendModal.email, ...sendModal.pw });
       setSendMsg('✅ Sent!'); setTimeout(() => setSendModal(null), 1200);
     } catch (e) { setSendMsg('⚠️ ' + e.message); }
   }
@@ -679,14 +679,14 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, kind = 'gallery', short
             <input className="gal-input" value={sendModal.email} onChange={e => setSendModal(m => ({ ...m, email: e.target.value }))} placeholder="client@email.com" />
 
             <div className="gal-send-msghead">
-              <label className="lbl">{sendModal.html ? 'Your HTML design' : 'Instructions'}</label>
-              {!sendModal.html && !sendModal.editing && <button className="gal-gen" onClick={() => setSendModal(m => ({ ...m, editing: true }))}>✏️ Edit</button>}
+              <label className="lbl">Email</label>
+              {onEditEmail && <button className="gal-gen" onClick={() => { setSendModal(null); onEditEmail(); }}>✏️ Edit email template</button>}
             </div>
+            <div className="gal-send-subj">{sendModal.subject}</div>
             {sendModal.html
               /* sandbox with nothing allowed: the design shows, nothing in it can run */
-              ? <iframe className="et-frame" title="Email preview" sandbox="" srcDoc={sendModal.html} />
-              : <textarea className="gal-input gal-send-ta" readOnly={!sendModal.editing} value={sendModal.body} onChange={e => setSendModal(m => ({ ...m, body: e.target.value, edited: true }))} />}
-            <div className="gal-set-hint">{sendModal.editing ? 'Your changes are for this email only. ' : ''}To change the words for every gallery: Settings → Setup Email → Email templates.</div>
+              ? <iframe className="et-frame gal-send-frame" title="Email preview" sandbox="" srcDoc={sendModal.html} />
+              : <div className="gal-send-preview">{sendModal.body}</div>}
 
             <div className="gal-send-foot">
               <button className="refresh gal-save" onClick={doSend}>📨 Send</button>

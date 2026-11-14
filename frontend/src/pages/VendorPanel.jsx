@@ -208,6 +208,7 @@ export default function VendorPanel({ onLogout }) {
   /* 🔗 sidebar links: a plain click stays inside the panel; Ctrl/⌘/Shift/middle-click opens a new tab as normal */
   const inbox = useInboxCounts(has('comms'));   // 🔴 unread calls, texts and emails
   const navHref = (t) => (t === 'dashboard' ? '/panel' : `/panel/${t}`);
+  const [emailFocus, setEmailFocus] = useState(null);   // ✉️ a page asked Settings to open one email template
   const navClick = (t) => (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault(); go(t);
@@ -460,6 +461,7 @@ export default function VendorPanel({ onLogout }) {
           <FileFlyerView />
         ) : tab === 'galleries' ? (
           <GalleriesView key="galleries" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })}
+            onEditEmail={() => { setEmailFocus('gallery_shared'); setTab('settings'); }}
             shortcuts={has('galleries')} insights={has('gallery_insights')} />
         ) : tab === 'website' ? (
           <WebsiteView />
@@ -474,7 +476,7 @@ export default function VendorPanel({ onLogout }) {
         ) : tab === 'packages' ? (
           <PackagesView />
         ) : tab === 'settings' ? (
-          <SettingsView user={user} onProfileChange={setProfile} />
+          <SettingsView user={user} onProfileChange={setProfile} emailFocus={emailFocus} onFocusUsed={() => setEmailFocus(null)} />
         ) : tab === 'dashboard' ? (
           <DashHome goTab={setTab} openBooking={(id) => navigate({ tab: 'bookings', booking: String(id) })} />
         ) : (

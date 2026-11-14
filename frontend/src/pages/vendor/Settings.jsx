@@ -117,9 +117,13 @@ function DevicesSetup() {
   );
 }
 
-export function SettingsView({ user, onProfileChange }) {
+export function SettingsView({ user, onProfileChange, emailFocus = null, onFocusUsed }) {
   const [s, setS] = useState(null);
-  const [sub, setSub] = useState('prefs'); // prefs | account | email
+  /* ✉️ Another page can open Setup Email on one template. Kept here: the panel clears its request at once, and the
+     template list only mounts after the settings have loaded. */
+  const [startKind] = useState(emailFocus);
+  const [sub, setSub] = useState(emailFocus ? 'email' : 'prefs');
+  useEffect(() => { if (emailFocus) onFocusUsed?.(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
   const [prof, setProf] = useState(null);
   const [profMsg, setProfMsg] = useState('');
   const [saved, setSaved] = useState('');
@@ -352,7 +356,7 @@ export function SettingsView({ user, onProfileChange }) {
       </div>
       )}
 
-      {sub === 'email' && <><EmailSetup /><EmailTemplates /></>}
+      {sub === 'email' && <><EmailSetup /><EmailTemplates startKind={startKind} /></>}
       {sub === 'devices' && <DevicesSetup />}
       {sub === 'security' && <SecurityLog />}
       {sub === 'address' && <DomainSettings />}
