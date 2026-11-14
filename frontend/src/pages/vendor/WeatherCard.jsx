@@ -60,7 +60,7 @@ export default function WeatherCard({ openBooking }) {
   }
 
   return (
-    <div className="card wx-card wx-days">
+    <div className="card wx-card">
       <span className="wx-kick is-muted">{w.place}</span>
       <span className="wx-two">
         {w.days.map((d, i) => (
