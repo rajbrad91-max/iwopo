@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { api, fmtDateTime } from '../lib/api';
 
 /**
@@ -6,6 +6,7 @@ import { api, fmtDateTime } from '../lib/api';
  * with the period already paid for — no refund; everything keeps working until then. Only shown on a paid plan.
  */
 export default function AutoRenewSetting() {
+  const labelId = useId();    // the switch is named by its label
   const [sub, setSub] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -22,8 +23,8 @@ export default function AutoRenewSetting() {
   const when = sub.renews_at ? fmtDateTime(sub.renews_at, { dateOnly: true }) : null;
   return (
     <div className="set-renew">
-      <span className="set-renew-label">Plan renewal</span>
-      <button type="button" role="switch" aria-checked={!sub.cancels} disabled={busy}
+      <span className="set-renew-label" id={labelId}>Plan renewal</span>
+      <button type="button" role="switch" aria-labelledby={labelId} aria-checked={!sub.cancels} disabled={busy}
         className={`svx-switch${sub.cancels ? '' : ' is-on'}`} onClick={() => setRenew(!!sub.cancels)}>
         <span className="svx-switch-knob" />
       </button>

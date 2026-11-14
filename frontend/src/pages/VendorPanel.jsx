@@ -1,53 +1,52 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useInboxCounts } from '../lib/inboxCounts.js';
-import FileFlyerView from './FileFlyerView';
 import { useDialog } from '../lib/dialog.jsx';
 import { applyBrandTone } from '../lib/brandTone.js';
 import { api, getUser, logout, applyVendorClock } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import './inquiry.css';
 import './contractdoc.css';
-import PlansView from './PlansView.jsx';
-import RequestsView from './RequestsView.jsx';
 import './vendor.css';
 import { setClientBase } from '../lib/clientBase';
 import BillingBanner from '../components/BillingBanner';
-import HelpView from '../components/HelpView';
-import MyServicesView from '../components/MyServices';
 import WelcomeSteps from '../components/WelcomeSteps';
-import PpmBoard from '../components/PpmBoard';
 import NavIcon from '../components/NavIcon';
 import { applyTheme } from '../lib/theme';
 // ✂️ each screen lives in its own file (pages/vendor/ — code audit #2, 2026-11-11)
 import { NotifBell } from './vendor/NotifBell';
-import { AiChatVendorView } from './vendor/AiChat';
-import { GalleriesView } from './vendor/Galleries';
-import { CrewView } from './vendor/Crew';
-import { CalendarView } from './vendor/Calendar';
 import { DashHome } from './vendor/DashHome';
-import { LeadsView } from './vendor/Leads';
-import { ContractsTab } from './vendor/Contracts';
+import { CalendarView } from './vendor/Calendar';   // the dashboard shows the calendar too, so it ships with it
 import { csLeaveGuard } from './vendor/ContractSetup';
-import { BookingsView } from './vendor/Bookings';
-import { InqFormSettings } from './vendor/InquiryFormSettings';
-import { PackagesView } from './vendor/Packages';
-import { SettingsView } from './vendor/Settings';
-import { ReferForm } from './vendor/ReferForm';
-import { WebsiteView } from './vendor/Website';
+import { lazyNamed } from '../lib/lazyNamed';
 
-/* 🔒 Loaded on demand, not bundled with everything else.
-   These are private features. In one bundle their code is downloaded by every
-   vendor who opens the panel — they cannot USE them, the data is behind
-   gate(), but they can read the screens. Split out, the file is only fetched
-   when somebody opens the page, which only a vendor holding the feature can
-   do. It is not hidden from anybody; it is never sent to them.
-   The rest of the panel loads faster as a side effect. */
+/* ⚡ Every sidebar page is its own file, downloaded when it is opened (audit 2026-11-14): opening the panel fetches
+   the dashboard, not the code of twenty-five pages. One <Suspense> below shows "Loading…" for the moment a page
+   takes the first time.
+   🔒 For the private features (Analytics, Calls & messages, Raw Selector, AI Agent, Occasions) it matters twice:
+   a vendor who cannot use one is never even sent its screens. */
 const AnalyticsView = lazy(() => import('./AnalyticsView.jsx'));
 const Inbox = lazy(() => import('./Inbox.jsx'));   // 📥 Calls & Texts + Email (+ Instagram, WhatsApp) — CommsView lives inside it
 const RawSelectorView = lazy(() => import('./RawSelectorView.jsx'));
 const AgentView = lazy(() => import('./AgentView.jsx'));
 const ScreenPop = lazy(() => import('./ScreenPop.jsx'));      // 📞 private — part of Calls & messages
 const OccasionsView = lazy(() => import('./OccasionsView.jsx'));
+const FileFlyerView = lazy(() => import('./FileFlyerView'));
+const PlansView = lazy(() => import('./PlansView.jsx'));
+const RequestsView = lazy(() => import('./RequestsView.jsx'));
+const HelpView = lazy(() => import('../components/HelpView'));
+const MyServicesView = lazy(() => import('../components/MyServices'));
+const PpmBoard = lazy(() => import('../components/PpmBoard'));
+const AiChatVendorView = lazyNamed(() => import('./vendor/AiChat'), 'AiChatVendorView');
+const GalleriesView = lazyNamed(() => import('./vendor/Galleries'), 'GalleriesView');
+const CrewView = lazyNamed(() => import('./vendor/Crew'), 'CrewView');
+const LeadsView = lazyNamed(() => import('./vendor/Leads'), 'LeadsView');
+const ContractsTab = lazyNamed(() => import('./vendor/Contracts'), 'ContractsTab');
+const BookingsView = lazyNamed(() => import('./vendor/Bookings'), 'BookingsView');
+const InqFormSettings = lazyNamed(() => import('./vendor/InquiryFormSettings'), 'InqFormSettings');
+const PackagesView = lazyNamed(() => import('./vendor/Packages'), 'PackagesView');
+const SettingsView = lazyNamed(() => import('./vendor/Settings'), 'SettingsView');
+const ReferForm = lazyNamed(() => import('./vendor/ReferForm'), 'ReferForm');
+const WebsiteView = lazyNamed(() => import('./vendor/Website'), 'WebsiteView');
 
 // 🗝️ tab → required feature (one map controls everything)
 const TAB_FEATURE = {
@@ -424,63 +423,65 @@ export default function VendorPanel({ onLogout }) {
             <button type="button" className="svx-change" onClick={() => go('plans')}>See plans</button>
           </div>
         )}
-        {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) && !cleanup.includes(TAB_FEATURE[tab]) ? (
-          <FeatureLocked goServices={() => setTab('services')} />
-        ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'help' ? (
-          <HelpView user={user} onGo={(t) => go(t)} />
-        ) : tab === 'refer' ? (
-          <ReferForm />
-        ) : tab === 'leads' ? (
-          <LeadsView routeLead={route.lead} onOpenLead={(id) => navigate({ tab: 'leads', lead: id ? String(id) : null })} />
-        ) : tab === 'bookings' ? (
-          <BookingsView routeBooking={route.booking} onOpenBooking={(id) => navigate({ tab: 'bookings', booking: id ? String(id) : null })} rawsel={has('rawsel')} />
-        ) : tab === 'contracts' ? (
-          <ContractsTab />
-        ) : tab === 'crew' ? (
-          <CrewView rawsel={has('rawsel')} />
-        ) : tab === 'plans' ? (
-          <PlansView />
-        ) : tab === 'occasions' ? (
-          <Suspense fallback={<div className="tab-loading">Loading…</div>}><OccasionsView /></Suspense>
-        ) : tab === 'requests' ? (
-          <RequestsView />
-        ) : tab === 'liveshoot' ? (
-          <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
-        ) : tab === 'ppm' ? (
-          has('agent') ? <PpmBoard /> : null   /* 📊 the owner's private board — nothing for anyone else */
-        ) : tab === 'comms' ? (
-          <Suspense fallback={<div className="tab-loading">Loading…</div>}><Inbox /></Suspense>
-        ) : tab === 'agent' ? (
-          <Suspense fallback={<div className="tab-loading">Loading…</div>}><AgentView /></Suspense>
-        ) : tab === 'rawsel' ? (
-          <Suspense fallback={<div className="tab-loading">Loading…</div>}><RawSelectorView /></Suspense>
-        ) : tab === 'analytics' ? (
-          <Suspense fallback={<div className="tab-loading">Loading…</div>}><AnalyticsView /></Suspense>
-        ) : tab === 'fileflyer' ? (
-          <FileFlyerView />
-        ) : tab === 'galleries' ? (
-          <GalleriesView key="galleries" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })}
-            onEditEmail={() => { setEmailFocus('gallery_shared'); setTab('settings'); }}
-            shortcuts={has('galleries')} insights={has('gallery_insights')} />
-        ) : tab === 'website' ? (
-          <WebsiteView />
-        ) : tab === 'aichat' ? (
-          <AiChatVendorView goServices={() => setTab('services')} />
-        ) : tab === 'calendar' ? (
-          // this calendar had no way out of it: its cards were built to open a
-          // booking but were rendered without a handler, so clicking did nothing
-          <CalendarView onOpen={(l) => navigate({ tab: 'bookings', booking: String(l.id) })} />
-        ) : tab === 'inqform' ? (
-          <InqFormSettings />
-        ) : tab === 'packages' ? (
-          <PackagesView />
-        ) : tab === 'settings' ? (
-          <SettingsView user={user} onProfileChange={setProfile} emailFocus={emailFocus} onFocusUsed={() => setEmailFocus(null)} />
-        ) : tab === 'dashboard' ? (
-          <DashHome goTab={setTab} openBooking={(id) => navigate({ tab: 'bookings', booking: String(id) })} />
-        ) : (
-          <MyServicesView onPlans={() => go('plans')} />
-        )}
+        <Suspense fallback={<div className="tab-loading">Loading…</div>}>
+          {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) && !cleanup.includes(TAB_FEATURE[tab]) ? (
+            <FeatureLocked goServices={() => setTab('services')} />
+          ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'help' ? (
+            <HelpView user={user} onGo={(t) => go(t)} />
+          ) : tab === 'refer' ? (
+            <ReferForm />
+          ) : tab === 'leads' ? (
+            <LeadsView routeLead={route.lead} onOpenLead={(id) => navigate({ tab: 'leads', lead: id ? String(id) : null })} />
+          ) : tab === 'bookings' ? (
+            <BookingsView routeBooking={route.booking} onOpenBooking={(id) => navigate({ tab: 'bookings', booking: id ? String(id) : null })} rawsel={has('rawsel')} />
+          ) : tab === 'contracts' ? (
+            <ContractsTab />
+          ) : tab === 'crew' ? (
+            <CrewView rawsel={has('rawsel')} />
+          ) : tab === 'plans' ? (
+            <PlansView />
+          ) : tab === 'occasions' ? (
+            <OccasionsView />
+          ) : tab === 'requests' ? (
+            <RequestsView />
+          ) : tab === 'liveshoot' ? (
+            <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
+          ) : tab === 'ppm' ? (
+            has('agent') ? <PpmBoard /> : null   /* 📊 the owner's private board — nothing for anyone else */
+          ) : tab === 'comms' ? (
+            <Inbox />
+          ) : tab === 'agent' ? (
+            <AgentView />
+          ) : tab === 'rawsel' ? (
+            <RawSelectorView />
+          ) : tab === 'analytics' ? (
+            <AnalyticsView />
+          ) : tab === 'fileflyer' ? (
+            <FileFlyerView />
+          ) : tab === 'galleries' ? (
+            <GalleriesView key="galleries" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })}
+              onEditEmail={() => { setEmailFocus('gallery_shared'); setTab('settings'); }}
+              shortcuts={has('galleries')} insights={has('gallery_insights')} />
+          ) : tab === 'website' ? (
+            <WebsiteView />
+          ) : tab === 'aichat' ? (
+            <AiChatVendorView goServices={() => setTab('services')} />
+          ) : tab === 'calendar' ? (
+            // this calendar had no way out of it: its cards were built to open a
+            // booking but were rendered without a handler, so clicking did nothing
+            <CalendarView onOpen={(l) => navigate({ tab: 'bookings', booking: String(l.id) })} />
+          ) : tab === 'inqform' ? (
+            <InqFormSettings />
+          ) : tab === 'packages' ? (
+            <PackagesView />
+          ) : tab === 'settings' ? (
+            <SettingsView user={user} onProfileChange={setProfile} emailFocus={emailFocus} onFocusUsed={() => setEmailFocus(null)} />
+          ) : tab === 'dashboard' ? (
+            <DashHome goTab={setTab} openBooking={(id) => navigate({ tab: 'bookings', booking: String(id) })} />
+          ) : (
+            <MyServicesView onPlans={() => go('plans')} />
+          )}
+        </Suspense>
       </main>
     </div>
   );

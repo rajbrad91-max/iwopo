@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { api, fmtDateTime, fmtMoney } from '../lib/api';
 
 /**
@@ -7,6 +7,7 @@ import { api, fmtDateTime, fmtMoney } from '../lib/api';
  * next bill and kept until the paid period ends. Add-ons not open to them say why rather than hide.
  */
 export default function MyServicesView({ onPlans }) {
+  const offersId = useId();   // the offers switch is named by its label
   const [b, setB] = useState(null);
   const [busy, setBusy] = useState(0);
   const [msg, setMsg] = useState('');
@@ -67,8 +68,8 @@ export default function MyServicesView({ onPlans }) {
         <button type="button" className="svx-change" onClick={onPlans}>{trialOrFree ? 'Choose a plan' : 'Change plan'}</button>
       </section>
       <div className="svx-renew">
-        <span className="svx-renew-label">📬 Offers &amp; news from iwopo</span>
-        <button type="button" role="switch" aria-checked={!!b.marketing_opt_in} disabled={busy === 'offers'}
+        <span className="svx-renew-label" id={offersId}>📬 Offers &amp; news from iwopo</span>
+        <button type="button" role="switch" aria-labelledby={offersId} aria-checked={!!b.marketing_opt_in} disabled={busy === 'offers'}
           className={`svx-switch${b.marketing_opt_in ? ' is-on' : ''}`} onClick={() => setOffers(!b.marketing_opt_in)}>
           <span className="svx-switch-knob" />
         </button>
