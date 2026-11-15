@@ -10,6 +10,7 @@ import GalleryDownloadLog from '../../components/GalleryDownloadLog';
 import { MailIcon, ChartIcon, GearIcon, DownloadedMark } from '../../components/TileIcons';
 import { AlbumDetail } from './AlbumDetail';
 import NavIcon from '../../components/NavIcon';
+import { EyeOpen, EyeClosed } from '../../components/PasswordInput';
 
 // 🎯 Cover focal-point picker: click or drag to set where the cover centers.
 // The same point is used on desktop AND mobile, so covers frame well at any aspect ratio.
@@ -336,16 +337,16 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
   const albumForm = (
         <div className="table-wrap gal-form">
           <div className="gal-form-h">
-            {!edit ? '➕ New Album'
-              : kind === 'liveshoot' ? `⚙️ ${edit.title}`
-              : '✏️ Edit Album'}
+            {!edit ? 'New album'
+              : kind === 'liveshoot' ? edit.title
+              : 'Edit album'}
           </div>
 
           {/* three grouped cards that share the panel width evenly */}
           <div className="gal-form-cards">
 
             <section className="gal-card-sec">
-              <h4 className="gal-sec-h">📋 Details</h4>
+              <h4 className="gal-sec-h">Details</h4>
               {bookings.length > 0 && (
                 <div><label className="lbl">Auto-fill from a booking</label>
                   <select className="gal-input" defaultValue="" onChange={e => pickBooking(e.target.value)}>
@@ -376,26 +377,26 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 serves galleries, where both matter. */}
             {kind !== 'liveshoot' && (<>
             <section className="gal-card-sec">
-              <h4 className="gal-sec-h">🔑 Access</h4>
+              <h4 className="gal-sec-h">Access</h4>
               <div className="gal-sec-note gal-pw-hint">
                 {edit
                   ? <>These are this album's own passwords. Type over one to change it for this album only.</>
-                  : <>Filled from your defaults in ⚙️ Settings — prefix + last 4 digits of the client's phone,
+                  : <>Filled from your defaults in Settings — prefix + last 4 digits of the client's phone,
                      e.g. <code>susan</code> + <code>4821</code> = <code>susan4821</code>. Type here to override for this album.</>}
               </div>
-              <div><label className="lbl">🧑‍🤝‍🧑 Guest password</label>
+              <div><label className="lbl">Guest password</label>
                 <div className="gal-pw-wrap">
                   {/* new-password: tells the browser this is NOT a login, so it
                       stops pasting the vendor's own saved password in here */}
                   <input className="gal-input" autoComplete="new-password" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
-                  <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'}>{showPw.guest ? '🙈' : '👁️'}</button>
+                  <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'} aria-label={showPw.guest ? 'Hide guest password' : 'Show guest password'}>{showPw.guest ? <EyeClosed /> : <EyeOpen />}</button>
                 </div>
                 {pwHidden.guest && !f.guest_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
               </div>
-              <div><label className="lbl">🔐 Admin password</label>
+              <div><label className="lbl">Admin password</label>
                 <div className="gal-pw-wrap">
                   <input className="gal-input" autoComplete="new-password" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
-                  <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'}>{showPw.admin ? '🙈' : '👁️'}</button>
+                  <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'} aria-label={showPw.admin ? 'Hide admin password' : 'Show admin password'}>{showPw.admin ? <EyeClosed /> : <EyeOpen />}</button>
                 </div>
                 {pwHidden.admin && !f.admin_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
               </div>
@@ -404,11 +405,11 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
 
             <section className="gal-card-sec">
               <div className="gal-sec-top">
-                <h4 className="gal-sec-h">🖼️ Cover</h4>
+                <h4 className="gal-sec-h">Cover</h4>
                 {(coverFile || edit?.cover_photo) && (
                   <div className="fp-toggle">
-                    <button type="button" className={`fp-tog ${focusView === 'desktop' ? 'on' : ''}`} onClick={() => setFocusView('desktop')}>🖥️</button>
-                    <button type="button" className={`fp-tog ${focusView === 'mobile' ? 'on' : ''}`} onClick={() => setFocusView('mobile')}>📱</button>
+                    <button type="button" className={`fp-tog ${focusView === 'desktop' ? 'on' : ''}`} onClick={() => setFocusView('desktop')}>Desktop</button>
+                    <button type="button" className={`fp-tog ${focusView === 'mobile' ? 'on' : ''}`} onClick={() => setFocusView('mobile')}>Phone</button>
                   </div>
                 )}
               </div>
@@ -425,7 +426,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 <div className="gal-cover-empty">No cover photo yet</div>
               )}
               <label className="gal-cover-btn">
-                {coverFile ? `✅ ${coverFile.name.slice(0, 16)}…` : (edit?.cover_photo ? '🖼️ Replace cover' : '📤 Choose cover')}
+                {coverFile ? `${coverFile.name.slice(0, 16)}…` : (edit?.cover_photo ? 'Replace cover' : 'Choose cover')}
                 <input type="file" accept="image/*" hidden onChange={e => setCoverFile(e.target.files[0] || null)} />
               </label>
             </section>
@@ -436,12 +437,12 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 panel to fetch. */}
             {kind === 'liveshoot' && edit?.public_token && (
               <section className="gal-card-sec">
-                <h4 className="gal-sec-h">🔗 Guest link</h4>
+                <h4 className="gal-sec-h">Guest link</h4>
                 <div className="ls-link-row">
                   <code className="ls-link">{`${window.location.origin}/live/${edit.public_token}`}</code>
                   <button type="button" className="gal-mini"
                     onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/live/${edit.public_token}`)}>
-                    📋 Copy
+                    Copy
                   </button>
                 </div>
               </section>
@@ -450,7 +451,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
           </div>
 
           <div className="gal-form-foot">
-            <button className="refresh gal-act" onClick={create}>{edit ? '💾 Save changes' : '✅ Create album'}</button>
+            <button className="refresh gal-act" onClick={create}>{edit ? 'Save changes' : 'Create album'}</button>
             {/* ⚠️ Both of these are GALLERY buttons and neither makes sense for a
                 live shoot. Copy Gallery Link copies /g/<token> — the
                 password-protected gallery page, which a live shoot does not
@@ -459,8 +460,8 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 A live shoot has one address, /live/<token>, and it is already
                 on this panel with its own Copy. Three buttons offering two
                 wrong answers and one right one is worse than one button. */}
-            {edit && kind !== 'liveshoot' && <button className="refresh gal-act" onClick={() => openSend(edit)}>📧 Send Instructions</button>}
-            {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-act" onClick={() => copyUrl(edit)}>{copiedUrl ? '✅ Copied!' : '🔗 Copy Gallery Link'}</button>}
+            {edit && kind !== 'liveshoot' && <button className="refresh gal-act" onClick={() => openSend(edit)}>Send instructions</button>}
+            {edit?.public_token && kind !== 'liveshoot' && <button className="refresh gal-act" onClick={() => copyUrl(edit)}>{copiedUrl ? 'Copied' : 'Copy gallery link'}</button>}
             {/* 🔗 the client's link itself, to open and check (Muse F-14: it was only ever copied, never shown) */}
             {edit?.public_token && kind !== 'liveshoot' && <a className="gal-link" href={`${clientBase()}/g/${edit.public_token}`} target="_blank" rel="noreferrer">{`${clientBase()}/g/${edit.public_token}`}</a>}
             {msg && <span className={`gal-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
@@ -474,7 +475,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
           {/* ⚠️ OUTSIDE the form on purpose: a save closes the form, and a
               confirmation rendered inside it would vanish in the same tick. */}
           {msg && msg[0] === '✅' && <span className="gal-toast">{msg}</span>}
-        <h2 className="gal-title">{kind === 'liveshoot' ? '🎥 Live shoots' : '📸 Galleries'}</h2>
+        <h2 className="gal-title">{kind === 'liveshoot' ? 'Live shoots' : 'Galleries'}</h2>
         <div className="gal-head-btns">
           <button className="lead-ic-btn" onClick={() => { resetForm(); setShowNew(s => !s); }} title={showNew ? 'Cancel' : 'New album'}>{showNew ? '✕' : '➕'}</button>
           <button className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); setSearch(''); }} title="Search albums">🔍</button>
@@ -503,28 +504,28 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
         <div className="al-overlay" onClick={() => setShowSettings(false)}>
           <div className="gal-set-modal gal-set-modal-lg" onClick={e => e.stopPropagation()}>
             <div className="al-head">
-              <h3 className="al-title">⚙️ Gallery Settings</h3>
+              <h3 className="al-title">Gallery settings</h3>
               <button className="al-x" onClick={() => setShowSettings(false)}>✕</button>
             </div>
 
             <div className="gal-set-cols">
               <div className="gal-set-col">
-                <label className="lbl">🔗 Full gallery link (all albums — embed on your website)</label>
+                <label className="lbl">Full gallery link (all albums — embed on your website)</label>
                 <div className="gal-set-link">
                   <input className="gal-input" readOnly value={galleryToken ? `${clientBase()}/gallery/${galleryToken}` : 'Loading…'} onFocus={e => e.target.select()} />
-                  <button className="refresh gal-copy-url" onClick={copyGalleryUrl} disabled={!galleryToken}>{copiedGallery ? '✅' : '🔗 Copy'}</button>
+                  <button className="refresh gal-copy-url" onClick={copyGalleryUrl} disabled={!galleryToken}>{copiedGallery ? 'Copied' : 'Copy'}</button>
                 </div>
 
-                <label className="lbl gal-set-lbl">🔑 Default password prefixes</label>
-                <div className="gal-set-hint">Every new album gets prefix + last 4 digits of the client's phone. Any album can override its own in 🔑 Access.</div>
+                <label className="lbl gal-set-lbl">Default password prefixes</label>
+                <div className="gal-set-hint">Every new album gets prefix + last 4 digits of the client's phone. Any album can override its own under Access.</div>
                 <div className="gal-set-prefixes">
                   <input className="gal-input" value={pwPrefix} onChange={e => setPwPrefix(e.target.value)} placeholder="Guest prefix" />
                   <input className="gal-input" value={spwPrefix} onChange={e => setSpwPrefix(e.target.value)} placeholder="Admin prefix" />
                 </div>
 
-                <label className="lbl gal-set-lbl">📧 Gallery email</label>
+                <label className="lbl gal-set-lbl">Gallery email</label>
                 <div className="gal-set-hint">The email a client gets when you press Send is in Settings → Setup Email → Email templates → Gallery shared.</div>
-                <button className="refresh gal-save gal-set-save" onClick={saveSettingsOnly}>💾 Save Settings</button>
+                <button className="refresh gal-save gal-set-save" onClick={saveSettingsOnly}>Save settings</button>
               </div>
 
               <div className="gal-set-col">
@@ -588,7 +589,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                   <div className="gal-tp-sub">{theme.subtitle_text || 'Secure, Password-Protected Memories'}</div>
                 </div>
 
-                <button className="refresh gal-save gal-set-save" onClick={saveTheme}>{themeSaved ? '✅ Saved!' : '🎨 Save Style'}</button>
+                <button className="refresh gal-save gal-set-save" onClick={saveTheme}>{themeSaved ? 'Saved' : 'Save style'}</button>
               </div>
             </div>
           </div>
@@ -598,8 +599,8 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
       {(() => {
         const q = search.trim().toLowerCase();
         const shown = q ? albums.filter(a => (a.title || '').toLowerCase().includes(q) || (a.category || '').toLowerCase().includes(q)) : albums;
-        if (albums.length === 0) return <div className="table-wrap gal-empty">No albums yet. Create your first one 📸</div>;
-        if (shown.length === 0) return <div className="table-wrap gal-empty">No albums match “{search}” 🔍</div>;
+        if (albums.length === 0) return <div className="table-wrap gal-empty">No albums yet. Create your first one.</div>;
+        if (shown.length === 0) return <div className="table-wrap gal-empty">No albums match “{search}”</div>;
         return (
         <div className="gal-cards">
           {shown.map(a => (
@@ -675,26 +676,26 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
         <div className="al-overlay" onClick={() => setSendModal(null)}>
           <div className="gal-send-modal" onClick={e => e.stopPropagation()}>
             <div className="al-head">
-              <h3 className="al-title">📧 Send Instructions</h3>
+              <h3 className="al-title">Send instructions</h3>
               <button className="al-x" onClick={() => setSendModal(null)}>✕</button>
             </div>
             <label className="lbl">To (client email)</label>
             <input className="gal-input" value={sendModal.email} onChange={e => setSendModal(m => ({ ...m, email: e.target.value }))} placeholder="client@email.com" />
 
+            {/* the subject, and the way to change the template it comes from */}
             <div className="gal-send-msghead">
-              <label className="lbl">Email</label>
-              {onEditEmail && <button className="gal-gen" onClick={() => { setSendModal(null); onEditEmail(); }}>Edit template</button>}
+              <div className="gal-send-subj">{sendModal.subject}</div>
+              {onEditEmail && <button type="button" className="refresh gal-send-edit" onClick={() => { setSendModal(null); onEditEmail(); }}>Edit template</button>}
             </div>
-            <div className="gal-send-subj">{sendModal.subject}</div>
             {sendModal.html
               /* sandbox with nothing allowed: the design shows, nothing in it can run */
               ? <iframe className="et-frame gal-send-frame" title="Email preview" sandbox="" srcDoc={sendModal.html} />
               : <div className="gal-send-preview">{sendModal.body}</div>}
 
             <div className="gal-send-foot">
-              <button className="refresh gal-save" onClick={doSend}>📨 Send</button>
+              <button type="button" className="refresh gal-send-btn" onClick={doSend}>Send</button>
               {sendMsg && <span className="gal-err">{sendMsg}</span>}
-              <button className="gal-gen gal-send-copy" onClick={copyInstructions}>{copiedMsg ? '✅ Copied' : '📋 Copy'}</button>
+              <button type="button" className="refresh gal-send-btn gal-send-copy" onClick={copyInstructions}>{copiedMsg ? 'Copied' : 'Copy'}</button>
             </div>
           </div>
         </div>

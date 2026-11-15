@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { api } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
-import './ppmboard.css';
+import './agentPpm.css';
 
 const ProjectStages = lazy(() => import('./ProjectStages.jsx'));
 
@@ -69,45 +69,45 @@ export default function PpmBoard() {
     } finally { setBusy(x => { const n = { ...x }; delete n[key]; return n; }); }
   }
 
-  if (rows === null) return <p className="ppm-quiet">{err || 'Loading…'}</p>;
+  if (rows === null) return <p className="agp-quiet">{err || 'Loading…'}</p>;
   const term = q.trim().toLowerCase();
   const shown = rows.filter(b => (show === 'all' || !doneAll(b)) && (!term || `${b.client} ${b.event_type || ''} ${b.shoot_date || ''}`.toLowerCase().includes(term)));
 
   return (
     <div className="ppm">
-      <div className="ppm-bar">
-        <input className="ppm-search" type="search" placeholder="Search a client" value={q} onChange={e => setQ(e.target.value)} aria-label="Search a client" />
-        <div className="ppm-seg" role="tablist">
+      <div className="agp-bar">
+        <input className="agp-search" type="search" placeholder="Search a client" value={q} onChange={e => setQ(e.target.value)} aria-label="Search a client" />
+        <div className="agp-seg" role="tablist">
           {[['open', 'Not finished'], ['all', 'All']].map(([v, l]) => (
-            <button key={v} type="button" role="tab" aria-selected={show === v} className={`ppm-seg-b ${show === v ? 'is-on' : ''}`}
+            <button key={v} type="button" role="tab" aria-selected={show === v} className={`agp-seg-b ${show === v ? 'is-on' : ''}`}
               onClick={() => { setShow(v); localStorage.setItem('ppm_show', v); }}>{l}</button>
           ))}
         </div>
-        <button type="button" className="ppm-refresh" onClick={load} title="Read the latest now">↻</button>
-        {at && <span className="ppm-at">Updated {at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>}
+        <button type="button" className="agp-refresh" onClick={load} title="Read the latest now">↻</button>
+        {at && <span className="agp-at">Updated {at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>}
       </div>
-      {err && <p className="ppm-err" role="alert">{err}</p>}
+      {err && <p className="agp-err" role="alert">{err}</p>}
 
-      {shown.length === 0 ? <p className="ppm-quiet">{term ? `No booking matches "${q}".` : show === 'open' ? 'Every booking is finished 🎉' : 'No bookings yet.'}</p> : (
-        <ul className="ppm-list">
+      {shown.length === 0 ? <p className="agp-quiet">{term ? `No booking matches "${q}".` : show === 'open' ? 'Every booking is finished 🎉' : 'No bookings yet.'}</p> : (
+        <ul className="agp-list">
           {shown.map(b => (
-            <li key={b.lead_id} className={`ppm-row ${doneAll(b) ? 'is-done' : ''}`}>
-              <button type="button" className="ppm-who" onClick={() => { setOpen(o => (o === b.lead_id ? null : b.lead_id)); if (open === b.lead_id) load(); }} aria-expanded={open === b.lead_id}>
+            <li key={b.lead_id} className={`agp-row ${doneAll(b) ? 'is-done' : ''}`}>
+              <button type="button" className="agp-who" onClick={() => { setOpen(o => (o === b.lead_id ? null : b.lead_id)); if (open === b.lead_id) load(); }} aria-expanded={open === b.lead_id}>
                 <b>{b.client}</b>
                 <span>{[b.event_type, nice(b.shoot_date)].filter(Boolean).join(' · ')}</span>
               </button>
-              <div className="ppm-steps">
+              <div className="agp-steps">
                 {STEPS.map(([k, ic, label]) => (
-                  <button key={k} type="button" className={`ppm-step ${b[k] ? 'is-done' : 'is-todo'} ${busy[`${b.lead_id}:${k}`] ? 'is-busy' : ''}`}
+                  <button key={k} type="button" className={`agp-step ${b[k] ? 'is-done' : 'is-todo'} ${busy[`${b.lead_id}:${k}`] ? 'is-busy' : ''}`}
                     onClick={() => tick(b, k, label)} disabled={!!busy[`${b.lead_id}:${k}`]}
                     title={b[k] ? `${label} — ${nice(b[k])}${k === 'backed_up_at' && b.backed_up_by ? ` · by ${b.backed_up_by}` : ''}` : `${label} — not yet (tap when done)`}>
-                    <span aria-hidden="true">{ic}</span><span className="ppm-step-t">{label}</span>
+                    <span aria-hidden="true">{ic}</span><span className="agp-step-t">{label}</span>
                   </button>
                 ))}
               </div>
               {open === b.lead_id && (
-                <div className="ppm-detail">
-                  <Suspense fallback={<p className="ppm-quiet">Loading…</p>}><ProjectStages leadId={b.lead_id} /></Suspense>
+                <div className="agp-detail">
+                  <Suspense fallback={<p className="agp-quiet">Loading…</p>}><ProjectStages leadId={b.lead_id} /></Suspense>
                 </div>
               )}
             </li>

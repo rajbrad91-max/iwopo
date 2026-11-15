@@ -1,11 +1,12 @@
 import './leadCard.css';
 import { fmtDateTime } from '../lib/api';
+import NavIcon from './NavIcon';
 
 /**
  * 📱 A lead as a card on phones (Raj, 2026-10-27, after his Perfect Poses reference): name, email and phone on one
  * line; Event (with the service asked for), Date, Location, Package (only the client's pick — or the folder that was
  * sent — with the price unless Payment privacy is on, in which case the server sends no amounts) and Status, with
- * a small 📤 Send beside the status. Rows with nothing to say are left out; tapping the card opens the lead.
+ * a small Send beside the status. Rows with nothing to say are left out; tapping the card opens the lead.
  * The desktop table never shows this — it is a cell of its own, hidden there.
  */
 const STATUS = { new: 'New', quoted: 'Package Sent', booked: 'Booking Confirmed' };
@@ -22,11 +23,11 @@ export default function LeadCard({ lead: l, history = false, onSend, onRestore }
       <div className="lc-head">
         <p className="lc-name">{l.name}</p>
         {(l.email || l.phone) && (
-          <p className="lc-contact">{l.email && <span>{l.email}</span>}{l.phone && <span>{l.phone}</span>}</p>
+          <p className="lc-contact">{l.email && <span className="lc-email">{l.email}</span>}{l.phone && <span className="lc-phone">{l.phone}</span>}</p>
         )}
       </div>
       {/* 📅 when it arrived — its own line under the name, never squeezed into the name row */}
-      {l.created_at && <p className="lc-received">📥 Received {fmtDateTime(l.created_at, { zone: true })}</p>}
+      {l.created_at && <p className="lc-received"><NavIcon name="leads" />Received {fmtDateTime(l.created_at, { zone: true })}</p>}
       <dl className="lc-rows">
         {l.event_type && (
           <div className="lc-row"><dt>Event</dt><dd>{l.event_type}{l.service && <span className="lc-aside">{l.service}</span>}</dd></div>
@@ -43,7 +44,7 @@ export default function LeadCard({ lead: l, history = false, onSend, onRestore }
           <span className="lc-status-line">
             {/* the button sits centred in the open space between "Status" and the pill */}
             <span className="lc-btn-slot">
-              {canSend && <button type="button" className="lc-send" onClick={e => onSend(l, e)} title={`Email the packages to ${l.email}`}>📤 Send</button>}
+              {canSend && <button type="button" className="refresh lc-send" onClick={e => onSend(l, e)} title={`Email the packages to ${l.email}`}>Send</button>}
               {history && <button type="button" className="lc-restore" onClick={e => onRestore(l.id, e)}>↩️ Restore</button>}
             </span>
             <span className={`lc-status lc-st-${l.status || 'new'}`}>{STATUS[l.status] || l.status}</span>

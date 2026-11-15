@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import LeadCard from '../../components/LeadCard';
+import NavIcon from '../../components/NavIcon';
 import { MdSwapVert } from 'react-icons/md';
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../../components/LeadListingMenu';
 import { LeadContact, LeadEvents } from '../../components/LeadOverview';
@@ -209,11 +210,12 @@ export function LeadsView({ routeLead, onOpenLead }) {
       ref={el => { if (el) el.indeterminate = someShown; }} aria-label={`Select all ${shown.length} leads shown`} />
   );
   const seqOf = (id) => seq.get(id) ?? '—';
+  /* the sidebar's own drawings, as on the dashboard tiles (Raj, 2026-11-15) */
   const TILES = [
-    ['all', '📋', 'Total Leads'],
-    ['new', '🆕', 'New'],
-    ['quoted', '📤', 'Packages Sent'],
-    ['booked', '✅', 'Booked'],
+    ['all', 'leads-all', 'Total Leads'],
+    ['new', 'leads', 'New'],
+    ['quoted', 'packages', 'Packages Sent'],
+    ['booked', 'bookings', 'Booked'],
   ];
 
   return (
@@ -228,7 +230,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
           <div className="lead-stats">
             {TILES.map(([key, icon, label]) => (
               <button key={key} className={`lead-stat ${filter === key ? 'is-on' : ''}`} onClick={() => setFilter(key)}>
-                <span className="lead-stat-ic">{icon}</span>
+                <span className="lead-stat-ic"><NavIcon name={icon} /></span>
                 <span className="lead-stat-val">{counts[key]}</span>
                 <span className="lead-stat-lbl">{label}</span>
               </button>
@@ -278,7 +280,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
       )}
 
       {showSearch && view === 'active' && (
-        <input className="lead-search" autoFocus placeholder="🔍 Search name, email, phone, event…" value={search} onChange={e => setSearch(e.target.value)} />
+        <input className="lead-search" autoFocus placeholder="Search name, email, phone, event…" value={search} onChange={e => setSearch(e.target.value)} />
       )}
 
       {showAdd && <AddLeadModal vendorId={getUser()?.vendor_id} onClose={() => setShowAdd(false)} onSaveDone={() => { setShowAdd(false); load(); }} />}
@@ -315,7 +317,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
                 )}
                 <td className="col-num" data-label="#">{seqOf(l.id)}</td>
                 {/* 📅 when it arrived — the list could not say (Muse leads comparison, 2026-10-30) */}
-                <td className="biz" data-label="Client">{l.name}{l.created_at && <span className="lead-received">📥 {fmtDateTime(l.created_at, { zone: true })}</span>}</td>
+                <td className="biz" data-label="Client">{l.name}{l.created_at && <span className="lead-received"><NavIcon name="leads" />{fmtDateTime(l.created_at, { zone: true })}</span>}</td>
                 <td data-label="Event">{l.event_type}</td>
                 <td data-label="Date">{l.event_date ? String(l.event_date).slice(0, 10) : '—'}</td>
                 <td data-label="Location">{l.location || '—'}</td>
@@ -332,11 +334,12 @@ export function LeadsView({ routeLead, onOpenLead }) {
                             button: the whole row is clickable. */}
                         {l.package_template_id && l.email && (
                           <button
-                            className="lead-send"
+                            type="button"
+                            className="refresh lead-send"
                             onClick={e => sendPkgs(l, e)}
                             title={`Email the packages to ${l.email}`}
                           >
-                            📤 <span className="lead-send-txt">Send Packages</span>
+                            <NavIcon name="packages" /><span className="lead-send-txt">Send packages</span>
                           </button>
                         )}
                       </div>

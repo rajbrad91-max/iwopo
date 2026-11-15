@@ -455,16 +455,17 @@ export function ContractSetup({ leadId = null } = {}) {
         <div className="cs-bar-right">
           {msg && <span className={`cs-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}
           {leadId
-            ? <button className="refresh" onClick={useTemplateAgain}>↩️ Use my template again</button>
+            ? <button className="refresh" onClick={useTemplateAgain}>Use my template again</button>
             : <>
               {/* 🔓 Account-wide, not per template: it answers "do I want to read my
                   contracts before they go out", which is a habit rather than a
                   property of one document. */}
               <AutoReleaseToggle className="refresh cs-auto" on={autoRelease.on} disabled={!autoRelease.ready} onChange={saveAutoRelease} />
-              <button className="refresh" onClick={() => del(sel.id)}>🗑️</button>
+              {/* 🗑️ the same bin as Leads (lead-ic-btn lead-ic-del): a red edge on hover, and it says what it does */}
+              <button type="button" className="lead-ic-btn lead-ic-del" onClick={() => del(sel.id)} title="Delete this contract template" aria-label="Delete this contract template">🗑️</button>
             </>}
           <button className="refresh" onClick={save} disabled={saving}>
-            {saving ? '⏳ Saving…' : '💾 Save contract'}
+            {saving ? 'Saving…' : 'Save contract'}
           </button>
         </div>
       </div>

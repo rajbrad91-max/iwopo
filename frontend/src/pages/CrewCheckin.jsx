@@ -246,7 +246,7 @@ export default function CrewCheckin({ token }) {
 
   if (err && !a) {
     return (
-      <div className="iq-wrap">
+      <div className="iq-wrap ck-wrap">
         <div className="iq-card ck-card">
           <div className="ck-hd"><h1 className="ck-title">Attendance</h1></div>
           <div className="ck-body"><p className="ck-err">{err}</p></div>
@@ -257,7 +257,7 @@ export default function CrewCheckin({ token }) {
 
   if (!a) {
     return (
-      <div className="iq-wrap">
+      <div className="iq-wrap ck-wrap">
         <div className="iq-card ck-card">
           <div className="ck-body"><p className="ck-muted">Loading assignment…</p></div>
         </div>
@@ -301,7 +301,7 @@ export default function CrewCheckin({ token }) {
   const showBlockedHelp = geo.status === 'denied' || permState === 'denied';
 
   return (
-    <div className="iq-wrap">
+    <div className="iq-wrap ck-wrap">
       <div className="iq-card ck-card">
         <header className="ck-hd">
           <p className="ck-kicker">Crew attendance</p>

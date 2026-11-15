@@ -106,7 +106,7 @@ Password: {view_password}
     when: 'When you press Send on a gallery. The link opens your client section, where your galleries are listed.',
     tags: [...COMMON, 'link', 'admin_password', 'guest_password'],
     button: 'Open your gallery',
-    subject: 'Your Photos Are Ready 📸',
+    subject: 'Your Photos Are Ready',
     body: `Dear {client_name},
 
 Your photos are now ready to view and download! 🎉

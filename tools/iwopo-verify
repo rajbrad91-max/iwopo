@@ -180,6 +180,34 @@ console.log('  inline styles: '+found);
 INNER
 
 echo
+echo "=== 4f. SHARED CLASS NAMES — two features styling the same class ==="
+node - <<'INNER'
+const fs=require('fs');
+const S='/var/www/iwopo-staging/frontend/src';
+function walk(d,o=[]){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=d+'/'+e.name;
+  if(e.isDirectory())walk(p,o); else if(e.name.endsWith('.css'))o.push(p);} return o;}
+// A page's stylesheet stays loaded once visited. Two feature sheets that style the same class therefore restyle
+// each other's page until a refresh — the AI Agent's PPM sheet boxed in the PPM Board's circles this way. Counted:
+// a rule whose whole selector is that class (one compound, e.g. .ppm-step.is-done — nothing scoping it under the
+// page's own wrapper). A sheet pulled in by another with @import is one family with it. The panel's base sheets
+// (styles/index.css, pages/vendor.css) restyle shared parts on purpose and are left out.
+const BASE=new Set(['styles/index.css','pages/vendor.css']);
+const family=new Map();   // a sheet @imported by another belongs to the importer
+for(const f of walk(S)) for(const m of fs.readFileSync(f,'utf8').matchAll(/@import\s+['"](\.[^'"]+\.css)['"]/g))
+  family.set(require('path').resolve(require('path').dirname(f),m[1]).replace(S+'/',''), f.replace(S+'/',''));
+const owners=new Map();
+for(const f of walk(S)){ const rel=f.replace(S+'/',''); if(BASE.has(rel)) continue; const fam=family.get(rel)||rel;
+  const css=fs.readFileSync(f,'utf8').replace(/\/\*[\s\S]*?\*\//g,'').replace(/url\([^)]*\)/g,'');
+  for(const m of css.matchAll(/([^{}@]+)\{/g)) for(const part of m[1].split(',')){
+    const sel=part.trim(); if(/[\s>+~]/.test(sel.replace(/\([^)]*\)/g,''))) continue;   // scoped: not counted
+    const c=(sel.match(/^\.([a-zA-Z][\w-]*)/)||[])[1]; if(!c) continue;
+    if(!owners.has(c)) owners.set(c,new Set()); owners.get(c).add(fam); } }
+let n=0;
+for(const [c,fs_] of owners) if(fs_.size>1){ console.log('  ⚠️  .'+c+' ← '+[...fs_].join(', ')); n++; }
+console.log('  shared class names: '+n);
+INNER
+
+echo
 echo "=== 5. server boots clean ==="
 pm2 restart iwopo-staging-api >/dev/null 2>&1; sleep 4
 pm2 logs iwopo-staging-api --err --lines 25 --nostream 2>/dev/null \

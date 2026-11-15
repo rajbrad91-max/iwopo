@@ -14,8 +14,8 @@
 .lc-head { display: flex; align-items: baseline; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }   /* name, email and phone on one line */
 .lc-name { flex: 0 0 auto; max-width: 60%; margin: 0; font-size: 17px; font-weight: 800; line-height: 1.25; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-contact { flex: 1 1 auto; min-width: 0; margin: 0; display: flex; justify-content: flex-end; gap: 12px; font-size: 13.5px; color: var(--muted); }
-.lc-contact span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* a long email shortens with … */
-.lc-contact span:last-child { flex: none; }
+.lc-email { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* a long email shortens with … */
+.lc-phone { flex: none; white-space: nowrap; }   /* the phone number always shows in full */
 
 .lc-rows { margin: 0; }
 .lc-row {
@@ -34,14 +34,13 @@
 .lc-pick { font-weight: 700; }
 .lc-pick b { font-weight: 800; }
 
-/* status line: a small 📤 Send (or ↩️ Restore) beside the status pill */
+/* status line: a small Send (the panel's white button) or ↩️ Restore beside the status pill */
 .lc-status-line { display: flex; align-items: center; gap: 8px; white-space: nowrap; }   /* Send and the status stay side by side */
 .lc-btn-slot { flex: 1; display: flex; justify-content: center; }   /* centres the button in the free space */
 .lc-send, .lc-restore {
   height: 32px; padding: 0 16px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700;
   cursor: pointer; white-space: nowrap;
 }
-.lc-send { border: 0; background: rgba(22, 163, 74, 0.12); color: #15803d; }   /* calm: pale green, green text */
 .lc-restore { border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
 .lc-rows .lc-row:last-child { border-bottom: 0; }
 
@@ -60,4 +59,6 @@
 }
 
 /* 📅 when the lead arrived (phone card) */
-.lc-received { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.lc-received { display: flex; align-items: center; gap: 5px; margin: 2px 0 0; font-size: 12px; color: var(--muted); --nav-cut: var(--panel); }
+.dash .lc-received .nav-ic, .dash .lc-received .nav-svg { width: auto; height: auto; }
+.lc-received .nav-svg svg { width: 14px; height: 14px; }

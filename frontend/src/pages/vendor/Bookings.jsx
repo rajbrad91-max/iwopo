@@ -19,12 +19,15 @@ import { MoneySection } from './MoneySection';
  */
 function crewStatus(c) {
   const { total = 0, checked_in: inN = 0, checked_out: outN = 0 } = c || {};
-  if (!total) return { label: 'Not assigned', cls: 'trial', icon: '⚠️' };
-  if (outN >= total) return { label: 'Wrapped', cls: 'active', icon: '🏁' };
-  if (inN >= total) return { label: `All ${total} on site`, cls: 'active', icon: '✅' };
-  if (inN > 0) return { label: `${inN}/${total} on site`, cls: 'active', icon: '🟢' };
-  return { label: `${total} assigned`, cls: 'trial', icon: '👥' };
+  if (!total) return { label: 'Not assigned', cls: 'warn' };   // amber: the one that needs doing
+  if (outN >= total) return { label: 'Wrapped', cls: 'active' };
+  if (inN >= total) return { label: `All ${total} on site`, cls: 'active' };
+  if (inN > 0) return { label: `${inN}/${total} on site`, cls: 'active' };
+  return { label: `${total} assigned`, cls: 'trial' };
 }
+
+/* the three counters, and what each one picks out when pressed */
+const PERIODS = [['month', 'This Month'], ['year', 'This Year'], ['next', 'Next Year']];
 
 export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
   const dialog = useDialog();
@@ -33,21 +36,28 @@ export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
   const [mode, setMode] = useState('list'); // list | calendar
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState('');
+  const [period, setPeriod] = useState(null);        // a counter pressed: only that period's bookings
+  const [selectMode, setSelectMode] = useState(false);
+  const [checked, setChecked] = useState([]);
   useEffect(() => {
     api.bookings().then(d => setBookings(d.bookings || [])).catch(() => {}).finally(() => setLoading(false));
   }, [routeBooking]);
 
-  async function removeBooking(b, e) {
-    e.stopPropagation();                       // don't open the booking behind it
-    if (!await dialog.confirm(
-      `${b.name}'s booking moves to History. Their contract and payments stay with it, and you can restore it any time from Leads → History.`,
-      { title: 'Remove this booking?', okLabel: 'Move to History', danger: false }
-    )) return;
+  /* 🗑️ The Leads bin (Raj, 2026-11-15), in place of a bin on every row: press it to pick bookings, press it again to
+     move the picked ones to History — where Leads → History can restore them, contract and payments included. */
+  async function onBinClick() {
+    if (!selectMode) { setMode('list'); setSelectMode(true); return; }
+    if (!checked.length) { setSelectMode(false); return; }
+    const n = checked.length;
+    if (!await dialog.confirm('Their contracts and payments stay with them, and you can restore them any time from Leads → History.',
+      { title: `Move ${n} booking${n === 1 ? '' : 's'} to History?`, okLabel: 'Move to History', danger: false })) return;
     try {
-      await api.bulkArchive([b.id]);
-      setBookings(bs => bs.filter(x => x.id !== b.id));   // the row goes at once
+      await api.bulkArchive(checked);
+      setBookings(bs => bs.filter(b => !checked.includes(b.id)));   // the rows go at once
+      setChecked([]); setSelectMode(false);
     } catch (err) { dialog.alert(err.message, { error: true }); }
   }
+  const toggleCheck = (id) => setChecked(c => (c.includes(id) ? c.filter(x => x !== id) : [...c, id]));
   if (loading) return <div className="loading">Loading…</div>;
 
   // a booking opens as its own page, not the lead editor — the sale is done, so
@@ -55,9 +65,13 @@ export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
   if (routeBooking) return <BookingDetail key={routeBooking} id={routeBooking} rawsel={rawsel} />;   // Bookings in the sidebar goes back
 
   const now = new Date();
-  const inMonth = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).length;
-  const inYear = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getFullYear() === now.getFullYear(); }).length;
-  const nextYear = bookings.filter(b => { const d = eventDateValue(b.event_date); return d && d.getFullYear() === now.getFullYear() + 1; }).length;
+  const IN = {
+    month: d => d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(),
+    year: d => d.getFullYear() === now.getFullYear(),
+    next: d => d.getFullYear() === now.getFullYear() + 1,
+  };
+  const inPeriod = (b, p) => { const d = eventDateValue(b.event_date); return !!d && IN[p](d); };
+  const countIn = (p) => bookings.filter(b => inPeriod(b, p)).length;
 
   // 🔢 Booking number, counting down the table so the top row is #1 — matching
   // the order the rows are actually rendered in. Built from the full list, not
@@ -69,42 +83,65 @@ export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
   const term = q.trim().toLowerCase();
   const match = (b) => !term || [b.name, b.event_type, b.event_date, b.location, b.phone, b.email]
     .some(v => v && String(v).toLowerCase().includes(term));
-  const shown = bookings.filter(match);
+  const shown = bookings.filter(b => match(b) && (!period || inPeriod(b, period)));
+  const allShown = shown.length > 0 && shown.every(b => checked.includes(b.id));
+  const someShown = !allShown && shown.some(b => checked.includes(b.id));
+  const selectAllBox = (
+    <input type="checkbox" className="lead-check-all" checked={allShown}
+      onChange={() => setChecked(c => (allShown ? c.filter(id => !shown.some(b => b.id === id)) : [...new Set([...c, ...shown.map(b => b.id)])]))}
+      ref={el => { if (el) el.indeterminate = someShown; }} aria-label={`Select all ${shown.length} bookings shown`} />
+  );
 
   return (
     <div>
       <div className="bk-topbar">
+        {/* like the Leads tiles: they rise, and pressing one shows only that period (again: everything) */}
         <div className="bk-stats">
-          <div className="bk-stat"><span className="bk-stat-val">{inMonth}</span><span className="bk-stat-lbl">This Month</span></div>
-          <div className="bk-stat"><span className="bk-stat-val">{inYear}</span><span className="bk-stat-lbl">This Year</span></div>
-          <div className="bk-stat"><span className="bk-stat-val">{nextYear}</span><span className="bk-stat-lbl">Next Year</span></div>
+          {PERIODS.map(([p, label]) => (
+            <button key={p} type="button" className={`bk-stat ${period === p ? 'is-on' : ''}`} aria-pressed={period === p}
+              onClick={() => { setPeriod(x => (x === p ? null : p)); setMode('list'); }}>
+              <span className="bk-stat-val">{countIn(p)}</span><span className="bk-stat-lbl">{label}</span>
+            </button>
+          ))}
         </div>
-        <div className="bk-toggle">
-          <button className={`bk-tog-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(''); }} title="Search bookings">🔍</button>
-          <button className={`bk-tog-btn ${mode === 'list' ? 'is-on' : ''}`} onClick={() => setMode('list')} title="List"><span className="bk-tog-ic">☰</span><span className="bk-tog-txt"> List</span></button>
-          <button className={`bk-tog-btn ${mode === 'calendar' ? 'is-on' : ''}`} onClick={() => setMode('calendar')} title="Calendar">🗓️<span className="bk-tog-txt"> Calendar</span></button>
+        {/* search · List | Calendar · the bin — the same buttons as Leads */}
+        <div className="bk-tools">
+          <button type="button" className={`lead-ic-btn ${showSearch ? 'is-on' : ''}`} onClick={() => { setShowSearch(s => !s); if (showSearch) setQ(''); }}
+            title="Search bookings" aria-label="Search bookings">🔍</button>
+          <div className="bk-toggle" role="group" aria-label="Show bookings as">
+            <button type="button" className={`bk-tog-btn ${mode === 'list' ? 'is-on' : ''}`} onClick={() => setMode('list')} title="List"><span className="bk-tog-ic">☰</span><span className="bk-tog-txt"> List</span></button>
+            <button type="button" className={`bk-tog-btn ${mode === 'calendar' ? 'is-on' : ''}`} onClick={() => { setMode('calendar'); setSelectMode(false); setChecked([]); }} title="Calendar">🗓️<span className="bk-tog-txt"> Calendar</span></button>
+          </div>
+          <button type="button" className={`lead-ic-btn lead-ic-del ${selectMode ? 'is-on' : ''}`} onClick={onBinClick}
+            title={selectMode ? (checked.length ? `Move ${checked.length} to History` : 'Cancel select') : 'Select to move to History'}>
+            {selectMode && checked.length ? `🗑️ ${checked.length}` : '🗑️'}
+          </button>
         </div>
       </div>
 
       {showSearch && (
         <div className="bk-search">
-          <input className="gal-input" placeholder="🔍 Search bookings — client, event, date, location…"
+          <input className="gal-input" placeholder="Search bookings — client, event, date, location…"
             value={q} onChange={e => setQ(e.target.value)} autoFocus />
           {term && <span className="bk-search-count">{shown.length} match{shown.length === 1 ? '' : 'es'}</span>}
         </div>
       )}
 
-      {mode === 'calendar' ? <CalendarView onOpen={(l) => onOpenBooking(l.id)} filter={term} /> : (
+      {mode === 'calendar' ? <CalendarView onOpen={(l) => onOpenBooking(l.id)} filter={term} /> : (<>
+        {selectMode && shown.length > 0 && <label className="lead-selall-bar">{selectAllBox} Select all {shown.length}</label>}
         <div className="table-wrap">
           <table className="bk-table">
-            <thead><tr><th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Crew Status</th><th>Status</th><th className="col-act"></th></tr></thead>
+            <thead><tr>{selectMode && <th className="col-check">{shown.length > 0 && selectAllBox}</th>}<th className="col-num">#</th><th>Client</th><th>Event</th><th>Date</th><th>Timing</th><th>Crew Status</th><th>Status</th></tr></thead>
             <tbody>
               {shown.length === 0 ? (
-                <tr><td colSpan="8" className="empty">{term ? 'No bookings match your search 🔍' : "No bookings yet. Set a lead's status to ✅ booked!"}</td></tr>
+                <tr><td colSpan={selectMode ? 8 : 7} className="empty">{term || period ? 'No bookings match' : "No bookings yet. Set a lead's status to booked."}</td></tr>
               ) : shown.map(b => {
                 const cs = crewStatus(b.crew);
                 return (
-                <tr key={b.id} className="row-clickable" onClick={() => onOpenBooking(b.id)}>
+                <tr key={b.id} className="row-clickable" onClick={() => (selectMode ? toggleCheck(b.id) : onOpenBooking(b.id))}>
+                  {selectMode && (
+                    <td className="cell-check"><input type="checkbox" readOnly checked={checked.includes(b.id)} className="lead-check" aria-label={`Select ${b.name}`} /></td>
+                  )}
                   <td className="col-num" data-label="#">{seqOf(b.id)}</td>
                   <td className="biz">{b.name}</td>
                   <td className="bk-ev">{b.event_type}</td>
@@ -112,19 +149,15 @@ export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
                   {/* the hours they've booked you for — what a vendor checks
                       when planning a day, rather than the money */}
                   <td className="bk-nw bk-time">{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
-                  <td className="bk-crew" data-label="Crew Status"><span className={`badge ${cs.cls}`}>{cs.icon} {cs.label}</span></td>
-                  <td className="bk-st"><span className="badge active">✅ Booked</span></td>
-                  <td className="col-act">
-                    <button type="button" className="bk-del" title="Remove this booking"
-                      onClick={e => removeBooking(b, e)}>🗑️</button>
-                  </td>
+                  <td className="bk-crew" data-label="Crew Status"><span className={`badge is-dot ${cs.cls}`}>{cs.label}</span></td>
+                  <td className="bk-st"><span className="badge is-dot active">Booked</span></td>
                 </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-      )}
+      </>)}
     </div>
   );
 }

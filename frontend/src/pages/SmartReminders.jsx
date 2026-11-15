@@ -22,28 +22,28 @@ export default function SmartReminders() {
     setRows(list => list.filter(x => x.id !== r.id));
     try { await api.agentFollowupAct(r.id, action, hours); } catch (e) { setErr(e.message); setRows(list => [r, ...list]); }
   }
-  if (rows === null) return <p className="sr-quiet">Loading…</p>;
+  if (rows === null) return <p className="smr-quiet">Loading…</p>;
   return (
     <div className="sr">
-      <div className="sr-bar">
-        <p className="sr-intro">People waiting <b>more than a day</b> for your reply. Replying clears them by themselves; Tornado and Gale remind you when you wake them.</p>
-        <button type="button" className="sr-btn" disabled={busy} onClick={scan}>{busy ? 'Checking…' : '↻ Check now'}</button>
+      <div className="smr-bar">
+        <p className="smr-intro">People waiting <b>more than a day</b> for your reply. Replying clears them by themselves; Tornado and Gale remind you when you wake them.</p>
+        <button type="button" className="smr-btn" disabled={busy} onClick={scan}>{busy ? 'Checking…' : '↻ Check now'}</button>
       </div>
-      {err && <p className="sr-err" role="alert">⚠️ {err}</p>}
-      {rows.length === 0 ? <p className="sr-quiet">🎉 Nobody is waiting on you.</p> : (
-        <ul className="sr-list">
+      {err && <p className="smr-err" role="alert">⚠️ {err}</p>}
+      {rows.length === 0 ? <p className="smr-quiet">🎉 Nobody is waiting on you.</p> : (
+        <ul className="smr-list">
           {rows.map(r => (
-            <li key={r.id} className="sr-row">
-              <div className="sr-top">
-                <span className="sr-who">{ICON[r.channel] || '•'} {r.who}</span>
-                <span className="sr-when">waiting {waited(r.last_inbound_at)}</span>
+            <li key={r.id} className="smr-row">
+              <div className="smr-top">
+                <span className="smr-who">{ICON[r.channel] || '•'} {r.who}</span>
+                <span className="smr-when">waiting {waited(r.last_inbound_at)}</span>
               </div>
-              {r.contact && r.contact !== r.who && <div className="sr-contact">{r.contact}</div>}
-              {r.snippet && <div className="sr-snip">{r.snippet}</div>}
-              <div className="sr-acts">
-                <button type="button" className="sr-btn is-on" onClick={() => act(r, 'done')}>✅ Done</button>
-                <button type="button" className="sr-btn" onClick={() => act(r, 'snooze', 24)}>💤 Tomorrow</button>
-                <button type="button" className="sr-btn" onClick={() => act(r, 'mute')}>🔕 Don't remind</button>
+              {r.contact && r.contact !== r.who && <div className="smr-contact">{r.contact}</div>}
+              {r.snippet && <div className="smr-snip">{r.snippet}</div>}
+              <div className="smr-acts">
+                <button type="button" className="smr-btn is-on" onClick={() => act(r, 'done')}>✅ Done</button>
+                <button type="button" className="smr-btn" onClick={() => act(r, 'snooze', 24)}>💤 Tomorrow</button>
+                <button type="button" className="smr-btn" onClick={() => act(r, 'mute')}>🔕 Don't remind</button>
               </div>
             </li>
           ))}

@@ -237,7 +237,7 @@
 }
 
 @media (max-width: 480px) {
-  .iq-wrap { padding: 20px 14px; }
+  .ck-wrap { padding: 20px 14px; }
   .ck-hd, .ck-body { padding-left: 14px; padding-right: 14px; }
   .ck-row { grid-template-columns: 64px 1fr; }
   .ck-title { font-size: 18px; }
