@@ -175,6 +175,10 @@ app.use('/api/stripe-connect/webhook', connectWebhook);   // 💳 card payments 
 // may send a bigger body; everything else keeps the 100 KB default below
 app.use('/api/rawsel/settings/logo', express.json({ limit: '5mb' }));
 app.use(express.json());
+/* 📭 A request that sends nothing has an EMPTY body, not none (Express 5, 2026-11-14). Express 4 always gave {}, and
+   the routes read req.body as a form whose fields may be missing — Express 5 leaves it undefined when nothing was
+   parsed, which would turn a body-less POST (sign out, mark read …) into a 500. One rule here, for every route. */
+app.use((req, res, next) => { req.body ??= {}; next(); });
 
 app.use('/api', apiRoutes);
 /* 🌐 Which vendor this address belongs to (null on the platform), and on a vendor's address only that vendor's

@@ -54,7 +54,7 @@ echo "═══ VERIFY ═══"
 cd $S/frontend
 BUILD=$(npm run build 2>&1)
 echo "$BUILD" | grep -qE "error|Error:" && { echo "$BUILD" | tail -20; echo "❌ BUILD FAILED — nothing committed"; exit 1; }
-echo "  build: $(echo "$BUILD" | grep -oE '✓ built in [0-9.]+s')"
+echo "  build: $(echo "$BUILD" | grep -oE '✓ built in [0-9.]+m?s')"
 cd $S
 LINT=$(npx eslint backend/src frontend/src 2>&1 | tail -1)
 echo "$LINT" | grep -qE "[1-9][0-9]* error" && { echo "  $LINT"; echo "❌ LINT ERRORS — nothing committed"; exit 1; }
@@ -173,7 +173,7 @@ npx prisma migrate deploy --config prisma.private.config.ts 2>&1 | grep -E 'appl
 npx prisma generate 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma: /'
 npx prisma generate --config prisma.private.config.ts 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma (private): /'
 install_packages "$L/frontend" frontend
-cd $L/frontend && npm run build 2>&1 | grep -oE '✓ built in [0-9.]+s' | sed 's/^/  build: /'
+cd $L/frontend && npm run build 2>&1 | grep -oE '✓ built in [0-9.]+m?s' | sed 's/^/  build: /'
 systemctl reload nginx
 # 👤 the app runs as the unprivileged iwopo user, with its folder and settings from tools/pm2.iwopo.config.cjs
 pm2 startOrRestart $L/tools/pm2.iwopo.config.cjs --only iwopo-api >/dev/null 2>&1
