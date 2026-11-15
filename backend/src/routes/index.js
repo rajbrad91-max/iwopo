@@ -79,7 +79,7 @@ router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req,
       // Prisma.DbNull clears the column. A plain `null` on a Json field writes
       // the JSON value `null` instead, which is not the same thing — the column
       // stays non-NULL and every "faces IS NULL" check would miss it.
-      data: { faces: Prisma.DbNull, face_count: 0, face_indexed: false, face_engine: null },
+      data: { faces: Prisma.DbNull, face_vectors: null, face_count: 0, face_indexed: false, face_engine: null },   // 🧬 the fingerprints too (lib/faceVectors.js)
     });
     // clear per-album engine locks + cluster flags so each album re-picks fresh on next index
     await prisma.albums.updateMany({
