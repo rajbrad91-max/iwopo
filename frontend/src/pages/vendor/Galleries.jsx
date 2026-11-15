@@ -9,6 +9,7 @@ import { clientBase } from '../../lib/clientBase';
 import GalleryDownloadLog from '../../components/GalleryDownloadLog';
 import { MailIcon, ChartIcon, GearIcon, DownloadedMark } from '../../components/TileIcons';
 import { AlbumDetail } from './AlbumDetail';
+import NavIcon from '../../components/NavIcon';
 
 // 🎯 Cover focal-point picker: click or drag to set where the cover centers.
 // The same point is used on desktop AND mobile, so covers frame well at any aspect ratio.
@@ -610,7 +611,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
               <div className="gal-card-cover">
                 {a.cover_photo
                   ? <img src={api.albumCoverUrl(a.id, 800)} alt={a.title} loading="lazy" />
-                  : <div className="gal-card-noimg">🖼️</div>}
+                  : <div className="gal-card-noimg"><NavIcon name="galleries" /><span>No cover yet</span></div>}
               </div>
               <div className="gal-card-body">
                 <div className="gal-card-title">{a.title}</div>

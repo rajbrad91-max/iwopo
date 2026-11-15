@@ -74,58 +74,25 @@ function normaliseBox(raw, imgW, imgH) {
     : { x, y, w, h };
 }
 
-// 📶 photos read in filename order, case-insensitive, with digit runs zero-padded
-// so they compare numerically (IMG_2 before IMG_10). This ordering is a Postgres
-// regexp expression that Prisma's orderBy can't express, so these reads use
-// $queryRawUnsafe with bound parameters ($1, $2 …): values are never glued into the SQL text.
-// NOTE: the regex backslashes must survive JS string escaping, hence \\d / \\1.
-/* Ordered by id in SQL and then properly in JavaScript.
+/* 📶 A gallery's photos in the order a person reads their names — IMG_2 before IMG_10 — made by lib/naturalSort.js
+   on the rows in hand (Postgres cannot: an lpad on a regex backreference pads the literal '\1', so couples once saw
+   1, 10, 11 … 2, 3). Read by id, so the order is stable, and each read asks only for what its screen uses — never the
+   faces, which are most of a photo's row (audit 2026-11-14). */
+const readPhotos = (where, select) => prisma.photos.findMany({ where, select, orderBy: { id: 'asc' } }).then(naturalSort);
 
-   The expression this replaces looked right and never worked: lpad('\\1', 10, '0')
-   is evaluated BEFORE regexp_replace ever sees it, so the backreference is not a
-   number being padded to ten characters — it is the literal two-character string
-   '\\1' padded to ten, giving '00000000\\1'. The captured digits are then appended
-   to eight zeros rather than padded to a fixed width, so "1" became nine
-   characters and "10" became ten. Different lengths compare wrong, and a couple
-   saw 1, 10, 11, 12, 13, 14, 15, 2, 3.
+/* kind and duration_s: a film has to be recognisable as one — without them the gallery drew a film as a still image
+   and offered no way to play it. */
+const LIST_FIELDS = { id: true, filename: true, event_id: true, face_count: true, kind: true, duration_s: true };
+/* what a Zip needs: the name inside it, where the file is, and its size (lib/photoZip.js cuts parts by size) */
+const ZIP_FIELDS = { id: true, filename: true, vendor_id: true, storage_path: true, size_bytes: true };
 
-   Postgres cannot call a function on a backreference, so this cannot be fixed by
-   adjusting the expression. localeCompare with numeric ordering is exactly what
-   a natural sort is, and it runs on one album's rows which are already in hand. */
-const NAT_SORT = `ORDER BY id ASC`;
-
-/* The sort itself lives in lib/naturalSort.js — the vendor's panel needs the
-   same one, and two copies would drift. */
-
-async function photosInAlbum(albumId) {
-  /* kind and duration_s are selected because a film has to be recognisable as
-     one. Without them the shaping below defaulted every row to a photograph,
-     so the public gallery drew a film as a still image and offered no way to
-     play it — the panel had the same list with the same defect and it was
-     only noticed there first. */
-  /* ⏳ "AND ready": a photo sent straight to R2 has no preview or thumb for
-     the few seconds before photoProcessor makes them — a couple would see a
-     broken tile. It appears as soon as it is ready. */
-  return prisma.$queryRawUnsafe(
-    `SELECT id, filename, event_id, face_count, kind, duration_s FROM photos WHERE album_id = $1 AND ready ${NAT_SORT}`,
-    albumId
-  ).then(naturalSort);
-}
-async function photosInEvent(albumId, eventId) {
-  return prisma.$queryRawUnsafe(
-    `SELECT * FROM photos WHERE album_id = $1 AND event_id = $2 AND ready ${NAT_SORT}`,
-    albumId, eventId
-  ).then(naturalSort);
-}
-async function allPhotoRowsInAlbum(albumId) {
-  return prisma.$queryRawUnsafe(
-    /* Photographs only. A couple pressing Download All wants their pictures,
-       not a hundred gigabytes of film wrapped in a zip they cannot resume —
-       films are downloaded one at a time, from their own page. */
-    `SELECT * FROM photos WHERE album_id = $1 AND kind <> 'video' ${NAT_SORT}`,
-    albumId
-  ).then(naturalSort);            // the zip should read in order too
-}
+/* ⏳ ready: a photo sent straight to R2 has no preview or thumb for the few seconds before photoProcessor makes them —
+   a couple would see a broken tile. It appears as soon as it is ready. */
+const photosInAlbum = (albumId) => readPhotos({ album_id: albumId, ready: true }, LIST_FIELDS);
+const photosInEvent = (albumId, eventId) => readPhotos({ album_id: albumId, event_id: eventId, ready: true }, ZIP_FIELDS);
+/* Photographs only. A couple pressing Download All wants their pictures, not a hundred gigabytes of film wrapped in a
+   Zip they cannot resume — films are downloaded one at a time, from their own page. */
+const allPhotoRowsInAlbum = (albumId) => readPhotos({ album_id: albumId, kind: { not: 'video' } }, ZIP_FIELDS);
 
 const THEME_DEFAULTS = {
   heading_font: 'Playfair Display', body_font: 'Jost',
@@ -399,6 +366,7 @@ router.get('/:token/photo/:photoId/:type', async (req, res) => {
     if (!viewOf(req, a.id)) return res.status(401).end();
     const p = await prisma.photos.findFirst({
       where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 photo must be in THIS album
+      select: { vendor_id: true, storage_path: true, preview_path: true, thumb_path: true },
     });
     if (!p) return res.status(404).end();
     // 3 tiers: orig (download/zoom 1:1) · full 2200px (preview_path, default display) · thumb (grid)
@@ -443,6 +411,7 @@ router.get('/:token/download/:photoId', async (req, res) => {
     if (!viewOf(req, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
     const p = await prisma.photos.findFirst({
       where: { id: Number(req.params.photoId), album_id: a.id },   // 🔒 tenancy
+      select: { id: true, filename: true, vendor_id: true, storage_path: true },
     });
     if (!p) return res.status(404).end();
 
@@ -530,7 +499,7 @@ router.get('/:token/download-all', async (req, res) => {
     const safe = zipLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     res.attachment(`${safe}.zip`);
     const archive = photoZip();   // stored: photographs are already compressed (lib/photoZip.js)
-    archive.on('error', () => { try { res.status(500).end(); } catch {} });
+    archive.on('error', () => { try { res.status(500).end(); } catch { /* the Zip is already on its way — nothing more can be said */ } });
     archive.pipe(res);
     for (const p of photos) {
       const name = p.filename || `photo-${p.id}.jpg`;
