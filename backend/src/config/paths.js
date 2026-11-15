@@ -18,3 +18,7 @@ export const SITES_DIR = `${BASE}/sites`;
 // prefix that needs its own bucket policy — private with signed URLs, like
 // galleries, NOT public like sites.
 export const FILES_DIR = `${BASE}/files`;
+
+// 🤖 Tornado's files: each vendor's phone conversation log, and the PC voice's recorded greeting
+export const AGENT_LOGS_DIR = `${BASE}/agent-logs`;
+export const AGENT_VOICE_DIR = `${BASE}/agent-voice`;

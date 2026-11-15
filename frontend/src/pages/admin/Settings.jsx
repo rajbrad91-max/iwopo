@@ -421,7 +421,7 @@ function FaceEngineSettings() {
               </button>
             </div>
             {testMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, color: testMsg.ok ? 'var(--green)' : 'var(--red)' }}>
+              <div className={`sa-test-msg ${testMsg.ok ? 'is-ok' : ''}`}>
                 {testMsg.text}
               </div>
             )}
@@ -476,15 +476,13 @@ function FaceEngineSettings() {
                   wipe working credentials by accident. Removing one is its own
                   act, which is also the only way to revoke a key that leaked. */}
               {s.agent_api_key && (
-                <button style={{ padding: '7px 14px', fontSize: 12.5, background: 'var(--panel-2)',
-                  border: '1px solid var(--line)', borderRadius: 7, color: 'var(--red)', cursor: 'pointer' }}
-                  onClick={clearAiKey}>
+                <button className="sa-btn-remove" onClick={clearAiKey}>
                   🗑️ Remove key
                 </button>
               )}
             </div>
             {aiMsg && (
-              <div style={{ marginTop: 10, fontSize: 12.5, color: aiMsg.ok ? 'var(--green)' : 'var(--red)' }}>
+              <div className={`sa-test-msg ${aiMsg.ok ? 'is-ok' : ''}`}>
                 {aiMsg.text}
               </div>
             )}

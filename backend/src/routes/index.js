@@ -26,6 +26,7 @@ import { stripe, stripeReady } from '../lib/stripe.js';
 import { myReferrals } from '../lib/referrals.js';
 import * as objects from '../lib/objectStore.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
+import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
 
@@ -288,6 +289,7 @@ router.put('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
     for (const k of clear) {
       if (allowed.includes(k)) await setSetting(k, '');
     }
+    objects.invalidate();   // ☁️ new storage keys or buckets take effect now, not when the 30-second cache runs out
 
     res.json({ ok: true, cleared: clear.filter(k => allowed.includes(k)) });
   } catch (e) { serverError(res, e); }
@@ -611,7 +613,7 @@ router.put('/offers/:id/toggle', requireAuth, requireSuperAdmin, async (req, res
 router.delete('/offers/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const offer = await prisma.offers.findUnique({ where: { id: Number(req.params.id) } });
-    if (offer) await syncOffer(offer, { removing: true }).catch(() => {});   // 🎟️ its Stripe code stops working first
+    if (offer) await syncOffer(offer, { removing: true }).catch(quiet('stop a removed offer’s Stripe code'));   // 🎟️ its Stripe code stops working first
     await prisma.offers.deleteMany({ where: { id: Number(req.params.id) } });
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }

@@ -38,6 +38,7 @@ import { alertsFor } from '../lib/agentReminders.js';
 import { buildBriefing, briefingText, knowledgeText, saveConversation } from '../lib/agentKnowledge.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
+import { AGENT_LOGS_DIR, AGENT_VOICE_DIR } from '../config/paths.js';
 
 const ALL_TOOLS = [...TOOLS, ...ACTION_TOOLS];
 const ACTIONS = new Set(ACTION_TOOLS.map(t => t.name));
@@ -343,9 +344,8 @@ router.post('/app-log', requireAuth, async (req, res) => {
   try {
     const lines = (Array.isArray(req.body?.lines) ? req.body.lines : []).slice(-150).map(l => String(l).replace(/[\r\n]+/g, ' ').slice(0, 400));
     if (!lines.length) return res.json({ ok: true });
-    const dir = path.join(process.cwd(), '..', 'storage', 'agent-logs');
-    await fs.promises.mkdir(dir, { recursive: true });
-    const file = path.join(dir, `vendor-${vid(req)}.log`);        // 🔒 the file name comes from the login, never the request
+    await fs.promises.mkdir(AGENT_LOGS_DIR, { recursive: true });
+    const file = path.join(AGENT_LOGS_DIR, `vendor-${vid(req)}.log`);        // 🔒 the file name comes from the login, never the request
     let old = [];
     try { old = (await fs.promises.readFile(file, 'utf8')).split('\n'); } catch { /* first log */ }
     const merged = [...old, `— ${new Date().toISOString()} —`, ...lines].filter(Boolean).slice(-3000);
@@ -420,12 +420,12 @@ router.get('/ear/voice-status', requireAuth, async (req, res) => {
   if (!(await pcAllowed(vid(req)))) return res.json({ gale: false });
   res.json({ gale: await galeUp() });
 });
-const GALE_FILE = path.join(process.cwd(), '../storage/agent-voice/gale-greeting.pcm');
+const GALE_FILE = path.join(AGENT_VOICE_DIR, 'gale-greeting.pcm');
 router.get('/ear/gale-greeting', requireAuth, async (req, res) => {
   try {
     if (!(await pcAllowed(vid(req)))) return res.status(404).end();
     let pcm = null, version = '';
-    try { pcm = fs.readFileSync(GALE_FILE); version = fs.readFileSync(GALE_FILE + '.v', 'utf8'); } catch {}
+    try { pcm = fs.readFileSync(GALE_FILE); version = fs.readFileSync(GALE_FILE + '.v', 'utf8'); } catch { /* not recorded yet — made below */ }
     if (!pcm || req.query.fresh === '1') {
       const g = await galeGreetingPcm();
       if (!g) return pcm ? res.set('X-Version', version).type('application/octet-stream').send(pcm) : res.status(503).json({ error: 'PC voice is off' });
