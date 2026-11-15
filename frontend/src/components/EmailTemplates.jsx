@@ -84,27 +84,28 @@ export default function EmailTemplates({ startKind = null }) {
 
   return (
     <div className="table-wrap et">
-      <h2 className="es-title">✉️ Email templates</h2>
-      <p className="et-intro">The words iwopo uses when it emails your clients. Change them here once and every email of that kind uses them.</p>
-
-      {/* the emails, and — for an account allowed HTML — how the chosen one is sent, on the same row */}
-      <div className="et-head">
-        <div className="et-list" role="tablist">
-          {data.emails.map(e => (
-            <button key={e.kind} type="button" role="tab" aria-selected={e.kind === kind}
-              className={`refresh et-item${e.kind === kind ? ' is-on' : ''}`} onClick={() => setKind(e.kind)}>
-              {e.label}{e.edited && <span className="et-badge">{e.mode === 'html' ? 'HTML' : 'Edited'}</span>}
-            </button>
-          ))}
-        </div>
+      {/* the title, and — for an account allowed HTML — how the chosen email is sent, in the card's top corner */}
+      <div className="et-top">
+        <h2 className="es-title">✉️ Email templates</h2>
         {canHtml && (
           <div className="et-mode" role="radiogroup" aria-label="Send this email as">
             {[['text', 'Plain text'], ['html', 'HTML']].map(([m, label]) => (
               <button key={m} type="button" role="radio" aria-checked={draft.mode === m}
-                className={`refresh et-mode-btn${draft.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
+                className={`et-mode-btn${draft.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
             ))}
           </div>
         )}
+      </div>
+      <p className="et-intro">The words iwopo uses when it emails your clients. Change them here once and every email of that kind uses them.</p>
+
+      {/* the emails, two to a row; an odd last one takes the whole row rather than sitting alone in half of it */}
+      <div className="et-list" role="tablist">
+        {data.emails.map(e => (
+          <button key={e.kind} type="button" role="tab" aria-selected={e.kind === kind}
+            className={`refresh et-item${e.kind === kind ? ' is-on' : ''}`} onClick={() => setKind(e.kind)}>
+            {e.label}{e.edited && <span className="et-badge">{e.mode === 'html' ? 'HTML' : 'Edited'}</span>}
+          </button>
+        ))}
       </div>
       <p className="et-when">{cur.when}</p>
 

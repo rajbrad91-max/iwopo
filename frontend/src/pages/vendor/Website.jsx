@@ -244,15 +244,14 @@ export function WebsiteView() {
               className={`wb-page ${prevPage === id ? 'is-on' : ''}`}
               onClick={() => setPrevPage(id)}>{label}</button>
           ))}
-          <button type="button" className="wb-icon" onClick={() => setPrevWide(w => !w)}
-            title={prevWide ? 'See it as a phone' : 'See it as a desktop'}>{prevWide ? '🖥️' : '📱'}</button>
+          <button type="button" className="refresh wb-btn" onClick={() => setPrevWide(w => !w)}>{prevWide ? 'Phone view' : 'Desktop view'}</button>
           {/* One button, one meaning. It used to swap to "Live" once published,
               which made it read as a status light — so pressing it a second time
               quietly took the site DOWN. Publish always publishes. Taking a site
               off is a deliberate act and lives in Settings. */}
-          <button type="button" className={`wb-publish ${site.published ? 'is-live' : ''}`}
+          <button type="button" className={`refresh wb-btn wb-publish${site.published ? ' is-live' : ''}`}
             onMouseDown={() => { if (document.activeElement?.isContentEditable) document.activeElement.blur(); }}
-            onClick={publishNow}>🌍 Publish</button>
+            onClick={publishNow}>Publish</button>
         </div>
       </div>
 
@@ -307,7 +306,7 @@ export function WebsiteView() {
               means a vendor has to work out whether they differ. What is left
               here is the opposite act, which genuinely is separate. */}
           {site.published && (
-            <button type="button" className="refresh" onClick={togglePublish}>🙈 Unpublish</button>
+            <button type="button" className="refresh" onClick={togglePublish}>Unpublish</button>
           )}
         </div>
       </div>

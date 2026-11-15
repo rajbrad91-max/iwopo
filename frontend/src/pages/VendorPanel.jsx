@@ -70,7 +70,7 @@ function FeatureLocked({ goServices }) {
       <div className="fl-icon" aria-hidden="true">🔒</div>
       <h2 className="fl-h">This isn't in your plan</h2>
       <p className="fl-p">Choose a plan or an add-on that includes it.</p>
-      <button type="button" className="svx-change" onClick={goServices}>See your plan & add-ons</button>
+      <button type="button" className="refresh" onClick={goServices}>See your plan & add-ons</button>
     </div>
   );
 }
@@ -409,7 +409,7 @@ export default function VendorPanel({ onLogout }) {
         {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) && cleanup.includes(TAB_FEATURE[tab]) && (
           <div className="cleanup-note" role="status">
             <span>🧹 <b>This isn't in your plan any more.</b> You can still view, download and delete what's here — choose a plan that includes it to keep using it.</span>
-            <button type="button" className="svx-change" onClick={() => go('plans')}>See plans</button>
+            <button type="button" className="refresh" onClick={() => go('plans')}>See plans</button>
           </div>
         )}
         <Suspense fallback={<div className="tab-loading">Loading…</div>}>

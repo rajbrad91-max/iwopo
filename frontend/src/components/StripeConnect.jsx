@@ -38,11 +38,11 @@ export default function StripeConnectCard() {
         : s.connected
           ? <>
               <p className="scx-p">✅ <b>Stripe connected</b> ({s.account}). Your clients can pay by card from their portal — the money goes straight to your Stripe account.</p>
-              <button type="button" className="svx-remove" disabled={busy} onClick={off}>Disconnect</button>
+              <button type="button" className="refresh" disabled={busy} onClick={off}>Disconnect</button>
             </>
           : <>
               <p className="scx-p">Let clients pay their deposit and balance by card. Payments go straight to your own Stripe account.</p>
-              <button type="button" className="svx-change" disabled={busy} onClick={connect}>{busy ? 'Opening Stripe…' : 'Connect your Stripe account'}</button>
+              <button type="button" className="refresh" disabled={busy} onClick={connect}>{busy ? 'Opening Stripe…' : 'Connect your Stripe account'}</button>
               <p className="scx-note">Don&apos;t have a Stripe account yet? Create one on Stripe&apos;s official website first, then come back here and connect it.</p>
             </>}
       {msg && <p className="scx-msg">{msg}</p>}

@@ -1898,17 +1898,13 @@ tr:hover .bk-del { opacity: .8; }
 /* the number is easy to say, the name is what tells you what you will get */
 .wb-style-name { font-size: 10px; color: var(--muted); letter-spacing: .03em; }
 
-.wb-bar-right { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.wb-bar-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .wb-page { background: none; border: 1px solid transparent; border-radius: 999px;
   padding: 5px 11px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
 .wb-page:hover { color: var(--text); }
 .wb-page.is-on { border-color: var(--line); color: var(--text); background: var(--panel-2); }
-.wb-icon { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
-  padding: 4px 9px; font-size: 13px; cursor: pointer; line-height: 1.4; }
-.wb-icon:hover { border-color: var(--muted); }
-.wb-publish { border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px;
-  padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; color: var(--text); }
-.wb-publish:hover { border-color: var(--muted); }
+/* Phone view / Desktop view and Publish: the panel's white button (.refresh), sized for this bar */
+.wb-btn { padding: 6px 14px; font-size: 12.5px; font-weight: 600; }
 .wb-publish.is-live { border-color: #2e9e6b; color: #2e9e6b; }
 
 /* ── the two columns ── */
@@ -2546,29 +2542,53 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .gal-link { font-size: 12px; color: var(--muted); text-decoration: underline; overflow-wrap: anywhere; }
 .gal-link:hover { color: var(--text); }
 
-/* ➕ My Services — the plan, its lines, and the add-ons (components/MyServices.jsx, 2026-11-06) */
-.svx { max-width: 860px; }
-.svx-plan { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
-.svx-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-.svx-plan-name { margin: 2px 0 0; font-size: 20px; color: var(--text); }
-.svx-change, .svx-add { padding: 8px 16px; border-radius: 9px; border: 1px solid var(--teal-2); background: var(--teal-soft); color: var(--text); font-weight: 600; cursor: pointer; }
-.svx-change:hover, .svx-add:hover { border-color: var(--teal); }
-.svx-remove { margin-left: 8px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
-.svx-remove:hover { color: var(--red); border-color: var(--red); }
-.svx-lines { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 18px; font-size: 14px; color: var(--text); }
+/* ➕ My Services — the plan, what it includes, the add-ons, and the offers switch (components/MyServices.jsx).
+   Redesigned 2026-11-15 (Raj): words, not emoji; every button the panel's white rising one (.refresh) */
+.svx { max-width: 900px; display: grid; gap: 16px; }
+.svx-plan, .svx-sec { padding: 20px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.svx-plan { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.svx-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+.svx-plan-name { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; font-weight: 800; color: var(--text); }
+/* the plan's name is the page's headline: written to outrank the list pages' 15px h2 (.dash .main h2) */
+.dash .main h2.svx-plan-name { font-size: 24px; }
+.svx-plan-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.svx-change { padding: 9px 18px; font-weight: 700; white-space: nowrap; }
+.svx-h { margin: 0 0 14px; font-size: 15px; font-weight: 700; color: var(--text); }
+/* what the plan includes: a ruled tick in a soft disc, drawn in CSS */
+.svx-lines { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px 24px; }
+.svx-lines li { position: relative; padding-left: 28px; font-size: 14px; line-height: 1.45; color: var(--text); }
+.svx-lines li::before { content: ''; position: absolute; left: 0; top: 1px; width: 18px; height: 18px; border-radius: 50%; background: var(--teal-soft); }
+.svx-lines li::after { content: ''; position: absolute; left: 6.5px; top: 4.5px; width: 4px; height: 8px; border: solid var(--teal); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 .svx-lines li.is-coming { color: var(--muted); }
-.svx-lines em, .svx-addon-desc { font-style: normal; font-size: 12.5px; color: var(--muted); }
-.svx-quiet { margin: 14px 0 0; color: var(--muted); }
-.svx-h { margin: 26px 0 10px; font-size: 16px; color: var(--text); }
-.svx-addons { display: grid; gap: 8px; }
-.svx-addon { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-.svx-addon-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.svx-lines li.is-coming::before { background: var(--panel-2); }
+.svx-lines li.is-coming::after { border-color: var(--muted); }
+.svx-lines .svx-pill { margin-left: 8px; padding: 1px 8px; font-size: 10.5px; vertical-align: 1px; }
+.svx-pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; background: var(--panel-2); color: var(--muted); }
+.svx-pill.is-in { background: var(--teal-soft); color: var(--teal); }
+.svx-plan-name .svx-pill { font-size: 12px; }
+.svx-quiet { margin: 0; color: var(--muted); }
+/* add-ons: one row each, the action column the same width all the way down */
+.svx-addons { display: grid; }
+.svx-addon { display: grid; grid-template-columns: minmax(0, 1fr) auto 190px; align-items: center; gap: 18px; padding: 14px 0; border-top: 1px solid var(--line); }
+.svx-addon:first-child { border-top: 0; padding-top: 0; }
+.svx-addon:last-child { padding-bottom: 0; }
+.svx-addon-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .svx-addon-name { font-weight: 600; color: var(--text); }
-.svx-addon-price { font-weight: 600; color: var(--text); white-space: nowrap; }
-.svx-addon-act { display: flex; align-items: center; justify-content: flex-end; min-width: 150px; }
-.svx-note { font-size: 13px; color: var(--muted); margin-right: 8px; }
-.svx-msg { margin-top: 12px; color: var(--text); }
-@media (max-width: 640px) { .svx-addon { grid-template-columns: 1fr; } .svx-addon-act { justify-content: flex-start; } .svx-plan { flex-direction: column; align-items: flex-start; } }
+.svx-addon-desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.svx-addon-price { font-weight: 700; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.svx-addon-act { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.svx-btn { padding: 7px 14px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.svx-note { font-size: 12.5px; color: var(--muted); }
+.svx-pref { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.svx-pref-text { display: flex; flex-direction: column; gap: 3px; }
+.svx-pref-label { font-weight: 600; color: var(--text); }
+.svx-msg { margin: 0; color: var(--text); }
+@media (max-width: 640px) {
+  .svx-plan { flex-direction: column; align-items: stretch; }
+  .svx-plan, .svx-sec { padding: 18px; }
+  .svx-addon { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; }
+  .svx-addon-act { grid-column: 1 / -1; justify-content: flex-start; }
+}
 
 /* 🔒 a feature not in the plan (FeatureLocked) */
 .fl-box { padding: 40px; text-align: center; max-width: 520px; }
@@ -2588,9 +2608,7 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .scx-note { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
 .scx-msg { margin: 10px 0 0; font-size: 13px; color: var(--text); }
 
-/* 🔁 Auto-renew switch (components/MyServices.jsx) */
-.svx-renew { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
-.svx-renew-label { font-weight: 600; color: var(--text); }
+/* 🔁 the on/off switch (My Services, auto-renew, two-step sign-in) */
 .svx-switch { position: relative; width: 42px; height: 24px; padding: 0; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; transition: background .2s, border-color .2s; }
 .svx-switch.is-on { background: var(--teal-2); border-color: var(--teal-2); }
 .svx-switch-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--text); transition: transform .2s; }
@@ -2848,10 +2866,12 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .et-intro { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.6; }
 /* every control here is the panel's .refresh button — white, rises and glows on hover — with the soft tint of
    Active · History on Leads when chosen (Raj, 2026-11-14) */
-.et-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.et-list { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
-.et-item { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12.5px; }
-.et-item.is-on, .et-mode-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
+.et-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.et-top .et-mode { margin-bottom: 12px; }   /* the same space as the title above it, so the two line up — and on a phone, where it wraps, it is not pressed against the words below */
+.et-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.et-list .et-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.et-item { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; font-size: 12.5px; text-align: center; }
+.et-item.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 .et-badge { padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
 .et-when { margin: 4px 0 14px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
 .et-gap { margin-top: 12px; }
@@ -2868,8 +2888,11 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .et-attach { display: inline-block; margin-top: 12px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; }
 
 /* 🧑‍💻 Email templates, HTML mode (private for now — lib/emailTemplates.js) */
-.et-mode { display: inline-flex; flex: none; gap: 6px; }
-.et-mode-btn { padding: 7px 12px; font-size: 12.5px; }
+/* Plain text | HTML: one toggle, the chosen half lifted out of the track */
+.et-mode { display: inline-flex; flex: none; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.et-mode-btn { padding: 6px 14px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+.et-mode-btn:hover { color: var(--text); }
+.et-mode-btn.is-on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
 .et-code-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .et-code { min-height: 300px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
 .et-hint { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }

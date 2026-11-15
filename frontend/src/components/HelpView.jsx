@@ -164,7 +164,7 @@ export default function HelpView({ user, onGo }) {
               <span className="hv-hint">Or paste one into the message box (Ctrl+V). PNG, JPG, WebP or GIF, up to 5 MB.</span>
             </div>
             {err && <p className="hv-err">⚠️ {err}</p>}
-            <button type="button" className="hv-send" disabled={busy || message.trim().length < 10} onClick={send}>{busy ? 'Sending…' : 'Send message'}</button>
+            <button type="button" className="refresh hv-send" disabled={busy || message.trim().length < 10} onClick={send}>{busy ? 'Sending…' : 'Send message'}</button>
           </>
         )}
       </section>
