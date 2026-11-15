@@ -377,31 +377,11 @@
 .lead-search { width: 100%; padding: 11px 15px; background: var(--panel); border: 1px solid var(--line); border-radius: 15px; color: var(--text); font-size: 14px; margin-bottom: 12px; box-sizing: border-box; }
 .lead-search:focus { outline: none; border-color: var(--teal); }
 
-/* ➕ add-lead modal */
+/* 🪟 the panel's pop-up window frame (galleries, albums, camera FTP, payments…) */
 .al-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
-.al-modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 620px; padding: 22px 24px; }
 .al-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .al-title { margin: 0; }
 .al-x { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
-.al-err { background: #fb718518; color: #fb7185; padding: 10px 12px; border-radius: 9px; font-size: 13px; margin-bottom: 12px; }
-.al-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.al-input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 10px 11px; box-sizing: border-box; }
-.al-input:focus { outline: none; border-color: var(--teal); }
-.al-save { margin-top: 16px; width: 100%; }
-
-/* shared LeadFormBody inside dark modal — override cream theme */
-.iq-inline .iq-section { padding: 16px 0; border-top: 1px solid var(--line); }
-.iq-inline .iq-section:first-child { border-top: none; }
-.iq-inline .iq-section-title { color: var(--teal); }
-.iq-inline .iq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.iq-inline .iq-full { grid-column: 1 / -1; }
-.iq-inline label { color: var(--muted); font-size: 12px; font-weight: 600; }
-.iq-inline input, .iq-inline select, .iq-inline textarea { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 10px 11px; box-sizing: border-box; }
-.iq-inline input:focus, .iq-inline select:focus, .iq-inline textarea:focus { outline: none; border-color: var(--teal); }
-.iq-inline .iq-check-row { display: flex; align-items: center; gap: 8px; color: var(--text); }
-.iq-inline .iq-check-row input { width: 16px; }
-@media (max-width: 560px){ .iq-inline .iq-grid { grid-template-columns: 1fr; } }
-@media (max-width: 560px){ .al-grid { grid-template-columns: 1fr; } }
 
 /* 📅 Bookings list/calendar toggle */
 .bk-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }

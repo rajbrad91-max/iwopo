@@ -282,7 +282,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
     <TimeFormat.Provider value={c.time_format === '24h' ? '24h' : '12h'}>
       {/* Section 1: Contact Details */}
       <div className="iq-section">
-        <div className="iq-section-title"><span className="iq-emoji">📇 </span>Contact Details</div>
+        <div className="iq-section-title">{clientForm && <span className="iq-emoji">📇 </span>}Contact Details</div>
         <div className="iq-grid">
           <div {...box('role')}>
             <label>Your Role *</label>
@@ -326,7 +326,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
       {/* Section 2: Inquiry Details (custom fields) */}
       {(c.custom_fields || []).length > 0 && (
         <div className="iq-section">
-          <div className="iq-section-title"><span className="iq-emoji">📝 </span>{c.details_heading || 'Inquiry Details'}</div>
+          <div className="iq-section-title">{clientForm && <span className="iq-emoji">📝 </span>}{c.details_heading || 'Inquiry Details'}</div>
           <div className="iq-grid">
             {fieldsShown().map(fld => (
               <div key={fld.id} {...box(`f:${fld.id}`, FULL_WIDTH.has(fld.type) ? 'iq-full' : '')}>
@@ -342,7 +342,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
       {/* 📅 Edit Details only: the booking facts the vendor's form does not ask — the contract needs them */}
       {bookingKeys.length > 0 && (
         <div className="iq-section">
-          <div className="iq-section-title"><span className="iq-emoji">📅 </span>The booking</div>
+          <div className="iq-section-title">The booking</div>
           <p className="iq-section-note">Used on the contract. Fill these in once the couple confirms.</p>
           <div className="iq-grid">
             {BOOKING_FIELDS.filter(b => bookingKeys.includes(b.key)).map(b => (
@@ -358,7 +358,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
 
       {/* Section 3: Notes */}
       <div className="iq-section">
-        <div className="iq-section-title"><span className="iq-emoji">📝 </span>Notes</div>
+        <div className="iq-section-title">{clientForm && <span className="iq-emoji">📝 </span>}Notes</div>
         <label>Anything else?</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" placeholder="Tell us more…" />
       </div>
@@ -471,7 +471,7 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
 
   // 🗓️ the client adds as many as they need; in the panel, Add Lead and Edit details use the same editor — Edit
   // details works on the lead's own list (VendorPanel LeadDetail), which is where a pre-event is removed
-  if (fld.type === 'pre_events') return <PreEventsField fld={fld} value={value} onChange={onChange} />;
+  if (fld.type === 'pre_events') return <PreEventsField fld={fld} value={value} onChange={onChange} clientForm={clientForm} />;
 
   // ✍️ a dropdown that also lets the client type their own answer
   if (fld.type === 'dropdown' && fld.allow_other) return (<>
@@ -740,7 +740,7 @@ function OtherSelect({ options, value, onChange, otherLabel }) {
  * The event names offered are the vendor's own (the question's options), with "Other" to type one.
  */
 let preEventKey = 0;
-function PreEventsField({ fld, value, onChange }) {
+function PreEventsField({ fld, value, onChange, clientForm = false }) {
   const rows = Array.isArray(value) ? value : [];
   const set = (i, patch) => onChange(rows.map((r, x) => (x === i ? { ...r, ...patch } : r)));
   const names = fld.options || [];
@@ -781,7 +781,7 @@ function PreEventsField({ fld, value, onChange }) {
         </div>
       ))}
       <button type="button" className="iq-pe-add" onClick={() => onChange([...rows, { ...BLANK_PRE_EVENT, _k: ++preEventKey }])}>
-        ✦ {fld.add_label || 'Add Pre-Event'}
+        {clientForm && '✦ '}{fld.add_label || 'Add Pre-Event'}
       </button>
     </div>
   );

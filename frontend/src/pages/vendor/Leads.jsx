@@ -11,7 +11,6 @@ import { LeadContact, LeadEvents } from '../../components/LeadOverview';
 import LeadEditor from '../../components/LeadEditor';
 import { useDialog } from '../../lib/dialog.jsx';
 import { api, getUser, fmtDateTime } from '../../lib/api';
-import { LeadFormBody, PARTIAL_TIME, plainNumber } from '../InquiryForm';
 import SendPackagesModal from '../SendPackagesModal.jsx';
 import SendPackagesButton, { markPackagesSent } from '../../components/SendPackages';
 import { clientBase } from '../../lib/clientBase';
@@ -19,55 +18,13 @@ import { S_LABEL } from './statuses';
 import { MoneySection } from './MoneySection';
 import { LeadPkgRow, PackageEditor } from './LeadPackage';
 
-// ➕ Manual add-lead modal (mirrors the public inquiry form fields)
-function AddLeadModal({ vendorId, onClose, onSaveDone }) {
+// ➕ Add lead — the same form as a lead's Edit details (components/LeadEditor), empty (Raj, 2026-11-15)
+function AddLead({ vendorId, onClose }) {
   const [cfg, setCfg] = useState(null);
-  const [p, setP] = useState({ role: '', name: '', email: '', phone: '', instagram: '', heard: '' });
-  const [answers, setAnswers] = useState({});
-  const [notes, setNotes] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const setPI = (k, v) => setP(s => ({ ...s, [k]: v }));
-  const setAns = (id, v) => setAnswers(s => ({ ...s, [id]: v }));
-
   useEffect(() => {
-    api.myInquirySettings(vendorId).then(d => setCfg(d.settings)).catch(() => setCfg({}));
+    api.myInquirySettings(vendorId).then(d => setCfg(d.settings || {})).catch(() => setCfg({}));
   }, [vendorId]);
-
-  const has = (v) => v !== undefined && v !== null && v !== '';
-  async function save() {
-    setErr('');
-    if (!p.name || !p.email) { setErr('Name and email are required'); return; }
-    const custom = { ...answers };
-    for (const fld of (cfg?.custom_fields || [])) {
-      if (fld.type === 'time' && answers[fld.id] === PARTIAL_TIME) { setErr(`Finish the time for "${fld.label}"`); return; }
-      if (fld.required && !answers[fld.id]) { setErr(`"${fld.label}" is required`); return; }
-      if (fld.type === 'number' && has(custom[fld.id])) custom[fld.id] = plainNumber(custom[fld.id]);
-    }
-    setBusy(true);
-    try {
-      await api.createLead({ name: p.name, email: p.email, phone: p.phone, role: p.role, instagram: p.instagram, heard: p.heard, notes, custom_data: custom });
-      onSaveDone();
-    } catch (e) { setErr(e.message || 'Failed'); setBusy(false); }
-  }
-
-  return (
-    <div className="al-overlay" onClick={onClose}>
-      <div className="al-modal iq-inline" onClick={e => e.stopPropagation()}>
-        <div className="al-head">
-          <h3 className="al-title">Add lead</h3>
-          <button className="al-x" onClick={onClose}>✕</button>
-        </div>
-        {!cfg ? <div className="loading">Loading…</div> : (
-          <>
-            <LeadFormBody cfg={cfg} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes} />
-            {err && <div className="al-err">⚠️ {err}</div>}
-            <button className="pop-btn al-save" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save lead'}</button>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  return <LeadEditor cfg={cfg} onClose={onClose} />;
 }
 
 export function LeadsView({ routeLead, onOpenLead }) {
@@ -164,6 +121,11 @@ export function LeadsView({ routeLead, onOpenLead }) {
     e.stopPropagation();                        // don't open the lead behind it
     setSendFor(l);
   }
+
+  if (showAdd) return (
+    <AddLead vendorId={getUser()?.vendor_id}
+      onClose={(m) => { setShowAdd(false); if (m) { setMsg(m); setTimeout(() => setMsg(''), 2500); load(); } }} />
+  );
 
   if (sel) return (
     <LeadDetail
@@ -282,8 +244,6 @@ export function LeadsView({ routeLead, onOpenLead }) {
       {showSearch && view === 'active' && (
         <input className="lead-search" autoFocus placeholder="Search name, email, phone, event…" value={search} onChange={e => setSearch(e.target.value)} />
       )}
-
-      {showAdd && <AddLeadModal vendorId={getUser()?.vendor_id} onClose={() => setShowAdd(false)} onSaveDone={() => { setShowAdd(false); load(); }} />}
 
       {sendFor && (
         <SendPackagesModal

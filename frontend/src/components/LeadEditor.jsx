@@ -9,13 +9,16 @@ import { InquiryShell, LeadFormBody, formProblems, formAnswers, focusFirstProble
  * event card (moved here from the lead page, 2026-11-05, so the two pages edit a lead the same way).
  * It opens fresh from the lead each time. `onSaved(lead)` hears the saved lead; `onClose(message)` closes it —
  * '✅ Saved' after a save, nothing on Cancel. `cfg` is the vendor's inquiry-form settings.
+ * ➕ With no `lead`, it is the Leads page's "Add lead" (Raj, 2026-11-15): the same form, empty, and Save creates the
+ * lead — '✅ Lead added'.
  */
 export default function LeadEditor(props) {
   if (!props.cfg) return <div className="ld-view"><div className="loading">Loading…</div></div>;
   return <EditForm {...props} />;
 }
 
-function EditForm({ lead, cfg, onSaved, onClose }) {
+function EditForm({ lead = {}, cfg, onSaved, onClose }) {
+  const isNew = !lead.id;
   /* 🗓️ The form's Pre-Events question holds the client's original answer; Edit Details shows and saves the lead's own
      list through it, so a pre-event changed or removed here is changed everywhere. */
   const preEventsField = () => (cfg.custom_fields || []).find(f => f.type === 'pre_events');
@@ -78,14 +81,17 @@ function EditForm({ lead, cfg, onSaved, onClose }) {
       const preEvents = pf ? (eAnswers[pf.id] || []).map(({ _k, ...r }) => r).filter(r => String(r.name || '').trim()) : null;
       if (pf) custom[pf.id] = preEvents;
       const booking = Object.fromEntries(bookingKeys.map(k => [k, ep[k] === '' || ep[k] == null ? null : ep[k]]));
-      const d = await api.updateLead(lead.id, {
+      const body = {
         name: ep.name, email: ep.email, phone: ep.phone, role: ep.role,
         instagram: ep.instagram ? `@${ep.instagram}` : '', heard: ep.heard,
         notes: eNotes, custom_data: custom, ...booking,
-        ...(pf ? { pre_events: preEvents } : {}),
-      });
+      };
+      // a new lead's pre-events come from the form's own answer (custom_data), as the client's form sends them
+      const d = isNew
+        ? await api.createLead(body)
+        : await api.updateLead(lead.id, { ...body, ...(pf ? { pre_events: preEvents } : {}) });
       if (onSaved && d?.lead) onSaved(d.lead);
-      onClose('✅ Saved');
+      onClose(isNew ? '✅ Lead added' : '✅ Saved');
     } catch (e) { setMsg('⚠️ ' + e.message); setBusy(false); }
   }
 
@@ -96,10 +102,10 @@ function EditForm({ lead, cfg, onSaved, onClose }) {
           <LeadFormBody cfg={cfg} p={ep} setPI={setEpi} answers={eAnswers} setAns={setEAns} notes={eNotes} setNotes={setENotes}
             errs={errs} bookingKeys={bookingKeys} />
           {msg && <div className="iq-err">{msg}</div>}
-          {/* 💾 Save changes, and a small Cancel beside it — no bar above the form, which sits 16px under the header */}
+          {/* Save, and a small Cancel beside it — no bar above the form, which sits 16px under the header */}
           <div className="iq-actions">
             <button className="iq-btn" onClick={save} disabled={busy}>
-              {busy ? 'Saving…' : <><span className="iq-emoji">💾 </span>Save changes</>}
+              {busy ? 'Saving…' : isNew ? 'Save lead' : 'Save changes'}
             </button>
             <button type="button" className="iq-btn-cancel" onClick={() => onClose()} disabled={busy} title="Leave without saving">Cancel</button>
           </div>
