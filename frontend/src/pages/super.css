@@ -57,16 +57,16 @@
 .sa-cty-top { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
 .sa-cty-top .cnt { color:var(--muted); font-weight:600; }
 .sa-cty-bar { height:6px; background:var(--panel-2); border-radius:7px; overflow:hidden; }
-.sa-cty-fill { height:100%; background:var(--teal); border-radius:7px; }
+.sa-cty-fill { height:100%; background:var(--teal); border-radius:7px; width:var(--pct); }
 
 .sa-adopt { display:flex; flex-direction:column; gap:9px; flex:1; justify-content:center; padding-left:8px; }
 .sa-ad-top { display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; }
 .sa-ad-top .cnt { color:var(--muted); font-weight:600; }
 .sa-ad-bar { height:6px; background:var(--panel-2); border-radius:7px; overflow:hidden; }
-.sa-ad-fill { height:100%; border-radius:7px; }
+.sa-ad-fill { height:100%; border-radius:7px; width:var(--pct); background:var(--tone); }
 .sa-legend { display:flex; flex-direction:column; gap:6px; flex:1; justify-content:center; }
 .sa-legend-item { display:flex; align-items:center; gap:7px; font-size:11px; }
-.sa-legend-dot { width:9px; height:9px; border-radius:3px; }
+.sa-legend-dot { width:9px; height:9px; border-radius:3px; background:var(--tone); }
 .sa-legend-val { margin-left:auto; color:var(--muted); font-weight:600; }
 
 .sa-section-title { font-size:14px; font-weight:700; margin-bottom:10px; }
@@ -114,10 +114,6 @@
 /* Price editing */
 .sa-view-btn.active-btn { background: var(--teal-soft); color: var(--teal); border-color: var(--teal-2); }
 
-.sa-price-edit { display: flex; align-items: center; gap: 4px; font-size: 12px; }
-.sa-price-edit input { width: 52px; padding: 4px 6px; background: var(--bg); border: 1px solid var(--teal-2); border-radius: 6px; color: var(--text); font-size: 12px; }
-.sa-price-edit button { background: var(--btn-fill); color: var(--btn-fill-ink); border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
-.sa-price-edit span { color: var(--muted); }
 
 /* Offers */
 .sa-offer-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -143,10 +139,9 @@
 
 /* 🔔 topbar notification bells */
 .sa-bells { display:flex; gap:10px; align-items:center; margin-left:auto; }
-.sa-bell { position:relative; width:40px; height:40px; border-radius:11px; background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.sa-bell { position:relative; width:40px; height:40px; border-radius:11px; border:1px solid var(--line); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; --tone: var(--teal); color: var(--tone); background: color-mix(in srgb, var(--tone) 11%, var(--panel)); border-color: color-mix(in srgb, var(--tone) 30%, var(--line)); }
 .sa-bell:hover { border-color:var(--teal); transform:translateY(-1px); }
 /* 🎧 💲 🎟️ each button tinted in its own colour from the panel's palette — calm tile, coloured two-tone icon (2026-11-05) */
-.sa-bell { --tone: var(--teal); color: var(--tone); background: color-mix(in srgb, var(--tone) 11%, var(--panel)); border-color: color-mix(in srgb, var(--tone) 30%, var(--line)); }
 .sa-bell:hover { border-color: var(--tone); }
 .sa-bell svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .sa-bell svg .tw { fill: color-mix(in srgb, currentColor 24%, transparent); }
@@ -325,16 +320,11 @@
 .sa-seg-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
 
 /* how much storage a package includes, edited beside its price */
-.pkg-storage { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 12px; }
-.pkg-storage label { color: var(--muted); }
-.pkg-storage input { width: 90px; padding: 5px 8px; border-radius: 7px;
-  border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 12px; }
-.pkg-storage span { color: var(--muted); }
 
 /* 💾 storage per buyer, in the list */
 .sa-store { min-width: 118px; }
 .sa-store-bar { height: 5px; border-radius: 3px; background: #22313a; overflow: hidden; }
-.sa-store-bar span { display: block; height: 100%; border-radius: 3px; transition: width .3s ease; }
+.sa-store-bar span { display: block; height: 100%; border-radius: 3px; transition: width .3s ease; width: var(--pct); background: var(--tone); }
 .sa-store-txt { margin-top: 4px; font-size: 11.5px; color: var(--sa-muted, #7c9199); font-variant-numeric: tabular-nums; }
 .sa-store-tag { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px;
   background: #1d3a3f; color: var(--teal); text-transform: uppercase; letter-spacing: .04em; }
@@ -402,7 +392,6 @@
 .sa-pt .pt-tog.is-on { background: rgba(230, 92, 0, .12); border-color: rgba(230, 92, 0, .3); color: var(--p-deep); }
 .sa-pt .pt-calc { opacity: .75; }
 .sa-pt .pt-help { text-align: left; font-size: 12.5px; color: var(--gray); }
-.sa-pt .pt-btn { padding: 6px 12px; border: 1px solid var(--ink); border-radius: 8px; background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
 .sa-pt .pt-coming input { width: 15px; height: 15px; accent-color: var(--p); }
 
 /* 💾 A vendor's own storage limit, in Buyers → Manage (pages/Dashboard.jsx StorageLimit) */

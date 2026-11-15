@@ -104,7 +104,7 @@ export async function sweepReminders() {
       if (r?.last_alert_at && r.last_alert_at >= a.at) continue;
       // an alarm rings once — then it is finished (it used to stay open and come back as "overdue")
       await prisma.agent_reminders.update({ where: { id: a.reminder_id }, data: { last_alert_at: a.at, ...(a.urgency === 'alarm' ? { done_at: new Date() } : {}) } });
-      await notify(vendor_id, a.title, a.body, 'reminder');
+      await notify(vendor_id, a.title, a.body, 'reminder', { type: 'agent' });
     }
   }
 }

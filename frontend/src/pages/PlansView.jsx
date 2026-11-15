@@ -102,7 +102,7 @@ export default function PlansView() {
             <span className="pl-now-label">Storage</span>
             <span className="pl-now-name">{d.current.name}</span>
           </div>
-          <div className="pl-now-bar"><span style={{ width: pct + '%' }} /></div>
+          <div className="pl-now-bar" style={{ '--pct': pct + '%' }}><span /></div>
           <div className="pl-now-figs">{gb(d.current.used_bytes)} GB of {d.current.limit_gb} GB used</div>
           {d.current.overridden && <p className="pl-note">Your storage has been set for you, so it will not change with a plan.</p>}
         </div>

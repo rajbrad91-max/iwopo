@@ -397,7 +397,7 @@ function StorageCell({ s }) {
   const tone = pct >= 95 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--teal)';
   return (
     <div className="sa-store" title={`${fmtBytes(s.used_bytes)} of ${fmtMb(s.limit_mb)} — limit from ${s.limit_source}`}>
-      <div className="sa-store-bar"><span style={{ width: pct + '%', background: tone }} /></div>
+      <div className="sa-store-bar" style={{ '--pct': pct + '%', '--tone': tone }}><span /></div>
       <div className="sa-store-txt">
         {fmtBytes(s.used_bytes)} / {fmtMb(s.limit_mb)}
         {s.limit_source === 'override' && <span className="sa-store-tag">set</span>}

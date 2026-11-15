@@ -21,7 +21,7 @@ const FINAL_AFTER = 23 * DAY, REMOVE_AFTER = 30 * DAY;
 const lastSeen = async (vid) => (await prisma.users.aggregate({ where: { vendor_id: vid }, _max: { last_seen_at: true } }))._max.last_seen_at;   // 🔒 this vendor
 
 async function tell(vid, title, body) {
-  await notify(vid, title, body, 'billing', { type: 'tab', id: 'plans' });
+  await notify(vid, title, body, 'billing', { type: 'plans' });
   const owner = await prisma.users.findFirst({ where: { vendor_id: vid }, orderBy: { id: 'asc' }, select: { email: true } });   // 🔒 this vendor
   if (owner?.email) await sendPlatformEmail(owner.email, title, `${body}\n\nSign in: https://iwopo.com/panel`).catch(quiet('email an inactive Free account'));
 }

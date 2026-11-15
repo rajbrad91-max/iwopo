@@ -82,7 +82,7 @@ export function DashboardView({ vendors, packages, overview }) {
               <div key={c[0]} className="sa-cty-row">
                 <div className="sa-cty-info">
                   <div className="sa-cty-top"><span>{c[0]}</span><span className="cnt">{c[1]} seller{c[1] === 1 ? '' : 's'}</span></div>
-                  <div className="sa-cty-bar"><div className="sa-cty-fill" style={{ width: `${c[1] / maxC * 100}%` }} /></div>
+                  <div className="sa-cty-bar"><div className="sa-cty-fill" style={{ '--pct': `${c[1] / maxC * 100}%` }} /></div>
                 </div>
               </div>
             ))}
@@ -109,7 +109,7 @@ export function DashboardView({ vendors, packages, overview }) {
               {planData.map((s, i) => (
                 <div key={i}>
                   <div className="sa-ad-top"><span>{s.name}</span><span className="cnt">{s.v} seller{s.v === 1 ? '' : 's'}</span></div>
-                  <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ width: `${s.v / onPlans * 100}%`, background: s.c }} /></div>
+                  <div className="sa-ad-bar"><div className="sa-ad-fill" style={{ '--pct': `${s.v / onPlans * 100}%`, '--tone': s.c }} /></div>
                 </div>
               ))}
             </div>
@@ -133,7 +133,7 @@ export function DashboardView({ vendors, packages, overview }) {
             <div className="sa-legend sa-legend-cols">
               {vTypes.map((t, i) => (
                 <div key={i} className="sa-legend-item">
-                  <span className="sa-legend-dot" style={{ background: t.c }} />{t.n}
+                  <span className="sa-legend-dot" style={{ '--tone': t.c }} />{t.n}
                   <span className="sa-legend-val">{t.v}</span>
                 </div>
               ))}

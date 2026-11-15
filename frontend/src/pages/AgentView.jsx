@@ -11,6 +11,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import SmartReminders from './SmartReminders.jsx';
+import { takeHandOver } from '../lib/noticeLink.js';
 import PpmBoard from './PpmBoard.jsx';
 import { api, authFetch } from '../lib/api';
 import './agent.css';
@@ -343,7 +344,13 @@ export default function AgentView() {
   const [speak, setSpeak] = useState(() => { try { return localStorage.getItem(SPEAK_KEY) !== 'off'; } catch { return true; } });
   const [pop, setPop] = useState('checking');      // checking | on | off | blocked | unsupported
   const [ppm, setPpm] = useState(false);           // 📋 the PPM Board instead of the chat
-  const [rem, setRem] = useState(false);           // ⏰ smart reminders instead of the chat
+  const [rem, setRem] = useState(() => sessionStorage.getItem('ag-reminders') !== null);   // ⏰ smart reminders instead of the chat
+  /* 🔔 a reminder on the bell opens the reminders (handed over by VendorPanel — lib/noticeLink.js) */
+  useEffect(() => {
+    const show = () => { if (takeHandOver('ag-reminders') !== null) { setRem(true); setKnow(false); setPpm(false); } };
+    show(); window.addEventListener('ag-reminders', show);
+    return () => window.removeEventListener('ag-reminders', show);
+  }, []);
   const [know, setKnow] = useState(false);         // 🧠 the knowledge section instead of the chat
   const fromLink = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('voice') === '1';
   const end = useRef(null);

@@ -1,5 +1,6 @@
 import { useEffect, useState, useId } from 'react';
 import { api, fmtDateTime, fmtMoney } from '../lib/api';
+import { useDialog } from '../lib/dialog.jsx';
 
 /**
  * ➕ My Services (Raj, 2026-11-06): the plan a vendor is on, what it includes (the same lines as the pricing page —
@@ -8,6 +9,7 @@ import { api, fmtDateTime, fmtMoney } from '../lib/api';
  */
 export default function MyServicesView({ onPlans }) {
   const offersId = useId();   // the offers switch is named by its label
+  const dialog = useDialog();
   const [b, setB] = useState(null);
   const [busy, setBusy] = useState(0);
   const [msg, setMsg] = useState('');
@@ -36,7 +38,7 @@ export default function MyServicesView({ onPlans }) {
   }
 
   async function act(a, add) {
-    if (!add && !window.confirm(`Remove ${a.name} from your next bill? It keeps working until the end of this billing period.`)) return;
+    if (!add && !await dialog.confirm('It comes off your next bill and keeps working until the end of this billing period.', { title: `Remove ${a.name}?`, okLabel: 'Remove' })) return;
     setBusy(a.id); setMsg('');
     try {
       await (add ? api.billingAddAddon(a.id) : api.billingRemoveAddon(a.id));

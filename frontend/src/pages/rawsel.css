@@ -1,16 +1,15 @@
 /* 🎞️ Raw Selector — the vendor's screen (.rs, inside the panel's theme) and
    the editor's portal (.ep, a page of its own, so it defines its own colours). */
 
-.rs { display: grid; gap: 18px; max-width: 1100px; }
-.rs-card { background: var(--panel, #fff); border: 1px solid var(--line, #e3e6ea); border-radius: 14px; padding: 20px 22px; }
+.rs { display: grid; gap: 18px; max-width: 1100px; grid-template-columns: minmax(0, 1fr); }
+.rs-card { background: var(--panel, #fff); border: 1px solid var(--line, #e3e6ea); border-radius: 14px; padding: 20px 22px; min-width: 0; }
 .rs-h { margin: 0 0 6px; font-size: 17px; }
 .rs-sub { margin: 0 0 14px; color: var(--muted, #6b7280); font-size: 13.5px; line-height: 1.5; }
 .rs-sub a { color: var(--teal, #0f9f8f); word-break: break-all; }
 .rs-muted { color: var(--muted, #6b7280); font-size: 13px; }
 .rs-strong { font-weight: 600; }
-.rs-warn { color: #c77c0e; font-weight: 600; }
 .rs-err { margin: 10px 0; padding: 9px 12px; border-radius: 9px; background: #fdecec; color: #a23b33; font-size: 13px; }
-.rs-ok { margin: 10px 0; padding: 9px 12px; border-radius: 9px; background: color-mix(in srgb, #4f9a6a 12%, transparent); color: #3f8a5a; font-size: 13px; }   /* ✅ an invitation went out */
+.rs-ok { margin: 4px 0; padding: 9px 12px; border-radius: 9px; background: #e6f6f2; color: #0b6e62; font-size: 13px; }/* ✅ an invitation went out */
 
 .rs-add { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .rs-add input { flex: 1 1 200px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line, #d7dbe0); border-radius: 9px; background: var(--bg, #fff); color: var(--text, #1f2328); font: inherit; font-size: 14px; }
@@ -26,10 +25,6 @@
 .rs-x { min-height: 34px; padding: 0 12px; border: 1px solid var(--line, #d7dbe0); border-radius: 8px; background: transparent; color: var(--text, #1f2328); font: inherit; font-size: 13px; cursor: pointer; }
 .rs-x:hover { border-color: var(--teal, #0f9f8f); }
 
-.rs-table-wrap { overflow-x: auto; }
-.rs-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.rs-table th { text-align: left; font-weight: 600; color: var(--muted, #6b7280); padding: 8px 10px; border-bottom: 1px solid var(--line, #e3e6ea); white-space: nowrap; }
-.rs-table td { padding: 10px; border-bottom: 1px solid var(--line, #eceef1); white-space: nowrap; }
 
 /* ®️ logo settings + live preview */
 .rs-logo { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 20px; align-items: start; }
@@ -44,7 +39,6 @@
 .rs-pos-dot { width: 28px; height: 20px; border: 1px solid var(--line, #d7dbe0); border-radius: 4px; background: transparent; cursor: pointer; }
 .rs-pos-dot.is-on { background: var(--teal, #0f9f8f); border-color: var(--teal, #0f9f8f); }
 .rs-logo-prev img { width: 100%; border-radius: 10px; display: block; }
-.rs-ok { margin: 4px 0; padding: 9px 12px; border-radius: 9px; background: #e6f6f2; color: #0b6e62; font-size: 13px; }
 
 /* ── 👨‍💻 the editor's portal ── */
 .ep { --panel: #ffffff; --line: #e3e6ea; --text: #1f2328; --muted: #6b7280; --teal: #0f9f8f; --bg: #ffffff;
@@ -71,8 +65,6 @@
 
 /* 📱 phones (Raj's mobile audit, 2026-10-23): cards never wider than the screen — the wide Clients table
    scrolls inside its own box, long links break, and the add-editor form stacks */
-.rs { grid-template-columns: minmax(0, 1fr); }
-.rs-card { min-width: 0; }
 .rs-sub, .rs-sub a { overflow-wrap: anywhere; }
 @media (max-width: 480px) {
   .rs-card { padding: 16px 14px; }
@@ -82,15 +74,6 @@
 /* 📱 Clients on phones (Raj, 2026-10-23): one compact card per client — name on top, then small labelled values
    two by two — nothing to slide sideways */
 @media (max-width: 600px) {
-  .rs-table-wrap { overflow: visible; }
-  .rs-table thead { display: none; }
-  .rs-table { display: block; width: 100%; }
-  .rs-table tbody { display: flex; flex-direction: column; gap: 8px; }
-  .rs-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 12px 14px; border: 1px solid var(--line, #eceef1); border-radius: 12px; background: var(--panel-2, #f8fafb); }
-  .rs-table td { display: flex; flex-direction: column; gap: 1px; padding: 0; border: 0; white-space: normal; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
-  .rs-table td::before { content: attr(data-label); font-size: 11px; font-weight: 600; color: var(--muted, #6b7280); }
-  .rs-table td.rs-strong { grid-column: 1 / -1; font-size: 15px; }
-  .rs-table td.rs-strong::before { content: none; }
 }
 
 /* 📸 the photographer's portal (PhotographerPortal.jsx): the two notify buttons */

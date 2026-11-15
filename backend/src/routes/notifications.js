@@ -14,6 +14,7 @@ const router = express.Router();
  * straight there instead of dropping them on a list to go hunting. Shape:
  *   { type: 'lead', id: 42 }   → opens that lead
  *   { type: 'aichat' }         → opens the AI Chat tab (no single record)
+ * The bell follows only the links frontend/src/lib/noticeLink.js knows — add a new kind there too.
  * Left null the row still renders, it just isn't clickable — which is what
  * every notification raised before this column existed will do.
  */
@@ -59,7 +60,10 @@ router.get('/', requireAuth, async (req, res) => {
       }),
       prisma.notifications.count({ where: { vendor_id: v, seen_at: null } }),   // 🔒 tenancy
     ]);
-    let notifications = shared, unseen = sharedUnseen;
+    /* 📧 an email-inquiry notice opens its thread: the Gmail thread id comes from this vendor's own row */
+    const mail = shared.filter(n => n.link_type === 'email' && n.link_id).map(n => n.link_id);
+    const threadOf = new Map(mail.length ? (await prisma.email_inquiries.findMany({ where: { vendor_id: v, id: { in: mail } }, select: { id: true, thread_id: true } })).map(r => [r.id, r.thread_id]) : []);   // 🔒 tenancy
+    let notifications = shared.map(n => (n.link_type === 'email' ? { ...n, thread: threadOf.get(n.link_id) || null } : n)), unseen = sharedUnseen;
     if (await privateOwner(v)) {
       const [mine, mineUnseen] = await Promise.all([
         privateDb.comms_notices.findMany({ where: { vendor_id: v }, orderBy: { created_at: 'desc' }, take: 30 }),

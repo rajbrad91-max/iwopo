@@ -71,7 +71,7 @@ export async function sweepOverLimit() {
     const due = [...STAGES].reverse().find(([stage, after]) => age >= after && stage > s.stage);
     if (!due) continue;
     const [stage, , title, body] = due;
-    await notify(id, title, body(s), 'billing', { type: 'tab', id: 'services' });
+    await notify(id, title, body(s), 'billing', { type: 'services' });
     const owner = await prisma.users.findFirst({ where: { vendor_id: id }, orderBy: { id: 'asc' }, select: { email: true } });   // 🔒 this vendor
     if (owner?.email) await sendPlatformEmail(owner.email, title.replace(/^\S+\s/, ''), `${body(s)}\n\nManage your plan and storage: https://iwopo.com/panel/services`).catch(quiet('email the over-the-limit notice'));
     await prisma.vendor_settings.update({ where: { vendor_id: id }, data: { over_limit_stage: stage } });

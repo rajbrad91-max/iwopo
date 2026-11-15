@@ -484,7 +484,7 @@ export default function ShareDrive({onStorage, tabs }) {
       {/* the sidebar already shows storage; here only as a warning when it is nearly full */}
       {storage && pct > 80 && (
         <div className="fd-quota">
-          <div className="fd-quota-bar"><span className={pct > 90 ? 'is-full' : ''} style={{ width: `${pct}%` }} /></div>
+          <div className="fd-quota-bar" style={{ '--pct': `${pct}%` }}><span className={pct > 90 ? 'is-full' : ''} /></div>
           <span className="fd-quota-t">⚠️ {fmtBytes(storage.used_bytes)} of {fmtBytes(storage.limit_bytes)} used ({pct}%)</span>
         </div>
       )}

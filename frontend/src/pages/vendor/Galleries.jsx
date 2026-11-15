@@ -39,9 +39,9 @@ function FocalPicker({ src, focus, onFocus, view }) {
         className={`fp-frame ${view === 'mobile' ? 'fp-mobile' : 'fp-desktop'}`}
         onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
         onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}
-        style={{ backgroundImage: `url(${src})`, backgroundPosition: `${fx}% ${fy}%` }}
+        style={{ '--img': `url("${new URL(src, window.location.href).href}")`, '--fx': `${fx}%`, '--fy': `${fy}%` }}   /* absolute: a url() handed over in a variable must not depend on where the stylesheet lives */
       >
-        <div className="fp-dot" style={{ left: `${fx}%`, top: `${fy}%` }} />
+        <div className="fp-dot" />
       </div>
     </div>
   );
@@ -539,9 +539,9 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                       onClick={() => applyPreset(p)}
                       title={p.note}
                     >
-                      <span className="gal-preset-swatch" style={{ background: p.t.bg_color }}>
-                        <i style={{ background: p.t.accent_color }} />
-                        <i style={{ background: p.t.heading_color }} />
+                      <span className="gal-preset-swatch" style={{ '--sw-bg': p.t.bg_color, '--sw-a': p.t.accent_color, '--sw-b': p.t.heading_color }}>
+                        <i />
+                        <i />
                       </span>
                       <span className="gal-preset-name">{p.name}</span>
                     </button>
@@ -580,10 +580,12 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 <input className="gal-input" value={theme.tagline_text ?? ''} onChange={e => setT('tagline_text', e.target.value)} placeholder="Ready to view, share and download." />
 
                 {/* live preview */}
-                <div className="gal-theme-preview" style={{ background: theme.bg_color || '#0f1115' }}>
-                  <div style={{ textTransform: 'uppercase', letterSpacing: 3, fontSize: 10, color: theme.accent_color || '#0d9488', fontFamily: `'${theme.body_font || 'Jost'}',sans-serif` }}>{theme.title_text || 'Client Galleries'}</div>
-                  <div style={{ fontFamily: `'${theme.heading_font || 'Playfair Display'}',serif`, fontSize: 22, color: theme.heading_color || '#f3f4f6', margin: '4px 0' }}>Your Studio Name</div>
-                  <div style={{ fontSize: 12, color: theme.sub_color || '#9ca3af', fontFamily: `'${theme.body_font || 'Jost'}',sans-serif` }}>{theme.subtitle_text || 'Secure, Password-Protected Memories'}</div>
+                <div className="gal-theme-preview" style={{ '--tp-bg': theme.bg_color || '#0f1115', '--tp-accent': theme.accent_color || '#0d9488',
+                  '--tp-head': theme.heading_color || '#f3f4f6', '--tp-sub': theme.sub_color || '#9ca3af',
+                  '--tp-hfont': `'${theme.heading_font || 'Playfair Display'}',serif`, '--tp-bfont': `'${theme.body_font || 'Jost'}',sans-serif` }}>
+                  <div className="gal-tp-kicker">{theme.title_text || 'Client Galleries'}</div>
+                  <div className="gal-tp-title">Your Studio Name</div>
+                  <div className="gal-tp-sub">{theme.subtitle_text || 'Secure, Password-Protected Memories'}</div>
                 </div>
 
                 <button className="refresh gal-save gal-set-save" onClick={saveTheme}>{themeSaved ? '✅ Saved!' : '🎨 Save Style'}</button>

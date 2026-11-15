@@ -97,11 +97,12 @@ export async function scanInquiries(v, { lookback } = {}) {
       else if (!theirs || machineMail(fromAddr, subject) || ignored.has(fromAddr)) { yes = false; source = 'none'; }   // only his own mail, machine mail, or a sender he ruled out
       else { yes = await isInquiry(from, subject, theirs.snippet || ''); source = yes ? 'ai' : 'none'; checked++; }
       const row = { is_inquiry: yes, source, from_addr: from.slice(0, 200), subject: subject.slice(0, 300), last_at: lastAt };
-      if (had) await prisma.email_inquiries.updateMany({ where: { vendor_id: v, thread_id: t.id }, data: row });
-      else await prisma.email_inquiries.create({ data: { vendor_id: v, thread_id: t.id, ...row } });
+      const saved = had
+        ? await prisma.email_inquiries.update({ where: { vendor_id_thread_id: { vendor_id: v, thread_id: t.id } }, data: row, select: { id: true } })   // 🔒 this vendor's row
+        : await prisma.email_inquiries.create({ data: { vendor_id: v, thread_id: t.id, ...row }, select: { id: true } });
       if (yes) {
         found++;
-        if (!quiet) await prisma.notifications.create({ data: { vendor_id: v, occurred_at: new Date(Number((theirs || last).internalDate)), type: 'email_inquiry', title: `📧 New email inquiry from ${from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || fromAddr}`, body: subject.slice(0, 200) } });
+        if (!quiet) await prisma.notifications.create({ data: { vendor_id: v, occurred_at: new Date(Number((theirs || last).internalDate)), type: 'email_inquiry', link_type: 'email', link_id: saved.id, title: `📧 New email inquiry from ${from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || fromAddr}`, body: subject.slice(0, 200) } });
       }
     }
     page = d.nextPageToken || '';

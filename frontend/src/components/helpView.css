@@ -21,7 +21,7 @@
 .hv-wide { grid-column: 1 / -1; }
 
 /* 🚀 Getting started (lib/gettingStarted.js — the same steps as the Welcome pop-up) */
-.hv-guide { margin: 0; padding: 0; list-style: none; }
+.hv-guide { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .hv-step { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
 .hv-step:first-child { border-top: 0; padding-top: 4px; }
 .hv-step-n { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--panel-2); color: var(--teal); font-weight: 800; }
@@ -45,7 +45,6 @@
 
 /* 🌐 Your own domain — three steps and the guide in 15 languages */
 .hv-dsteps { margin: 6px 0 14px; padding-inline-start: 20px; font-size: 14px; line-height: 1.6; }
-.hv-guide { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .hv-guide-lbl { font-size: 13.5px; font-weight: 600; }
 .hv-guide-sel { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 14px; }
 .hv-guide-dl { text-decoration: none; }

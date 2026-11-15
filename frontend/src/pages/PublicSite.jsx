@@ -298,7 +298,7 @@ export default function PublicSite({ slug, page = 'home', byHost = false, previe
               {site.cover_photo && (
                 <img className={`st-hero-cover ${aiming ? 'is-aiming' : ''}`}
                   src={photoUrl(site.cover_photo)} alt=""
-                  style={{ objectPosition: site.cover_focus || '50% 50%' }}
+                  style={{ '--focus': site.cover_focus || '50% 50%' }}
                   onClick={aiming ? (e) => {
                     const r = e.currentTarget.getBoundingClientRect();
                     const x = Math.round(((e.clientX - r.left) / r.width) * 100);

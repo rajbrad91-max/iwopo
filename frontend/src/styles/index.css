@@ -137,8 +137,8 @@ body {
    back under the pointer, hovered and lifted again — a fast shake. While a
    card is hovered, an invisible strip hangs under it covering the gap the
    lift leaves, so the pointer stays "on" the card until it really leaves. */
-:is(.card, .gal-card, .ev-card, .lead-stat, .sa-card, .sa-manage-card, .sl-svc) { position: relative; }
-:is(.card, .gal-card, .ev-card, .lead-stat, .sa-card, .sa-manage-card, .sl-svc):hover::after {
+:is(.card, .gal-card, .ev-card, .lead-stat, .sa-card, .sa-manage-card) { position: relative; }
+:is(.card, .gal-card, .ev-card, .lead-stat, .sa-card, .sa-manage-card):hover::after {
   content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 8px;
 }
 .card:active { transform:translateY(-1px) scale(.985); }

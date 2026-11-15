@@ -483,7 +483,7 @@
   .po-strip { margin-left: 16px; margin-right: 16px; }
 }
 /* no packages on this link yet */
-.po-empty { grid-column: 1 / -1; margin: 10px 0 0; text-align: center; color: var(--muted, #8a7a66); font-size: 15px; }
+.po-empty { grid-column: 1 / -1; margin: 10px 0 0; text-align: center; color: var(--soft); font-size: 15px; }
 
 /* ══════════════════════════════════════════════════════════════════════
    Extras, differences first, and the running total (Raj, 2026-11-13)
@@ -557,4 +557,4 @@
 .po-cta.is-alt { background: transparent; }
 
 /* 🏦 the second way to pay, beside card (Stripe Connect) */
-.po-cta.is-alt { margin-top: 10px; background: transparent; color: var(--text, #2b2620); border: 1px solid currentColor; }
+.po-cta.is-alt { margin-top: 10px; background: transparent; color: var(--ink); border: 1px solid currentColor; }

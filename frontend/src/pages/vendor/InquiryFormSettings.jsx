@@ -751,12 +751,6 @@ function HexField({ value, onChange }) {
       placeholder="#000000"
       spellCheck={false}
       aria-label="Brand colour hex code"
-      style={{
-        width: 100, height: 36, boxSizing: 'border-box',
-        padding: '0 10px', borderRadius: 9,
-        border: '1px solid var(--line)', background: 'var(--panel)',
-        color: 'var(--text)', fontSize: 13,
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-      }} />
+      className="ifs-hex" />
   );
 }

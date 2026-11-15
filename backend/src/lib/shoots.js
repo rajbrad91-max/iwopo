@@ -161,7 +161,7 @@ export async function announceUpload({ v, album, who, client, appUrl, notify, se
   const counts = { photos: await prisma.photos.count({ where: { album_id: album.id } }), raws: await prisma.raw_files.count({ where: { album_id: album.id } }) };
   if (!counts.photos) return { status: 400, error: 'Upload the photos first' };
   await prisma.albums.update({ where: { id: album.id }, data: { uploaded_at: new Date() } });
-  await notify(v, `📸 ${album.title}: ${counts.photos} photos uploaded`, `${who} uploaded ${counts.photos} JPEGs and ${counts.raws} RAWs.`, 'info', '/panel/rawsel');
+  await notify(v, `📸 ${album.title}: ${counts.photos} photos uploaded`, `${who} uploaded ${counts.photos} JPEGs and ${counts.raws} RAWs.`, 'info', { type: 'rawsel' });
   const ven = await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true, email: true } });
   const studio = ven?.business_name || 'Your photographer';
   let ownerEmailed = false, clientEmailed = false;

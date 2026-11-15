@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { useDialog } from '../lib/dialog.jsx';
 
 /**
  * 💳 "Connect your Stripe account" (Raj, 2026-11-06). The vendor signs in to their OWN Stripe; clients then pay by card
@@ -9,6 +10,7 @@ import { api } from '../lib/api';
 export default function StripeConnectCard() {
   const [s, setS] = useState(null);
   const [busy, setBusy] = useState(false);
+  const dialog = useDialog();
   const back = new URLSearchParams(window.location.search).get('stripe');
   const [msg, setMsg] = useState(back === 'connected' ? '✅ Your Stripe account is connected.' : back === 'error' ? '⚠️ Stripe could not connect — please try again.' : '');
   const load = () => api.stripeConnectStatus().then(setS).catch(() => setS({ ready: false }));
@@ -20,7 +22,7 @@ export default function StripeConnectCard() {
     catch (e) { setMsg('⚠️ ' + e.message); setBusy(false); }
   }
   async function off() {
-    if (!window.confirm('Disconnect your Stripe account? Clients will no longer be able to pay you by card here.')) return;
+    if (!await dialog.confirm('Clients will no longer be able to pay you by card here.', { title: 'Disconnect your Stripe account?', okLabel: 'Disconnect' })) return;
     setBusy(true);
     try { await api.stripeConnectDisconnect(); await load(); setMsg('Your Stripe account is disconnected.'); }
     catch (e) { setMsg('⚠️ ' + e.message); }

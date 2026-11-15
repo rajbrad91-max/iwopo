@@ -176,6 +176,7 @@
   background: var(--grad); opacity: .85;
   transform-origin: bottom; transform: scaleY(0);
   animation: sl-bar .7s cubic-bezier(.2,.7,.2,1) forwards;
+  height: var(--h); animation-delay: var(--delay);
 }
 @keyframes sl-bar { to { transform: scaleY(1); } }
 .sl-dash-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }

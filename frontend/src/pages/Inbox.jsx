@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { api } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
 import { useInboxCounts, inboxChanged } from '../lib/inboxCounts.js';
+import { takeHandOver } from '../lib/noticeLink.js';
 import { SiInstagram, SiWhatsapp } from 'react-icons/si';   // the real brand icons (Simple Icons, CC0)
 import './inbox.css';
 
@@ -17,6 +18,7 @@ const TABS = [['calls', '📞', 'Calls & Texts'], ['email', '📧', 'Email'],
 export default function Inbox() {
   const [tab, setTab] = useState(() => {
     const q = new URLSearchParams(location.search).get('tab');
+    if (sessionStorage.getItem('ib-open') !== null) return 'email';   // 🔔 a bell notice about an email inquiry
     return TABS.some(t => t[0] === q) ? q : (localStorage.getItem('inbox_tab') || 'calls');
   });
   const counts = useInboxCounts();
@@ -24,7 +26,9 @@ export default function Inbox() {
   useEffect(() => { if (tab === 'email') api.inboxEmailSeen().then(inboxChanged).catch(() => {}); }, [tab]);
   const [gear, setGear] = useState(false);       // ⚙️ this tab's settings instead of its content
   const tabName = TABS.find(t => t[0] === tab)[2];
-  const choose = (t) => { setGear(false); setTab(t); localStorage.setItem('inbox_tab', t); history.replaceState(null, '', t === 'calls' ? location.pathname : `${location.pathname}?tab=${t}`); };
+  const choose = useCallback((t) => { setGear(false); setTab(t); localStorage.setItem('inbox_tab', t); history.replaceState(null, '', t === 'calls' ? location.pathname : `${location.pathname}?tab=${t}`); }, []);
+  /* 🔔 a bell notice about an email inquiry, while this page is already open: show Email (EmailTab opens the thread) */
+  useEffect(() => { const go = () => choose('email'); window.addEventListener('ib-open', go); return () => window.removeEventListener('ib-open', go); }, [choose]);
   return (
     <div className={`ib ib-on-${tab}`}>
       <div className="ib-tabs" role="tablist">
@@ -324,11 +328,18 @@ function EmailTab() {
   async function connect() {
     try { const d = await api.inboxEmailConnect(); location.href = d.url; } catch (e) { setMsg(e.message); }
   }
-  async function read(id) {
+  const read = useCallback(async (id) => {
     setOpen({ id, loading: true });
     try { setOpen(await api.inboxEmailThread(id)); setThreads(t => (t || []).map(x => (x.id === id ? { ...x, unread: false } : x))); inboxChanged(); }
     catch (e) { setOpen(null); setMsg(e.message); }
-  }
+  }, []);
+  /* 🔔 a bell notice about an email inquiry opens its thread (handed over by VendorPanel — lib/noticeLink.js) */
+  useEffect(() => {
+    if (!status?.connected) return;
+    const take = () => { const thread = takeHandOver('ib-open'); if (thread) read(thread); };
+    take(); window.addEventListener('ib-open', take);
+    return () => window.removeEventListener('ib-open', take);
+  }, [status?.connected, read]);
   async function send(payload, after) {
     setBusy(true); setMsg('');
     try { const r = await api.inboxEmailSend(payload); setMsg(r.sandbox ? '🧪 Practice mode: not really sent.' : '✅ Sent'); after(); load(); }

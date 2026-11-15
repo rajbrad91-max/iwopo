@@ -2,12 +2,6 @@
    📤 File Flyer — vendor side (inside the panel, uses the panel's tokens)
    ══════════════════════════════════════════════════════════════════════ */
 
-.ff-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
-.ff-label:first-child { margin-top: 0; }
-.ff-input { width: 100%; padding: 9px 12px; font: inherit; font-size: 14px;
-  color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
-.ff-input:focus { outline: none; border-color: var(--teal); }
 .ff-ta { resize: vertical; }
 
 /* a file the CLIENT sent — the distinction is the point of a two-way link */
@@ -128,7 +122,7 @@
 /* ── how full you are: a thin line, not a panel ────────────────────────── */
 .fd-quota { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; }
 .fd-quota-bar { flex: 1; max-width: 220px; height: 3px; border-radius: 3px; background: var(--fill2); overflow: hidden; }
-.fd-quota-bar span { display: block; height: 100%; background: var(--teal); border-radius: 3px; }
+.fd-quota-bar span { display: block; height: 100%; background: var(--teal); border-radius: 3px; width: var(--pct); }
 .fd-quota-bar span.is-full { background: #f87171; }
 .fd-quota-t { font-size: 11.5px; color: var(--muted); }
 
@@ -151,6 +145,7 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 34px; margin-bottom: 8px; overflow: hidden; border-radius: 8px;
   background: var(--fill);
+  position: relative;
 }
 .fd-ic img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; display: block; }
 .fd-wait { width: 100%; height: 100%; border-radius: 7px; background: var(--fill2); }
@@ -386,7 +381,6 @@
 .ff-tip-x { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 12px; padding: 2px 6px; }
 
 /* 🖼️ folder cards: a collage of the newest photos inside, with a small folder badge */
-.fd-ic { position: relative; }
 .fd-collage { display: grid; gap: 2px; padding: 0; overflow: hidden; }
 .fd-collage.is-n1 { grid-template-columns: 1fr; }
 .fd-collage.is-n2 { grid-template-columns: 1fr 1fr; }

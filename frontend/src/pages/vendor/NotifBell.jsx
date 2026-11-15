@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { api, fmtDateTime } from '../../lib/api';
 import { chime } from '../../lib/chime';
+import { noticeTarget } from '../../lib/noticeLink.js';
 
 /** "2h ago" / "3d ago" / "24 Jul" — relative for the first week, then a date,
  *  because "34d ago" stops meaning anything and by then the date is more use. */
@@ -94,12 +95,12 @@ export function NotifBell({ onOpen }) {
                     <p className="nb-when">{sinceLabel(n.created_at)}</p>
                   </>
                 );
-                // Only rows that know what they're about are clickable. Anything
-                // raised before link_type existed still reads fine, it just sits
-                // there rather than pretending to be a link that goes nowhere.
+                // Only rows that lead somewhere are clickable (lib/noticeLink.js). Anything else still reads
+                // fine, it just sits there rather than pretending to be a link that goes nowhere.
+                const goes = !!noticeTarget(n);
                 return (
-                  <li key={n.id} className={`nb-item ${n.link_type ? 'is-link' : ''}`}>
-                    {n.link_type ? (
+                  <li key={n.id} className={`nb-item ${goes ? 'is-link' : ''}`}>
+                    {goes ? (
                       <button type="button" className="nb-hit"
                         onClick={() => { setOpen(false); onOpen(n); }}>
                         {body}

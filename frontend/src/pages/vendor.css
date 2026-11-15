@@ -190,21 +190,22 @@
 
 /* 🔵 event cards */
 .ev-card {
-  display:flex; gap:14px; background:var(--panel);
+  display:flex; background:var(--panel);
   border:1px solid var(--line); border-radius:20px;
   padding:15px; margin-bottom:12px; cursor:pointer;
   box-shadow:var(--shadowSm);
   transition:transform var(--dur) var(--ease), border-color var(--dur) ease,
              box-shadow var(--dur) ease;
+  gap: 10px;
 }
 .ev-card:hover { transform:translateY(-3px); border-color:color-mix(in srgb, var(--teal) 24%, transparent); box-shadow:var(--shadow); }
 .ev-card:active { transform:translateY(0) scale(.99); }
 .ev-card:hover { border-color:var(--v-accent,var(--teal)); transform:translateY(-1px); }
-.ev-date { text-align:center; min-width:52px; }
-.ev-day { font-size:27px; font-weight:800; line-height:1; letter-spacing:-1px; color:var(--v-accent,var(--teal)); }
+.ev-date { text-align:center; min-width: 46px; }
+.ev-day { font-weight:800; line-height:1; letter-spacing:-1px; color:var(--v-accent,var(--teal)); font-size: 28px; }
 .ev-mon { font-size:11px; font-weight:700; letter-spacing:1px; color:var(--v-text); }
 .ev-dow { font-size:10px; color:var(--v-muted); margin-top:2px; }
-.ev-body { flex:1; min-width:0; }
+.ev-body { flex:1; min-width:0; display: grid; grid-template-columns: minmax(0, max-content) minmax(0, max-content); justify-content: space-between; column-gap: 10px; row-gap: 2px; align-content: center; grid-template-areas: "name time" "type phone" "mail loc"; }
 .ev-name { font-weight:800; font-size:15px; color:var(--v-text); }
 .ev-type { font-size:12.5px; color:var(--v-muted); margin-bottom:6px; }
 .ev-line { font-size:12px; color:var(--v-muted); padding:1px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -442,7 +443,7 @@
 .cs-hint { color: var(--muted); font-size: 13px; }
 .cs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 .cs-empty { color: var(--muted); }
-.cs-card { padding: 18px; cursor: pointer; }
+.cs-card { padding: 18px; cursor: pointer; position: relative; }
 .cs-card-ic { font-size: 30px; }
 /* 📖 the trade's sample contract — set apart from the vendor's own templates */
 .cs-card.is-sample { border-style: dashed; }
@@ -455,32 +456,18 @@
 .cs-label { font-size: 12px; color: var(--muted); }
 .cs-input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 9px; box-sizing: border-box; font-family: inherit; }
 .cs-ta-lg { min-height: 220px; }
-.cs-save { margin-top: 14px; width: 100%; }
 
 /* 📋 Lead detail — view + edit */
-.ld-wrap { padding: 24px; max-width: 640px; }
 /* .dash .main h2 is 15px for list pages — keep the lead title readable */
 /* the main action on a card: a soft tint, not a solid bright fill */
-.ld-edit-btn, .bx-primary, .ctb-preview, .cs-new, .cs-save, .ct-link { background: var(--teal-soft); border-color: transparent; color: var(--teal-2); }
-.ld-edit-btn:hover, .bx-primary:hover, .ctb-preview:hover, .cs-new:hover, .cs-save:hover, .ct-link:hover { border-color: var(--teal-2); }
+.ld-edit-btn, .bx-primary, .ctb-preview, .cs-new, .ct-link { background: var(--teal-soft); border-color: transparent; color: var(--teal-2); }
+.ld-edit-btn:hover, .bx-primary:hover, .ctb-preview:hover, .cs-new:hover, .ct-link:hover { border-color: var(--teal-2); }
 .ld-msg { padding: 10px 12px; border-radius: 9px; margin: 0 0 14px; font-size: 13px; }
 .ld-msg.is-ok { background: #4ade8018; color: #4ade80; }
 .ld-msg.is-err { background: #fb718518; color: #fb7185; }
 
 /* clean detail rows — % label column so half-width cards don't crush values */
-.ld-row {
-  display: grid;
-  grid-template-columns: minmax(100px, 34%) minmax(0, 1fr);
-  gap: 4px 12px;
-  align-items: start;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13.5px;
-  line-height: 1.4;
-}
-.ld-row:last-child { border-bottom: none; }
 .ld-label { width: auto; color: var(--muted); font-weight: 600; font-size: 12px; line-height: 1.35; }
-.ld-row > :last-child { min-width: 0; word-break: break-word; }
 
 /* package selector */
 .ld-select { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 8px 10px; }
@@ -1054,7 +1041,6 @@
 .gal-set-lbl { display: block; margin-top: 18px; }
 .gal-set-hint { font-size: 11px; color: var(--muted); margin: 4px 0 8px; }
 .gal-set-hint code { background: var(--panel-2); padding: 1px 5px; border-radius: 5px; color: var(--teal); }
-.gal-set-ta { min-height: 200px; font-family: inherit; line-height: 1.5; }
 .gal-set-save { margin-top: 16px; width: 100%; }
 
 /* 📧 Send Instructions popup */
@@ -1192,7 +1178,16 @@
 .gal-theme-colors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .gal-color-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .gal-color { width: 38px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; padding: 2px; }
-.gal-theme-preview { margin-top: 16px; padding: 20px; border-radius: 12px; border: 1px solid var(--line); text-align: center; }
+.gal-theme-preview { margin-top: 16px; padding: 20px; border-radius: 12px; border: 1px solid var(--line); text-align: center; background: var(--tp-bg); }
+.gal-tp-kicker { text-transform: uppercase; letter-spacing: 3px; font-size: 10px; color: var(--tp-accent); font-family: var(--tp-bfont); }
+.gal-tp-title { font-family: var(--tp-hfont); font-size: 22px; color: var(--tp-head); margin: 4px 0; }
+.gal-tp-sub { font-size: 12px; color: var(--tp-sub); font-family: var(--tp-bfont); }
+/* the brand colour's hex box (Inquiry form settings) */
+.ifs-hex { width: 100px; height: 36px; box-sizing: border-box; padding: 0 10px; border-radius: 9px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--text); }
+/* a colour code, so monospaced: written to match the panel's uniform field rule (top of this file) plus this class,
+   so it wins on its own, without !important */
+.dash input.ifs-hex:not([type=checkbox]):not([type=color]):not(.iq-wrap *) { font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 760px) {
   .gal-set-cols { grid-template-columns: 1fr; gap: 18px; }
   .gal-set-modal-lg { max-width: 96vw; }
@@ -1317,10 +1312,10 @@
 .fp-toggle { display: inline-flex; gap: 4px; }
 .fp-tog { font-size: 12px; padding: 4px 9px; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 20px; cursor: pointer; line-height: 1; }
 .fp-tog.on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); font-weight: 700; }
-.fp-frame { position: relative; width: 100%; background-size: cover; background-repeat: no-repeat; border-radius: 10px; border: 1px solid var(--line); cursor: crosshair; overflow: hidden; touch-action: none; }
+.fp-frame { position: relative; width: 100%; background-image: var(--img); background-position: var(--fx) var(--fy); background-size: cover; background-repeat: no-repeat; border-radius: 10px; border: 1px solid var(--line); cursor: crosshair; overflow: hidden; touch-action: none; }
 .fp-desktop { aspect-ratio: 16 / 7; }   /* matches the wide desktop cover band */
 .fp-mobile { aspect-ratio: 9 / 14; max-width: 170px; margin: 0 auto; }  /* tall mobile cover */
-.fp-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; background: color-mix(in srgb, var(--teal) 53%, transparent); box-shadow: 0 0 0 2px #06231f88, 0 2px 8px rgba(0,0,0,.4); transform: translate(-50%, -50%); pointer-events: none; }
+.fp-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; background: color-mix(in srgb, var(--teal) 53%, transparent); box-shadow: 0 0 0 2px #06231f88, 0 2px 8px rgba(0,0,0,.4); transform: translate(-50%, -50%); pointer-events: none; left: var(--fx); top: var(--fy); }
 .fp-note { font-size: 11px; color: var(--muted); line-height: 1.5; }
 
 /* 🤖 Vendor AI Chat — history + upsell */
@@ -1377,12 +1372,13 @@
 .gal-preset:hover { border-color: color-mix(in srgb, var(--teal) 53%, transparent); transform: translateY(-1px); }
 .gal-preset.is-on { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 5%, transparent); }
 .gal-preset-swatch {
-  width: 100%; height: 30px;
+  width: 100%; height: 30px; background: var(--sw-bg);
   border-radius: 7px;
   border: 1px solid var(--line);
   display: flex; align-items: center; justify-content: center; gap: 5px;
 }
-.gal-preset-swatch i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.gal-preset-swatch i { width: 9px; height: 9px; border-radius: 50%; display: block; background: var(--sw-a); }
+.gal-preset-swatch i + i { background: var(--sw-b); }
 .gal-preset-name { font-size: 11.5px; font-weight: 600; }
 .gal-fine { margin-top: 16px; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; opacity: .7; }
 @media (max-width: 760px) { .gal-presets { grid-template-columns: repeat(2, 1fr); } }
@@ -1839,7 +1835,6 @@
 
 @media (max-width: 900px) {
   .ld-view { padding: 0 0 20px; }
-  .ld-row { grid-template-columns: 1fr; gap: 2px; padding: 8px 0; }
   .ld-label { font-size: 11px; }
   .ms-fields { grid-template-columns: 1fr; }
   .ms-pay-row { grid-template-columns: 1fr 1fr; }
@@ -1882,10 +1877,6 @@ tr:hover .bk-del { opacity: .8; }
 
 
 @media (max-width: 560px) {
-  .ws-dns-r { grid-template-columns: 40px 1fr 30px; }
-  .ws-dns-n { grid-column: 2; }
-  .ws-dns-v { grid-column: 2 / -1; grid-row: 2; }
-  .ws-dns-note { grid-column: 1 / -1; grid-row: 3; }
 }
 
 /* ══ 🎨 website builder ═══════════════════════════════════════════════
@@ -1950,11 +1941,7 @@ tr:hover .bk-del { opacity: .8; }
 .wb-side-body .ws-row { flex-direction: column; gap: 8px; }
 .wb-side-body .ws-label { font-size: 11px; }
 .wb-side-body input, .wb-side-body select, .wb-side-body textarea { font-size: 12px; }
-.wb-side-body .ws-slug-prefix, .wb-side-body .ws-dns-note { font-size: 10.5px; }
-.wb-side-body .ws-dns-r { grid-template-columns: 36px 1fr 26px; gap: 6px; padding: 7px 9px; }
-.wb-side-body .ws-dns-n { grid-column: 2; }
-.wb-side-body .ws-dns-v { grid-column: 2 / -1; grid-row: 2; font-size: 11.5px; }
-.wb-side-body .ws-dns-note { grid-column: 1 / -1; grid-row: 3; }
+.wb-side-body .ws-slug-prefix { font-size: 10.5px; }
 
 /* ── ✏️ editable text, only inside the builder ── */
 /* Marked all the time, not only on hover: a vendor who doesn't already know
@@ -2149,8 +2136,9 @@ tr:hover .bk-del { opacity: .8; }
   margin-bottom: 7px; }
 .vp-storage-lbl { font-size: 12px; color: var(--muted); }
 .vp-storage-num { font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+.vp-storage-num.is-near { color: var(--tone); }
 .vp-storage-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
-.vp-storage-bar span { display: block; height: 100%; border-radius: 2px; transition: width .35s ease; }
+.vp-storage-bar span { display: block; height: 100%; border-radius: 2px; transition: width .35s ease; width: var(--pct); background: var(--tone); }
 .vp-storage-up { width: 100%; margin-top: 10px; padding: 6px 8px; border-radius: 7px; cursor: pointer;
   font-size: 11.5px; font-weight: 600; border: 1px solid color-mix(in srgb, var(--teal) 40%, transparent);
   background: color-mix(in srgb, var(--teal) 12%, transparent); color: var(--brand, var(--teal)); transition: background .2s ease; }
@@ -2259,7 +2247,6 @@ tr:hover .bk-del { opacity: .8; }
 }
 .cs-default:hover { border-color: #b08a4f; }
 .cs-default.is-on { background: #b08a4f; border-color: #b08a4f; color: #fff; cursor: default; }
-.cs-card { position: relative; }
 
 /* Preferences: the timezone city (dropdown when the country has several,
    read-only when it has one) and the small hint under that field */
@@ -2267,7 +2254,6 @@ tr:hover .bk-del { opacity: .8; }
 .pref-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
 /* a long answer keeps its line breaks on the lead page */
-.ld-val { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* 📱 Mobile audit (Muse, 2026-10-22) */
 /* 🔗 M3: the sidebar items are links now — same look as before */
@@ -2282,8 +2268,6 @@ a.nav-item { color: inherit; text-decoration: none; }
 .bk-nw { white-space: nowrap; }
 /* M7: each DNS record reads as one unit on a phone */
 @media (max-width: 560px) {
-  .ws-dns-r { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
-  .ws-dns-v { grid-column: 1 / -1; grid-row: 2; overflow-wrap: anywhere; }
 }
 /* the dashboard's four counters: two by two on a narrow phone */
 
@@ -2358,11 +2342,6 @@ a.nav-item { color: inherit; text-decoration: none; }
 
 /* 📅 Upcoming Events cards, every size: left — name, event + package, email · right, right-aligned — time, phone, place.
    Each detail keeps its small icon (🕐 📞 📍 ✉️) */
-.ev-card { gap: 10px; }
-.ev-date { min-width: 46px; }
-.ev-day { font-size: 28px; }
-.ev-body { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, max-content); justify-content: space-between;
-  column-gap: 10px; row-gap: 2px; align-content: center; grid-template-areas: "name time" "type phone" "mail loc"; }
 .ev-body .ev-name { grid-area: name; font-size: 17px; }
 .ev-body .ev-type { grid-area: type; margin: 0; }
 .ev-body .ev-mail { grid-area: mail; }

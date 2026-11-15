@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useInboxCounts } from '../lib/inboxCounts.js';
 import { useDialog } from '../lib/dialog.jsx';
+import { noticeTarget, handOver } from '../lib/noticeLink.js';
 import { applyBrandTone } from '../lib/brandTone.js';
 import { api, getUser, logout, applyVendorClock } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
@@ -112,14 +113,14 @@ function StorageBar({ onUpgrade }) {
     : `${leftGb} GB left`;
 
   return (
-    <div className="vp-storage" title={`${(s.used_bytes / 1048576).toFixed(0)} MB used — photos and File Flyer together`}>
+    <div className="vp-storage" title={`${(s.used_bytes / 1048576).toFixed(0)} MB used — photos and File Flyer together`} style={{ '--pct': pct + '%', '--tone': tone }}>
       <div className="vp-storage-top">
         <span className="vp-storage-lbl">Storage</span>
-        <span className="vp-storage-num" style={near ? { color: tone } : undefined}>
+        <span className={`vp-storage-num${near ? ' is-near' : ''}`}>
           {near ? leftTxt : `${size(s.used_bytes || 0)} / ${size(limitBytes)}`}
         </span>
       </div>
-      <div className="vp-storage-bar"><span style={{ width: pct + '%', background: tone }} /></div>
+      <div className="vp-storage-bar"><span /></div>
       {/* Always there, no condition at all.
 
           It used to hide when no BIGGER package existed, which was right when
@@ -265,28 +266,16 @@ export default function VendorPanel({ onLogout }) {
     }
   }
 
-  // 🔔 A notification knows what it's about, so send the vendor straight there
-  // rather than dropping them on a list to go and find it themselves.
+  // 🔔 A notification knows what it's about, so send the vendor straight there (lib/noticeLink.js) rather than
+  // dropping them on a list to go and find it themselves. A call or text opens Calls & messages ON that person, an
+  // email inquiry opens its thread, a reminder opens the reminders.
   function openNotification(n) {
-    if (n.link_type === 'lead' && n.link_id) navigate({ tab: 'leads', lead: String(n.link_id) });
-    else if (n.link_type === 'aichat') navigate({ tab: 'aichat' });
-    /* 🖼️ A selection notification opens the gallery it is about. Without this
-       the row renders but does nothing when pressed, which is worse than not
-       being clickable — it reads as broken rather than as plain text. */
-    else if (n.link_type === 'album' && n.link_id) navigate({ tab: 'galleries', album: String(n.link_id) });
-    /* 🎉 An anniversary reminder opens the page that can act on it. A reminder
-       that does not take you to the thing is half a reminder. */
-    else if (n.link_type === 'occasion') navigate({ tab: 'occasions' });
-    /* 📞 A text or missed call opens Calls & messages ON that person. The
-       event id is handed over through sessionStorage (if the page is about
-       to load) and an event (if it is already open). */
-    else if (n.link_type === 'comms') {
-      if (n.link_id) {
-        sessionStorage.setItem('cm-open', String(n.link_id));
-        window.dispatchEvent(new CustomEvent('cm-open'));
-      }
-      navigate({ tab: 'comms' });
-    }
+    const to = noticeTarget(n);
+    if (!to) return;
+    if (n.link_type === 'comms' && n.link_id) handOver('cm-open', String(n.link_id));
+    if (n.link_type === 'email') handOver('ib-open', n.thread || '');
+    if (n.link_type === 'agent') handOver('ag-reminders');
+    navigate(to);
   }
 
   /* 📞 From the screen pop: open Calls & messages on the caller, by number —

@@ -48,6 +48,7 @@
   position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; padding: 0; border: 3px solid var(--ppm-todo); border-radius: 50%;
   background: var(--panel); cursor: pointer; transition: transform .12s ease-out;
+  margin: 2px 0;
 }
 span.ppm-knob { cursor: default; }
 button.ppm-knob:hover { transform: scale(1.18); }
@@ -58,7 +59,7 @@ button.ppm-knob:focus-visible { outline: 2px solid var(--teal); outline-offset: 
 }
 .ppm-step.is-half .ppm-knob { border-color: var(--ppm-done); background: linear-gradient(90deg, var(--ppm-done) 50%, var(--panel) 50%); }
 .ppm-step.is-next .ppm-knob { width: 26px; height: 26px; margin: 0; border-color: var(--ppm-next); }
-.ppm-knob { margin: 2px 0; }   /* a 22px dot centred where the 26px next one is */
+/* a 22px dot centred where the 26px next one is */
 /* the status word under each step (PpmBoard captionOf): a date, what the Raw Selector did, or — orange — what comes next */
 .ppm-cap { min-height: 14px; max-width: 100%; font-size: 10.5px; font-style: normal; line-height: 1.25; text-align: center; color: var(--muted); }
 .ppm-step.is-done .ppm-cap { color: var(--ppm-done); }

@@ -81,7 +81,7 @@ export default function Vote() {
                   return (
                     <div key={name} className="vote-stat-row">
                       <div className="vote-stat-top"><span className="vote-stat-name">{name}</span><span className="vote-stat-num">{c} · {pct}%</span></div>
-                      <div className="vote-bar-track"><div className="vote-bar-fill" style={{ width: pct + '%' }} /></div>
+                      <div className="vote-bar-track"><div className="vote-bar-fill" style={{ '--pct': pct + '%' }} /></div>
                     </div>
                   );
                 })}

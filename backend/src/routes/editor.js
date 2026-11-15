@@ -304,7 +304,7 @@ router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) 
     await prisma.raw_files.updateMany({ where: { album_id: a.id, vendor_id: v, delivered_at: null }, data: { delivered_at: new Date() } });
     const who = req.editor.name || req.editor.email;
     const client = !!req.body?.client;
-    await notify(v, `🎞️ ${a.title}: ${count} edited photo${count === 1 ? '' : 's'} delivered`, `${who} sent them${client ? ' and told the client' : ''}. The gallery is in Galleries.`, 'info', '/panel/galleries');
+    await notify(v, `🎞️ ${a.title}: ${count} edited photo${count === 1 ? '' : 's'} delivered`, `${who} sent them${client ? ' and told the client' : ''}. The gallery is in Galleries.`, 'info', { type: 'album', id: gallery.id });
     const ven = await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true, email: true } });
     const studio = ven?.business_name || 'Your photographer';
     const base = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');

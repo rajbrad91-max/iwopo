@@ -36,7 +36,8 @@ code += walk(B,[],/\.js$/).map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const dyn=[...new Set([...code.matchAll(/([a-z][a-z0-9-]*-)\$\{/g)].map(m=>m[1]))];
 let dead=0;
 for(const p of walk(S,[],/\.css$/)){
-  const css=fs.readFileSync(p,'utf8');
+  // a url() is a file, not a class: './fonts/inter.woff2' once read as a dead ".woff2"
+  const css=fs.readFileSync(p,'utf8').replace(/url\([^)]*\)/g,'');
   const d=[...new Set([...css.matchAll(/\.([a-z][a-z0-9-]*)/g)].map(m=>m[1]))]
     .filter(c=>!code.includes(c)&&!dyn.some(x=>c.startsWith(x)));
   if(d.length){ console.log('  dead in '+p.replace(S+'/','')+': '+d.join(', ')); dead+=d.length; }
@@ -74,11 +75,15 @@ const ADMIN = ['bg','panel','panel-2','line','muted','text','teal','teal-2','tea
 // stylesheets a CLIENT loads. vendor/super/index/fileflyer's .ff- half are the
 // admin side and are supposed to use these.
 const CLIENT = ['portal.css','inquiry.css','site.css','certificate.css','vote.css','chatwidget.css'];
+// a stylesheet drawn INSIDE another's scope also has that scope's tokens: the chat bubble lives in the inquiry form
+// (.iq-wrap), which defines --line/--text/--muted for its own light page
+const INSIDE = { 'chatwidget.css': 'inquiry.css' };
 let leaks=0;
 for(const f of CLIENT){
   let css; try { css=fs.readFileSync(S+'/'+f,'utf8'); } catch { continue; }
   // a token is only a leak if the file USES it without DEFINING it
-  const defined=new Set([...css.matchAll(/--([a-z0-9-]+)\s*:/g)].map(m=>m[1]));
+  const scope=INSIDE[f] ? css+fs.readFileSync(S+'/'+INSIDE[f],'utf8') : css;
+  const defined=new Set([...scope.matchAll(/--([a-z0-9-]+)\s*:/g)].map(m=>m[1]));
   for(const t of ADMIN){
     if(defined.has(t)) continue;                       // redefined locally = fine
     const re=new RegExp('var\\(--'+t+'[,)]','g');
@@ -134,11 +139,13 @@ let found=0;
 for(const f of walk(S)){
   if(f.endsWith('lib/dialog.jsx')) continue;             // the replacement itself
   fs.readFileSync(f,'utf8').split('\n').forEach((line,i)=>{
+    if(/^\s*(\/\*|\*)/.test(line)) return;                   // a block-comment line is words, not code
     const code=line.split('//')[0];                      // ignore comments
     // ⚠️ "window." is matched too. The old pattern excluded any call with a dot
     // in front of it — meant to skip dialog.confirm() — which also skipped
     // window.confirm(), so three of them sat in the contract editor unflagged.
-    const bare=code.replace(/\bdialog\.(confirm|alert|prompt)\s*\(/g,'');   // the in-app ones are fine
+    const bare=code.replace(/\bdialog\.(confirm|alert|prompt)\s*\(/g,'')    // the in-app ones are fine
+                   .replace(/\bfunction\s+(confirm|alert|prompt)\s*\(/g,'');   // and a function of our own that happens to be called confirm
     if(/(^|[^.\w]|\bwindow\.)(confirm|alert|prompt)\s*\(/.test(bare)){
       console.log('  ⚠️  '+f.replace(S+'/','')+':'+(i+1)+'  '+code.trim().slice(0,60));
       found++;
@@ -146,6 +153,30 @@ for(const f of walk(S)){
   });
 }
 console.log('  native dialogs: '+found);
+INNER
+
+echo
+echo "=== 4e. INLINE STYLES — a style attribute may only hand values over ==="
+node - <<'INNER'
+const fs=require('fs');
+const S='/var/www/iwopo-staging/frontend/src';
+function walk(d,o=[]){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=d+'/'+e.name;
+  if(e.isDirectory())walk(p,o); else if(/\.jsx$/.test(e.name))o.push(p);} return o;}
+// Every property lives in a stylesheet (Raj's rule: no inline styles). A value only the page knows — a percentage, a
+// vendor's colour — goes in as a CSS custom property (style={{ '--pct': … }}) and the stylesheet reads var(--pct).
+// style={…} with a name is allowed only for a ready-made object of variables: styleVars, or brandTheme's
+// themeStyleObject(), which returns custom properties only.
+const keys=(s)=>{ const out=[]; let d=0,cur=''; for(const ch of s){ if('({[`'.includes(ch))d++; else if(')}]'.includes(ch))d--;
+  if(ch===','&&d===0){out.push(cur);cur='';} else cur+=ch; } out.push(cur);
+  return out.map(k=>(k.match(/^\s*(['"]?)([\w-]+)\1\s*:/)||[])[2]).filter(Boolean); };
+let found=0;
+for(const f of walk(S)){ const src=fs.readFileSync(f,'utf8'); const rel=f.replace(S+'/','');
+  for(const m of src.matchAll(/style=\{\{([\s\S]*?)\}\}/g)) for(const k of keys(m[1])) if(!k.startsWith('--')){
+    console.log('  ⚠️  '+rel+':'+src.slice(0,m.index).split('\n').length+'  '+k+' (a property — put it in the stylesheet)'); found++; }
+  for(const m of src.matchAll(/style=\{(?!\{)([^}]*)\}/g)) if(!/^(\w*Vars|themeStyleObject\([^)]*\))$/.test(m[1].trim())){
+    console.log('  ⚠️  '+rel+':'+src.slice(0,m.index).split('\n').length+'  style={'+m[1].trim().slice(0,40)+'}'); found++; }
+}
+console.log('  inline styles: '+found);
 INNER
 
 echo

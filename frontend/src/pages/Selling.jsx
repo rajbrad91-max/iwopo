@@ -30,9 +30,9 @@ function useReveal() {
   }, []);
   return ref;
 }
-function Reveal({ children, className = '', style, id, as: Tag = 'div' }) {
+function Reveal({ children, className = '', id, as: Tag = 'div' }) {
   const ref = useReveal();
-  return <Tag ref={ref} id={id} className={`reveal ${className}`} style={style}>{children}</Tag>;   // id: where a menu link lands (#faq)
+  return <Tag ref={ref} id={id} className={`reveal ${className}`}>{children}</Tag>;   // id: where a menu link lands (#faq)
 }
 
 function useCountUp(target, run) {
@@ -447,7 +447,7 @@ export default function Selling({ onSignup, onGoLogin }) {
                       <div className="sl-dash-rev-num">${revenue.toLocaleString()}</div>
                       <div className="sl-dash-bars">
                         {[42, 58, 40, 72, 64, 88, 76].map((h, i) => (
-                          <span key={i} style={{ height: `${h}%`, animationDelay: `${0.35 + i * 0.07}s` }} />
+                          <span key={i} style={{ '--h': `${h}%`, '--delay': `${0.35 + i * 0.07}s` }} />
                         ))}
                       </div>
                     </div>

@@ -37,12 +37,14 @@
   min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
   padding: 40px 20px; color: var(--text);
   background: var(--page-bg);
+  padding-bottom: 96px;
 }
 .iq-card {
   position: relative; overflow: hidden; width: 100%; max-width: 860px;
   background: var(--surface);
   border: 1px solid var(--line); border-radius: 20px;
   color: var(--text); box-shadow: var(--shadow);
+  z-index: 1;
 }
 
 /* header, every theme: the logo (or the studio's initials) centred on top, the name and intro under it
@@ -72,7 +74,6 @@
    the whole page (Raj, 2026-10-09: "one big watermark, stylish"). */
 .iq-art { position: fixed; z-index: 0; right: 3vw; bottom: 4vh; width: min(40vw, 440px); height: auto; color: var(--brand); opacity: .10; transform: rotate(-9deg); pointer-events: none; }
 .iq-art-2 { right: auto; bottom: auto; left: 3vw; top: 9vh; width: min(22vw, 210px); opacity: .07; transform: rotate(11deg); }
-.iq-card { z-index: 1; }
 /* 🧾 the same frame inside the panel's Edit Details (InquiryShell embedded): its own rounded area, no full-screen
    height, the drawing held inside it rather than fixed to the window */
 .iq-wrap.is-embedded { position: relative; overflow: hidden; min-height: 0; border-radius: 18px; padding: 32px 16px; }
@@ -189,7 +190,6 @@
 .iq-time-24 { grid-template-columns: 1fr 1fr; }   /* 24-hour: no AM/PM box */
 .iq-card .iq-time select { --dd-inset: .75em; min-width: 0; padding-left: 10px; text-overflow: clip; }
 /* the chat bubble must never sit over the last questions or the send button */
-.iq-wrap { padding-bottom: 96px; }
 
 /* 📸 Instagram: a fixed "@" in front of the handle */
 .inq-at { position: relative; }
