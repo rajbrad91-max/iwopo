@@ -119,9 +119,10 @@ router.post('/:id/videos', requireAuth, uploadVideo.fields([
     const ext = (path.extname(file.originalname) || '.mp4').toLowerCase().slice(0, 8);
     const vidName = `${base}_video${ext}`;
     // renamed rather than copied where possible: a 20GB copy doubles the disk
-    // used and the time taken, for no gain
-    try { fs.renameSync(file.path, path.join(dir, vidName)); }
-    catch { fs.copyFileSync(file.path, path.join(dir, vidName)); fs.unlinkSync(file.path); }
+    // used and the time taken, for no gain — and when it must be copied, the
+    // server keeps answering everybody else while it runs
+    try { await fs.promises.rename(file.path, path.join(dir, vidName)); }
+    catch { await fs.promises.copyFile(file.path, path.join(dir, vidName)); await fs.promises.unlink(file.path); }
 
     // the poster stands in for both tiers, so the grid and the viewer need no
     // special case for a film

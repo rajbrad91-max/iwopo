@@ -82,7 +82,7 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
          camera original, for a live shoot Raj's export — and it is what a
          download serves. It starts on its way to R2 at once, while the screen
          sizes are being made, rather than waiting for them. */
-      fs.copyFileSync(f.path, path.join(dir, origName));
+      await fs.promises.copyFile(f.path, path.join(dir, origName));   // ⏳ tens of MB — the server keeps answering meanwhile
       const origSent = r2on ? toR2(origName, f.size) : null;
 
       // 📐 the two screen sizes — one shared definition, see lib/photoSizes.js
@@ -94,7 +94,7 @@ router.post('/:id/photos', deviceOrAuth, upload.array('photos', 50), async (req,
          every reader falls back there, so an unreachable R2 costs a slower read,
          not a lost wedding. */
       if (r2on) await Promise.all([origSent, toR2(fullName, fullSize), toR2(thumbName, thumbSize)]);
-      fs.unlinkSync(f.path);
+      await fs.promises.unlink(f.path);
 
       const rel = (n) => `${v}/${id}/${n}`;
       const eventId = req.body.event_id ? parseInt(req.body.event_id, 10) : null;
