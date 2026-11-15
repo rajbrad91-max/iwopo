@@ -101,10 +101,10 @@ export default function OccasionsView() {
             <label className="lbl">Message</label>
             <textarea className="oc-area" rows={14} value={draft.body}
               onChange={e => setDraft({ ...draft, body: e.target.value })} />
-            <div className="oc-sheet-f">
-              <button className="refresh" onClick={() => setDraft(null)}>Cancel</button>
-              <button className="sa-btn-teal" disabled={busy} onClick={send}>
-                {busy ? 'Sending…' : '📨 Send'}
+            <div className="pop-foot">
+              <button className="pop-btn" onClick={() => setDraft(null)}>Cancel</button>
+              <button className="pop-btn" disabled={busy} onClick={send}>
+                {busy ? 'Sending…' : 'Send'}
               </button>
             </div>
           </div>

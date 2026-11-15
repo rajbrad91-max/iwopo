@@ -622,7 +622,7 @@ export function AlbumDetail({ albumId, onBack }) {
           <div className="gal-set-modal ev-modal" onClick={e => e.stopPropagation()}>
             <div className="al-head">
               <h3 className="al-title">
-                {evModal.type === 'add' ? '➕ New event' : evModal.type === 'edit' ? '✏️ Rename event' : '🗑️ Delete event'}
+                {evModal.type === 'add' ? 'New event' : evModal.type === 'edit' ? 'Rename event' : 'Delete event'}
               </h3>
               <button className="al-x" onClick={() => !evBusy && setEvModal(null)}>✕</button>
             </div>
@@ -649,10 +649,10 @@ export function AlbumDetail({ albumId, onBack }) {
               </>
             )}
 
-            <div className="ev-modal-foot">
-              <button className="refresh ev-modal-cancel" onClick={() => setEvModal(null)} disabled={evBusy}>Cancel</button>
+            <div className="pop-foot">
+              <button className="pop-btn" onClick={() => setEvModal(null)} disabled={evBusy}>Cancel</button>
               <button
-                className={`refresh ev-modal-ok ${evModal.type === 'delete' ? 'ev-modal-danger' : ''}`}
+                className={`pop-btn ${evModal.type === 'delete' ? 'is-danger' : ''}`}
                 onClick={commitEvent} disabled={evBusy}
               >
                 {evBusy ? '…' : evModal.type === 'add' ? 'Add event' : evModal.type === 'edit' ? 'Save' : 'Delete'}
@@ -666,7 +666,7 @@ export function AlbumDetail({ albumId, onBack }) {
         <div className="al-overlay" onClick={() => setFavModal(false)}>
           <div className="gal-set-modal ad-fav-modal" onClick={e => e.stopPropagation()}>
             <div className="al-head">
-              <h3 className="al-title">⭐ Client favorites</h3>
+              <h3 className="al-title">Client favorites</h3>
               <button className="al-x" onClick={() => setFavModal(false)}>✕</button>
             </div>
 
@@ -710,7 +710,7 @@ export function AlbumDetail({ albumId, onBack }) {
         <div className="al-overlay" onClick={() => setSelModal(false)}>
           <div className="gal-set-modal ad-fav-modal" onClick={e => e.stopPropagation()}>
             <div className="al-head">
-              <h3 className="al-title">📩 Client's selection</h3>
+              <h3 className="al-title">Client's selection</h3>
               <button className="al-x" onClick={() => setSelModal(false)}>✕</button>
             </div>
             {selBusy ? (
@@ -726,16 +726,16 @@ export function AlbumDetail({ albumId, onBack }) {
                     {selData.completed_at && <span className="ad-sel-done">✓ Completed</span>}
                   </div>
                   <div className="ad-sel-acts">
-                    <button className="refresh ad-ev-btn" onClick={copySelectionNames} title="Copy all selected file names">
-                      {copiedNames ? '✓ Copied' : '📋 Copy names'}
+                    <button className="pop-btn" onClick={copySelectionNames} title="Copy all selected file names">
+                      {copiedNames ? 'Copied' : 'Copy names'}
                     </button>
-                    <a className="refresh ad-ev-btn" href={`/api/albums/${albumId}/selection.zip?token=${token}`} title="Download the selected photos as a Zip file">⬇️ Download Zip</a>
-                    <button className={`refresh ad-ev-btn ${selData.completed_at ? 'ad-btn-done' : ''}`} onClick={toggleSelectionComplete} disabled={selActBusy}
+                    <a className="pop-btn" href={`/api/albums/${albumId}/selection.zip?token=${token}`} title="Download the selected photos as a Zip file">Download Zip</a>
+                    <button className="pop-btn" onClick={toggleSelectionComplete} disabled={selActBusy}
                       title={selData.completed_at ? 'Mark as not completed' : 'Mark this selection as handled'}>
-                      {selData.completed_at ? '↩️ Mark not done' : '✅ Mark completed'}
+                      {selData.completed_at ? 'Mark not done' : 'Mark completed'}
                     </button>
-                    <button className="refresh ad-ev-btn ad-btn-danger" onClick={() => setSelClearAsk(true)} disabled={selActBusy}
-                      title="Clear this selection and note — your photos are not deleted">🗑️ Delete selection</button>
+                    <button className="pop-btn is-danger" onClick={() => setSelClearAsk(true)} disabled={selActBusy}
+                      title="Clear this selection and note — your photos are not deleted">Delete selection</button>
                   </div>
                 </div>
 
@@ -743,10 +743,10 @@ export function AlbumDetail({ albumId, onBack }) {
                   <div className="ad-sel-confirm">
                     <span>Clear this selection and the client's note? Your photos will <b>not</b> be deleted.</span>
                     <span className="ad-sel-confirm-acts">
-                      <button className="refresh ad-ev-btn ad-btn-danger" onClick={clearSelection} disabled={selActBusy}>
+                      <button className="pop-btn is-danger" onClick={clearSelection} disabled={selActBusy}>
                         {selActBusy ? 'Clearing…' : 'Yes, clear it'}
                       </button>
-                      <button className="refresh ad-ev-btn" onClick={() => setSelClearAsk(false)} disabled={selActBusy}>Cancel</button>
+                      <button className="pop-btn" onClick={() => setSelClearAsk(false)} disabled={selActBusy}>Cancel</button>
                     </span>
                   </div>
                 )}

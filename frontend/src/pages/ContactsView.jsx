@@ -110,9 +110,9 @@ export default function ContactsView() {
               <input value={edit.note || ''} onChange={e => setEdit({ ...edit, note: e.target.value })}
                 placeholder="editor, second shooter, bride's mother…" />
             </label>
-            <div className="cts-acts">
-              <button className="cts-b" onClick={() => setEdit(null)}>Cancel</button>
-              <button className="cts-b is-primary" disabled={busy} onClick={save}>
+            <div className="pop-foot">
+              <button className="pop-btn" onClick={() => setEdit(null)}>Cancel</button>
+              <button className="pop-btn" disabled={busy} onClick={save}>
                 {busy ? 'Saving…' : 'Save'}
               </button>
             </div>

@@ -58,7 +58,6 @@
 }
 .oc-area { line-height: 1.6; resize: vertical; }
 
-.oc-sheet-f { display: flex; justify-content: flex-end; gap: 8px; }
 
 @media (max-width: 560px) {
   .oc-card { flex-wrap: wrap; gap: 10px; }

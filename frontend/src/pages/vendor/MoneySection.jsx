@@ -167,7 +167,7 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
           <div className="gal-set-modal ev-modal" onClick={e => e.stopPropagation()}>
             <div className="al-head">
               <h3 className="al-title">
-                {claimModal.mode === 'dismiss' ? '↩️ Not received yet' : '💰 Confirm payment received'}
+                {claimModal.mode === 'dismiss' ? 'Not received yet' : 'Confirm payment received'}
               </h3>
               <button className="al-x" onClick={() => setClaimModal(null)}>✕</button>
             </div>
@@ -201,9 +201,9 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
               </>
             )}
 
-            <div className="ev-modal-foot">
-              <button className="refresh ev-modal-cancel" onClick={() => setClaimModal(null)}>Cancel</button>
-              <button className="refresh ev-modal-ok" onClick={settleClaim}>
+            <div className="pop-foot">
+              <button className="pop-btn" onClick={() => setClaimModal(null)}>Cancel</button>
+              <button className="pop-btn" onClick={settleClaim}>
                 {claimModal.mode === 'dismiss' ? 'Leave unpaid' : 'Record payment'}
               </button>
             </div>

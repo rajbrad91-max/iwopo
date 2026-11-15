@@ -55,14 +55,14 @@ function AddLeadModal({ vendorId, onClose, onSaveDone }) {
     <div className="al-overlay" onClick={onClose}>
       <div className="al-modal iq-inline" onClick={e => e.stopPropagation()}>
         <div className="al-head">
-          <h3 className="al-title">➕ Add Lead</h3>
+          <h3 className="al-title">Add lead</h3>
           <button className="al-x" onClick={onClose}>✕</button>
         </div>
         {!cfg ? <div className="loading">Loading…</div> : (
           <>
             <LeadFormBody cfg={cfg} p={p} setPI={setPI} answers={answers} setAns={setAns} notes={notes} setNotes={setNotes} />
             {err && <div className="al-err">⚠️ {err}</div>}
-            <button className="refresh al-save" onClick={save} disabled={busy}>{busy ? 'Saving…' : '💾 Save Lead'}</button>
+            <button className="pop-btn al-save" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save lead'}</button>
           </>
         )}
       </div>

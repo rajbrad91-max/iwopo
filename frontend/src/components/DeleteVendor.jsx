@@ -20,7 +20,7 @@ export default function DeleteVendorModal({ vendorId, onClose, onDeleted }) {
   return (
     <div className="sa-del-back" role="dialog" aria-modal="true" aria-label="Delete vendor">
       <div className="sa-del">
-        <h3 className="sa-del-h">🗑️ Delete {p ? p.business_name : 'vendor'}?</h3>
+        <h3 className="sa-del-h">Delete {p ? p.business_name : 'vendor'}?</h3>
         {!p ? <p className="sa-del-p">{err || 'Loading…'}</p> : p.blocked ? <p className="sa-del-p">🔒 {p.blocked}</p> : <>
           <p className="sa-del-p">This removes the account <b>for good</b> — it cannot be undone:</p>
           <ul className="sa-del-list">
@@ -36,9 +36,9 @@ export default function DeleteVendorModal({ vendorId, onClose, onDeleted }) {
           <input id="sa-del-name" className="sa-del-input" value={typed} onChange={e => setTyped(e.target.value)} autoComplete="off" autoFocus />
         </>}
         {err && p && <p className="sa-del-err">⚠️ {err}</p>}
-        <div className="sa-del-actions">
-          <button type="button" className="sa-del-cancel" onClick={onClose} disabled={busy}>Cancel</button>
-          {p && !p.blocked && <button type="button" className="sa-del-go" disabled={!match || busy} onClick={go}>{busy ? 'Deleting…' : 'Delete for good'}</button>}
+        <div className="pop-foot">
+          <button type="button" className="pop-btn" onClick={onClose} disabled={busy}>Cancel</button>
+          {p && !p.blocked && <button type="button" className="pop-btn is-danger" disabled={!match || busy} onClick={go}>{busy ? 'Deleting…' : 'Delete for good'}</button>}
         </div>
       </div>
     </div>

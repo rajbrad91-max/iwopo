@@ -694,9 +694,9 @@ export default function CommsView() {
                 </div>
               ))}
             </div>
-            <div className="cm-sheet-f">
-              <button className="cm-f" onClick={() => setContact(null)}>Cancel</button>
-              <button className="cm-f is-on" disabled={saving || !contact.first_name.trim()} onClick={saveContact}>
+            <div className="pop-foot">
+              <button className="pop-btn" onClick={() => setContact(null)}>Cancel</button>
+              <button className="pop-btn" disabled={saving || !contact.first_name.trim()} onClick={saveContact}>
                 {saving ? 'Saving…' : contact.editing ? 'Update contact' : 'Save contact'}
               </button>
             </div>

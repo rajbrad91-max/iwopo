@@ -142,7 +142,7 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
     <div className="em-backdrop" onClick={onClose}>
       <div className="em-modal" onClick={e => e.stopPropagation()}>
         <div className="em-head">
-          <h3>📧 Send Packages</h3>
+          <h3>Send packages</h3>
           <span className="em-to">to {lead.email}</span>
           <button type="button" className="em-x" onClick={onClose}>✕</button>
         </div>
@@ -196,17 +196,17 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
         </div>
 
         <div className="em-foot">
-          <button type="button" onClick={saveAsTemplate} disabled={saving}>
-            {saving ? 'Saving…' : '💾 Save as template'}
+          <button type="button" className="pop-btn" onClick={saveAsTemplate} disabled={saving}>
+            {saving ? 'Saving…' : 'Save as template'}
           </button>
-          <button type="button" onClick={copyLink}>{copied ? '✓ Copied' : '🔗 Copy link'}</button>
+          <button type="button" className="pop-btn" onClick={copyLink}>{copied ? 'Copied' : 'Copy link'}</button>
           {/* opens the contract full-page in a new tab, so the half-finished
               send isn't lost by navigating away from it */}
-          <button type="button" onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}>
-            👁️ Preview Contract
+          <button type="button" className="pop-btn" onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}>
+            Preview contract
           </button>
-          <button type="button" className="is-primary" onClick={send} disabled={busy}>
-            {busy ? 'Sending…' : '📤 Send'}
+          <button type="button" className="pop-btn" onClick={send} disabled={busy}>
+            {busy ? 'Sending…' : 'Send'}
           </button>
         </div>
       </div>

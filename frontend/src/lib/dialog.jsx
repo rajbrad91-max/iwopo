@@ -93,13 +93,9 @@ function DialogHost({ cfg, onClose }) {
       // the panel and drifted out does not
       if (e.target === e.currentTarget) onClose(cfg.kind === 'prompt' ? null : false);
     }}>
-      <div className={`dlg-panel ${cfg.danger ? 'is-danger' : ''} ${cfg.error ? 'is-error' : ''}`}
+      <div className={`dlg-panel ${cfg.error ? 'is-error' : ''}`}
         role="dialog" aria-modal="true" aria-label={cfg.title} onKeyDown={onKey}>
-        <h3 className="dlg-title">
-          {cfg.kind === 'confirm' && (cfg.danger ? '⚠️ ' : '❓ ')}
-          {cfg.error && '⚠️ '}
-          {cfg.title}
-        </h3>
+        <h3 className="dlg-title">{cfg.title}</h3>
         {/* the message may carry deliberate line breaks — several of the
             confirms it replaced used \n\n to separate a warning from detail */}
         <p className="dlg-msg">{cfg.message}</p>
@@ -121,7 +117,7 @@ function DialogHost({ cfg, onClose }) {
             </button>
           )}
           <button type="button" autoFocus={cfg.kind !== 'prompt'}
-            className={`dlg-btn is-primary ${cfg.danger ? 'is-danger' : ''}`}
+            className={`dlg-btn ${cfg.danger ? 'is-danger' : ''}`}
             onClick={submit}>
             {cfg.okLabel}
           </button>

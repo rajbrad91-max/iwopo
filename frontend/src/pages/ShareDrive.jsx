@@ -651,7 +651,7 @@ function MoveDialog({ what, onClose, onMoved }) {
         </select>
         <div className="dlg-actions">
           <button type="button" className="dlg-btn" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="button" className="dlg-btn is-primary" onClick={move} disabled={busy || !folders}>{busy ? 'Moving…' : 'Move'}</button>
+          <button type="button" className="dlg-btn" onClick={move} disabled={busy || !folders}>{busy ? 'Moving…' : 'Move'}</button>
         </div>
       </div>
     </div>

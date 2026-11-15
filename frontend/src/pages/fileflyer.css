@@ -339,7 +339,6 @@
 .ff-person-s { font-size: 12px; color: #64757d; }
 .ff-note { margin: 12px 0 0; font-size: 13px; color: #0f766e; }
 .ff-spacer { flex: 1; }
-.ff-stop { color: #dc2626; }
 
 /* 🔍 one sticky toolbar (tabs + where you are + search + actions), then filters and sort — Muse review 2026-10-20 */
 .fd-sticky { position: sticky; top: 0; z-index: 6; padding: 8px 0 2px; margin-bottom: 6px;

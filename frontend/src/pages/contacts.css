@@ -45,4 +45,3 @@
   color: var(--text); font-size: 13.5px; box-sizing: border-box; }
 .cts-card input:focus { outline: none; border-color: var(--teal); }
 .cts-opt { opacity: .6; font-size: 11.5px; }
-.cts-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }

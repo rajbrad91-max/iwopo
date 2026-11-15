@@ -513,7 +513,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 <label className="lbl">Full gallery link (all albums — embed on your website)</label>
                 <div className="gal-set-link">
                   <input className="gal-input" readOnly value={galleryToken ? `${clientBase()}/gallery/${galleryToken}` : 'Loading…'} onFocus={e => e.target.select()} />
-                  <button className="refresh gal-copy-url" onClick={copyGalleryUrl} disabled={!galleryToken}>{copiedGallery ? 'Copied' : 'Copy'}</button>
+                  <button className="pop-btn" onClick={copyGalleryUrl} disabled={!galleryToken}>{copiedGallery ? 'Copied' : 'Copy'}</button>
                 </div>
 
                 <label className="lbl gal-set-lbl">Default password prefixes</label>
@@ -525,7 +525,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
 
                 <label className="lbl gal-set-lbl">Gallery email</label>
                 <div className="gal-set-hint">The email a client gets when you press Send is in Settings → Setup Email → Email templates → Gallery shared.</div>
-                <button className="refresh gal-save gal-set-save" onClick={saveSettingsOnly}>Save settings</button>
+                <button className="pop-btn gal-set-save" onClick={saveSettingsOnly}>Save settings</button>
               </div>
 
               <div className="gal-set-col">
@@ -589,7 +589,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                   <div className="gal-tp-sub">{theme.subtitle_text || 'Secure, Password-Protected Memories'}</div>
                 </div>
 
-                <button className="refresh gal-save gal-set-save" onClick={saveTheme}>{themeSaved ? 'Saved' : 'Save style'}</button>
+                <button className="pop-btn gal-set-save" onClick={saveTheme}>{themeSaved ? 'Saved' : 'Save style'}</button>
               </div>
             </div>
           </div>
@@ -693,9 +693,9 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
               : <div className="gal-send-preview">{sendModal.body}</div>}
 
             <div className="gal-send-foot">
-              <button type="button" className="refresh gal-send-btn" onClick={doSend}>Send</button>
+              <button type="button" className="pop-btn" onClick={doSend}>Send</button>
               {sendMsg && <span className="gal-err">{sendMsg}</span>}
-              <button type="button" className="refresh gal-send-btn gal-send-copy" onClick={copyInstructions}>{copiedMsg ? 'Copied' : 'Copy'}</button>
+              <button type="button" className="pop-btn gal-send-copy" onClick={copyInstructions}>{copiedMsg ? 'Copied' : 'Copy'}</button>
             </div>
           </div>
         </div>

@@ -25,7 +25,7 @@ export default function CameraFtpBox({ member, onClose }) {
     <div className="al-overlay" onClick={onClose}>
       <div className="cftp" role="dialog" aria-modal="true" aria-label={`Camera FTP — ${member.name}`} onClick={e => e.stopPropagation()}>
         <div className="al-head">
-          <h3 className="al-title">📡 Camera FTP · {member.name}</h3>
+          <h3 className="al-title">Camera FTP · {member.name}</h3>
           <button className="al-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
         {err && <div className="err-banner">⚠️ {err}</div>}
@@ -43,7 +43,7 @@ export default function CameraFtpBox({ member, onClose }) {
               </dl>
             ) : <p className="cftp-note">No FTP login yet.</p>}
             <div className="cftp-foot">
-              <button className="refresh gal-save" type="button" disabled={busy} onClick={make}>{ftp.user ? 'New password' : 'Create the FTP login'}</button>
+              <button className="pop-btn" type="button" disabled={busy} onClick={make}>{ftp.user ? 'New password' : 'Create the FTP login'}</button>
             </div>
           </>
         )}

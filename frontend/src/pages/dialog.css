@@ -46,17 +46,19 @@
   display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px;
 }
 .dlg-btn {
-  padding: 9px 17px; font: inherit; font-size: 14px; font-weight: 600;
-  cursor: pointer; border-radius: 9px;
-  background: #f2f5f7; border: 1px solid #dde3e7; color: #4a5560;
+  min-width: 104px; padding: 10px 20px; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2;
+  cursor: pointer; border-radius: 12px;
+  background: #ffffff; border: 1px solid #dde3e7; color: #1a2529;
+  transition: transform .22s cubic-bezier(.34, 1.4, .64, 1), box-shadow .22s ease, border-color .22s ease, color .22s ease;
 }
-.dlg-btn:hover { background: #e8edf0; }
-.dlg-btn.is-primary { background: var(--btn-fill); border-color: var(--btn-fill); color: var(--btn-fill-ink); }
-.dlg-btn.is-primary:hover { background: var(--btn-fill-hover); }
-/* a destructive confirm should not look like an ordinary one — the button a
+/* the panel's white rising button (.pop-btn), in this file's own colours */
+.dlg-btn:not(:disabled):hover { border-color: #0d9488; color: #0d9488; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(13, 148, 136, .13); }
+.dlg-btn:not(:disabled):active { transform: scale(.96); }
+.dlg-btn:disabled { opacity: .55; cursor: default; }
+/* a destructive step should not look like an ordinary one — the button a
    vendor is about to press deletes a client's photos */
-.dlg-btn.is-primary.is-danger { background: #dc2626; border-color: #dc2626; }
-.dlg-btn.is-primary.is-danger:hover { background: #b91c1c; }
+.dlg-btn.is-danger { color: #dc2626; border-color: #f1c4c4; }
+.dlg-btn.is-danger:not(:disabled):hover { border-color: #dc2626; color: #dc2626; box-shadow: 0 4px 14px rgba(220, 38, 38, .15); }
 
 .dlg-panel.is-error .dlg-title { color: #b91c1c; }
 

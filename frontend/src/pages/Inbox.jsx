@@ -442,7 +442,7 @@ function EmailTab() {
             <textarea className="dlg-input" rows={7} placeholder="Message" value={compose.body} onChange={e => setCompose({ ...compose, body: e.target.value })} />
             <div className="dlg-actions">
               <button className="dlg-btn" onClick={closeCompose}>Cancel</button>
-              <button className="dlg-btn is-primary" disabled={busy} onClick={() => send(compose, () => setCompose(null))}>{busy ? 'Sending…' : 'Send'}</button>
+              <button className="dlg-btn" disabled={busy} onClick={() => send(compose, () => setCompose(null))}>{busy ? 'Sending…' : 'Send'}</button>
             </div>
           </div>
         </div>

@@ -95,7 +95,7 @@ export default function ShareDialog({ folder, share: initial, onClose, onChanged
         {share && (
           <div className="ff-link-row">
             <code className="ff-link-text" aria-label="Share link">{link}</code>
-            <button type="button" className="dlg-btn is-primary" onClick={copy}>Copy link</button>
+            <button type="button" className="dlg-btn" onClick={copy}>Copy link</button>
           </div>
         )}
 
@@ -152,12 +152,12 @@ export default function ShareDialog({ folder, share: initial, onClose, onChanged
         {note && <p className="ff-note">{note}</p>}
 
         <div className="dlg-actions">
-          {share && <button type="button" className="dlg-btn ff-stop" onClick={stop} disabled={busy}>Stop sharing</button>}
+          {share && <button type="button" className="dlg-btn is-danger" onClick={stop} disabled={busy}>Stop sharing</button>}
           <span className="ff-spacer" />
           <button type="button" className="dlg-btn" onClick={onClose} disabled={busy}>{share ? 'Done' : 'Cancel'}</button>
           {share
-            ? <button type="button" className="dlg-btn is-primary" onClick={() => save(false)} disabled={busy}>{busy ? 'Saving…' : 'Save settings'}</button>
-            : <button type="button" className="dlg-btn is-primary" onClick={() => save(true)} disabled={busy}>{busy ? 'Creating…' : 'Create link'}</button>}
+            ? <button type="button" className="dlg-btn" onClick={() => save(false)} disabled={busy}>{busy ? 'Saving…' : 'Save settings'}</button>
+            : <button type="button" className="dlg-btn" onClick={() => save(true)} disabled={busy}>{busy ? 'Creating…' : 'Create link'}</button>}
         </div>
       </div>
     </div>

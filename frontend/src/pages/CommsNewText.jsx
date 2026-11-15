@@ -129,7 +129,7 @@ export default function CommsNewText({ status, people, onSent, onClose }) {
         <div className="cm-sheet" role="dialog" aria-label="New text" onClick={ev => ev.stopPropagation()}>
           {head}
           <p className="cm-sheet-p">Texting isn&apos;t connected yet. Once your business phone line is linked to iwopo, you can text anyone from here, and the conversation shows on this page.</p>
-          <div className="cm-sheet-f"><button className="cm-f is-on" onClick={onClose}>OK</button></div>
+          <div className="pop-foot"><button className="pop-btn" onClick={onClose}>OK</button></div>
         </div>
       </div>
     );
@@ -203,9 +203,9 @@ export default function CommsNewText({ status, people, onSent, onClose }) {
           </div>
           {touched && !text.trim() && <p className="cm-field-err" role="alert">Write the message first.</p>}
 
-          <div className="cm-sheet-f">
-            <button className="cm-f" onClick={close}>Cancel</button>
-            <button className="cm-f is-on" onClick={next}>Review</button>
+          <div className="pop-foot">
+            <button className="pop-btn" onClick={close}>Cancel</button>
+            <button className="pop-btn" onClick={next}>Review</button>
           </div>
         </>) : (<>
           <div className="cm-review">
@@ -219,9 +219,9 @@ export default function CommsNewText({ status, people, onSent, onClose }) {
               ⚠️ Not sent: {failure} Your text is kept: press Send text to try again.
             </div>
           )}
-          <div className="cm-sheet-f">
-            <button className="cm-f" disabled={busy} onClick={() => setStep('write')}>‹ Edit</button>
-            <button className="cm-f is-on" disabled={busy} onClick={send}>{busy ? 'Sending…' : failure ? 'Try again' : 'Send text'}</button>
+          <div className="pop-foot">
+            <button className="pop-btn" disabled={busy} onClick={() => setStep('write')}>Edit</button>
+            <button className="pop-btn" disabled={busy} onClick={send}>{busy ? 'Sending…' : failure ? 'Try again' : 'Send text'}</button>
           </div>
         </>)}
       </div>

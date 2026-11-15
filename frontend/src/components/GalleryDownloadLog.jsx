@@ -21,7 +21,7 @@ export default function GalleryDownloadLog({ album, onClose }) {
     <div className="al-overlay" onClick={onClose}>
       <div className="gdl" role="dialog" aria-modal="true" aria-label={`Downloads — ${album.title}`} onClick={e => e.stopPropagation()}>
         <div className="al-head">
-          <h3 className="al-title">📊 Downloads · {album.title}</h3>
+          <h3 className="al-title">Downloads · {album.title}</h3>
           <button className="al-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
         {err ? <div className="err-banner">⚠️ {err}</div>

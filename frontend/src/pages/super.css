@@ -361,10 +361,6 @@
 .sa-del-list li { display: flex; justify-content: space-between; text-transform: capitalize; }
 .sa-del-input { width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 14px; }
 .sa-del-err { margin: 10px 0 0; font-size: 13px; color: var(--red); }
-.sa-del-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
-.sa-del-cancel { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line); background: none; color: var(--text); cursor: pointer; }
-.sa-del-go { padding: 8px 14px; border-radius: 9px; border: 1px solid var(--red); background: var(--red); color: #fff; font-weight: 600; cursor: pointer; }
-.sa-del-go:disabled { opacity: 0.55; cursor: not-allowed; }
 
 
 .sa-pt-hint { margin: 0 0 8px; }
