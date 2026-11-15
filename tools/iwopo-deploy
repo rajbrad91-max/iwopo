@@ -141,21 +141,26 @@ fetch_model() {
 fetch_model models/auraface/glintr100.onnx https://huggingface.co/fal/AuraFace-v1/resolve/main/glintr100.onnx a7933ea5330113b01c9b60351d8f4c33003f145d8470ac5f0e52ee2effe25c60
 fetch_model models/yunet/face_detection_yunet_2023mar.onnx https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx 8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4
 fetch_model models/facemesh/face_landmarks_detector.onnx https://huggingface.co/senty-au/face_landmarks_detector-ONNX/resolve/main/onnx/model.onnx 7d6e82dee82a1dca5fbddb282b3cc74571833a530de317fc22ae325c3358beeb
-# 📦 Packages follow package-lock.json exactly (a removed library really goes). They are installed BESIDE the running
-# app and swapped in with one rename, so live never meets a half-installed node_modules — a restart in the middle of a
-# plain `npm ci` once crashed it with "Cannot find package 'express'". Nothing is reinstalled when the lock file is
-# unchanged (node_modules/.iwopo-lock remembers which one is installed).
-LOCK_SUM=$(sha256sum package-lock.json | cut -c1-64)
-if [ "$(cat node_modules/.iwopo-lock 2>/dev/null)" != "$LOCK_SUM" ]; then
-  NEXT=$(mktemp -d "$L/backend/.packages.XXXXXX")
-  trap 'rm -rf "$NEXT"' EXIT
-  cp package.json package-lock.json "$NEXT/"
-  (cd "$NEXT" && npm ci --no-audit --no-fund 2>&1 | tail -1 | sed 's/^/  npm: /')
-  echo "$LOCK_SUM" > "$NEXT/node_modules/.iwopo-lock"
-  mv node_modules "$NEXT/replaced_modules" && mv "$NEXT/node_modules" node_modules
-else
-  echo "  npm: packages unchanged"
-fi
+# 📦 Packages follow package-lock.json exactly (a removed library really goes), for the backend AND the frontend. They
+# are installed BESIDE the running app and swapped in with one rename, so live never meets a half-installed
+# node_modules — a restart in the middle of a plain `npm ci` once crashed it with "Cannot find package 'express'".
+# Nothing is reinstalled when the lock file is unchanged (node_modules/.iwopo-lock remembers which one is installed).
+# The replaced packages are removed only when the deploy ends, after the restart: until then the running app may
+# still load a file from them.
+REPLACED=()
+trap 'rm -rf "${REPLACED[@]}"' EXIT
+install_packages() {   # $1 the folder, $2 its name in the output
+  local sum next
+  sum=$(sha256sum "$1/package-lock.json" | cut -c1-64)
+  if [ "$(cat "$1/node_modules/.iwopo-lock" 2>/dev/null)" = "$sum" ]; then echo "  npm ($2): packages unchanged"; return; fi
+  next=$(mktemp -d "$1/.packages.XXXXXX"); REPLACED+=("$next")
+  cp "$1/package.json" "$1/package-lock.json" "$next/"
+  (cd "$next" && npm ci --no-audit --no-fund 2>&1 | tail -1 | sed "s/^/  npm ($2): /")
+  echo "$sum" > "$next/node_modules/.iwopo-lock"
+  if [ -d "$1/node_modules" ]; then mv "$1/node_modules" "$next/replaced_modules"; fi
+  mv "$next/node_modules" "$1/node_modules"
+}
+install_packages "$L/backend" backend
 # 🖨️ the browser that renders signed-contract PDFs, matched to playwright-core, in the shared folder the app reads
 PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright npx --no-install playwright-core install chromium-headless-shell >/dev/null 2>&1 && chmod -R a+rX /opt/ms-playwright
 # 🗄️ Database changes come from Prisma's migration history (prisma/migrations
@@ -167,6 +172,7 @@ npx prisma migrate deploy 2>&1 | grep -E 'applied|No pending|Error' | sed 's/^/ 
 npx prisma migrate deploy --config prisma.private.config.ts 2>&1 | grep -E 'applied|No pending|Error' | sed 's/^/  private db: /'
 npx prisma generate 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma: /'
 npx prisma generate --config prisma.private.config.ts 2>&1 | grep -oE 'Generated Prisma Client.*in [0-9]+ms' | sed 's/^/  prisma (private): /'
+install_packages "$L/frontend" frontend
 cd $L/frontend && npm run build 2>&1 | grep -oE '✓ built in [0-9.]+s' | sed 's/^/  build: /'
 systemctl reload nginx
 # 👤 the app runs as the unprivileged iwopo user, with its folder and settings from tools/pm2.iwopo.config.cjs
