@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react';
 import PlanTable from '../../components/PlanTable';
 import { DEVICE_HTML, CHAPTERS_HTML, CHROME_HTML, EXPLORE_HTML } from './darkMarkup';
 import { startDarkHome } from './darkEngine';
+import { HOME_FAQ } from '../../../../shared/homeFaq';   // ❓ the same list Google is given (backend seoContent.js)
 import './home-dark.css';
 
 
@@ -82,6 +83,10 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
 
       <div dangerouslySetInnerHTML={{ __html: EXPLORE_HTML }} />
 
+      <section className="sec faq-sec" id="faq"><div className="wrap center"><div className="kick">Questions</div><h2>Quick <em>answers.</em></h2>
+        <div className="faq">{HOME_FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
+      </div></section>
+
       <section className="scene" id="final" data-s="final"><span className="hd-anchor" id="signup" /><div className="pin"><div className="glow" /><div className="fin"><div>
         <div className="mark"><img id="mark" src="/iwopo-mark.png" alt="" /></div>
         {open ? (
@@ -93,8 +98,8 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
         <p className="hd-login">Already have an account? <button type="button" onClick={onGoLogin}>Log in</button></p>
       </div></div>
         {/* the page ends here, everything centred; the links run along the bottom of this last screen */}
-        <div className="endbar"><div className="wrap"><span>© {new Date().getFullYear()} IWOPO, LLC · <a href="mailto:sales@iwopo.com">sales@iwopo.com</a></span>
-          <span><a href="#pipe">Features</a> · <a href="#packages">Pricing</a> · <a href="/guides">Guides</a> · <a href="/compare/iwopo-vs-other-studio-software">Compare iwopo</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></span></div></div>
+        <div className="endbar"><div className="wrap"><span>© {new Date().getFullYear()} IWOPO, LLC · <span className="addr">3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804</span> · <a href="mailto:sales@iwopo.com">sales@iwopo.com</a></span>
+          <span><a href="#pipe">Features</a> · <a href="#packages">Pricing</a> · <a href="/guides">Guides</a> · <a href="/compare/iwopo-vs-other-studio-software">Compare iwopo</a> · <a href="#faq">FAQ</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refund-policy">Refunds</a> · <a href="/cookies">Cookies</a></span></div></div>
       </div></section>
     </div>
   );

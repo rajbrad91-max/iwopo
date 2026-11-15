@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "``` vowflo/ ├── backend/    → Node + Express + PostgreSQL └── frontend/   → React + Vite ```",
   "scripts": {
-    "lint": "eslint backend/src frontend/src",
-    "lint:fix": "eslint backend/src frontend/src --fix"
+    "lint": "eslint backend/src frontend/src shared",
+    "lint:fix": "eslint backend/src frontend/src shared --fix"
   },
   "repository": {
     "type": "git",

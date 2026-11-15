@@ -47,6 +47,13 @@ export default [
     },
   },
 
+  // ── shared: plain data read by both the backend and the frontend ──
+  {
+    files: ['shared/**/*.js'],
+    languageOptions: { ecmaVersion: 2023, sourceType: 'module' },
+    rules: { ...js.configs.recommended.rules },
+  },
+
   // ── frontend: browser, React, JSX ───────────────────────────────────
   {
     files: ['frontend/src/**/*.{js,jsx}'],

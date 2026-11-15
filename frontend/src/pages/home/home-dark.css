@@ -279,3 +279,13 @@
 .hd .compare summary::-webkit-details-marker{display:none}.hd .compare summary::after{content:" +"}.hd .compare[open] summary::after{content:" −"}.hd .compare[open] summary{margin-bottom:24px}
 .hd .compare .pt-wrap{background:var(--paper);border-radius:18px;padding:6px;color:var(--ink)}
 @media (max-width:820px){.hd .nav .navlinks a{display:none}.hd .nav .navlinks button{font-weight:600;color:var(--text)}}   /* a phone keeps Log in in the top bar */
+/* the questions (shared/homeFaq.js) */
+.hd .faq-sec{border-top:1px solid var(--line)}
+.hd .faq{max-width:760px;margin:36px auto 0;text-align:left}
+.hd .faq details{border-bottom:1px solid var(--line);padding:18px 4px}
+.hd .faq summary{cursor:pointer;list-style:none;font-weight:600;font-size:17px;display:flex;justify-content:space-between;gap:16px;color:var(--text)}
+.hd .faq summary::-webkit-details-marker{display:none}.hd .faq summary::after{content:"+";color:var(--orange2)}.hd .faq details[open] summary::after{content:"−"}
+.hd .faq p{margin-top:10px;color:var(--soft);line-height:1.6}
+.hd .endbar .addr{color:var(--muted)}
+/* motion switched off on the device: nothing pins, each chapter is a plain block showing its finished frame (darkEngine.js) */
+@media (prefers-reduced-motion: reduce){.hd .scene{height:auto!important}.hd .pin{position:relative}}

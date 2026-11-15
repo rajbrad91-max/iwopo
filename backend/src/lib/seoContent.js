@@ -21,6 +21,7 @@ import { INTL } from './seo/intl.js';
 import { LOCAL } from './seo/localCountries.js';
 import { IMAGES } from './seo/images.js';
 import { LEGAL, LEGAL_UPDATED } from './seo/legal.js';
+import { HOME_FAQ } from '../../../shared/homeFaq.js';   // ❓ the same list the home page shows
 
 const SITE = 'https://iwopo.com';
 const UPDATED = '2026-10-31';   // when the marketing copy last changed — the sitemap's lastmod
@@ -30,13 +31,6 @@ export const BLURB =
   'Inquiries, contracts, deposits, bookings, client galleries, crew scheduling and a portfolio website — ' +
   'one platform for wedding photographers and videographers worldwide.';
 
-const HOME_FAQ = [
-  ['What is iwopo?', 'iwopo is an all-in-one platform for wedding photographers and videographers: inquiry forms, a lead list, contracts with e-signatures, deposits, bookings, a calendar, crew scheduling, client galleries, large-file delivery and a portfolio website.'],
-  ['Who is iwopo for?', 'Wedding and event photographers, videographers and studios of every size — from a solo photographer to a team covering several weddings a weekend.'],
-  ['Which countries is iwopo available in?', 'Every country. iwopo runs in any browser, each business sets its own time zone and currency, and clients can pay deposits the way they already pay locally.'],
-  ['Is there a free trial?', 'Yes. You can start a free trial without a card and cancel anytime.'],
-  ['Is my data secure?', 'Accounts are protected by two-step sign-in on new devices, every business’s data is kept separate, and connections are encrypted.'],
-];
 
 const crumb = (...pairs) => pairs.map(([name, path]) => ({ name, path }));
 

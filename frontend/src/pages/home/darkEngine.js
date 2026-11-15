@@ -54,9 +54,9 @@ export function startDarkHome(root) {
     lis.forEach((li, i) => { li.className = i === k ? 'on' : i < k ? 'done' : ''; }); const last = lis[lis.length - 1]; ul.querySelector('.bar').style.height = (clamp(p / .92) * (last.offsetTop + 15 - 8)) + 'px'; }
   const SC = {
     hero(p) { const kd = Math.min(1, (innerWidth - 24) / 1040);
-      if (mob()) { const a = E(p, 0, .7);
+      if (mob()) { const a = reduce ? 0 : E(p, 0, .7);   /* motion off: the dashboard stays below the headline */
         T($('device'), `translateY(${lerp(140, -40, a)}px) rotateX(${lerp(42, 6, a)}deg) scale(${lerp(.8, 1, a) * kd})`);
-        const c = E(p, .22, .6); O($('heroCopy'), 1 - c); T($('heroCopy'), `translateY(${-70 * c}px) scale(${1 - .05 * c})`);
+        const c = reduce ? 0 : E(p, .22, .6); O($('heroCopy'), 1 - c);   /* motion off: the headline stays */ T($('heroCopy'), `translateY(${-70 * c}px) scale(${1 - .05 * c})`);
       } else { const a = E(p, 0, .55);   // the headline stays; the dashboard fills the space under it, smaller
         T($('device'), `translateY(${lerp(90, -30, a)}px) rotateX(${lerp(34, 9, a)}deg) rotateY(${lerp(0, -5, a)}deg) scale(${lerp(.56, .6, a) * kd})`);
         O($('heroCopy'), 1); T($('heroCopy'), `translateY(${-40 * a}px)`); }
@@ -64,7 +64,7 @@ export function startDarkHome(root) {
       root.querySelectorAll('#device [data-n]').forEach(el => { el.textContent = (el.dataset.pre || '') + Math.round(+el.dataset.n * g).toLocaleString('en-US') + (el.dataset.post || ''); });
       $('gclipr').setAttribute('width', (520 * g).toFixed(1)); $('gdot').style.opacity = g > .98 ? 1 : 0;
       $('gring').style.strokeDashoffset = (314 * (1 - .75 * g)).toFixed(1); $('gpct').textContent = Math.round(75 * g) + '%';
-      root.querySelectorAll('#device .chip').forEach((el, i) => { const k = E(p, .25 + i * .08, .38 + i * .08); O(el, k); T(el, `translateZ(${lerp(0, +el.dataset.z, k)}px) translateY(${lerp(30, 0, k)}px) scale(${lerp(.82, 1, k) * (mob() ? 1.9 : 1.5)})`); }); },
+      root.querySelectorAll('#device .chip').forEach((el, i) => { const k = reduce && mob() ? 0 : E(p, .25 + i * .08, .38 + i * .08);   /* motion off on a phone: no flying cards over the button */ O(el, k); T(el, `translateZ(${lerp(0, +el.dataset.z, k)}px) translateY(${lerp(30, 0, k)}px) scale(${lerp(.82, 1, k) * (mob() ? 1.9 : 1.5)})`); }); },
     gal(p, sec) { steps(sec, p); const w = E(p, 0, .2), out = E(p, .66, .86);
       T($('gwin'), `translateZ(${lerp(-220, 0, w) - 160 * out}px) rotateX(${lerp(24, 7, w)}deg) rotateY(${lerp(-24, -10, w)}deg)`); O($('gwin'), lerp(.2, 1, w) - .35 * out);
       cells.forEach(c => { const k = E(p, .015 + c.i * .009, .13 + c.i * .009); const L = E(p, .47, .6);
@@ -157,6 +157,7 @@ export function startDarkHome(root) {
     scenes.forEach(s => { const raw = prog(s, y); s.maxT = Math.max(s.maxT || 0, raw); s.rev = raw < s.maxT - .001;
       s.t = s.rev ? Math.max(raw, Math.min(s.maxT, FLOOR[s.el.id] || 0)) : raw; /* back up: full reverse, down to the chapter's first fully shown frame */
       if (s.stage) { s.d = (s.d || 0) + ((s.rev ? s.maxT - raw : 0) - (s.d || 0)) * .12; if (Math.abs(s.d) > .0005 || s.stage.style.transform) T(s.stage, s.d > .0005 ? `translateY(${(s.d * 46).toFixed(1)}px) rotateX(${(s.d * 6).toFixed(2)}deg) scale(${(1 - s.d * .05).toFixed(4)})` : ''); }
+      if (reduce) s.t = 1;   /* motion switched off: each chapter shows its finished frame */
       s.p = reduce ? s.t : pace(s.p, s.t, dt, RATE[s.el.id] || .4); if (Math.abs(s.t - s.p) < .0004) s.p = s.t;
       if (y + vh > s.top - vh && y < s.top + s.el.offsetHeight + vh) { CUR = s; s.fn(s.p, s.el); CUR = null; } });
     $('hint').style.opacity = y > 60 ? 0 : 1;
