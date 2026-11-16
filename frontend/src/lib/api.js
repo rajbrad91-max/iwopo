@@ -707,6 +707,8 @@ export const api = {
   adminWaitlist: () => request('/admin/waitlist'),   // 📝 who asked to be told when iwopo opens
   adminWaitlistAlerts: (on) => request('/admin/waitlist/alerts', { method: 'PUT', body: JSON.stringify({ on }) }),
   adminWaitlistRemove: (id) => request(`/admin/waitlist/${id}`, { method: 'DELETE' }),
+  adminWaitlistInvite: (count) => request('/admin/waitlist/invite', { method: 'POST', body: JSON.stringify({ count }) }),   // 🚪 the next batch
+  adminSignups: (open) => request('/admin/signups', { method: 'PUT', body: JSON.stringify({ open }) }),   // 🚧 sign-ups on iwopo.com
   adminPlanRegions: () => request('/admin/plan-regions'),   // 🌍 prices by territory + profit
   // 🔓 what each plan actually unlocks (Super Admin)
   adminPlanUnlocks: () => request('/admin/plan-unlocks'),

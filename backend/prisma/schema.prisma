@@ -979,6 +979,7 @@ model vendors {
   payments                 payments[]
   pending_uploads          pending_uploads[]
   referrals                referrals[]
+  waitlist                 waitlist[]
   share_recipients         share_recipients[]
   site_events              site_events[]
   trial_signups            trial_signups[]
@@ -1917,7 +1918,11 @@ model addon_region_prices {
 /// 📝 People who asked to be told when iwopo opens — "Join the waitlist" on the public page (Raj, 2026-11-12).
 /// No account: only the email address, kept once.
 model waitlist {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique @db.VarChar(254)
-  created_at DateTime @default(now()) @db.Timestamptz(3)
+  id         Int       @id @default(autoincrement())
+  email      String    @unique @db.VarChar(254)
+  created_at DateTime  @default(now()) @db.Timestamptz(3)
+  /// 📧 when this person was invited to sign up, and the account they made with this address (lib/waitlist.js)
+  invited_at DateTime? @db.Timestamptz(3)
+  vendor_id  Int?
+  vendors    vendors?  @relation(fields: [vendor_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 }

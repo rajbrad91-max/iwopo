@@ -16,7 +16,8 @@ import { DEFAULT_MODEL } from '../lib/wopoAssistant.js';
 import { clientIp } from '../lib/clientIp.js';
 import { limit } from '../middleware/rateLimit.js';
 import { serverError } from '../lib/httpError.js';
-import { WAITLIST_ALERTS, waitlistAlertsOn } from '../lib/waitlist.js';
+import { WAITLIST_ALERTS, waitlistAlertsOn, inviteNext } from '../lib/waitlist.js';
+import { signupsOpen } from '../lib/signups.js';
 import { adminOverview } from '../lib/adminOverview.js';
 import { planCards, planCompare } from '../lib/planCatalog.js';
 import { regionEconomics } from '../lib/planEconomics.js';
@@ -415,12 +416,29 @@ router.get('/admin/packages', requireAuth, requireSuperAdmin, async (req, res) =
 });
 
 // 🌍 Super admin: every territory's fixed prices and what iwopo keeps from each plan there (lib/planEconomics.js)
-/* 📝 Super Admin → Waitlist (Raj, 2026-11-12): everyone who asked to be told when iwopo opens, newest first; whether
-   the owner is emailed for each new one; and removing an address (a typo, spam). */
+/* 📝 Super Admin → Waitlist (Raj, 2026-11-12): everyone who asked to be told when iwopo opens, newest first, and where
+   each one is now — waiting, invited, signed up, or on a plan; whether the owner is emailed for each new one; removing
+   an address (a typo, spam); and opening iwopo (2026-11-16): the sign-ups switch and inviting the next batch. */
+const PLAN_CHOSEN = ['active', 'trialing', 'past_due'];
 router.get('/admin/waitlist', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const people = await prisma.waitlist.findMany({ orderBy: { created_at: 'desc' }, take: 5000 });
-    res.json({ total: await prisma.waitlist.count(), alerts: await waitlistAlertsOn(), people });
+    const ids = people.map(p => p.vendor_id).filter(Boolean);
+    const onPlan = new Set((await prisma.vendor_subscriptions.findMany({
+      where: { vendor_id: { in: ids }, stripe_subscription_id: { not: null }, status: { in: PLAN_CHOSEN } }, select: { vendor_id: true },
+    })).map(s => s.vendor_id));
+    const status = (p) => (p.vendor_id ? (onPlan.has(p.vendor_id) ? 'plan' : 'joined') : p.invited_at ? 'invited' : 'waiting');
+    res.json({ total: people.length, alerts: await waitlistAlertsOn(), signups_open: await signupsOpen(), people: people.map(p => ({ ...p, status: status(p) })) });
+  } catch (e) { serverError(res, e); }
+});
+router.put('/admin/signups', requireAuth, requireSuperAdmin, async (req, res) => {
+  try { await setSetting('signups_open', req.body?.open ? 'true' : 'false'); res.json({ signups_open: await signupsOpen() }); }
+  catch (e) { serverError(res, e); }
+});
+router.post('/admin/waitlist/invite', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    if (!await signupsOpen()) return res.status(409).json({ error: 'signups_closed', message: 'Open sign-ups first — an invitation would lead nowhere.' });
+    res.json(await inviteNext(req.body?.count));
   } catch (e) { serverError(res, e); }
 });
 router.put('/admin/waitlist/alerts', requireAuth, requireSuperAdmin, async (req, res) => {

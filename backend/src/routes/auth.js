@@ -20,7 +20,7 @@ import { signupTrialEnd } from '../lib/billing.js';
 import { newReferralCode, referrerByCode, linkReferral } from '../lib/referrals.js';
 import { LEGAL_UPDATED } from '../lib/seo/legal.js';
 import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
-import { joinWaitlist } from '../lib/waitlist.js';
+import { joinWaitlist, linkWaitlist } from '../lib/waitlist.js';
 
 /* ✉️ Two-step sign-in (Raj, 2026-10-30, option B): the right password on a device the account hasn't trusted gets a
    short ticket and an emailed code instead of a session. The ticket only says "this account passed its password in
@@ -251,6 +251,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
 
       // 🎟️ linked to whoever referred them — the code typed, or an email invite waiting for this address
       await linkReferral(tx, { friendVendorId: vendor.id, friendEmail: email, code: referral_code });
+      await linkWaitlist(tx, { vendorId: vendor.id, email });   // 📝 they waited for us: their thank-you month (lib/waitlist.js)
 
       // 3. The free trial is recorded against the connection, so the per-connection limit can count it
       if (withTrial) await tx.trial_signups.create({ data: { ip_address: ip, email, vendor_id: vendor.id } });

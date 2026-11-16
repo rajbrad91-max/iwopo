@@ -26,6 +26,7 @@ import { visitorCountry } from '../lib/localPrice.js';
 import { fixedPrice, vendorCountry } from '../lib/regionalPrice.js';
 import { emailInvoice, invoiceSubscription } from '../lib/billingEmails.js';
 import { referralBonus, withBonus, settleCheckout, rewardReferrer } from '../lib/referrals.js';
+import { waitlistBonus } from '../lib/waitlist.js';
 
 const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '');
 const DAY = 86_400_000;
@@ -190,9 +191,9 @@ router.post('/checkout', async (req, res) => {
     // 🧪 the free trial carries over — capped by the chosen plan's own trial days; Studio (0) is charged from day one.
     //    Stripe needs at least 48 hours to schedule a trial end.
     const carried = carriedTrialEnd(vendor, plan);
-    // 🎁 a referral's free month(s) go on top (lib/referrals.js)
+    // 🎁 a referral's free month(s), and the waitlist's thank-you month, go on top (lib/referrals.js, lib/waitlist.js)
     const bonus = await referralBonus(v);
-    const ends = withBonus(carried && carried - Date.now() > 2 * DAY ? carried : null, bonus.days);
+    const ends = withBonus(carried && carried - Date.now() > 2 * DAY ? carried : null, bonus.days + await waitlistBonus(v));
     const trial_end = ends && ends - Date.now() > 2 * DAY ? Math.floor(ends / 1000) : undefined;
     const refMeta = { ...(bonus.friendId ? { referral_friend: bonus.friendId } : {}), ...(bonus.owedIds.length ? { referral_owed: bonus.owedIds.join(',') } : {}) };
     const session = await stripe('POST', '/checkout/sessions', {

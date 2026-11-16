@@ -40,9 +40,11 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
     return () => { seen.disconnect(); window.removeEventListener('resize', place); };
   }, []);
 
-  /* each plan card lists what it adds to the plan before it, from the same rows as the comparison table */
+  /* each plan card shows its allowances (storage, roughly what fits, AI chats) and every feature it adds to the plan
+     before it — all from the same rows as the comparison table (Raj, 2026-11-15: more on the cards, kept compact) */
   const rows = compare.flatMap(g => g.rows || []);
-  const adds = (p, i) => rows.filter(r => r.cells?.[p.code] === true && (!plans[i - 1] || r.cells?.[plans[i - 1].code] !== true)).slice(0, 3);   // yes/no features only
+  const cell = (key, p) => rows.find(r => r.key === key)?.cells?.[p.code];
+  const adds = (p, i) => rows.filter(r => r.cells?.[p.code] === true && (!plans[i - 1] || r.cells?.[plans[i - 1].code] !== true));   // yes/no features only
   const best = plans.reduce((b, p) => (Number(p.price_monthly) > Number(b?.price_monthly || 0) ? p : b), null);
 
   const waitlist = () => (wl.done ? <p className="hd-done">You are on the list. We will email you the moment iwopo opens.</p> : (
@@ -89,13 +91,18 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
                 {isBest && <span className="tag">Best value</span>}
                 <h3>{p.name}</h3><p className="f">{p.tagline}</p>
                 <div className="pr">{pr.big}<small>{pr.unit}</small></div><div className="sv">{pr.save}</div>
-                <ul>{i > 0 && <li>Everything in {plans[i - 1].name}</li>}{adds(p, i).map(r => <li key={r.key}>{r.label}{r.coming && <span className="soon">soon</span>}</li>)}</ul>
+                <div className="specs">
+                  {cell('storage', p) && <p><b>{cell('storage', p)}</b>storage<span>{cell('capacity', p)}*</span></p>}   {/* * an estimate: see the note under the plans */}
+                  {cell('chatbot', p) && <p><b>{cell('chatbot', p)}</b>AI assistant chats a month</p>}
+                </div>
+                <ul>{i > 0 && <li>Everything in {plans.slice(0, i).map(x => x.name).join(' + ')}</li>}{adds(p, i).map(r => <li key={r.key}>{r.label}{r.coming && <span className="soon">(coming soon)</span>}</li>)}</ul>
                 <button type="button" className={`btn ${isBest ? 'btn-o' : 'btn-g'}`} onClick={() => choosePlan(p, 'package')}>{!open ? 'Join the waitlist' : `Choose ${p.name}`}</button>
                 {p.trial_days > 0 && trialOk && <p className="trial">{p.trial_days}-day free trial</p>}
               </div>
             );
           })}
         </div>
+        <p className="plans-note">* Estimates, not promises — what fits depends on the size of your own photos and videos. The full comparison below explains how they are worked out.</p>
         <details className="compare"><summary>Compare every feature</summary>
           <div className="pt-wrap"><PlanTable plans={plans} groups={compare} notes={compareNotes} priceOf={priceOf} open={open} onChoose={(p) => choosePlan(p, 'package')} /></div>
         </details>
