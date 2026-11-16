@@ -20,6 +20,26 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
     return startDarkHome(rootRef.current);
   }, []);
 
+  /* ⏸️ Pricing and "Everything in one place" pause like the chapters do (Raj, 2026-11-15). Each is a .hold: the section
+     (.hold-pin, at least a screen tall) stays put while the page scrolls through the gap after it (.hold-gap). One taller
+     than the screen pauses with its heading just under the top bar — the plans or the feature picker in view below it. */
+  useEffect(() => {
+    const root = rootRef.current, nav = root.querySelector('.nav');
+    const pins = [...root.querySelectorAll('.hold-pin')];
+    const holdTop = (el) => {
+      const over = window.innerHeight - el.offsetHeight;
+      if (over >= 0) return 0;                                                  // fits: the whole screen, content centred
+      const head = el.querySelector('.wrap').offsetTop;                         // where its heading starts inside it
+      return Math.max(over, nav.offsetHeight + 12 - head);
+    };
+    const place = () => pins.forEach(el => el.style.setProperty('--hold-top', `${holdTop(el)}px`));
+    const seen = new ResizeObserver(place);   // a plan list, the comparison table or a feature opening changes the height
+    pins.forEach(el => seen.observe(el));
+    window.addEventListener('resize', place);
+    place();
+    return () => { seen.disconnect(); window.removeEventListener('resize', place); };
+  }, []);
+
   /* each plan card lists what it adds to the plan before it, from the same rows as the comparison table */
   const rows = compare.flatMap(g => g.rows || []);
   const adds = (p, i) => rows.filter(r => r.cells?.[p.code] === true && (!plans[i - 1] || r.cells?.[plans[i - 1].code] !== true)).slice(0, 3);   // yes/no features only
@@ -41,7 +61,7 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
     <div className="hd" ref={rootRef}>
       <nav className="nav"><div className="wrap">
         <a className="brand" href="/"><img src="/iwopo-mark.png" alt="" />iwopo</a>
-        <div className="navlinks"><a href="#pipe">Features</a><a href="#packages">Pricing</a><a href="/guides">Guides</a><button type="button" onClick={onGoLogin}>Log in</button></div>
+        <div className="navlinks"><a href="#explore">Features</a><a href="#packages">Pricing</a><a href="/guides">Guides</a><button type="button" onClick={onGoLogin}>Log in</button></div>
       </div></nav>
       <div dangerouslySetInnerHTML={{ __html: CHROME_HTML }} />
 
@@ -56,7 +76,7 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
 
       <div dangerouslySetInnerHTML={{ __html: CHAPTERS_HTML }} />
 
-      <section className="sec pricing-sec" id="packages"><div className="wrap center"><div className="kick">Pricing</div><h2>Simple plans. <em>Serious</em> value.</h2>
+      <div className="hold"><section className="sec pricing-sec hold-pin" id="packages"><div className="wrap center"><div className="kick">Pricing</div><h2>Simple plans. <em>Serious</em> value.</h2>
         <div className="toggle" role="group" aria-label="Billing cycle">
           <button type="button" className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>Monthly</button>
           <button type="button" className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Yearly{bestSave > 0 && <em>Save up to {bestSave}%</em>}</button>
@@ -79,9 +99,9 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
         <details className="compare"><summary>Compare every feature</summary>
           <div className="pt-wrap"><PlanTable plans={plans} groups={compare} notes={compareNotes} priceOf={priceOf} open={open} onChoose={(p) => choosePlan(p, 'package')} /></div>
         </details>
-      </div></section>
+      </div></section><div className="hold-gap" /></div>
 
-      <div dangerouslySetInnerHTML={{ __html: EXPLORE_HTML }} />
+      <div className="hold"><div className="hold-pin" dangerouslySetInnerHTML={{ __html: EXPLORE_HTML }} /><div className="hold-gap" /></div>
 
       <section className="sec faq-sec" id="faq"><div className="wrap center"><div className="kick">Questions</div><h2>Quick <em>answers.</em></h2>
         <div className="faq">{HOME_FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
@@ -99,7 +119,7 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
       </div></div>
         {/* the page ends here, everything centred; the links run along the bottom of this last screen */}
         <div className="endbar"><div className="wrap"><span>© {new Date().getFullYear()} IWOPO, LLC · <span className="addr">3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804</span> · <a href="mailto:sales@iwopo.com">sales@iwopo.com</a></span>
-          <span><a href="#pipe">Features</a> · <a href="#packages">Pricing</a> · <a href="/guides">Guides</a> · <a href="/compare/iwopo-vs-other-studio-software">Compare iwopo</a> · <a href="#faq">FAQ</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refund-policy">Refunds</a> · <a href="/cookies">Cookies</a></span></div></div>
+          <span><a href="#explore">Features</a> · <a href="#packages">Pricing</a> · <a href="/guides">Guides</a> · <a href="/compare/iwopo-vs-other-studio-software">Compare iwopo</a> · <a href="#faq">FAQ</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refund-policy">Refunds</a> · <a href="/cookies">Cookies</a></span></div></div>
       </div></section>
     </div>
   );

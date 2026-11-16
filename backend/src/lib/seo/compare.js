@@ -32,7 +32,7 @@ export const COMPARISONS = {
       ['Does iwopo include client galleries and a website?', 'Yes. Galleries, large-file delivery and a website builder are included alongside inquiries, contracts, deposits and bookings.'],
       ['Can I keep my current bookings where they are?', 'Yes. Many studios run new inquiries through iwopo and let existing bookings finish in their old tools.'],
     ],
-    related: ['/pricing', '/features', '/locations', '/for/south-asian-weddings'],
+    related: ['/locations', '/for/south-asian-weddings'],
   },
 };
 

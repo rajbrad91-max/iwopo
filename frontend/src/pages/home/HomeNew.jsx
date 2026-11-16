@@ -121,7 +121,7 @@ export default function HomeNew({ open, trialOk, cycle, setCycle, plans, compare
         <div><b>7 languages</b><span>on the public site</span></div><div><b>One subscription</b><span>instead of a stack of tools</span></div></div></div>
 
       <section className="nh-night nh-faces"><div className="nh-wrap">
-        <div><div className="nh-kick">Advanced galleries</div><h2>Every guest finds <em>every photo</em> of themselves.</h2>
+        <div><div className="nh-kick">Smart galleries</div><h2>Every guest finds <em>every photo</em> of themselves.</h2>
           <p className="nh-sub">A guest takes one selfie. Face recognition searches the whole wedding, thousands of photos, and brings back theirs in seconds.</p>
           <ul className="nh-ticks"><li>Faces grouped automatically after you upload</li><li>Favourites and one-click downloads for every guest</li><li>Films and highlight reels in the same gallery</li></ul></div>
         <div className="nh-wall" aria-hidden="true"><div className="nh-plane">{WALL.map(([n, k], i) => <div key={i} className={`nh-tile-ph nh-ph-${n}${k.includes('m') ? ' m' : ''}${k.includes('b') ? ' alt' : ''}`} />)}</div>

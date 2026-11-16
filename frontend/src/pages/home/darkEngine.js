@@ -38,7 +38,10 @@ export function startDarkHome(root) {
   const mgrid = $('mgrid'), days = [];
   const LEAD = 1;   // 1 Dec 2026 is a Tuesday
   for (let i = 0; i < 35; i++) { const d = i - LEAD + 1, el = document.createElement('div'); el.className = 'day' + (d === 5 ? ' wed' : '') + (d < 1 || d > 31 ? ' off' : ''); el.textContent = d >= 1 && d <= 31 ? d : ''; mgrid.appendChild(el); if (d >= 1 && d <= 31) days.push(el); }
-  const EVTS = [[2, 'Mehndi', 'e-o', .30], [3, 'Jaggo', 'e-t', .34], [4, 'Choora', 'e-b', .38], [5, 'Wedding', 'e-r', .42], [11, 'Pre-wedding shoot', 'e-t', .46], [13, 'Reception', 'e-o', .49], [19, 'Wedding', 'e-r', .52], [26, 'Engagement', 'e-b', .55]];
+  /* a December of weddings from four traditions, one colour each (Raj, 2026-11-15): Hindu, Sikh (the 5th stays the
+       wedding day the other chapters show), Muslim, Christian */
+    const EVTS = [[2, 'Haldi', 'e-o', .30], [3, 'Sangeet', 'e-o', .33], [4, 'Jaggo', 'e-t', .36], [5, 'Anand Karaj', 'e-t', .39], [6, 'Reception', 'e-t', .42],
+      [12, 'Nikah', 'e-b', .45], [13, 'Walima', 'e-b', .48], [19, 'Rehearsal dinner', 'e-r', .51], [20, 'Church wedding', 'e-r', .55]];
   const evts = EVTS.map(([d, l, c, t]) => { const el = document.createElement('span'); el.className = `evt ${c}`; el.textContent = l; days[d - 1].appendChild(el); return { el, t }; });
 
 
@@ -57,9 +60,9 @@ export function startDarkHome(root) {
       if (mob()) { const a = reduce ? 0 : E(p, 0, .7);   /* motion off: the dashboard stays below the headline */
         T($('device'), `translateY(${lerp(140, -40, a)}px) rotateX(${lerp(42, 6, a)}deg) scale(${lerp(.8, 1, a) * kd})`);
         const c = reduce ? 0 : E(p, .22, .6); O($('heroCopy'), 1 - c);   /* motion off: the headline stays */ T($('heroCopy'), `translateY(${-70 * c}px) scale(${1 - .05 * c})`);
-      } else { const a = E(p, 0, .55);   // the headline stays; the dashboard fills the space under it, smaller
-        T($('device'), `translateY(${lerp(90, -30, a)}px) rotateX(${lerp(34, 9, a)}deg) rotateY(${lerp(0, -5, a)}deg) scale(${lerp(.56, .6, a) * kd})`);
-        O($('heroCopy'), 1); T($('heroCopy'), `translateY(${-40 * a}px)`); }
+      } else {   // a laptop opens on the finished layout: the headline, and the dashboard close under it
+        T($('device'), `translateY(-30px) rotateX(9deg) rotateY(-5deg) scale(${.6 * kd})`);
+        O($('heroCopy'), 1); T($('heroCopy'), ''); }
       const g = E(p, .05, .6);   // the season grows as you scroll
       root.querySelectorAll('#device [data-n]').forEach(el => { el.textContent = (el.dataset.pre || '') + Math.round(+el.dataset.n * g).toLocaleString('en-US') + (el.dataset.post || ''); });
       $('gclipr').setAttribute('width', (520 * g).toFixed(1)); $('gdot').style.opacity = g > .98 ? 1 : 0;
@@ -126,6 +129,7 @@ export function startDarkHome(root) {
   const mob = () => innerWidth <= 820;
   const PRE = new Set(['gal', 'flow', 'con', 'cal', 'pipe', 'vendors']);
   const HOLD = .8;   /* a chapter's story is done at 80% of its time on screen, then it rests fully shown until it lets go */
+  const opens = s => s.el.id === 'hero' && !mob();   /* on a laptop the hero plays by itself as the page opens (the season counts up, the notices come in); on a phone it follows the scroll */
   const prog = (s, y) => clamp((y - s.top) / (s.len * (PRE.has(s.el.id) ? HOLD : 1)));   /* chapters: they play in while arriving, and drift gently when scrolled back up */
   function measure() {
     scenes.forEach(s => { const pre = PRE.has(s.el.id) ? innerHeight * .6 : 0;   // a chapter starts playing while it scrolls into view, so it is already showing when it arrives
@@ -154,7 +158,7 @@ export function startDarkHome(root) {
   function loop(ts) { const dt = Math.min(.05, lastTs ? (ts - lastTs) / 1000 : 1 / 60); lastTs = ts;
     const y = scrollY, vh = innerHeight;
     if (y < 8) scenes.forEach(s => { s.maxT = 0; }); /* back at the very top: everything can play again */
-    scenes.forEach(s => { const raw = prog(s, y); s.maxT = Math.max(s.maxT || 0, raw); s.rev = raw < s.maxT - .001;
+    scenes.forEach(s => { const raw = opens(s) ? 1 : prog(s, y); s.maxT = Math.max(s.maxT || 0, raw); s.rev = raw < s.maxT - .001;
       s.t = s.rev ? Math.max(raw, Math.min(s.maxT, FLOOR[s.el.id] || 0)) : raw; /* back up: full reverse, down to the chapter's first fully shown frame */
       if (s.stage) { s.d = (s.d || 0) + ((s.rev ? s.maxT - raw : 0) - (s.d || 0)) * .12; if (Math.abs(s.d) > .0005 || s.stage.style.transform) T(s.stage, s.d > .0005 ? `translateY(${(s.d * 46).toFixed(1)}px) rotateX(${(s.d * 6).toFixed(2)}deg) scale(${(1 - s.d * .05).toFixed(4)})` : ''); }
       if (reduce) s.t = 1;   /* motion switched off: each chapter shows its finished frame */

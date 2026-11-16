@@ -40,7 +40,7 @@ export const CHAPTERS_HTML = `
     <div class="cal-chip" id="calchip"><b>5</b><div>Added to your calendar<span>Maya &amp; Adam · Wedding · 12 hrs</span></div></div>
   </div></div></div></section>
 <section class="scene chap" id="gal" data-s="gal"><div class="pin">
-  <div class="copy"><div class="kick">02 · Advanced galleries</div><h2>Every guest finds <em>every photo</em> of themselves.</h2>
+  <div class="copy"><div class="kick">02 · Smart galleries</div><h2>Every guest finds <em>every photo</em> of themselves.</h2>
     <ul class="steps" data-steps="0,.15,.25,.47,.66"><span class="bar"></span>
       <li><b>Upload the whole wedding</b><span>Thousands of photos from every event, in one gallery.</span></li>
       <li><b>A guest takes one selfie</b><span>No account, no searching. Just their face.</span></li>

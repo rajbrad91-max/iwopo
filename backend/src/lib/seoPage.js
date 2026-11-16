@@ -31,7 +31,7 @@ function schema(page, pages) {
     ...(page.kind === 'guide' ? { author: { '@id': `${SITE}/#org` }, publisher: { '@id': `${SITE}/#org` }, datePublished: page.updated, mainEntityOfPage: url } : {}),
   };
   graph.push(webPage);
-  if (['feature', 'pricing', 'audience', 'location', 'intl', 'local'].includes(page.kind)) {
+  if (['feature', 'audience', 'location', 'intl', 'local'].includes(page.kind)) {
     graph.push({
       '@type': 'SoftwareApplication', name: 'iwopo', url: `${SITE}/`,
       applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
@@ -141,7 +141,7 @@ export function renderPage(page, pages) {
     <div class="mk-wrap mk-bar">
       <a class="mk-logo" href="/"><img src="/iwopo-mark.png" alt="" width="32" height="32"><span>iwopo</span></a>
       <nav class="mk-nav" aria-label="Main">
-        <a href="/features">${esc(L(page).features)}</a><a href="/pricing">${esc(L(page).pricing)}</a>${page.lang ? '' : '<a href="/guides">Guides</a><a href="/#faq">FAQ</a>'}<a href="/login">${esc(L(page).login)}</a>
+        <a href="/#explore">${esc(L(page).features)}</a><a href="/#packages">${esc(L(page).pricing)}</a>${page.lang ? '' : '<a href="/guides">Guides</a><a href="/#faq">FAQ</a>'}<a href="/login">${esc(L(page).login)}</a>
         <a class="mk-btn mk-btn-sm" href="/#signup">${esc(L(page).trial)}</a>
       </nav>
     </div>
@@ -173,7 +173,7 @@ export function renderPage(page, pages) {
       <div><h2>${esc(L(page).other)}</h2><ul><li><a href="/" hreflang="en">English</a></li>${pages.filter(p => p.kind === 'intl' && p.path !== page.path).map(p => `<li><a href="${p.path}" hreflang="${p.lang}">${esc(p.langName)}</a></li>`).join('')}</ul></div>
       <div><h2>${esc(L(page).fLegal)}</h2><ul>${pages.filter(p => p.kind === 'legal').map(p => `<li><a href="${p.path}">${esc(p.h1)}</a></li>`).join('')}</ul></div>
       <div><h2>${esc(L(page).fCountries)}</h2><ul>${firstFew(places, 6, page, p => `<li><a href="${p.path}">${esc(p.country)}</a></li>`)}</ul></div>
-      <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/pricing">Pricing</a></li><li><a href="/features">All features</a></li><li><a href="/compare/iwopo-vs-other-studio-software">Compare iwopo</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
+      <div><h2>iwopo</h2><ul><li><a href="/">Home</a></li><li><a href="/#packages">Pricing</a></li><li><a href="/#explore">All features</a></li><li><a href="/compare/iwopo-vs-other-studio-software">Compare iwopo</a></li><li><a href="/locations">Countries</a></li><li><a href="/login">Log in</a></li></ul></div>
     </div>
     <p class="mk-wrap mk-copy">© ${new Date().getFullYear()} IWOPO, LLC · 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804 · <a href="mailto:sales@iwopo.com">sales@iwopo.com</a></p>
   </footer>

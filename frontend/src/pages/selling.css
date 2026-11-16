@@ -257,7 +257,7 @@
   filter: blur(1.5px);
 }
 
-/* Advanced Galleries — photos + face recognition scan */
+/* Smart Galleries — photos + face recognition scan */
 .sl-fv-photo {
   border-radius: 7px; border: 2px solid #fff;
   box-shadow: 4px 5px 0 rgba(196,77,0,.16), 0 8px 14px -6px rgba(26,18,11,.35);

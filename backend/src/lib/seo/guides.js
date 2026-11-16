@@ -80,7 +80,7 @@ export const GUIDES = {
       ['Is a wedding photography deposit refundable?', 'It is usually non-refundable because it secures a date you cannot resell, but your contract decides — state it clearly.'],
       ['When should the balance be paid?', 'Commonly a few weeks before the wedding or on the day. Whatever you choose, put the date in the contract.'],
     ],
-    related: ['/guides/wedding-photography-contract', '/features/contracts', '/pricing'],
+    related: ['/guides/wedding-photography-contract', '/features/contracts'],
   },
 
   'wedding-photography-inquiry-form': {
@@ -196,7 +196,7 @@ export const GUIDES = {
       ['How many hours does one wedding take?', 'Usually far more than the coverage hours: editing and admin often take two to three times as long as the wedding day itself.'],
       ['Should I show prices on my website?', 'Many photographers show a starting price so couples know if you are in their range, and send full packages after an inquiry.'],
     ],
-    related: ['/guides/wedding-photography-deposit', '/features/leads', '/pricing'],
+    related: ['/guides/wedding-photography-deposit', '/features/leads'],
   },
 
   'wedding-day-timeline-for-photographers': {
@@ -275,6 +275,6 @@ export const GUIDES = {
       ['Do I need to buy a security certificate?', 'No. iwopo adds and renews the padlock (https) for you, free.'],
       ['What if it says it points somewhere else?', 'The record’s value doesn’t match yet: check it against the address in Settings → Web address, or remove an older record with the same name.'],
     ],
-    related: ['/features/website', '/features/leads', '/pricing'],
+    related: ['/features/website', '/features/leads'],
   },
 };

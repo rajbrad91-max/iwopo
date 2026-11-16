@@ -30,7 +30,7 @@ export const AUDIENCES = {
       ['Does it work on my phone?', 'Yes. The whole panel works on a phone, which is where most inquiries are answered.'],
       ['Is there a free trial?', 'Yes. You can start a free trial without a card.'],
     ],
-    related: ['/features/galleries', '/features/contracts', '/guides/wedding-photography-contract', '/pricing'],
+    related: ['/features/galleries', '/features/contracts', '/guides/wedding-photography-contract'],
   },
 
   'wedding-videographers': {
@@ -52,7 +52,7 @@ export const AUDIENCES = {
       ['Can I send 4K films and raw footage?', 'Yes. File Flyer is built for very large files and is limited by your storage rather than a small per-file cap.'],
       ['Can a contract include drone or live-stream terms?', 'Yes. Add those clauses to your template and they appear only when the chosen package includes them.'],
     ],
-    related: ['/features/fileflyer', '/features/contracts', '/features/crew', '/pricing'],
+    related: ['/features/fileflyer', '/features/contracts', '/features/crew'],
   },
 
   'photo-and-video-studios': {
@@ -75,7 +75,7 @@ export const AUDIENCES = {
     faq: [
       ['Can crew see client prices or contracts?', 'No. Crew see only the bookings they are assigned to.'],
     ],
-    related: ['/features/crew', '/features/calendar', '/guides/managing-a-wedding-photography-team', '/pricing'],
+    related: ['/features/crew', '/features/calendar', '/guides/managing-a-wedding-photography-team'],
   },
 
   'south-asian-weddings': {

@@ -9,21 +9,12 @@ try { SIZES = JSON.parse(fs.readFileSync(new URL('./image-sizes.json', import.me
 const img = (name, alt) => ({ src: `/shots/${name}.jpg`, alt, phone: name.startsWith('phone-'), w: SIZES[name]?.[0], h: SIZES[name]?.[1] });
 
 const LEADS = img('leads-list', 'iwopo leads list: every wedding inquiry with its received time, event date, venue and status');
-const LEAD = img('lead-detail', 'A lead in iwopo: contact details, event details, chosen package, deposit and payments');
 const FORM = img('phone-inquiry-form', 'A wedding inquiry form on a phone, built with iwopo');
 const PORTAL = img('phone-portal-packages', 'The client portal on a phone: the couple chooses their wedding package');
-const CONTRACT = img('phone-portal-contract', 'A wedding contract ready to initial and sign on a phone');
 const SCHEDULE = img('phone-contract-schedule', 'Contract schedule filled in automatically: date, times, hours, venue, guests and getting-ready locations');
-const EDITOR = img('contract-editor', 'Editing a wedding photography contract template in iwopo, section by section');
 const CAL = img('calendar', 'Booking calendar with confirmed weddings for the month');
-const PHONE_LEADS = img('phone-leads', 'Wedding leads as cards on a phone');
 
 export const IMAGES = {
-  '/features': [LEADS],
-  '/features/leads': [LEADS, FORM, PORTAL],
-  '/features/contracts': [SCHEDULE, EDITOR, CONTRACT],
-  '/features/calendar': [CAL],
-  '/pricing': [LEAD],
   '/for/wedding-photographers': [PORTAL, LEADS, SCHEDULE],
   '/for/wedding-videographers': [SCHEDULE, CAL],
   '/for/photo-and-video-studios': [CAL, LEADS],
@@ -33,5 +24,4 @@ export const IMAGES = {
   '/guides/wedding-photography-inquiry-form': [FORM],
   '/it': [LEADS, PORTAL], '/de': [LEADS, PORTAL], '/es': [LEADS, PORTAL], '/fr': [LEADS, PORTAL], '/pt': [LEADS, PORTAL], '/nl': [LEADS, PORTAL],
   '/guides/wedding-videography-contract': [SCHEDULE], '/guides/how-to-get-more-wedding-photography-inquiries': [FORM, PORTAL],
-  '*': [PHONE_LEADS],
 };

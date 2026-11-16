@@ -58,7 +58,7 @@ const FONTS_CSS = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;
 
 /* the feature cards (Raj, 2026-11-12): premium and inviting, every claim true; no "AI", nothing only for photographers */
 const FEATURES = [
-  { id: 'gallery', name: 'Advanced Galleries', desc: 'Face-recognition galleries where every guest finds their own photos in seconds, saves favourites and downloads in one click.' },
+  { id: 'gallery', name: 'Smart Galleries', desc: 'Face-recognition galleries where every guest finds their own photos in seconds, saves favourites and downloads in one click.' },
   { id: 'leads', name: 'Lead Management', desc: 'Every inquiry captured the moment it arrives and followed from first message to signed booking, so no client slips away.' },
   { id: 'bookings', name: 'Bookings & Calendar', desc: 'Every event, hold and deadline in one live calendar, built for the busiest wedding season.' },
   { id: 'contracts', name: 'Contracts & E-Signatures', desc: 'Send, sign and store contracts online. Every signature is sealed with a tamper-proof record of who signed, when and where.' },
@@ -72,7 +72,7 @@ const FEATURES = [
 
 /**
  * Small 3D scene per feature. Shapes are meant to read in one glance
- * (calendar = bookings, face+scan = Advanced Galleries, etc.).
+ * (calendar = bookings, face+scan = Smart Galleries, etc.).
  */
 function FeatVisual({ id }) {
   return (

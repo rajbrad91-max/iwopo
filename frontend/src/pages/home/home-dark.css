@@ -22,9 +22,9 @@
 .hd .scene{position:relative}.hd .pin{position:sticky;top:0;height:100vh;overflow:hidden}
 .hd .glow{position:absolute;inset:0;pointer-events:none}
 
-.hd #hero{height:160vh}
+.hd #hero{height:100vh}
 .hd #hero .glow{background:radial-gradient(900px 520px at 50% 72%,rgba(232,105,47,.18),transparent 70%),radial-gradient(700px 420px at 20% 20%,rgba(31,181,170,.08),transparent 70%)}
-.hd .hero-copy{position:absolute;left:0;right:0;top:15vh;text-align:center;z-index:3;will-change:transform,opacity}
+.hd .hero-copy{position:absolute;left:0;right:0;top:calc(15vh - 40px);text-align:center;z-index:3;will-change:transform,opacity}
 .hd .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:12.5px;font-weight:600;color:var(--soft);border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);border-radius:999px;padding:6px 14px 6px 8px}.hd .eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 4px rgba(31,181,170,.16)}
 .hd h1{font:500 76px/1.02 Fraunces,serif;letter-spacing:-.035em;margin:22px auto 18px;max-width:900px}.hd h1 em,.hd h2 em{font-style:italic;color:var(--orange)}
 .hd .lede{font-size:18.5px;color:var(--soft);max-width:640px;margin:0 auto}
@@ -108,7 +108,7 @@
 .hd .dows{position:absolute;left:18px;right:18px;top:52px;display:grid;grid-template-columns:repeat(7,1fr);gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .hd .day{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12px;color:var(--muted);position:relative;transform-style:preserve-3d}
 .hd .day.wed{border-color:rgba(232,105,47,.5)}.hd .day.off{background:transparent;border-color:rgba(255,255,255,.03)}
-.hd .evt{position:absolute;left:6px;right:6px;bottom:6px;height:22px;border-radius:7px;font-size:11px;font-weight:600;color:#fff;padding:0 8px;line-height:22px;overflow:hidden;white-space:nowrap;opacity:0;box-shadow:0 10px 20px -8px rgba(0,0,0,.8)}
+.hd .evt{position:absolute;left:6px;right:6px;bottom:6px;min-height:22px;border-radius:7px;font-size:11px;font-weight:600;color:#fff;padding:4px 8px;line-height:14px;overflow:hidden;opacity:0;box-shadow:0 10px 20px -8px rgba(0,0,0,.8)}
 .hd .e-o{background:var(--orange)}.hd .e-t{background:#169A90}.hd .e-b{background:#2F6FB0}.hd .e-r{background:#B5404A}.hd .e-i{background:#4A4F55}
 .hd .crew{position:absolute;display:flex;opacity:0;z-index:5}.hd .crew i{width:34px;height:34px;border-radius:50%;border:2px solid var(--panel);margin-left:-9px;background-size:cover;background-position:30% 25%}.hd .crew i:first-child{margin-left:0}
 
@@ -250,7 +250,7 @@
   .hd .card em{position:static;display:inline-block;margin-top:6px;font-size:9px;padding:2px 6px}
   .hd .cal-chip{right:0;bottom:30px}
   .hd .month{left:0;top:10px;width:520px;height:520px;margin-top:0;padding:10px}.hd .mgrid{left:10px;right:10px;top:72px;bottom:10px;gap:5px}.hd .dows{left:10px;right:10px;top:46px;gap:5px;font-size:9px}
-  .hd .day{font-size:10px;padding:4px 5px}.hd .evt{font-size:8.5px;height:17px;line-height:17px;padding:0 4px;left:3px;right:3px;bottom:3px}
+  .hd .day{font-size:10px;padding:4px 5px}.hd .evt{font-size:8.5px;min-height:17px;line-height:11px;padding:3px 4px;left:3px;right:3px;bottom:3px}
   .hd .crew i{width:26px;height:26px}
     .hd .sec{padding:90px 0}
   .hd .plans{grid-template-columns:1fr}.hd .fin h2,.hd #final h2{font-size:36px}.hd .fin{padding:0 18px}.hd .mark{width:120px;height:92px}
@@ -288,5 +288,10 @@
 .hd .faq summary::-webkit-details-marker{display:none}.hd .faq summary::after{content:"+";color:var(--orange2)}.hd .faq details[open] summary::after{content:"−"}
 .hd .faq p{margin-top:10px;color:var(--soft);line-height:1.6}
 .hd .endbar .addr{color:var(--muted)}
+/* ⏸️ pricing and "Everything in one place" pause like the chapters (Raj, 2026-11-15): the section holds while the page scrolls
+   through the gap after it; HomeDark.jsx sets --hold-top so a section taller than the screen holds with its end in view */
+.hd .hold{position:relative}
+.hd .hold-pin{position:sticky;top:var(--hold-top,0px);z-index:1;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+.hd .hold-gap{height:70vh}
 /* motion switched off on the device: nothing pins, each chapter is a plain block showing its finished frame (darkEngine.js) */
-@media (prefers-reduced-motion: reduce){.hd .scene{height:auto!important}.hd .pin{position:relative}}
+@media (prefers-reduced-motion: reduce){.hd .scene{height:auto!important}.hd .pin{position:relative}.hd .hold-pin{position:relative}.hd .hold-gap{display:none}}

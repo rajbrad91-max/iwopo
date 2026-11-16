@@ -35,6 +35,10 @@ export const BLURB =
 const crumb = (...pairs) => pairs.map(([name, path]) => ({ name, path }));
 
 /** Every page, with everything needed to render it, list it and describe it to AI assistants. */
+/** 🚪 Pages that went (Raj, 2026-11-15: their panel pictures were out of date): a permanent redirect to the home page's own
+ *  section, so old links and Google's copy still land somewhere useful (routes/seo.js). */
+export const GONE = { '/features': '/#explore', '/pricing': '/#packages' };
+
 export async function allPages() {
   const services = await prisma.services.findMany({
     where: { is_live: true, is_private: false },   // 🔒 private features never surface
@@ -62,18 +66,10 @@ export async function allPages() {
     priority: '1.0', changefreq: 'weekly',
   });
 
-  /* ✨ Features hub + one page per live, public feature that has words written for it. */
+  /* ✨ One page per live, public feature that has words written for it. The features hub went on 2026-11-15 (its
+     panel picture was out of date): /features now leads to the home page's own feature tour (GONE, below). */
   const featureList = services.filter(s => FEATURES[s.feature_key]);
-  pages.push({
-    path: '/features', kind: 'hub', standalone: true,
-    title: 'Features — all-in-one wedding photography software | iwopo',
-    description: 'Inquiry forms, contracts with e-signatures, deposits, bookings, calendar, crew, client galleries, file delivery, a website builder and an AI assistant — in one subscription.',
-    h1: 'Everything a wedding business runs on',
-    lead: 'Each part works on its own, and all of them work together because they share the same clients and the same bookings.',
-    list: featureList.map(s => ({ name: s.name, text: FEATURES[s.feature_key].lead, href: '/features/' + s.feature_key })),
-    crumbs: crumb(['Home', '/'], ['Features', '/features']),
-    priority: '0.9', changefreq: 'monthly',
-  });
+  const money = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;   // 💳 a plan's price, as the pages in other languages show it
   for (const s of featureList) {
     const f = FEATURES[s.feature_key];
     pages.push({
@@ -81,35 +77,10 @@ export async function allPages() {
       title: `${f.search} | iwopo`,
       description: f.lead.slice(0, 158),
       h1: f.h1, lead: f.lead, sections: f.sections, faq: f.faq, related: f.related,
-      crumbs: crumb(['Home', '/'], ['Features', '/features'], [s.name, '/features/' + s.feature_key]),
+      crumbs: crumb(['Home', '/'], [s.name, '/features/' + s.feature_key]),
       priority: '0.8', changefreq: 'monthly',
     });
   }
-
-  /* 💳 Pricing — the numbers come from the plans table, right now. */
-  const money = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;
-  pages.push({
-    path: '/pricing', kind: 'pricing', standalone: true,
-    title: 'Pricing — one subscription instead of five | iwopo',
-    description: 'One monthly subscription for inquiries, contracts, deposits, bookings, galleries, crew, file delivery and a website. Free trial, no card required.',
-    h1: 'One price, not five subscriptions',
-    lead: 'Most wedding businesses pay separately for galleries, a website, contracts, a CRM and file transfers. iwopo is one subscription for all of it.',
-    plans: plans.map(p => ({ name: p.name, price: money(p.price_monthly), annual: p.price_annual != null ? money(p.price_annual) : null, storage: p.storage_gb })),
-    sections: [
-      { h2: 'Every plan includes', ul: featureList.map(s => `${s.name} — ${FEATURES[s.feature_key].h1}`) },
-      { h2: 'Start free', p: ['Try iwopo with a free trial. No card is required, and you can cancel anytime.'],
-        closed: { h2: 'A free trial at launch', p: ['Sign-ups open very soon. Every new studio will start with a free trial, no card required. Existing studios can log in as usual.'] } },
-    ],
-    faq: [
-      ['Is there a free trial?', 'Yes. Start a free trial without a card.'],
-      ['Can I cancel anytime?', 'Yes. There is no long-term contract.'],
-      ['What is the difference between the plans?', 'Mainly storage. Every plan includes the features listed on this page.'],
-      ['Is iwopo available in my country?', 'Yes — iwopo is available worldwide, in your own time zone and currency.'],
-    ],
-    related: ['/features', '/for/wedding-photographers', '/for/photo-and-video-studios'],
-    crumbs: crumb(['Home', '/'], ['Pricing', '/pricing']),
-    priority: '0.9', changefreq: 'weekly',
-  });
 
   /* 🎯 Who it is for. */
   for (const [slug, a] of Object.entries(AUDIENCES)) {
@@ -165,7 +136,7 @@ export async function allPages() {
       title: `Wedding photography software in ${l.country} | iwopo`,
       description: l.lead.slice(0, 158),
       h1: l.h1, lead: l.lead, sections: l.sections, faq: l.faq,
-      related: ['/features/contracts', '/features/leads', '/features/galleries', '/pricing'],
+      related: ['/features/contracts', '/features/leads', '/features/galleries'],
       crumbs: crumb(['Home', '/'], ['Countries', '/locations'], [l.country, '/locations/' + slug]),
       priority: '0.7', changefreq: 'monthly',
     });

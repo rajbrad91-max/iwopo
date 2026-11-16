@@ -8,7 +8,7 @@
  * (nginx adds X-Robots-Tag: noindex there too).
  */
 import express from 'express';
-import { allPages, SITE } from '../lib/seoContent.js';
+import { allPages, SITE, GONE } from '../lib/seoContent.js';
 import { MOVED } from '../lib/seo/compare.js';
 
 const router = express.Router();
@@ -20,6 +20,7 @@ const isLive = (req) => /^(www\.)?iwopo\.com$/i.test(String(req.hostname || ''))
  */
 /* ⚖️ a page that moved keeps its old links working: a permanent redirect to the new address */
 router.get(Object.keys(MOVED), (req, res) => res.redirect(301, MOVED[req.path]));
+router.get(Object.keys(GONE), (req, res) => res.redirect(301, GONE[req.path]));
 
 router.get('/robots.txt', (req, res) => {
   // 🌐 a vendor's own address: their website pages may be indexed, a couple's gallery, portal or contract never
@@ -106,7 +107,7 @@ async function llms(full) {
     '## Countries', ...group('location').map(line), ...group('local').map(p => `- [${p.h1}](${SITE}${p.path}) (${p.langName}): ${p.description}`), '',
     '## Comparisons', ...group('compare').map(line), '',
     '## Other languages', ...group('intl').map(p => `- [${p.langName}](${SITE}${p.path}): ${p.description}`), '',
-    '## Pricing', line(pages.find(p => p.path === '/pricing')), '',
+    '## Pricing', `- [Plans and prices](${SITE}/#packages): every plan, what it includes and its free trial`, '',
     '## Questions', ...home.faq.map(([q, a]) => `- ${q} ${a}`), '',
   ];
   if (full) out.push('---', '', ...pages.filter(p => p.standalone).map(body));

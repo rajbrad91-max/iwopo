@@ -65,7 +65,7 @@ export const FEATURES = {
       ['Can clients initial individual sections?', 'Yes. You choose which sections need initials; the client cannot sign until every one is initialed.'],
       ['Is the invoice sent automatically?', 'No. It is created automatically when a booking is confirmed, and you decide when to send it.'],
     ],
-    related: ['/features/leads', '/guides/wedding-photography-contract', '/guides/wedding-photography-deposit', '/pricing'],
+    related: ['/features/leads', '/guides/wedding-photography-contract', '/guides/wedding-photography-deposit'],
   },
 
   leads: {
