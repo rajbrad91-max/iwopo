@@ -29,6 +29,8 @@
 .sa-nav-item .ico { display:flex; align-items:center; justify-content:center; width:20px; flex-shrink:0; }
 .sa-nav-item .ico svg { display:block; width:20px; height:20px; }
 .sa-logout { margin-top:auto; }
+/* a small heading inside a settings card (Private bucket, Public bucket, Send a test…) */
+.sa-sec-hd { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
 
 .sa-main { flex:1; padding:16px 20px; overflow-y:auto; min-width:0; }
 .sa-topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
