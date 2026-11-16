@@ -42,19 +42,29 @@
 .sa-backdrop { display:none; }
 .sa-loading { color:var(--muted); padding:40px; text-align:center; }
 
-/* 📊 Stat tiles: squares, like the vendor panel's dashboard counters — a big number, what it counts, a line about it
+/* 📊 Stat tiles: 120px squares with a 30px number, the vendor panel's dashboard counters' size — a big number, what it counts, a line about it
    (Raj, 2026-11-16). The number is as big as the square allows: --chars (its length, from StatCard) shrinks a long one. */
-.sa-stats { display:grid; grid-template-columns:repeat(auto-fill, 168px); gap:10px; margin-bottom:10px; }
+.sa-stats { display:grid; grid-template-columns:repeat(auto-fill, 120px); gap:10px; margin-bottom:10px; }
 .sa-card { aspect-ratio:1 / 1; container-type:inline-size; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:6px; padding:12px 10px; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; transition:all 0.2s; }
+  gap:3px; padding:8px 6px; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; transition:all 0.2s; }
 .sa-card:hover { border-color:var(--teal-2); transform:translateY(var(--lift-tile)); box-shadow:var(--shadow); }   /* rises like the vendor dashboard's tiles */
-.sa-value { font-size:min(40px, calc(140cqi / var(--chars, 1))); font-weight:800; line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.sa-label { color:var(--muted); font-size:11px; letter-spacing:0.5px; font-weight:700; text-transform:uppercase; line-height:1.2; }
-.sa-trend { font-size:11px; font-weight:600; line-height:1.3; }
+.sa-value { font-size:min(30px, calc(140cqi / var(--chars, 1))); font-weight:800; line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.sa-label { color:var(--muted); font-size:10px; letter-spacing:0.5px; font-weight:700; text-transform:uppercase; line-height:1.2; }
+.sa-trend { font-size:10px; font-weight:600; line-height:1.25; }
 .sa-trend.up { color:var(--green); } .sa-trend.warn { color:var(--amber); } .sa-trend.neutral { color:var(--muted); }
 
-.sa-grid-2 { display:grid; grid-template-columns:1.5fr 1fr; gap:10px; margin-bottom:10px; }
-.sa-grid-2eq { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+/* 📊 The dashboard fits one screen (Raj, 2026-11-16). Its tiles sit in the top bar beside the bells (no title there);
+   the five boxes share the height left under them — 3 columns, 2 rows, Vendors by Type spanning two. Charts fill their
+   box; a list longer than its box scrolls inside it. A phone or a short window stacks them and the page scrolls. */
+.sa-topbar.is-dash { align-items:flex-start; margin-bottom:10px; }
+.sa-topbar.is-dash > .sa-stats { flex:1; margin:0; }
+.sa-dash { display:grid; grid-template-columns:1.4fr 1fr 1fr; grid-template-rows:repeat(2, minmax(0, 1fr)); gap:10px;
+  height:calc(100dvh - 32px - 120px - 10px); min-height:540px; }   /* the window, less the page's padding, the tiles and their gap */
+.sa-dash > .sa-box { display:flex; flex-direction:column; min-height:0; }
+.sa-dash-types { grid-column:span 2; }
+.sa-dash-fill { flex:1; min-height:0; }
+.sa-dash-list { flex:1; min-height:0; overflow-y:auto; }
+.sa-plan-body { display:flex; align-items:center; }
 .sa-box { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; min-width:0; }
 .sa-box h3 { font-size:13px; font-weight:700; margin-bottom:2px; }
 .sa-box-sub { color:var(--muted); font-size:10px; margin-bottom:9px; }
@@ -66,6 +76,12 @@
 .sa-cty-top .cnt { color:var(--muted); font-weight:600; }
 .sa-cty-bar { height:6px; background:var(--panel-2); border-radius:7px; overflow:hidden; }
 .sa-cty-fill { height:100%; background:var(--teal); border-radius:7px; width:var(--pct); }
+/* a box's way to its full page (the dashboard's Top Referrers → Referrals) */
+.sa-box-link { display:inline-block; margin-top:12px; font-size:12px; font-weight:600; color:var(--teal); text-decoration:none; transition:transform .15s ease; }
+.sa-box-link:hover { transform:translateX(3px); }
+/* 🏆 Referrals: the top-referrers table and the list under it */
+.sa-ref-title { margin:18px 0 8px; }
+.sa-ref-email { margin-top:2px; font-size:11px; color:var(--muted); }
 
 .sa-adopt { display:flex; flex-direction:column; gap:9px; flex:1; justify-content:center; padding-left:8px; }
 .sa-ad-top { display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; }
@@ -105,10 +121,13 @@
   .sa-sidebar { position:fixed; left:0; top:0; z-index:100; transform:translateX(-100%); transition:transform 0.25s; }
   .sa-sidebar.show { transform:none; }
   .sa-backdrop { display:block; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
-  .sa-grid-2, .sa-grid-2eq { grid-template-columns:1fr; }
+  .sa-topbar.is-dash { flex-wrap:wrap; }
+  .sa-topbar.is-dash > .sa-stats { order:3; flex-basis:100%; margin-top:10px; }
+  .sa-dash { grid-template-columns:1fr; grid-template-rows:none; height:auto; min-height:0; }
+  .sa-dash-types { grid-column:auto; }
+  .sa-dash-fill { min-height:220px; }
 }
-
-@media (max-width:600px) { .sa-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); } }   /* two squares a row on a phone */
+@media (max-height:600px) { .sa-dash { height:auto; grid-template-rows:repeat(2, 300px); } }
 
 /* ---- Packages ---- */
 .sa-pkg-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; align-items:start; }
@@ -365,15 +384,16 @@
 
 /* 🔓 what a plan actually unlocks (PlanUnlocks in Dashboard.jsx) */
 
-/* 🍩 Vendors by Type — the box grows with its list, two columns beside a fixed-size donut (2026-11-05) */
-.sa-type-box { display: flex; align-items: center; gap: 24px; padding: 14px 0 6px; container-type: inline-size; }
-.sa-type-pie { flex: 0 0 170px; height: 170px; }
+/* 🍩 Vendors by Type — every trade in columns beside a donut sized to the box (2026-11-05, one screen 2026-11-16) */
+.sa-type-box { display: flex; align-items: center; gap: 24px; container-type: inline-size; }
+.sa-type-pie { flex: 0 0 auto; height: 100%; max-height: 210px; aspect-ratio: 1; }
 /* columns just wider than the longest name, so each number sits close to its trade and they still line up (Raj) */
-.sa-legend-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 215px)); column-gap: 36px; row-gap: 9px; align-content: center; }
+.sa-legend-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 190px)); column-gap: 28px; row-gap: 7px; align-content: center; }
 .sa-legend-cols .sa-legend-item { min-width: 0; font-size: 12px; }
-/* one column when the CARD is narrow (a laptop screen squeezes it), whatever the screen size */
-@container (max-width: 620px) { .sa-legend-cols { grid-template-columns: minmax(0, 230px); } }
-@media (max-width: 640px) { .sa-type-box { flex-direction: column; align-items: stretch; } .sa-type-pie { align-self: center; } }
+/* fewer columns when the CARD is narrow, whatever the screen size */
+@container (max-width: 700px) { .sa-legend-cols { grid-template-columns: repeat(2, minmax(0, 200px)); } }
+@container (max-width: 460px) { .sa-legend-cols { grid-template-columns: minmax(0, 230px); } }
+@media (max-width: 640px) { .sa-type-box { flex-direction: column; align-items: stretch; } .sa-type-pie { align-self: center; height: 180px; } }
 
 /* 🗑️ Delete vendor (components/DeleteVendor.jsx) */
 .sa-row-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }

@@ -24,7 +24,7 @@ import { regionEconomics } from '../lib/planEconomics.js';
 import { syncOffer } from '../lib/stripeCoupons.js';
 import { visitorCountry } from '../lib/localPrice.js';
 import { stripe, stripeReady } from '../lib/stripe.js';
-import { myReferrals } from '../lib/referrals.js';
+import { myReferrals, referrerBoard } from '../lib/referrals.js';
 import * as objects from '../lib/objectStore.js';
 import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
 import { quiet } from '../lib/quiet.js';
@@ -666,11 +666,11 @@ router.get('/referrals/mine', requireAuth, async (req, res) => {
   try { res.json(await myReferrals(req.user.vendor_id, process.env.APP_URL || 'https://iwopo.com')); } catch (e) { serverError(res, e); }
 });
 
-// 🔒 Super admin: list all referrals
+// 🔒 Super admin: every referral, and who brought how many (the Referrals page and the dashboard's Top Referrers)
 router.get('/referrals', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const referrals = await prisma.referrals.findMany({ orderBy: { created_at: 'desc' } });
-    res.json({ referrals });
+    res.json({ referrals, board: await referrerBoard() });
   } catch (e) { serverError(res, e); }
 });
 

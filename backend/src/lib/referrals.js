@@ -93,6 +93,33 @@ export async function rewardReferrer(inv) {
   return { vendorId: referrer.vendor_id, how: 'owed' };
 }
 
+/**
+ * 🏆 Super Admin: who brought how many (Raj, 2026-11-16). Per referrer: friends who signed up with their code or their
+ * invite (joined, owed or rewarded), how many of those pay (owed or rewarded — the friend's invoice was paid), and invites
+ * still waiting (pending); their business and code beside it. Most sign-ups first.
+ */
+export async function referrerBoard() {
+  const groups = await prisma.referrals.groupBy({ by: ['referrer_email', 'status'], _count: { _all: true } });
+  const by = new Map();
+  for (const g of groups) {
+    const email = g.referrer_email.toLowerCase();
+    const b = by.get(email) || { email, business_name: null, code: null, signed_up: 0, paying: 0, waiting: 0 };
+    const n = g._count._all;
+    if (g.status === 'pending') b.waiting += n; else b.signed_up += n;
+    if (g.status === 'owed' || g.status === 'rewarded') b.paying += n;
+    by.set(email, b);
+  }
+  const owners = await prisma.users.findMany({ where: { role: 'vendor', email: { in: [...by.keys()], mode: 'insensitive' } }, select: { email: true, vendor_id: true } });
+  const vendors = await prisma.vendors.findMany({ where: { id: { in: owners.map(o => o.vendor_id).filter(Boolean) } }, select: { id: true, business_name: true, referral_code: true } });
+  for (const o of owners) {
+    const v = vendors.find(x => x.id === o.vendor_id), b = by.get(o.email.toLowerCase());
+    if (v && b) Object.assign(b, { business_name: v.business_name, code: v.referral_code });
+  }
+  const referrers = [...by.values()].sort((a, b) => b.signed_up - a.signed_up || b.paying - a.paying || a.email.localeCompare(b.email));
+  const totals = referrers.reduce((t, r) => ({ signed_up: t.signed_up + r.signed_up, paying: t.paying + r.paying }), { signed_up: 0, paying: 0 });
+  return { referrers, totals };
+}
+
 /** A vendor's own referral page: their code (made now if they somehow have none), link, and who joined. */
 export async function myReferrals(vendorId, appUrl) {
   let v = await prisma.vendors.findUnique({ where: { id: Number(vendorId) }, select: { referral_code: true, business_name: true } });

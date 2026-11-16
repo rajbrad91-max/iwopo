@@ -93,37 +93,70 @@ function CouponBuilder() {
   );
 }
 
+/** 🏆 Who brought how many (Raj, 2026-11-16): every referrer, the sign-ups that came with their code or invite, how many of
+ *  those pay, and invites still waiting — most sign-ups first. "View friends" narrows the list below to theirs. */
+function TopReferrers({ board, only, onOnly }) {
+  return (
+    <>
+      <div className="sa-section-title sa-ref-title">Top referrers</div>
+      <div className="sa-table-wrap">
+        <table>
+          <thead><tr><th>Referrer</th><th>Code</th><th>Signed up</th><th>Paying</th><th>Waiting</th><th /></tr></thead>
+          <tbody>
+            {board.length === 0 ? <tr><td colSpan="6" className="sa-empty">No referrals yet.</td></tr> : board.map(b => (
+              <tr key={b.email}>
+                <td><div className="biz">{b.business_name || b.email}</div>{b.business_name && <div className="sa-ref-email">{b.email}</div>}</td>
+                <td>{b.code || '—'}</td>
+                <td className="biz">{b.signed_up}</td>
+                <td>{b.paying}</td>
+                <td>{b.waiting}</td>
+                <td><button type="button" className={`sa-view-btn ${only === b.email ? 'active-btn' : ''}`} onClick={() => onOnly(only === b.email ? null : b.email)}>
+                  {only === b.email ? 'Show everyone' : 'View friends'}</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 export function ReferralsView() {
   const [refs, setRefs] = useState([]);
+  const [board, setBoard] = useState([]);
+  const [only, setOnly] = useState(null);   // one referrer's friends, or everyone's
   const [loading, setLoading] = useState(true);
   useEffect(() => { load(); }, []);
   async function load() {
     setLoading(true);
-    try { const d = await api.referrals(); setRefs(d.referrals || []); } catch {}
+    try { const d = await api.referrals(); setRefs(d.referrals || []); setBoard(d.board?.referrers || []); } catch {}
     finally { setLoading(false); }
   }
-  const rewarded = refs.filter(r => r.status === 'rewarded').length;
+  const sum = (k) => board.reduce((n, b) => n + b[k], 0);
+  const shown = only ? refs.filter(r => r.referrer_email.toLowerCase() === only) : refs;
   return (
     <>
       <CouponBuilder />
       <div className="sa-section-title u-margin-bottom-8px">Referrals</div>
       <div className="sa-stats">
-        <StatCard label="Total Referrals" value={refs.length} trend="Email-based" cls="up" />
-        <StatCard label="Rewarded" value={rewarded} trend="1 free month each" cls="up" />
-        <StatCard label="Pending" value={refs.length - rewarded} trend="Awaiting paid signup" cls="warn" />
+        <StatCard label="Signed up" value={sum('signed_up')} trend="With a code or an invite" cls="up" />
+        <StatCard label="Paying" value={sum('paying')} trend="1 free month each" cls="up" />
+        <StatCard label="Waiting" value={sum('waiting')} trend="Invited, not signed up" cls="warn" />
       </div>
       <div className="sa-hint u-margin-bottom-12px">
         Reward = 1 free month for BOTH — applied when the friend signs up on a <b>paid</b> plan.
       </div>
+      {!loading && <TopReferrers board={board} only={only} onOnly={setOnly} />}
+      <div className="sa-section-title sa-ref-title">{only ? `Friends of ${only}` : 'Every referral'}</div>
       <div className="sa-table-wrap">
         <table>
           <thead><tr><th>Referrer</th><th>Friend</th><th>Reward</th><th>Status</th></tr></thead>
           <tbody>
             {loading ? (
               <tr><td colSpan="4" className="sa-empty">Loading…</td></tr>
-            ) : refs.length === 0 ? (
+            ) : shown.length === 0 ? (
               <tr><td colSpan="4" className="sa-empty">No referrals yet.</td></tr>
-            ) : refs.map(r => (
+            ) : shown.map(r => (
               <tr key={r.id}>
                 <td className="biz">{r.referrer_email}</td>
                 <td>{r.friend_email}</td>

@@ -4,7 +4,7 @@ import './super.css';
 import './agentvoice.css';
 // ✂️ each screen lives in its own file (pages/admin/ — code audit #2, 2026-11-11)
 import { AdminBells } from './admin/AdminBells';
-import { DashboardView } from './admin/DashboardView';
+import { DashboardView, DashboardStats } from './admin/DashboardView';
 import { ServicesView } from './admin/Services';
 import { ManageServicesView } from './admin/ManageServices';
 import { ReferralsView } from './admin/Referrals';
@@ -37,6 +37,7 @@ export default function Dashboard({ onLogout }) {
   const [vendors, setVendors] = useState([]);
   const [packages, setPackages] = useState([]);
   const [overview, setOverview] = useState(null);   // 📊 the real figures (GET /admin/overview)
+  const [geo, setGeo] = useState(null);             // 🌍 sellers' countries and trades (GET /admin/vendor-stats)
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('vf_sa_collapsed') === '1');
@@ -51,10 +52,12 @@ export default function Dashboard({ onLogout }) {
   async function load() {
     setLoading(true);
     try {
-      const [v, p, o] = await Promise.all([api.vendors(), api.adminPackages(), api.adminOverview().catch(() => null)]);
+      const [v, p, o, g] = await Promise.all([api.vendors(), api.adminPackages(), api.adminOverview().catch(() => null),
+        api.adminVendorStats().catch(() => ({ countries: [], unset: 0, total: 0 }))]);
       setVendors(v.vendors || []);
       setPackages(p.packages || []);
       setOverview(o);
+      setGeo(g);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
@@ -90,20 +93,24 @@ export default function Dashboard({ onLogout }) {
       {sidebarOpen && <div className="sa-backdrop" onClick={() => setSidebarOpen(false)} />}
 
       <main className="sa-main">
-        <div className="sa-topbar">
+        {/* 📊 on the dashboard the tiles take the title's place beside the bells, so the whole page fits one screen */}
+        <div className={`sa-topbar ${view === 'dashboard' ? 'is-dash' : ''}`}>
           <div className="sa-topbar-left">
             <span className="sa-hamburger" onClick={() => setSidebarOpen(true)}>☰</span>
-            <div>
-              <h1>{NAV.find(n => n.id === view)?.label}</h1>
-              <div className="sa-sub">Welcome back, {user?.name}</div>
-            </div>
+            {view !== 'dashboard' && (
+              <div>
+                <h1>{NAV.find(n => n.id === view)?.label}</h1>
+                <div className="sa-sub">Welcome back, {user?.name}</div>
+              </div>
+            )}
           </div>
+          {view === 'dashboard' && !loading && <DashboardStats vendors={vendors} packages={packages} overview={overview} geo={geo} />}
           <AdminBells goView={go} />
         </div>
 
         {loading ? <div className="sa-loading">Loading…</div> : (
           <>
-            {view === 'dashboard' && <DashboardView vendors={vendors} packages={packages} overview={overview} />}
+            {view === 'dashboard' && <DashboardView overview={overview} geo={geo} go={go} />}
             {view === 'services' && <ServicesView />}
             {view === 'manage' && <ManageServicesView />}
             {view === 'buyers' && <BuyersView vendors={vendors} overview={overview} onChanged={load} />}
