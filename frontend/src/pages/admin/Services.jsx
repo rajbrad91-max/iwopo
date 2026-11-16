@@ -49,7 +49,7 @@ export function ServicesView() {
             <input placeholder="Label" value={nf.label} onChange={e => setNf({ ...nf, label: e.target.value })} />
             <input className="u-width-80px" placeholder="% off" type="number" value={nf.percent_off} onChange={e => setNf({ ...nf, percent_off: e.target.value })} />
             <input placeholder="Ends" type="date" value={nf.ends_at} onChange={e => setNf({ ...nf, ends_at: e.target.value })} />
-            <button className="sa-btn-teal" onClick={addOffer}>Create</button>
+            <button className="sa-btn" onClick={addOffer}>Create</button>
           </div>
         </div>
       )}
@@ -192,7 +192,7 @@ function CountryPriceEditor({ type, item, onSaved }) {
         </select>
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-6px-8px u-width-60px" type="number" placeholder="mo$" value={m} onChange={e => setM(e.target.value)} />
         <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-6px-8px u-width-60px" type="number" placeholder="yr$" value={y} onChange={e => setY(e.target.value)} />
-        <button className="sa-btn-teal u-padding-5px-10px" onClick={add} disabled={saving}>+</button>
+        <button className="sa-btn u-padding-5px-10px" onClick={add} disabled={saving}>+</button>
       </div>
     </div>
   );
@@ -224,7 +224,7 @@ function TierEditor({ service, onSaved }) {
           <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-5px-7px u-width-62px" type="number" placeholder="—" value={t.price_annual ?? ''} onChange={e => set(i, 'price_annual', e.target.value)} />
         </div>
       ))}
-      <button className="sa-btn-teal u-padding-5px-12px u-margin-top-4px" onClick={save} disabled={saving}>{saving ? '…' : 'Save tiers'}</button>
+      <button className="sa-btn u-padding-5px-12px u-margin-top-4px" onClick={save} disabled={saving}>{saving ? '…' : 'Save tiers'}</button>
     </div>
   );
 }
@@ -255,7 +255,7 @@ function ServicePriceEditor({ service, onSaved }) {
       <div className="u-display-flex u-gap-5px u-align-items-center">
         <span className="u-color-muted u-font-size-12px">yr $</span>
         <input className="u-width-68px u-background-panel-2 u-border-1px-solid-line u-border-radius-6px u-color-text u-padding-5px-8px" type="number" value={pa} onChange={e => setPa(e.target.value)} placeholder="—" />
-        <button className="sa-btn-teal u-padding-5px-12px" onClick={save} disabled={saving}>{saving ? '…' : 'Save'}</button>
+        <button className="sa-btn u-padding-5px-12px" onClick={save} disabled={saving}>{saving ? '…' : 'Save'}</button>
       </div>
     </div>
   );

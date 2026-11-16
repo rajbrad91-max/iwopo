@@ -7,5 +7,7 @@
 .av-msg { margin-top: 10px; font-size: 12.5px; }
 .av-gap { margin-top: 12px; }
 .av-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.av-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 12.5px; }
+.av-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 12.5px;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease; }
+.av-chip:hover { border-color: var(--teal); color: var(--teal); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }   /* rises like every button */
 .av-chip.is-on { border-color: var(--teal, var(--teal)); background: color-mix(in srgb, var(--teal) 14%, transparent); font-weight: 600; }

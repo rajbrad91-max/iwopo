@@ -2,6 +2,7 @@
  * ⚙️ Super Admin → Settings, one tab per subject (Raj, 2026-11-16: "the settings page is not organized") — each tab has
  * its own address, /admin/settings/<tab>:
  *   Account · Email · Payments · Storage · Face recognition · AI
+ * The panel's dark / light switch sits at the right of the tabs (Raj: the theme card took too much space).
  * Every tab that holds keys has one Edit / Save / Cancel; keys and passwords are write-only (never read back, only
  * replaced). Moved out of pages/Dashboard.jsx unchanged (code audit #2, Raj 2026-11-11), reorganised 2026-11-16.
  */
@@ -9,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { useDialog } from '../../lib/dialog.jsx';
 import { adminPath } from '../../lib/adminRoute';
+import { Switch } from './common';
 
 export const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },
@@ -50,10 +52,10 @@ function Card({ title, desc, f, children }) {
         {f && (
           <div className="sa-set-actions">
             {!f.editing
-              ? <button type="button" className="sa-btn-teal" onClick={f.startEdit}>Edit</button>
+              ? <button type="button" className="sa-btn" onClick={f.startEdit}>Edit</button>
               : <>
-                  <button type="button" className="sa-btn-teal" onClick={async () => { await f.save(f.s); f.stopEdit(); }}>Save</button>
-                  <button type="button" className="sa-set-cancel" onClick={f.stopEdit}>Cancel</button>
+                  <button type="button" className="sa-btn" onClick={async () => { await f.save(f.s); f.stopEdit(); }}>Save</button>
+                  <button type="button" className="sa-btn" onClick={f.stopEdit}>Cancel</button>
                 </>}
           </div>
         )}
@@ -116,7 +118,7 @@ function GeminiVoiceSettings({ s, setS, editing }) {
  * 🔐 Email and password each demand the current password. Anyone sitting at an unlocked laptop should not be able to
  * take the account over in two clicks.
  */
-function AccountTab({ user, saTheme, setSaTheme }) {
+function AccountTab({ user }) {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [curPw, setCurPw] = useState('');
@@ -149,15 +151,6 @@ function AccountTab({ user, saTheme, setSaTheme }) {
 
   return (
     <>
-      <Card title="Panel theme" desc="How this Super Admin panel looks. It never changes the vendors' panels.">
-        <span className="sa-set-seg">
-          {['dark', 'light'].map(t => (
-            <button key={t} type="button" onClick={() => setSaTheme(t)} className={`sa-seg-btn ${saTheme === t ? 'is-on' : ''}`}>
-              {t === 'dark' ? 'Dark' : 'Light'}
-            </button>
-          ))}
-        </span>
-      </Card>
       <Card title="Your sign-in" desc={`${user?.email || ''} · super admin. Changing the email or password needs your current password.`}>
         <div className="sa-acct-row">
           <label className="sa-acct-lbl">Display name</label>
@@ -219,7 +212,7 @@ function EmailTab({ f }) {
       <Card title="Send a test" desc="Sends one real email, to check the settings above work.">
         <div className="sa-set-row">
           <input className="sa-in" placeholder="your@email.com" value={testTo} onChange={e => setTestTo(e.target.value)} />
-          <button type="button" className="sa-btn-teal" disabled={testing} onClick={sendTest}>{testing ? 'Sending…' : 'Send test'}</button>
+          <button type="button" className="sa-btn" disabled={testing} onClick={sendTest}>{testing ? 'Sending…' : 'Send test'}</button>
         </div>
         {testMsg && <div className={`sa-test-msg ${testMsg.ok ? 'is-ok' : ''}`}>{testMsg.text}</div>}
       </Card>
@@ -318,7 +311,7 @@ function FacesTab({ f }) {
           </div>
         )}
         <div className="sa-set-row">
-          <button type="button" className="sa-btn-teal" onClick={reindex}>Re-index all photos</button>
+          <button type="button" className="sa-btn" onClick={reindex}>Re-index all photos</button>
           {reMsg && <span className="sa-set-note">{reMsg}</span>}
         </div>
       </Card>
@@ -363,7 +356,7 @@ function AiTab({ f }) {
         <Field f={f} k="agent_api_key" label="API key" type="password" placeholder="sk-ant-…" wide />
       </div>
       <div className="sa-set-row">
-        <button type="button" className="sa-btn-teal" disabled={testing} onClick={testAi}>{testing ? 'Checking…' : 'Say hello to the AI Agent'}</button>
+        <button type="button" className="sa-btn" disabled={testing} onClick={testAi}>{testing ? 'Checking…' : 'Say hello to the AI Agent'}</button>
         {f.s.agent_api_key && <button type="button" className="sa-btn-remove" onClick={clearAiKey}>Remove key</button>}
       </div>
       {aiMsg && <div className={`sa-test-msg ${aiMsg.ok ? 'is-ok' : ''}`}>{aiMsg.text}</div>}
@@ -384,13 +377,20 @@ export function SettingsView({ saTheme, setSaTheme, user, section, onSection }) 
   };
   return (
     <>
-      <nav className="sa-set-tabs" aria-label="Settings">
-        {SETTINGS_TABS.map(t => (
-          <a key={t.id} href={adminPath('settings', t.id)} onClick={open(t.id)} className={`sa-set-tab ${tab === t.id ? 'is-on' : ''}`}
-            aria-current={tab === t.id ? 'page' : undefined}>{t.label}</a>
-        ))}
-      </nav>
-      {tab === 'account' ? <AccountTab user={user} saTheme={saTheme} setSaTheme={setSaTheme} />
+      <div className="sa-set-bar">
+        <nav className="sa-set-tabs" aria-label="Settings">
+          {SETTINGS_TABS.map(t => (
+            <a key={t.id} href={adminPath('settings', t.id)} onClick={open(t.id)} className={`sa-set-tab ${tab === t.id ? 'is-on' : ''}`}
+              aria-current={tab === t.id ? 'page' : undefined}>{t.label}</a>
+          ))}
+        </nav>
+        {/* this panel's look only — never the vendors' panels */}
+        <span className="sa-theme">
+          Dark mode
+          <Switch on={saTheme === 'dark'} onChange={() => setSaTheme(saTheme === 'dark' ? 'light' : 'dark')} label="Dark mode" />
+        </span>
+      </div>
+      {tab === 'account' ? <AccountTab user={user} />
         : !f.s ? <div className="sa-loading">Loading…</div>
         : tab === 'email' ? <EmailTab f={f} />
         : tab === 'payments' ? <PaymentsTab f={f} />

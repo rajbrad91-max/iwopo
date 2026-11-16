@@ -74,7 +74,7 @@ export function AiChatView({ vendors }) {
               <div className="cb-sub">{subs.length} subscriber{subs.length === 1 ? '' : 's'} · {subs.filter(s => s.active).length} active</div>
             </div>
             {!adding ? (
-              <button className="sa-btn-teal cb-add-btn" onClick={() => setAdding(true)}>+ Add subscriber</button>
+              <button className="sa-btn cb-add-btn" onClick={() => setAdding(true)}>+ Add subscriber</button>
             ) : (
               <div className="cb-add-row">
                 <select className="cb-select" defaultValue="" onChange={e => addSub(e.target.value)}>
@@ -192,11 +192,11 @@ function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
         </div>
         <div className="cb-api-actions">
           {!editing ? (
-            <button className="sa-btn-teal" onClick={startEdit}>Edit</button>
+            <button className="sa-btn" onClick={startEdit}>Edit</button>
           ) : (
             <>
-              <button className="sa-btn-teal" onClick={() => setShow(v => !v)}>{show ? 'Hide' : 'Show'}</button>
-              <button className="sa-btn-teal" onClick={save}>Save</button>
+              <button className="sa-btn" onClick={() => setShow(v => !v)}>{show ? 'Hide' : 'Show'}</button>
+              <button className="sa-btn" onClick={save}>Save</button>
               <button className="cb-cancel" onClick={() => { setEditing(false); setShow(false); }}>✕</button>
             </>
           )}
@@ -255,7 +255,7 @@ function ChatbotInbox({ vendorId }) {
               <div className="cb-pending-row">
                 <input className="cb-input" placeholder="Answer (optional — for your reference)"
                   value={answers[p.id] || ''} onChange={e => setAnswers({ ...answers, [p.id]: e.target.value })} />
-                <button className="sa-btn-teal" onClick={() => resolve(p, false)}>✅ Done</button>
+                <button className="sa-btn" onClick={() => resolve(p, false)}>✅ Done</button>
                 <DeleteButton onClick={() => resolve(p, true)}>Dismiss</DeleteButton>
               </div>
             </div>
@@ -328,10 +328,10 @@ function KnowledgePage({ vendorId, onBack }) {
           <div className="cb-sub">This is what the chatbot knows about them.</div>
         </div>
         <div className="cb-actions">
-          <button className="sa-btn-teal" onClick={() => setShowShare(v => !v)}>Share with vendor</button>
+          <button className="sa-btn" onClick={() => setShowShare(v => !v)}>Share with vendor</button>
           {!editing
-            ? <button className="sa-btn-teal" onClick={() => setEditing(true)}>Edit</button>
-            : <button className="sa-btn-teal" onClick={save}>Save</button>}
+            ? <button className="sa-btn" onClick={() => setEditing(true)}>Edit</button>
+            : <button className="sa-btn" onClick={save}>Save</button>}
         </div>
       </div>
 
@@ -341,11 +341,11 @@ function KnowledgePage({ vendorId, onBack }) {
           <div className="cb-share-hint">Send this to the vendor. They enter the access code, fill it in, and it's ready for the chatbot.</div>
           <div className="cb-share-row">
             <input className="cb-input" readOnly value={shareUrl} onFocus={e => e.target.select()} />
-            <button className="sa-btn-teal" onClick={copyLink}>{copied ? '✅ Copied' : 'Copy'}</button>
+            <button className="sa-btn" onClick={copyLink}>{copied ? '✅ Copied' : 'Copy'}</button>
           </div>
           <div className="cb-share-row">
             <input className="cb-input" placeholder="Set an access code (e.g. studio2026)" value={code} onChange={e => setCode(e.target.value)} />
-            <button className="sa-btn-teal" onClick={saveCode}>Save code</button>
+            <button className="sa-btn" onClick={saveCode}>Save code</button>
           </div>
           {!sub.access_code && <div className="cb-warn">⚠️ No access code set — anyone with the link can edit. Set one above.</div>}
         </div>
