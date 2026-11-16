@@ -165,7 +165,7 @@ export default function EditorPortal() {
     return (
       <div className="ep">
         <form className="ep-card ep-auth" onSubmit={auth}>
-          <h1 className="ep-title">🎞️ Editor sign {mode === 'signup' ? 'up' : 'in'}</h1>
+          <h1 className="ep-title">Editor sign {mode === 'signup' ? 'up' : 'in'}</h1>
           <p className="ep-sub">{mode === 'signup' ? 'Use the email the studio added for you, and choose a password.' : 'Sign in to download your clients\u2019 RAW files.'}</p>
           <label className="ep-label">Email<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
           <label className="ep-label">Password<input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={mode === 'signup' ? 8 : undefined} value={password} onChange={e => setPassword(e.target.value)} /></label>
@@ -182,7 +182,7 @@ export default function EditorPortal() {
   return (
     <div className="ep">
       <header className="ep-top">
-        <div><div className="ep-title">🎞️ RAW files{me.studio ? ` — ${me.studio}` : ''}</div><div className="rs-muted">{me.email}</div></div>
+        <div><div className="ep-title">RAW files{me.studio ? ` — ${me.studio}` : ''}</div><div className="rs-muted">{me.email}</div></div>
         <button className="ep-link" type="button" onClick={signOut}>Sign out</button>
       </header>
 
@@ -191,7 +191,7 @@ export default function EditorPortal() {
           <button className="ep-link" type="button" onClick={() => setOpen(null)}>← All clients</button>
           <h2 className="rs-h"><RenameField name={open.name} onSave={async (name) => { const r = await call(`/clients/${open.id}/name`, { method: 'PUT', body: { name } }); setOpen(o => ({ ...o, name: r.name })); }} /></h2>
           <p className="rs-sub">{open.files.length} RAW file{open.files.length === 1 ? '' : 's'} of the {open.selected} photo{open.selected === 1 ? '' : 's'} the client picked · {mb(open.files.reduce((t, f) => t + f.size, 0))}</p>
-          {open.files.length > 0 && <button className="rs-btn" type="button" onClick={downloadAll}>⬇️ Download all{window.showDirectoryPicker ? ' to a folder' : ''}</button>}
+          {open.files.length > 0 && <button className="rs-btn" type="button" onClick={downloadAll}>Download all{window.showDirectoryPicker ? ' to a folder' : ''}</button>}
           {progress && <div className="ep-progress">{progress}</div>}
           <div className="ep-deliver">
             <h3 className="rs-h">⬆️ Deliver edited photos</h3>
@@ -214,7 +214,7 @@ export default function EditorPortal() {
             {sent && <div className="rs-ok">{sent}</div>}
           </div>
           {open.studioNote && <div className="ep-note"><b>📝 From the studio</b><p>{open.studioNote}</p></div>}
-          <h3 className="rs-h ep-gap">🎞️ RAW files to edit</h3>
+          <h3 className="rs-h ep-gap">RAW files to edit</h3>
           {/* 🖼️ each pick as the client saw it (a 2200px preview); Download is the RAW */}
           <ul className="ep-grid">
             {open.files.map(f => (

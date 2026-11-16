@@ -11,20 +11,20 @@
  * here adds it everywhere at once — and existing vendors keep their key.
  */
 export const PROFESSIONS = {
-  none: { label: 'None', icon: '' },              // watermark only — not a profession
-  photographer: { label: 'Photographer', icon: '📷' },
-  videographer: { label: 'Videographer', icon: '🎥' },
-  photo_video: { label: 'Photo & Video', icon: '🎬' },
-  dj: { label: 'DJ', icon: '🎧' },
-  makeup: { label: 'Make-Up Artist', icon: '💄' },
-  cake: { label: 'Cake Maker', icon: '🎂' },
-  florist: { label: 'Florist / Floor Wrapper', icon: '💐' },
-  bartender: { label: 'Bartender', icon: '🍸' },
-  caterer: { label: 'Caterer', icon: '🍽️' },
-  planner: { label: 'Wedding Planner', icon: '📋' },
-  musician: { label: 'Musician / Singer', icon: '🎶' },
-  transportation: { label: 'Transportation', icon: '🚗' },
-  other: { label: 'Other', icon: '📌' },
+  none: { label: 'None' },              // watermark only — not a profession
+  photographer: { label: 'Photographer' },
+  videographer: { label: 'Videographer' },
+  photo_video: { label: 'Photo & Video' },
+  dj: { label: 'DJ' },
+  makeup: { label: 'Make-Up Artist' },
+  cake: { label: 'Cake Maker' },
+  florist: { label: 'Florist / Floor Wrapper' },
+  bartender: { label: 'Bartender' },
+  caterer: { label: 'Caterer' },
+  planner: { label: 'Wedding Planner' },
+  musician: { label: 'Musician / Singer' },
+  transportation: { label: 'Transportation' },
+  other: { label: 'Other' },
 };
 
 /** Every real profession — everything except "None", which means no watermark. */

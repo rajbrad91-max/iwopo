@@ -279,8 +279,8 @@ export function WebsiteView() {
 
       <p className="wb-hint">
         {site.published
-          ? <>Live at <b>{window.location.origin}/site/{site.slug}</b> — click any text above to change it ✏️</>
-          : <>Draft — nobody can see this yet. Click any text above to change it ✏️</>}
+          ? <>Live at <b>{window.location.origin}/site/{site.slug}</b> — click any text above to change it</>
+          : <>Draft — nobody can see this yet. Click any text above to change it</>}
       </p>
 
       </div>
@@ -293,7 +293,7 @@ export function WebsiteView() {
         <div className="wb-side-body">
       <div className="ac-head">
         <div>
-          <div className="ac-title">🌐 My Website</div>
+          <div className="ac-title">My Website</div>
           <div className="ac-sub">
             {site.published
               ? <>Live at <a href={liveUrl} target="_blank" rel="noreferrer" className="ws-live-link">{liveUrl}</a></>

@@ -75,7 +75,7 @@ router.get('/plans', requireAuth, async (req, res) => {
       storageFor(v),
       prisma.plans.findMany({
         select: {
-          id: true, code: true, name: true, tagline: true, icon: true, price_monthly: true, price_annual: true,
+          id: true, code: true, name: true, tagline: true, price_monthly: true, price_annual: true,
           storage_gb: true, sort_order: true, plan_features: { select: { feature_key: true } },
         },
         orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
@@ -91,7 +91,6 @@ router.get('/plans', requireAuth, async (req, res) => {
       return {
         id: p.id, code: p.code, name: p.name,
         tagline: p.tagline || null,
-        icon: p.icon || null,
         price_monthly: Number(p.price_monthly ?? 0),
         price_annual: p.price_annual != null ? Number(p.price_annual) : null,
         storage_gb: p.storage_gb,

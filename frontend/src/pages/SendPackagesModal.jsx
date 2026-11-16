@@ -130,7 +130,7 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
     } catch (e) {
       // a held send is not a failure — say what to do about it
       setMsg(/not_released|release/i.test(e.message || '')
-        ? '🔒 Preview and release the contract first — use 👁️ Preview Contract above'
+        ? 'Preview and release the contract first — use Preview contract below'
         : '⚠️ ' + (e.message || 'Could not send'));
       setBusy(false);
     }

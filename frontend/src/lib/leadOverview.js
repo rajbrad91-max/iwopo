@@ -1,6 +1,6 @@
 import { leadQuestions, shownFields } from './formRules';
 import { fmtTime, fmtDateTime } from './api';
-import { phoneProblem } from './phone';
+import { phoneProblem, telHref } from './phone';
 
 /** 🗓️ Answers the main event card shows on its first lines (LeadCards), so its details list doesn't repeat them. */
 const IN_EVENT_CARD = new Set(['event_type', 'event_date', 'timing_from', 'timing_to', 'hours', 'location', 'guests']);
@@ -93,8 +93,9 @@ export function leadOverview(lead, cfg) {
 
   return {
     mainEvent, eventDetails, contactAnswers, showMainCard,
-    contactItems: [['1f4e7', lead.email],
-      ['1f4de', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone],
+    // [icon, text, link]: the email opens the email app, the phone number the phone app (Raj, 2026-11-15)
+    contactItems: [['1f4e7', lead.email, lead.email ? `mailto:${lead.email}` : null],
+      ['1f4de', lead.phone && phoneProblem(lead.phone) ? `${lead.phone}  ⚠️ not a valid number — please correct it` : lead.phone, telHref(lead.phone)],
       ['1f4f7', lead.instagram]],
     contactMeta: [['1f50e', lead.heard && !referredBy && `via ${lead.heard}`], ['1f4e5', lead.created_at ? fmtDateTime(lead.created_at, { zone: true }) : null]],
   };

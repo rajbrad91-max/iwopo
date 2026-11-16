@@ -146,7 +146,7 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
           </button>
         )}
       </div>
-      {masked && <div className="pay-hidden-note">🔒 Amounts are hidden · tap 👁️ to show them</div>}
+      {masked && <div className="pay-hidden-note">Amounts are hidden · tap 👁️ to show them</div>}
       {/* 💰 the client says they've paid — confirm it once the money is in.
           Sits at the top because it's the one thing here that needs an action. */}
       {claimed && (
@@ -226,7 +226,7 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
       </div>
       {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
 
-      <h3 className="ms-h3">💳 Payment & Deposit</h3>
+      <h3 className="ms-h3">Payment & Deposit</h3>
 
       {/* deposit % + discount % + custom billed */}
       <div className="ms-fields">

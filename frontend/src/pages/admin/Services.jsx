@@ -90,7 +90,7 @@ function StandaloneServices({ rev = 0 }) {
       <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-4px u-margin-top-22px">
         <div className="sa-section-title u-margin-0">Standalone Services 🧩</div>
         <button className={`sa-view-btn ${edit ? 'active-btn' : ''}`} onClick={() => setEdit(!edit)}>
-          {edit ? '✓ Done' : '✏️ Edit Prices'}
+          {edit ? '✓ Done' : 'Edit Prices'}
         </button>
       </div>
       <div className="sa-hint u-margin-top-0 u-margin-bottom-14px">
@@ -99,7 +99,6 @@ function StandaloneServices({ rev = 0 }) {
       <div className="sa-pkg-grid">
         {services.map(s => (
           <div key={s.id} className="sa-box u-display-flex u-flex-direction-column u-gap-6px">
-            <div className="u-font-size-26px">{s.icon}</div>
             <div className="u-font-weight-700">{s.name}{s.is_addon ? ' · add-on' : ''}</div>
             {edit
               ? <><ServicePriceEditor service={s} onSaved={load} />{s.tiers && <TierEditor service={s} onSaved={load} />}<CountryPriceEditor type="service" item={s} onSaved={load} /></>
@@ -214,7 +213,7 @@ function TierEditor({ service, onSaved }) {
   }
   return (
     <div className="u-margin-top-8px u-border-top-1px-dashed-line u-padding-top-8px">
-      <div className="u-font-size-11px u-color-muted u-margin-bottom-6px">📦 Tiers (mo / yr)</div>
+      <div className="u-font-size-11px u-color-muted u-margin-bottom-6px">Tiers (mo / yr)</div>
       {tiers.map((t, i) => (
         <div className="u-display-flex u-gap-5px u-align-items-center u-margin-bottom-5px" key={i}>
           <span className="u-width-46px u-font-size-12px">{t.label}</span>

@@ -48,7 +48,6 @@ export function ManageServicesView() {
       <>
         <button className="sa-view-btn" onClick={() => setActive(null)}>← Back to services</button>
         <div className="sa-box sa-svc-detail">
-          <div className="sa-svc-detail-icon">{svc.icon}</div>
           <h2 className="sa-svc-detail-name">{svc.name}</h2>
           <p className="sa-svc-detail-desc">{svc.description}</p>
           <div className="sa-trial-pill">
@@ -64,7 +63,6 @@ export function ManageServicesView() {
   const card = (s) => (
     <div key={s.feature_key} className={`sa-manage-card ${s.is_live ? '' : 'is-planned'}`}
       onClick={() => setActive(s.feature_key)}>
-      <div className="sa-manage-icon">{s.icon}</div>
       <div className="sa-manage-name">{s.name}</div>
       <div className="sa-manage-desc">{s.description}</div>
       {!s.is_live && <div className="sa-manage-badge">🏗️ Not built yet</div>}

@@ -77,7 +77,7 @@ export function DashHome({ goTab, openBooking }) {
 
           {/* 🟡 Recent Leads */}
           <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-20px-0-10px">
-            <h2 className="u-margin-0">📋 Recent Leads</h2>
+            <h2 className="u-margin-0">Recent Leads</h2>
             <button className="refresh u-padding-6px-14px u-font-size-12px" onClick={() => goTab('leads')}>View all →</button>
           </div>
           <div className="table-wrap">
@@ -101,9 +101,9 @@ export function DashHome({ goTab, openBooking }) {
 
         {/* 🔵 Upcoming Events (right column) */}
         <div className="dash-right">
-          <h2 className="u-margin-0-0-14px">📅 Upcoming Events</h2>
+          <h2 className="u-margin-0-0-14px">Upcoming Events</h2>
           {upcoming.length === 0 ? (
-            <div className="table-wrap u-padding-30px u-text-align-center u-color-muted">No upcoming events 🗓️</div>
+            <div className="table-wrap u-padding-30px u-text-align-center u-color-muted">No upcoming events</div>
           ) : upcoming.map(b => {
             return <EventCard key={b.id} b={b} onOpen={() => openBooking(b.id)} />;
           })}

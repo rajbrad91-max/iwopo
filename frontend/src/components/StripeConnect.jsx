@@ -32,7 +32,7 @@ export default function StripeConnectCard() {
   if (!s) return null;
   return (
     <section className="scx">
-      <h4 className="scx-h">💳 Card payments</h4>
+      <h4 className="scx-h">Card payments</h4>
       {!s.ready
         ? <p className="scx-p">Card payments through your own Stripe account are coming soon.</p>
         : s.connected

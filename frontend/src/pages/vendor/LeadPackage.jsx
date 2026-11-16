@@ -84,7 +84,7 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove, onSave }) {
 
       {!locked && (
         <div className="ld-pkg-acts">
-          <button type="button" onClick={onEdit}>✏️ Edit</button>
+          <button type="button" onClick={onEdit}>Edit</button>
           {pre.length > 0 && (
             <button type="button" title="Each pre-event's hours at this package's extra-hour price — edit them after"
               onClick={() => onSave({ extras: [...(p.extras || []), ...pre] })}>➕ Add {pre.length} pre-event{pre.length === 1 ? '' : 's'} as extras</button>

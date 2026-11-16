@@ -27,13 +27,12 @@ const router = express.Router();
 async function featureList(includePrivate = false) {
   const rows = await prisma.services.findMany({
     where: { feature_key: { not: null }, ...(includePrivate ? {} : { is_private: false }) },
-    select: { feature_key: true, name: true, icon: true, description: true, is_live: true },
+    select: { feature_key: true, name: true, description: true, is_live: true },
     orderBy: [{ is_live: 'desc' }, { name: 'asc' }],
   });
   return rows.map(r => ({
     key: r.feature_key,
     label: r.name,
-    icon: r.icon,
     description: r.description,
     is_live: r.is_live,
   }));
@@ -187,10 +186,10 @@ router.get('/:id/detail', requireAuth, requireSuperAdmin, async (req, res) => {
 
     const vsRows = await prisma.vendor_services.findMany({
       where: { vendor_id: id },
-      select: { id: true, enabled: true, services: { select: { name: true, icon: true, price: true } } },
+      select: { id: true, enabled: true, services: { select: { name: true, price: true } } },
     });
     const services = vsRows
-      .map(r => ({ id: r.id, enabled: r.enabled, name: r.services?.name, icon: r.services?.icon, price: r.services?.price }))
+      .map(r => ({ id: r.id, enabled: r.enabled, name: r.services?.name, price: r.services?.price }))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const subRows = await prisma.vendor_subscriptions.findMany({
@@ -254,7 +253,6 @@ router.get('/:id/features', requireAuth, requireSuperAdmin, async (req, res) => 
     const features = list.map(f => ({
       key: f.key,
       label: f.label,
-      icon: f.icon,
       description: f.description,
       is_live: f.is_live,          // false = nothing built behind it yet
       enabled: active.has(f.key),

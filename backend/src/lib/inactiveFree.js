@@ -68,7 +68,7 @@ export async function sweepInactiveFree({ now = Date.now() } = {}) {
       await prisma.vendor_settings.upsert({ where: { vendor_id: id }, update: { inactive_stage: 1, inactive_notice_at: new Date(now) }, create: { vendor_id: id, inactive_stage: 1, inactive_notice_at: new Date(now) } });
       done.push([id, 'notice']);
     } else if (stage === 1 && since >= FINAL_AFTER) {
-      await tell(id, '⏳ One week left to keep your iwopo data', 'Your free account has not been used for nearly 7 months. Sign in within a week to keep your leads, packages and files — or upgrade to download a copy.');
+      await tell(id, 'One week left to keep your iwopo data', 'Your free account has not been used for nearly 7 months. Sign in within a week to keep your leads, packages and files — or upgrade to download a copy.');
       await prisma.vendor_settings.update({ where: { vendor_id: id }, data: { inactive_stage: 2 } });
       done.push([id, 'final']);
     } else if (stage === 2 && since >= REMOVE_AFTER) {

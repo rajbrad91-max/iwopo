@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import './fileflyer.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { fileExt } from '../lib/fileExt';
 
 function fmtBytes(n) {
   const b = Number(n || 0);
@@ -104,7 +105,6 @@ export default function FileFlyerPublic({ token }) {
     <div className="ffp-page">
       <div className="ffp-card ffp-gate">
         {data.logo_path && <img className="ffp-logo" src={`/api/me/logo/${data.logo_path}`} alt="" />}
-        <div className="ffp-lock">🔒</div>
         <h1 className="ffp-h1">{data.title}</h1>
         <p className="ffp-sub">{data.business_name} shared this with you. Enter the password to open it.</p>
         <form onSubmit={unlock}>
@@ -157,7 +157,7 @@ export default function FileFlyerPublic({ token }) {
 
         {anything && (
           <button className="ffp-zip" onClick={downloadAll} disabled={zipping}>
-            {zipping ? 'Preparing…' : `⬇️ Download ${trail.length ? 'this folder' : 'everything'}`}
+            {zipping ? 'Preparing…' : `Download ${trail.length ? 'this folder' : 'everything'}`}
           </button>
         )}
 
@@ -185,9 +185,9 @@ export default function FileFlyerPublic({ token }) {
                       filename — which is usually a camera's serial number. */}
                   {isImage(i)
                     ? <img className="ffp-thumb" src={`/api/f/${token}/thumb/${i.id}`} alt="" loading="lazy" />
-                    : <span className="ffp-thumb ffp-thumb-doc">📄</span>}
+                    : <span className="ffp-thumb ffp-thumb-doc">{fileExt(i.filename)}</span>}
                   <span className="ffp-item-name">{i.filename}</span>
-                  <span className="ffp-item-meta">{fmtBytes(i.size_bytes)} · ⬇️</span>
+                  <span className="ffp-item-meta">{fmtBytes(i.size_bytes)}</span>
                 </a>
               ))}
             </div>

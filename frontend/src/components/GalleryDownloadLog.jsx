@@ -47,7 +47,7 @@ export default function GalleryDownloadLog({ album, onClose }) {
                     </div>
                     <div className="gdl-items">
                       {v.items.map((it, i) => (
-                        <span key={i} className={`gdl-item is-${it.kind}`} title={when(it.at)}>{it.kind === 'zip' ? '📦 ' : ''}{it.label}</span>
+                        <span key={i} className={`gdl-item is-${it.kind}`} title={when(it.at)}>{it.label}</span>
                       ))}
                     </div>
                   </li>

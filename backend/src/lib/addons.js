@@ -41,7 +41,7 @@ export async function addonsFor(vendorId, { country } = {}) {
       : !sub ? 'choose_plan'
       : 'available';
     return {
-      id: s.id, name: s.name, icon: s.icon, description: s.description, storage_gb: s.storage_gb,
+      id: s.id, name: s.name, description: s.description, storage_gb: s.storage_gb,
       price: priceFor(s, plan?.code, 'monthly'), price_annual: priceFor(s, plan?.code, 'annual'), cycle,
       plans: codes, state, ends_at: owned.get(s.id) || null, on_trial: reason === 'trial',
       local: (f => (f ? { currency: f.currency, price: f.monthly, price_annual: f.annual } : null))(addonPriceFrom(local, s.id, plan?.code)),

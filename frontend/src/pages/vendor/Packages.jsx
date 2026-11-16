@@ -68,7 +68,7 @@ export function PackagesView() {
   return (
     <div className="u-max-width-720px">
       <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-12px">
-        <div className="u-color-muted u-font-size-13px">📁 Up to 6 event templates · 📦 3 packages each</div>
+        <div className="u-color-muted u-font-size-13px">Up to 6 event templates · 3 packages each</div>
         {tpls.length < 6 && <button className="refresh u-background-teal u-color-acc-ink" onClick={addTpl}>+ Add Template</button>}
       </div>
       {msg && <div className="err-banner">{msg}</div>}
@@ -77,7 +77,7 @@ export function PackagesView() {
           <div key={t.id} className="table-wrap u-padding-18px u-cursor-pointer u-position-relative" onClick={() => setSelTpl(t)}>
             <div className="u-font-size-30px">📁</div>
             <TplName tpl={t} onSaved={load} />
-            <div className="u-color-muted u-font-size-12px u-margin-top-4px">📦 {t.packages.length}/3 packages</div>
+            <div className="u-color-muted u-font-size-12px u-margin-top-4px">{t.packages.length}/3 packages</div>
             {tpls.length > 1 && (
               <button className="refresh u-position-absolute u-top-10px u-right-10px u-padding-3px-8px"
                 onClick={e => { e.stopPropagation(); delTpl(t.id); }}>🗑️</button>

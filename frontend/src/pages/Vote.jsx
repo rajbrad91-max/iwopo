@@ -61,7 +61,7 @@ export default function Vote() {
         </div>
         {myVote && <div className="vote-note">✅ Thanks — your vote is recorded.</div>}
 
-        <button className="vote-results-toggle" onClick={() => setShowResults(v => !v)}>📊 See results</button>
+        <button className="vote-results-toggle" onClick={() => setShowResults(v => !v)}>See results</button>
         {showResults && (
           <div className="vote-results">
             {!stats ? (

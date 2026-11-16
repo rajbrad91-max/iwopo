@@ -21,7 +21,7 @@ export default function DeleteVendorModal({ vendorId, onClose, onDeleted }) {
     <div className="sa-del-back" role="dialog" aria-modal="true" aria-label="Delete vendor">
       <div className="sa-del">
         <h3 className="sa-del-h">Delete {p ? p.business_name : 'vendor'}?</h3>
-        {!p ? <p className="sa-del-p">{err || 'Loading…'}</p> : p.blocked ? <p className="sa-del-p">🔒 {p.blocked}</p> : <>
+        {!p ? <p className="sa-del-p">{err || 'Loading…'}</p> : p.blocked ? <p className="sa-del-p">{p.blocked}</p> : <>
           <p className="sa-del-p">This removes the account <b>for good</b> — it cannot be undone:</p>
           <ul className="sa-del-list">
             {Object.entries(p.counts).map(([k, n]) => <li key={k}><span>{k}</span><b>{n}</b></li>)}
@@ -29,7 +29,7 @@ export default function DeleteVendorModal({ vendorId, onClose, onDeleted }) {
           {p.paying && (
             <label className="sa-del-sub">
               <input type="checkbox" checked={cancelSub} onChange={e => setCancelSub(e.target.checked)} />
-              <span>💳 They pay for <b>{p.paying.plan}</b> by Stripe. Cancel their subscription now — billing stops today, no refund.</span>
+              <span>They pay for <b>{p.paying.plan}</b> by Stripe. Cancel their subscription now — billing stops today, no refund.</span>
             </label>
           )}
           <label className="sa-del-p" htmlFor="sa-del-name">Type <b>{p.business_name}</b> to confirm:</label>

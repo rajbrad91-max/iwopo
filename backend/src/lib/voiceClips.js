@@ -210,7 +210,7 @@ export async function whatsNew(vendorId, { record = true, markSeen = false } = {
   for (const e of await prisma.leads.findMany({ where: { vendor_id: v, archived_at: null, status: { not: 'lost' }, event_date: { gte: new Date(Date.now() - 86400e3), lte: new Date(Date.now() + 8 * 86400e3) } }, orderBy: { event_date: 'asc' }, take: 12, select: { id: true, name: true, event_type: true, event_date: true, timing_from: true, location: true } })) {
     const d = daysAway(e.event_date);
     if (d < 0 || d > 7 || !(await allowed(`event:${e.id}`, d <= 2 ? 3 : 1))) continue;
-    bump(d === 0 ? 'shoot_today' : d === 1 ? 'shoot_tomorrow' : 'shoot_week', `📅 ${e.name}'s ${e.event_type || 'event'} · ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : new Date(e.event_date).toDateString()}${e.timing_from ? ` ${e.timing_from}` : ''}${e.location ? ` · ${e.location}` : ''}`);
+    bump(d === 0 ? 'shoot_today' : d === 1 ? 'shoot_tomorrow' : 'shoot_week', `${e.name}'s ${e.event_type || 'event'} · ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : new Date(e.event_date).toDateString()}${e.timing_from ? ` ${e.timing_from}` : ''}${e.location ? ` · ${e.location}` : ''}`);
   }
   for (const r of await prisma.agent_reminders.findMany({ where: { vendor_id: v, done_at: null, kind: { not: 'alarm' }, due_at: { lte: new Date(Date.now() + 86400e3) } }, take: 8, select: { id: true, title: true } })) {
     if (!(await allowed(`reminder:${r.id}`, 3))) continue;
@@ -220,7 +220,7 @@ export async function whatsNew(vendorId, { record = true, markSeen = false } = {
   // ⏰ smart reminders — people waiting on his reply (each at most four times a day)
   for (const f of await openFollowups(v)) {
     if (!(await allowed(`followup:${f.id}`, 4))) continue;
-    bump('waiting', `⏳ Waiting on your reply: ${waitedLabel(f)}`);
+    bump('waiting', `Waiting on your reply: ${waitedLabel(f)}`);
   }
 
   // the greeting: carrying on a conversation of the last 20 minutes, or the time of day

@@ -537,7 +537,7 @@ export function AlbumDetail({ albumId, onBack }) {
 
   /* The label is left alone in the Videos folder. Fading the button and saying
      why on hover was what was asked for; rewriting what it says was not. */
-  const uploadLabel = uploading ? '⏳ Uploading…'
+  const uploadLabel = uploading ? 'Uploading…'
     : isPerClient ? (activeEvent === 'all' ? '📤 Pick an event to upload' : '📤 Upload to this event')
     : '📤 Upload photos';
 
@@ -567,7 +567,7 @@ export function AlbumDetail({ albumId, onBack }) {
               <button className="refresh ad-ev-btn" onClick={openAddEvent}
                 title="Add a photos folder">➕ Add Photos Folder</button>
               <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all' || inVideos}
-                title={onlyPhotos || 'Rename the selected event'}>✏️ Rename</button>
+                title={onlyPhotos || 'Rename the selected event'}>Rename</button>
               <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all' || inVideos}
                 title={onlyPhotos || 'Delete the selected event'}>🗑️ Delete</button>
             </div>
@@ -586,7 +586,7 @@ export function AlbumDetail({ albumId, onBack }) {
           {/* 🎞️ RAWs behind this album's JPEGs — only with the Raw Selector */}
           {raw && raw.raws > 0 && (
             <span className="ad-raw" title={raw.rawsWithoutJpeg.length ? `Waiting for their JPEG: ${raw.rawsWithoutJpeg.slice(0, 8).map(r => r.filename).join(', ')}` : 'Every RAW has its JPEG'}>
-              🎞️ RAW {raw.paired} / {raw.jpegs}
+              RAW {raw.paired} / {raw.jpegs}
               {raw.rawsWithoutJpeg.length > 0 && <span className="ad-raw-warn"> · {raw.rawsWithoutJpeg.length} without JPEG</span>}
               <button type="button" className="ad-raw-del" aria-label="Delete this album's RAW files"
                 onClick={async () => {

@@ -183,14 +183,14 @@ function LeadState({ e, onLead, onBooking, busy }) {
         </button>
       )}
       {(s === 'waiting' || s === 'working') && (
-        <div className="cm-leadnote">⏳ The lead will be created as soon as Quo's transcript is ready.</div>
+        <div className="cm-leadnote">The lead will be created as soon as Quo's transcript is ready.</div>
       )}
       {s === 'created' && e.lead_id && (
         <a className="cm-leadnote is-done" href={`/panel/leads/${e.lead_id}`}>📋 Lead created — open it</a>
       )}
       {s === 'none' && <div className="cm-leadnote">🤷 This call didn't sound like an inquiry, so no lead was made.</div>}
       {s === 'no_text' && <div className="cm-leadnote">⚠️ Quo never wrote a transcript for this call — add the lead in Leads.</div>}
-      {s === 'no_ai' && <div className="cm-leadnote">🤖 Making leads from calls isn't switched on yet.</div>}
+      {s === 'no_ai' && <div className="cm-leadnote">Making leads from calls isn't switched on yet.</div>}
       {s === 'failed' && <div className="cm-leadnote">⚠️ The AI could not read this call — add the lead in Leads.</div>}
 
       {e.booking_state === 'suggested' && (
@@ -407,11 +407,11 @@ export default function CommsView() {
         setSynced('📋 Lead created — it is in Leads');
         refreshBadges();
       } else if (r.state === 'waiting') {
-        setSynced('⏳ The lead will be created as soon as the transcript is ready — you will get a notification');
+        setSynced('The lead will be created as soon as the transcript is ready — you will get a notification');
       } else if (r.state === 'none') {
         setSynced('🤷 That call did not sound like an inquiry, so no lead was made');
       } else if (r.state === 'no_ai') {
-        setSynced('🤖 Making leads from calls isn\'t switched on yet');
+        setSynced('Making leads from calls isn\'t switched on yet');
       }
       setTimeout(() => setSynced(''), 6000);
     } catch (e) { setErr(e.message); }
@@ -619,7 +619,7 @@ export default function CommsView() {
                     {!active.saved && badges[active.key]?.name && (
                       <button className="cm-f cm-suggest" disabled={saving} onClick={() => saveAsLead(active)}
                         title={`Save this number as ${badges[active.key].name} — the name on the lead`}>
-                        💾 Save as {badges[active.key].name}
+                        Save as {badges[active.key].name}
                       </button>
                     )}
                     <button className="cm-f" onClick={() => openContact(active)}>{active.saved ? 'Edit contact' : 'Save contact'}</button>

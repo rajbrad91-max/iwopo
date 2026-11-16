@@ -24,33 +24,33 @@ export const FEATURE_LABEL = {
   custom_domain: 'Your own custom domain',
 };
 const LINES = [
-  ['leads', '📋', () => FEATURE_LABEL.leads],
-  ['contracts', '📄', () => FEATURE_LABEL.contracts],
-  ['calendar', '📅', () => FEATURE_LABEL.calendar],
-  ['website', '🌐', () => FEATURE_LABEL.website],
-  ['chatbot', '🤖', (p) => `${FEATURE_LABEL.chatbot} · ${p.chat_limit.toLocaleString('en-US')} chats a month`],
-  ['galleries', '📸', () => FEATURE_LABEL.galleries],
-  ['fileflyer', '📦', () => FEATURE_LABEL.fileflyer],
-  ['crew', '👷', () => FEATURE_LABEL.crew],
-  ['custom_domain', '🔗', () => FEATURE_LABEL.custom_domain],
+  ['leads', () => FEATURE_LABEL.leads],
+  ['contracts', () => FEATURE_LABEL.contracts],
+  ['calendar', () => FEATURE_LABEL.calendar],
+  ['website', () => FEATURE_LABEL.website],
+  ['chatbot', (p) => `${FEATURE_LABEL.chatbot} · ${p.chat_limit.toLocaleString('en-US')} chats a month`],
+  ['galleries', () => FEATURE_LABEL.galleries],
+  ['fileflyer', () => FEATURE_LABEL.fileflyer],
+  ['crew', () => FEATURE_LABEL.crew],
+  ['custom_domain', () => FEATURE_LABEL.custom_domain],
 ];
 // 💳 client card payments go straight to the vendor's own Stripe (Stripe Connect) — every paid plan; shown as coming
 //    only while Connect is not set up for this site (lib/stripeConnect.js connectReady)
-const CARD_PAYMENTS = { key: 'card_payments', icon: '💳', name: FEATURE_LABEL.card_payments };
+const CARD_PAYMENTS = { key: 'card_payments', name: FEATURE_LABEL.card_payments };
 
 const storageLabel = (gb) => (gb >= 1000 && gb % 1000 === 0 ? `${gb / 1000} TB` : `${gb} GB`);
 
 /** A plan's lines: storage, then what it unlocks in a fixed order, then its highlights. */
 function planLines(p, liveKeys, connect) {
   const has = new Set((p.plan_features || []).map(f => f.feature_key));
-  const lines = [{ key: 'storage', icon: '💾', name: `${storageLabel(p.storage_gb || 0)} storage` }];
-  for (const [key, icon, label] of LINES) {
+  const lines = [{ key: 'storage', name: `${storageLabel(p.storage_gb || 0)} storage` }];
+  for (const [key, label] of LINES) {
     if (!has.has(key)) continue;
-    lines.push({ key, icon, name: label(p), coming: !liveKeys.has(key) });
+    lines.push({ key, name: label(p), coming: !liveKeys.has(key) });
     if (key === 'contracts' && Number(p.price_monthly) > 0) lines.push({ ...CARD_PAYMENTS, coming: !connect });
   }
   for (const [i, h] of (Array.isArray(p.highlights) ? p.highlights : []).entries()) {
-    if (h?.label) lines.push({ key: `highlight-${i}`, icon: '✅', name: String(h.label), coming: !!h.coming });
+    if (h?.label) lines.push({ key: `highlight-${i}`, name: String(h.label), coming: !!h.coming });
   }
   return lines;
 }
@@ -66,7 +66,7 @@ export async function planCards({ country } = {}) {
   const [plans, live] = await Promise.all([
     prisma.plans.findMany({
       orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
-      select: { id: true, code: true, name: true, tagline: true, icon: true, price_monthly: true, price_annual: true,
+      select: { id: true, code: true, name: true, tagline: true, price_monthly: true, price_annual: true,
         storage_gb: true, chat_limit: true, trial_days: true, highlights: true, sort_order: true, plan_features: { select: { feature_key: true } } },
     }),
     prisma.services.findMany({ where: { feature_key: { not: null }, is_private: false, is_live: true }, select: { feature_key: true } }),
@@ -78,14 +78,14 @@ export async function planCards({ country } = {}) {
     const monthly = Number(p.price_monthly);
     const lines = planLines(p, liveKeys, connect);
     return {
-      id: p.id, key: p.code, code: p.code, name: p.name, tagline: p.tagline, icon: p.icon, sort_order: p.sort_order,
+      id: p.id, key: p.code, code: p.code, name: p.name, tagline: p.tagline, sort_order: p.sort_order,
       price_monthly: monthly, price_annual: Number(p.price_annual ?? 0), storage_gb: p.storage_gb, chat_limit: p.chat_limit,
       trial_days: p.trial_days,                 // 🧪 Essential and Pro 30, Studio none
       local: localPrice(fixed.get(p.id), monthly),
       features: p.plan_features.map(f => f.feature_key).filter(k => liveKeys.has(k) || k === 'custom_domain'),
       lines,
       // the shape the home page and Super Admin already render: a line is an "included" item; coming ones say so
-      included: lines.map(l => ({ id: l.key, icon: l.icon, name: l.name, detail: l.coming ? 'coming soon' : '' })),
+      included: lines.map(l => ({ id: l.key, name: l.name, detail: l.coming ? 'coming soon' : '' })),
       addons: [], standalone: [],
     };
   });

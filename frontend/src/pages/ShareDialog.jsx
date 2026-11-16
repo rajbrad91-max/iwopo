@@ -133,7 +133,7 @@ export default function ShareDialog({ folder, share: initial, onClose, onChanged
             </datalist>
             <textarea className="dlg-input" rows={2} placeholder="Add a message (optional)"
               value={message} onChange={e => setMessage(e.target.value)} />
-            {share.has_password && <p className="ff-share-hint">🔒 The email says a password is needed but does not include it: send that separately.</p>}
+            {share.has_password && <p className="ff-share-hint">The email says a password is needed but does not include it: send that separately.</p>}
             <button type="button" className="dlg-btn ff-send" onClick={send} disabled={sending}>{sending ? 'Sending…' : 'Send link'}</button>
 
             {people.length > 0 && (

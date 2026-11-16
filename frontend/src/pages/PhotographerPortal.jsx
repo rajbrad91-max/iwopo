@@ -105,7 +105,7 @@ export default function PhotographerPortal() {
     return (
       <div className="ep">
         <form className="ep-card ep-auth" onSubmit={auth}>
-          <h1 className="ep-title">📸 Photographer sign {mode === 'signup' ? 'up' : 'in'}</h1>
+          <h1 className="ep-title">Photographer sign {mode === 'signup' ? 'up' : 'in'}</h1>
           <p className="ep-sub">{mode === 'signup' ? 'Use the email the studio has for you, and choose a password.' : 'Sign in to upload the photos of your shoots.'}</p>
           <label className="ep-label">Email<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
           <label className="ep-label">Password<input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={mode === 'signup' ? 8 : undefined} value={password} onChange={e => setPassword(e.target.value)} /></label>
@@ -122,7 +122,7 @@ export default function PhotographerPortal() {
   return (
     <div className="ep">
       <header className="ep-top">
-        <div><div className="ep-title">📸 My shoots{me.studio ? ` — ${me.studio}` : ''}</div><div className="rs-muted">{me.name} · {me.email}</div></div>
+        <div><div className="ep-title">My shoots{me.studio ? ` — ${me.studio}` : ''}</div><div className="rs-muted">{me.name} · {me.email}</div></div>
         <button className="ep-link" type="button" onClick={signOut}>Sign out</button>
       </header>
       {err && <div className="rs-err">⚠️ {err}</div>}

@@ -149,10 +149,10 @@ export default function PlanEditorTable({ onSaved }) {
         <div className="sa-pt-actions">
           {edit ? (
             <>
-              <button type="button" className="sa-btn-teal" disabled={busy} onClick={save}>{busy ? 'Saving…' : '💾 Save changes'}</button>
+              <button type="button" className="sa-btn-teal" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>
               <button type="button" className="sa-view-btn" disabled={busy} onClick={() => { setDraft(null); setMsg(''); }}>Cancel</button>
             </>
-          ) : <button type="button" className="sa-view-btn" onClick={startEdit}>✏️ Edit plans</button>}
+          ) : <button type="button" className="sa-view-btn" onClick={startEdit}>Edit plans</button>}
         </div>
       </div>
       {msg && <div className="sa-hint sa-pt-msg">{msg}</div>}

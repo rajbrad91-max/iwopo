@@ -4,8 +4,8 @@ import { api } from '../lib/api';
 import './analytics.css';
 
 const KIND_LABEL = {
-  site_view: '🌐 Website visit', gallery_open: '📸 Gallery opened',
-  photo_download: '⬇️ Photo', zip_download: '📦 Zip', file_download: '📄 File',
+  site_view: 'Website visit', gallery_open: 'Gallery opened',
+  photo_download: 'Photo', zip_download: 'Zip', file_download: 'File',
 };
 
 /** A referrer as a person reads it, not a URL. */

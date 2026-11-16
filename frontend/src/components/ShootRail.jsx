@@ -80,7 +80,7 @@ export default function ShootRail({ clients, reload }) {
     <div className="sr">
       <div className="sr-bar">
         <button className="rs-btn" type="button" onClick={startNew}>{bookings ? 'Close' : '➕ Upload a shoot'}</button>
-        <a className="rs-x sr-ppm" href="/panel/ppm">📊 Status of every client: PPM Board</a>
+        <a className="rs-x sr-ppm" href="/panel/ppm">Status of every client: PPM Board</a>
       </div>
       {bookings && (
         <div className="sr-new">
@@ -136,7 +136,7 @@ export default function ShootRail({ clients, reload }) {
                           {photos && photos.total > photos.photos.length && <p className="rs-muted">Showing the first {photos.photos.length} — download the JPEGs for all of them.</p>}
                         </div>
                         <div className="sr-group">
-                          <h4 className="sr-h">⬇️ Download</h4>
+                          <h4 className="sr-h">Download</h4>
                           <div className="sr-actions">
                             {c.jpegs > 0 && <a className="rs-x" href={zip(c, 'jpeg')}>JPEGs ({c.jpegs})</a>}
                             {c.raws > 0 && <a className="rs-x" href={zip(c, 'raw')}>All RAWs ({c.raws} · {gb(c.bytes)})</a>}

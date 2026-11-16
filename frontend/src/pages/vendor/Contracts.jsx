@@ -18,7 +18,7 @@ export function ContractsTab() {
   return (
     <div className="ct-wrap">
       <div className="ct-tabs">
-        {btn('list', '📄 Contracts')}
+        {btn('list', 'Contracts')}
         {btn('setup', '🛠️ Contract setup')}
         {btn('invoices', '🧾 Invoices')}
       </div>
@@ -81,7 +81,7 @@ function AllContracts() {
           It used to promise deletion after a year — nothing deletes anything,
           so it said something the software doesn't do. */}
       <p className="ct-retention">
-        🗄️ Signed contracts and invoices stay here and stay downloadable.
+        Signed contracts and invoices stay here and stay downloadable.
         Keep your own copy of anything you may need later — download it from the row.
       </p>
       <div className="table-wrap">
@@ -100,12 +100,12 @@ function AllContracts() {
               <td className={`ct-signer${(c.signed_name || '').trim().toLowerCase() === String(c.lead_name || c.client_name || c.lead?.name || '').trim().toLowerCase() ? ' is-same' : ''}`}>{c.signed_name || '—'}</td>
               <td className="ct-date">{c.signed_at ? fmtDateTime(c.signed_at, { dateOnly: true }) : '—'}</td>
               {/* F7: booked, or signed and still waiting for the deposit */}
-              <td className="ct-booking">{c.lead_status === 'booked' ? '✅ Booked' : '⏳ Awaiting payment'}</td>
+              <td className="ct-booking">{c.lead_status === 'booked' ? 'Booked' : 'Awaiting payment'}</td>
               {/* Both open in a tab rather than landing on disk: saving a file
                   before you have looked at it is a guess. Each document carries
                   its own Save as PDF button once it's open. */}
               <td className="ct-dl">
-                <a href={`/api/contracts/download/${c.token}`} target="_blank" rel="noreferrer" className="ct-dl-btn">📄 Contract</a>
+                <a href={`/api/contracts/download/${c.token}`} target="_blank" rel="noreferrer" className="ct-dl-btn">Contract</a>
                 <a href={`/api/contracts/certificate/${c.token}/download`} target="_blank" rel="noreferrer" className="ct-dl-btn">📜 Certificate</a>
                 {c.status === 'signed' && <EmailCopyButton contract={c} className="ct-dl-btn" />}
               </td>

@@ -6,16 +6,16 @@ import { useDialog } from '../lib/dialog.jsx';
 const API = '/api/chatbot';
 
 const KFIELDS = [
-  { k: 'business_name', label: '🏢 Business name', type: 'input', ph: 'e.g. Perfect Poses Media' },
+  { k: 'business_name', label: 'Business name', type: 'input', ph: 'e.g. Perfect Poses Media' },
   { k: 'tagline', label: 'Tagline', type: 'input', ph: 'One line about what you do' },
-  { k: 'service_area', label: '📍 City / service area', type: 'input', ph: 'e.g. Surrey, Abbotsford, Greater Vancouver' },
-  { k: 'contact', label: '📞 Contact (phone / email)', type: 'input', ph: 'How clients reach you' },
-  { k: 'hours', label: '🕒 Hours', type: 'input', ph: 'e.g. Mon–Sat 9am–7pm' },
-  { k: 'services', label: '📸 Services offered', type: 'area', ph: 'Photography, videography, drone, photo booth…' },
-  { k: 'packages', label: '💰 Packages & pricing', type: 'area', ph: 'Package names, what’s included, prices' },
-  { k: 'faqs', label: '❓ FAQs', type: 'area', ph: 'Q: How far do you travel?\nA: Anywhere in BC, travel fee after 50km.' },
-  { k: 'policies', label: '📋 Policies', type: 'area', ph: 'Booking, deposit, travel fees, cancellation, rescheduling' },
-  { k: 'notes', label: '📝 Anything else', type: 'area', ph: 'Anything else the chatbot should know' },
+  { k: 'service_area', label: 'City / service area', type: 'input', ph: 'e.g. Surrey, Abbotsford, Greater Vancouver' },
+  { k: 'contact', label: 'Contact (phone / email)', type: 'input', ph: 'How clients reach you' },
+  { k: 'hours', label: 'Hours', type: 'input', ph: 'e.g. Mon–Sat 9am–7pm' },
+  { k: 'services', label: 'Services offered', type: 'area', ph: 'Photography, videography, drone, photo booth…' },
+  { k: 'packages', label: 'Packages & pricing', type: 'area', ph: 'Package names, what’s included, prices' },
+  { k: 'faqs', label: 'FAQs', type: 'area', ph: 'Q: How far do you travel?\nA: Anywhere in BC, travel fee after 50km.' },
+  { k: 'policies', label: 'Policies', type: 'area', ph: 'Booking, deposit, travel fees, cancellation, rescheduling' },
+  { k: 'notes', label: 'Anything else', type: 'area', ph: 'Anything else the chatbot should know' },
 ];
 
 export default function KnowledgeFill({ token }) {
@@ -103,7 +103,7 @@ export default function KnowledgeFill({ token }) {
             </div>
           ))}
           <button className="kf-btn kf-submit" type="submit" disabled={saving}>
-            {saving ? 'Saving…' : saved ? '✅ Saved!' : '💾 Save my details'}
+            {saving ? 'Saving…' : saved ? '✅ Saved!' : 'Save my details'}
           </button>
         </form>
       </div>

@@ -78,13 +78,13 @@ export default function PlansView() {
       {/* 📏 the trial (or plan) and the storage side by side, so the plans start higher up (2026-11-11) */}
       <div className="pl-top">
         <div className="pl-state">
-          {b.state === 'owner' && <p>👑 <b>Owner account</b> — never billed.</p>}
+          {b.state === 'owner' && <p><b>Owner account</b> — never billed.</p>}
           {b.state === 'trial' && !sub && (
             <p>🆓 <b>{b.trial_days_left} {b.trial_days_left === 1 ? 'day' : 'days'} left</b> in your free trial (until {date(b.trial_ends_at)}).
               Choose a plan any time — <b>billing starts only when the trial ends</b>.</p>
           )}
           {b.state === 'expired' && (
-            <p className="pl-state-warn">💳 <b>Your free trial has ended.</b> Your features are paused — your clients, galleries and files are safe. Choose a plan to switch everything back on.</p>
+            <p className="pl-state-warn"><b>Your free trial has ended.</b> Your features are paused — your clients, galleries and files are safe. Choose a plan to switch everything back on.</p>
           )}
           {sub && (
             <p>✅ <b>{b.plans.find(p => p.id === sub.plan_id)?.name || 'Your plan'}</b>, {sub.cycle === 'annual' ? 'yearly' : 'monthly'}
@@ -94,7 +94,7 @@ export default function PlansView() {
               {sub.status === 'past_due' && <span className="pl-state-warn"> · ⚠️ last payment didn’t go through — please update your card</span>}
             </p>
           )}
-          {sub && <button type="button" className="pl-b is-primary pl-manage" disabled={busy === 'portal'} onClick={manage}>{busy === 'portal' ? 'Opening…' : '💳 Manage billing'}</button>}
+          {sub && <button type="button" className="pl-b is-primary pl-manage" disabled={busy === 'portal'} onClick={manage}>{busy === 'portal' ? 'Opening…' : 'Manage billing'}</button>}
         </div>
 
         <div className="pl-now">

@@ -327,7 +327,7 @@ function geoPrice(row, geo, baseField = 'price', baseAnnualField = 'price_annual
 }
 
 router.get('/hello', (req, res) => {
-  res.json({ message: 'Hello from iwopo API! 👋' });
+  res.json({ message: 'Hello from iwopo API!' });
 });
 
 // 🔔 Super admin: live notification counts (topbar icons)
@@ -441,7 +441,7 @@ router.get('/admin/plan-regions', requireAuth, requireSuperAdmin, async (req, re
    what the plan does not give. Super Admin sets it. Only public features can be chosen; private tools are never touched. */
 const unlockCatalog = () => prisma.services.findMany({
   where: { feature_key: { not: null }, is_private: false }, orderBy: { id: 'asc' },
-  select: { feature_key: true, name: true, icon: true },
+  select: { feature_key: true, name: true },
 });
 router.get('/admin/plan-unlocks', requireAuth, requireSuperAdmin, async (req, res) => {
   try {

@@ -17,8 +17,8 @@ export default function BillingBanner({ onPlans }) {
     return (
       <div className={`bb ${lim.locked ? 'bb-ended' : 'bb-soon'}`} role={lim.locked ? 'alert' : 'status'}>
         <span>{lim.locked
-          ? <>🔒 <b>Your galleries and files are locked.</b> You are {lim.over_by || `${lim.over_by_gb} GB`} over your plan — delete some or move up a plan to open them again.</>
-          : <>💾 <b>You are {lim.over_by || `${lim.over_by_gb} GB`} over your storage.</b> Delete some files or move up a plan within {lim.days_left} {lim.days_left === 1 ? 'day' : 'days'} — after that your galleries and files are locked.</>}</span>
+          ? <><b>Your galleries and files are locked.</b> You are {lim.over_by || `${lim.over_by_gb} GB`} over your plan — delete some or move up a plan to open them again.</>
+          : <><b>You are {lim.over_by || `${lim.over_by_gb} GB`} over your storage.</b> Delete some files or move up a plan within {lim.days_left} {lim.days_left === 1 ? 'day' : 'days'} — after that your galleries and files are locked.</>}</span>
         <button type="button" className="bb-btn" onClick={onPlans}>See plans</button>
       </div>
     );
@@ -29,7 +29,7 @@ export default function BillingBanner({ onPlans }) {
     const pay = async () => { try { const r = await api.billingCheckout(); if (r?.url) window.location.assign(r.url); } catch { onPlans(); } };
     return (
       <div className="bb bb-soon" role="status">
-        <span>💳 <b>Finish setting up {b.pending_plan.name}.</b> Your account is ready — payment is the last step.</span>
+        <span><b>Finish setting up {b.pending_plan.name}.</b> Your account is ready — payment is the last step.</span>
         <button type="button" className="bb-btn" onClick={pay}>Continue to payment</button>
       </div>
     );
@@ -37,7 +37,7 @@ export default function BillingBanner({ onPlans }) {
   if (b.state === 'trial' && b.trial_days_left <= 7) {
     return (
       <div className="bb bb-soon" role="status">
-        <span>⏳ <b>{b.trial_days_left} {b.trial_days_left === 1 ? 'day' : 'days'} left</b> in your free trial — billing only starts when it ends.</span>
+        <span><b>{b.trial_days_left} {b.trial_days_left === 1 ? 'day' : 'days'} left</b> in your free trial — billing only starts when it ends.</span>
         <button type="button" className="bb-btn" onClick={onPlans}>Choose a plan</button>
       </div>
     );
@@ -45,7 +45,7 @@ export default function BillingBanner({ onPlans }) {
   if (b.state === 'expired') {
     return (
       <div className="bb bb-soon" role="status">
-        <span>🌱 <b>You're on the Free plan.</b> Your leads and inquiry form keep working — choose a plan to send contracts and take bookings.</span>
+        <span><b>You're on the Free plan.</b> Your leads and inquiry form keep working — choose a plan to send contracts and take bookings.</span>
         <button type="button" className="bb-btn" onClick={onPlans}>Choose a plan</button>
       </div>
     );

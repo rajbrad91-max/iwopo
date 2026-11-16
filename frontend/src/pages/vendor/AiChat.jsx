@@ -91,7 +91,6 @@ export function AiChatVendorView({ goServices }) {
   if (!status?.subscribed) {
     return (
       <div className="table-wrap ac-upsell">
-        <div className="ac-upsell-icon">🤖</div>
         <h2 className="ac-upsell-title">Meet Wopo Assistant, your AI assistant</h2>
         <p className="ac-upsell-text">
           Wopo Assistant chats with visitors on your inquiry page 24/7 — answering their questions,
@@ -113,7 +112,6 @@ export function AiChatVendorView({ goServices }) {
   if (!status.active) {
     return (
       <div className="table-wrap ac-upsell">
-        <div className="ac-upsell-icon">⏸️</div>
         <h2 className="ac-upsell-title">Your AI Chat is paused</h2>
         <p className="ac-upsell-text">Wopo Assistant isn't answering visitors right now. Get in touch and we'll switch it back on.</p>
       </div>
@@ -131,7 +129,7 @@ export function AiChatVendorView({ goServices }) {
           </div>
           {open.messages.map((m, i) => (
             <div key={i} className={`ac-msg ${m.role}`}>
-              <div className="ac-msg-who">{m.role === 'user' ? `👤 ${titleOf(open)}` : `🤖 ${botName}`}</div>
+              <div className="ac-msg-who">{m.role === 'user' ? titleOf(open) : botName}</div>
               <div className="ac-msg-text">{m.content}</div>
             </div>
           ))}
@@ -157,9 +155,9 @@ export function AiChatVendorView({ goServices }) {
             />
           ) : (
             <div className="ac-title">
-              🤖 {botName}
+              {botName}
               <button type="button" className="ac-rename" title="Rename your assistant"
-                onClick={() => { setDraftName(kb?.bot_name || botName); setRenaming(true); }}>✏️</button>
+                onClick={() => { setDraftName(kb?.bot_name || botName); setRenaming(true); }}>Rename</button>
             </div>
           )}
           <div className="ac-sub">
@@ -193,7 +191,7 @@ export function AiChatVendorView({ goServices }) {
           <div className="ac-kb-foot">
             {kbMsg && <span className="ac-kb-msg">{kbMsg}</span>}
             <button className="refresh" onClick={saveKb} disabled={kbBusy}>
-              {kbBusy ? 'Saving…' : '💾 Save knowledge'}
+              {kbBusy ? 'Saving…' : 'Save knowledge'}
             </button>
           </div>
         </div>

@@ -251,7 +251,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
     if (f.guest_password && f.guest_password.trim() === String(f.admin_password || '').trim()) {
       return setMsg('⚠️ Guest and admin passwords must be different — otherwise every guest can delete photos');
     }
-    setMsg('💾 Saving…');                              // the click is answered at once, never silence
+    setMsg('Saving…');                              // the click is answered at once, never silence
     try {
       let album;
       if (edit) { const d = await api.updateAlbum(edit.id, f); album = d.album; }
@@ -391,14 +391,14 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                   <input className="gal-input" autoComplete="new-password" type={showPw.guest ? 'text' : 'password'} value={f.guest_password} onChange={e => setF({ ...f, guest_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, guest: !s.guest }))} title={showPw.guest ? 'Hide' : 'Show'} aria-label={showPw.guest ? 'Hide guest password' : 'Show guest password'}>{showPw.guest ? <EyeClosed /> : <EyeOpen />}</button>
                 </div>
-                {pwHidden.guest && !f.guest_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
+                {pwHidden.guest && !f.guest_password && <div className="gal-sec-note gal-pw-hint">Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
               </div>
               <div><label className="lbl">Admin password</label>
                 <div className="gal-pw-wrap">
                   <input className="gal-input" autoComplete="new-password" type={showPw.admin ? 'text' : 'password'} value={f.admin_password} onChange={e => setF({ ...f, admin_password: e.target.value })} />
                   <button type="button" className="gal-pw-eye" onClick={() => setShowPw(s => ({ ...s, admin: !s.admin }))} title={showPw.admin ? 'Hide' : 'Show'} aria-label={showPw.admin ? 'Hide admin password' : 'Show admin password'}>{showPw.admin ? <EyeClosed /> : <EyeOpen />}</button>
                 </div>
-                {pwHidden.admin && !f.admin_password && <div className="gal-sec-note gal-pw-hint">🔒 Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
+                {pwHidden.admin && !f.admin_password && <div className="gal-sec-note gal-pw-hint">Set before passwords could be shown. It still works — type a new one here to see it from now on.</div>}
               </div>
               <div className="gal-sec-note">Guests can view, download and favorite. The admin password also unlocks selecting, sending a selection, and deleting.</div>
             </section>

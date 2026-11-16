@@ -220,7 +220,7 @@ export function SettingsView({ user, onProfileChange, emailFocus = null, onFocus
         {/* 🔒 Payment privacy (Raj, 2026-10-23): off = amounts always visible; on = hidden in a booking until 👁 is tapped */}
         <label className="pref-toggle">
           <input type="checkbox" checked={!!s.hide_payments} onChange={e => savePrefs({ ...s, hide_payments: e.target.checked })} />
-          <span>🔒 Payment privacy</span>
+          <span>Payment privacy</span>
         </label>
         <div className="pref-hint">
           {s.hide_payments

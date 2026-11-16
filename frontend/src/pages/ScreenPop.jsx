@@ -49,8 +49,8 @@ export default function ScreenPop({ onOpen }) {
       const r = await api.commsLeadRequest({ call_id: p.call_id });
       const note = r.state === 'created' ? '📋 Lead created — it is in Leads'
         : r.state === 'none' ? '🤷 That did not sound like an inquiry — no lead made'
-        : r.state === 'no_ai' ? '🤖 Add the AI key in Super Admin → Settings → AI — the lead is then made by itself'
-        : '⏳ The lead will be made when the transcript is ready — you will be notified';
+        : r.state === 'no_ai' ? 'Add the AI key in Super Admin → Settings → AI — the lead is then made by itself'
+        : 'The lead will be made when the transcript is ready — you will be notified';
       setPops(list => list.map(x => (x.call_id === p.call_id ? { ...x, leadNote: note } : x)));
     } catch (e) {
       setPops(list => list.map(x => (x.call_id === p.call_id ? { ...x, leadNote: `⚠️ ${e.message}` } : x)));

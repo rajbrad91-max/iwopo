@@ -15,7 +15,7 @@ export default function WelcomeSteps({ plan, onGo, onClose }) {
           {GETTING_STARTED.map((s, i) => (
             <li key={s.tab} className="ws-step">
               <span className="ws-n">{i + 1}</span>
-              <div className="ws-body"><b>{s.icon} {s.title}</b><span>{s.text}</span></div>
+              <div className="ws-body"><b>{s.title}</b><span>{s.text}</span></div>
               <button type="button" className="pop-btn ws-go" onClick={() => onGo(s.tab)}>Open</button>
             </li>
           ))}

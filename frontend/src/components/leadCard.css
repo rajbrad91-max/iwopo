@@ -16,6 +16,8 @@
 .lc-contact { flex: 1 1 auto; min-width: 0; margin: 0; display: flex; justify-content: flex-end; gap: 12px; font-size: 13.5px; color: var(--muted); }
 .lc-email { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* a long email shortens with … */
 .lc-phone { flex: none; white-space: nowrap; }   /* the phone number always shows in full */
+.lc-contact a { color: inherit; text-decoration: none; }   /* 📲 email and phone open the email / phone app */
+.lc-contact a:hover { color: var(--teal); }
 
 .lc-rows { margin: 0; }
 .lc-row {

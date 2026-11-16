@@ -161,12 +161,12 @@ export async function announceUpload({ v, album, who, client, appUrl, notify, se
   const counts = { photos: await prisma.photos.count({ where: { album_id: album.id } }), raws: await prisma.raw_files.count({ where: { album_id: album.id } }) };
   if (!counts.photos) return { status: 400, error: 'Upload the photos first' };
   await prisma.albums.update({ where: { id: album.id }, data: { uploaded_at: new Date() } });
-  await notify(v, `📸 ${album.title}: ${counts.photos} photos uploaded`, `${who} uploaded ${counts.photos} JPEGs and ${counts.raws} RAWs.`, 'info', { type: 'rawsel' });
+  await notify(v, `${album.title}: ${counts.photos} photos uploaded`, `${who} uploaded ${counts.photos} JPEGs and ${counts.raws} RAWs.`, 'info', { type: 'rawsel' });
   const ven = await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true, email: true } });
   const studio = ven?.business_name || 'Your photographer';
   let ownerEmailed = false, clientEmailed = false;
   if (ven?.email) {
-    ownerEmailed = (await sendAsVendor(v, { to: ven.email, subject: `📸 ${album.title}: photos uploaded`, text: `${who} uploaded ${counts.photos} JPEGs and ${counts.raws} RAWs for ${album.title}.\n\nRaw Selector: ${appUrl}/panel/rawsel` })).ok;
+    ownerEmailed = (await sendAsVendor(v, { to: ven.email, subject: `${album.title}: photos uploaded`, text: `${who} uploaded ${counts.photos} JPEGs and ${counts.raws} RAWs for ${album.title}.\n\nRaw Selector: ${appUrl}/panel/rawsel` })).ok;
   }
   if (client && album.client_email) {
     const mail = await renderEmail(v, 'photos_ready', {   // ✉️ Settings → Email templates
@@ -190,7 +190,7 @@ export async function tellEditors({ v, album, count, appUrl, sendAsVendor }) {
   for (const ed of editors) {
     const ok = (await sendAsVendor(v, {
       to: ed.email,
-      subject: `🎞️ New photos to edit — ${album.title}`,
+      subject: `New photos to edit — ${album.title}`,
       text: `Hi${ed.name ? ` ${ed.name}` : ''},\n\n${album.title} picked ${count} photo${count === 1 ? '' : 's'}. Their RAW files are ready for you:\n${appUrl}/editor\n\n${studio}`,
     })).ok;
     if (ok) sent++;

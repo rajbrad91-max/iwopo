@@ -84,7 +84,7 @@ export default function RawSelectorView() {
   return (
     <div className="rs">
       <section className="rs-card">
-        <h2 className="rs-h">👨‍💻 Editors</h2>
+        <h2 className="rs-h">Editors</h2>
         <p className="rs-sub">
           Add your editor's email and iwopo emails them an invitation from your email address. They sign up
           at <a href={portal} target="_blank" rel="noreferrer">{portal}</a> with that email, and see only the RAW files of
@@ -154,7 +154,7 @@ export default function RawSelectorView() {
       </section>
 
       <section className="rs-card">
-        <h2 className="rs-h">📸 Clients</h2>
+        <h2 className="rs-h">Clients</h2>
         <p className="rs-sub">One row per client, from the upload to the delivered gallery. Open a row for its downloads, your note for the editor, and the RAW files.</p>
         <ShootRail clients={clients} reload={load} />
       </section>

@@ -77,7 +77,7 @@ export default function HelpView({ user, onGo }) {
             <li key={s.tab} className="hv-step">
               <span className="hv-step-n">{i + 1}</span>
               <div className="hv-step-body">
-                <b>{s.icon} {s.title}</b>
+                <b>{s.title}</b>
                 <ul>{s.points.map(p => <li key={p}>{p}</li>)}</ul>
               </div>
               <button type="button" className="refresh hv-step-go" onClick={() => onGo(s.tab)}>Open</button>
@@ -87,7 +87,7 @@ export default function HelpView({ user, onGo }) {
       </section>
 
       <section className="table-wrap hv-card hv-wide">
-        <h3 className="hv-h">🌐 Your own domain</h3>
+        <h3 className="hv-h">Your own domain</h3>
         <p className="hv-sub">Show your galleries and inquiry form on your own web address — like <b>clients.yourstudio.com</b> — with no “iwopo” in it. You add one record where your domain is managed; iwopo checks it and adds the padlock for you.</p>
         <ol className="hv-dsteps">
           <li><b>Settings → Web address</b>: type your domain and press <b>Connect</b>.</li>
@@ -95,7 +95,7 @@ export default function HelpView({ user, onGo }) {
           <li>Press <b>Check now</b> — it turns Active, usually within minutes.</li>
         </ol>
         <div className="hv-guide">
-          <label className="hv-guide-lbl" htmlFor="hv-guide-lang">📄 Step-by-step guide (PDF)</label>
+          <label className="hv-guide-lbl" htmlFor="hv-guide-lang">Step-by-step guide (PDF)</label>
           <select id="hv-guide-lang" className="hv-guide-sel" value={guide} onChange={e => setGuide(e.target.value)}>
             {GUIDE_LANGS.map(([c, name]) => <option key={c} value={c}>{name}</option>)}
           </select>

@@ -377,11 +377,11 @@ export async function confirmAction(id, vendorId, auth) {
         },
         select: { id: true, name: true },
       });
-      return { ok: true, status: d.status === 'booked' ? 'booked' : 'new', message: d.status === 'booked' ? `📅 ${lead.name} added and BOOKED (#${lead.id}).` : `🆕 ${lead.name} added as a new lead — NOT booked yet (#${lead.id}).` };
+      return { ok: true, status: d.status === 'booked' ? 'booked' : 'new', message: d.status === 'booked' ? `${lead.name} added and BOOKED (#${lead.id}).` : `${lead.name} added as a new lead — NOT booked yet (#${lead.id}).` };
     }
     if (p.kind === 'update_lead') {
       await asVendor(auth, 'PUT', `/leads/${p.args.lead_id}`, p.args.changes);
-      return { ok: true, message: '✏️ Lead updated.' };
+      return { ok: true, message: 'Lead updated.' };
     }
     if (p.kind === 'note') {
       const l = await prisma.leads.findFirst({ where: { id: p.args.lead_id, vendor_id: p.vendorId }, select: { internal_notes: true } });
@@ -392,7 +392,7 @@ export async function confirmAction(id, vendorId, auth) {
     }
     if (p.kind === 'archive') {
       await asVendor(auth, 'POST', '/leads/bulk-archive', { ids: [p.args.lead_id] });
-      return { ok: true, message: '🗄️ Lead archived.' };
+      return { ok: true, message: 'Lead archived.' };
     }
     if (p.kind === 'text') {
       // the panel's own send — from the business line, logged in Calls & messages
@@ -437,7 +437,7 @@ export async function confirmAction(id, vendorId, auth) {
     }
     if (p.kind === 'packages') {
       await asVendor(auth, 'POST', `/leads/${p.args.lead_id}/send-packages`, {});
-      return { ok: true, message: '📦 Packages sent.' };
+      return { ok: true, message: 'Packages sent.' };
     }
     return { ok: false, message: 'Unknown action' };
   } catch (e) { return { ok: false, message: `⚠️ ${e.message}` }; }

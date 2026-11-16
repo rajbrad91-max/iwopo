@@ -55,10 +55,10 @@ export async function mediaLocked(vendorId) {
 
 const STAGES = [
   // [stage, after days, title, body]
-  [1, 0, '💾 You are over your storage', (s) => `Your files are ${s.over_by} over your plan. Please delete some or move up a plan within ${GRACE_DAYS} days — after that your galleries and files are locked until you do.`],
-  [2, 7, '⏳ 8 days left to sort out your storage', (s) => `You are still ${s.over_by} over your plan. Delete some files or move up a plan — in 8 days your galleries and files will be locked.`],
+  [1, 0, 'You are over your storage', (s) => `Your files are ${s.over_by} over your plan. Please delete some or move up a plan within ${GRACE_DAYS} days — after that your galleries and files are locked until you do.`],
+  [2, 7, '8 days left to sort out your storage', (s) => `You are still ${s.over_by} over your plan. Delete some files or move up a plan — in 8 days your galleries and files will be locked.`],
   [3, 13, '⚠️ 2 days left before your files are locked', (s) => `You are ${s.over_by} over your plan. In 2 days your galleries and files will be locked — delete some or move up a plan to keep them open.`],
-  [4, GRACE_DAYS, '🔒 Your galleries and files are locked', (s) => `You are ${s.over_by} over your plan, so your galleries and files are locked. Delete some or move up a plan and they open again straight away.`],
+  [4, GRACE_DAYS, 'Your galleries and files are locked', (s) => `You are ${s.over_by} over your plan, so your galleries and files are locked. Delete some or move up a plan and they open again straight away.`],
 ];
 
 /** Hourly: every vendor holding files — start or clear the countdown, and send the reminder that is due (once each). */
@@ -73,7 +73,7 @@ export async function sweepOverLimit() {
     const [stage, , title, body] = due;
     await notify(id, title, body(s), 'billing', { type: 'services' });
     const owner = await prisma.users.findFirst({ where: { vendor_id: id }, orderBy: { id: 'asc' }, select: { email: true } });   // 🔒 this vendor
-    if (owner?.email) await sendPlatformEmail(owner.email, title.replace(/^\S+\s/, ''), `${body(s)}\n\nManage your plan and storage: https://iwopo.com/panel/services`).catch(quiet('email the over-the-limit notice'));
+    if (owner?.email) await sendPlatformEmail(owner.email, title, `${body(s)}\n\nManage your plan and storage: https://iwopo.com/panel/services`).catch(quiet('email the over-the-limit notice'));
     await prisma.vendor_settings.update({ where: { vendor_id: id }, data: { over_limit_stage: stage } });
   }
 }

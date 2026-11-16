@@ -75,21 +75,21 @@ function ListInput({ value, placeholder, onChange }) {
 
 // 🏗️ Section 2 custom field builder
 const FIELD_TYPES = [
-  { t: 'dropdown', label: '📋 Dropdown' },
-  { t: 'text', label: '✏️ Text' },
+  { t: 'dropdown', label: 'Dropdown' },
+  { t: 'text', label: 'Text' },
   // a longer answer — line breaks kept
-  { t: 'paragraph', label: '📝 Long text' },
+  { t: 'paragraph', label: 'Long text' },
   // a count or an amount — guests, servings, a budget (decimals allowed)
-  { t: 'number', label: '🔢 Number' },
-  { t: 'date', label: '📅 Date' },
-  { t: 'time', label: '🕐 Time' },
-  { t: 'hours', label: '⏱️ Hours' },
-  { t: 'location', label: '📍 Location' },
-  { t: 'checkbox', label: '☑️ Checkbox' },
+  { t: 'number', label: 'Number' },
+  { t: 'date', label: 'Date' },
+  { t: 'time', label: 'Time' },
+  { t: 'hours', label: 'Hours' },
+  { t: 'location', label: 'Location' },
+  { t: 'checkbox', label: 'Checkbox' },
   // 🏷️ a title that groups the questions under it — asks nothing
-  { t: 'heading', label: '🏷️ Section title' },
+  { t: 'heading', label: 'Section title' },
   // 🗓️ the client adds Mehndi, Jaggo, Reception… each with its own date, times and place → the lead's Pre-Events card
-  { t: 'pre_events', label: '🗓️ Pre-Events' },
+  { t: 'pre_events', label: 'Pre-Events' },
 ];
 
 /** The event names a new Pre-Events question offers — the vendor edits them like dropdown options. */
@@ -152,10 +152,10 @@ const FORM_PRESETS = {
   /* ✏️ (Raj, 2026-10-28) a vendor whose trade isn't listed starts blank and builds their own, instead of loading
      someone else's trade and deleting it. Only the event date stays — every vendor needs it to quote — and the
      background watermark is left as it is (this is not a trade). */
-  custom: { label: '✏️ Start blank — build my own', fields: [
+  custom: { label: 'Start blank — build my own', fields: [
     { type: 'date', label: 'Date of Event', maps_to: 'event_date' },
   ] },
-  photographer: { label: '📷 Photographer', fields: [
+  photographer: { label: 'Photographer', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
     { type: 'dropdown', label: 'Coverage needed', options: ['Ceremony only', 'Ceremony + Reception', 'Full day', 'Multiple days'] },
@@ -163,7 +163,7 @@ const FORM_PRESETS = {
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'text', label: 'Any must-have shots?' },
   ] },
-  videographer: { label: '🎥 Videographer', fields: [
+  videographer: { label: 'Videographer', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
     { type: 'dropdown', label: 'Film length', options: ['Highlight (3–5 min)', 'Feature (10–20 min)', 'Full ceremony + highlight'] },
@@ -171,14 +171,14 @@ const FORM_PRESETS = {
     { type: 'checkbox', label: 'Live streaming' },
     { type: 'text', label: 'Music preference' },
   ] },
-  photo_video: { label: '🎬 Photo & Video', fields: [
+  photo_video: { label: 'Photo & Video', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Coverage', maps_to: 'hours' },
     { type: 'dropdown', label: 'What do you need?', options: ['Photos only', 'Videos only', 'Photos & Videos'] },
     { type: 'checkbox', label: 'Drone footage' },
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
   ] },
-  dj: { label: '🎧 DJ', fields: [
+  dj: { label: 'DJ', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Play', maps_to: 'hours' },
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
@@ -188,7 +188,7 @@ const FORM_PRESETS = {
     { type: 'text', label: 'Music style / must-plays' },
     { type: 'text', label: 'Do-not-play list' },
   ] },
-  makeup: { label: '💄 Make-Up Artist', fields: [
+  makeup: { label: 'Make-Up Artist', fields: [
     ...CORE_EVENT,
     { type: 'number', label: 'How many people need makeup?' },
     { type: 'time', label: 'Time you need to be ready by' },
@@ -197,7 +197,7 @@ const FORM_PRESETS = {
     { type: 'checkbox', label: 'Trial session wanted' },
     { type: 'text', label: 'Any allergies or sensitivities?' },
   ] },
-  cake: { label: '🎂 Cake Maker', fields: [
+  cake: { label: 'Cake Maker', fields: [
     ...CORE_EVENT,
     { type: 'number', label: 'Number of servings' },
     { type: 'dropdown', label: 'Tiers', options: ['1', '2', '3', '4+', 'Not sure yet'] },
@@ -205,7 +205,7 @@ const FORM_PRESETS = {
     { type: 'text', label: 'Dietary requirements (nut-free, gluten-free…)' },
     { type: 'checkbox', label: 'Delivery and setup needed' },
   ] },
-  florist: { label: '💐 Florist', fields: [
+  florist: { label: 'Florist', fields: [
     ...CORE_EVENT,
     { type: 'text', label: 'Colour palette' },
     { type: 'number', label: 'Bouquets needed (how many?)' },
@@ -214,7 +214,7 @@ const FORM_PRESETS = {
     { type: 'checkbox', label: 'Table centrepieces' },
     { type: 'checkbox', label: 'Setup and takedown' },
   ] },
-  bartender: { label: '🍸 Bartender', fields: [
+  bartender: { label: 'Bartender', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Service', maps_to: 'hours' },
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
@@ -222,7 +222,7 @@ const FORM_PRESETS = {
     { type: 'checkbox', label: 'You are supplying the alcohol' },
     { type: 'checkbox', label: 'Glassware needed' },
   ] },
-  caterer: { label: '🍽️ Caterer', fields: [
+  caterer: { label: 'Caterer', fields: [
     ...CORE_EVENT,
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'dropdown', label: 'Service style', options: ['Plated', 'Buffet', 'Family style', 'Canapés / stations'] },
@@ -231,14 +231,14 @@ const FORM_PRESETS = {
     { type: 'checkbox', label: 'Staff for serving' },
     { type: 'checkbox', label: 'Venue has a kitchen' },
   ] },
-  planner: { label: '📋 Wedding Planner', fields: [
+  planner: { label: 'Wedding Planner', fields: [
     ...CORE_EVENT,
     { type: 'number', label: 'Guest count (approx.)', maps_to: 'guests' },
     { type: 'dropdown', label: 'What do you need?', options: ['Full planning', 'Partial planning', 'Day-of coordination'] },
     { type: 'text', label: 'Vendors already booked' },
     { type: 'text', label: 'Rough budget' },
   ] },
-  musician: { label: '🎶 Musician / Singer', fields: [
+  musician: { label: 'Musician / Singer', fields: [
     ...CORE_EVENT,
     { type: 'hours', label: 'Hours of Performance', maps_to: 'hours' },
     { type: 'dropdown', label: 'Where will you play?', options: ['Ceremony', 'Drinks reception', 'Dinner', 'Evening', 'More than one'] },
@@ -251,7 +251,7 @@ const FORM_PRESETS = {
   /* ⭐ PPM Special (Raj, 2026-10-30): the full Perfect Poses Media inquiry — everything his old Laravel form asked,
      rebuilt from the builder's own pieces, so any vendor can load it and change anything. Rules name their source
      question by "key"; loading points them at the real question ids. */
-  ppm_special: { label: '⭐ PPM Special — Perfect Poses Media', trade: 'photo_video', fields: [
+  ppm_special: { label: 'PPM Special — Perfect Poses Media', trade: 'photo_video', fields: [
     { type: 'text', label: "Friend's Name (who referred you)", show_if: { field: '@heard', op: 'in', values: ['Friend'] } },
     { key: 'evt', type: 'dropdown', label: 'Type of Event', maps_to: 'event_type', required: true,
       options: ['Wedding', 'Pre-wedding', 'Engagement', 'Birthday party', 'Commercial'], allow_other: true, other_label: 'Other (type your event)' },
@@ -274,7 +274,7 @@ const FORM_PRESETS = {
     { type: 'pre_events', label: 'Jaggo, Maiyaan, Reception, Engagement, Proposal & more', options: ['Jaggo', 'Choora', 'Maiyan', 'Reception'],
       pe_services: ['Photos & Videos', 'Only Photos', 'Only Videos'], show_if: { field: 'evt', op: 'in', values: ['Wedding', 'Engagement', OTHER] } },
   ] },
-  transportation: { label: '🚗 Transportation', fields: [
+  transportation: { label: 'Transportation', fields: [
     { type: 'dropdown', label: 'Type of Event', maps_to: 'event_type',
       options: ['Wedding', 'Engagement', 'Reception', 'Prom / Graduation', 'Corporate', 'Airport transfer', 'Other'] },
     { type: 'date', label: 'Date of Event', maps_to: 'event_date' },
@@ -664,7 +664,7 @@ export function InqFormSettings() {
           <div className="if-wm">
             <label className="u-font-size-12px u-color-muted u-display-block u-margin-bottom-4px">Background watermark</label>
             <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.background || 'none'} onChange={e => setS({ ...s, background: e.target.value })}>
-              {Object.entries(PROFESSIONS).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+              {Object.entries(PROFESSIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
         </div>
@@ -705,7 +705,7 @@ export function InqFormSettings() {
           <label className="u-font-size-12px u-color-muted">Section 2 heading</label>
           <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.details_heading || ''} placeholder="Event Details" onChange={e => setS({ ...s, details_heading: e.target.value })} />
           <h3 className="u-margin-16px-0-4px">🏗️ Inquiry Details fields</h3>
-          <p className="sub u-margin-bottom-12px">Build your custom questions ⬇️</p>
+          <p className="sub u-margin-bottom-12px">Build your custom questions below</p>
           <FieldBuilder
             fields={s.custom_fields || []}
             setFields={(f) => setS(prev => ({ ...prev, custom_fields: f }))}
@@ -714,7 +714,7 @@ export function InqFormSettings() {
         </div>
 
         <button className="refresh u-margin-top-16px u-width-100pct u-background-teal u-color-acc-ink" onClick={save} disabled={saving}>
-          {saving ? '⏳ Saving…' : msg || '💾 Save form settings'}
+          {saving ? 'Saving…' : msg || 'Save form settings'}
         </button>
       </div>
     </div>

@@ -192,7 +192,7 @@ function QuoKeys({ onSaved }) {
         {info.has_key && <button className="ib-btn" onClick={remove}>Remove connection</button>}
         <button className="ib-btn is-on" disabled={busy || (!info.has_key && !key.trim())} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
       </div>
-      <p className="ib-quiet ib-keys-note">🔒 Stored encrypted for your account only. The key and secrets can't be viewed again.</p>
+      <p className="ib-quiet ib-keys-note">Stored encrypted for your account only. The key and secrets can't be viewed again.</p>
     </div>
   );
 }
@@ -282,7 +282,7 @@ function EmailKeys({ onSaved, onCancel }) {
         {onCancel && <button className="ib-btn" onClick={onCancel}>Cancel</button>}
         <button className="ib-btn is-on" disabled={busy || !id.trim() || (!secret.trim() && !info?.has_app)} onClick={save}>{busy ? 'Saving…' : 'Save keys'}</button>
       </div>
-      <p className="ib-quiet ib-keys-note">🔒 Stored encrypted for your account only. The secret can't be viewed again, here or by anyone at iwopo.</p>
+      <p className="ib-quiet ib-keys-note">Stored encrypted for your account only. The secret can't be viewed again, here or by anyone at iwopo.</p>
     </div>
   );
 }

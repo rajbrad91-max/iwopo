@@ -53,7 +53,7 @@ billingWebhook.post('/', express.raw({ type: 'application/json', limit: '1mb' })
     const o = event.data?.object || {};
     if (event.type.startsWith('customer.subscription.')) {
       const r = await recordSubscription(o);
-      if (r && event.type === 'customer.subscription.deleted') notify(r.vendorId, '💳 Your iwopo plan has ended', 'Choose a plan to switch your features back on — your data is safe', 'plans', { type: 'plans' });
+      if (r && event.type === 'customer.subscription.deleted') notify(r.vendorId, 'Your iwopo plan has ended', 'Choose a plan to switch your features back on — your data is safe', 'plans', { type: 'plans' });
     } else if (event.type === 'checkout.session.completed' && o.subscription) {
       const s = await stripe('GET', `/subscriptions/${o.subscription}`);
       const r = await recordSubscription(s);
@@ -107,7 +107,7 @@ router.get('/', async (req, res) => {
       addons: await addonsFor(v, { country }),
       // the paid plans as cards (Free is where an unpaid account rests, never something to check out)
       plans: plans.filter(p => p.price_monthly > 0).map(p => ({
-        id: p.id, code: p.code, name: p.name, icon: p.icon, tagline: p.tagline, storage_gb: p.storage_gb,
+        id: p.id, code: p.code, name: p.name, tagline: p.tagline, storage_gb: p.storage_gb,
         monthly: p.price_monthly, annual: p.price_annual || annualOf(p.price_monthly), lines: p.lines, local: p.local,
       })),
       // 📊 the pricing table at this vendor's own prices — Plans & Upgrades shows it (2026-11-11)

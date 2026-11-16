@@ -113,7 +113,7 @@ function VendorDrawer({ vendorId, onClose }) {
               ? <div className="u-font-size-13px u-color-muted u-padding-6px-0">No services yet</div>
               : d.services.map(s => (
                 <div className="u-display-flex u-justify-content-space-between u-padding-6px-0 u-border-bottom-1px-solid-line u-font-size-13_5px" key={s.id}>
-                  <span>{s.icon} {s.name}</span>
+                  <span>{s.name}</span>
                   <span className={`sa-svc-state ${s.enabled ? 'is-on' : ''}`}>{s.enabled ? '✅ active' : 'off'} · ${s.price}</span>
                 </div>
               ))}
@@ -198,8 +198,8 @@ function FormerSubscribers() {
   const agreed = (rows || []).filter(r => r.offers).length;
   return (
     <>
-      <div className="sa-section-title sa-former-title">👋 Former subscribers
-        <button type="button" className="sa-view-btn" disabled={!agreed} onClick={exportAgreed}>⬇️ Export the {agreed} who agreed to offers</button>
+      <div className="sa-section-title sa-former-title">Former subscribers
+        <button type="button" className="sa-view-btn" disabled={!agreed} onClick={exportAgreed}>Export the {agreed} who agreed to offers</button>
       </div>
       <div className="sa-table-wrap">
         <table>
@@ -329,7 +329,7 @@ function StorageLimit({ vendorId, storage, onSaved }) {
 /* ---------- BUYERS ---------- */
 /** 🏷️ a seller's billing state (lib/adminOverview.js) as a badge: its words and its colour */
 const BILLING_STATE = {
-  owner: ['👑 Owner', 'active'], paying: ['Paying', 'active'], past_due: ['Past due', 'past'], trial: ['Trial', 'trial'], expired: ['Trial ended', 'past'],
+  owner: ['Owner', 'active'], paying: ['Paying', 'active'], past_due: ['Past due', 'past'], trial: ['Trial', 'trial'], expired: ['Trial ended', 'past'],
 };
 
 export function BuyersView({ vendors, overview, onChanged }) {

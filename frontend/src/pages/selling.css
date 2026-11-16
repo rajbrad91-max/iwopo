@@ -534,15 +534,6 @@
   border-color: color-mix(in srgb, var(--p) 45%, var(--line));
   background: linear-gradient(180deg, #fff 0%, #FFF4EB 100%);
 }
-.sl-ind-ic {
-  width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center;
-  font-size: 1.25rem;
-  background: var(--grad);
-  box-shadow: 0 10px 18px -10px rgba(198, 77, 0, .65);
-  transform: rotate(-4deg);
-  transition: transform .2s ease;
-}
-.sl-ind:hover .sl-ind-ic { transform: rotate(0deg) translateY(-2px); }
 .sl-ind-name { font-size: 0.78rem; font-weight: 650; color: var(--ink); letter-spacing: -.01em; }
 
 @media (max-width: 1100px) {

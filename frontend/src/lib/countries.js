@@ -6,7 +6,7 @@
 // this, they could not be quoted correctly either. A country here does not have
 // to have its own pricing; unpriced ones fall back to the default row.
 export const COUNTRIES = [
-  { code: 'default', name: '🌐 Default (USD — all others)' },
+  { code: 'default', name: 'Default (USD — all others)' },
   { code: 'CA-BC', name: '🇨🇦 Canada · British Columbia' },
   { code: 'CA', name: '🇨🇦 Canada (rest)' },
   { code: 'US', name: '🇺🇸 United States' },

@@ -170,7 +170,7 @@ function FaceEngineSettings() {
         {/* live queue status */}
         {qstat && (
           <div className="fr-status">
-            <span>📊 Backlog: <b>{qstat.backlog}</b></span>
+            <span>Backlog: <b>{qstat.backlog}</b></span>
             <span>⚙️ CPU load: <b>{qstat.load}</b>/{qstat.cores}</span>
             <span>🧵 Indexing: <b>{qstat.concurrency}</b> at a time</span>
             <span>{qstat.overflowing ? '🛟 Overflowing to AWS' : (qstat.aws_mode === 'aws_on' ? '☁️ AWS' : '🖥️ Local')}</span>
@@ -194,11 +194,11 @@ function FaceEngineSettings() {
               <div className="fr-cred-body">
                 <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
                   {!editing ? (
-                    <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
+                    <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>Edit</button>
                   ) : (
                     <div className="u-display-flex u-gap-8px">
                       <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => setShow(v => !v)}>{show ? '🙈 Hide' : '👁️ Show'}</button>
-                      <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                      <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>Save</button>
                       <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                     </div>
                   )}
@@ -235,10 +235,10 @@ function FaceEngineSettings() {
                     way to type in any of this at all. */}
                 <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
                   {!editing ? (
-                    <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
+                    <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>Edit</button>
                   ) : (
                     <div className="u-display-flex u-gap-8px">
-                      <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                      <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>Save</button>
                       <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                     </div>
                   )}
@@ -261,7 +261,7 @@ function FaceEngineSettings() {
                   onChange={e => setS({ ...s, r2_secret_access_key: e.target.value })} /></div>
 
               {/* ── 🔒 private ─────────────────────────────────────────── */}
-              <div className="sa-sec-hd u-margin-top-22px">🔒 Private bucket — client galleries &amp; File Flyer</div>
+              <div className="sa-sec-hd u-margin-top-22px">Private bucket — client galleries &amp; File Flyer</div>
               <div className="u-font-size-12px u-color-muted u-margin-bottom-8px">
                 Reached only by album password or share token. Public access must stay OFF on this bucket.
               </div>
@@ -284,7 +284,7 @@ function FaceEngineSettings() {
                   onChange={e => setS({ ...s, r2_private_secret_access_key: e.target.value })} /></div>
 
               {/* ── 🌐 public ──────────────────────────────────────────── */}
-              <div className="sa-sec-hd u-margin-top-22px">🌐 Public bucket — website images &amp; logos</div>
+              <div className="sa-sec-hd u-margin-top-22px">Public bucket — website images &amp; logos</div>
               <div className="u-font-size-12px u-color-muted u-margin-bottom-8px">
                 Deliberately world-readable. Nothing private should ever be written here.
               </div>
@@ -313,7 +313,7 @@ function FaceEngineSettings() {
                   onChange={e => setS({ ...s, r2_public_url: e.target.value })} /></div>
 
               <div className="cb-warn u-margin-top-10px">
-                🔒 The two buckets must be different. Galleries and File Flyer files are reached
+                The two buckets must be different. Galleries and File Flyer files are reached
                 by password or share token — putting them in the public bucket lets anyone with
                 the file&rsquo;s URL walk past both. Saving the same name for both is refused.
               </div>
@@ -323,14 +323,14 @@ function FaceEngineSettings() {
 
         {/* 💳 Stripe Connect — vendors connect their OWN Stripe for client card payments (lib/stripeConnect.js) */}
         <div className="fr-cred">
-          <div className="fr-cred-head sa-connect-head"><span>💳 Stripe Connect — client card payments</span></div>
+          <div className="fr-cred-head sa-connect-head"><span>Stripe Connect — client card payments</span></div>
           <div className="fr-cred-body">
             {/* its own Edit — the shared one sits inside folded sections, so these keys were otherwise read-only */}
             <div className="sa-connect-actions">
               {!editing
-                ? <button type="button" className="sa-btn-teal sa-connect-btn" onClick={startEdit}>✏️ Edit</button>
+                ? <button type="button" className="sa-btn-teal sa-connect-btn" onClick={startEdit}>Edit</button>
                 : <>
-                    <button type="button" className="sa-btn-teal sa-connect-btn" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                    <button type="button" className="sa-btn-teal sa-connect-btn" onClick={() => { save(s); stopEdit(); }}>Save</button>
                     <button type="button" className="sa-connect-x" onClick={stopEdit}>✕</button>
                   </>}
             </div>
@@ -360,10 +360,10 @@ function FaceEngineSettings() {
           <div className="fr-cred-body">
             <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
               {!editing ? (
-                <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
+                <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>Edit</button>
               ) : (
                 <div className="u-display-flex u-gap-8px">
-                  <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>Save</button>
                   <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                 </div>
               )}
@@ -435,7 +435,7 @@ function FaceEngineSettings() {
         <div className="fr-cred">
           <button type="button" className="fr-cred-head u-margin-top-26px"
             onClick={() => setAiOpen(o => !o)} aria-expanded={aiOpen}>
-            <span>🤖 AI Agent</span>
+            <span>AI Agent</span>
             <span className="fr-cred-chev">{aiOpen ? '▲' : '▼'}</span>
           </button>
 
@@ -443,17 +443,17 @@ function FaceEngineSettings() {
           <div className="fr-cred-body">
             <div className="u-display-flex u-justify-content-flex-end u-margin-bottom-10px">
               {!editing ? (
-                <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>✏️ Edit</button>
+                <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={startEdit}>Edit</button>
               ) : (
                 <div className="u-display-flex u-gap-8px">
-                  <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>💾 Save</button>
+                  <button className="sa-btn-teal u-padding-5px-12px u-font-size-12px" onClick={() => { save(s); stopEdit(); }}>Save</button>
                   <button className="u-padding-5px-12px u-font-size-12px u-background-panel-2 u-border-1px-solid-line u-border-radius-7px u-color-text u-cursor-pointer" onClick={stopEdit}>✕</button>
                 </div>
               )}
             </div>
 
             <p className="u-font-size-12_5px u-color-muted u-margin-0-0-14px u-line-height-1_55">
-              Your private AI Agent (panel → 🤖 AI Agent) — only you use it.
+              Your private AI Agent (panel → AI Agent) — only you use it.
               The clients' chatbot has its own key under AI Chat → API Key. Get a
               key at console.anthropic.com — charged per use, a fraction of a
               cent per question.

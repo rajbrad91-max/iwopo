@@ -12,7 +12,7 @@ const ProjectStages = lazy(() => import('./ProjectStages.jsx'));
  *  - the list re-reads itself every 15 seconds and whenever the page comes back into view, so changes made
  *    by Gale or on the board show up here without a reload
  */
-const STEPS = [['backed_up_at', '💾', 'Backed up'], ['sent_to_editor_at', '✂️', 'Sent to editor'], ['editing_photos_done_at', '🖼️', 'Photos edited'], ['editing_videos_done_at', '🎬', 'Videos edited']];
+const STEPS = [['backed_up_at', 'Backed up'], ['sent_to_editor_at', 'Sent to editor'], ['editing_photos_done_at', 'Photos edited'], ['editing_videos_done_at', 'Videos edited']];
 const today = () => new Date().toISOString().slice(0, 10);
 const nice = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '');
 const doneAll = (b) => STEPS.every(([k]) => b[k]);
@@ -97,11 +97,11 @@ export default function PpmBoard() {
                 <span>{[b.event_type, nice(b.shoot_date)].filter(Boolean).join(' · ')}</span>
               </button>
               <div className="agp-steps">
-                {STEPS.map(([k, ic, label]) => (
+                {STEPS.map(([k, label]) => (
                   <button key={k} type="button" className={`agp-step ${b[k] ? 'is-done' : 'is-todo'} ${busy[`${b.lead_id}:${k}`] ? 'is-busy' : ''}`}
                     onClick={() => tick(b, k, label)} disabled={!!busy[`${b.lead_id}:${k}`]}
                     title={b[k] ? `${label} — ${nice(b[k])}${k === 'backed_up_at' && b.backed_up_by ? ` · by ${b.backed_up_by}` : ''}` : `${label} — not yet (tap when done)`}>
-                    <span aria-hidden="true">{ic}</span><span className="agp-step-t">{label}</span>
+                    <span className="agp-step-t">{label}</span>
                   </button>
                 ))}
               </div>

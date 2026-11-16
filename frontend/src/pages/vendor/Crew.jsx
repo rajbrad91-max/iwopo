@@ -171,9 +171,9 @@ export function CrewView({ rawsel = false }) {
   return (
     <div className="cr-wrap">
       <div className="cr-tabs">
-        <button type="button" className={`cr-tab ${tab === 'upcoming' ? 'is-on' : ''}`} onClick={() => setTab('upcoming')} title="Jobs coming up">📅 Upcoming</button>
-        <button type="button" className={`cr-tab ${tab === 'past' ? 'is-on' : ''}`} onClick={() => setTab('past')} title="Finished jobs and hours">🏁 Past</button>
-        <button type="button" className={`cr-tab ${tab === 'team' ? 'is-on' : ''}`} onClick={() => setTab('team')} title="Add and manage your team">👷 Team</button>
+        <button type="button" className={`cr-tab ${tab === 'upcoming' ? 'is-on' : ''}`} onClick={() => setTab('upcoming')} title="Jobs coming up">Upcoming</button>
+        <button type="button" className={`cr-tab ${tab === 'past' ? 'is-on' : ''}`} onClick={() => setTab('past')} title="Finished jobs and hours">Past</button>
+        <button type="button" className={`cr-tab ${tab === 'team' ? 'is-on' : ''}`} onClick={() => setTab('team')} title="Add and manage your team">Team</button>
       </div>
 
       {note && <div className={`cr-note ${note[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{note}</div>}
@@ -224,7 +224,7 @@ export function CrewView({ rawsel = false }) {
             </div>
           ) : (
             <div className="cr-card">
-              <div className="cr-card-h">{editId ? '✏️ Edit crew member' : '➕ Add crew member'} {msg && <span className={`cr-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}</div>
+              <div className="cr-card-h">{editId ? 'Edit crew member' : 'Add crew member'} {msg && <span className={`cr-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</span>}</div>
               <div className="cr-add-grid">
                 <input className="cr-input" placeholder="Name *" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} autoFocus />
                 <input className="cr-input" placeholder="Role (e.g. 2nd shooter)" value={f.role} onChange={e => setF({ ...f, role: e.target.value })} />
@@ -250,9 +250,9 @@ export function CrewView({ rawsel = false }) {
                     <td className="cr-phone">{c.phone || '—'}</td>
                     <td className="cr-email">{c.email || '—'}</td>
                     <td className="cr-acts">
-                      {rawsel && <button type="button" className={`cr-icon-btn${c.has_ftp ? ' is-on' : ''}`} onClick={() => setFtpFor(c)} title="Camera FTP login">📡</button>}
-                      <button type="button" className="cr-icon-btn" onClick={() => startEdit(c)} title="Edit this person">✏️</button>
-                      <button type="button" className="cr-icon-btn" onClick={() => del(c.id)} title="Remove from your team">🗑️</button>
+                      {rawsel && <button type="button" className={`cr-icon-btn${c.has_ftp ? ' is-on' : ''}`} onClick={() => setFtpFor(c)} title="Camera FTP login">FTP</button>}
+                      <button type="button" className="cr-icon-btn" onClick={() => startEdit(c)} title="Edit this person">Edit</button>
+                      <button type="button" className="cr-icon-btn" onClick={() => del(c.id)} title="Remove from your team">Remove</button>
                     </td>
                   </tr>
                 ))}
@@ -303,10 +303,10 @@ export function CrewView({ rawsel = false }) {
                         <span className={`cr-badge ${att.cls}`}>{att.t}</span>
                       </div>
                       <div className="cr-job-meta">
-                        <span title="Event date">📅 {date}</span>
-                        <span title="On-site hours">⏰ {slot}</span>
-                        <span title="Location">📍 {a.location || '—'}</span>
-                        {tab === 'past' && <span title="Hours for this job">⏱️ {fmtHours(a.hours)}</span>}
+                        <span title="Event date">{date}</span>
+                        <span title="On-site hours">{slot}</span>
+                        <span title="Location">{a.location || '—'}</span>
+                        {tab === 'past' && <span title="Hours for this job">{fmtHours(a.hours)}</span>}
                       </div>
                       {tab === 'upcoming' && (
                         <div className="cr-job-acts">

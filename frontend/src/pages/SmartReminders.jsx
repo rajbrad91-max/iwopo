@@ -6,7 +6,7 @@ import './smartreminders.css';
  * ⏰ Smart reminders (Raj, 2026-10-23): people waiting more than a day for a reply — texts, missed calls, emails.
  * Replying clears one by itself; Done / Don't remind / Snooze clear it by hand. Tornado and Gale read the same list.
  */
-const ICON = { text: '💬', call: '📞', email: '📧', instagram: '📸', whatsapp: '🟢' };
+const CHANNEL = { text: 'Text', call: 'Call', email: 'Email', instagram: 'Instagram', whatsapp: 'WhatsApp' };
 const waited = (d) => { const days = Math.max(1, Math.floor((Date.now() - new Date(d).getTime()) / 86400e3)); return `${days} day${days === 1 ? '' : 's'}`; };
 
 export default function SmartReminders() {
@@ -35,7 +35,7 @@ export default function SmartReminders() {
           {rows.map(r => (
             <li key={r.id} className="smr-row">
               <div className="smr-top">
-                <span className="smr-who">{ICON[r.channel] || '•'} {r.who}</span>
+                <span className="smr-who">{r.who}{CHANNEL[r.channel] && <span className="smr-chan"> · {CHANNEL[r.channel]}</span>}</span>
                 <span className="smr-when">waiting {waited(r.last_inbound_at)}</span>
               </div>
               {r.contact && r.contact !== r.who && <div className="smr-contact">{r.contact}</div>}

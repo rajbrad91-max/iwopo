@@ -34,7 +34,7 @@ export function BillingView({ packages, overview }) {
           <tbody>
             {packages.map(p => (
               <tr key={p.id}>
-                <td className="biz">{p.icon} {p.name}</td>
+                <td className="biz">{p.name}</td>
                 <td>{money(p.price_monthly) || '—'}</td>
                 <td>{money(p.price_annual) || '—'}</td>
                 <td>{p.trial_days}d</td>

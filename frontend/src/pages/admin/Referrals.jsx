@@ -35,8 +35,8 @@ function CouponBuilder() {
   function targetLabel(a) {
     if (!a || a === 'all') return 'All services & packages';
     const [t, id] = a.split(':');
-    if (t === 'service') return '🧩 ' + (services.find(s => s.id == id)?.name || 'service');
-    if (t === 'package') return '📦 ' + (packages.find(p => p.id == id)?.name || 'package');
+    if (t === 'service') return services.find(s => s.id == id)?.name || 'service';
+    if (t === 'package') return packages.find(p => p.id == id)?.name || 'package';
     return a;
   }
 
@@ -54,7 +54,7 @@ function CouponBuilder() {
             onChange={e => setF({ ...f, applies_to: e.target.value })}>
             <option value="all">All services & packages</option>
             <optgroup label="Packages">
-              {packages.map(p => <option key={'p' + p.id} value={`package:${p.id}`}>📦 {p.name}</option>)}
+              {packages.map(p => <option key={'p' + p.id} value={`package:${p.id}`}>{p.name}</option>)}
             </optgroup>
             <optgroup label="Services">
               {services.map(s => <option key={'s' + s.id} value={`service:${s.id}`}>🧩 {s.name}</option>)}

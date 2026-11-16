@@ -27,17 +27,17 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const daysUntil = (day) => Math.round((Date.parse(`${day}T12:00:00Z`) - Date.parse(`${today()}T12:00:00Z`)) / 86_400_000);
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-const EDITED = [['editing_photos_done_at', '📷 Photos edited'], ['editing_videos_done_at', '🎥 Videos edited']];
+const EDITED = [['editing_photos_done_at', 'Photos edited'], ['editing_videos_done_at', 'Videos edited']];
 /* the eight steps on the rail; `field` = a step the owner sets, `edit` = the date box's title, `next` = what to do */
 const STEPS = [
   { key: 'booked', label: 'Booked' },
   { key: 'shoot', label: 'Shoot' },
-  { key: 'backed_up_at', label: 'Copied', field: 'backed_up_at', edit: '💾 Copied', next: 'Copy the cards' },
-  { key: 'sent_to_editor_at', label: 'To editor', field: 'sent_to_editor_at', edit: '✂️ Sent to editor', next: 'Send to editor' },
+  { key: 'backed_up_at', label: 'Copied', field: 'backed_up_at', edit: 'Copied', next: 'Copy the cards' },
+  { key: 'sent_to_editor_at', label: 'To editor', field: 'sent_to_editor_at', edit: 'Sent to editor', next: 'Send to editor' },
   { key: 'edited', label: 'Edited', next: 'Get the edits back' },
-  { key: 'delivered_at', label: 'Delivered', field: 'delivered_at', edit: '📦 Delivered', next: 'Deliver' },
-  { key: 'review_asked_at', label: 'Review', field: 'review_asked_at', edit: '⭐ Review asked', next: 'Ask for a review' },
-  { key: 'download_reminder_at', label: 'Reminder', field: 'download_reminder_at', edit: '⏰ Download reminder', next: 'Send the download reminder' },
+  { key: 'delivered_at', label: 'Delivered', field: 'delivered_at', edit: 'Delivered', next: 'Deliver' },
+  { key: 'review_asked_at', label: 'Review', field: 'review_asked_at', edit: 'Review asked', next: 'Ask for a review' },
+  { key: 'download_reminder_at', label: 'Reminder', field: 'download_reminder_at', edit: 'Download reminder', next: 'Send the download reminder' },
 ];
 
 /** each step for one booking: state 'done' | 'half' | 'todo', the day it was done, and what doing it next means */
@@ -197,7 +197,7 @@ function Booking({ b, s, open, log, onPick, onLog }) {
           ))}
         </ol>
       </div>
-      <button type="button" className={`ppm-badge is-${badge.kind}`} onClick={() => onPick({ lead: b, field: 'delivery_due_at', label: '📅 Delivery due' })}
+      <button type="button" className={`ppm-badge is-${badge.kind}`} onClick={() => onPick({ lead: b, field: 'delivery_due_at', label: 'Delivery due' })}
         title="Change the delivery due date">{badge.text}</button>
       <button type="button" className="ppm-log-btn" onClick={onLog} aria-expanded={open} title={open ? 'Close the log' : 'Messages and emails'}>{open ? '✕' : '📜'}</button>
       {open && <BookingLog log={log} />}

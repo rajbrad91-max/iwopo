@@ -12,9 +12,9 @@ import { sendPlatformEmail } from '../routes/email.js';
 const DAY = 86_400_000;
 const APP_URL = (process.env.APP_URL || 'https://iwopo.com').replace(/\/+$/, '');
 const STAGES = [
-  { n: 1, when: (left) => left <= 7 * DAY, title: '⏳ 7 days left in your iwopo trial', line: 'Your free trial ends in 7 days. Choose a plan any time — billing only starts when the trial ends.' },
-  { n: 2, when: (left) => left <= DAY, title: '⏳ Your iwopo trial ends tomorrow', line: 'Your free trial ends tomorrow. Choose a plan to keep everything running without a break.' },
-  { n: 3, when: (left) => left <= 0, title: '💳 Your iwopo trial has ended', line: 'Your free trial has ended and your features are paused. Your clients, galleries and files are safe — choose a plan to switch everything back on.' },
+  { n: 1, when: (left) => left <= 7 * DAY, title: '7 days left in your iwopo trial', line: 'Your free trial ends in 7 days. Choose a plan any time — billing only starts when the trial ends.' },
+  { n: 2, when: (left) => left <= DAY, title: 'Your iwopo trial ends tomorrow', line: 'Your free trial ends tomorrow. Choose a plan to keep everything running without a break.' },
+  { n: 3, when: (left) => left <= 0, title: 'Your iwopo trial has ended', line: 'Your free trial has ended and your features are paused. Your clients, galleries and files are safe — choose a plan to switch everything back on.' },
 ];
 
 async function remind() {
@@ -31,7 +31,7 @@ async function remind() {
     notify(v.id, due.title, due.line, 'plans', { type: 'plans' });
     const owner = await prisma.users.findFirst({ where: { vendor_id: v.id, role: 'vendor' }, orderBy: { id: 'asc' }, select: { email: true, name: true } });
     if (owner?.email) {
-      await sendPlatformEmail(owner.email, due.title.replace(/^\S+\s/, ''),
+      await sendPlatformEmail(owner.email, due.title,
         `Hi ${owner.name || v.business_name},\n\n${due.line}\n\nChoose a plan: ${APP_URL}/panel/plans\n\n— iwopo`,
         `<p>Hi ${owner.name || v.business_name},</p><p>${due.line}</p><p><a href="${APP_URL}/panel/plans">Choose a plan</a></p><p>— iwopo</p>`,
       ).catch(e => console.error('[trial reminder]', v.id, e.message));

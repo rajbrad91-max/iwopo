@@ -104,18 +104,18 @@ export default function ContractPreview({ leadId }) {
     try { await autoRelease.save(on); }
     catch (e) { setMsg('⚠️ ' + e.message); return; }
     if (on && ct?.id && !ct.released_at) await release(ct.id);
-    else setMsg(on ? '🔓 Auto Release is on — contracts are approved as soon as they are built' : '🔒 Auto Release is off — you release each contract after reading it');
+    else setMsg(on ? 'Auto Release is on — contracts are approved as soon as they are built' : 'Auto Release is off — you release each contract after reading it');
   }
   /* the controls in the preview's bar: the switch, and Release contract — greyed out once the contract is released.
      With Auto Release on, contracts are released as they are built, so the button is greyed out; a contract built
      before the switch went on still has its Release button, or it could never reach the client. */
   const previewActions = (ct) => (
     <div className="ct-prev-actions">
-      {ct?.own_version && <span className="ct-prev-own">✏️ Edited for this client</span>}
+      {ct?.own_version && <span className="ct-prev-own">Edited for this client</span>}
       {/* ✏️ this client's own version, in the contract editor (Raj, 2026-11-12); an executed agreement never changes */}
       {ct?.status !== 'signed' && (
         <button type="button" className="ct-prev-edit" disabled={busy}
-          onClick={() => window.location.assign(`/panel/contracts?lead=${leadId}`)}>✏️ Edit this contract</button>
+          onClick={() => window.location.assign(`/panel/contracts?lead=${leadId}`)}>Edit this contract</button>
       )}
       <AutoReleaseToggle className="ct-prev-auto" on={autoRelease.on} disabled={!autoRelease.ready || busy}
         onChange={(on) => toggleAutoRelease(on, ct)} />
@@ -132,7 +132,7 @@ export default function ContractPreview({ leadId }) {
         <button className="cp-back" onClick={() => { if (!window.close()) window.history.back(); }}>
           ← Back
         </button>
-        <span className="cp-title">📄 Contract preview</span>
+        <span className="cp-title">Contract preview</span>
         {released && <span className="cp-done">✅ Released</span>}
       </header>
 
@@ -153,7 +153,7 @@ export default function ContractPreview({ leadId }) {
                 ))}
               </select>
               <button className="cp-build-btn" onClick={buildFromTemplate} disabled={busy || !chosen}>
-                {busy ? '⏳ Building…' : '📄 Build contract'}
+                {busy ? 'Building…' : 'Build contract'}
               </button>
             </div>
           )}

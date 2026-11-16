@@ -20,7 +20,7 @@ export default function RenameField({ name, onSave }) {
     return (
       <span className="rn">
         <b className="rn-name">{name}</b>
-        <button className="rn-btn" type="button" onClick={() => { setValue(name); setEditing(true); }} title="Rename" aria-label={`Rename ${name}`}>✏️</button>
+        <button className="rn-btn" type="button" onClick={() => { setValue(name); setEditing(true); }} title="Rename" aria-label={`Rename ${name}`}>Rename</button>
       </span>
     );
   }

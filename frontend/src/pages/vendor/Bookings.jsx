@@ -247,7 +247,7 @@ function BookingDetail({ id, rawsel = false }) {
           {/* ── packages: everything that was offered, with the chosen one marked ── */}
           {/* 📦 folded until wanted (Raj, 2026-11-05) — the title says how many were offered */}
           <details className="ld-card bd-fold">
-            <summary className="ld-card-h">📦 Packages offered{d.packages.length > 0 && <span className="bd-fold-count">{d.packages.length}</span>}</summary>
+            <summary className="ld-card-h">Packages offered{d.packages.length > 0 && <span className="bd-fold-count">{d.packages.length}</span>}</summary>
             {d.packages.length === 0 ? (
               <p className="bd-empty">No packages were sent for this booking.</p>
             ) : (
@@ -289,13 +289,13 @@ function BookingDetail({ id, rawsel = false }) {
               lead page, before a booking — a booked client has accepted the offer (Raj, 2026-11-05).
               No ld-card wrapper — .lead-right already paints each child as a card. ── */}
           <div className="bd-side">
-            <div className="ld-card-h">📄 Documentation</div>
+            <div className="ld-card-h">Documentation</div>
             <div className="bd-docs">
               {d.contract ? (
                 <>
                   {/* open, don't download — same as the contracts list */}
                   <a className="bd-doc" href={`/api/contracts/download/${d.contract.token}`} target="_blank" rel="noreferrer">
-                    📄 Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
+                    Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
                   </a>
                   <a className="bd-doc" href={`/api/contracts/certificate/${d.contract.token}/download`} target="_blank" rel="noreferrer">
                     📜 Signing certificate

@@ -1,6 +1,7 @@
 import './leadCard.css';
 import { fmtDateTime } from '../lib/api';
 import NavIcon from './NavIcon';
+import { telHref } from '../lib/phone';
 
 /**
  * 📱 A lead as a card on phones (Raj, 2026-10-27, after his Perfect Poses reference): name, email and phone on one
@@ -23,7 +24,10 @@ export default function LeadCard({ lead: l, history = false, onSend, onRestore }
       <div className="lc-head">
         <p className="lc-name">{l.name}</p>
         {(l.email || l.phone) && (
-          <p className="lc-contact">{l.email && <span className="lc-email">{l.email}</span>}{l.phone && <span className="lc-phone">{l.phone}</span>}</p>
+          <p className="lc-contact">{l.email && <a className="lc-email" href={`mailto:${l.email}`} onClick={e => e.stopPropagation()}>{l.email}</a>}
+            {l.phone && (telHref(l.phone)
+              ? <a className="lc-phone" href={telHref(l.phone)} onClick={e => e.stopPropagation()}>{l.phone}</a>
+              : <span className="lc-phone">{l.phone}</span>)}</p>
         )}
       </div>
       {/* 📅 when it arrived — its own line under the name, never squeezed into the name row */}

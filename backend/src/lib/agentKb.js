@@ -15,9 +15,9 @@ import { emailWarning } from './emailCheck.js';
 import { quotePackage } from './packageQuote.js';
 
 export const SECTIONS = [
-  ['leads', '📋 Leads'], ['bookings', '📅 Bookings'], ['money', '💰 Contracts & Invoices'], ['calls', '📞 Calls & Messages'],
-  ['galleries', '🖼️ Galleries'], ['selections', '✅ Photo Selection'], ['crew', '👥 Crew'], ['packages', '📦 Packages'],
-  ['fileflyer', '📁 File Flyer'], ['raws', '🎞️ Raw Selector'], ['occasions', '🎉 Occasions'], ['reminders', '⏰ Reminders'], ['analytics', '📊 Analytics'],
+  ['leads', 'Leads'], ['bookings', 'Bookings'], ['money', 'Contracts & Invoices'], ['calls', 'Calls & Messages'],
+  ['galleries', 'Galleries'], ['selections', 'Photo Selection'], ['crew', 'Crew'], ['packages', 'Packages'],
+  ['fileflyer', 'File Flyer'], ['raws', 'Raw Selector'], ['occasions', 'Occasions'], ['reminders', 'Reminders'], ['analytics', 'Analytics'],
 ];
 const TZ = 'America/Vancouver';
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null);

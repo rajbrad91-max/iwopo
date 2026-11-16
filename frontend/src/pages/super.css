@@ -15,6 +15,7 @@
 .sa-wrap * { box-sizing:border-box; }
 
 .sa-sidebar {
+  --nav-cut: var(--panel);   /* NavIcon's thin cut lines take the sidebar's colour */
   width:225px; background:var(--panel); border-right:1px solid var(--line); padding:20px 14px; display:flex; flex-direction:column; gap:3px; flex-shrink:0; position:sticky; top:0; height:100vh;
   transition:width .22s ease, padding .22s ease;
 }
@@ -25,7 +26,8 @@
 .sa-nav-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; color:var(--muted); cursor:pointer; font-weight:500; transition:all 0.15s; border:1px solid transparent; }
 .sa-nav-item:hover { background:var(--panel-2); color:var(--text); }
 .sa-nav-item.active { background:var(--teal-soft); color:var(--teal); border-color:var(--teal-2); font-weight:600; }
-.sa-nav-item .ico { width:18px; text-align:center; font-size:15px; }
+.sa-nav-item .ico { display:flex; align-items:center; justify-content:center; width:20px; flex-shrink:0; }
+.sa-nav-item .ico svg { display:block; width:20px; height:20px; }
 .sa-logout { margin-top:auto; }
 
 .sa-main { flex:1; padding:16px 20px; overflow-y:auto; min-width:0; }
@@ -132,7 +134,6 @@
 .sa-manage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
 .sa-manage-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; cursor: pointer; transition: all 0.18s; position: relative; }
 .sa-manage-card:hover { border-color: var(--teal-2); transform: translateY(-3px); }
-.sa-manage-icon { font-size: 34px; margin-bottom: 10px; }
 .sa-manage-name { font-weight: 800; font-size: 15px; margin-bottom: 4px; }
 .sa-manage-desc { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .sa-manage-badge { position: absolute; top: 12px; right: 12px; background: #fbbf2418; color: #fbbf24; border: 1px solid #fbbf2444; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }
@@ -162,7 +163,7 @@
 .sa-collapsed .sa-sidebar { width:66px; padding:20px 8px; overflow:hidden; }
 .sa-collapsed .sa-brand div, .sa-collapsed .sa-nav-label, .sa-collapsed .sa-collapse-lbl { display:none; }
 .sa-collapsed .sa-nav-item { justify-content:center; gap:0; padding:11px 0; font-size:0; }
-.sa-collapsed .sa-nav-item .ico { margin:0; font-size:16px; }
+.sa-collapsed .sa-nav-item .ico { margin:0; }
 .sa-collapsed .sa-collapse-row { justify-content:center; }
 
 /* hover → expand back out */
@@ -292,7 +293,6 @@
 .sa-manage-card.is-planned:hover { opacity: .82; }
 
 .sa-svc-detail { padding: 40px; text-align: center; }
-.sa-svc-detail-icon { font-size: 46px; }
 .sa-svc-detail-name { margin: 10px 0 6px; }
 .sa-svc-detail-desc { color: var(--muted); font-size: 14px; }
 .sa-svc-detail .sa-trial-pill { margin-top: 14px; }

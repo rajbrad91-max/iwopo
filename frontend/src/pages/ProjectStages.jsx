@@ -6,7 +6,7 @@ import './projectstages.css';
    single source of truth). Lives in the AI Agent feature: for a vendor without it the server answers 402
    and this card simply isn't there. Done steps green, not-yet orange, like the board. */
 const STEPS = [
-  ['💾 Data backed up', 'backed_up_at'],
+  ['Data backed up', 'backed_up_at'],
   ['✂️ Sent to editor', 'sent_to_editor_at'],
   ['🖼️ Photos edited', 'editing_photos_done_at'],
   ['🎬 Videos edited', 'editing_videos_done_at'],

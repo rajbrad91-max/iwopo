@@ -9,21 +9,21 @@ import { useDialog } from '../../lib/dialog.jsx';
 /* ---------- SETTINGS ---------- */
 // 🤖 AI Chat — subscribers + knowledge pages
 const KFIELDS = [
-  { k: 'business_name', label: '🏢 Business name', type: 'input' },
+  { k: 'business_name', label: 'Business name', type: 'input' },
   { k: 'tagline', label: 'About us / tagline', type: 'area' },
-  { k: 'about_team', label: '👥 About the team', type: 'area' },
-  { k: 'service_area', label: '📍 City / service area', type: 'input' },
-  { k: 'contact', label: '📞 Contact (phone / email / socials)', type: 'area' },
-  { k: 'hours', label: '🕒 Hours', type: 'input' },
-  { k: 'services', label: '📸 Services offered', type: 'area' },
-  { k: 'languages', label: '🗣️ Languages the team speaks', type: 'input' },
-  { k: 'delivery_time', label: '⏱️ Delivery / turnaround time', type: 'input' },
-  { k: 'packages', label: '💰 Packages (what they include — prices optional)', type: 'area' },
-  { k: 'faqs', label: '❓ FAQs (Q: … / A: …)', type: 'area' },
-  { k: 'policies', label: '📋 Policies (booking, deposit, travel, cancellation)', type: 'area' },
-  { k: 'avoid_topics', label: '🚫 Things to avoid', type: 'area' },
-  { k: 'tone_notes', label: '🎭 Tone / personality notes', type: 'area' },
-  { k: 'notes', label: '📝 Anything else', type: 'area' },
+  { k: 'about_team', label: 'About the team', type: 'area' },
+  { k: 'service_area', label: 'City / service area', type: 'input' },
+  { k: 'contact', label: 'Contact (phone / email / socials)', type: 'area' },
+  { k: 'hours', label: 'Hours', type: 'input' },
+  { k: 'services', label: 'Services offered', type: 'area' },
+  { k: 'languages', label: 'Languages the team speaks', type: 'input' },
+  { k: 'delivery_time', label: 'Delivery / turnaround time', type: 'input' },
+  { k: 'packages', label: 'Packages (what they include — prices optional)', type: 'area' },
+  { k: 'faqs', label: 'FAQs (Q: … / A: …)', type: 'area' },
+  { k: 'policies', label: 'Policies (booking, deposit, travel, cancellation)', type: 'area' },
+  { k: 'avoid_topics', label: 'Things to avoid', type: 'area' },
+  { k: 'tone_notes', label: 'Tone / personality notes', type: 'area' },
+  { k: 'notes', label: 'Anything else', type: 'area' },
 ];
 
 export function AiChatView({ vendors }) {
@@ -69,7 +69,7 @@ export function AiChatView({ vendors }) {
         <>
           <div className="cb-head">
             <div>
-              <div className="sa-section-title">🤖 Chatbot Subscribers</div>
+              <div className="sa-section-title">Chatbot Subscribers</div>
               <div className="cb-sub">{subs.length} subscriber{subs.length === 1 ? '' : 's'} · {subs.filter(s => s.active).length} active</div>
             </div>
             {!adding ? (
@@ -86,7 +86,7 @@ export function AiChatView({ vendors }) {
           </div>
 
           {loading ? <div className="sa-loading">Loading…</div>
-            : subs.length === 0 ? <div className="sa-box cb-empty">No chatbot subscribers yet. Add one above 🤖</div>
+            : subs.length === 0 ? <div className="sa-box cb-empty">No chatbot subscribers yet. Add one above.</div>
             : (
               <div className="cb-list">
                 {subs.map(s => (
@@ -193,11 +193,11 @@ function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
         </div>
         <div className="cb-api-actions">
           {!editing ? (
-            <button className="sa-btn-teal" onClick={startEdit}>✏️ Edit</button>
+            <button className="sa-btn-teal" onClick={startEdit}>Edit</button>
           ) : (
             <>
               <button className="sa-btn-teal" onClick={() => setShow(v => !v)}>{show ? '🙈 Hide' : '👁️ Show'}</button>
-              <button className="sa-btn-teal" onClick={save}>💾 Save</button>
+              <button className="sa-btn-teal" onClick={save}>Save</button>
               <button className="cb-cancel" onClick={() => { setEditing(false); setShow(false); }}>✕</button>
             </>
           )}
@@ -331,8 +331,8 @@ function KnowledgePage({ vendorId, onBack }) {
         <div className="cb-actions">
           <button className="sa-btn-teal" onClick={() => setShowShare(v => !v)}>🔗 Share with vendor</button>
           {!editing
-            ? <button className="sa-btn-teal" onClick={() => setEditing(true)}>✏️ Edit</button>
-            : <button className="sa-btn-teal" onClick={save}>💾 Save</button>}
+            ? <button className="sa-btn-teal" onClick={() => setEditing(true)}>Edit</button>
+            : <button className="sa-btn-teal" onClick={save}>Save</button>}
         </div>
       </div>
 

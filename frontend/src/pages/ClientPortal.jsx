@@ -234,32 +234,6 @@ function readableBrand(hex) {
   return '#' + dark;
 }
 
-/**
- * Checked in order, first match wins — so the specific thing a line names has
- * to come before the general subject it sits inside. "Next Day Edit delivered
- * on USB" is about delivery, not editing; "1 Photographer with 1 Videographer"
- * is about people, not video. Getting that order wrong is what made these read
- * as random rather than descriptive.
- */
-const INC_ICONS = [
-  [/\busb|drive|stick|memory card/i, '💾'],
-  [/\balbum|print|frame|book/i, '📔'],
-  [/\bdrone|aerial/i, '🚁'],
-  [/\bgift|bonus|complimentar/i, '🎁'],
-  [/\bphotographer|videographer|shooter|team of|crew|second shooter|staff/i, '👥'],
-  [/\bgaller(y|ies)|download|online view/i, '🖼️'],
-  [/\bdeliver|weeks?\b|turnaround/i, '📦'],
-  [/\b4k|ultra ?hd|1080|full hd|video|film|cinemat/i, '🎬'],
-  [/\bphoto|image|edit|retouch/i, '📸'],
-  [/\bhour|coverage|full day/i, '⏱️'],
-];
-/** The icon a line's own wording earns, or null to keep the neutral mark. */
-function incIcon(text) {
-  const t = String(text || '');
-  for (const [re, icon] of INC_ICONS) if (re.test(t)) return icon;
-  return null;
-}
-
 export default function ClientPortal({ token }) {
   const dialog = useDialog();
   const [data, setData] = useState(null);
@@ -379,7 +353,6 @@ export default function ClientPortal({ token }) {
       '--brandText': readableBrand(data.branding?.brand_color || '#C9A86A') }}>
       <div className="po-gate">
         {data.branding?.logo_path && <img className="po-gate-logo" src={`/api/me/logo/${data.branding.logo_path}`} alt="" />}
-        <div className="po-gate-lock">🔒</div>
         <h1 className="po-gate-h">Enter your registered email</h1>
         <p className="po-gate-sub">
           To access the packages prepared for <strong>{data.lead?.name}</strong>, please verify your email address.
@@ -549,7 +522,7 @@ export default function ClientPortal({ token }) {
                 <p className="po-inc-label">Every package includes</p>
                 <ul className="po-inc po-inc-cols">
                   {common.map((x, k) => (
-                    <li key={k}><span className="po-inc-ic" aria-hidden="true">{incIcon(x) || '✦'}</span><span className="po-inc-t">{x}</span></li>
+                    <li key={k}><span className="po-inc-ic" aria-hidden="true">✦</span><span className="po-inc-t">{x}</span></li>
                   ))}
                 </ul>
               </div>
@@ -618,10 +591,10 @@ export default function ClientPortal({ token }) {
                           <p className="po-inc-label">{common.length ? 'In this package' : 'What’s included'}</p>
                           <ul className="po-inc">
                             {own.map((x, k) => (
-                              <li key={k}><span className="po-inc-ic" aria-hidden="true">{incIcon(x) || '✦'}</span><span className="po-inc-t">{x}</span></li>
+                              <li key={k}><span className="po-inc-ic" aria-hidden="true">✦</span><span className="po-inc-t">{x}</span></li>
                             ))}
                             {inPrice.map(x => (
-                              <li key={x.id}><span className="po-inc-ic" aria-hidden="true">{incIcon(x.name) || '✦'}</span>
+                              <li key={x.id}><span className="po-inc-ic" aria-hidden="true">✦</span>
                                 <span className="po-inc-t">{x.name}{x.mode === 'added' && x.qty > 1 ? ` × ${x.qty}` : ''}</span></li>
                             ))}
                           </ul>
@@ -697,8 +670,7 @@ export default function ClientPortal({ token }) {
               <p className="po-eyebrow">Step two</p>
               <h2 className="po-h">Your contract</h2>
               <div className="po-panel">
-                <div className="po-panel-icon">⏳</div>
-                <h3 className="po-panel-t">On its way</h3>
+                                <h3 className="po-panel-t">On its way</h3>
                 <p className="po-panel-p no-gap">
                   We&apos;re preparing your contract now. You&apos;ll get an email the moment
                   it&apos;s ready to sign.
@@ -716,8 +688,7 @@ export default function ClientPortal({ token }) {
             {claimed ? (
               /* they've told us they paid — waiting on the vendor to confirm */
               <div className="po-panel is-done">
-                <div className="po-panel-icon">⏳</div>
-                <h3 className="po-panel-t">Thank you{firstName(lead?.name) ? `, ${firstName(lead.name)}` : ''} — we&apos;re checking</h3>
+                                <h3 className="po-panel-t">Thank you{firstName(lead?.name) ? `, ${firstName(lead.name)}` : ''} — we&apos;re checking</h3>
                 <p className="po-panel-p no-gap">
                   You told us the payment is on its way. We&apos;ll confirm as soon as it lands
                   and your date is locked in.
@@ -750,11 +721,11 @@ export default function ClientPortal({ token }) {
 
                 {data.card_pay && (
                   <button type="button" className="po-cta" onClick={payCard} disabled={busy}>
-                    💳 Pay {cash(money.paid > 0 ? money.balance : money.deposit_amount)} by card
+                    Pay {cash(money.paid > 0 ? money.balance : money.deposit_amount)} by card
                   </button>
                 )}
                 <button type="button" className={`po-cta${data.card_pay ? ' is-alt' : ''}`} onClick={payDirect} disabled={busy}>
-                  {data.card_pay ? '🏦 I paid another way' : '💳 Pay directly'}
+                  {data.card_pay ? 'I paid another way' : 'Pay directly'}
                 </button>
                 <p className="po-fine">
                   Send an e-transfer, or pay by cash or card in person. Press this once you have —

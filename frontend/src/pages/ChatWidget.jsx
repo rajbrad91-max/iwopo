@@ -73,7 +73,7 @@ export default function ChatWidget({ handle, botName }) {
             onKeyDown={e => { if (e.key === 'Enter') openChat(); }}>
             <button type="button" className="cw-teaser-x" aria-label="Close"
               onClick={e => { e.stopPropagation(); putTeaserAway(); }}>✕</button>
-            <p className="cw-teaser-hi">👋 Hi! I'm <b>{bot}</b>, here to help.</p>
+            <p className="cw-teaser-hi">Hi! I'm <b>{bot}</b>, here to help.</p>
             <p className="cw-teaser-ask">Ask me anything.</p>
           </div>
         )}

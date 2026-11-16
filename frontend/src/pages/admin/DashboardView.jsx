@@ -27,13 +27,13 @@ export function DashboardView({ vendors, packages, overview }) {
   const TYPE_COLOURS = ['#0d9488','#4ade80','#60a5fa','#fbbf24','#a78bfa','#f472b6','#22d3ee','#fb923c','#e879f9','#34d399','#f87171','#c084fc','#94a3b8'];
   const vTypes = [
     ...(geo?.professions || []).map((p, i) => ({
-      n: `${PROFESSIONS[p.key]?.icon || ''} ${PROFESSIONS[p.key]?.label || p.key}`.trim(),
+      n: PROFESSIONS[p.key]?.label || p.key,
       v: p.count,
       c: TYPE_COLOURS[i % TYPE_COLOURS.length],
     })),
     ...(geo?.professions_unset ? [{ n: 'Not set', v: geo.professions_unset, c: '#7c9199' }] : []),
   ];
-  const cName = (code) => (COUNTRIES.find(c => c.code === code)?.name) || `🌐 ${code}`;
+  const cName = (code) => (COUNTRIES.find(c => c.code === code)?.name) || code;
   const countries = (geo?.countries || []).map(c => [cName(c.code), c.count]);
   const maxC = Math.max(1, ...countries.map(c => c[1]));
 
@@ -95,7 +95,7 @@ export function DashboardView({ vendors, packages, overview }) {
 
       <div className="sa-grid-2eq">
         <div className="sa-box">
-          <h3>📦 Plans in Use</h3><div className="sa-box-sub">Sellers on each plan</div>
+          <h3>Plans in Use</h3><div className="sa-box-sub">Sellers on each plan</div>
           {planData.length === 0 ? <div className="sa-cty-empty">{overview ? 'No seller is on a plan yet.' : 'Loading…'}</div> : (
           <div className="u-min-height-180px u-display-flex u-align-items-center">
             <ResponsiveContainer width="50%" height={210}>

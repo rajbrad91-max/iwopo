@@ -67,7 +67,6 @@ const TAB_FEATURE = {
 function FeatureLocked({ goServices }) {
   return (
     <div className="table-wrap fl-box">
-      <div className="fl-icon" aria-hidden="true">🔒</div>
       <h2 className="fl-h">This isn't in your plan</h2>
       <p className="fl-p">Choose a plan or an add-on that includes it.</p>
       <button type="button" className="refresh" onClick={goServices}>See your plan & add-ons</button>
@@ -325,7 +324,7 @@ export default function VendorPanel({ onLogout }) {
         <a href={navHref('dashboard')} className="brand" title="Dashboard" onClick={navClick('dashboard')}>
           {profile?.logo_path
             ? <img className="brand-logo" src={`/api/me/logo/${profile.logo_path}`} alt="logo" />
-            : <span>📸</span>}
+            : <img className="brand-logo" src="/logo_icon.png" alt="iwopo" />}
           <span className="nav-txt">{profile ? (profile.business_name || 'My Studio') : (user?.name || '')}<small>VENDOR</small></span>
         </a>
         <div className="nav-group">WORK</div>

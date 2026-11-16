@@ -4,6 +4,12 @@
  */
 export const phoneChars = (v) => String(v ?? '').replace(/[^0-9+()\-.\s]/g, '').replace(/(?!^)\+/g, '').slice(0, 30);
 
+/** 📲 A link that opens the phone app on this number (Raj, 2026-11-15) — none for a number that is not a real one. */
+export function telHref(v) {
+  const s = String(v ?? '').trim();
+  return s && !phoneProblem(s) ? `tel:${s.replace(/[^\d+]/g, '')}` : null;
+}
+
 /** A real number: 5–15 digits (any country), only the characters above. Returns a message, or '' when fine. */
 export function phoneProblem(v) {
   const s = String(v ?? '').trim();

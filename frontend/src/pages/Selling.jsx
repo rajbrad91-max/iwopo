@@ -171,7 +171,7 @@ function FeatVisual({ id }) {
 /* Advertised straight from the shared list, so this page cannot offer a trade
    a vendor is unable to select. It previously listed Venues, Decorators, Live
    bands and Hair stylists, none of which existed anywhere else in the product. */
-const INDUSTRIES = PROFESSION_LIST.map(p => [p.icon, p.label]);
+const INDUSTRIES = PROFESSION_LIST.map(p => p.label);
 
 const FAQ = [
   ['Is there really a free trial?', 'Yes. Start on a trial with no card required. When it ends you simply choose a plan to keep going — nothing is charged automatically.'],
@@ -310,7 +310,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         <label htmlFor={`${p}-trade`}>Your trade</label>
         <select id={`${p}-trade`} value={form.profession} onChange={e => set('profession', e.target.value)}>
           <option value="" disabled hidden>Choose your trade…</option>
-          {PROFESSION_LIST.map(p => <option key={p.key} value={p.key}>{p.icon} {p.label}</option>)}
+          {PROFESSION_LIST.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>
         <label htmlFor={`${p}-email`}>Email</label>
         <input id={`${p}-email`} value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@studio.com" />
@@ -378,7 +378,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         {homeDesign() === 'light' ? (
           <HomeNew open={open} trialOk={trialOk} cycle={cycle} setCycle={setCycle} plans={realPkgs} compare={compare} compareNotes={compareNotes}
             priceOf={priceOf} bestSave={bestSave} choosePlan={choosePlan} goSignup={goSignup} goPackages={goPackages} onGoLogin={onGoLogin}
-            wl={wl} setWl={setWl} joinWaitlist={joinWaitlist} features={FEATURES} trades={INDUSTRIES.map(([, name]) => name)} />
+            wl={wl} setWl={setWl} joinWaitlist={joinWaitlist} features={FEATURES} trades={INDUSTRIES} />
         ) : (
           <HomeDark open={open} trialOk={trialOk} cycle={cycle} setCycle={setCycle} plans={realPkgs} compare={compare} compareNotes={compareNotes}
             priceOf={priceOf} bestSave={bestSave} choosePlan={choosePlan} goPackages={goPackages} onGoLogin={onGoLogin}
@@ -492,9 +492,8 @@ export default function Selling({ onSignup, onGoLogin }) {
           <p className="sl-sub">Whatever your craft, iwopo shapes around how you actually work.</p>
         </Reveal>
         <div className="sl-ind-grid">
-          {INDUSTRIES.map(([ic, name]) => (
+          {INDUSTRIES.map(name => (
             <div key={name} className="sl-ind">
-              <span className="sl-ind-ic" aria-hidden="true">{ic}</span>
               <span className="sl-ind-name">{name}</span>
             </div>
           ))}

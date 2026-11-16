@@ -225,7 +225,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
       </div>
 
       {listing.range !== 'all' && !loading && (
-        <div className="lead-range-chip">📅 {rangeLabel(listing.range)} · {leads.length} lead{leads.length === 1 ? '' : 's'}
+        <div className="lead-range-chip">{rangeLabel(listing.range)} · {leads.length} lead{leads.length === 1 ? '' : 's'}
           <button type="button" aria-label="Show all leads" onClick={() => changeListing({ ...listing, range: 'all' })}>✕</button>
         </div>
       )}
@@ -354,7 +354,7 @@ function LeadDetail({ lead, onSaved }) {
   async function toggleGateway() {
     const next = !gateway;
     setGateway(next);
-    try { await api.setGateway(lead.id, next); setPkgMsg(next ? '🔒 Secure login ON' : '🔓 Secure login OFF'); setTimeout(() => setPkgMsg(''), 1500); }
+    try { await api.setGateway(lead.id, next); setPkgMsg(next ? 'Secure login ON' : 'Secure login OFF'); setTimeout(() => setPkgMsg(''), 1500); }
     catch (e) { setGateway(!next); setPkgMsg('⚠️ ' + e.message); }
   }
   const [moneyTick, setMoneyTick] = useState(0);   // 💰 Payments reloads when it moves (Muse F-21)
@@ -450,8 +450,8 @@ function LeadDetail({ lead, onSaved }) {
           at the bottom of the left column, far from Payments) */}
       <div className="ld-card">
         <div className="ld-card-h">
-          📦 Packages
-          {pkgLocked && <span className="ld-lock-tag">🔒 Sent</span>}
+          Packages
+          {pkgLocked && <span className="ld-lock-tag">Sent</span>}
         </div>
 
         {/* pick a folder → its packages are copied here, ready to tailor */}
@@ -468,7 +468,7 @@ function LeadDetail({ lead, onSaved }) {
         {pkgLocked && (
           <div className="ld-lock-note">
             These packages have been sent, so they're locked to prevent accidental changes.
-            <button type="button" className="ld-unlock-btn" onClick={toggleLock}>✏️ Edit Packages</button>
+            <button type="button" className="ld-unlock-btn" onClick={toggleLock}>Edit Packages</button>
           </div>
         )}
 
@@ -511,7 +511,7 @@ function LeadDetail({ lead, onSaved }) {
                 title={gateway
                   ? 'Secure login is ON — client must confirm their email before opening the portal'
                   : 'Secure login is OFF — turn on to require email confirmation before the client portal opens'}
-              >🔒 Secure {gateway ? 'ON' : 'OFF'}</button>
+              >Secure {gateway ? 'ON' : 'OFF'}</button>
               <div className={`ld-timer-btn ${timer.enabled ? 'is-on' : ''}`} title="How long the package offer stays valid after you send it">
                 <button
                   className="ld-timer-toggle"
@@ -519,7 +519,7 @@ function LeadDetail({ lead, onSaved }) {
                   title={timer.enabled
                     ? 'Offer timer is ON — click to turn off the countdown'
                     : 'Offer timer is OFF — click to start a countdown when packages are sent'}
-                >⏳ Timer {timer.enabled ? 'ON' : 'OFF'}</button>
+                >Timer {timer.enabled ? 'ON' : 'OFF'}</button>
                 <input className="ld-timer-hrs" type="number" min="1" max="720" value={timer.hours}
                   onChange={e => setTimer(t => ({ ...t, hours: e.target.value }))}
                   onBlur={() => timer.enabled && saveTimer()}
@@ -555,7 +555,7 @@ function ContractsBox({ lead, actions = null }) {
     <div className="ctb-wrap">
       <div className="ctb-head">
         <div className="ctb-title-row">
-          <h3 className="ctb-h3">📄 Contract</h3>
+          <h3 className="ctb-h3">Contract</h3>
           <button
             className="refresh ctb-preview"
             title="Open the contract the client will see, in a new tab"

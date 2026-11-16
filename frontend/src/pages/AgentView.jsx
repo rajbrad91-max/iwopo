@@ -51,7 +51,7 @@ function Knowledge() {
         <button type="button" role="tab" aria-selected={tab === 'mind'} className={`ag-kb-tab ${tab === 'mind' ? 'is-on' : ''}`} onClick={() => setTab('mind')}>🧠 Lessons & memory</button>
         <button type="button" role="tab" aria-selected={tab === 'rules'} className={`ag-kb-tab ${tab === 'rules' ? 'is-on' : ''}`} onClick={() => setTab('rules')}>📜 Rules</button>
         <button type="button" role="tab" aria-selected={tab === 'voice'} className={`ag-kb-tab ${tab === 'voice' ? 'is-on' : ''}`} onClick={() => setTab('voice')}>🎙️ Voice bank</button>
-        <button type="button" role="tab" aria-selected={tab === 'gdoc'} className={`ag-kb-tab ${tab === 'gdoc' ? 'is-on' : ''}`} onClick={() => setTab('gdoc')}>📄 Google Doc</button>
+        <button type="button" role="tab" aria-selected={tab === 'gdoc'} className={`ag-kb-tab ${tab === 'gdoc' ? 'is-on' : ''}`} onClick={() => setTab('gdoc')}>Google Doc</button>
         {sections.map(x => (
           <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} className={`ag-kb-tab ${tab === x.key ? 'is-on' : ''}`} onClick={() => setTab(x.key)}>
             {x.label} <span className="ag-kb-n">{x.count}</span>
@@ -108,9 +108,9 @@ function GoogleDoc() {
   return (
     <div className="ag-rules">
       <section className="ag-k-card">
-        <h3 className="ag-k-h">📄 Your business, as one Google Doc</h3>
+        <h3 className="ag-k-h">Your business, as one Google Doc</h3>
         <p className="ag-k-sub">Your business in one Google Doc — never any money — starting with "What are the updates" (only what you haven't seen yet). It is checked every minute and rewritten when something changes. Ask the Gemini app: "what are the updates in my doc?" — no Tornado tokens. Gemini can only read it; Tornado still does the actions.</p>
-        {d.doc_url && <p className="ag-k-sub">📄 <a href={d.doc_url} target="_blank" rel="noreferrer">Open the doc</a>{d.last ? ` · last synced ${new Date(d.last.at).toLocaleString()} · ${d.last.lines} lines` : ' · not synced yet'}</p>}
+        {d.doc_url && <p className="ag-k-sub"><a href={d.doc_url} target="_blank" rel="noreferrer">Open the doc</a>{d.last ? ` · last synced ${new Date(d.last.at).toLocaleString()} · ${d.last.lines} lines` : ' · not synced yet'}</p>}
         {d.error && <div className="av-msg">⚠️ {d.error}</div>}
         {d.service_account && <p className="ag-k-sub">🔐 Share the doc with <b>{d.service_account}</b> as <b>Editor</b> — it can open only what you share with it.</p>}
         <div className="ag-rule-actions">
@@ -127,7 +127,7 @@ function GoogleDoc() {
           <textarea className="ag-gd-input ag-gd-key" value={key} onChange={e => setKey(e.target.value)} placeholder={d.service_account ? 'saved — paste a new key to change it' : '{ "type": "service_account", … }'} />
         </label>
         <div className="ag-rule-actions">
-          <button type="button" className="ag-rule-btn" disabled={busy || (!link && !key)} onClick={save}>💾 Save</button>
+          <button type="button" className="ag-rule-btn" disabled={busy || (!link && !key)} onClick={save}>Save</button>
         </div>
       </section>
     </div>
@@ -209,7 +209,7 @@ function Rules() {
     <div className="ag-rules">
       <section className="ag-k-card">
         <h3 className="ag-k-h">📜 What Tornado reads on every reply</h3>
-        <p className="ag-k-sub">About <b>{d.total_tokens.toLocaleString()}</b> tokens before the conversation itself: rules {d.rules_tokens.toLocaleString()} · tools {d.tools_tokens.toLocaleString()}. The rules train themselves every Sunday from the last four weeks of conversations — 🔒 rules are never removed.</p>
+        <p className="ag-k-sub">About <b>{d.total_tokens.toLocaleString()}</b> tokens before the conversation itself: rules {d.rules_tokens.toLocaleString()} · tools {d.tools_tokens.toLocaleString()}. The rules train themselves every Sunday from the last four weeks of conversations — protected rules are never removed.</p>
         <div className="ag-rule-actions">
           <button type="button" className="ag-rule-btn" disabled={!!busy} onClick={() => act('train')}>{busy === 'train' ? '🧠 Training… (about a minute)' : '🧠 Train now'}</button>
           <button type="button" className="ag-rule-btn is-quiet" disabled={!!busy} onClick={() => act('undo')}>{busy === 'undo' ? 'Undoing…' : '↩️ Undo last training'}</button>
@@ -225,7 +225,7 @@ function Rules() {
       </section>
       {d.rules.map((x, i) => (
         <section key={x.key} className="ag-k-card ag-rule">
-          <div className="ag-rule-hd"><h4 className="ag-rule-title">{i + 1}. {x.title}{x.protected ? ' 🔒' : ''}</h4><span className="ag-rule-size">~{x.tokens} tokens{x.live ? ' · filled in live' : ''}</span></div>
+          <div className="ag-rule-hd"><h4 className="ag-rule-title">{i + 1}. {x.title}</h4><span className="ag-rule-size">~{x.tokens} tokens{x.protected ? ' · protected' : ''}{x.live ? ' · filled in live' : ''}</span></div>
           <p className="ag-rule-text">{x.text}</p>
         </section>
       ))}
@@ -233,7 +233,7 @@ function Rules() {
         <section className="ag-k-card">
           <h3 className="ag-k-h">🧠 What the training changed</h3>
           <ul className="ag-k-list">
-            {d.history.map((h, i) => <li key={i}><span>{new Date(h.at).toLocaleDateString()} · {h.action === 'add' ? '➕ added' : h.action === 'remove' ? '➖ removed' : '✏️ changed'} <b>{h.title}</b> — {h.reason}</span></li>)}
+            {d.history.map((h, i) => <li key={i}><span>{new Date(h.at).toLocaleDateString()} · {h.action === 'add' ? 'added' : h.action === 'remove' ? 'removed' : 'changed'} <b>{h.title}</b> — {h.reason}</span></li>)}
           </ul>
         </section>
       )}
@@ -291,7 +291,7 @@ function Mind() {
   async function refresh() { try { const r = await api.agentRefreshBriefing(); setData(d => ({ ...d, ...r })); } catch (x) { setErr(x.message); } }
   if (!data) return <div className="ag-know">{err ? `⚠️ ${err}` : 'Loading…'}</div>;
   const facts = data.items.filter(i => i.kind === 'fact'), mem = data.items.filter(i => i.kind === 'memory'), lessons = data.items.filter(i => ['lesson', 'in_rules', 'note'].includes(i.kind));
-  const where = { in_rules: '✅ in the rules', note: '🛠️ for Claude', lesson: '⏳ sorting…' };
+  const where = { in_rules: 'in the rules', note: 'for Claude', lesson: 'sorting…' };
   const ago = Math.max(0, Math.round((Date.now() - new Date(data.briefingAt)) / 60000));
 
   return (
@@ -326,7 +326,7 @@ function Mind() {
         {(data.reminders || []).length ? <ul className="ag-k-list">{data.reminders.map(r => <li key={r.id}><span><span className="ag-k-when">{when(r.due_at)} · {r.kind}</span>{r.title}</span><button type="button" className="ag-k-x" onClick={() => dropReminder(r.id)} aria-label="Mark done">✓</button></li>)}</ul> : <div className="ag-k-empty">No open reminders.</div>}
       </section>
       <section className="ag-k-card">
-        <h3 className="ag-k-h">📊 Business briefing</h3>
+        <h3 className="ag-k-h">Business briefing</h3>
         <p className="ag-k-sub">Rebuilt every 15 minutes from your leads, bookings, crew, packages and reminders · updated {ago === 0 ? 'just now' : `${ago} min ago`} <button type="button" className="ag-k-link" onClick={refresh}>Refresh now</button></p>
         <pre className="ag-k-brief">{data.briefing}</pre>
       </section>
@@ -478,7 +478,7 @@ export default function AgentView() {
       <div className="ag-chat">
         {msgs.length === 0 && (
           <div className="ag-hello">
-            <div className="ag-hello-t">{fromLink ? '🎙️ Tap the microphone and talk to me.' : "🤖 Hi! Type, or tap 🎙️ and talk — ask about your leads, bookings and what's new."}</div>
+            <div className="ag-hello-t">{fromLink ? 'Tap the microphone and talk to me.' : "Hi! Type, or tap 🎙️ and talk — ask about your leads, bookings and what's new."}</div>
             <div className="ag-chips">{SUGGEST.map(s => <button key={s} type="button" className="ag-chip" onClick={() => send(s)}>{s}</button>)}</div>
           </div>
         )}

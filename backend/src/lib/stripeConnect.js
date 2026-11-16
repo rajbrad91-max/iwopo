@@ -109,6 +109,6 @@ export async function handleConnectEvent(rawBody, header) {
   const amount = (s.amount_total || 0) / 100;
   await prisma.payments.create({ data: { vendor_id: lead.vendor_id, lead_id: lead.id, amount, method: 'card', note: 'Paid by card (Stripe)', reference: s.id, paid_at: new Date() } });
   await markBooked(lead.id);
-  notify(lead.vendor_id, `💳 ${lead.name || 'A client'} paid ${amount.toFixed(2)} by card`, 'Straight to your Stripe account', 'payment', { type: 'lead', id: lead.id });
+  notify(lead.vendor_id, `${lead.name || 'A client'} paid ${amount.toFixed(2)} by card`, 'Straight to your Stripe account', 'payment', { type: 'lead', id: lead.id });
   return { ok: true };
 }

@@ -294,7 +294,7 @@ export function ContractSetup({ leadId = null } = {}) {
   async function saveAutoRelease(on) {
     try {
       await autoRelease.save(on);
-      setMsg(on ? '🔓 Contracts will send without review' : '🔒 Contracts need releasing first');
+      setMsg(on ? 'Contracts will send without review' : 'Contracts need releasing first');
       setTimeout(() => setMsg(''), 2200);
     } catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -470,7 +470,7 @@ export function ContractSetup({ leadId = null } = {}) {
         </div>
       </div>
 
-      {leadId && <p className="cs-hint">✏️ This client’s own contract. Changes here are for them only; your template stays as it is.</p>}
+      {leadId && <p className="cs-hint">This client’s own contract. Changes here are for them only; your template stays as it is.</p>}
       <div className="cs-split">
         <div className="cs-edit">
           {/* ── the template's own settings, one compact row ── */}

@@ -390,7 +390,7 @@ async function afterPick(lead, packageId, packageName, req, { extrasChanged = fa
   if ((await getFeatures(lead.vendor_id)).has('contracts')) {
     await reconcileContract(lead, packageId, clientIp(req), { extrasChanged });
     // the same choice confirmed again (a Continue tap with nothing changed) is not news to the vendor
-    if (changed) notify(lead.vendor_id, `📦 ${lead.name || 'Client'} picked "${packageName}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
+    if (changed) notify(lead.vendor_id, `${lead.name || 'Client'} picked "${packageName}"`, `Lead #${lead.id}`, 'package', { type: 'lead', id: lead.id });
     return true;
   }
   if (!changed) return false;

@@ -14,19 +14,20 @@ import { BillingView } from './admin/Billing';
 import { SupportView } from './admin/Support';
 import { AiChatView } from './admin/AiChat';
 import { SettingsView } from './admin/Settings';
+import NavIcon from '../components/NavIcon';
 
 
 const NAV = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard', group: 'PLATFORM' },
-  { id: 'services', icon: '🧩', label: 'Services & Packages', group: 'PLATFORM' },
-  { id: 'manage', icon: '🛠️', label: 'Manage Services', group: 'PLATFORM' },
-  { id: 'buyers', icon: '🛒', label: 'Buyers', group: 'PLATFORM' },
-  { id: 'referrals', icon: '👥', label: 'Referrals', group: 'PLATFORM' },
-  { id: 'waitlist', icon: '📝', label: 'Waitlist', group: 'PLATFORM' },
-  { id: 'billing', icon: '💳', label: 'Billing & Plans', group: 'PLATFORM' },
-  { id: 'aichat', icon: '🤖', label: 'AI Chat', group: 'OPERATE' },
-  { id: 'support', icon: '🎫', label: 'Support', group: 'OPERATE' },
-  { id: 'settings', icon: '🔧', label: 'Settings', group: 'OPERATE' },
+  { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', group: 'PLATFORM' },
+  { id: 'services', icon: 'packages', label: 'Services & Packages', group: 'PLATFORM' },
+  { id: 'manage', icon: 'services', label: 'Manage Services', group: 'PLATFORM' },
+  { id: 'buyers', icon: 'leads-all', label: 'Buyers', group: 'PLATFORM' },
+  { id: 'referrals', icon: 'refer', label: 'Referrals', group: 'PLATFORM' },
+  { id: 'waitlist', icon: 'requests', label: 'Waitlist', group: 'PLATFORM' },
+  { id: 'billing', icon: 'contracts', label: 'Billing & Plans', group: 'PLATFORM' },
+  { id: 'aichat', icon: 'aichat', label: 'AI Chat', group: 'OPERATE' },
+  { id: 'support', icon: 'help', label: 'Support', group: 'OPERATE' },
+  { id: 'settings', icon: 'settings', label: 'Settings', group: 'OPERATE' },
 ];
 export default function Dashboard({ onLogout }) {
   const [view, setView] = useState('dashboard');
@@ -70,12 +71,12 @@ export default function Dashboard({ onLogout }) {
             {NAV.filter(n => n.group === g).map(n => (
               <div key={n.id} className={`sa-nav-item ${view === n.id ? 'active' : ''}`}
                 onClick={() => { setView(n.id); setSidebarOpen(false); }}>
-                <span className="ico">{n.icon}</span> {n.label}
+                <span className="ico"><NavIcon name={n.icon} /></span> {n.label}
               </div>
             ))}
           </div>
         ))}
-        <div className="sa-nav-item sa-logout" onClick={logout}><span className="ico">🚪</span> Log out</div>
+        <div className="sa-nav-item sa-logout" onClick={logout}><span className="ico"><NavIcon name="logout" /></span> Log out</div>
       </aside>
 
       {sidebarOpen && <div className="sa-backdrop" onClick={() => setSidebarOpen(false)} />}
@@ -86,7 +87,7 @@ export default function Dashboard({ onLogout }) {
             <span className="sa-hamburger" onClick={() => setSidebarOpen(true)}>☰</span>
             <div>
               <h1>{NAV.find(n => n.id === view)?.label}</h1>
-              <div className="sa-sub">Welcome back, {user?.name} 👋</div>
+              <div className="sa-sub">Welcome back, {user?.name}</div>
             </div>
           </div>
           <AdminBells goView={setView} />

@@ -132,7 +132,7 @@ async function makeLead(v, id) {
        retried a missing key silently, forever. */
     if (out.permanent) {
       await privateDb.comms_events.update({ where: { id }, data: { lead_state: 'no_ai' } });
-      const title = '🤖 Leads from calls need the AI key';
+      const title = 'Leads from calls need the AI key';
       // one reminder, not one per waiting call
       const told = await privateDb.comms_notices.findFirst({ where: { vendor_id: v, title, created_at: { gt: new Date(Date.now() - 6 * 60 * 60_000) } }, select: { id: true } });
       if (!told) {

@@ -3,22 +3,7 @@ import { api, authFetch } from '../lib/api';
 import { fmtBytes } from './FileFlyerView.jsx';
 import { useDialog } from '../lib/dialog.jsx';
 import ShareDialog from './ShareDialog.jsx';
-
-/** Icon for a file with no preview — from the extension, since the stored mime
- *  is whatever the uploading client claimed and is often just octet-stream. */
-function iconFor(name) {
-  const e = (String(name).split('.').pop() || '').toLowerCase();
-  if (/^(mp4|mov|avi|mkv|webm|m4v)$/.test(e)) return '🎬';
-  if (/^(mp3|wav|aac|flac|m4a|ogg)$/.test(e)) return '🎵';
-  if (/^pdf$/.test(e)) return '📕';
-  if (/^(doc|docx|odt|rtf|txt|md)$/.test(e)) return '📄';
-  if (/^(xls|xlsx|csv|ods)$/.test(e)) return '📊';
-  if (/^(ppt|pptx|odp)$/.test(e)) return '📑';
-  if (/^(zip|rar|7z|tar|gz)$/.test(e)) return '🗜️';
-  if (/^(psd|ai|indd|xd|fig|sketch)$/.test(e)) return '🎨';
-  if (/^(raw|cr2|nef|arw|dng)$/.test(e)) return '📷';
-  return '📎';
-}
+import { fileExt } from '../lib/fileExt';
 
 /** ⋯ The quieter actions for one row. Destructive ones live here, never one click from the main action. */
 function RowMenu({ label, items }) {
@@ -100,7 +85,7 @@ function Thumb({ itemId, name }) {
     })();
     return () => { dead = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [itemId]);
-  if (failed) return <>{iconFor(name)}</>;
+  if (failed) return <span className="fd-ext">{fileExt(name)}</span>;
   if (!url) return <span className="fd-wait" aria-hidden="true" />;
   return <img src={url} alt="" loading="lazy" />;
 }
@@ -558,7 +543,7 @@ export default function ShareDrive({onStorage, tabs }) {
                 title={it.filename}
                 onClick={() => looksImage(it.filename) && openPhoto(it)}>
                 <span className="fd-ic">
-                  {looksImage(it.filename) || looksVideo(it.filename) ? <Thumb itemId={it.id} name={it.filename} /> : iconFor(it.filename)}
+                  {looksImage(it.filename) || looksVideo(it.filename) ? <Thumb itemId={it.id} name={it.filename} /> : <span className="fd-ext">{fileExt(it.filename)}</span>}
                   {looksVideo(it.filename) && <span className="fd-play" aria-hidden="true">▶</span>}
                 </span>
                 <span className="fd-name">{it.filename}</span>
@@ -595,7 +580,7 @@ export default function ShareDrive({onStorage, tabs }) {
                 <tr key={'i' + it.id}
                   className={`fd-row ${looksImage(it.filename) ? 'is-photo' : ''}`}
                   onClick={() => looksImage(it.filename) && openPhoto(it)}>
-                  <td><span className="fd-row-ic">{iconFor(it.filename)}</span>{it.filename}</td>
+                  <td><span className="fd-row-ext">{fileExt(it.filename)}</span>{it.filename}</td>
                   <td className="fd-quiet">{when(it.created_at)}</td>
                   <td>{fmtBytes(it.size_bytes)}{it.in_folder ? <span className="fd-sub">in {it.in_folder}</span> : null}</td>
                   <td className="fd-quiet">{it.uploaded_by === 'client' ? (it.uploader_name || 'Client') : 'You'}</td>

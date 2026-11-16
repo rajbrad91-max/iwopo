@@ -75,7 +75,7 @@ export default function DomainSettings() {
 
   return (
     <div className="table-wrap dm">
-      <h3 className="dm-h">🌐 Your web address</h3>
+      <h3 className="dm-h">Your web address</h3>
       <p className="dm-lead">Where your clients go: your inquiry form, packages, contracts, invoices and galleries.</p>
       <div className="dm-now">
         <span>Client links use</span>
@@ -93,7 +93,7 @@ export default function DomainSettings() {
       </section>
 
       <section className="dm-card">
-        <h4 className="dm-h4">💎 Your own domain {own.allowed ? <span className={`dm-chip ${chip}`}>{label}</span> : <span className="dm-chip dm-chip-none">🔒 Locked</span>}</h4>
+        <h4 className="dm-h4">💎 Your own domain {own.allowed ? <span className={`dm-chip ${chip}`}>{label}</span> : <span className="dm-chip dm-chip-none">Locked</span>}</h4>
         {!own.allowed ? (
           <p className="dm-text dm-locked">Available on our top plan once your free trial is over: your clients see only your own domain (like <b>clients.yourstudio.com</b>) and your name — never iwopo.</p>
         ) : (
