@@ -13,7 +13,6 @@
 .u-border-none { border: none !important; }
 .u-border-radius-10px { border-radius: 10px !important; }
 .u-border-radius-6px { border-radius: 6px !important; }
-.u-border-radius-7px { border-radius: 7px !important; }
 .u-border-radius-8px { border-radius: 8px !important; }
 .u-border-top-1px-dashed-line { border-top: 1px dashed var(--line) !important; }
 .u-border-top-1px-solid-line { border-top: 1px solid var(--line) !important; }
@@ -22,7 +21,6 @@
 .u-color-muted { color: var(--muted) !important; }
 .u-color-red { color: var(--red) !important; }
 .u-color-text { color: var(--text) !important; }
-.u-cursor-not-allowed { cursor: not-allowed !important; }
 .u-cursor-pointer { cursor: pointer !important; }
 .u-display-block { display: block !important; }
 .u-display-flex { display: flex !important; }
@@ -51,19 +49,16 @@
 .u-gap-5px { gap: 5px !important; }
 .u-gap-6px { gap: 6px !important; }
 .u-gap-8px { gap: 8px !important; }
-.u-grid-template-columns-1fr-1fr { grid-template-columns: 1fr 1fr !important; }
 .u-grid-template-columns-repeat-auto-fill-minmax-210px-1fr { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important; }
 .u-height-100vh { height: 100vh !important; }
 .u-height-220px { height: 220px !important; }
 .u-height-36px { height: 36px !important; }
 .u-inset-0 { inset: 0 !important; }
-.u-justify-content-flex-end { justify-content: flex-end !important; }
 .u-justify-content-space-between { justify-content: space-between !important; }
 .u-line-height-1_55 { line-height: 1.55 !important; }
 .u-line-height-1_6 { line-height: 1.6 !important; }
 .u-margin-0 { margin: 0 !important; }
 .u-margin-0-0-14px { margin: 0 0 14px !important; }
-.u-margin-14px-0 { margin: 14px 0 !important; }
 .u-margin-16px-0-4px { margin: 16px 0 4px !important; }
 .u-margin-16px-0-6px { margin: 16px 0 6px !important; }
 .u-margin-18px-0 { margin: 18px 0 !important; }
@@ -80,7 +75,6 @@
 .u-margin-bottom-5px { margin-bottom: 5px !important; }
 .u-margin-bottom-6px { margin-bottom: 6px !important; }
 .u-margin-bottom-8px { margin-bottom: 8px !important; }
-.u-margin-left-10px { margin-left: 10px !important; }
 .u-margin-left-auto { margin-left: auto !important; }
 .u-margin-top-0 { margin-top: 0 !important; }
 .u-margin-top-10px { margin-top: 10px !important; }
@@ -88,7 +82,6 @@
 .u-margin-top-14px { margin-top: 14px !important; }
 .u-margin-top-16px { margin-top: 16px !important; }
 .u-margin-top-22px { margin-top: 22px !important; }
-.u-margin-top-26px { margin-top: 26px !important; }
 .u-margin-top-4px { margin-top: 4px !important; }
 .u-margin-top-6px { margin-top: 6px !important; }
 .u-margin-top-8px { margin-top: 8px !important; }
@@ -98,7 +91,6 @@
 .u-min-height-180px { min-height: 180px !important; }
 .u-min-width-140px { min-width: 140px !important; }
 .u-min-width-200px { min-width: 200px !important; }
-.u-opacity-0_7 { opacity: 0.7 !important; }
 .u-outline-none { outline: none !important; }
 .u-overflow-y-auto { overflow-y: auto !important; }
 .u-padding-10px { padding: 10px !important; }
@@ -120,7 +112,6 @@
 .u-padding-6px-0-14px { padding: 6px 0 14px !important; }
 .u-padding-6px-14px { padding: 6px 14px !important; }
 .u-padding-6px-8px { padding: 6px 8px !important; }
-.u-padding-7px-14px { padding: 7px 14px !important; }
 .u-padding-8px { padding: 8px !important; }
 .u-padding-8px-0 { padding: 8px 0 !important; }
 .u-padding-9px { padding: 9px !important; }

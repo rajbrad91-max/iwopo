@@ -15,7 +15,7 @@ import { SupportView } from './admin/Support';
 import { AiChatView } from './admin/AiChat';
 import { SettingsView } from './admin/Settings';
 import NavIcon from '../components/NavIcon';
-
+import { useAdminRoute, adminPath } from '../lib/adminRoute';
 
 const NAV = [
   { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', group: 'PLATFORM' },
@@ -29,8 +29,11 @@ const NAV = [
   { id: 'support', icon: 'help', label: 'Support', group: 'OPERATE' },
   { id: 'settings', icon: 'settings', label: 'Settings', group: 'OPERATE' },
 ];
+const VIEWS = NAV.map(n => n.id);   // each one has its own address: /admin/<id> (lib/adminRoute.js)
+
 export default function Dashboard({ onLogout }) {
-  const [view, setView] = useState('dashboard');
+  const [route, go] = useAdminRoute(VIEWS);
+  const view = route.view;
   const [vendors, setVendors] = useState([]);
   const [packages, setPackages] = useState([]);
   const [overview, setOverview] = useState(null);   // 📊 the real figures (GET /admin/overview)
@@ -55,7 +58,12 @@ export default function Dashboard({ onLogout }) {
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
-  function logout() { apiLogout(); onLogout(); }
+  function logout() { apiLogout(); window.history.replaceState({}, '', '/'); onLogout(); }
+  /* a plain click stays in the panel; Ctrl/⌘/Shift/middle-click opens the page's address in a new tab */
+  const navClick = (id) => (e) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault(); go(id); setSidebarOpen(false);
+  };
 
   return (
     <div className={`sa-wrap ${collapsed ? 'sa-collapsed' : ''}`} data-sa-theme={saTheme}>
@@ -69,10 +77,10 @@ export default function Dashboard({ onLogout }) {
           <div key={g}>
             <div className="sa-nav-label">{g}</div>
             {NAV.filter(n => n.group === g).map(n => (
-              <div key={n.id} className={`sa-nav-item ${view === n.id ? 'active' : ''}`}
-                onClick={() => { setView(n.id); setSidebarOpen(false); }}>
+              <a key={n.id} href={adminPath(n.id)} className={`sa-nav-item ${view === n.id ? 'active' : ''}`}
+                aria-current={view === n.id ? 'page' : undefined} onClick={navClick(n.id)}>
                 <span className="ico"><NavIcon name={n.icon} /></span> {n.label}
-              </div>
+              </a>
             ))}
           </div>
         ))}
@@ -90,7 +98,7 @@ export default function Dashboard({ onLogout }) {
               <div className="sa-sub">Welcome back, {user?.name}</div>
             </div>
           </div>
-          <AdminBells goView={setView} />
+          <AdminBells goView={go} />
         </div>
 
         {loading ? <div className="sa-loading">Loading…</div> : (
@@ -104,7 +112,8 @@ export default function Dashboard({ onLogout }) {
             {view === 'billing' && <BillingView packages={packages} overview={overview} />}
             {view === 'aichat' && <AiChatView vendors={vendors} />}
             {view === 'support' && <SupportView />}
-            {view === 'settings' && <SettingsView saTheme={saTheme} setSaTheme={setSaTheme} user={user} />}
+            {view === 'settings' && <SettingsView saTheme={saTheme} setSaTheme={setSaTheme} user={user}
+              section={route.sub} onSection={(s) => go('settings', s)} />}
           </>
         )}
       </main>

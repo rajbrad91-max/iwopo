@@ -143,8 +143,8 @@ export default function PlanEditorTable({ onSaved }) {
     <div className="sa-pt">
       <div className="sa-pt-bar">
         <div className="sa-hint sa-pt-hint">
-          {edit ? '✍️ Change anything, then Save. Prices are in US dollars; features, storage, chats and trial days apply to vendors the moment you save.'
-            : '👀 Exactly what visitors see on the pricing page (prices shown here in USD, the currency you set them in).'}
+          {edit ? 'Change anything, then Save. Prices are in US dollars; features, storage, chats and trial days apply to vendors the moment you save.'
+            : 'Exactly what visitors see on the pricing page (prices shown here in USD, the currency you set them in).'}
         </div>
         <div className="sa-pt-actions">
           {edit ? (

@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { useDialog } from '../../lib/dialog.jsx';
 import DeleteVendorModal from '../../components/DeleteVendor';
-import { StatCard } from './common';
+import { StatCard, DeleteButton } from './common';
 
 function FeatureToggles({ vendorId }) {
   const dialog = useDialog();
@@ -90,22 +90,22 @@ function VendorDrawer({ vendorId, onClose }) {
             {/* from the subscription, not the old vendors.plan column */}
             {row('Plan', d.storage?.limit_source === 'plan' ? d.storage.plan_name : 'Free trial')}
             {row('Country', d.vendor.country)}
-            {row('🌍 Signup IP', d.vendor.signup_ip)}
+            {row('Signup IP', d.vendor.signup_ip)}
             {row('Storage', d.vendor.storage_mb ? `${d.vendor.storage_mb} MB` : '—')}
             {row('Joined', fmt(d.vendor.created_at))}
 
             <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Contact</div>
             {d.users.map(u => (
               <div key={u.id}>
-                {row('👤 Name', u.name)}
-                {row('📧 Email', u.email)}
+                {row('Name', u.name)}
+                {row('Email', u.email)}
                 {row('Role', u.role)}
               </div>
             ))}
 
             <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Referred by</div>
             {d.referredBy
-              ? row('🎁 ' + d.referredBy.referrer_email, d.referredBy.status)
+              ? row(d.referredBy.referrer_email, d.referredBy.status)
               : <div className="u-font-size-13px u-color-muted u-padding-6px-0">Not referred</div>}
 
             <div className="sa-section-title u-font-size-12px u-margin-16px-0-6px">Services subscribed</div>
@@ -160,7 +160,7 @@ function Membership({ vendorId, membership: m, onChanged }) {
   }
   return (
     <div className="sa-mem">
-      <div className="sa-mem-title">⏸️ Membership</div>
+      <div className="sa-mem-title">Membership</div>
       {!m.paying ? <div className="sa-mem-line">Not paying right now — nothing to stop.</div> : (
         <>
           <div className="sa-mem-line">
@@ -168,16 +168,16 @@ function Membership({ vendorId, membership: m, onChanged }) {
           </div>
           <div className="sa-mem-actions">
             {m.stopping
-              ? <button type="button" className="sa-view-btn" disabled={!!busy} onClick={() => go('resume')}>{busy === 'resume' ? 'Resuming…' : '▶️ Resume membership'}</button>
-              : <button type="button" className="sa-view-btn" disabled={!!busy} onClick={() => go('period_end')}>{busy === 'period_end' ? 'Stopping…' : '⏸️ Stop at period end'}</button>}
+              ? <button type="button" className="sa-view-btn" disabled={!!busy} onClick={() => go('resume')}>{busy === 'resume' ? 'Resuming…' : 'Resume membership'}</button>
+              : <button type="button" className="sa-view-btn" disabled={!!busy} onClick={() => go('period_end')}>{busy === 'period_end' ? 'Stopping…' : 'Stop at period end'}</button>}
             {!sure
-              ? <button type="button" className="sa-mem-now" disabled={!!busy} onClick={() => setSure(true)}>⏹️ Stop now</button>
+              ? <button type="button" className="sa-mem-now" disabled={!!busy} onClick={() => setSure(true)}>Stop now</button>
               : <button type="button" className="sa-mem-now is-sure" disabled={!!busy} onClick={() => go('now')}>{busy === 'now' ? 'Stopping…' : 'Confirm: stop today, no refund'}</button>}
           </div>
         </>
       )}
-      <div className="sa-mem-line sa-mem-muted">📜 Terms: {m.terms_accepted_at ? `agreed ${day(m.terms_accepted_at)} (version ${m.terms_version})` : 'no record (signed up before the tick box)'}</div>
-      <div className="sa-mem-line sa-mem-muted">📬 Offers: {m.marketing_opt_in ? `agreed ${day(m.marketing_opt_in_at)}` : 'not agreed'}</div>
+      <div className="sa-mem-line sa-mem-muted">Terms: {m.terms_accepted_at ? `agreed ${day(m.terms_accepted_at)} (version ${m.terms_version})` : 'no record (signed up before the tick box)'}</div>
+      <div className="sa-mem-line sa-mem-muted">Offers: {m.marketing_opt_in ? `agreed ${day(m.marketing_opt_in_at)}` : 'not agreed'}</div>
       {msg && <div className="sa-mem-line">{msg}</div>}
     </div>
   );
@@ -211,9 +211,9 @@ function FormerSubscribers() {
                 <tr key={r.vendor_id}>
                   <td><b>{r.business_name}</b><div className="sa-former-mail">{r.email}</div></td>
                   <td>{r.plan || '—'}</td>
-                  <td>{r.state === 'stopping' ? '⏸️ stopping' : '⏹️ ended'}</td>
+                  <td>{r.state === 'stopping' ? 'stopping' : 'ended'}</td>
                   <td>{day(r.ended_at)}</td>
-                  <td>{r.offers ? '📬 agreed' : '—'}</td>
+                  <td>{r.offers ? 'agreed' : '—'}</td>
                 </tr>
               ))}
           </tbody>
@@ -344,9 +344,9 @@ export function BuyersView({ vendors, overview, onChanged }) {
   return (
     <>
       <div className="sa-stats">
-        <StatCard label="💰 Paying Users" value={overview?.paying_total ?? '—'} trend="Stripe subscriptions" cls="up" />
-        <StatCard label="🎁 Users on Trials" value={overview?.trial ?? '—'} trend="Not yet paying" cls="warn" />
-        <StatCard label="👥 Referrals" value={refCount} trend="Paid · with discount" cls="up" />
+        <StatCard label="Paying Users" value={overview?.paying_total ?? '—'} trend="Stripe subscriptions" cls="up" />
+        <StatCard label="Users on Trials" value={overview?.trial ?? '—'} trend="Not yet paying" cls="warn" />
+        <StatCard label="Referrals" value={refCount} trend="Paid · with discount" cls="up" />
         <StatCard label="🆕 New This Month" value={overview?.new_this_month ?? '—'} trend="Signed up this month" cls="neutral" />
       </div>
       <div className="sa-section-title">All Buyers</div>
@@ -372,7 +372,7 @@ export function BuyersView({ vendors, overview, onChanged }) {
                 <td>{v.storage ? <StorageCell s={v.storage} /> : <span className="sa-muted">—</span>}</td>
                 <td className="sa-row-actions">
                   <button className="sa-view-btn" onClick={() => setOpenId(v.id)}>Manage</button>
-                  <button type="button" className="sa-del-btn" title="Delete this vendor" aria-label={`Delete ${v.business_name}`} onClick={() => setDelId(v.id)}>🗑️</button>
+                  <DeleteButton title={`Delete ${v.business_name}`} onClick={() => setDelId(v.id)} />
                 </td>
               </tr>
             ))}

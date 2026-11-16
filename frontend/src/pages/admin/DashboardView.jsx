@@ -55,7 +55,7 @@ export function DashboardView({ vendors, packages, overview }) {
 
       <div className="sa-grid-2">
         <div className="sa-box">
-          <h3>📈 Seller Growth</h3><div className="sa-box-sub">New sellers each month — last 8 months</div>
+          <h3>Seller Growth</h3><div className="sa-box-sub">New sellers each month — last 8 months</div>
           <div className="u-height-220px">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={growth}>
@@ -70,7 +70,7 @@ export function DashboardView({ vendors, packages, overview }) {
         </div>
 
         <div className="sa-box">
-          <h3>🌍 Sellers by Country</h3><div className="sa-box-sub">Where your sellers are based</div>
+          <h3>Sellers by Country</h3><div className="sa-box-sub">Where your sellers are based</div>
           <div className="sa-country-list">
             {countries.length === 0 ? (
               <div className="sa-cty-empty">
@@ -117,7 +117,7 @@ export function DashboardView({ vendors, packages, overview }) {
         </div>
 
         <div className="sa-box">
-          <h3>🍩 Vendors by Type</h3><div className="sa-box-sub">Vendors per profession</div>
+          <h3>Vendors by Type</h3><div className="sa-box-sub">Vendors per profession</div>
           {/* 🍩 the box grows with its list — every trade now has a row, and a fixed 180px pushed "Not set" out of the card
              (Raj, 2026-11-05); the list sits in two columns beside a fixed-size donut */}
           <div className="sa-type-box">

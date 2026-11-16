@@ -31,7 +31,7 @@ export function SupportView() {
                 <Fragment key={m.id}>
                   <tr className="sa-msg-row" onClick={() => setOpen(open === m.id ? null : m.id)}>
                     <td className="biz">{m.from_email || '—'}</td>
-                    <td>{m.subject || String(m.body || '').slice(0, 80) || '—'}{m.has_attachment && <span className="sa-msg-clip" title="Has a screenshot"> 📎</span>}</td>
+                    <td>{m.subject || String(m.body || '').slice(0, 80) || '—'}{m.has_attachment && <span className="sa-msg-clip" title="Has a screenshot"> · screenshot</span>}</td>
                     <td>{m.created_at ? new Date(m.created_at).toLocaleString() : '—'}</td>
                     <td><span className={`sa-badge ${m.status === 'open' ? 'trial' : 'active'}`}>{m.status || 'open'}</span></td>
                     <td className="sa-msg-toggle">{open === m.id ? '▲' : '▼'}</td>
@@ -39,7 +39,7 @@ export function SupportView() {
                   {open === m.id && (
                     <tr className="sa-msg-open"><td colSpan="5">
                       <p className="sa-msg-body">{m.body || '—'}</p>
-                      {m.has_attachment && <button type="button" className="sa-view-btn" onClick={() => viewShot(m.id)}>📎 View screenshot</button>}
+                      {m.has_attachment && <button type="button" className="sa-view-btn" onClick={() => viewShot(m.id)}>View screenshot</button>}
                     </td></tr>
                   )}
                 </Fragment>
@@ -71,7 +71,7 @@ function HelpVideosAdmin() {
   }
   return (
     <>
-      <div className="sa-section-title sa-hv-title">🎬 Help videos</div>
+      <div className="sa-section-title sa-hv-title">Help videos</div>
       <div className="sa-hint">Shown on every vendor's Help &amp; Support page, in this order.</div>
       <div className="sa-hv-add">
         <input className="sa-hv-in" value={title} onChange={e => setTitle(e.target.value)} placeholder="Title, e.g. Setting up your inquiry form" maxLength={140} />

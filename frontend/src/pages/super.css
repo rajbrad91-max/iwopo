@@ -23,7 +23,7 @@
 .sa-brand .sa-brand-img { width:30px; height:30px; object-fit:contain; }
 .sa-brand small { color:var(--teal); font-weight:700; font-size:10px; letter-spacing:2px; }
 .sa-nav-label { font-size:10px; letter-spacing:1.5px; color:var(--muted); font-weight:700; margin:14px 8px 5px; }
-.sa-nav-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; color:var(--muted); cursor:pointer; font-weight:500; transition:all 0.15s; border:1px solid transparent; }
+.sa-nav-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; color:var(--muted); text-decoration:none; cursor:pointer; font-weight:500; transition:all 0.15s; border:1px solid transparent; }
 .sa-nav-item:hover { background:var(--panel-2); color:var(--text); }
 .sa-nav-item.active { background:var(--teal-soft); color:var(--teal); border-color:var(--teal-2); font-weight:600; }
 .sa-nav-item .ico { display:flex; align-items:center; justify-content:center; width:20px; flex-shrink:0; }
@@ -41,12 +41,15 @@
 .sa-backdrop { display:none; }
 .sa-loading { color:var(--muted); padding:40px; text-align:center; }
 
-.sa-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:10px; }
-.sa-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; transition:all 0.2s; }
+/* 📊 Stat tiles: squares, like the vendor panel's dashboard counters — a big number, what it counts, a line about it
+   (Raj, 2026-11-16). The number is as big as the square allows: --chars (its length, from StatCard) shrinks a long one. */
+.sa-stats { display:grid; grid-template-columns:repeat(auto-fill, 168px); gap:10px; margin-bottom:10px; }
+.sa-card { aspect-ratio:1 / 1; container-type:inline-size; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; padding:12px 10px; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:14px; transition:all 0.2s; }
 .sa-card:hover { border-color:var(--teal-2); transform:translateY(-2px); }
-.sa-label { color:var(--muted); font-size:10px; letter-spacing:0.5px; font-weight:600; text-transform:uppercase; }
-.sa-value { font-size:21px; font-weight:800; margin:3px 0 2px; }
-.sa-trend { font-size:11px; font-weight:600; }
+.sa-value { font-size:min(40px, calc(140cqi / var(--chars, 1))); font-weight:800; line-height:1; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.sa-label { color:var(--muted); font-size:11px; letter-spacing:0.5px; font-weight:700; text-transform:uppercase; line-height:1.2; }
+.sa-trend { font-size:11px; font-weight:600; line-height:1.3; }
 .sa-trend.up { color:var(--green); } .sa-trend.warn { color:var(--amber); } .sa-trend.neutral { color:var(--muted); }
 
 .sa-grid-2 { display:grid; grid-template-columns:1.5fr 1fr; gap:10px; margin-bottom:10px; }
@@ -102,9 +105,10 @@
   .sa-sidebar { position:fixed; left:0; top:0; z-index:100; transform:translateX(-100%); transition:transform 0.25s; }
   .sa-sidebar.show { transform:none; }
   .sa-backdrop { display:block; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
-  .sa-stats { grid-template-columns:repeat(2,1fr); }
   .sa-grid-2, .sa-grid-2eq { grid-template-columns:1fr; }
 }
+
+@media (max-width:600px) { .sa-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); } }   /* two squares a row on a phone */
 
 /* ---- Packages ---- */
 .sa-pkg-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; align-items:start; }
@@ -131,7 +135,6 @@
 .sa-offer-chip .oc-pct { font-weight: 700; }
 .sa-offer-chip .oc-label { color: var(--muted); }
 .sa-offer-chip .oc-end { color: var(--muted); font-size: 11px; }
-.sa-offer-chip button { background: none; border: none; cursor: pointer; font-size: 13px; padding: 0 2px; }
 
 /* Manage Services grid */
 .sa-manage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
@@ -189,13 +192,6 @@
 .fr-status b { color: var(--text); }
 @media (max-width: 720px) { .fr-modes { grid-template-columns: 1fr; } }
 
-/* 🔑 Collapsible AWS credentials */
-.fr-cred { margin-top: 6px; }
-.fr-cred-head { display: flex; justify-content: space-between; align-items: center; width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700; }
-.fr-cred-head:hover { border-color: color-mix(in srgb, var(--teal) 40%, transparent); }
-.fr-cred-chev { font-size: 10px; color: var(--muted); }
-.fr-cred-body { padding: 14px 2px 4px; }
-
 /* 🤖 AI Chat — subscribers + knowledge */
 .cb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 .cb-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
@@ -215,11 +211,6 @@
 .cb-status { font-size: 12px; font-weight: 600; white-space: nowrap; }
 .cb-status.on { color: #4ade80; }
 .cb-status.off { color: var(--muted); }
-.cb-toggle { width: 42px; height: 23px; border-radius: 20px; border: none; background: #3a3f4a; cursor: pointer; padding: 2px; display: flex; transition: background .18s; }
-.cb-toggle.on { background: var(--btn-fill); justify-content: flex-end; }
-.cb-knob { width: 19px; height: 19px; border-radius: 50%; background: #fff; display: block; }
-.cb-del { background: none; border: none; cursor: pointer; font-size: 14px; opacity: .55; }
-.cb-del:hover { opacity: 1; }
 
 .cb-share { padding: 18px; margin-bottom: 16px; }
 .cb-share-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
@@ -300,24 +291,58 @@
 .sa-svc-detail-desc { color: var(--muted); font-size: 14px; }
 .sa-svc-detail .sa-trial-pill { margin-top: 14px; }
 
-/* the super admin's own account, behind the Edit button */
-.sa-acct { margin-top: 10px; padding: 4px 0; }
+/* the super admin's own sign-in (Settings → Account) */
 .sa-acct-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 92px;
-  gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .sa-acct-row:last-of-type { border-bottom: 0; }
 .sa-acct-lbl { font-size: 12px; color: var(--muted); }
-.sa-acct-msg { padding: 10px 16px; font-size: 12px; color: var(--text); }
+.sa-acct-msg { padding-top: 10px; font-size: 12px; color: var(--text); }
 @media (max-width: 620px) {
   .sa-acct-row { grid-template-columns: 1fr; gap: 6px; }
 }
 
-/* one-line settings rows — a label on the left, its controls on the right */
-.sa-compact-row { display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line);
-  border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
-.sa-compact-lbl { font-size: 12.5px; font-weight: 600; }
-.sa-compact-dim { color: var(--muted); font-weight: 400; }
-.sa-compact-seg { display: flex; align-items: center; gap: 6px; }
+/* ⚙️ Settings — one tab per subject, each at its own address /admin/settings/<tab> (admin/Settings.jsx, 2026-11-16) */
+.sa-set-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.sa-set-tab { padding: 9px 14px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--muted);
+  font-size: 13px; font-weight: 600; text-decoration: none; }
+.sa-set-tab:hover { color: var(--text); }
+.sa-set-tab.is-on { color: var(--teal); border-bottom-color: var(--teal); }
+.sa-set-card { max-width: 880px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px 20px; margin-bottom: 14px; }
+.sa-set-hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.sa-set-hd h3 { font-size: 15px; font-weight: 700; }
+.sa-set-hd p { max-width: 620px; margin-top: 4px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.sa-set-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.sa-set-cancel { padding: 8px 14px; font-size: 12px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 8px; color: var(--text); cursor: pointer; }
+.sa-set-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.sa-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sa-field.wide { grid-column: 1 / -1; }
+.sa-lbl { font-size: 12px; font-weight: 600; color: var(--muted); }
+.sa-lbl-note { font-weight: 400; }
+.sa-in { width: 100%; padding: 9px 11px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); font-size: 13px; }
+.sa-in:focus { outline: none; border-color: var(--teal); }
+.sa-in.is-ro { opacity: .7; cursor: not-allowed; }
+.sa-set-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.sa-set-row .sa-in { flex: 1 1 240px; width: auto; }
+.sa-set-sub { margin-top: 22px; }
+.sa-set-note { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+.sa-set-row .sa-set-note { margin: 0; }
+.sa-set-msg { margin-top: 12px; font-size: 12.5px; color: var(--text); }
+.sa-set-seg { display: flex; gap: 6px; }
+@media (max-width: 620px) {
+  .sa-set-grid { grid-template-columns: 1fr; }
+  .sa-set-hd { flex-direction: column; }
+}
+/* the one on/off switch and the one delete button in Super Admin (Switch, DeleteButton in admin/common.jsx) */
+.sa-switch { flex-shrink: 0; display: flex; width: 38px; height: 21px; padding: 2px; border: none; border-radius: 20px;
+  background: var(--line); cursor: pointer; transition: background .18s; }
+.sa-switch.on { justify-content: flex-end; background: var(--btn-fill); }
+.sa-switch-knob { display: block; width: 17px; height: 17px; border-radius: 50%; background: #fff; }
+.sa-del-btn { padding: 4px 10px; font-size: 12px; font-weight: 600; background: transparent; border: 1px solid var(--line);
+  border-radius: 7px; color: var(--red); cursor: pointer; white-space: nowrap; }
+.sa-del-btn:hover { border-color: var(--red); }
 .sa-seg-btn { padding: 5px 12px; border-radius: 7px; cursor: pointer; font-weight: 700;
   font-size: 11.5px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
 .sa-seg-btn.is-on { background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); }
@@ -345,17 +370,8 @@
 @container (max-width: 620px) { .sa-legend-cols { grid-template-columns: minmax(0, 230px); } }
 @media (max-width: 640px) { .sa-type-box { flex-direction: column; align-items: stretch; } .sa-type-pie { align-self: center; } }
 
-/* 💳 Stripe Connect keys (Super Admin settings) */
-.sa-connect-head { margin-top: 26px; cursor: default; }
-.sa-connect-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
-.sa-connect-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
-.sa-connect-btn { padding: 5px 12px; font-size: 12px; }
-.sa-connect-x { padding: 5px 12px; font-size: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; color: var(--text); cursor: pointer; }
-
 /* 🗑️ Delete vendor (components/DeleteVendor.jsx) */
 .sa-row-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
-.sa-del-btn { padding: 5px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; }
-.sa-del-btn:hover { border-color: var(--red); }
 .sa-del-back { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 18px; background: rgba(0, 0, 0, 0.55); }
 .sa-del { width: min(460px, 100%); padding: 20px 22px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
 .sa-del-h { margin: 0 0 10px; font-size: 17px; }

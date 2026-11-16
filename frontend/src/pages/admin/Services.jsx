@@ -8,6 +8,7 @@ import { COUNTRIES } from '../../lib/countries';
 import { useDialog } from '../../lib/dialog.jsx';
 import PlanEditorTable from '../../components/PlanEditorTable';
 import RegionPricesTable from '../../components/RegionPricesTable';
+import { Switch, DeleteButton } from './common';
 
 /* ---------- SERVICES & PACKAGES ---------- */
 export function ServicesView() {
@@ -35,7 +36,7 @@ export function ServicesView() {
     <>
       {/* OFFERS */}
       <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-10px">
-        <div className="sa-section-title u-margin-0">Offers & Discounts 🎁</div>
+        <div className="sa-section-title u-margin-0">Offers & Discounts</div>
         <button className="sa-view-btn" onClick={() => setShowOffer(!showOffer)}>
           {showOffer ? '✕ Cancel' : '+ New Offer'}
         </button>
@@ -57,19 +58,19 @@ export function ServicesView() {
         <div className="sa-offer-list">
           {offers.map(o => (
             <div key={o.id} className={`sa-offer-chip ${o.active ? '' : 'off'}`}>
-              <span className="oc-code">🏷️ {o.code}</span>
+              <span className="oc-code">{o.code}</span>
               <span className="oc-pct">{o.percent_off}% off</span>
               {o.label && <span className="oc-label">{o.label}</span>}
               {o.ends_at && <span className="oc-end">till {String(o.ends_at).slice(0, 10)}</span>}
-              <button onClick={async () => { await api.toggleOffer(o.id); loadOffers(); }} title="toggle">{o.active ? '🟢' : '⚪'}</button>
-              <button onClick={async () => { if (await dialog.confirm('This offer will be deleted.', { title: 'Delete offer?', okLabel: 'Delete' })) { await api.deleteOffer(o.id); loadOffers(); } }} title="delete">🗑️</button>
+              <Switch on={o.active} onChange={async () => { await api.toggleOffer(o.id); loadOffers(); }} label={o.active ? 'Turn off' : 'Turn on'} />
+              <DeleteButton onClick={async () => { if (await dialog.confirm('This offer will be deleted.', { title: 'Delete offer?', okLabel: 'Delete' })) { await api.deleteOffer(o.id); loadOffers(); } }} />
             </div>
           ))}
         </div>
       )}
 
       {/* PACKAGES — the public pricing table, editable in place (components/PlanEditorTable.jsx) */}
-      <div className="sa-section-title sa-pt-title">Packages & Pricing 🎁</div>
+      <div className="sa-section-title sa-pt-title">Packages & Pricing</div>
       <PlanEditorTable onSaved={() => setRev(r => r + 1)} />
       {/* 🌍 every territory's fixed prices and the profit from each plan (components/RegionPricesTable.jsx) */}
       <RegionPricesTable rev={rev} />
@@ -88,7 +89,7 @@ function StandaloneServices({ rev = 0 }) {
   return (
     <>
       <div className="u-display-flex u-justify-content-space-between u-align-items-center u-margin-bottom-4px u-margin-top-22px">
-        <div className="sa-section-title u-margin-0">Standalone Services 🧩</div>
+        <div className="sa-section-title u-margin-0">Standalone Services</div>
         <button className={`sa-view-btn ${edit ? 'active-btn' : ''}`} onClick={() => setEdit(!edit)}>
           {edit ? '✓ Done' : 'Edit Prices'}
         </button>
@@ -135,7 +136,7 @@ function CountryPriceList({ cp }) {
   const nameOf = (c) => COUNTRIES.find(x => x.code === c)?.name || c;
   return (
     <div className="u-margin-top-6px u-border-top-1px-dashed-line u-padding-top-6px">
-      <div className="u-font-size-10px u-color-muted u-margin-bottom-3px">🌍 Exceptions</div>
+      <div className="u-font-size-10px u-color-muted u-margin-bottom-3px">Exceptions</div>
       {entries.map(([c, v]) => {
         const e = cpEntry(v);
         return (
@@ -175,13 +176,13 @@ function CountryPriceEditor({ type, item, onSaved }) {
 
   return (
     <div className="u-margin-top-8px u-border-top-1px-dashed-line u-padding-top-8px">
-      <div className="u-font-size-11px u-color-muted u-margin-bottom-6px">🌍 Country exceptions (default = USD)</div>
+      <div className="u-font-size-11px u-color-muted u-margin-bottom-6px">Country exceptions (default = USD)</div>
       {Object.entries(cp).map(([c, v]) => {
         const e = cpEntry(v);
         return (
           <div className="u-display-flex u-justify-content-space-between u-font-size-12_5px u-padding-2px-0" key={c}>
             <span>{nameOf(c)}</span>
-            <span className="u-display-flex u-gap-8px"><b>${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</b><span className="u-cursor-pointer" onClick={() => remove(c)}>🗑️</span></span>
+            <span className="u-display-flex u-gap-8px"><b>${e.m}/mo{e.y ? ` · $${e.y}/yr` : ''}</b><DeleteButton onClick={() => remove(c)}>Remove</DeleteButton></span>
           </div>
         );
       })}

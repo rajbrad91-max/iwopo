@@ -43,7 +43,7 @@ export default function RegionPricesTable({ rev }) {
 
   return (
     <>
-      <div className="sa-section-title rp-title">Prices by country &amp; region 🌍</div>
+      <div className="sa-section-title rp-title">Prices by country &amp; region</div>
       <p className="rp-help">
         Fixed prices in each territory&apos;s own currency — they do not move with exchange rates. Yearly: Essential and Pro
         pay 10 months, Studio pays 11. Shown before tax. The first row is the pricing table above.
@@ -73,7 +73,7 @@ export default function RegionPricesTable({ rev }) {
         </table>
       </div>
 
-      <div className="sa-section-title rp-title">Add-on prices by country &amp; region 🧩</div>
+      <div className="sa-section-title rp-title">Add-on prices by country &amp; region</div>
       <p className="rp-help">Fixed in each territory&apos;s currency, a month. Yearly: 10 months; storage 12 (it costs iwopo every month). Shown before tax.</p>
       <div className="rp-wrap">
         <table className="rp">
@@ -97,7 +97,7 @@ export default function RegionPricesTable({ rev }) {
         </table>
       </div>
 
-      <div className="sa-section-title rp-title">Your profit per subscriber 💰</div>
+      <div className="sa-section-title rp-title">Your profit per subscriber</div>
       <div className="rp-bar">
         <p className="rp-help">What iwopo keeps from one subscriber a month, in USD, after Stripe fees, storage and AI — with every vendor at {Math.round(c.usage * 100)}% of their plan.</p>
         <div className="rp-switch" role="group" aria-label="Billing">

@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { api, fmtDateTime } from '../../lib/api';
 import { useDialog } from '../../lib/dialog.jsx';
+import { Switch, DeleteButton } from './common';
 
 /* ---------- SETTINGS ---------- */
 // 🤖 AI Chat — subscribers + knowledge pages
@@ -58,9 +59,9 @@ export function AiChatView({ vendors }) {
   return (
     <>
       <div className="cb-tabs">
-        <button className={`cb-tab ${tab === 'subs' ? 'on' : ''}`} onClick={() => setTab('subs')}>👥 Subscribers</button>
-        <button className={`cb-tab ${tab === 'costs' ? 'on' : ''}`} onClick={() => setTab('costs')}>💰 Costs</button>
-        <button className={`cb-tab ${tab === 'api' ? 'on' : ''}`} onClick={() => setTab('api')}>🔑 API Key</button>
+        <button className={`cb-tab ${tab === 'subs' ? 'on' : ''}`} onClick={() => setTab('subs')}>Subscribers</button>
+        <button className={`cb-tab ${tab === 'costs' ? 'on' : ''}`} onClick={() => setTab('costs')}>Costs</button>
+        <button className={`cb-tab ${tab === 'api' ? 'on' : ''}`} onClick={() => setTab('api')}>API Key</button>
       </div>
 
       {tab === 'costs' && <ChatbotCosts />}
@@ -73,7 +74,7 @@ export function AiChatView({ vendors }) {
               <div className="cb-sub">{subs.length} subscriber{subs.length === 1 ? '' : 's'} · {subs.filter(s => s.active).length} active</div>
             </div>
             {!adding ? (
-              <button className="sa-btn-teal cb-add-btn" onClick={() => setAdding(true)}>➕ Add subscriber</button>
+              <button className="sa-btn-teal cb-add-btn" onClick={() => setAdding(true)}>+ Add subscriber</button>
             ) : (
               <div className="cb-add-row">
                 <select className="cb-select" defaultValue="" onChange={e => addSub(e.target.value)}>
@@ -94,15 +95,13 @@ export function AiChatView({ vendors }) {
                     <div className="cb-card-main">
                       <div className="cb-card-name">{s.business_name}</div>
                       <div className="cb-card-meta">
-                        {s.email} · {s.has_knowledge ? '📚 Knowledge filled' : '📭 No knowledge yet'}
+                        {s.email} · {s.has_knowledge ? 'Knowledge filled' : 'No knowledge yet'}
                       </div>
                     </div>
                     <div className="cb-card-right" onClick={e => e.stopPropagation()}>
-                      <span className={`cb-status ${s.active ? 'on' : 'off'}`}>{s.active ? '🟢 Active' : '⚪ Inactive'}</span>
-                      <button className={`cb-toggle ${s.active ? 'on' : ''}`} onClick={() => toggleActive(s)} title={s.active ? 'Turn off' : 'Turn on'}>
-                        <span className="cb-knob" />
-                      </button>
-                      <button className="cb-del" onClick={() => removeSub(s)} title="Remove">🗑️</button>
+                      <span className={`cb-status ${s.active ? 'on' : 'off'}`}>{s.active ? 'Active' : 'Inactive'}</span>
+                      <Switch on={s.active} onChange={() => toggleActive(s)} label={s.active ? 'Turn off' : 'Turn on'} />
+                      <DeleteButton onClick={() => removeSub(s)}>Remove</DeleteButton>
                     </div>
                   </div>
                 ))}
@@ -121,7 +120,7 @@ function ChatbotCosts() {
   if (!d) return <div className="sa-loading">Loading…</div>;
   return (
     <>
-      <div className="sa-section-title">💰 Chatbot Costs</div>
+      <div className="sa-section-title">Chatbot Costs</div>
       <div className="cb-sub">What each vendor's chatbot is costing you (Anthropic API usage).</div>
       <div className="cb-total">Total spend: <b>${d.total_usd.toFixed(4)}</b></div>
       {d.vendors.length === 0 ? <div className="sa-box cb-empty">No chatbot usage yet.</div> : (
@@ -196,7 +195,7 @@ function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
             <button className="sa-btn-teal" onClick={startEdit}>Edit</button>
           ) : (
             <>
-              <button className="sa-btn-teal" onClick={() => setShow(v => !v)}>{show ? '🙈 Hide' : '👁️ Show'}</button>
+              <button className="sa-btn-teal" onClick={() => setShow(v => !v)}>{show ? 'Hide' : 'Show'}</button>
               <button className="sa-btn-teal" onClick={save}>Save</button>
               <button className="cb-cancel" onClick={() => { setEditing(false); setShow(false); }}>✕</button>
             </>
@@ -212,7 +211,7 @@ function ApiKeyBox({ field, modelField, title, sub, modelHint, missing }) {
 function ChatbotApiKey() {
   return (
     <>
-      <ApiKeyBox field="anthropic_api_key" modelField="anthropic_model" title="🔑 AI Chatbot key"
+      <ApiKeyBox field="anthropic_api_key" modelField="anthropic_model" title="AI Chatbot key"
         sub="Powers Wopo Assistant for every subscriber, leads from calls and photo descriptions. Kept masked."
         modelHint="claude-haiku-5-5"
         missing="No key — Wopo Assistant replies with a fallback message until you add one." />
@@ -248,7 +247,7 @@ function ChatbotInbox({ vendorId }) {
     <>
       {pending.length > 0 && (
         <div className="sa-box cb-inbox">
-          <div className="cb-inbox-title">❓ Questions Wopo Assistant couldn't answer ({pending.length})</div>
+          <div className="cb-inbox-title">Questions Wopo Assistant couldn't answer ({pending.length})</div>
           <div className="cb-inbox-hint">Answer these, then add them to the FAQs below so Wopo Assistant knows next time.</div>
           {pending.map(p => (
             <div key={p.id} className="cb-pending">
@@ -257,7 +256,7 @@ function ChatbotInbox({ vendorId }) {
                 <input className="cb-input" placeholder="Answer (optional — for your reference)"
                   value={answers[p.id] || ''} onChange={e => setAnswers({ ...answers, [p.id]: e.target.value })} />
                 <button className="sa-btn-teal" onClick={() => resolve(p, false)}>✅ Done</button>
-                <button className="cb-cancel" onClick={() => resolve(p, true)}>🗑️</button>
+                <DeleteButton onClick={() => resolve(p, true)}>Dismiss</DeleteButton>
               </div>
             </div>
           ))}
@@ -266,7 +265,7 @@ function ChatbotInbox({ vendorId }) {
 
       {messages.length > 0 && (
         <div className="sa-box cb-inbox">
-          <div className="cb-inbox-title">📨 Messages for the vendor ({unread.length} unread)</div>
+          <div className="cb-inbox-title">Messages for the vendor ({unread.length} unread)</div>
           {messages.map(m => (
             <div key={m.id} className={`cb-vmsg ${m.status === 'unread' ? 'unread' : ''}`}>
               <div className="cb-vmsg-top">
@@ -325,11 +324,11 @@ function KnowledgePage({ vendorId, onBack }) {
       <div className="cb-head">
         <div>
           <button className="cb-back" onClick={onBack}>← Subscribers</button>
-          <div className="sa-section-title">📚 {sub.business_name} — Knowledge</div>
+          <div className="sa-section-title">{sub.business_name} — Knowledge</div>
           <div className="cb-sub">This is what the chatbot knows about them.</div>
         </div>
         <div className="cb-actions">
-          <button className="sa-btn-teal" onClick={() => setShowShare(v => !v)}>🔗 Share with vendor</button>
+          <button className="sa-btn-teal" onClick={() => setShowShare(v => !v)}>Share with vendor</button>
           {!editing
             ? <button className="sa-btn-teal" onClick={() => setEditing(true)}>Edit</button>
             : <button className="sa-btn-teal" onClick={save}>Save</button>}
@@ -338,15 +337,15 @@ function KnowledgePage({ vendorId, onBack }) {
 
       {showShare && (
         <div className="sa-box cb-share">
-          <div className="cb-share-title">🔗 Shareable fill-in link</div>
+          <div className="cb-share-title">Shareable fill-in link</div>
           <div className="cb-share-hint">Send this to the vendor. They enter the access code, fill it in, and it's ready for the chatbot.</div>
           <div className="cb-share-row">
             <input className="cb-input" readOnly value={shareUrl} onFocus={e => e.target.select()} />
-            <button className="sa-btn-teal" onClick={copyLink}>{copied ? '✅' : '🔗 Copy'}</button>
+            <button className="sa-btn-teal" onClick={copyLink}>{copied ? '✅ Copied' : 'Copy'}</button>
           </div>
           <div className="cb-share-row">
             <input className="cb-input" placeholder="Set an access code (e.g. studio2026)" value={code} onChange={e => setCode(e.target.value)} />
-            <button className="sa-btn-teal" onClick={saveCode}>🔑 Save code</button>
+            <button className="sa-btn-teal" onClick={saveCode}>Save code</button>
           </div>
           {!sub.access_code && <div className="cb-warn">⚠️ No access code set — anyone with the link can edit. Set one above.</div>}
         </div>

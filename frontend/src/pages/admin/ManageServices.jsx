@@ -51,7 +51,7 @@ export function ManageServicesView() {
           <h2 className="sa-svc-detail-name">{svc.name}</h2>
           <p className="sa-svc-detail-desc">{svc.description}</p>
           <div className="sa-trial-pill">
-            {svc.is_live ? '🚧 Admin panel coming next' : '🏗️ Not built yet — nothing to configure'}
+            {svc.is_live ? 'Admin panel (coming soon)' : 'Not built yet — nothing to configure'}
           </div>
         </div>
       </>
@@ -65,13 +65,13 @@ export function ManageServicesView() {
       onClick={() => setActive(s.feature_key)}>
       <div className="sa-manage-name">{s.name}</div>
       <div className="sa-manage-desc">{s.description}</div>
-      {!s.is_live && <div className="sa-manage-badge">🏗️ Not built yet</div>}
+      {!s.is_live && <div className="sa-manage-badge">Not built yet</div>}
     </div>
   );
 
   return (
     <>
-      <div className="sa-section-title">Manage Services 🛠️</div>
+      <div className="sa-section-title">Manage Services</div>
       <div className="sa-hint sa-hint-tight">
         Every service, named the same way here, in a vendor&apos;s plan and in their panel.
         Vendors see only what they subscribe to.
@@ -80,7 +80,7 @@ export function ManageServicesView() {
 
       {planned.length > 0 && (
         <>
-          <div className="sa-section-title sa-section-mt">Planned 🏗️</div>
+          <div className="sa-section-title sa-section-mt">Planned</div>
           <div className="sa-hint sa-hint-tight">
             Sold on the pricing page but not built. Switching one on for a vendor is refused,
             because there would be nothing for them to open.

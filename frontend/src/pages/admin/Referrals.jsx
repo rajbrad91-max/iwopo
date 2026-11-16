@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import { useDialog } from '../../lib/dialog.jsx';
-import { StatCard } from './common';
+import { StatCard, Switch, DeleteButton } from './common';
 
 /* ---------- REFERRALS ---------- */
 function CouponBuilder() {
@@ -43,7 +43,7 @@ function CouponBuilder() {
 
   return (
     <>
-      <div className="sa-section-title u-margin-bottom-8px">Coupons 🎟️</div>
+      <div className="sa-section-title u-margin-bottom-8px">Coupons</div>
       <div className="sa-box u-margin-bottom-12px">
         <div className="u-display-flex u-gap-8px u-flex-wrap-wrap u-align-items-center">
           <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-150px" placeholder="CODE (SUMMER20)" value={f.code}
@@ -57,7 +57,7 @@ function CouponBuilder() {
               {packages.map(p => <option key={'p' + p.id} value={`package:${p.id}`}>{p.name}</option>)}
             </optgroup>
             <optgroup label="Services">
-              {services.map(s => <option key={'s' + s.id} value={`service:${s.id}`}>🧩 {s.name}</option>)}
+              {services.map(s => <option key={'s' + s.id} value={`service:${s.id}`}>{s.name}</option>)}
             </optgroup>
           </select>
           <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-150px" type="date" value={f.ends_at}
@@ -74,14 +74,14 @@ function CouponBuilder() {
             <tbody>
               {coupons.map(c => (
                 <tr key={c.id}>
-                  <td className="biz">🎟️ {c.code}</td>
+                  <td className="biz">{c.code}</td>
                   <td>{c.percent_off}% off</td>
                   <td>{targetLabel(c.applies_to)}</td>
                   <td>{c.ends_at ? String(c.ends_at).slice(0, 10) : '—'}</td>
                   <td><span className={`sa-badge ${c.active ? 'active' : 'trial'}`}>{c.active ? 'active' : 'off'}</span></td>
                   <td className="u-display-flex u-gap-10px">
-                    <span className="u-cursor-pointer" onClick={async () => { await api.toggleOffer(c.id); load(); }}>{c.active ? '🟢' : '⚪'}</span>
-                    <span className="u-cursor-pointer" onClick={async () => { if (await dialog.confirm('This coupon will be deleted.', { title: 'Delete coupon?', okLabel: 'Delete' })) { await api.deleteOffer(c.id); load(); } }}>🗑️</span>
+                    <Switch on={c.active} onChange={async () => { await api.toggleOffer(c.id); load(); }} label={c.active ? 'Turn off' : 'Turn on'} />
+                    <DeleteButton onClick={async () => { if (await dialog.confirm('This coupon will be deleted.', { title: 'Delete coupon?', okLabel: 'Delete' })) { await api.deleteOffer(c.id); load(); } }} />
                   </td>
                 </tr>
               ))}
@@ -106,14 +106,14 @@ export function ReferralsView() {
   return (
     <>
       <CouponBuilder />
-      <div className="sa-section-title u-margin-bottom-8px">Referrals 👥</div>
+      <div className="sa-section-title u-margin-bottom-8px">Referrals</div>
       <div className="sa-stats">
         <StatCard label="Total Referrals" value={refs.length} trend="Email-based" cls="up" />
-        <StatCard label="Rewarded" value={rewarded} trend="🎁 free month each" cls="up" />
+        <StatCard label="Rewarded" value={rewarded} trend="1 free month each" cls="up" />
         <StatCard label="Pending" value={refs.length - rewarded} trend="Awaiting paid signup" cls="warn" />
       </div>
       <div className="sa-hint u-margin-bottom-12px">
-        🎁 Reward = 1 free month for BOTH — applied when the friend signs up on a <b>paid</b> plan.
+        Reward = 1 free month for BOTH — applied when the friend signs up on a <b>paid</b> plan.
       </div>
       <div className="sa-table-wrap">
         <table>
