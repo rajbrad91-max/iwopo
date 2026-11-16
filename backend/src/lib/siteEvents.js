@@ -67,18 +67,27 @@ export function recordEvent(req, vendorId, kind, extra = {}) {
 }
 
 /**
- * 🧹 Events older than a year.
- *
- * Kept long enough to compare this season with last, and no longer — a table
+ * How long visits and downloads are kept: 26 months, so two full wedding
+ * seasons can be compared (Raj, 2026-11-15) — and no longer, because a table
  * that only grows is a bill nobody decided to pay, and old visitor data is a
  * liability rather than an asset.
  */
+export const KEEP_MONTHS = 26;
+
+/** The oldest moment still kept. */
+export function keptSince() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - KEEP_MONTHS);
+  return d;
+}
+
+/** 🧹 Events older than KEEP_MONTHS, swept nightly. */
 export async function sweepOldEvents() {
   try {
     const { count } = await prisma.site_events.deleteMany({
-      where: { created_at: { lt: new Date(Date.now() - 365 * 864e5) } },
+      where: { created_at: { lt: keptSince() } },
     });
-    if (count) console.log('[events] swept', count, 'older than a year');
+    if (count) console.log('[events] swept', count, `older than ${KEEP_MONTHS} months`);
     return count;
   } catch { return 0; }
 }

@@ -56,7 +56,7 @@ export function startDarkHome(root) {
   function steps(sec, p) { const ul = sec.querySelector('.steps'); if (!ul) return; const th = ul.dataset.steps.split(',').map(Number); const lis = ul.querySelectorAll('li'); let k = 0; th.forEach((t, i) => { if (p >= t) k = i; });
     lis.forEach((li, i) => { li.className = i === k ? 'on' : i < k ? 'done' : ''; }); const last = lis[lis.length - 1]; ul.querySelector('.bar').style.height = (clamp(p / .92) * (last.offsetTop + 15 - 8)) + 'px'; }
   const SC = {
-    hero(p) { const kd = Math.min(1, (innerWidth - 24) / 1040);
+    hero(p) { const kd = Math.min(1, (innerWidth - 24) / $('device').offsetWidth);   // the dashboard fits the screen at its own width (a phone's layout is narrower)
       if (mob()) { const a = reduce ? 0 : E(p, 0, .7);   /* motion off: the dashboard stays below the headline */
         T($('device'), `translateY(${lerp(140, -40, a)}px) rotateX(${lerp(42, 6, a)}deg) scale(${lerp(.8, 1, a) * kd})`);
         const c = reduce ? 0 : E(p, .22, .6); O($('heroCopy'), 1 - c);   /* motion off: the headline stays */ T($('heroCopy'), `translateY(${-70 * c}px) scale(${1 - .05 * c})`);
@@ -67,7 +67,7 @@ export function startDarkHome(root) {
       root.querySelectorAll('#device [data-n]').forEach(el => { el.textContent = (el.dataset.pre || '') + Math.round(+el.dataset.n * g).toLocaleString('en-US') + (el.dataset.post || ''); });
       $('gclipr').setAttribute('width', (520 * g).toFixed(1)); $('gdot').style.opacity = g > .98 ? 1 : 0;
       $('gring').style.strokeDashoffset = (314 * (1 - .75 * g)).toFixed(1); $('gpct').textContent = Math.round(75 * g) + '%';
-      root.querySelectorAll('#device .chip').forEach((el, i) => { const k = reduce && mob() ? 0 : E(p, .25 + i * .08, .38 + i * .08);   /* motion off on a phone: no flying cards over the button */ O(el, k); T(el, `translateZ(${lerp(0, +el.dataset.z, k)}px) translateY(${lerp(30, 0, k)}px) scale(${lerp(.82, 1, k) * (mob() ? 1.9 : 1.5)})`); }); },
+      root.querySelectorAll('#device .chip').forEach((el, i) => { const k = reduce && mob() ? 0 : E(p, .25 + i * .08, .38 + i * .08);   /* motion off on a phone: no flying cards over the button */ O(el, k); T(el, `translateZ(${lerp(0, +el.dataset.z, k)}px) translateY(${lerp(30, 0, k)}px) scale(${lerp(.82, 1, k) * (mob() ? 1.3 : 1.5)})`); }); },
     gal(p, sec) { steps(sec, p); const w = E(p, 0, .2), out = E(p, .66, .86);
       T($('gwin'), `translateZ(${lerp(-220, 0, w) - 160 * out}px) rotateX(${lerp(24, 7, w)}deg) rotateY(${lerp(-24, -10, w)}deg)`); O($('gwin'), lerp(.2, 1, w) - .35 * out);
       cells.forEach(c => { const k = E(p, .015 + c.i * .009, .13 + c.i * .009); const L = E(p, .47, .6);
@@ -135,7 +135,7 @@ export function startDarkHome(root) {
     scenes.forEach(s => { const pre = PRE.has(s.el.id) ? innerHeight * .6 : 0;   // a chapter starts playing while it scrolls into view, so it is already showing when it arrives
       s.top = s.el.offsetTop - pre; s.len = Math.max(1, s.el.offsetHeight - innerHeight + pre); });
     const cols = mob() ? 3 : 4; cells.forEach(c => { c.row = Math.floor(c.i / cols); });
-    root.querySelectorAll('.stage').forEach(st => { st.style.setProperty('--kd', Math.min(1, st.clientWidth / 940).toFixed(3)); st.style.setProperty('--k', (Math.min(1, st.clientWidth / 520, st.clientHeight / 760) * (mob() ? .92 : 1)).toFixed(3)); /* a phone keeps room for cards that come forward in 3D */ });
+    root.querySelectorAll('.stage').forEach(st => { st.style.setProperty('--kd', Math.min(1, st.clientWidth / 940).toFixed(3)); st.style.setProperty('--k', (Math.min(1, st.clientWidth / 520, st.clientHeight / 760)).toFixed(3)); });
     placeRings();
   }
 

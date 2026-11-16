@@ -13,14 +13,15 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { serverError } from '../lib/httpError.js';
+import { keptSince } from '../lib/siteEvents.js';
 
 const router = express.Router();
 const vid = (req) => Number(req.user?.vendor_id);
 
-/** Days back, kept sane — a year is all that is retained anyway. */
+/** Days back, never further than what is kept. */
 function windowDays(q) {
-  const d = Number(q?.days);
-  return Number.isFinite(d) && d >= 1 && d <= 365 ? Math.floor(d) : 30;
+  const d = Number(q?.days), kept = Math.floor((Date.now() - keptSince()) / 864e5);
+  return Number.isFinite(d) && d >= 1 && d <= kept ? Math.floor(d) : 30;
 }
 
 /**
