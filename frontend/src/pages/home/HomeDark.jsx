@@ -83,14 +83,14 @@ export default function HomeDark({ open, trialOk, cycle, setCycle, plans, compar
         </div>
         <div className="plans">
           {plans.map((p, i) => {
-            const pr = priceOf(p), isBest = best && p.code === best.code, free = Number(p.price_monthly) === 0;
+            const pr = priceOf(p), isBest = best && p.code === best.code;
             return (
               <div key={p.id} className={`plan${isBest ? ' best' : ''}`}>
                 {isBest && <span className="tag">Best value</span>}
                 <h3>{p.name}</h3><p className="f">{p.tagline}</p>
                 <div className="pr">{pr.big}<small>{pr.unit}</small></div><div className="sv">{pr.save}</div>
                 <ul>{i > 0 && <li>Everything in {plans[i - 1].name}</li>}{adds(p, i).map(r => <li key={r.key}>{r.label}{r.coming && <span className="soon">soon</span>}</li>)}</ul>
-                <button type="button" className={`btn ${isBest ? 'btn-o' : 'btn-g'}`} onClick={() => choosePlan(p, 'package')}>{!open ? 'Join the waitlist' : free ? 'Start free' : `Choose ${p.name}`}</button>
+                <button type="button" className={`btn ${isBest ? 'btn-o' : 'btn-g'}`} onClick={() => choosePlan(p, 'package')}>{!open ? 'Join the waitlist' : `Choose ${p.name}`}</button>
                 {p.trial_days > 0 && trialOk && <p className="trial">{p.trial_days}-day free trial</p>}
               </div>
             );

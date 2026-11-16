@@ -76,7 +76,6 @@ export function InquiryShell({ cfg, intro = true, art = true, embedded = false, 
           </div>
         </div>
         {children}
-        {c.powered_by && <a className="iq-powered" href="https://iwopo.com" target="_blank" rel="noopener noreferrer">Powered by iwopo</a>}
       </div>
       {links && <ClientFooter links={links} />}
       {aside}
@@ -149,7 +148,7 @@ export default function InquiryForm({ handle, byHost = false }) {
   const [cfg, setCfg] = useState(null);
   // 🔗 a handle that resolves to nothing gets its own card. Falling back to an
   // empty form let a dead link render a blank inquiry that submitted nowhere.
-  const [gone, setGone] = useState(false);
+  const [gone, setGone] = useState(null);   // why the form can't show: 'missing' (no such link) | 'closed' (not taking inquiries)
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   // 🎯 the field an error is about — it is outlined, scrolled to and focused,
@@ -172,7 +171,7 @@ export default function InquiryForm({ handle, byHost = false }) {
   useEffect(() => {
     const load = byHost ? api.inquirySettingsByHost() : api.inquirySettings(handle);
     load.then(d => { setCfg(d.settings); if (d.slug) setWho(d.slug); })
-        .catch(() => { setGone(true); setCfg({}); });
+        .catch(e => { setGone(e.code === 'studio_closed' ? 'closed' : 'missing'); setCfg({}); });
   }, [handle, byHost]);
 
   /** Mark every problem, and take the client to the first one. */
@@ -206,8 +205,9 @@ export default function InquiryForm({ handle, byHost = false }) {
     <div className="iq-wrap">
       <div className="iq-card iq-done">
         <div className="iq-check">🔗</div>
-        <h2>This link isn&apos;t in use</h2>
-        <p>It may have changed. Ask the studio for their current inquiry link.</p>
+        {gone === 'closed'
+          ? <><h2>Not taking inquiries online right now</h2><p>Please contact the studio directly.</p></>
+          : <><h2>This link isn&apos;t in use</h2><p>It may have changed. Ask the studio for their current inquiry link.</p></>}
       </div>
     </div>
   );

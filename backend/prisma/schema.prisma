@@ -819,8 +819,6 @@ model users {
   password_reset_tokens password_reset_tokens[]
   revoked_tokens        revoked_tokens[]
   vendors               vendors?                @relation(fields: [vendor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  /// 👣 last time this person used the panel (at most hourly) — the Free clean-up counts from it (lib/inactiveFree.js)
-  last_seen_at          DateTime?               @db.Timestamptz(6)
 
   @@index([vendor_id], map: "idx_users_vendor")
 }
@@ -899,9 +897,6 @@ model vendor_settings {
   /// 💳 the vendor's OWN Stripe account (Stripe Connect, Standard, OAuth) — client card payments go straight to it
   stripe_account_id       String?   @db.VarChar(64)
   stripe_connected_at     DateTime? @db.Timestamptz(6)
-  /// 🧹 Free clean-up: 0 none · 1 six-month notice · 2 final notice · 3 data removed — and when the first notice went
-  inactive_stage          Int       @default(0)
-  inactive_notice_at      DateTime? @db.Timestamptz(6)
 }
 
 model vendor_subscriptions {
@@ -1015,11 +1010,15 @@ model vendors {
   pc_jobs                  pc_jobs[]
   agent_delivery_log       agent_delivery_log[]
   /// 💳 billing (lib/billing.js): the Stripe customer, when the free trial ends, the owner account that is never billed,
-  /// and how many trial reminders have gone out (lib/trialReminders.js)
+  /// and how many trial-ending notices have gone out (lib/accountLapse.js)
   stripe_customer_id       String?                    @unique @db.VarChar(64)
   trial_ends_at            DateTime?                  @db.Timestamptz(6)
   billing_exempt           Boolean                    @default(false)
   trial_reminders          Int                        @default(0)
+  /// ⏳ when access ended (day 0), how many of its steps have happened and when the last one did (lib/accountLapse.js)
+  lapsed_at                DateTime?                  @db.Timestamptz(6)
+  lapse_step               Int                        @default(0)
+  lapse_step_at            DateTime?                  @db.Timestamptz(6)
   albums                   albums[]
   photos                   photos[]
   album_events             album_events[]

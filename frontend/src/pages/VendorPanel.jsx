@@ -226,6 +226,7 @@ export default function VendorPanel({ onLogout }) {
   /* 👋 The getting-started steps, once, after the first payment (Raj, 2026-11-07). Stripe sends the vendor back here
      a moment before its webhook records the payment, so on that return the check repeats for up to ~20 seconds. */
   const [welcome, setWelcome] = useState(null);
+  const [suspended, setSuspended] = useState(false);   // ⏳ access ended a week ago: only Plans (lib/accountLapse.js)
   useEffect(() => {
     let stop = false, tries = 0;
     const justPaid = new URLSearchParams(window.location.search).get('billing') === 'done';
@@ -234,6 +235,7 @@ export default function VendorPanel({ onLogout }) {
       try {
         const b = await api.billing();
         if (stop) return;
+        setSuspended(b.stage === 'suspended');
         if (b.welcome) setWelcome(b.welcome.plan);
         else if (justPaid && !b.subscription && ++tries < 10) setTimeout(check, 2000);
       } catch { /* the steps are a courtesy — never block the panel */ }
@@ -389,13 +391,13 @@ export default function VendorPanel({ onLogout }) {
       </button>
 
       <main className="main">
-        <BillingBanner onPlans={() => go('plans')} />
+        {!suspended && tab !== 'plans' && <BillingBanner onPlans={() => go('plans')} />}   {/* Plans carries the account's state itself */}
         {welcome && <WelcomeSteps plan={welcome} onGo={(t) => { closeWelcome(); go(t); }} onClose={closeWelcome} />}
         {/* 📐 no top strip (Raj, 2026-11-12): calendar and bell in the top-right corner; the page's name is kept for
             screen readers; the menu button shows on a phone only, where it opens the drawer */}
         <div className="top-actions">
           <button className="menu-btn" onClick={() => setCollapsed(c => !c)} title="Menu">☰</button>
-          <h1 className="top-title">{tab === 'dashboard' ? 'Dashboard' : tab === 'ppm' ? 'PPM Board' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'plans' ? 'Plans & Upgrades' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
+          <h1 className="top-title">{suspended || tab === 'plans' ? 'Plans & Upgrades' : tab === 'dashboard' ? 'Dashboard' : tab === 'ppm' ? 'PPM Board' : tab === 'refer' ? 'Refer a Friend' : tab === 'help' ? 'Help & Support' : tab === 'leads' ? 'Leads' : tab === 'settings' ? 'Settings' : tab === 'packages' ? 'My Packages' : tab === 'bookings' ? 'Bookings' : tab === 'inqform' ? 'Inquiry Form' : tab === 'contracts' ? 'Contracts & Invoices' : tab === 'crew' ? 'Crew Management' : tab === 'galleries' ? 'Galleries' : tab === 'fileflyer' ? 'File Flyer' : tab === 'analytics' ? 'Analytics' : tab === 'comms' ? 'Calls & Messages' : tab === 'rawsel' ? 'Raw Selector' : tab === 'agent' ? 'AI Agent' : tab === 'liveshoot' ? 'Live Shoot' : tab === 'requests' ? 'Photo Selection' : tab === 'occasions' ? 'Occasions' : tab === 'website' ? 'My Website' : tab === 'aichat' ? 'AI Chat' : tab === 'calendar' ? 'Calendar' : 'My Services'}</h1>
           <div className="top-icons">
             {has('calendar') && <button className={`hdr-icon ${tab==='calendar'?'active':''}`} onClick={() => setTab(tab === 'calendar' ? 'dashboard' : 'calendar')} title="Quick Calendar">🗓️</button>}
             <NotifBell onOpen={openNotification} />
@@ -412,7 +414,9 @@ export default function VendorPanel({ onLogout }) {
           </div>
         )}
         <Suspense fallback={<div className="tab-loading">Loading…</div>}>
-          {TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) && !cleanup.includes(TAB_FEATURE[tab]) ? (
+          {suspended ? (
+            <PlansView />
+          ) : TAB_FEATURE[tab] && !has(TAB_FEATURE[tab]) && !cleanup.includes(TAB_FEATURE[tab]) ? (
             <FeatureLocked goServices={() => setTab('services')} />
           ) : (loading && !features) ? <div className="loading">Loading…</div> : tab === 'help' ? (
             <HelpView user={user} onGo={(t) => go(t)} />

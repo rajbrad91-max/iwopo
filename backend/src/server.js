@@ -37,6 +37,8 @@ import fileRoutes from './routes/files.js';
 import filePublicRoutes from './routes/filesPublic.js';
 import siteRoutes from './routes/sites.js';
 import { gate } from './lib/entitlements.js';
+import { accountLock } from './middleware/accountLock.js';
+import { publicDoor } from './middleware/publicDoors.js';
 import { sweepRevoked } from './lib/tokenRevocation.js';
 import { sweepAbandonedUploads } from './lib/uploadSweep.js';
 import { sweepGalleryOrphans } from './lib/orphanSweep.js';
@@ -76,13 +78,12 @@ import { hostContext, PLATFORM_HOST } from './lib/vendorHosts.js';
 import { hostGuard } from './lib/hostGuard.js';
 import domainRoutes from './routes/domain.js';
 import billingRoutes, { billingWebhook } from './routes/billing.js';
-import { startTrialReminders } from './lib/trialReminders.js';
+import { startLapseSweep } from './lib/accountLapse.js';
 import supportRoutes from './routes/support.js';
 import { serverError } from './lib/httpError.js';
 import { quiet } from './lib/quiet.js';
 import { sweepOverLimit } from './lib/overLimit.js';
 import stripeConnectRoutes, { connectWebhook } from './routes/stripeConnect.js';
-import { sweepInactiveFree } from './lib/inactiveFree.js';
 import helpVideosRouter from './routes/helpVideos.js';
 import clientLinksRoutes from './routes/clientLinks.js';
 import { vendorPage } from './lib/vendorPage.js';
@@ -188,10 +189,11 @@ app.use(hostContext());
 // addresses send pages here (nginx location @page, scripts/domainProvisioner.js); iwopo's own host never matches.
 app.use((req, res, next) => (req.hostVendor && (req.method === 'GET' || req.method === 'HEAD') && !req.path.startsWith('/api/') ? vendorPage(req, res) : next()));
 app.use('/api', hostGuard());
+app.use('/api', accountLock);   // ⏳ a vendor whose access has ended: read-only, then only Plans (lib/accountLapse.js)
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
-app.use('/api/leads', gate('leads'), leadRoutes);
+app.use('/api/leads', publicDoor('lead'), gate('leads'), leadRoutes);
 // 📇 the address book — not gated: sending files is not a leads feature
 app.use('/api/contacts', contactRoutes);
 app.use('/api/me/client-links', clientLinksRoutes);   // 🔗 optional links on the client pages
@@ -200,18 +202,18 @@ app.use('/api/vendor-packages', vendorPackageRoutes);
 app.use('/api/payments', gate('leads'), paymentRoutes);
 app.use('/api/bookings', gate('leads'), bookingRoutes);
 app.use('/api/weather', gate('leads'), weatherRoutes);   // 🌦️ forecast beside the dashboard tiles
-app.use('/api/inquiry-settings', gate('leads'), inquirySettingsRoutes);
+app.use('/api/inquiry-settings', publicDoor('inquiry'), gate('leads'), inquirySettingsRoutes);
 app.use('/api/email', gate('leads'), emailRoutes);
-app.use('/api/contracts', gate('contracts'), contractRoutes);
-app.use('/api/invoices', gate('contracts'), invoiceRoutes);
+app.use('/api/contracts', publicDoor('contract'), gate('contracts'), contractRoutes);
+app.use('/api/invoices', publicDoor('invoice'), gate('contracts'), invoiceRoutes);
 app.use('/api/crew', gate('crew'), crewRoutes);
 app.use('/api/albums', gate('galleries'), albumRoutes);
-app.use('/api/g', galleryPublicRoutes);
+app.use('/api/g', publicDoor('gallery'), galleryPublicRoutes);
 app.use('/api/stripe-connect', stripeConnectRoutes);   // 💳 connect / disconnect a vendor's own Stripe // 🌐 public client gallery (no auth/gate)
 app.use('/api/poll', pollRoutes); // 🗳️ public voting page (one vote per IP)
-app.use('/api/chatbot', chatbotRoutes); // 🤖 Wopo Assistant chatbot: subscribers + knowledge base
+app.use('/api/chatbot', publicDoor('chat'), chatbotRoutes); // 🤖 Wopo Assistant chatbot: subscribers + knowledge base
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/portal', portalRoutes);
+app.use('/api/portal', publicDoor('portal'), portalRoutes);
 app.use('/api/lead-packages', gate('leads'), leadPackageRoutes);
 // 🌐 Website Builder. Gated on `website`, so the super-admin toggle now decides
 // whether a vendor can build one — the public /:slug read carries no token, and
@@ -249,9 +251,9 @@ app.use('/', seoRoutes);
 app.use(seoMiddleware());
 /* 🎥 Live shoot — public, and deliberately so: a guest has no account. The
    selfie and the signed pass are what stand in for one. */
-app.use('/api/live', liveshootRoutes);
-app.use('/api/f', filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
-app.use('/api/sites', gate('website'), siteRoutes);
+app.use('/api/live', publicDoor('live'), liveshootRoutes);
+app.use('/api/f', publicDoor('files'), filePublicRoutes); // 📤 public File Flyer share (no auth/gate)
+app.use('/api/sites', publicDoor('site'), gate('website'), siteRoutes);
 app.use('/api/domain', domainRoutes);     // 🌐 the vendor's web address (free subdomain + own domain)
 app.use('/api/billing', billingRoutes);   // 💳 plans, Stripe checkout and billing portal
 app.use('/api/support', supportRoutes);   // 🛟 vendors' help messages
@@ -320,15 +322,11 @@ setInterval(() => { reconcile(objects).catch(quiet('server · reconcile')); }, 2
 /* 🎫 Close subscriptions whose end date has passed. The quota already ignores
    them, so this is about the record being honest rather than the allowance. */
 setInterval(() => { sweepExpiredSubscriptions().catch(quiet('server · sweepExpiredSubscriptions')); }, 60 * 60_000).unref();
-// 🧹 Free accounts nobody uses: 6 months → notice, a week before → final notice, end of month 7 → data removed (lib/inactiveFree.js)
-setInterval(() => { sweepInactiveFree().catch(quiet('server · sweepInactiveFree')); }, 24 * 60 * 60_000).unref();
 // 📏 over the storage limit: the 15-day countdown, its reminders and the lock (lib/overLimit.js)
 setInterval(() => { sweepOverLimit().catch(quiet('server · sweepOverLimit')); }, 60 * 60_000).unref();
 sweepExpiredSubscriptions().catch(quiet('server · sweepExpiredSubscriptions'));
 
-/* 📊 Visitor events older than a year. Long enough to compare this season with
-   last, and no longer — a table that only grows is a bill nobody decided to
-   pay, and old visitor data is a liability rather than an asset. */
+/* 📊 Visitor events older than 26 months (lib/siteEvents.js KEEP_MONTHS). */
 setInterval(() => { sweepOldEvents().catch(quiet('server · sweepOldEvents')); }, 24 * 60 * 60_000).unref();
 
 /* 🎉 Once a day. The reminder IS the feature — without it Raj has to
@@ -372,7 +370,7 @@ setInterval(() => { refreshBriefings().catch(quiet('server · refreshBriefings')
 // 📇 Tornado's contact index, near real time: new or changed leads, calls, texts and payments every 10 s
 setInterval(() => { syncContactsQuick().catch(e => console.error('[agent] contact sync', e.message)); }, 10_000).unref();
 
-startTrialReminders();   // ⏳ 7-day, 1-day and trial-ended notices (lib/trialReminders.js)
+startLapseSweep();   // ⏳ trial-ending notices, then read-only, suspended and cleared (lib/accountLapse.js)
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`🚀 iwopo API running on http://localhost:${PORT}`);
 });

@@ -114,7 +114,7 @@ router.get('/plans', requireAuth, async (req, res) => {
       plans: rows,
       current: {
         on_plan: st.limit_source === 'plan',
-        name: st.plan_name || 'Free trial',   // "Pro trial", "Essential", "Free" — the plan in effect
+        name: st.plan_name || 'Free trial',   // "Pro trial", "Essential" — the plan in effect
         limit_gb: currentGb,
         used_bytes: st.used_bytes,
         percent: st.percent,

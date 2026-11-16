@@ -20,7 +20,7 @@ export default function MyServicesView({ onPlans }) {
 
   const cur = b.current_plan || {};
   const card = (b.plans || []).find(p => p.code === cur.code);
-  const trialOrFree = cur.code === 'free' || cur.reason === 'trial';
+  const unpaid = cur.reason === 'trial' || cur.reason === 'expired';
   const per = (a) => {
     const unit = a.cycle === 'annual' ? '/yr' : '/mo';
     if (a.local) return `${fmtMoney(a.cycle === 'annual' ? a.local.price_annual : a.local.price, { currency: a.local.currency })}${unit}`;   // 🌍 the fixed price in their currency
@@ -69,7 +69,7 @@ export default function MyServicesView({ onPlans }) {
           <h2 className="svx-plan-name">{cur.name}{cur.reason === 'trial' && <span className="svx-pill is-in">Free trial</span>}</h2>
           {card?.tagline && <p className="svx-plan-sub">{card.tagline}</p>}
         </div>
-        <button type="button" className="refresh svx-change" onClick={onPlans}>{trialOrFree ? 'Choose a plan' : 'Change plan'}</button>
+        <button type="button" className="refresh svx-change" onClick={onPlans}>{unpaid ? 'Choose a plan' : 'Change plan'}</button>
       </section>
 
       <section className="svx-sec">

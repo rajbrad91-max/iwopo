@@ -1,8 +1,9 @@
 /**
  * 💳 /api/billing — choose a plan, pay with Stripe, manage it (2026-10-31).
  *
- *   GET  /api/billing           where this vendor stands: owner / trial (days left) / paid / expired, the plans with
- *                                monthly and yearly prices, and what they are on
+ *   GET  /api/billing           where this vendor stands: owner / trial (days left) / paid / expired (read-only or
+ *                                suspended, and when each next step comes), the plans with monthly and yearly prices,
+ *                                and what they are on
  *   POST /api/billing/checkout  { plan_id, cycle } → a Stripe Checkout link. Billing starts when their free trial
  *                                ends, so paying early never costs free days. Already subscribed → the billing portal.
  *   POST /api/billing/portal    → Stripe's billing portal (card, monthly ↔ yearly, plan, cancel, invoices)
@@ -16,6 +17,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { stripe, stripeReady, verifyWebhook } from '../lib/stripe.js';
 import { billingAccess, paidSubscription, stripePriceFor, stripeCustomerFor, recordSubscription, annualOf, carriedTrialEnd, currentPlan } from '../lib/billing.js';
 import { forgetHosts } from '../lib/vendorHosts.js';
+import { accountStage, lapseDates } from '../lib/accountLapse.js';
 import { notify } from './notifications.js';
 import { serverError } from '../lib/httpError.js';
 import { planCompare } from '../lib/planCatalog.js';
@@ -92,7 +94,7 @@ router.get('/', async (req, res) => {
   try {
     // 🌍 one country for what is shown here and what checkout charges (billingCountry)
     const country = await billingCountry(v, req);
-    const [access, sub, compare] = await Promise.all([billingAccess(v), paidSubscription(v), planCompare({ country })]);
+    const [access, sub, compare, closed] = await Promise.all([billingAccess(v), paidSubscription(v), planCompare({ country }), accountStage(v)]);
     const plans = compare.plans;
     const daysLeft = access.trialEndsAt ? Math.max(0, Math.floor((access.trialEndsAt - Date.now()) / DAY)) : 0;   // whole days, as Stripe counts
     res.json({
@@ -101,17 +103,18 @@ router.get('/', async (req, res) => {
       welcome: sub ? await welcomeDue(v, sub) : null,   // 👋 the getting-started steps, once after paying
       ready: stripeReady(),
       state: access.reason,                              // owner | paid | trial | expired
+      stage: closed.stage,                               // ⏳ open | readonly | suspended (lib/accountLapse.js)
+      ...(closed.stage === 'open' ? {} : lapseDates(closed.lapsedAt || new Date())),
       trial_ends_at: access.trialEndsAt, trial_days_left: access.reason === 'trial' ? daysLeft : 0,
       subscription: sub ? { plan_id: sub.plan_id, status: sub.status, cycle: sub.billing_cycle, renews_at: sub.current_period_end, cancels: sub.cancel_at_period_end } : null,
       current_plan: await currentPlan(v).then(c => ({ code: c.plan?.code, name: c.plan?.name, reason: c.reason })),
       addons: await addonsFor(v, { country }),
-      // the paid plans as cards (Free is where an unpaid account rests, never something to check out)
-      plans: plans.filter(p => p.price_monthly > 0).map(p => ({
+      plans: plans.map(p => ({
         id: p.id, code: p.code, name: p.name, tagline: p.tagline, storage_gb: p.storage_gb,
         monthly: p.price_monthly, annual: p.price_annual || annualOf(p.price_monthly), lines: p.lines, local: p.local,
       })),
       // 📊 the pricing table at this vendor's own prices — Plans & Upgrades shows it (2026-11-11)
-      table: { plans: plans.filter(p => p.price_monthly > 0), groups: compare.groups, notes: compare.notes },
+      table: { plans, groups: compare.groups, notes: compare.notes },
     });
   } catch (e) { serverError(res, e); }
 });

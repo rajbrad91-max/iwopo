@@ -20,7 +20,6 @@ import './plan-table.css';
  * like the sign-up box's.
  */
 export function planPriceOf(p, cycle = 'monthly') {
-  if (Number(p.price_monthly) === 0) return { big: '$0', unit: '', sub: 'Free forever', note: true, text: 'Free' };
   const annual = cycle === 'annual';
   const unit = annual ? '/yr' : '/mo';
   if (p.local) {
@@ -70,7 +69,7 @@ export default function PlanTable({ plans, groups, notes = [], priceOf, onChoose
               const pop = p.code === 'pro';
               const mine = p.code === currentCode;
               const cta = ctaFor ? ctaFor(p) : {
-                label: !open ? 'Join the waitlist' : Number(p.price_monthly) === 0 ? 'Start free' : `Choose ${p.name}`,
+                label: !open ? 'Join the waitlist' : `Choose ${p.name}`,
                 onClick: () => onChoose(p),
               };
               return (

@@ -197,7 +197,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
      (routes/billing.js). It used to take a plan name from the request and create an active paid subscription —
      anyone could have asked for "pro" and had it free (Raj, 2026-11-07).
      🧪 The free-trial limit per connection limits TRIALS, never accounts: with the trials used up the account is
-     still made, without a trial — it starts on Free and can buy any plan straight away. */
+     still made, without a trial — it starts read-only (lib/accountLapse.js) and can buy any plan straight away. */
   const ip = clientIp(req);
   const withTrial = (await trialCount(ip)) < TRIAL_LIMIT;
   // 💳 the paid plan they chose, remembered (not granted) — only a real plan with a price

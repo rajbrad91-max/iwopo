@@ -18,9 +18,10 @@ const SECRET = JWT_SECRET;
 export async function getFeatures(vendorId) {
   const vid = Number(vendorId);
 
-  /* 📋 What the plan in effect unlocks (lib/billing.js currentPlan — owner / paying: their plan · trial: Pro · trial
-     over and unpaid: Free, so a vendor keeps taking enquiries rather than losing the panel), plus a standalone service
-     they pay for while their account is in good standing, then Super Admin's own on/off last. */
+  /* 📋 What the plan in effect unlocks (lib/billing.js currentPlan — owner / paying: their plan · trial: Pro · access
+     ended: the plan they last had, so a read-only account can still look at everything; middleware/accountLock.js
+     decides what it may do), plus a standalone service they pay for while their account is in good standing, then
+     Super Admin's own on/off last. */
   const { plan, access } = await currentPlan(vid);
   const set = new Set((plan?.plan_features || []).map(f => f.feature_key));
   if (access.allowed) {
@@ -49,7 +50,7 @@ export async function getFeatures(vendorId) {
 }
 
 /** Decode Bearer token if present (does NOT reject — public routes pass through). */
-function tryUser(req) {
+export function tryUser(req) {
   const h = req.headers.authorization;
   if (!h?.startsWith('Bearer ')) return null;
   try { return jwt.verify(h.split(' ')[1], SECRET); } catch { return null; }

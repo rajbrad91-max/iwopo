@@ -4,7 +4,7 @@
  * Access (Raj): a vendor uses their features while (a) they are the owner account (vendors.billing_exempt), or
  * (b) Stripe says their subscription is paid or in its trial (active / trialing / past_due — past_due is Stripe's
  * retry window), or (c) their free trial has not ended (vendors.trial_ends_at, else created_at + TRIAL_DAYS).
- * Otherwise their features pause — nothing is deleted — until they choose a plan.
+ * Otherwise the account closes — read-only, then suspended, then cleared (lib/accountLapse.js) — until they choose a plan.
  *
  * A subscription row only counts beyond the trial when Stripe backs it (stripe_subscription_id): choosing a plan at
  * sign-up used to grant it with no payment at all.
@@ -40,7 +40,7 @@ export const endOfDay = (d) => { const x = new Date(d); x.setUTCHours(23, 59, 59
 export const trialEnd = (v) => (v?.trial_ends_at ? new Date(v.trial_ends_at) : endOfDay(new Date(v?.created_at || Date.now()).getTime() + TRIAL_DAYS * DAY));
 /** 🧪 When a new account's free trial ends: the trial plan's own trial days, as set in Super Admin's pricing table
  *  (Raj, 2026-11-07) — stamped on the account at sign-up, so a later edit never shortens a trial already running.
- *  0 days means no trial: the account starts on Free. */
+ *  0 days means no trial: the account starts closed (read-only) until a plan is paid. */
 export async function signupTrialEnd() {
   const p = await prisma.plans.findUnique({ where: { code: TRIAL_PLAN }, select: { trial_days: true } });
   const days = Number(p?.trial_days ?? TRIAL_DAYS);
@@ -78,8 +78,9 @@ export async function billingAccess(vendorId) {
  * Wopo Assistant limit all read, so the three can never disagree:
  *   owner or paying      → the plan of their current subscription (an owner with none: Studio)
  *   in the free trial    → Pro, with storage capped at TRIAL_STORAGE_GB
- *   trial over, unpaid   → Free (they keep their leads and can still take enquiries; nothing is locked away)
- * Returns { plan, reason: 'owner' | 'paid' | 'trial' | 'free', access } — plan carries its plan_features.
+ *   access ended         → the plan they last had (else the trial's), so a read-only account can still look at
+ *                          everything — what it may do is middleware/accountLock.js's question
+ * Returns { plan, reason: 'owner' | 'paid' | 'trial' | 'expired', access } — plan carries its plan_features.
  */
 const TRIAL_PLAN = 'pro';
 export const TRIAL_STORAGE_GB = 10;
@@ -97,7 +98,12 @@ export async function currentPlan(vendorId) {
     if (sub?.plans) return { plan: sub.plans, reason: access.reason, access };
     if (access.reason === 'owner') return { plan: await byCode('studio'), reason: 'owner', access };
   }
-  return { plan: await byCode('free'), reason: 'free', access };
+  const last = await prisma.vendor_subscriptions.findFirst({
+    where: { vendor_id: Number(vendorId) },                     // 🔒 tenancy
+    orderBy: { started_at: 'desc' },
+    select: { plans: { select: PLAN_SELECT } },
+  });
+  return { plan: last?.plans || await byCode(TRIAL_PLAN), reason: access.allowed ? access.reason : 'expired', access };
 }
 
 /**

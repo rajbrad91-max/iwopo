@@ -83,8 +83,11 @@ export default function PlansView() {
             <p>🆓 <b>{b.trial_days_left} {b.trial_days_left === 1 ? 'day' : 'days'} left</b> in your free trial (until {date(b.trial_ends_at)}).
               Choose a plan any time — <b>billing starts only when the trial ends</b>.</p>
           )}
-          {b.state === 'expired' && (
-            <p className="pl-state-warn"><b>Your free trial has ended.</b> Your features are paused — your clients, galleries and files are safe. Choose a plan to switch everything back on.</p>
+          {b.stage === 'readonly' && (
+            <p className="pl-state-warn"><b>Your account is read-only.</b> You can look at and download everything, but nothing new comes in. Choose a plan to switch everything back on — otherwise it is suspended on {date(b.suspends_at)}.</p>
+          )}
+          {b.stage === 'suspended' && (
+            <p className="pl-state-warn"><b>Your account is suspended.</b> Choose a plan to open it again with everything in it — from {date(b.removable_from)} your photos, files, leads and bookings can be removed.</p>
           )}
           {sub && (
             <p>✅ <b>{b.plans.find(p => p.id === sub.plan_id)?.name || 'Your plan'}</b>, {sub.cycle === 'annual' ? 'yearly' : 'monthly'}

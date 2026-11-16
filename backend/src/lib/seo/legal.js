@@ -7,7 +7,7 @@
  * contact sales@iwopo.com. Not written by a lawyer: to be reviewed by one before relying on it.
  * Rendered by lib/seoPage.js like every other standalone page; listed in allPages() so footers and the sitemap agree.
  */
-export const LEGAL_UPDATED = '2026-11-12';
+export const LEGAL_UPDATED = '2026-11-16';
 const CONTACT = 'sales@iwopo.com';
 const COMPANY = 'IWOPO, LLC, 3 Germay Dr, Unit 4 #3327, Wilmington, DE 19804, USA';
 
@@ -34,9 +34,9 @@ export const LEGAL = {
         'One person or business may not hold multiple accounts to obtain repeated free trials or to avoid limits.',
       ] },
       { h2: '4. Plans, free trials and prices', ul: [
-        'The Free Plan has no charge. Paid Plans and Add-ons are billed in advance, monthly or yearly, as you choose.',
+        'Paid Plans and Add-ons are billed in advance, monthly or yearly, as you choose. There is no free Plan.',
         'Essential and Pro begin with a free trial (currently 30 days) that needs no payment card. Studio has no free trial and is charged from the day you choose it. We may change or end trial offers for new sign-ups at any time.',
-        'If you choose a paid Plan during a trial, billing begins when the trial ends. If a trial ends without a paid Plan, your account moves to the Free Plan: your inquiry form, leads and packages keep working, and paid features stop until you subscribe.',
+        'If you choose a paid Plan during a trial, billing begins when the trial ends. If a trial ends without a paid Plan, your account becomes read-only, as described in section 16.',
         'Prices are shown on our pricing page. In the countries we list, prices are fixed in the local currency and you are charged exactly the amount shown; elsewhere prices are in US dollars. Your bank or card issuer may apply its own conversion or fees.',
         'Taxes (such as sales tax, VAT or GST) are added where the law requires and are your responsibility unless we state that a price includes them.',
         'Storage counts everything iwopo keeps for your account: your original files and the viewing copies iwopo makes of each photo and video (a full-screen version and a thumbnail) so your Clients can view them quickly. Your storage meter shows the total.',
@@ -46,7 +46,7 @@ export const LEGAL = {
         'Subscriptions renew automatically for the same period until you turn auto-renew off in Settings → Account or cancel in Plans → Manage billing.',
         'Add-ons are charged for the remainder of the current Paid Period when added and then renew with your Plan. When you remove one, it stays active until the end of the period you have paid for.',
         'A price you have paid is not changed during your current Paid Period. If we change the price of your Plan or Add-on for a later period, we will tell you by email or in the Service at least 30 days before the renewal it applies to, and you may cancel before then.',
-        'If a payment fails, we may retry it, ask you to update your payment method, and limit paid features or move the account to the Free Plan until the amount due is paid.',
+        'If a payment fails, we may retry it, ask you to update your payment method, and make the account read-only until the amount due is paid.',
         'Referral credits and promotional offers have no cash value, cannot be transferred, and are subject to the conditions shown when they are offered. We may withdraw them where we reasonably suspect abuse.',
       ] },
       { h2: '6. Cancellation and refunds', p: [
@@ -99,11 +99,12 @@ export const LEGAL = {
         'We may also stop offering the Service. If we do, we will give paying customers at least 30 days\' notice and a pro-rata refund of any prepaid period after the end date.',
       ] },
       { h2: '16. What happens to your Content when an account ends', ul: [
-        'If your trial ends or your Plan lapses, your account moves to the Free Plan and your Content is kept, so you can return by choosing a Plan.',
+        'If your trial ends or your Plan lapses without a paid Plan, your account becomes read-only: you can sign in, view and download your Content, but nothing new can be received, added or changed, and your inquiry form is closed.',
+        'If no Plan is chosen within 7 days, the account is suspended: you can sign in only to choose a Plan, and your Clients\' links, client portal and website stop working.',
+        'From 14 days after the trial or Plan ended, the Content in a suspended account may be removed. We email you before each of these steps. Removed Content cannot be recovered. The account itself — your sign-in, business details and settings — is kept, so you can return by choosing a Plan; choosing one before your Content is removed brings everything back.',
         'If your files exceed what your Plan and Add-ons allow (for example after moving to a smaller Plan), you have 15 days to delete some or choose a larger Plan. After that your galleries and files are locked — not viewable or downloadable by you or your Clients — until you are within your limit. You can still delete files while they are locked.',
-        'If no one signs in to a Free Plan account for 6 months we email you; if no one signs in within the following month, its leads, packages, galleries and files are removed. The account itself is kept so you can sign in again. Accounts on a paid Plan are never removed this way.',
         `You may ask us to delete your account at any time at ${CONTACT}. Deleted Content is removed from our live systems promptly and from backups within a reasonable period.`,
-        'On a paid Plan you can download your Content at any time. On the Free Plan we provide a copy on request.',
+        'While your account is open or read-only you can download your Content at any time.',
       ] },
       { h2: '17. Availability, support and changes to the Service', p: ['We work to keep the Service available and secure, but we do not promise that it will be uninterrupted or error-free. It may be unavailable for maintenance, updates, or reasons beyond our control. We continually improve the Service and may add, change or remove features. If a change materially reduces the features of a Plan you have paid for, we will tell you in advance and you may cancel. Support is provided by email; priority support is included where your Plan says so.'] },
       { h2: '18. Disclaimers', p: [
@@ -190,7 +191,7 @@ export const LEGAL = {
       { h2: '8. AI features', p: ['When a vendor or their client uses an AI feature, such as the chat assistant, the text needed for that request is sent to our AI provider to produce a reply. We do not use your content to train AI models for others. AI output is generated automatically and may be inaccurate; iwopo does not use it to make decisions that have legal or similarly significant effects on people.'] },
       { h2: '9. How long we keep information', ul: [
         'Account information and Content: for as long as the account exists.',
-        'Free Plan accounts no one has signed in to for 7 months (after an email at 6 months): the leads, packages, galleries and files are removed; the account itself is kept.',
+        'Accounts whose trial or Plan ended without a paid Plan: the Content may be removed from 14 days after the end, after email notices; the account itself is kept.',
         'Signed contracts and their signature records: kept with the account as evidence of the agreement.',
         'Billing records: for as long as tax and accounting laws require.',
         'Security logs: for a limited period, then deleted or anonymised.',
@@ -223,7 +224,7 @@ export const LEGAL = {
         'Essential and Pro start with a free trial (currently 30 days). No payment card is needed to start it, and you are not charged during it.',
         'Studio has no free trial and is charged from the day you choose it.',
         'Choosing a paid Plan during a trial does not shorten the trial: billing begins when the trial ends.',
-        'If a trial ends and you have not chosen a paid Plan, your account moves to the Free Plan automatically. You are not charged, and your content is kept.',
+        'If a trial ends and you have not chosen a paid Plan, you are not charged. Your account becomes read-only, then suspended, as described in our Terms of Service.',
         'A trial is offered once per person or business.',
       ] },
       { h2: '2. Billing and automatic renewal', ul: [
@@ -239,8 +240,8 @@ export const LEGAL = {
       ] },
       { h2: '4. What happens after you cancel', ul: [
         'Your Plan and Add-ons stay active until the end of the month or year you have already paid for. You keep full access until then.',
-        'At the end of that period the subscription does not renew and the account moves to the Free Plan. No further charges are made.',
-        'Your content is kept after that, so you can return by choosing a Plan. If your files are more than the Free Plan allows, the storage rules in our Terms of Service apply (you have 15 days to reduce them or choose a Plan before galleries and files are locked).',
+        'At the end of that period the subscription does not renew and no further charges are made. The account then becomes read-only, then suspended, and its content may later be removed, as described in our Terms of Service.',
+        'You can return at any time before your content is removed by choosing a Plan — everything still in the account comes back.',
         'You can reverse a cancellation at any time before the period ends by turning auto-renew back on.',
       ] },
       { h2: '5. Refunds', ul: [
@@ -265,7 +266,7 @@ export const LEGAL = {
       ] },
       { h2: '9. Failed payments', ul: [
         'If a renewal payment fails, we may retry it and will ask you to update your payment method.',
-        'If it remains unpaid, paid features may be limited and the account may be moved to the Free Plan. Your content is kept as described in our Terms of Service.',
+        'If it remains unpaid, the account may become read-only and then suspended, as described in our Terms of Service.',
       ] },
       { h2: '10. Chargebacks and payment disputes', p: [`If you believe a charge is wrong, please write to ${CONTACT} first — we can usually resolve it faster than a bank dispute. If a chargeback is opened for a charge that was correctly made under these terms, we may suspend the account while it is reviewed and provide the bank with the records needed to respond.`] },
       { h2: '11. Referral credits and promotions', p: ['Free months and other credits from referrals or promotions are applied to future invoices. They have no cash value and are not refunded or paid out.'] },

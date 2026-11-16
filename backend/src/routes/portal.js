@@ -321,7 +321,7 @@ router.get('/:token', async (req, res) => {
     const vendorCurrency = currencyFor(vset?.currency, vrow?.country);
 
     res.json({
-      // 🎉 can this vendor take the booking here (contracts in their plan)? Free: the pick becomes a request (Raj, 2026-11-06)
+      // 🎉 can this vendor take the booking here (contracts in their plan)? If not, the pick becomes a request (Raj, 2026-11-06)
       books: (await getFeatures(lead.vendor_id)).has('contracts'),
       card_pay: !!(await accountOf(lead.vendor_id)) && await connectReady(),   // 💳 the vendor's own Stripe is connected
       // 💲 the vendor set this booking's price by hand — the page shows that figure, not one worked out from the package
@@ -383,7 +383,7 @@ router.post('/:token/verify',
   } catch (e) { serverError(res, e); }
 });
 
-/* 🎉 The catch on the Free plan (Raj, 2026-11-06): when a client picks a package from a vendor whose plan has no contracts,
+/* 🎉 The catch on a plan without contracts (Raj, 2026-11-06): when a client picks a package from a vendor whose plan has no contracts,
    no contract is prepared — the vendor is told the client wants to book and that Essential sends the contract and takes
    the deposit; the client is told the vendor will be in touch to confirm. The moment money is near is the moment to upgrade. */
 async function afterPick(lead, packageId, packageName, req, { extrasChanged = false, changed = true } = {}) {
@@ -402,7 +402,8 @@ async function afterPick(lead, packageId, packageName, req, { extrasChanged = fa
 /* 🌐 PUBLIC: POST /api/portal/:token/pick → client picks a package
    body: { package_id, extras?: [{ id, qty }] } — the optional extras the client ticked on THAT package */
 router.post('/:token/pick', limit({ name: 'portal-pick', max: 60, windowMs: 60 * 60_000, key: (r) => r.params.token }), async (req, res) => {
-  const { package_id } = req.body || {};
+  const packageId = Number(req.body?.package_id);
+  if (!Number.isInteger(packageId) || packageId <= 0) return res.status(400).json({ error: 'Choose a package' });
   try {
     const lead = await leadByToken(req.params.token);
     if (!lead) return res.status(404).json({ error: 'Link not found' });
@@ -412,7 +413,7 @@ router.post('/:token/pick', limit({ name: 'portal-pick', max: 60, windowMs: 60 *
     // The id refers to one of the lead's OWN packages when it has them, and to
     // a vendor master only for old leads that predate per-lead packages.
     const own = await prisma.lead_packages.findFirst({
-      where: { id: Number(package_id), lead_id: lead.id },      // 🔒 tenancy via the lead
+      where: { id: packageId, lead_id: lead.id },               // 🔒 tenancy via the lead
     });
     if (own) {
       // the client's ticks on this package, checked against what the vendor offered
@@ -460,7 +461,7 @@ router.post('/:token/pick', limit({ name: 'portal-pick', max: 60, windowMs: 60 *
     // 🔒 legacy path: the package must belong to the lead's vendor
     const p = await prisma.vendor_packages.findFirst({
       where: {
-        id: Number(package_id),
+        id: packageId,
         vendor_id: lead.vendor_id,                             // 🔒 tenancy
         // and only from the folder the vendor actually sent — the portal hides
         // the others, but the id could still be posted directly

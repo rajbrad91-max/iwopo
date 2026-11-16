@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 
 /**
- * 💳 A quiet line across the panel in the last week of a free trial, and a clear one once it has ended
- * (2026-10-31). Never for owners or paying vendors. "Choose a plan" opens Plans.
+ * 💳 A quiet line across the panel in the last week of a free trial, and a clear one once access has ended — read-only,
+ * then suspended (lib/accountLapse.js, Raj 2026-11-15). Never for owners or paying vendors. "Choose a plan" opens Plans.
  */
+const date = (d) => new Date(d).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+
 export default function BillingBanner({ onPlans }) {
   const [b, setB] = useState(null);
   const [lim, setLim] = useState(null);
@@ -42,10 +44,12 @@ export default function BillingBanner({ onPlans }) {
       </div>
     );
   }
-  if (b.state === 'expired') {
+  if (b.stage === 'readonly' || b.stage === 'suspended') {
     return (
-      <div className="bb bb-soon" role="status">
-        <span><b>You're on the Free plan.</b> Your leads and inquiry form keep working — choose a plan to send contracts and take bookings.</span>
+      <div className="bb bb-ended" role="alert">
+        <span>{b.stage === 'readonly'
+          ? <><b>Your account is read-only.</b> You can look at and download everything, but nothing new comes in — choose a plan before {date(b.suspends_at)} so it isn’t suspended.</>
+          : <><b>Your account is suspended.</b> Choose a plan to open it again — from {date(b.removable_from)} your photos, files, leads and bookings can be removed.</>}</span>
         <button type="button" className="bb-btn" onClick={onPlans}>Choose a plan</button>
       </div>
     );

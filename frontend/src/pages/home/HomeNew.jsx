@@ -164,14 +164,14 @@ export default function HomeNew({ open, trialOk, cycle, setCycle, plans, compare
         </div>
         <div className="nh-plans">
           {plans.map((p, i) => {
-            const pr = priceOf(p); const isBest = best && p.code === best.code; const free = Number(p.price_monthly) === 0;
+            const pr = priceOf(p); const isBest = best && p.code === best.code;
             return (
               <div key={p.id} className={`nh-plan${isBest ? ' best' : ''}`}>
                 {isBest && <span className="nh-tag">Best value</span>}
                 <h3>{p.name}</h3><p className="nh-for">{p.tagline}</p>
                 <div className="nh-price">{pr.big}<small>{pr.unit}</small></div><div className="nh-save">{pr.save}</div>
                 <ul>{i > 0 && <li>Everything in {plans[i - 1].name}</li>}{adds(p, i).map(r => <li key={r.key}>{r.label}{r.coming && <span className="nh-soon">soon</span>}</li>)}</ul>
-                <button type="button" className={`nh-btn ${isBest ? 'orange' : 'ghost'}`} onClick={() => choosePlan(p, 'package')}>{!open ? 'Join the waitlist' : free ? 'Start free' : `Choose ${p.name}`}</button>
+                <button type="button" className={`nh-btn ${isBest ? 'orange' : 'ghost'}`} onClick={() => choosePlan(p, 'package')}>{!open ? 'Join the waitlist' : `Choose ${p.name}`}</button>
                 {p.trial_days > 0 && trialOk && <p className="nh-trial">{p.trial_days}-day free trial</p>}
               </div>
             );

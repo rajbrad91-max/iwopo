@@ -67,11 +67,11 @@ async function limitMbFor(vendorId) {
 
   /* The plan in effect (lib/billing.js currentPlan) — the same answer the features come from, so a vendor cannot have
      a plan's features without its storage or the other way round. In the free trial it is Pro's, capped at
-     TRIAL_STORAGE_GB (Raj, 2026-11-06); a trial that ended unpaid is on Free. */
+     TRIAL_STORAGE_GB (Raj, 2026-11-06). */
   const { plan, reason } = await currentPlan(v);
   if (!plan?.storage_gb) return { limitMb: FALLBACK_LIMIT_MB, source: 'fallback', planName: plan?.name || 'No plan' };
-  /* ➕ storage add-ons (+500 GB / +1 TB / +2 TB) a paying vendor has on top — not during the trial, not on Free */
-  const extra = reason === 'trial' || reason === 'free' ? [] : await prisma.vendor_services.findMany({
+  /* ➕ storage add-ons (+500 GB / +1 TB / +2 TB) a paying vendor has on top — not during the trial, not once access has ended */
+  const extra = reason === 'trial' || reason === 'expired' ? [] : await prisma.vendor_services.findMany({
     where: { vendor_id: v, enabled: true, OR: [{ ends_at: null }, { ends_at: { gt: new Date() } }], services: { storage_gb: { gt: 0 } } },   // 🔒 this vendor
     select: { services: { select: { storage_gb: true } } },
   });

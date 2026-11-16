@@ -174,7 +174,7 @@ function FeatVisual({ id }) {
 const INDUSTRIES = PROFESSION_LIST.map(p => p.label);
 
 const FAQ = [
-  ['Is there really a free trial?', 'Yes. Start on a trial with no card required. When it ends you simply choose a plan to keep going — nothing is charged automatically.'],
+  ['Is there really a free trial?', 'Yes. Start on a trial with no card required. When it ends, choose a plan to keep going — until you do, your account is read-only and nothing is charged.'],
   ['Do I have to buy the whole platform?', 'No. Take a full package, or add just the pieces you need — galleries, the vendor suite, cloud storage, or the AI assistant — and add more anytime.'],
   ['Will my galleries be private?', 'Every gallery is private by default, with watermarking, download controls, and per-client access. Your clients only see what you share.'],
   ['What happens to my files if I leave?', "They're yours. You can download your galleries and records at any time — there's no lock-in on your work."],
@@ -337,7 +337,6 @@ export default function Selling({ onSignup, onGoLogin }) {
   );
   const chosenPrice = chosen ? planPriceOf(chosen, chosen.cycle || cycle) : null;
   const buyLine = !chosen ? ''
-    : Number(chosen.price_monthly) === 0 ? 'Free forever'
     : chosenPrice.text
       + (chosen.trial_days > 0 && trialOk ? ` · ${chosen.trial_days}-day free trial, nothing charged today` : ' · charged today, cancel anytime');
 
@@ -503,8 +502,8 @@ export default function Selling({ onSignup, onGoLogin }) {
       {/* Pricing — packages then compact à la carte */}
       <section className="sl-section sl-price-band" id="packages">
         <Reveal className="sl-head">
-          <h2>Simple plans. Start free.</h2>
-          <p className="sl-sub">Every plan side by side. Start free, move up when you need more.</p>
+          <h2>Simple plans. Start with a free trial.</h2>
+          <p className="sl-sub">Every plan side by side — Essential and Pro start with a free trial. Move up when you need more.</p>
           <div className="sl-toggle" role="group" aria-label="Billing cycle">
             <button type="button" className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>Monthly</button>
             <button type="button" className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Annual{bestSave > 0 && <span className="save">Save up to {bestSave}%</span>}</button>
@@ -541,7 +540,7 @@ export default function Selling({ onSignup, onGoLogin }) {
         <div className="sl-signup-inner">
           <Reveal className="sl-signup-copy">
             <p className="sl-brand-mark light">iwopo</p>
-            <h2>{open ? 'Start free. Be live today.' : 'Opening very soon.'}</h2>
+            <h2>{open ? 'Start your free trial. Be live today.' : 'Opening very soon.'}</h2>
             <p>{open ? 'Bring galleries, clients and bookings into one calm place. No card needed.' : 'We’re putting the finishing touches on iwopo. New studios can join very soon.'}</p>
           </Reveal>
           <Reveal className="sl-signup-box">

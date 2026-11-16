@@ -652,7 +652,7 @@ export default function ClientPortal({ token }) {
           </section>
         )}
 
-        {/* 🎉 this vendor confirms bookings themselves (Free plan): the pick is a request, no contract here */}
+        {/* 🎉 this vendor confirms bookings themselves (no contracts in their plan): the pick is a request, no contract here */}
         {step === 2 && data.books === false && (
           <section className="po-sec">
             <p className="po-eyebrow">Step two</p>
