@@ -35,6 +35,10 @@ export const TAG_LABELS = {
   pick_password: 'Password to pick',
   admin_password: 'Admin password',
   guest_password: 'Guest password',
+  payment_due: 'What is due',
+  amount_due: 'Amount due',
+  total_amount: 'Total',
+  paid_amount: 'Paid so far',
 };
 
 /** sample values, for the preview only */
@@ -42,6 +46,7 @@ export const SAMPLE = {
   client_first_name: 'Priya', client_name: 'Priya Sharma', link: 'https://yourname.iwopo.com/portal/…',
   contract_title: 'Videography Agreement', gallery_name: 'Priya & Arjun', view_password: 'rose24', pick_password: 'lily57',
   admin_password: 'rose24', guest_password: 'lily57',
+  payment_due: 'remaining balance', amount_due: '$3,000', total_amount: '$4,500', paid_amount: '$1,500',
 };
 
 /** the order on the page is the order a booking goes through. `button` = the words on the link's button in a design */
@@ -73,6 +78,25 @@ Best wishes`,
 Thank you, your booking is confirmed. Your signed contract is attached for your records.
 
 Warm regards,
+{business_name}`,
+  },
+  /* 💰 sent from a lead or booking (Raj, 2026-11-17): what is due is worked out when it goes — the deposit until the
+     first payment, then the remaining balance (lib/leadEmails.js) — so one email fits both */
+  payment_reminder: {
+    label: 'Payment reminder',
+    when: 'When you press Send payment reminder on a lead or booking. It says what is due by itself: the deposit until the first payment, then the remaining balance.',
+    tags: [...COMMON, 'payment_due', 'amount_due', 'total_amount', 'paid_amount', 'link'],
+    button: 'View and pay',
+    subject: 'Payment reminder — your {payment_due} of {amount_due}',
+    body: `Hi {client_first_name},
+
+A friendly reminder that your {payment_due} of {amount_due} is now due.
+
+You can see the details and pay here:
+{link}
+
+If you have already sent it, thank you, and please ignore this email.
+
 {business_name}`,
   },
   photos_ready: {
@@ -112,6 +136,22 @@ Admin Password: {admin_password}
 (Use this to manage or remove photos)
 
 Thank you for choosing us! 💛`,
+  },
+  /* ⭐ sent from a booking (Raj, 2026-11-17); {link} is the vendor's review page, saved with this email */
+  review_request: {
+    label: 'Review request',
+    when: 'When you press Ask for a review on a booking. The link is your review page, saved below.',
+    tags: [...COMMON, 'link'],
+    button: 'Leave a review',
+    subject: 'How did we do, {client_first_name}?',
+    body: `Hi {client_first_name},
+
+Thank you again for choosing us. It was a joy to be part of your day.
+
+If you have a minute, we would be so grateful for a short review. It helps others find us:
+{link}
+
+{business_name}`,
   },
 };
 

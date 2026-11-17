@@ -25,9 +25,10 @@ export default function EmailTemplates({ startKind = null }) {
   const subjRef = useRef(null);
   const bodyRef = useRef(null);
   const lastField = useRef('body');   // where a tag goes: the field the vendor was last in
+  const [reviewUrl, setReviewUrl] = useState('');   // ⭐ where the Review request's link goes
 
   useEffect(() => {
-    api.clientEmails().then(setData).catch(e => setMsg('⚠️ ' + e.message));
+    api.clientEmails().then(d => { setData(d); setReviewUrl(d.review_url || ''); }).catch(e => setMsg('⚠️ ' + e.message));
   }, []);
 
   const cur = data?.emails?.find(e => e.kind === kind);
@@ -54,6 +55,7 @@ export default function EmailTemplates({ startKind = null }) {
   const saved = fromRow(cur, isHtml);
   const dirty = draft.subject !== saved.subject || draft.body !== saved.body || (isHtml && draft.html !== saved.html);
   const vals = Object.fromEntries(cur.tags.map(t => [t, data.sample[t]]));   // the preview fills this email's tags only
+  if (kind === 'review_request' && data.review_url) vals.link = data.review_url;   // ⭐ their own review page
   const field = (key) => (key === 'subject' ? 'subject' : isHtml ? 'html' : 'body');
 
   function insert(tag) {
@@ -93,6 +95,16 @@ export default function EmailTemplates({ startKind = null }) {
     catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
+  async function saveReview() {
+    setBusy(true); setMsg('');
+    try {
+      const r = await api.setReviewLink(reviewUrl);
+      setData(d => ({ ...d, review_url: r.review_url }));
+      setReviewUrl(r.review_url);
+      setMsg(r.review_url ? '✓ Review link saved' : '✓ Review link removed');
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
+  }
   async function reset() {
     setBusy(true); setMsg('');
     try { took(await api.resetClientEmail(kind), '✓ Back to the default wording'); }
@@ -127,6 +139,18 @@ export default function EmailTemplates({ startKind = null }) {
           ))}
         </div>
         <p className="et-when">{cur.when}</p>
+
+        {/* ⭐ the page "Ask for a review" sends the client to — the {link} in this email */}
+        {kind === 'review_request' && (
+          <div className="et-review">
+            <label className="fb-label" htmlFor="et-review">Your review link</label>
+            <div className="et-review-row">
+              <input id="et-review" className="fb-input" maxLength={500} placeholder="g.page/r/…/review" value={reviewUrl}
+                onChange={e => setReviewUrl(e.target.value)} />
+              <button type="button" className="refresh" disabled={busy || reviewUrl === (data.review_url || '')} onClick={saveReview}>Save link</button>
+            </div>
+          </div>
+        )}
 
         <label className="fb-label" htmlFor="et-subject">Subject</label>
         <input id="et-subject" ref={subjRef} className="fb-input" maxLength={200} value={draft.subject}

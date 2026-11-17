@@ -1,5 +1,6 @@
 import { EMAILS, TAG_LABELS, SAMPLE, SUBJECT_MAX, BODY_MAX, HTML_MAX, htmlAllowed, emailMode, logoUrlFor, cleanEmailHtml, starterHtml, renderEmail } from '../lib/emailTemplates.js';   // ✉️ the client emails and their defaults
 import { clientBaseUrl } from '../lib/vendorHosts.js';
+import { leadEmail, cleanReviewUrl } from '../lib/leadEmails.js';   // 💰⭐ payment reminder, review request
 import express from 'express';
 import { logEmail } from '../lib/projectStages.js';
 import nodemailer from 'nodemailer';
@@ -144,11 +145,12 @@ async function senderFor(vendorId, s) {
 
 /* ── ✉️ THE EMAILS IWOPO SENDS TO CLIENTS — each vendor's own wording (lib/emailTemplates.js) ── */
 async function clientEmailsFor(v) {
-  const [own, ven, allowed, mode] = await Promise.all([
+  const [own, ven, allowed, mode, vset] = await Promise.all([
     prisma.vendor_email_templates.findMany({ where: { vendor_id: Number(v) } }),   // 🔒 tenancy
     prisma.vendors.findUnique({ where: { id: Number(v) }, select: { business_name: true, logo_path: true } }),
     htmlAllowed(v),   // 🧑‍💻 HTML mode, private for now
     emailMode(v),     // one switch for every email
+    prisma.vendor_settings.findUnique({ where: { vendor_id: Number(v) }, select: { review_url: true } }),   // 🔒 tenancy
   ]);
   const biz = ven?.business_name || '';
   const logoUrl = logoUrlFor(ven?.logo_path);
@@ -160,7 +162,7 @@ async function clientEmailsFor(v) {
       ...(allowed ? { html: o?.html || '', starter_html: starterHtml(kind, body, { logoUrl, businessName: biz }) } : {}),
     };
   });
-  return { emails, mode, tag_labels: TAG_LABELS, business_name: biz, html_allowed: allowed, sample: { ...SAMPLE, business_name: biz || 'Your business' } };
+  return { emails, mode, review_url: vset?.review_url || '', tag_labels: TAG_LABELS, business_name: biz, html_allowed: allowed, sample: { ...SAMPLE, business_name: biz || 'Your business' } };
 }
 const oneEmail = async (v, kind) => (await clientEmailsFor(v)).emails.find(e => e.kind === kind);
 
@@ -180,6 +182,18 @@ router.put('/client-emails-mode', requireAuth, async (req, res) => {
     if (mode === 'html' && !await htmlAllowed(v)) return res.status(403).json({ error: 'HTML emails are not available on this account' });
     await prisma.vendor_settings.upsert({ where: { vendor_id: Number(v) }, update: { email_mode: mode }, create: { vendor_id: Number(v), email_mode: mode } });   // 🔒 the login's vendor
     res.json(await clientEmailsFor(v));
+  } catch (e) { serverError(res, e); }
+});
+
+/* ⭐ the vendor's review page — where the Review request email's link goes (Raj, 2026-11-17). Empty clears it. */
+router.put('/review-link', requireAuth, async (req, res) => {
+  const v = actingVendorId(req);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  const url = cleanReviewUrl(req.body?.url);
+  if (url === null) return res.status(400).json({ error: 'That link does not look right' });
+  try {
+    await prisma.vendor_settings.upsert({ where: { vendor_id: Number(v) }, update: { review_url: url || null }, create: { vendor_id: Number(v), review_url: url || null } });   // 🔒 the login's vendor
+    res.json({ review_url: url });
   } catch (e) { serverError(res, e); }
 });
 
@@ -359,6 +373,37 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
     logEmail(lead.vendor_id, { to: lead.email, subject, kind: 'lead_reply', leadId: lead.id });   // 📧 the email log
     res.json({ ok: true, sent_to: lead.email, cc: ccEmail || null });
   } catch (e) { serverError(res, e); }
+});
+
+/**
+ * 💰⭐ A one-button email to a lead's client — the payment reminder or the review request (lib/leadEmails.js).
+ * /preview returns it exactly as it will go, for the vendor to read first; the plain POST sends it.
+ */
+async function ownLead(req, res) {
+  const lead = await prisma.leads.findUnique({ where: { id: Number(req.params.leadId) } });
+  if (!lead || (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req))) {   // 🔒 tenancy
+    res.status(404).json({ error: 'Lead not found' }); return null;
+  }
+  return lead;
+}
+const leadEmailFailed = (res, e) => (e.status && e.status < 500 ? res.status(e.status).json({ error: e.message }) : serverError(res, e));
+
+router.post('/lead/:leadId/send/:kind/preview', requireAuth, async (req, res) => {
+  try {
+    const lead = await ownLead(req, res); if (!lead) return;
+    const m = await leadEmail(lead, String(req.params.kind));
+    res.json({ to: m.to, subject: m.subject, body: m.body, html: m.html || null });
+  } catch (e) { leadEmailFailed(res, e); }
+});
+
+router.post('/lead/:leadId/send/:kind', requireAuth, async (req, res) => {
+  try {
+    const lead = await ownLead(req, res); if (!lead) return;
+    const kind = String(req.params.kind);
+    const m = await leadEmail(lead, kind);
+    await sendLeadEmail(req, lead, m.subject, m.body, { kind, html: m.html });
+    res.json({ ok: true, sent_to: m.to });
+  } catch (e) { e.code === 'self_mode' ? res.status(400).json({ error: e.message }) : leadEmailFailed(res, e); }
 });
 
 // 📤 shared helper: send an email to a lead using vendor's email settings

@@ -2846,6 +2846,21 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .et-code { min-height: 300px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
 .et-hint { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
 .et-frame { display: block; width: 100%; height: 520px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+/* ⭐ the Review request's own link, above its subject */
+.et-review { margin-bottom: 14px; }
+.et-review-row { display: flex; gap: 8px; }
+.et-review-row .fb-input { flex: 1; min-width: 0; }
+
+/* ✉️ one client email read before it goes — the payment reminder, the review request (components/LeadEmailModal) */
+.lem { width: min(640px, calc(100vw - 32px)); }
+.lem-to { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.lem-subj { margin: 0 0 12px; font-size: 15px; font-weight: 700; color: var(--text); }
+.lem-frame { height: min(520px, 60vh); }
+.lem-body { max-height: 60vh; overflow: auto; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; }
+.lem-hint { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.lem-err { margin: 10px 0 0; font-size: 13px; }
+.ms-remind { width: 100%; margin-top: 10px; }
+.bd-review { width: 100%; }
 
 /* 👤 Settings → Account (Raj, 2026-11-14): the business profile beside sign-in & security. One field style, the
    panel's own buttons, plain labels. */

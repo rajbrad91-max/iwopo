@@ -10,6 +10,7 @@ import { useDialog } from '../../lib/dialog.jsx';
 import { api, fmtTime, fmtDateTime, fmtMoney, eventDateValue } from '../../lib/api';
 import { CalendarView } from './Calendar';
 import { MoneySection } from './MoneySection';
+import LeadEmailModal from '../../components/LeadEmailModal';   // ⭐ the review request, read before it goes
 
 /**
  * 👥 What the crew column says. "Booked" tells a vendor the money is agreed; it
@@ -175,6 +176,7 @@ function BookingDetail({ id, rawsel = false }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
+  const [review, setReview] = useState(false);   // ⭐ the review request window
   const [busy, setBusy] = useState(false);
   const [cfg, setCfg] = useState(null);
   const [edit, setEdit] = useState(false);   // ✏️ Edit Details open   // 🧾 the vendor's inquiry form — which questions this client was asked
@@ -311,6 +313,18 @@ function BookingDetail({ id, rawsel = false }) {
             </div>
             <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Keep your own copy of anything you may need later.</p>
           </div>
+
+          {/* ⭐ after the day: ask the client for a review — their link is set in Settings → Setup Email */}
+          {b.email && (
+            <div className="bd-side">
+              <div className="ld-card-h">Review</div>
+              <button type="button" className="refresh bd-review" onClick={() => setReview(true)}>Ask for a review</button>
+              {review && (
+                <LeadEmailModal lead={b} kind="review_request" title="Review request" onClose={() => setReview(false)}
+                  onSent={() => flash('✅ Review request sent')} />
+              )}
+            </div>
+          )}
 
           {/* ── crew ── */}
           <div className="bd-side">

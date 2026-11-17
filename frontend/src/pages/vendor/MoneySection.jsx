@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useDialog } from '../../lib/dialog.jsx';
 import { api, fmtDateTime, fmtMoney, moneySymbol } from '../../lib/api';
 import { STATUSES, S_ICON, S_LABEL } from './statuses';
+import LeadEmailModal from '../../components/LeadEmailModal';   // 💰 the payment reminder, read before it goes
 
 export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when packages are loaded, saved or sent
   const [hidePay, setHidePay] = useState(false);   // 🔒 the vendor's payment-privacy setting
@@ -32,6 +33,7 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
   const [status, setStatus] = useState(lead.status || 'new');
   const [webPay, setWebPay] = useState(lead.web_payment_enabled !== false);
   const [msg, setMsg] = useState('');
+  const [remind, setRemind] = useState(false);   // 💰 the payment reminder window
 
   useEffect(() => {
     load();   // again when packages are loaded, saved or sent
@@ -286,6 +288,15 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
       {sum && (Math.round(sum.paid * 100) >= Math.round(sum.deposit_amount * 100) && sum.deposit_amount > 0
         ? <div className="ms-deposit-line">✅ Deposit paid: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>
         : <div className="ms-deposit-line">🔐 Deposit due: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>)}
+
+      {/* 💰 the client's own payment reminder: the deposit until the first payment, then the remaining balance */}
+      {sum && pending > 0 && lead.email && (
+        <button type="button" className="refresh ms-remind" onClick={() => setRemind(true)}>Send payment reminder</button>
+      )}
+      {remind && (
+        <LeadEmailModal lead={lead} kind="payment_reminder" title="Payment reminder" onClose={() => setRemind(false)}
+          onSent={() => { setMsg('✅ Payment reminder sent'); setTimeout(() => setMsg(''), 3000); }} />
+      )}
 
       {/* manual payments */}
       <div className="ms-mp-head">Manual Payments</div>

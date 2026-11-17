@@ -822,6 +822,10 @@ export const api = {
   emailSettings: () => request('/email/settings'),
   saveEmailSettings: (data) => request('/email/settings', { method: 'PUT', body: JSON.stringify(data) }),
   emailLead: (leadId, subject, body, cc, kind, use_design) => request(`/email/lead/${leadId}`, { method: 'POST', body: JSON.stringify({ subject, body, cc, kind, use_design }) }),
+  // 💰⭐ the payment reminder / review request for one lead: read it first, then send it
+  leadEmailPreview: (leadId, kind) => request(`/email/lead/${leadId}/send/${kind}/preview`, { method: 'POST' }),
+  sendLeadEmail: (leadId, kind) => request(`/email/lead/${leadId}/send/${kind}`, { method: 'POST' }),
+  setReviewLink: (url) => request('/email/review-link', { method: 'PUT', body: JSON.stringify({ url }) }),
   releaseContract: (id) => request(`/contracts/${id}/release`, { method: 'PUT' }),
   emailContractCopy: (id) => request(`/contracts/${id}/email-copy`, { method: 'POST' }),   // 📧 the signed contract to the client
   previewContract: (leadId, packageId) => request(

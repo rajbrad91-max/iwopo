@@ -898,6 +898,8 @@ model vendor_settings {
   stripe_connected_at     DateTime? @db.Timestamptz(6)
   /// ✉️ "text" or "html": how every client email goes — HTML only for the accounts lib/emailTemplates.js allows
   email_mode              String    @default("text") @db.VarChar(10)
+  /// ⭐ where "Ask for a review" sends the client (Settings → Setup Email → Review request)
+  review_url              String?   @db.VarChar(500)
 }
 
 model vendor_subscriptions {
