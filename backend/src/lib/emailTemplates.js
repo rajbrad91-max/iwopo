@@ -10,8 +10,11 @@
  *
  * 🧑‍💻 HTML mode — an email sent as the vendor's own HTML design, with a plain-text copy made from it.
  * Private for now: only the accounts in HTML_EMAIL_ACCOUNTS (Raj's Perfect Poses login) see or send it,
- * until it becomes a Super Admin switch (Raj, 2026-11-14). For anyone else a stored design is ignored and
- * the plain text goes, so taking the feature away can never leave a client without an email.
+ * until it becomes an upgrade (Raj, 2026-11-14/17). For anyone else a stored design is ignored and the plain
+ * text goes, so taking the feature away can never leave a client without an email.
+ * One switch for the whole account (vendor_settings.email_mode, Raj 2026-11-17): every email goes as plain text,
+ * or every one as HTML. Each email keeps both its words and its design whichever way the switch stands, and one
+ * with no design of its own goes in the simple starter design — HTML never sends an empty email.
  */
 import sanitizeHtml from 'sanitize-html';
 import prisma from '../config/prisma.js';
@@ -137,6 +140,16 @@ export async function htmlAllowed(vendorId) {
   return !!owner?.email && HTML_EMAIL_ACCOUNTS.includes(owner.email.trim().toLowerCase());
 }
 
+/** how this vendor's emails go: 'html' only when the account may and has chosen it, else 'text' */
+export async function emailMode(vendorId) {
+  if (!await htmlAllowed(vendorId)) return 'text';
+  const s = await prisma.vendor_settings.findUnique({ where: { vendor_id: Number(vendorId) }, select: { email_mode: true } });   // 🔒
+  return s?.email_mode === 'html' ? 'html' : 'text';
+}
+
+/** the vendor's logo as the starter design shows it */
+export const logoUrlFor = (logoPath) => (logoPath ? `${(process.env.APP_URL || 'https://iwopo.com').replace(/\/$/, '')}/api/me/logo/${encodeURIComponent(logoPath)}` : '');
+
 /* ── HTML helpers ── */
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 /** text between tags: quotes stay readable in the vendor's code ("I've", not "I&#39;ve") */
@@ -219,26 +232,27 @@ export async function templateFor(vendorId, kind) {
   if (!d) throw new Error(`Unknown email: ${kind}`);
   const own = await prisma.vendor_email_templates.findUnique({
     where: { vendor_id_kind: { vendor_id: Number(vendorId), kind } },   // 🔒 this vendor's own row
-    select: { subject: true, body: true, mode: true, html: true },
+    select: { subject: true, body: true, html: true },
   });
-  return { subject: own?.subject || d.subject, body: own?.body || d.body, mode: own?.mode || 'text', html: own?.html || '', edited: !!own };
+  return { subject: own?.subject || d.subject, body: own?.body || d.body, html: own?.html || '', edited: !!own };
 }
 
 /**
  * The email ready to send: { subject, body, html? } with the tags filled. `html` is there only when the vendor
- * sends this email as an HTML design and may; `body` is then the plain-text copy of that design.
+ * sends their emails as HTML and may; `body` is then the plain-text copy of that design.
  * `values` gives the email's own tags (link, passwords…); the client and business names are filled here
  * when they are not given.
  */
 export async function renderEmail(vendorId, kind, values = {}) {
   const t = await templateFor(vendorId, kind);
-  let biz = values.business_name;
-  if (biz === undefined) biz = (await prisma.vendors.findUnique({ where: { id: Number(vendorId) }, select: { business_name: true } }))?.business_name || '';
+  const ven = await prisma.vendors.findUnique({ where: { id: Number(vendorId) }, select: { business_name: true, logo_path: true } });
+  const biz = values.business_name === undefined ? (ven?.business_name || '') : values.business_name;
   const name = String(values.client_name ?? '').trim();
   const all = { ...values, business_name: biz, client_name: name, client_first_name: values.client_first_name ?? (name.split(/\s+/)[0] || '') };
   const subject = fillTags(t.subject, kind, all).replace(/\s+/g, ' ').trim();
-  if (t.mode === 'html' && t.html && await htmlAllowed(vendorId)) {
-    const inner = cleanEmailHtml(fillTags(t.html, kind, all, escHtml));
+  if (await emailMode(vendorId) === 'html') {
+    const design = t.html || starterHtml(kind, t.body, { logoUrl: logoUrlFor(ven?.logo_path), businessName: ven?.business_name || '' });
+    const inner = cleanEmailHtml(fillTags(design, kind, all, escHtml));
     const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(subject)}</title></head><body style="margin:0;padding:0;">${inner}</body></html>`;
     return { subject, body: htmlToText(inner), html };
   }

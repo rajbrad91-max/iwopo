@@ -1,4 +1,4 @@
-import { EMAILS, TAG_LABELS, SAMPLE, SUBJECT_MAX, BODY_MAX, HTML_MAX, htmlAllowed, cleanEmailHtml, starterHtml, renderEmail } from '../lib/emailTemplates.js';   // ✉️ the client emails and their defaults
+import { EMAILS, TAG_LABELS, SAMPLE, SUBJECT_MAX, BODY_MAX, HTML_MAX, htmlAllowed, emailMode, logoUrlFor, cleanEmailHtml, starterHtml, renderEmail } from '../lib/emailTemplates.js';   // ✉️ the client emails and their defaults
 import { clientBaseUrl } from '../lib/vendorHosts.js';
 import express from 'express';
 import { logEmail } from '../lib/projectStages.js';
@@ -144,22 +144,23 @@ async function senderFor(vendorId, s) {
 
 /* ── ✉️ THE EMAILS IWOPO SENDS TO CLIENTS — each vendor's own wording (lib/emailTemplates.js) ── */
 async function clientEmailsFor(v) {
-  const [own, ven, allowed] = await Promise.all([
+  const [own, ven, allowed, mode] = await Promise.all([
     prisma.vendor_email_templates.findMany({ where: { vendor_id: Number(v) } }),   // 🔒 tenancy
     prisma.vendors.findUnique({ where: { id: Number(v) }, select: { business_name: true, logo_path: true } }),
     htmlAllowed(v),   // 🧑‍💻 HTML mode, private for now
+    emailMode(v),     // one switch for every email
   ]);
   const biz = ven?.business_name || '';
-  const logoUrl = ven?.logo_path ? `${(process.env.APP_URL || 'https://iwopo.com').replace(/\/$/, '')}/api/me/logo/${encodeURIComponent(ven.logo_path)}` : '';
+  const logoUrl = logoUrlFor(ven?.logo_path);
   const emails = Object.entries(EMAILS).map(([kind, d]) => {
     const o = own.find(x => x.kind === kind);
     const body = o?.body || d.body;
     return {
       kind, label: d.label, when: d.when, tags: d.tags, subject: o?.subject || d.subject, body, edited: !!o,
-      ...(allowed ? { mode: o?.mode || 'text', html: o?.html || '', starter_html: starterHtml(kind, body, { logoUrl, businessName: biz }) } : {}),
+      ...(allowed ? { html: o?.html || '', starter_html: starterHtml(kind, body, { logoUrl, businessName: biz }) } : {}),
     };
   });
-  return { emails, tag_labels: TAG_LABELS, business_name: biz, html_allowed: allowed, sample: { ...SAMPLE, business_name: biz || 'Your business' } };
+  return { emails, mode, tag_labels: TAG_LABELS, business_name: biz, html_allowed: allowed, sample: { ...SAMPLE, business_name: biz || 'Your business' } };
 }
 const oneEmail = async (v, kind) => (await clientEmailsFor(v)).emails.find(e => e.kind === kind);
 
@@ -167,6 +168,19 @@ router.get('/client-emails', requireAuth, async (req, res) => {
   const v = actingVendorId(req);
   if (!v) return res.status(400).json({ error: 'No vendor' });
   try { res.json(await clientEmailsFor(v)); } catch (e) { serverError(res, e); }
+});
+
+/* 🧑‍💻 Plain text or HTML, for every email at once (Raj, 2026-11-17). Switching never touches the words or the
+   designs: each email keeps both, and sends whichever the switch says. Only for an account allowed HTML. */
+router.put('/client-emails-mode', requireAuth, async (req, res) => {
+  const v = actingVendorId(req);
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  const mode = req.body?.mode === 'html' ? 'html' : 'text';
+  try {
+    if (mode === 'html' && !await htmlAllowed(v)) return res.status(403).json({ error: 'HTML emails are not available on this account' });
+    await prisma.vendor_settings.upsert({ where: { vendor_id: Number(v) }, update: { email_mode: mode }, create: { vendor_id: Number(v), email_mode: mode } });   // 🔒 the login's vendor
+    res.json(await clientEmailsFor(v));
+  } catch (e) { serverError(res, e); }
 });
 
 router.put('/client-emails/:kind', requireAuth, async (req, res) => {
@@ -181,15 +195,14 @@ router.put('/client-emails/:kind', requireAuth, async (req, res) => {
   if (subject.length > SUBJECT_MAX) return res.status(400).json({ error: `The subject is too long (${SUBJECT_MAX} characters at most)` });
   if (body.length > BODY_MAX) return res.status(400).json({ error: `The message is too long (${BODY_MAX} characters at most)` });
   try {
-    // 🧑‍💻 HTML mode only for the accounts allowed it; anyone else's mode and html are ignored and their stored ones kept
+    /* 🧑‍💻 the design only for the accounts allowed HTML; anyone else's is ignored and a stored one kept. An empty
+       design means "the simple starter design", which follows the words. */
     const allowed = await htmlAllowed(v);
-    const mode = allowed && req.body?.mode === 'html' ? 'html' : 'text';
     const html = allowed && typeof req.body?.html === 'string' ? cleanEmailHtml(req.body.html).trim() : '';
     if (html.length > HTML_MAX) return res.status(400).json({ error: 'The HTML is too long' });
-    if (mode === 'html' && !html) return res.status(400).json({ error: 'Paste your HTML, or start from the simple design' });
-    const design = allowed ? { mode, html: html || null } : {};
+    const design = allowed ? { html: html || null } : {};
     const where = { vendor_id_kind: { vendor_id: Number(v), kind } };   // 🔒 the vendor from the login, never the body
-    if (subject === d.subject && body === d.body.trim() && (!allowed || (mode === 'text' && !html))) await prisma.vendor_email_templates.deleteMany({ where: { vendor_id: Number(v), kind } });   // the default again
+    if (subject === d.subject && body === d.body.trim() && (!allowed || !html)) await prisma.vendor_email_templates.deleteMany({ where: { vendor_id: Number(v), kind } });   // the default again
     else await prisma.vendor_email_templates.upsert({ where, update: { subject, body, ...design, updated_at: new Date() }, create: { vendor_id: Number(v), kind, subject, body, ...design } });
     res.json(await oneEmail(v, kind));
   } catch (e) { serverError(res, e); }

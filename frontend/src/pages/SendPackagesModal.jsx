@@ -74,7 +74,7 @@ export default function SendPackagesModal({ lead, link, onClose, onSent }) {
       const vals = { client_name: lead.name || '', client_first_name: String(lead.name || '').trim().split(/\s+/)[0] || '', business_name: d.business_name || '', link };
       const next = { subject: fillTags(t.subject, vals), body: fillTags(t.body, vals) };
       setDef(next);
-      if (d.html_allowed && t.mode === 'html' && t.html) setDesign(fillTags(t.html, vals, escHtml));
+      if (d.html_allowed && d.mode === 'html') setDesign(fillTags(t.html || t.starter_html, vals, escHtml));   // every email as HTML (one switch)
       // only while the vendor has not started typing
       setSubject(s => (s === fill(DEFAULT_SUBJECT, ctx) ? next.subject : s));
       setBody(b => (b === fill(DEFAULT_BODY, ctx) ? next.body : b));

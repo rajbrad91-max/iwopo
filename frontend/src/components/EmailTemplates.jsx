@@ -5,17 +5,20 @@
  * the list and defaults: backend/src/lib/emailTemplates.js.
  *
  * 🧑‍💻 HTML mode (Plain text | HTML) shows only when the server says this account may use it (`html_allowed`).
+ * One switch for every email (Raj, 2026-11-17); each email keeps its words and its design either way.
  */
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { fillTags, escHtml } from '../lib/emailTags';
 
-const fromRow = (e) => ({ subject: e.subject, body: e.body, mode: e.mode || 'text', html: e.html || '' });
+/* an email with no design of its own shows the simple starter design while HTML is on (and is saved as "none",
+   so the starter keeps following its words) */
+const fromRow = (e, html) => ({ subject: e.subject, body: e.body, html: e.html || (html ? e.starter_html : '') || '' });
 
 export default function EmailTemplates({ startKind = null }) {
   const [data, setData] = useState(null);
   const [kind, setKind] = useState(startKind || 'packages');
-  const [draft, setDraft] = useState({ subject: '', body: '', mode: 'text', html: '' });
+  const [draft, setDraft] = useState({ subject: '', body: '', html: '' });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const subjRef = useRef(null);
@@ -27,10 +30,11 @@ export default function EmailTemplates({ startKind = null }) {
   }, []);
 
   const cur = data?.emails?.find(e => e.kind === kind);
+  const isHtml = !!data?.html_allowed && data?.mode === 'html';
   useEffect(() => {
-    if (cur) setDraft(fromRow(cur));
+    if (cur) setDraft(fromRow(cur, isHtml));
     setMsg('');
-  }, [kind, cur?.subject, cur?.body, cur?.mode, cur?.html]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kind, cur?.subject, cur?.body, cur?.html]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!cur) {
     return (
@@ -42,9 +46,8 @@ export default function EmailTemplates({ startKind = null }) {
   }
 
   const canHtml = !!data.html_allowed;
-  const isHtml = canHtml && draft.mode === 'html';
-  const saved = fromRow(cur);
-  const dirty = draft.subject !== saved.subject || draft.body !== saved.body || (canHtml && (draft.mode !== saved.mode || draft.html !== saved.html));
+  const saved = fromRow(cur, isHtml);
+  const dirty = draft.subject !== saved.subject || draft.body !== saved.body || (isHtml && draft.html !== saved.html);
   const vals = Object.fromEntries(cur.tags.map(t => [t, data.sample[t]]));   // the preview fills this email's tags only
   const field = (key) => (key === 'subject' ? 'subject' : isHtml ? 'html' : 'body');
 
@@ -59,19 +62,29 @@ export default function EmailTemplates({ startKind = null }) {
     requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(a + text.length, a + text.length); });
   }
 
-  function setMode(mode) {
-    // the first time HTML is picked, it starts from the simple design rather than an empty box
-    setDraft(d => ({ ...d, mode, html: mode === 'html' && !d.html.trim() ? cur.starter_html : d.html }));
+  /** 🔘 every email at once — unsaved typing in the open one stays, and nothing saved is touched */
+  async function setMode(mode) {
+    if (mode === data.mode) return;
+    setBusy(true); setMsg('');
+    try {
+      const d = await api.setClientEmailMode(mode);
+      setData(d);
+      if (mode === 'html') setDraft(x => ({ ...x, html: x.html || cur.starter_html }));
+      setMsg(mode === 'html' ? '✓ Every email now goes in its HTML design' : '✓ Every email now goes as plain text');
+    } catch (e) { setMsg('⚠️ ' + e.message); }
+    finally { setBusy(false); }
   }
 
   function took(r, note) {
     setData(d => ({ ...d, emails: d.emails.map(e => (e.kind === kind ? { ...e, ...r } : e)) }));
-    setDraft(fromRow(r));
+    setDraft(fromRow(r, isHtml));
     setMsg(note);
   }
   async function save() {
     setBusy(true); setMsg('');
-    try { took(await api.saveClientEmail(kind, draft.subject, draft.body, canHtml ? { mode: draft.mode, html: draft.html } : {}), '✓ Saved'); }
+    // the starter design untouched is saved as "none", so it keeps following the words
+    const html = draft.html === cur.starter_html ? '' : draft.html;
+    try { took(await api.saveClientEmail(kind, draft.subject, draft.body, canHtml ? { html } : {}), '✓ Saved'); }
     catch (e) { setMsg('⚠️ ' + e.message); }
     finally { setBusy(false); }
   }
@@ -84,14 +97,14 @@ export default function EmailTemplates({ startKind = null }) {
 
   return (
     <div className="table-wrap et">
-      {/* the title, and — for an account allowed HTML — how the chosen email is sent, in the card's top corner */}
+      {/* the title, and — for an account allowed HTML — how every email is sent, in the card's top corner */}
       <div className="et-top">
         <h2 className="es-title">✉️ Email templates</h2>
         {canHtml && (
-          <div className="et-mode" role="radiogroup" aria-label="Send this email as">
+          <div className="et-mode" role="radiogroup" aria-label="Send my emails as">
             {[['text', 'Plain text'], ['html', 'HTML']].map(([m, label]) => (
-              <button key={m} type="button" role="radio" aria-checked={draft.mode === m}
-                className={`et-mode-btn${draft.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
+              <button key={m} type="button" role="radio" aria-checked={data.mode === m} disabled={busy}
+                className={`et-mode-btn${data.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
             ))}
           </div>
         )}
@@ -103,7 +116,7 @@ export default function EmailTemplates({ startKind = null }) {
         {data.emails.map(e => (
           <button key={e.kind} type="button" role="tab" aria-selected={e.kind === kind}
             className={`refresh et-item${e.kind === kind ? ' is-on' : ''}`} onClick={() => setKind(e.kind)}>
-            {e.label}{e.edited && <span className="et-badge">{e.mode === 'html' ? 'HTML' : 'Edited'}</span>}
+            {e.label}{e.edited && <span className="et-badge">Edited</span>}
           </button>
         ))}
       </div>

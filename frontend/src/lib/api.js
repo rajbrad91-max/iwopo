@@ -920,6 +920,7 @@ export const api = {
   emailTemplates: () => request('/email/templates'),
   clientEmails: () => request('/email/client-emails'),   // ✉️ Settings → Email templates
   saveClientEmail: (kind, subject, body, design = {}) => request(`/email/client-emails/${kind}`, { method: 'PUT', body: JSON.stringify({ subject, body, ...design }) }),
+  setClientEmailMode: (mode) => request('/email/client-emails-mode', { method: 'PUT', body: JSON.stringify({ mode }) }),   // ✉️ plain text or HTML, every email at once
   resetClientEmail: (kind) => request(`/email/client-emails/${kind}`, { method: 'DELETE' }),
   addEmailTemplate: (data) => request('/email/templates', { method: 'POST', body: JSON.stringify(data) }),
   portal: (token, fresh) => request(`/portal/${token}${fresh ? '?fresh=1' : ''}`),
