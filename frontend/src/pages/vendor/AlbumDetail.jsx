@@ -439,8 +439,6 @@ export function AlbumDetail({ albumId, onBack }) {
     // upload on a background thread so it keeps running when the tab is hidden
     if (workerRef.current) workerRef.current.terminate();
     clearInterval(stallRef.current);
-    const worker = new Worker(new URL('../../lib/uploadWorker.js', import.meta.url), { type: 'module' });
-    workerRef.current = worker;
     const finish = () => {
       clearInterval(stallRef.current);
       setUploading(false);
@@ -452,6 +450,21 @@ export function AlbumDetail({ albumId, onBack }) {
          Failure is harmless: the server's own timer still fires. */
       api.uploadsDone(albumId).catch(() => {});
     };
+    /* 🌍 The worker is always started from this site's own address. On iwopo.com the JS comes from cdn.iwopo.com
+       (vite.config.js), and a browser refuses a Worker from another address — on a computer served by the CDN,
+       new Worker() threw, nothing was sent and the page stayed on "Uploading…" (Raj, 2026-11-17). The same file is
+       published at the same path on the site itself. */
+    let worker;
+    try {
+      const built = new URL('../../lib/uploadWorker.js', import.meta.url);
+      worker = new Worker(new URL(built.pathname, window.location.origin), { type: 'module' });
+    } catch {
+      setProg('⚠️ The upload could not start — try again');
+      setRetryFiles(files);
+      finish();
+      return;
+    }
+    workerRef.current = worker;
     /* 🚨 Never a spinner forever (Raj, 2026-11-17). The worker says it is alive every few seconds; if it falls
        silent for a minute, or cannot start at all, the batch is stopped and offered again. Sending it again is
        safe: photos that already landed are skipped by the server, not stored twice. */
