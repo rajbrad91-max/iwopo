@@ -155,7 +155,7 @@ export function SettingsView({ user, onProfileChange, emailFocus = null, onFocus
 
   return (
     <div className="set-page">
-      {/* tabs across the top, the page below; Setup Email uses the width for the templates (Raj, 2026-11-14) */}
+      {/* tabs across the top, the page below; Setup Email: templates left, their preview right, mail sending below (Raj, 2026-11-17) */}
       <div className="set-tabbar" role="tablist">
         {[['prefs', 'Preferences'], ['account', 'Account'], ['email', 'Setup Email'], ['devices', 'Devices'], ['address', 'Web address'], ['links', 'Client page links']].map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={sub === k} className={`set-tab${sub === k ? ' is-on' : ''}`} onClick={() => setSub(k)}>{label}</button>
@@ -232,7 +232,7 @@ export function SettingsView({ user, onProfileChange, emailFocus = null, onFocus
 
       {sub === 'account' && <AccountSettings user={user} onProfileChange={onProfileChange} onProfileSaved={refreshSettings} />}
 
-      {sub === 'email' && <><EmailSetup /><EmailTemplates startKind={startKind} /></>}
+      {sub === 'email' && <><EmailTemplates startKind={startKind} /><EmailSetup /></>}
       {sub === 'devices' && <DevicesSetup />}
       {sub === 'address' && <DomainSettings />}
       {sub === 'links' && <ClientLinksSettings />}

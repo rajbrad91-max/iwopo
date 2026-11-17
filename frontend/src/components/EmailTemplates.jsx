@@ -1,6 +1,7 @@
 /**
  * ✉️ Email templates — the words iwopo uses when it emails a vendor's clients (Raj, 2026-11-14).
- * Beside the mail settings on Settings → Setup Email. Every vendor has the same emails; each starts with the
+ * First on Settings → Setup Email: the editor on the left, its preview beside it on the right, so every change is
+ * seen as it is typed; the mail settings sit below (Raj, 2026-11-17). Every vendor has the same emails; each starts with the
  * wording iwopo always sent, and "Reset to default" brings that back. The server: routes/email.js /client-emails,
  * the list and defaults: backend/src/lib/emailTemplates.js.
  *
@@ -37,11 +38,15 @@ export default function EmailTemplates({ startKind = null }) {
   }, [kind, cur?.subject, cur?.body, cur?.html]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!cur) {
+    // both cards from the start, so the mail settings below never jump into the right-hand column while this loads
     return (
-      <div className="table-wrap et">
-        <h2 className="es-title">✉️ Email templates</h2>
-        <p className="et-intro">{msg || 'Loading…'}</p>
-      </div>
+      <>
+        <div className="table-wrap et">
+          <h2 className="es-title">✉️ Email templates</h2>
+          <p className="et-intro">{msg || 'Loading…'}</p>
+        </div>
+        <div className="table-wrap et-preview"><div className="et-preview-h">Preview · what your client sees</div></div>
+      </>
     );
   }
 
@@ -96,71 +101,74 @@ export default function EmailTemplates({ startKind = null }) {
   }
 
   return (
-    <div className="table-wrap et">
-      {/* the title, and — for an account allowed HTML — how every email is sent, in the card's top corner */}
-      <div className="et-top">
-        <h2 className="es-title">✉️ Email templates</h2>
-        {canHtml && (
-          <div className="et-mode" role="radiogroup" aria-label="Send my emails as">
-            {[['text', 'Plain text'], ['html', 'HTML']].map(([m, label]) => (
-              <button key={m} type="button" role="radio" aria-checked={data.mode === m} disabled={busy}
-                className={`et-mode-btn${data.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
-            ))}
-          </div>
+    <>
+      <div className="table-wrap et">
+        {/* the title, and — for an account allowed HTML — how every email is sent, in the card's top corner */}
+        <div className="et-top">
+          <h2 className="es-title">✉️ Email templates</h2>
+          {canHtml && (
+            <div className="et-mode" role="radiogroup" aria-label="Send my emails as">
+              {[['text', 'Plain text'], ['html', 'HTML']].map(([m, label]) => (
+                <button key={m} type="button" role="radio" aria-checked={data.mode === m} disabled={busy}
+                  className={`et-mode-btn${data.mode === m ? ' is-on' : ''}`} onClick={() => setMode(m)}>{label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <p className="et-intro">The words iwopo uses when it emails your clients. Change them here once and every email of that kind uses them.</p>
+
+        {/* the emails, two to a row; an odd last one takes the whole row rather than sitting alone in half of it */}
+        <div className="et-list" role="tablist">
+          {data.emails.map(e => (
+            <button key={e.kind} type="button" role="tab" aria-selected={e.kind === kind}
+              className={`refresh et-item${e.kind === kind ? ' is-on' : ''}`} onClick={() => setKind(e.kind)}>
+              {e.label}{e.edited && <span className="et-badge">Edited</span>}
+            </button>
+          ))}
+        </div>
+        <p className="et-when">{cur.when}</p>
+
+        <label className="fb-label" htmlFor="et-subject">Subject</label>
+        <input id="et-subject" ref={subjRef} className="fb-input" maxLength={200} value={draft.subject}
+          onFocus={() => { lastField.current = 'subject'; }} onChange={e => setDraft({ ...draft, subject: e.target.value })} />
+
+        {isHtml ? (
+          <>
+            <div className="et-code-head">
+              <label className="fb-label et-gap" htmlFor="et-html">HTML</label>
+              <button type="button" className="refresh et-small" onClick={() => setDraft({ ...draft, html: cur.starter_html })}>Start again from the simple design</button>
+            </div>
+            <textarea id="et-html" ref={bodyRef} className="fb-input et-body et-code" rows={16} spellCheck={false} value={draft.html}
+              onFocus={() => { lastField.current = 'body'; }} onChange={e => setDraft({ ...draft, html: e.target.value })} />
+            <p className="et-hint">Paste your own design here, or edit this one. Scripts and forms are removed when it is saved. A plain-text copy goes with it for email apps that can't show HTML.</p>
+          </>
+        ) : (
+          <>
+            <label className="fb-label et-gap" htmlFor="et-body">Message</label>
+            <textarea id="et-body" ref={bodyRef} className="fb-input et-body" rows={10} maxLength={5000} value={draft.body}
+              onFocus={() => { lastField.current = 'body'; }} onChange={e => setDraft({ ...draft, body: e.target.value })} />
+          </>
         )}
-      </div>
-      <p className="et-intro">The words iwopo uses when it emails your clients. Change them here once and every email of that kind uses them.</p>
 
-      {/* the emails, two to a row; an odd last one takes the whole row rather than sitting alone in half of it */}
-      <div className="et-list" role="tablist">
-        {data.emails.map(e => (
-          <button key={e.kind} type="button" role="tab" aria-selected={e.kind === kind}
-            className={`refresh et-item${e.kind === kind ? ' is-on' : ''}`} onClick={() => setKind(e.kind)}>
-            {e.label}{e.edited && <span className="et-badge">Edited</span>}
-          </button>
-        ))}
-      </div>
-      <p className="et-when">{cur.when}</p>
+        <div className="et-tags">
+          <span className="et-tags-l">Insert:</span>
+          {cur.tags.map(t => (
+            <button key={t} type="button" className="refresh et-tag" onMouseDown={e => e.preventDefault()} onClick={() => insert(t)}>
+              {data.tag_labels[t] || t}
+            </button>
+          ))}
+        </div>
 
-      <label className="fb-label" htmlFor="et-subject">Subject</label>
-      <input id="et-subject" ref={subjRef} className="fb-input" maxLength={200} value={draft.subject}
-        onFocus={() => { lastField.current = 'subject'; }} onChange={e => setDraft({ ...draft, subject: e.target.value })} />
-
-      {isHtml ? (
-        <>
-          <div className="et-code-head">
-            <label className="fb-label et-gap" htmlFor="et-html">HTML</label>
-            <button type="button" className="refresh et-small" onClick={() => setDraft({ ...draft, html: cur.starter_html })}>Start again from the simple design</button>
-          </div>
-          <textarea id="et-html" ref={bodyRef} className="fb-input et-body et-code" rows={16} spellCheck={false} value={draft.html}
-            onFocus={() => { lastField.current = 'body'; }} onChange={e => setDraft({ ...draft, html: e.target.value })} />
-          <p className="et-hint">Paste your own design here, or edit this one. Scripts and forms are removed when it is saved. A plain-text copy goes with it for email apps that can't show HTML.</p>
-        </>
-      ) : (
-        <>
-          <label className="fb-label et-gap" htmlFor="et-body">Message</label>
-          <textarea id="et-body" ref={bodyRef} className="fb-input et-body" rows={10} maxLength={5000} value={draft.body}
-            onFocus={() => { lastField.current = 'body'; }} onChange={e => setDraft({ ...draft, body: e.target.value })} />
-        </>
-      )}
-
-      <div className="et-tags">
-        <span className="et-tags-l">Insert:</span>
-        {cur.tags.map(t => (
-          <button key={t} type="button" className="refresh et-tag" onMouseDown={e => e.preventDefault()} onClick={() => insert(t)}>
-            {data.tag_labels[t] || t}
-          </button>
-        ))}
+        <div className="et-actions">
+          <button type="button" className="refresh" disabled={!dirty || busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+          {dirty && <button type="button" className="refresh" disabled={busy} onClick={() => setDraft(saved)}>Undo changes</button>}
+          {cur.edited && !dirty && <button type="button" className="refresh" disabled={busy} onClick={reset}>Reset to default</button>}
+          {msg && <span className={`et-msg ${msg[0] === '⚠' ? 'u-color-red' : 'u-color-green'}`}>{msg}</span>}
+        </div>
       </div>
 
-      <div className="et-actions">
-        <button type="button" className="refresh" disabled={!dirty || busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
-        {dirty && <button type="button" className="refresh" disabled={busy} onClick={() => setDraft(saved)}>Undo changes</button>}
-        {cur.edited && !dirty && <button type="button" className="refresh" disabled={busy} onClick={reset}>Reset to default</button>}
-        {msg && <span className={`et-msg ${msg[0] === '⚠' ? 'u-color-red' : 'u-color-green'}`}>{msg}</span>}
-      </div>
-
-      <div className="et-preview">
+      {/* the preview, its own card on the right, level with the editor */}
+      <div className="table-wrap et-preview">
         <div className="et-preview-h">Preview · what your client sees</div>
         <div className="et-preview-subj">{fillTags(draft.subject, vals)}</div>
         {isHtml
@@ -169,6 +177,6 @@ export default function EmailTemplates({ startKind = null }) {
           : <div className="et-preview-body">{fillTags(draft.body, vals)}</div>}
         {kind === 'signed_contract' && <div className="et-attach">📎 contract-Priya_Sharma.pdf</div>}
       </div>
-    </div>
+    </>
   );
 }

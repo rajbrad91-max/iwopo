@@ -2830,7 +2830,7 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 .et-tag, .et-small { padding: 5px 10px; font-size: 12px; font-weight: 500; }
 .et-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
 .et-msg { font-size: 12.5px; }
-.et-preview { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.et-preview { padding: 22px; }   /* its own card, beside the editor (Raj, 2026-11-17) */
 .et-preview-h { margin-bottom: 10px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .et-preview-subj { margin-bottom: 10px; font-size: 14px; font-weight: 700; }
 .et-preview-body { white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; }
