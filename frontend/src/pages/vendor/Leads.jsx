@@ -455,15 +455,19 @@ function LeadDetail({ lead, onSaved }) {
         </div>
 
         {/* pick a folder → its packages are copied here, ready to tailor */}
-        <select className="ld-select ld-pkg-select" value={tplId}
-          onChange={e => loadFolder(e.target.value)} disabled={pkgLocked || pkgBusy}>
-          <option value="">— Choose a package folder —</option>
-          {tpls.map(t => (
-            <option key={t.id} value={t.id}>
-              📁 {t.name} ({(t.packages || []).length} package{(t.packages || []).length === 1 ? '' : 's'})
-            </option>
-          ))}
-        </select>
+        {/* the folder icon beside the list — a list's own lines can hold text only (Raj, 2026-11-17, in place of 📁) */}
+        <div className="ld-pkg-pick">
+          <NavIcon name="folder" />
+          <select className="ld-select ld-pkg-select" value={tplId}
+            onChange={e => loadFolder(e.target.value)} disabled={pkgLocked || pkgBusy}>
+            <option value="">— Choose a package folder —</option>
+            {tpls.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.name} ({(t.packages || []).length} package{(t.packages || []).length === 1 ? '' : 's'})
+              </option>
+            ))}
+          </select>
+        </div>
 
         {pkgLocked && (
           <div className="ld-lock-note">
@@ -484,11 +488,11 @@ function LeadDetail({ lead, onSaved }) {
         )}
         <div className="ld-btn-row">
           <button
-            className="refresh ld-btn-sm"
+            className="refresh ld-btn-sm ld-ic-btn"
             type="button"
             title="Preview the contract before you send packages"
             onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}
-          >👁️ Preview Contract</button>
+          ><NavIcon name="preview" />Preview Contract</button>
           <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh bx-primary ld-btn-sm" disabled={pkgBusy}
             onMessage={flashPkg} onSent={() => { setPkgLocked(true); setMoneyTick(t => t + 1); }} />
         </div>
@@ -557,10 +561,10 @@ function ContractsBox({ lead, actions = null }) {
         <div className="ctb-title-row">
           <h3 className="ctb-h3">Contract</h3>
           <button
-            className="refresh ctb-preview"
+            className="refresh ctb-preview ld-ic-btn"
             title="Open the contract the client will see, in a new tab"
             onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}>
-            👁️ Preview
+            <NavIcon name="preview" />Preview
           </button>
         </div>
         {actions && <div className="ctb-actions">{actions}</div>}

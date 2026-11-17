@@ -48,7 +48,7 @@ export function leadOverview(lead, cfg) {
       // form never stored the tick itself.
       if (f.type === 'checkbox') {
         const on = raw === true || raw === false ? raw : col === true;
-        return on ? '✅ Yes' : '❌ No';
+        return { yes: on };   // drawn as a Yes / No icon on the card (components/LeadCards.jsx)
       }
       // Hours is stored twice: the sentence the client saw ("6 hrs",
       // "6 hrs 30 min") and a whole-number column for bookings. The
@@ -65,7 +65,7 @@ export function leadOverview(lead, cfg) {
       }
       const v = has(col) ? col : raw;
       if (!has(v)) return null;
-      if (v === true) return '✅ Yes';
+      if (v === true) return { yes: true };
       if (f.type === 'date') return ymd(v);
       if (f.type === 'time') return fmtTime(v);
       return String(v);

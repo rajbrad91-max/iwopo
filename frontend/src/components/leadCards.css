@@ -77,5 +77,10 @@
 .ldc-video { background: color-mix(in srgb, #16a34a 7%, transparent); color: color-mix(in srgb, #16a34a 45%, var(--text)); }
 .ldc-svc { background: color-mix(in srgb, var(--teal) 7%, transparent); color: color-mix(in srgb, var(--teal) 55%, var(--text)); }
 
+/* ✔️ a yes/no answer: the panel's own Yes / No icon beside the word; its cut lines take the card's colour */
+.ldc-yn { display: inline-flex; align-items: center; gap: 6px; --nav-cut: var(--panel); }
+.dash .ldc-yn .nav-ic, .dash .ldc-yn .nav-svg { width: auto; height: auto; }
+.ldc-yn .nav-svg svg { display: block; width: 15px; height: 15px; }
+
 /* 📝 notes keep the client's own line breaks */
 .ldc-notes { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -1,6 +1,7 @@
 import { eventDateParts, eventDateValue, fmtTime } from '../lib/api';
 import { hoursBetween, formatHours } from '../pages/InquiryForm';
 import Emo from './Emo';
+import NavIcon from './NavIcon';
 import './leadCards.css';
 
 /**
@@ -34,6 +35,15 @@ function DateTile({ date, main = false }) {
   );
 }
 
+/** ✔️ An answer as the card shows it: a yes/no question as the panel's own Yes or No icon (Raj, 2026-11-17 — in
+ *  place of ✅ / ❌), anything else as its text. */
+function Answer({ value }) {
+  if (value && typeof value === 'object' && 'yes' in value) {
+    return <span className="ldc-yn"><NavIcon name={value.yes ? 'yes' : 'no'} />{value.yes ? 'Yes' : 'No'}</span>;
+  }
+  return value;
+}
+
 /** 👤 The client in one strip: name and role, how to reach them, the answers that follow on from those (a friend's
  *  name when they heard from a friend), where they came from and when.
  *  `items` and `meta` are [Fluent code point, text] pairs, `answers` [label, value]; empty ones are left out. */
@@ -49,7 +59,7 @@ export function ContactStrip({ name, role, items, meta, answers = [] }) {
         {shown(items).map(([cp, text, href], i) => (href
           ? <a className="ldc-pill ldc-link" key={i} href={href}><Emo cp={cp} />{text}</a>
           : <span className="ldc-pill" key={i}><Emo cp={cp} />{text}</span>))}
-        {answers.map(([label, value], i) => <span className="ldc-pill" key={`a${i}`}><span className="ldc-pill-label">{label}</span>{value}</span>)}
+        {answers.map(([label, value], i) => <span className="ldc-pill" key={`a${i}`}><span className="ldc-pill-label">{label}</span><Answer value={value} /></span>)}
         {shown(meta).length > 0 && (
           <div className="ldc-meta">
             {shown(meta).map(([cp, text], i) => <span key={i}><Emo cp={cp} />{text}</span>)}
@@ -89,7 +99,7 @@ export function MainEventCard({ ev, details, onEdit }) {
       {!ev && !details.length && <p className="ldc-empty">No event details yet.</p>}
       {details.length > 0 && (
         <dl className={`ldc-details${ev ? '' : ' is-first'}`}>
-          {details.map(([label, value], i) => <div className="ldc-detail" key={i}><dt>{label}</dt><dd>{value}</dd></div>)}
+          {details.map(([label, value], i) => <div className="ldc-detail" key={i}><dt>{label}</dt><dd><Answer value={value} /></dd></div>)}
         </dl>
       )}
     </div>

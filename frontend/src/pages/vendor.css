@@ -480,6 +480,15 @@
 }
 /* client name inside Contact / Details — firm but not a page title */
 .ld-pkg-select { width: 100%; margin-bottom: 10px; }
+/* 🗂️ the package-folder list with the folder icon beside it */
+.ld-pkg-pick { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; --nav-cut: var(--panel); }
+.ld-pkg-pick .ld-pkg-select { flex: 1; min-width: 0; margin-bottom: 0; }
+.dash .ld-pkg-pick .nav-ic, .dash .ld-pkg-pick .nav-svg { width: auto; height: auto; }
+.ld-pkg-pick .nav-svg svg { display: block; width: 22px; height: 22px; }
+/* 👁️ a button with the panel's own icon before its words (Preview Contract, Preview) */
+.ld-ic-btn { display: inline-flex; align-items: center; gap: 6px; }
+.dash .ld-ic-btn .nav-ic, .dash .ld-ic-btn .nav-svg { width: auto; height: auto; }
+.ld-ic-btn .nav-svg svg { display: block; width: 15px; height: 15px; }
 .ld-gate { background: var(--panel); color: var(--muted); }
 .ld-gate.is-on { background: #4ade8022; color: #4ade80; }
 .ld-msg-mt { margin-top: 8px; }
