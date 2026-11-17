@@ -1,5 +1,4 @@
-import { renderEmail } from './emailTemplates.js';   // ✉️ the vendor's own wording
-import { clientBaseUrl } from './vendorHosts.js';   // 🌐 the client's link on the vendor's own address
+import { renderEmail, clientSectionLink } from './emailTemplates.js';   // ✉️ the vendor's own wording; 🔗 the client section
 import crypto from 'node:crypto';
 import path from 'node:path';
 import prisma from '../config/prisma.js';
@@ -156,17 +155,6 @@ export async function uploadComplete(v, album, items, who = null) {
   return { photos: created.length, raws, errors };
 }
 
-/** 🔗 where the "Photos ready to pick" email sends the client: the vendor's client section, the same link the
- *  Gallery delivery email sends (Raj, 2026-11-17) — the shoot is listed there until its edited gallery is
- *  delivered (routes/galleryPublic.js). A vendor with no client section yet gets the shoot's own link. */
-async function clientSectionLink(v, album) {
-  const [ven, base] = await Promise.all([
-    prisma.vendors.findUnique({ where: { id: v }, select: { gallery_token: true } }),   // 🔒 this vendor
-    clientBaseUrl(v),
-  ]);
-  return ven?.gallery_token ? `${base}/gallery/${ven.gallery_token}` : `${base}/g/${album.public_token}`;
-}
-
 /** all uploaded: the owner's bell + email — and, if asked, the client (their link and both passwords).
  *  `notify` and `sendAsVendor` are passed in: they live in route modules (routes/notifications.js, routes/email.js). */
 export async function announceUpload({ v, album, who, client, appUrl, notify, sendAsVendor }) {
@@ -183,7 +171,7 @@ export async function announceUpload({ v, album, who, client, appUrl, notify, se
   if (client && album.client_email) {
     const mail = await renderEmail(v, 'photos_ready', {   // ✉️ Settings → Email templates
       client_name: album.title, gallery_name: album.title, business_name: studio,
-      link: await clientSectionLink(v, album),
+      link: await clientSectionLink(v, album),   // the client section — the shoot is listed there until delivered
       view_password: openPassword(album.guest_password_enc) || '(ask us)',
       pick_password: openPassword(album.admin_password_enc) || '(ask us)',
     });

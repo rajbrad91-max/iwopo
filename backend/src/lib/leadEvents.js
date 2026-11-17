@@ -26,20 +26,17 @@ export function formAnswer(lead, re) {
   return '';
 }
 
-/** 💍 a wedding, by the name of its main event — "Wedding", "Sikh Wedding", "Anand Karaj", "Nikah" */
-const WEDDING_RE = /wedding|anand\s*karaj|nikah|shaadi|marriage/i;
+/** 💍 a wedding, by the name of its main event, whatever the culture (Raj, 2026-11-17): any name with "Wedding" in it
+ *  (Sikh, Hindu, Muslim, Christian, Chinese… Wedding), and the names used without the word — Anand Karaj, Lavan,
+ *  Nikah, Shaadi, Vivah, Marriage. A pre- or post-wedding shoot is not the wedding day, so it is left out. */
+const WEDDING_RE = /(?<!pre[-\s]?)(?<!post[-\s]?)wedding|anand\s*karaj|laa?vaa?n|nikk?aa?h|shaa?di|vivaa?h|marriage/i;
 
 /**
- * 💍 Getting ready belongs to a wedding (Raj, 2026-11-17): a birthday or a corporate party printed
- * "Bride Getting Ready — No" on its contract, with a box to initial. Shown for a wedding — or wherever the client
- * actually said yes to it, so an answer they gave is never dropped from what they sign.
+ * 💍 Getting ready belongs to a wedding, and only a wedding (Raj, 2026-11-17): a birthday or a corporate party
+ * printed "Bride Getting Ready — No" on its contract, with a box to initial. For a wedding the rows show, Yes or No;
+ * for any other event the section is left out of the contract and the client's page.
  */
-function gettingReadyApplies(lead) {
-  if (WEDDING_RE.test(String(lead.event_type || ''))) return true;
-  const cd = lead.custom_data && typeof lead.custom_data === 'object' ? lead.custom_data : {};
-  const askedYes = (lead.questions || []).some(f => f.type === 'checkbox' && /getting[- ]?ready/i.test(f.label || '') && cd[f.id] === true);
-  return !!(lead.gr_bride || lead.gr_groom || askedYes);
-}
+const gettingReadyApplies = (lead) => WEDDING_RE.test(String(lead.event_type || ''));
 
 /**
  * Getting-ready rows for what this inquiry asked.

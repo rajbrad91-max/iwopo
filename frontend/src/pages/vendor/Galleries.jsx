@@ -314,12 +314,14 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
     if (kind === 'liveshoot' && edit?.id === a.id) { setEdit(null); setShowNew(false); resetForm(); }
     else startEdit(a);
   }
-  async function doSend() {
+  /* 📤 Send = the "Gallery delivery" email shown above; Send pickup instructions = the "Photos ready to pick" email,
+     how to choose favourites and send them to the studio (Raj, 2026-11-17). Both from Settings → Email templates. */
+  async function doSend(emailKind = 'delivery') {
     if (!sendModal?.email) { setSendMsg('⚠️ Email required'); return; }
     setSendMsg('Sending…');
     try {
-      await api.emailAlbumInstructions(sendModal.album.id, { email: sendModal.email, ...sendModal.pw });
-      setSendMsg('✅ Sent!'); setTimeout(() => setSendModal(null), 1200);
+      await api.emailAlbumInstructions(sendModal.album.id, { email: sendModal.email, ...sendModal.pw, email_kind: emailKind });
+      setSendMsg(emailKind === 'pickup' ? '✅ Pickup instructions sent!' : '✅ Sent!'); setTimeout(() => setSendModal(null), 1200);
     } catch (e) { setSendMsg('⚠️ ' + e.message); }
   }
   async function saveSettingsOnly() {
@@ -693,7 +695,8 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
               : <div className="gal-send-preview">{sendModal.body}</div>}
 
             <div className="gal-send-foot">
-              <button type="button" className="pop-btn" onClick={doSend}>Send</button>
+              <button type="button" className="pop-btn" onClick={() => doSend()}>Send</button>
+              <button type="button" className="pop-btn" onClick={() => doSend('pickup')}>Send pickup instructions</button>
               {sendMsg && <span className="gal-err">{sendMsg}</span>}
               <button type="button" className="pop-btn gal-send-copy" onClick={copyInstructions}>{copiedMsg ? 'Copied' : 'Copy'}</button>
             </div>

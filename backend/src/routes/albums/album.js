@@ -3,7 +3,7 @@
  * Moved out of routes/albums.js unchanged (code audit #2, Raj 2026-11-11). Mounted by routes/albums.js in
  * the original order.
  */
-import { galleryEmail } from '../../lib/emailTemplates.js';   // ✉️ the vendor's "Gallery delivery" email
+import { galleryEmail, pickupEmail } from '../../lib/emailTemplates.js';   // ✉️ the vendor's "Gallery delivery" and "Photos ready to pick" emails
 import { sendLeadEmail } from '../email.js';   // 📤 a static import: a wrong path fails at start-up, not when a client is waiting
 import express from 'express';
 import * as objects from '../../lib/objectStore.js';
@@ -156,6 +156,8 @@ router.get('/:id/passwords', requireAuth, async (req, res) => {
 });
 
 const typedPasswords = (b) => ({ guest: typeof b?.guest === 'string' ? b.guest : undefined, admin: typeof b?.admin === 'string' ? b.admin : undefined });
+/** which email the Send window sends: the delivery (Send), or how to pick favourites (Send pickup instructions) */
+const emailFor = (v, a, b) => (b?.email_kind === 'pickup' ? pickupEmail(v, a, typedPasswords(b)) : galleryEmail(v, a, typedPasswords(b)));
 
 // 📧 the gallery email as it will go — what the Send window shows
 router.post('/:id/email-instructions/preview', requireAuth, async (req, res) => {
@@ -163,7 +165,7 @@ router.post('/:id/email-instructions/preview', requireAuth, async (req, res) => 
   try {
     const a = await prisma.albums.findFirst({ where: { id: Number(req.params.id), vendor_id: v } });   // 🔒 tenancy
     if (!a) return res.status(404).json({ error: 'Not found' });
-    const m = await galleryEmail(v, a, typedPasswords(req.body));
+    const m = await emailFor(v, a, req.body);
     res.set('Cache-Control', 'no-store');   // it carries the passwords
     res.json({ to: a.client_email || '', subject: m.subject, body: m.body, html: m.html || null });
   } catch (e) { serverError(res, e); }
@@ -181,8 +183,8 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     const to = (req.body.email || a.client_email || '').trim();
     if (!to) return res.status(400).json({ error: 'No recipient email' });
 
-    // the vendor's "Gallery delivery" email for this album — its words are changed in Settings → Email templates
-    const m = await galleryEmail(v, a, typedPasswords(req.body));
+    // the vendor's "Gallery delivery" or "Photos ready to pick" email for this album — words in Settings → Email templates
+    const m = await emailFor(v, a, req.body);
 
     // remember the entered email on the album for next time
     if (req.body.email && req.body.email !== a.client_email) {

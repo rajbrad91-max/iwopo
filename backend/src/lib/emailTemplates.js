@@ -291,6 +291,19 @@ export async function renderEmail(vendorId, kind, values = {}) {
 }
 
 /**
+ * 🔗 The vendor's client section — where both photo emails send the client (Raj, 2026-11-17): every gallery is
+ * listed there, and a shoot until its edited gallery is delivered (routes/galleryPublic.js). A vendor with no client
+ * section yet gets the album's own link.
+ */
+export async function clientSectionLink(v, album) {
+  const [ven, base] = await Promise.all([
+    prisma.vendors.findUnique({ where: { id: v }, select: { gallery_token: true } }),   // 🔒 this vendor
+    clientBaseUrl(v),
+  ]);
+  return ven?.gallery_token ? `${base}/gallery/${ven.gallery_token}` : `${base}/g/${album.public_token}`;
+}
+
+/**
  * 📧 The "Gallery delivery" email for one gallery: filled with its name, its passwords and the vendor's
  * client-section link — plain text, or their HTML design. Used when a gallery is sent from Galleries
  * (routes/albums/album.js) and when the editor delivers the edited photos (routes/editor.js).
@@ -299,14 +312,23 @@ export async function renderEmail(vendorId, kind, values = {}) {
  * vendor fills, in an email that goes by itself a line the client can act on.
  */
 export async function galleryEmail(v, a, pw = {}, missing = '(type the password here)') {
-  const [ven, base] = await Promise.all([
-    prisma.vendors.findUnique({ where: { id: v }, select: { gallery_token: true } }),   // 🔒 this vendor
-    clientBaseUrl(v),
-  ]);
   return renderEmail(v, 'gallery_shared', {
     client_name: a.title || 'Client',
-    link: ven?.gallery_token ? `${base}/gallery/${ven.gallery_token}` : base,
+    link: await clientSectionLink(v, a),
     admin_password: pw.admin || openPassword(a.admin_password_enc) || missing,
     guest_password: pw.guest || openPassword(a.guest_password_enc) || missing,
+  });
+}
+
+/**
+ * 📸 The "Photos ready to pick" email for one gallery (Raj, 2026-11-17: "Send pickup instructions" in the Send
+ * window): how to pick and send favourites. The admin password picks and sends; the guest password only views.
+ */
+export async function pickupEmail(v, a, pw = {}, missing = '(ask us)') {
+  return renderEmail(v, 'photos_ready', {
+    client_name: a.title || 'Client', gallery_name: a.title || '',
+    link: await clientSectionLink(v, a),
+    view_password: pw.guest || openPassword(a.guest_password_enc) || missing,
+    pick_password: pw.admin || openPassword(a.admin_password_enc) || missing,
   });
 }
