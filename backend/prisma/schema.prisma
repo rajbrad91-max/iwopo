@@ -483,7 +483,8 @@ model leads {
   delivered               Boolean?             @default(false)
   booking_notes           String?
   ceremony                String?
-  client_token            String?              @unique @db.VarChar(64)
+  /// 🔗 the client's link (/portal/<token>), made by the database for every new lead, whatever creates it
+  client_token            String?              @unique @default(dbgenerated("(replace((gen_random_uuid())::text, '-'::text, ''::text) || replace((gen_random_uuid())::text, '-'::text, ''::text))")) @db.VarChar(64)
   /// 🗓️ Mehndi, Jaggo, Reception… — [{ name, date, from, to, location, guests, service }] (Raj, 2026-10-24)
   pre_events              Json                 @default("[]")
   custom_data             Json?                @default("{}")

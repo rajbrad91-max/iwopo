@@ -1,4 +1,5 @@
 import { renderEmail } from './emailTemplates.js';   // ✉️ the vendor's own wording
+import { clientBaseUrl } from './vendorHosts.js';   // 🌐 the client's link on the vendor's own address
 import crypto from 'node:crypto';
 import path from 'node:path';
 import prisma from '../config/prisma.js';
@@ -171,7 +172,7 @@ export async function announceUpload({ v, album, who, client, appUrl, notify, se
   if (client && album.client_email) {
     const mail = await renderEmail(v, 'photos_ready', {   // ✉️ Settings → Email templates
       client_name: album.title, gallery_name: album.title, business_name: studio,
-      link: `${appUrl}/g/${album.public_token}`,
+      link: `${await clientBaseUrl(v)}/g/${album.public_token}`,   // the vendor's own address, like every other client link
       view_password: openPassword(album.guest_password_enc) || '(ask us)',
       pick_password: openPassword(album.admin_password_enc) || '(ask us)',
     });
