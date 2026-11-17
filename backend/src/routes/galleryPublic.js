@@ -193,13 +193,23 @@ router.get('/vendor/:token', async (req, res) => {
       select: { id: true, business_name: true, logo_path: true },
     });
     if (!v) return res.status(404).json({ error: 'Gallery not found' });
+    /* 📸 A shoot whose photos are up is here too, for the client to pick from (Raj, 2026-11-17: one client-section
+       link for picking and for delivery) — until its edited gallery is delivered, which then takes its place, so
+       a client never sees the same name twice. */
+    const delivered = (await prisma.albums.findMany({
+      where: { vendor_id: v.id, kind: 'gallery', source_album_id: { not: null } },   // 🔒 this vendor
+      select: { source_album_id: true },
+    })).map(a => a.source_album_id);
     const albums = await prisma.albums.findMany({
-      /* ⚠️ Galleries only. This is the page a client opens — the index of
+      /* ⚠️ Never a live shoot. This is the page a client opens — the index of
          everything a studio has published — and it listed LIVE SHOOTS too,
          because it never filtered by kind. A live shoot is reached by its own
          link and shows each guest only themselves; putting it on a public
          index hands strangers the door to it. */
-      where: { vendor_id: v.id, kind: 'gallery' },   // 🔒 this vendor, galleries only
+      where: {
+        vendor_id: v.id,   // 🔒 this vendor
+        OR: [{ kind: 'gallery' }, { kind: 'shoot', uploaded_at: { not: null }, id: { notIn: delivered } }],   // galleries, and shoots ready to pick
+      },
       orderBy: [{ created_at: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
       select: {
         public_token: true, title: true, category: true, cover_photo: true, cover_focus: true,
