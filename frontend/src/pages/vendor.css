@@ -1034,7 +1034,8 @@
 .ad-title { margin: 0; }
 .ad-count { color: var(--muted); font-size: 12px; }
 .ad-upload { cursor: pointer; }   /* Upload to this event / Add Videos look like the album's other buttons (Raj, 2026-11-12) */
-.ad-prog { margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+.ad-prog { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+.ad-prog-retry { padding: 5px 12px; font-size: 12.5px; }   /* ♻️ a stopped batch, sent again — what landed is skipped */
 .ad-empty { padding: 40px; text-align: center; color: var(--muted); }
 /* 📤 big click-or-drop upload zone shown when an event has no photos yet */
 .ad-dropzone {

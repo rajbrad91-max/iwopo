@@ -163,12 +163,30 @@ router.post('/:id/photos/begin', requireAuth, async (req, res) => {
       if (!Number.isFinite(size) || size <= 0) return res.status(400).json({ error: 'Every file needs its size' });
       if (size > DIRECT_MAX_BYTES) return res.status(413).json({ error: `${String(f.name || 'A file').slice(0, 80)} is over 200 MB` });
     }
+    /* ♻️ Already here (Raj, 2026-11-17): a batch started again after an interruption sends every photo once more.
+       One with the same name in this folder of the album, whose original is the same size, landed the first time —
+       it is skipped, not stored twice, so starting over never leaves duplicates behind. The original's size is the
+       storage ledger's (photos.size_bytes also counts the screen sizes made afterwards). */
+    const eventId = await eventInAlbum(req.body?.event_id, id, v);
+    const nameOf = (f) => String(f.name || '').slice(0, 200);
+    const same = await prisma.photos.findMany({
+      where: { album_id: id, vendor_id: v, event_id: eventId, filename: { in: files.map(nameOf) } },   // 🔒 this vendor's album
+      select: { filename: true, storage_path: true },
+    });
+    const keyOf = (p) => galleryKey(v, id, path.basename(p.storage_path));
+    const originals = await prisma.storage_objects.findMany({
+      where: { vendor_id: v, cls: String(objects.PRIVATE), object_key: { in: same.map(keyOf) } },
+      select: { object_key: true, bytes: true },
+    });
+    const bytesOf = new Map(originals.map(o => [o.object_key, Number(o.bytes)]));
+    const landed = (f) => same.some(p => p.filename === nameOf(f) && bytesOf.get(keyOf(p)) === Number(f.size));
     // 📏 asked before a single byte moves — and again on completion, against what really landed
-    const over = await wouldExceed(v, files.reduce((n, f) => n + Number(f.size), 0));
+    const over = await wouldExceed(v, files.reduce((n, f) => n + (landed(f) ? 0 : Number(f.size)), 0));
     if (over) return res.status(413).json(over);
 
     const items = [];
     for (const f of files) {
+      if (landed(f)) { items.push({ skip: true }); continue; }
       const base = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
       const ext = (path.extname(String(f.name || '')).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.jpg').slice(0, 8);
       const key = galleryKey(v, id, `${base}_orig${ext}`);            // 🔒 vendor from the token

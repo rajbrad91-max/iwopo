@@ -304,6 +304,9 @@ sweepAbandonedUploads().catch(quiet('server · sweepAbandonedUploads'));
    anything younger than an hour, so an upload in progress is safe. */
 setInterval(() => { sweepGalleryOrphans().catch(quiet('server · sweepGalleryOrphans')); }, 60 * 60_000).unref();
 setTimeout(() => { sweepGalleryOrphans().catch(quiet('server · sweepGalleryOrphans')); }, 2 * 60_000).unref();
+/* 🔁 a photo whose screen sizes could not be made (a storage hiccup) is tried again every 10 minutes, not only at the
+   next restart — a tile is never left blank (Raj, 2026-11-17) */
+setInterval(() => { resumePending().catch(quiet('server · resumePending')); }, 10 * 60_000).unref();
 
 /* 🖼️ Photos that reached R2 but whose screen sizes were not made yet — a
    restart mid-upload — and face work that only lived in memory. Picked up

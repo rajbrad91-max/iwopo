@@ -2,8 +2,9 @@
 // tab is hidden (browsers throttle the main thread hard, workers far less).
 // Messages IN:  { albumId, files:[File], eventId, token }
 // Messages OUT: { type:'progress', done, total }
+//               { type:'alive' }               // every few seconds while working — the page's stall alarm
 //               { type:'chunk' }               // photos landed -> UI should refresh the grid
-//               { type:'done', count }
+//               { type:'done', count, skipped }
 //               { type:'error', message }
 //
 // 🚀 STRAIGHT TO R2 (Raj, 2026-10-09: "uploading should happen first").
@@ -29,6 +30,12 @@ const RELOAD_EVERY_MS = 3000;          // don't refetch the whole album for ever
    still stops at once. */
 const BACKOFF_MS = [2000, 4000, 8000, 15000, 20000, 30000];
 const RAW_EXT = /\.(arw|cr3|cr2|nef|raf|dng|rw2|orf)$/i;   // same list as backend lib/rawFiles.js
+/* ⏱️ Nothing waits forever (Raj, 2026-11-17: a stopped upload left its spinner turning for good, with nothing
+   reaching the server). Every request has a time limit, and one that runs out is retried like any other failure:
+   half a minute to ask our server, and for a file a minute plus its size at a slow 50 KB/s. */
+const ASK_MS = 30_000;
+const sendMs = (bytes) => 60_000 + Math.ceil(bytes / 50_000) * 1000;
+const ALIVE_MS = 5_000;
 
 self.onmessage = async (e) => {
   const { albumId, files, eventId, token } = e.data;
@@ -37,10 +44,12 @@ self.onmessage = async (e) => {
   const auth = token ? { Authorization: `Bearer ${token}` } : {};
   const json = (url, body) => fetch(url, {
     method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    signal: AbortSignal.timeout(ASK_MS),
   }).then(async r => ({ status: r.status, data: await r.json().catch(() => ({})) }));
 
   let direct = true;                   // until the server says otherwise
-  let done = 0, next = 0, failed = null, lastReload = 0;
+  let done = 0, skipped = 0, next = 0, failed = null, lastReload = 0;
+  const alive = setInterval(() => self.postMessage({ type: 'alive' }), ALIVE_MS);
 
   const retrying = async (fn) => {
     for (let attempt = 0; ; attempt++) {
@@ -53,19 +62,20 @@ self.onmessage = async (e) => {
   };
   const fail = (msg) => Object.assign(new Error(msg), { final: true });
 
-  /** One photo: permission → Cloudflare → recorded. */
+  /** One photo: permission → Cloudflare → recorded — or nothing at all when it is already in the album. */
   async function sendDirect(file) {
     const b = await retrying(async () => {
-      const r = await json(`/api/albums/${albumId}/photos/begin`, { files: [{ name: file.name, size: file.size }] });
+      const r = await json(`/api/albums/${albumId}/photos/begin`, { files: [{ name: file.name, size: file.size }], ...(eventId ? { event_id: eventId } : {}) });
       if (r.status === 409 && r.data.error === 'direct_unavailable') throw Object.assign(new Error('fallback'), { fallback: true, final: true });
       if (r.status >= 500) throw new Error(r.data.error || `Upload failed (${r.status})`);
       if (r.status >= 400) throw fail(r.data.message || r.data.error || `Upload failed (${r.status})`);
       return r.data.items[0];
     });
+    if (b.skip) { skipped++; return; }   // landed the first time this batch was sent
     await retrying(async () => {
       /* file.slice() has no type, so no Content-Type header goes with it — the
          same request shape the film upload already sends to R2 successfully */
-      const r = await fetch(b.url, { method: 'PUT', body: file.slice(0, file.size) });
+      const r = await fetch(b.url, { method: 'PUT', body: file.slice(0, file.size), signal: AbortSignal.timeout(sendMs(file.size)) });
       if (!r.ok) throw new Error(`Cloudflare refused ${file.name} (${r.status})`);
     }).catch((err) => { throw Object.assign(err, { cloudflare: true }); });
     await retrying(async () => {
@@ -87,7 +97,7 @@ self.onmessage = async (e) => {
       return r.data.items[0];
     });
     await retrying(async () => {
-      const r = await fetch(b.url, { method: 'PUT', body: file.slice(0, file.size) });
+      const r = await fetch(b.url, { method: 'PUT', body: file.slice(0, file.size), signal: AbortSignal.timeout(sendMs(file.size)) });
       if (!r.ok) throw new Error(`Cloudflare refused ${file.name} (${r.status})`);
     });
     await retrying(async () => {
@@ -103,7 +113,7 @@ self.onmessage = async (e) => {
       const fd = new FormData();
       fd.append('photos', file);
       if (eventId) fd.append('event_id', eventId);
-      const res = await fetch(`/api/albums/${albumId}/photos`, { method: 'POST', headers: auth, body: fd });
+      const res = await fetch(`/api/albums/${albumId}/photos`, { method: 'POST', headers: auth, body: fd, signal: AbortSignal.timeout(sendMs(file.size)) });
       const data = await res.json().catch(() => ({}));
       if (res.ok) return;
       if (res.status < 500) throw fail(data.message || data.error || `Upload failed (${res.status})`);
@@ -139,6 +149,7 @@ self.onmessage = async (e) => {
   }
 
   await Promise.all(Array.from({ length: Math.min(PARALLEL, total) }, lane));
-  if (failed) self.postMessage({ type: 'error', message: `${failed.message || 'Upload failed'} — ${done} of ${total} uploaded` });
-  else self.postMessage({ type: 'done', count: total });
+  clearInterval(alive);
+  if (failed) self.postMessage({ type: 'error', message: `${failed.name === 'TimeoutError' ? 'The connection stopped answering' : (failed.message || 'Upload failed')} — ${done} of ${total} uploaded` });
+  else self.postMessage({ type: 'done', count: total, skipped });
 };
