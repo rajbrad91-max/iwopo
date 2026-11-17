@@ -67,10 +67,20 @@
 .ldc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--line); }
 .ldc-chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; overflow-wrap: anywhere;
   background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); }
-.ldc-svc { background: color-mix(in srgb, #a78bfa 18%, transparent); color: #a78bfa; }
+
+/* 🎨 each value its own light colour, on the pre-event chips and the main event's pills (Raj, 2026-11-17):
+   hours blue · guests amber · photos rose · videos green · any other service teal */
+.ldc-hrs { background: color-mix(in srgb, #3b82f6 8%, transparent); color: #93c5fd; }
+.ldc-guests { background: color-mix(in srgb, #f59e0b 9%, transparent); color: #fcd34d; }
+.ldc-photo { background: color-mix(in srgb, #f43f5e 8%, transparent); color: #fda4af; }
+.ldc-video { background: color-mix(in srgb, #22c55e 8%, transparent); color: #86efac; }
+.ldc-svc { background: color-mix(in srgb, var(--teal) 9%, transparent); color: var(--teal); }
 
 /* 📝 notes keep the client's own line breaks */
 .ldc-notes { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 
-/* light theme: white on the deeper teal, and a readable purple */
-[data-theme="light"] .ldc-svc { color: #6d28d9; }
+/* light theme: the same light backgrounds, with text deep enough to read */
+[data-theme="light"] .ldc-hrs { color: #2563eb; }
+[data-theme="light"] .ldc-guests { color: #b45309; }
+[data-theme="light"] .ldc-photo { color: #be123c; }
+[data-theme="light"] .ldc-video { color: #15803d; }

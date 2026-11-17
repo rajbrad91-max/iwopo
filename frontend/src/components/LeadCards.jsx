@@ -77,8 +77,8 @@ export function MainEventCard({ ev, details, onEdit }) {
             <div className="ldc-name">{ev.name}<span className="ldc-badge">MAIN</span></div>
             <div className="ldc-pills">
               {time && <span className="ldc-pill"><Emo cp="1f550" />{time}</span>}
-              {hours && <span className="ldc-pill"><Emo cp="23f1" />{hours}</span>}
-              {ev.guests && <span className="ldc-pill"><Emo cp="1f465" />{ev.guests}</span>}
+              {hours && <span className="ldc-pill ldc-hrs"><Emo cp="23f1" />{hours}</span>}
+              {ev.guests && <span className="ldc-pill ldc-guests"><Emo cp="1f465" />{ev.guests}</span>}
             </div>
             {ev.location && <div className="ldc-line"><Emo cp="1f4cd" /><span>{ev.location}</span></div>}
           </div>
@@ -96,11 +96,21 @@ export function MainEventCard({ ev, details, onEdit }) {
   );
 }
 
-/** One pre-event: tile, name, the time, the place, then hours · guests · service as chips. */
+/** 🎨 The service as chips, one per part, each in its own colour (Raj, 2026-11-17): "Photos & Videos" reads as a
+ *  Photos chip and a Videos chip; any other part ("Drone", "Live streaming") keeps its own words. */
+function serviceChips(service) {
+  return String(service || '').split(/\s*(?:&|\+|,|\/|\band\b)\s*/i).map(s => s.trim()).filter(Boolean).map(part => (
+    /photo/i.test(part) ? ['1f4f7', part, ' ldc-photo']
+      : /video|film|cinema/i.test(part) ? ['1f3ac', part, ' ldc-video']
+        : ['1f3ac', part, ' ldc-svc']
+  ));
+}
+
+/** One pre-event: tile, name, the time, the place, then hours · guests · service as chips, each its own colour. */
 function PreEventCard({ ev }) {
   const hours = ev.hours || spanHours(ev.from, ev.to);
   const time = timeRange(ev.from, ev.to);
-  const chips = [['23f1', hours, ''], ['1f465', ev.guests && `${ev.guests} guests`, ''], ['1f3ac', ev.service, ' ldc-svc']].filter(([, t]) => t);
+  const chips = [['23f1', hours, ' ldc-hrs'], ['1f465', ev.guests && `${ev.guests} guests`, ' ldc-guests'], ...serviceChips(ev.service)].filter(([, t]) => t);
   return (
     <div className="ldc-pre">
       <DateTile date={ev.date} />
