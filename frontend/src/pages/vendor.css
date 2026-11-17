@@ -1031,7 +1031,7 @@
 /* 🖼️ Album detail (photo view) */
 .ad-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .ad-back { font-size: 12px; margin-bottom: 6px; }
-.ad-title { margin: 0; }
+.ad-title { display: flex; align-items: center; gap: 8px; margin: 0; }
 .ad-count { color: var(--muted); font-size: 12px; }
 .ad-upload { cursor: pointer; }   /* Upload to this event / Add Videos look like the album's other buttons (Raj, 2026-11-12) */
 .ad-prog { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
@@ -1052,7 +1052,9 @@
 .ad-dropzone.is-off { cursor: default; opacity: .7; }
 .ad-dropzone.is-off:hover { border-color: var(--line); background: var(--panel); }
 .ad-dropzone-inner { text-align: center; pointer-events: none; padding: 24px; }
-.ad-dropzone-ico { font-size: 40px; margin-bottom: 12px; }
+.ad-dropzone-ico { --nav-cut: var(--panel); display: flex; justify-content: center; margin-bottom: 12px; }
+.ad-dropzone-ico .nav-ic, .ad-dropzone-ico .nav-svg { width: auto; height: auto; }
+.ad-dropzone-ico .nav-svg svg { width: 44px; height: 44px; }
 .ad-dropzone-title { color: var(--muted); font-size: 15px; font-weight: 600; }
 .ad-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 10px; }
 .ad-grid-sentinel { padding: 22px; text-align: center; color: var(--muted); font-size: 12.5px; }
@@ -1177,9 +1179,12 @@
   background: var(--sel-bg); border-color: var(--sel-line); color: var(--sel-ink); font-weight: 700;
 }
 .ad-events .pg-ev.on .pg-ev-count { background: rgba(6,35,31,.18); color: #06231f; }
-.ad-head-actions { display: flex; align-items: center; gap: 10px; }
+.ad-head-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; }
 .ad-ev-actions { display: inline-flex; gap: 6px; }
-.ad-ev-btn { font-size: 13px; padding: 8px 12px; }
+/* 🎨 each button's icon beside its word, drawn in the sidebar's own style (assets/nav — Raj, 2026-11-17: the
+   emojis did not look professional) */
+.ad-ev-btn { --nav-cut: var(--panel); display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; font-size: 13px; padding: 8px 12px; }
+.ad-ev-btn .nav-svg svg { width: 18px; height: 18px; }
 .ad-ev-btn:disabled { opacity: .4; cursor: not-allowed; }
 .ad-ev-btn-del:not(:disabled):hover { color: #fb7185; border-color: #fb7185; }
 
@@ -2046,7 +2051,6 @@
 }
 
 /* the second upload button, so films are visibly a separate act from photos */
-.ad-upload-vid { margin-left: 6px; }
 /* 🎞️ Raw Selector: how many of the album's JPEGs have their RAW */
 .ad-raw { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; padding: 6px 10px; border-radius: 999px; background: color-mix(in srgb, var(--teal) 12%, transparent); color: var(--text, #e6edf3); font-size: 13px; white-space: nowrap; }
 .ad-raw-warn { color: #f5b74e; }
@@ -2204,16 +2208,13 @@ a.nav-item { color: inherit; text-decoration: none; }
   .leads-table td.col-actions:not(:has(button, a, select)) { display: none; }
 }
 .bk-nw { white-space: nowrap; }
-/* M7: each DNS record reads as one unit on a phone */
-@media (max-width: 560px) {
-}
-/* the dashboard's four counters: two by two on a narrow phone */
-
 /* 📱 Mobile audit round 2 (Muse, 2026-10-22) */
 @media (max-width: 720px) {
   /* R2-1: the gallery's buttons wrap under its title instead of running off the screen */
   .ad-head { flex-wrap: wrap; gap: 10px; }
-  .ad-head-actions { flex-wrap: wrap; }
+  /* every button in one flow, wrapping from the left, so none runs off a phone's edge */
+  .ad-head-actions { justify-content: flex-start; gap: 8px; }
+  .ad-ev-actions { display: contents; }
   /* R2-2: the Online-pay switch drops under the status menu instead of covering it */
   .ms-top-row .ms-status-row { flex-basis: 100%; }   /* the status gets its own line; the switch sits under it */
   .ms-webpay-chip { white-space: nowrap; }

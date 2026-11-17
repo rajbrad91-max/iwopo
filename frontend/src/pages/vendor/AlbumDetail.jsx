@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDialog } from '../../lib/dialog.jsx';
 import { api, getAuthToken, fmtDateTime } from '../../lib/api';
+import NavIcon from '../../components/NavIcon';
 
 /* 🎞️ camera RAW files — same list as backend lib/rawFiles.js */
 const RAW_FILE = /\.(arw|cr3|cr2|nef|raf|dng|rw2|orf)$/i;
@@ -193,7 +194,7 @@ export function AlbumDetail({ albumId, onBack }) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [vidBusy, uploading]);
-  const vidLabel = vidBusy || '🎬 Add Videos';
+  const vidLabel = vidBusy || 'Add Videos';
 
   /**
    * 🖼️ A poster frame, drawn by the browser.
@@ -569,15 +570,15 @@ export function AlbumDetail({ albumId, onBack }) {
   /* The label is left alone in the Videos folder. Fading the button and saying
      why on hover was what was asked for; rewriting what it says was not. */
   const uploadLabel = uploading ? 'Uploading…'
-    : isPerClient ? (activeEvent === 'all' ? '📤 Pick an event to upload' : '📤 Upload to this event')
-    : '📤 Upload photos';
+    : isPerClient ? (activeEvent === 'all' ? 'Pick an event to upload' : 'Upload to this event')
+    : 'Upload photos';
 
   return (
     <>
       <div className="ad-head">
         <div>
           <button className="refresh ad-back" onClick={onBack}>← Back</button>
-          <h2 className="ad-title">🖼️ {album.title}</h2>
+          <h2 className="ad-title"><NavIcon name="galleries" />{album.title}</h2>
           {/* Films counted apart. "1 photos" for an album holding one film and
               no photographs at all was simply wrong. */}
           <div className="ad-count">
@@ -588,30 +589,30 @@ export function AlbumDetail({ albumId, onBack }) {
         </div>
         <div className="ad-head-actions">
           <button className="refresh ad-ev-btn" onClick={openFavorites} disabled={inVideos}
-            title={onlyPhotos || 'See which photos clients marked as favorites'}>⭐ Favorites</button>
+            title={onlyPhotos || 'See which photos clients marked as favorites'}><NavIcon name="favorites" />Favorites</button>
           <button className="refresh ad-ev-btn" onClick={openSelection} disabled={inVideos}
-            title={onlyPhotos || 'See the photo selection the client sent you'}>📩 Selection</button>
+            title={onlyPhotos || 'See the photo selection the client sent you'}><NavIcon name="selection" />Selection</button>
           {isPerClient && (
             <div className="ad-ev-actions">
               {/* Not faded in the Videos folder: adding a photo folder is the
                   one thing a vendor standing there is most likely to want. */}
               <button className="refresh ad-ev-btn" onClick={openAddEvent}
-                title="Add a photos folder">➕ Add Photos Folder</button>
+                title="Add a photos folder"><NavIcon name="add-folder" />Add Photos Folder</button>
               <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all' || inVideos}
-                title={onlyPhotos || 'Rename the selected event'}>Rename</button>
+                title={onlyPhotos || 'Rename the selected event'}><NavIcon name="rename" />Rename</button>
               <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all' || inVideos}
-                title={onlyPhotos || 'Delete the selected event'}>🗑️ Delete</button>
+                title={onlyPhotos || 'Delete the selected event'}><NavIcon name="delete" />Delete</button>
             </div>
           )}
           <label className={`refresh ad-ev-btn ad-upload ${(isPerClient && activeEvent === 'all') || inVideos ? 'ad-upload-off' : ''}`}
             title={onlyPhotos || undefined}>
-            {uploadLabel}
+            <NavIcon name="upload" />{uploadLabel}
             <input type="file" accept={raw ? `image/*,${RAW_ACCEPT}` : 'image/*'} multiple hidden onChange={onFiles} disabled={uploading || inVideos || (isPerClient && activeEvent === 'all')} />
           </label>
           {/* Films go to their own Videos folder wherever you are, so unlike
               photographs this is never disabled by which tab is open. */}
-          <label className="refresh ad-ev-btn ad-upload ad-upload-vid">
-            {vidLabel}
+          <label className="refresh ad-ev-btn ad-upload">
+            <NavIcon name="videos" />{vidLabel}
             <input type="file" accept="video/*" multiple hidden onChange={onVideos} disabled={uploading || !!vidBusy} />
           </label>
           {/* 🎞️ RAWs behind this album's JPEGs — only with the Raw Selector */}
@@ -838,7 +839,7 @@ export function AlbumDetail({ albumId, onBack }) {
             <input ref={dropInputRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
             <input ref={dropVidInputRef} type="file" accept="video/*" multiple hidden onChange={onVideos} />
             <div className="ad-dropzone-inner">
-              <div className="ad-dropzone-ico">{inVideos ? '🎬' : '📤'}</div>
+              <div className="ad-dropzone-ico"><NavIcon name={inVideos ? 'videos' : 'upload'} /></div>
               <div className="ad-dropzone-title">
                 {isPerClient && activeEvent === 'all' ? 'Pick an event above to upload'
                   : inVideos
