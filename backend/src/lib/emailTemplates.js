@@ -18,6 +18,8 @@
  */
 import sanitizeHtml from 'sanitize-html';
 import prisma from '../config/prisma.js';
+import { clientBaseUrl } from './vendorHosts.js';
+import { openPassword } from './sharePassword.js';
 
 /** tags every email can use */
 const COMMON = ['client_first_name', 'client_name', 'business_name'];
@@ -89,30 +91,19 @@ Password to pick your photos: {pick_password}
 
 {business_name}`,
   },
-  edited_ready: {
-    label: 'Edited photos delivered',
-    when: 'When the edited photos are delivered and the client is told.',
-    tags: [...COMMON, 'gallery_name', 'link', 'view_password'],
-    button: 'View your photos',
-    subject: 'Your edited photos are ready — {gallery_name}',
-    body: `Hi {gallery_name},
-
-Your edited photos are ready:
-{link}
-
-Password: {view_password}
-
-{business_name}`,
-  },
+  /* the one delivery email (Raj, 2026-11-17): a gallery sent from Galleries and the edited photos the editor
+     delivers both go with this — the client gets one kind of "your photos are here" email, however it was made */
   gallery_shared: {
-    label: 'Gallery shared',
-    when: 'When you press Send on a gallery. The link opens your client section, where your galleries are listed.',
+    label: 'Gallery delivery',
+    when: 'When you press Send on a gallery, or when the edited photos are delivered and the client is told. The link opens your client section, where your galleries are listed.',
     tags: [...COMMON, 'link', 'admin_password', 'guest_password'],
     button: 'Open your gallery',
     subject: 'Your Photos Are Ready',
     body: `Dear {client_name},
 
 Your photos are now ready to view and download! 🎉
+
+{link}
 
 Guest Password: {guest_password}
 (Share this with friends and family)
@@ -257,4 +248,25 @@ export async function renderEmail(vendorId, kind, values = {}) {
     return { subject, body: htmlToText(inner), html };
   }
   return { subject, body: fillTags(t.body, kind, all) };
+}
+
+/**
+ * 📧 The "Gallery delivery" email for one gallery: filled with its name, its passwords and the vendor's
+ * client-section link — plain text, or their HTML design. Used when a gallery is sent from Galleries
+ * (routes/albums/album.js) and when the editor delivers the edited photos (routes/editor.js).
+ * `pw` may carry passwords typed in the Send window and not saved yet; otherwise the stored readable copies.
+ * A gallery set before those existed has none: `missing` shows instead — in the Send window a visible gap the
+ * vendor fills, in an email that goes by itself a line the client can act on.
+ */
+export async function galleryEmail(v, a, pw = {}, missing = '(type the password here)') {
+  const [ven, base] = await Promise.all([
+    prisma.vendors.findUnique({ where: { id: v }, select: { gallery_token: true } }),   // 🔒 this vendor
+    clientBaseUrl(v),
+  ]);
+  return renderEmail(v, 'gallery_shared', {
+    client_name: a.title || 'Client',
+    link: ven?.gallery_token ? `${base}/gallery/${ven.gallery_token}` : base,
+    admin_password: pw.admin || openPassword(a.admin_password_enc) || missing,
+    guest_password: pw.guest || openPassword(a.guest_password_enc) || missing,
+  });
 }

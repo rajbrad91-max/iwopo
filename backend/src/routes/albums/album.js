@@ -3,8 +3,7 @@
  * Moved out of routes/albums.js unchanged (code audit #2, Raj 2026-11-11). Mounted by routes/albums.js in
  * the original order.
  */
-import { renderEmail } from '../../lib/emailTemplates.js';   // ✉️ the vendor's "Gallery shared" email
-import { clientBaseUrl } from '../../lib/vendorHosts.js';
+import { galleryEmail } from '../../lib/emailTemplates.js';   // ✉️ the vendor's "Gallery delivery" email
 import { sendLeadEmail } from '../email.js';   // 📤 a static import: a wrong path fails at start-up, not when a client is waiting
 import express from 'express';
 import * as objects from '../../lib/objectStore.js';
@@ -156,24 +155,6 @@ router.get('/:id/passwords', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-/**
- * 📧 The gallery email for one album: the vendor's "Gallery shared" email (Settings → Email templates) filled with
- * this album's name, its passwords and the vendor's client-section link — plain text, or their HTML design.
- * `pw` may carry passwords typed in the form and not saved yet; otherwise the stored readable copies. An album
- * set before those existed has none, so its placeholder stays visible — a blank line is worse than an obvious gap.
- */
-async function galleryEmail(v, a, pw = {}) {
-  const [ven, base] = await Promise.all([
-    prisma.vendors.findUnique({ where: { id: v }, select: { gallery_token: true } }),
-    clientBaseUrl(v),
-  ]);
-  return renderEmail(v, 'gallery_shared', {
-    client_name: a.title || 'Client',
-    link: ven?.gallery_token ? `${base}/gallery/${ven.gallery_token}` : base,
-    admin_password: pw.admin || openPassword(a.admin_password_enc) || '(type the password here)',
-    guest_password: pw.guest || openPassword(a.guest_password_enc) || '(type the password here)',
-  });
-}
 const typedPasswords = (b) => ({ guest: typeof b?.guest === 'string' ? b.guest : undefined, admin: typeof b?.admin === 'string' ? b.admin : undefined });
 
 // 📧 the gallery email as it will go — what the Send window shows
@@ -200,7 +181,7 @@ router.post('/:id/email-instructions', requireAuth, async (req, res) => {
     const to = (req.body.email || a.client_email || '').trim();
     if (!to) return res.status(400).json({ error: 'No recipient email' });
 
-    // the vendor's "Gallery shared" email for this album — its words are changed in Settings → Email templates
+    // the vendor's "Gallery delivery" email for this album — its words are changed in Settings → Email templates
     const m = await galleryEmail(v, a, typedPasswords(req.body));
 
     // remember the entered email on the album for next time

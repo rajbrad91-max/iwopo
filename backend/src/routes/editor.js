@@ -11,7 +11,7 @@
  *    an editor, or switching the vendor's Raw Selector off, locks them out at
  *    once. The vendor is always the editor's own row's vendor.
  */
-import { renderEmail } from '../lib/emailTemplates.js';   // ✉️ the vendor's own wording
+import { galleryEmail } from '../lib/emailTemplates.js';   // ✉️ the vendor's "Gallery delivery" email
 import express from 'express';
 import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
 import jwt from 'jsonwebtoken';
@@ -32,7 +32,6 @@ import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
 import { quiet } from '../lib/quiet.js';
 import { deliveryFor, findDelivery, DELIVERY_KIND, renameShoot, imageLink, markReceived } from '../lib/shoots.js';
-import { openPassword } from '../lib/sharePassword.js';
 import { tickStages } from '../lib/projectStages.js';
 import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 
@@ -306,18 +305,14 @@ router.post('/clients/:albumId/deliver/finish', requireEditor, async (req, res) 
     const client = !!req.body?.client;
     await notify(v, `${a.title}: ${count} edited photo${count === 1 ? '' : 's'} delivered`, `${who} sent them${client ? ' and told the client' : ''}. The gallery is in Galleries.`, 'info', { type: 'album', id: gallery.id });
     const ven = await prisma.vendors.findUnique({ where: { id: v }, select: { business_name: true, email: true } });
-    const studio = ven?.business_name || 'Your photographer';
     const base = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     const ownerEmailed = ven?.email
       ? (await sendAsVendor(v, { to: ven.email, subject: `${a.title}: edited photos delivered`, text: `${who} sent ${count} edited photo${count === 1 ? '' : 's'} for ${a.title}${client ? ', and the client has been told' : ''}.\n\nGalleries: ${base}/panel/galleries` })).ok
       : false;
     let clientEmailed = false;
-    if (client && gallery.client_email && gallery.public_token) {
-      const mail = await renderEmail(v, 'edited_ready', {   // ✉️ Settings → Email templates
-        client_name: gallery.title, gallery_name: gallery.title, business_name: studio,
-        link: `${base}/g/${gallery.public_token}`,
-        view_password: openPassword(gallery.guest_password_enc) || '(ask us)',
-      });
+    if (client && gallery.client_email) {
+      // the same "Gallery delivery" email a gallery sent from Galleries gets (Raj, 2026-11-17): one delivery email
+      const mail = await galleryEmail(v, gallery, {}, '(ask us)');
       clientEmailed = (await sendAsVendor(v, { to: gallery.client_email, subject: mail.subject, text: mail.body, html: mail.html })).ok;
     }
     // 📊 the PPM board: "Edited" — and "Delivered" when the client was told
