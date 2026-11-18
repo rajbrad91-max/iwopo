@@ -5,11 +5,15 @@
 import { useState, useEffect } from 'react';
 import { useDialog } from '../../lib/dialog.jsx';
 import { api, fmtDateTime, fmtMoney, moneySymbol } from '../../lib/api';
-import { STATUSES, S_ICON, S_LABEL } from './statuses';
+import LeadStatus from './LeadStatus';
 import LeadEmailModal from '../../components/LeadEmailModal';   // 💰 the payment reminder, read before it goes
 import NavIcon from '../../components/NavIcon';   // 🎨 the section's own drawn icons (Raj, 2026-11-17)
 
-export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when packages are loaded, saved or sent
+/**
+ * refresh: bumped when packages are loaded, saved or sent. status / onStatus: the lead's status, kept by the page (a
+ * confirmed payment can book the lead). showStatus: show the status here — a booking does; the lead page shows it in Packages.
+ */
+export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus = false }) {
   const [hidePay, setHidePay] = useState(false);   // 🔒 the vendor's payment-privacy setting
   const [reveal, setReveal] = useState(false);     // 👁 shown for this visit only
   useEffect(() => { api.mySettings().then(s => setHidePay(!!s?.settings?.hide_payments)).catch(() => {}); }, []);
@@ -31,15 +35,12 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
   // input shows — nothing saves until a value is actually edited and left,
   // same as every other field here.
   const [depositMode, setDepositMode] = useState(lead.deposit_amount_override != null ? 'amount' : 'percent');
-  const [status, setStatus] = useState(lead.status || 'new');
   const [webPay, setWebPay] = useState(lead.web_payment_enabled !== false);
   const [msg, setMsg] = useState('');
   const [remind, setRemind] = useState(false);   // 💰 the payment reminder window
 
   useEffect(() => {
     load();   // again when packages are loaded, saved or sent
-    // …and the status with them: a send moves the lead on (📤 Package Sent), which this box showed only after a reload
-    if (refresh) api.lead(lead.id).then(r => { const s = (r?.lead || r)?.status; if (s) setStatus(s); }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   }, [refresh]);
   async function load() {
@@ -90,7 +91,7 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
       setData(d);
       // F4 (2026-10-30): the deposit in books the lead on the server — show it now, not after a refresh
       if (d.status && d.status !== status) {
-        setStatus(d.status);
+        onStatus(d.status);
         if (d.status === 'booked') { setMsg('✅ Booking confirmed · invoice ready in Contracts & Invoices (not sent)'); setTimeout(() => setMsg(''), 5000); }
       }
       setClaimed(false);
@@ -130,11 +131,6 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
     try { await api.deletePayment(id); load(); }
     catch (e) { dialog.alert(e.message, { error: true }); }   // a payment record, of all things
   }
-  async function changeStatus(s) {
-    setStatus(s);
-    try { await api.setLeadStatus(lead.id, s); setMsg('✅ Status: ' + s); setTimeout(() => setMsg(''), 1500); }
-    catch (e) { setMsg('⚠️ ' + e.message); }
-  }
 
   const sum = data?.summary;
   const pending = sum ? sum.balance : null;
@@ -142,6 +138,10 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
     <div className={`ms-wrap ${masked ? 'is-pay-hidden' : ''}`}>
       <div className="ld-card-h ms-pay-h">
         <NavIcon name="wallet" />Payments
+        <button type="button" className={`ms-webpay-chip ${webPay ? 'is-on' : ''}`} onClick={toggleWebPay}
+          title={webPay ? 'Client can pay online by card' : 'Client pays in person only'}>
+          <NavIcon name="card" />Online pay: <b>{webPay ? 'ON' : 'OFF'}</b>
+        </button>
         {hidePay && (
           <button type="button" className="pay-eye" onClick={() => setReveal(r => !r)} aria-pressed={reveal}
             title={reveal ? 'Hide the amounts' : 'Show the amounts'} aria-label={reveal ? 'Hide the amounts' : 'Show the amounts'}>
@@ -216,23 +216,13 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
         </div>
       )}
 
-      {/* Status dropdown + web-payment toggle in one row */}
-      <div className="ms-top-row">
-        <div className="ms-status-row">
-          <label className="ms-status-lbl">Status</label>
-          <select className="ms-status-sel" value={status} onChange={e => changeStatus(e.target.value)} title="Lead status: New, Package Sent, or Booking Confirmed">
-            {STATUSES.map(s => <option key={s} value={s}>{S_LABEL[s]}</option>)}
-          </select>
-          {S_ICON[status] && <NavIcon name={S_ICON[status]} />}
-        </div>
-        <button className={`ms-webpay-chip ${webPay ? 'is-on' : ''}`} onClick={toggleWebPay}
-          title={webPay ? 'Client can pay online by card' : 'Client pays in person only'}>
-          <NavIcon name="card" />Online pay: <b>{webPay ? 'ON' : 'OFF'}</b>
-        </button>
-      </div>
+      {showStatus && (
+        <LeadStatus lead={lead} status={status} onChange={onStatus}
+          onMessage={m => { setMsg(m); setTimeout(() => setMsg(''), 1500); }} />
+      )}
       {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
 
-      <h3 className="ms-h3">Payment & Deposit</h3>
+      <h3 className="ms-sec">Payment & Deposit</h3>
 
       {/* deposit % + discount % + custom billed */}
       <div className="ms-fields">
@@ -303,7 +293,7 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
       )}
 
       {/* manual payments */}
-      <div className="ms-mp-head">Manual Payments</div>
+      <h3 className="ms-sec ms-sec-split">Manual Payments</h3>
       <div className="ms-pay-row">
         <input className="ms-input ms-amt" type="number" placeholder={`Amount ${moneySymbol()}`} value={amt} onChange={e => setAmt(e.target.value)} />
         <select className="ms-input ms-method" value={method} onChange={e => setMethod(e.target.value)}>

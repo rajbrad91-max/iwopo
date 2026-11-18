@@ -16,6 +16,7 @@ import SendPackagesButton, { markPackagesSent } from '../../components/SendPacka
 import { clientBase } from '../../lib/clientBase';
 import { S_LABEL } from './statuses';
 import { MoneySection } from './MoneySection';
+import LeadStatus from './LeadStatus';
 import { LeadPkgRow, PackageEditor } from './LeadPackage';
 
 // ➕ Add lead — the same form as a lead's Edit details (components/LeadEditor), empty (Raj, 2026-11-15)
@@ -332,6 +333,7 @@ function LeadDetail({ lead, onSaved }) {
   const [gateway, setGateway] = useState(!!lead.gateway_enabled);
   const [pkgBusy, setPkgBusy] = useState(false);
   const [pkgMsg, setPkgMsg] = useState('');
+  const [status, setStatus] = useState(lead.status || 'new');   // 🏷️ shown at the top of Packages, moved by Payments too
   const [timer, setTimer] = useState({
     enabled: !!lead.timer_enabled,
     hours: lead.timer_hours ?? 72,
@@ -368,6 +370,8 @@ function LeadDetail({ lead, onSaved }) {
   }, [sizeKey]);
   // 📤 a message under the packages for a few seconds (components/SendPackages and the package tools use it)
   const flashPkg = (m) => { setPkgMsg(m); setTimeout(() => setPkgMsg(''), 3000); };
+  // 📤 a send moves the lead on (Package Sent) on the server — show it at once
+  const reloadStatus = () => api.lead(lead.id).then(r => { const s = (r?.lead || r)?.status; if (s) setStatus(s); }).catch(() => {});
 
   useEffect(() => {
     // folders to choose from, and whatever is already loaded onto this lead
@@ -454,6 +458,9 @@ function LeadDetail({ lead, onSaved }) {
           {pkgLocked && <span className="ld-lock-tag">Sent</span>}
         </div>
 
+        {/* 🏷️ the status first: sending packages is what moves it on (Raj, 2026-11-17 — it sat in Payments before) */}
+        <LeadStatus lead={lead} status={status} onChange={setStatus} onMessage={flashPkg} />
+
         {/* pick a folder → its packages are copied here, ready to tailor */}
         {/* the folder icon beside the list — a list's own lines can hold text only (Raj, 2026-11-17, in place of 📁) */}
         <div className="ld-pkg-pick">
@@ -493,15 +500,15 @@ function LeadDetail({ lead, onSaved }) {
             title="Preview the contract before you send packages"
             onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}
           ><NavIcon name="preview" />Preview Contract</button>
-          <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh bx-primary ld-btn-sm" disabled={pkgBusy}
-            onMessage={flashPkg} onSent={() => { setPkgLocked(true); setMoneyTick(t => t + 1); }} />
+          <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh bx-primary ld-btn-sm ld-ic-btn" disabled={pkgBusy}
+            onMessage={flashPkg} onSent={() => { setPkgLocked(true); setMoneyTick(t => t + 1); reloadStatus(); }} />
         </div>
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
       </div>
 
 
       {/* 💰 Payment */}
-      <MoneySection lead={lead} refresh={moneyTick} />
+      <MoneySection lead={lead} refresh={moneyTick} status={status} onStatus={setStatus} />
 
       {/* 📄 Contract + portal/timer controls — kept together on the action side */}
       <div className="ld-side-box">

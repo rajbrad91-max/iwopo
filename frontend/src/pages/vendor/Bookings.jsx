@@ -285,7 +285,8 @@ function BookingDetail({ id, rawsel = false }) {
 
         <div className="lead-right">
           {/* Same money controls as the lead page — a booking is the same record */}
-          <MoneySection lead={b} />
+          <MoneySection lead={b} showStatus status={b.status || 'booked'}
+            onStatus={s => setD(x => ({ ...x, booking: { ...x.booking, status: s } }))} />
 
           {/* ── paperwork: kept indefinitely, downloadable any time. The offer's Secure and Timer controls belong to the
               lead page, before a booking — a booked client has accepted the offer (Raj, 2026-11-05).

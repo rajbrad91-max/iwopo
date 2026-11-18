@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import NavIcon from './NavIcon';
 import { clientBase } from '../lib/clientBase';
 import SendPackagesModal from '../pages/SendPackagesModal.jsx';
 import { whySendBlocked, useSendPackagesRequest } from '../lib/sendPackages';
@@ -39,7 +40,9 @@ export default function SendPackagesButton({ lead, packageCount, onMessage, onSe
   }
   return (
     <>
-      <button type="button" className={className} onClick={start} disabled={disabled} title="Email these packages to the client">📤 Send Packages</button>
+      <button type="button" className={className} onClick={start} disabled={disabled} title="Email these packages to the client">
+        <NavIcon name="packages-send" />Send Packages
+      </button>
       {open && <SendPackagesModal lead={lead} link={`${clientBase()}/portal/${lead.client_token}`} onClose={() => setOpen(false)} onSent={sent} />}
     </>
   );
