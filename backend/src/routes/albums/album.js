@@ -42,6 +42,21 @@ async function coverToR2(vendorId, albumId, dir, files) {
   }));
 }
 
+/**
+ * 🔒 One cover job per album at a time (2026-11-17). Dragging the focal point sends several saves within a second;
+ * each re-cut the same files and sent them to R2, and one save's clean-up deleted a file another was still sending
+ * ("R2 upload failed … x-amz-decoded-content-length", then ENOENT). Queued per album, each save runs on files no other
+ * save is touching, and the last one sent is the last one cut.
+ */
+const coverJobs = new Map();
+const latestFocus = new Map();   // the newest focal-point save asked for, per album — the in-between ones are skipped
+function oneCoverJobAtATime(albumId, job) {
+  const run = (coverJobs.get(albumId) || Promise.resolve()).catch(() => {}).then(job);
+  coverJobs.set(albumId, run);
+  run.finally(() => { if (coverJobs.get(albumId) === run) coverJobs.delete(albumId); }).catch(() => {});
+  return run;
+}
+
 /** Covers read from R2 first, like every other piece of gallery media. */
 async function serveCoverFromR2(res, vendorId, albumId, file) {
   if (!vendorId || !await objects.enabled(objects.PRIVATE)) return false;
@@ -216,17 +231,18 @@ router.post('/:id/cover', requireAuth, upload.single('cover'), async (req, res) 
        has to know where to crop before it happens. */
     const base = `cover_${Date.now()}`;
     const master = `${base}_master.webp`;
-    await writeMaster(req.file.path, path.join(dir, master));
-    fs.unlink(req.file.path, () => {});          // the camera file has served its purpose
-
     const focus = req.body?.focus || '50% 50%';
-    await writeCrops(path.join(dir, master), dir, base, focus);
-    await coverToR2(v, id, dir, [master, ...coverNames(base)]);
-    await removeOldCover(v, id, dir);            // whatever the previous cover was
+    await oneCoverJobAtATime(id, async () => {   // never alongside a focal-point save for this album
+      await writeMaster(req.file.path, path.join(dir, master));
+      fs.unlink(req.file.path, () => {});          // the camera file has served its purpose
+      await writeCrops(path.join(dir, master), dir, base, focus);
+      await coverToR2(v, id, dir, [master, ...coverNames(base)]);
+      await removeOldCover(v, id, dir);            // whatever the previous cover was
 
-    await prisma.albums.updateMany({
-      where: { id, vendor_id: v },
-      data: { cover_photo: `${base}.webp`, cover_focus: /^\d{1,3}%\s\d{1,3}%$/.test(focus) ? focus : '50% 50%' },
+      await prisma.albums.updateMany({
+        where: { id, vendor_id: v },
+        data: { cover_photo: `${base}.webp`, cover_focus: /^\d{1,3}%\s\d{1,3}%$/.test(focus) ? focus : '50% 50%' },
+      });
     });
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album: publicAlbum(album) });
@@ -248,26 +264,32 @@ router.put('/:id/cover-focus', requireAuth, async (req, res) => {
        master is kept: without it, moving the focal point would mean uploading
        the photograph again. */
     try {
-      const cur = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { cover_photo: true } });
-      if (cur?.cover_photo) {
-        const dir = path.join(ROOT, String(id));
-        const base = cur.cover_photo.replace(/\.webp$/, '');
-        /* The master may only exist in R2, so it is fetched to a temp file to
-           cut from. A cover uploaded before masters existed has none at all and
-           simply keeps its old crop. */
-        const done = await withLocalFile(
-          path.join(dir, `${base}_master.webp`),
-          objects.PRIVATE, galleryKey(v, id, `${base}_master.webp`),
-          async (master) => {
-            await writeCrops(master, dir, base, focus);
-            await coverToR2(v, id, dir, coverNames(base));
-            return true;
-          },
-        );
-        if (!done) console.warn('[cover] no master for album', id, '— crop unchanged');
-        // a cover uploaded before the master existed simply keeps its old crop;
-        // the focal point still moves for anything uploaded since
-      }
+      const mine = Symbol('focus');
+      latestFocus.set(id, mine);
+      await oneCoverJobAtATime(id, async () => {   // one re-cut at a time for this album
+        if (latestFocus.get(id) !== mine) return;   // a newer point is already waiting: cut for that one instead
+        const cur = await prisma.albums.findFirst({ where: { id, vendor_id: v }, select: { cover_photo: true } });
+        if (cur?.cover_photo) {
+          const dir = path.join(ROOT, String(id));
+          const base = cur.cover_photo.replace(/\.webp$/, '');
+          /* The master may only exist in R2, so it is fetched to a temp file to
+             cut from. A cover uploaded before masters existed has none at all and
+             simply keeps its old crop. */
+          const done = await withLocalFile(
+            path.join(dir, `${base}_master.webp`),
+            objects.PRIVATE, galleryKey(v, id, `${base}_master.webp`),
+            async (master) => {
+              await writeCrops(master, dir, base, focus);
+              await coverToR2(v, id, dir, coverNames(base));
+              return true;
+            },
+          );
+          if (!done) console.warn('[cover] no master for album', id, '— crop unchanged');
+          // a cover uploaded before the master existed simply keeps its old crop;
+          // the focal point still moves for anything uploaded since
+        }
+      });
+      if (latestFocus.get(id) === mine) latestFocus.delete(id);
     } catch (e) { console.error('[cover] re-crop failed:', e.message); }
     const album = await prisma.albums.findFirst({ where: { id, vendor_id: v } });
     res.json({ album: publicAlbum(album) });
