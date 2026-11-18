@@ -8,6 +8,7 @@ import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
 import { quotePackage } from '../lib/packageQuote.js';
 import { sendSignedCopy } from '../lib/signedCopy.js';   // 📧 the client's signed contract, once the deposit is accepted
+import { relockOffer } from '../lib/offerLock.js';   // 🔒 a payment locks an offer reopened after signing
 
 const router = express.Router();
 
@@ -126,7 +127,9 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
  */
 export async function markBooked(leadId) {
   const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
-  if (!lead || lead.status === 'booked') return;
+  if (!lead) return;
+  await relockOffer(lead.id, lead.vendor_id);   // 🔒 every recorded payment comes through here
+  if (lead.status === 'booked') return;
   const money = await moneySummary(lead);
   // F4 (2026-10-30): whole cents — in floating point 35% of $3,200 is 1120.0000000000002, so a $1,120 deposit
   // never counted as paid and the vendor had to confirm the booking by hand

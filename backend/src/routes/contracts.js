@@ -23,6 +23,7 @@ import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor t
 import * as objects from '../lib/objectStore.js';
 import { noteFailure } from '../lib/noteFailure.js';
 import { sendSignedCopy } from '../lib/signedCopy.js';
+import { relockOffer } from '../lib/offerLock.js';   // 🔒 signing locks an offer that was reopened
 import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
@@ -1123,6 +1124,7 @@ router.post('/sign/:token', limit({ name: 'contract-sign', max: 20, windowMs: 60
       },
     });
     await audit(c.id, 'signed', ip, { signed_name: signed_name.trim(), sha256: docHash, user_agent: String(req.headers['user-agent'] || '').slice(0, 300) });   // 🖥️ the signer's browser too
+    if (c.lead_id) await relockOffer(c.lead_id, c.vendor_id);
     // ✍️ R2 (2026-10-30): the vendor is told straight away — signing used to leave no trace in the panel
     if (c.lead_id) notify(c.vendor_id, `✍️ ${signed_name.trim()} signed the contract`, `${c.title || 'Contract'} · payment is next`, 'contract', { type: 'lead', id: c.lead_id });
     res.json({ contract: updated });

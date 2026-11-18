@@ -12,8 +12,9 @@ import NavIcon from '../../components/NavIcon';   // 🎨 the section's own draw
 /**
  * refresh: bumped when packages are loaded, saved or sent. status / onStatus: the lead's status, kept by the page (a
  * confirmed payment can book the lead). showStatus: show the status here — a booking does; the lead page shows it in Packages.
+ * onPaid: after a payment is recorded (it can lock the packages again — lib/offerLock.js on the server).
  */
-export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus = false }) {
+export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus = false, onPaid }) {
   const [hidePay, setHidePay] = useState(false);   // 🔒 the vendor's payment-privacy setting
   const [reveal, setReveal] = useState(false);     // 👁 shown for this visit only
   useEffect(() => { api.mySettings().then(s => setHidePay(!!s?.settings?.hide_payments)).catch(() => {}); }, []);
@@ -89,6 +90,7 @@ export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus =
     try {
       const d = await api.confirmPaymentClaim(lead.id, dismiss ? { dismiss: true } : { amount, method: 'direct' });
       setData(d);
+      if (!dismiss) onPaid?.();
       // F4 (2026-10-30): the deposit in books the lead on the server — show it now, not after a refresh
       if (d.status && d.status !== status) {
         onStatus(d.status);
@@ -123,7 +125,7 @@ export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus =
   }
   async function pay() {
     if (!amt || Number(amt) <= 0) return;
-    try { const d = await api.addPayment(lead.id, Number(amt), method); setData(d); setAmt(''); }
+    try { const d = await api.addPayment(lead.id, Number(amt), method); setData(d); setAmt(''); onPaid?.(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
   async function delPay(id) {

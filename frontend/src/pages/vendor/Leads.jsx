@@ -370,8 +370,12 @@ function LeadDetail({ lead, onSaved }) {
   }, [sizeKey]);
   // 📤 a message under the packages for a few seconds (components/SendPackages and the package tools use it)
   const flashPkg = (m) => { setPkgMsg(m); setTimeout(() => setPkgMsg(''), 3000); };
-  // 📤 a send moves the lead on (Package Sent) on the server — show it at once
-  const reloadStatus = () => api.lead(lead.id).then(r => { const s = (r?.lead || r)?.status; if (s) setStatus(s); }).catch(() => {});
+  // 📤💰 a send moves the lead on (Package Sent), and a payment can lock the packages again — show both at once
+  const reloadLead = () => api.lead(lead.id).then(r => {
+    const l = r?.lead || r;
+    if (l?.status) setStatus(l.status);
+    if (l) setPkgLocked(!!l.packages_sent_at);
+  }).catch(() => {});
 
   useEffect(() => {
     // folders to choose from, and whatever is already loaded onto this lead
@@ -501,14 +505,14 @@ function LeadDetail({ lead, onSaved }) {
             onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}
           ><NavIcon name="preview" />Preview Contract</button>
           <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh bx-primary ld-btn-sm ld-ic-btn" disabled={pkgBusy}
-            onMessage={flashPkg} onSent={() => { setPkgLocked(true); setMoneyTick(t => t + 1); reloadStatus(); }} />
+            onMessage={flashPkg} onSent={() => { setPkgLocked(true); setMoneyTick(t => t + 1); reloadLead(); }} />
         </div>
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}
       </div>
 
 
       {/* 💰 Payment */}
-      <MoneySection lead={lead} refresh={moneyTick} status={status} onStatus={setStatus} />
+      <MoneySection lead={lead} refresh={moneyTick} status={status} onStatus={setStatus} onPaid={reloadLead} />
 
       {/* 📄 Contract + portal/timer controls — kept together on the action side */}
       <div className="ld-side-box">
