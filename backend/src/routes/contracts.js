@@ -1397,7 +1397,8 @@ export async function certificatePdf(contractId) {
   return Buffer.from(await htmlToPdf(pdfHtml('Certificate of Completion', inner)));
 }
 
-// PUBLIC: GET /api/contracts/certificate/:token/download → certificate as a file
+// PUBLIC: GET /api/contracts/certificate/:token/download → the certificate as a PDF, like the contract: it opens to be read,
+// and the viewer downloads it (Raj, 2026-11-17). If the PDF can't be made, the web version is sent.
 router.get('/certificate/:token/download', async (req, res) => {
   try {
     const c = await prisma.contracts.findFirst({
@@ -1409,7 +1410,7 @@ router.get('/certificate/:token/download', async (req, res) => {
     });
     if (!c) return downloadFailed(req, res, 404, 'not_found', "This certificate isn't available.");
 
-    sendDoc(res, `certificate-${c.leads?.name || c.id}.html`, 'Certificate of Completion',
+    await sendPdf(res, `certificate-${c.leads?.name || c.id}`, 'Certificate of Completion',
       await certificateInner(c, req.params.token, `${req.protocol}://${req.get('host')}`));
   } catch (e) { downloadCrashed(req, res, e); }
 });

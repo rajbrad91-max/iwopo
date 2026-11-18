@@ -60,6 +60,8 @@ export default function ShootRail({ clients, reload }) {
     setBusy(false); setMsg(uploadSummary(r)); setNewLead(''); reload();
   }
   async function tellClient(c) {
+    // nothing goes to a client on one click (Raj, 2026-11-17)
+    if (!await dialog.confirm(`This emails ${c.name} the link to their photos, with their passwords.`, { title: 'Email the client?', okLabel: 'Send email', danger: false })) return;
     setBusy(true);
     try { const r = await api.rawselShootNotify(c.leadId, true); setMsg(r.clientEmailed ? '✅ The client has been emailed their link and passwords' : '⚠️ The booking has no client email'); reload(); }
     catch (e) { setMsg(`⚠️ ${e.message}`); }

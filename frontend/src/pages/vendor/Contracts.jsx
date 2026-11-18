@@ -106,8 +106,8 @@ function AllContracts() {
                   its own Save as PDF button once it's open. */}
               <td className="ct-dl">
                 <a href={`/api/contracts/download/${c.token}`} target="_blank" rel="noreferrer" className="ct-dl-btn">Contract</a>
-                <a href={`/api/contracts/certificate/${c.token}/download`} target="_blank" rel="noreferrer" className="ct-dl-btn">📜 Certificate</a>
-                {c.status === 'signed' && <EmailCopyButton contract={c} className="ct-dl-btn" />}
+                <a href={`/api/contracts/certificate/${c.token}/download`} target="_blank" rel="noreferrer" className="ct-dl-btn">Certificate</a>
+                {c.status === 'signed' && <EmailCopyButton contract={c} clientName={c.client_name} className="ct-dl-btn" />}
               </td>
             </tr>
           ))}

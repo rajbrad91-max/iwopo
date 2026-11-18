@@ -11,6 +11,7 @@ import { api, fmtTime, fmtDateTime, fmtMoney, eventDateValue } from '../../lib/a
 import { CalendarView } from './Calendar';
 import { MoneySection } from './MoneySection';
 import LeadEmailModal from '../../components/LeadEmailModal';   // ⭐ the review request, read before it goes
+import NavIcon from '../../components/NavIcon';
 
 /**
  * 👥 What the crew column says. "Booked" tells a vendor the money is agreed; it
@@ -293,26 +294,40 @@ function BookingDetail({ id, rawsel = false }) {
               No ld-card wrapper — .lead-right already paints each child as a card. ── */}
           <div className="bd-side">
             <div className="ld-card-h">Documentation</div>
+            {/* one row per document: what it is, then View — it opens in a tab, where it can be downloaded or printed
+                (Raj, 2026-11-17). Emailing the contract is its own button, and asks first. */}
             <div className="bd-docs">
               {d.contract ? (
                 <>
-                  {/* open, don't download — same as the contracts list */}
-                  <a className="bd-doc" href={`/api/contracts/download/${d.contract.token}`} target="_blank" rel="noreferrer">
-                    Signed contract — {d.contract.signed_name || 'signed'} {d.contract.signed_at ? `· ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}` : ''}
-                  </a>
-                  <a className="bd-doc" href={`/api/contracts/certificate/${d.contract.token}/download`} target="_blank" rel="noreferrer">
-                    📜 Signing certificate
-                  </a>
-                  <EmailCopyButton contract={d.contract} className="bd-doc" />
+                  <div className="bd-doc">
+                    <NavIcon name="inqform" />
+                    <span className="bd-doc-t">
+                      <b>Signed contract</b>
+                      <small>{[d.contract.signed_name,
+                        d.contract.signed_at && `signed ${fmtDateTime(d.contract.signed_at, { dateOnly: true })}`,
+                        d.contract.client_copy_sent_at && `emailed ${fmtDateTime(d.contract.client_copy_sent_at, { dateOnly: true })}`,
+                      ].filter(Boolean).join(' · ')}</small>
+                    </span>
+                    <a className="refresh bd-doc-btn" href={`/api/contracts/download/${d.contract.token}`} target="_blank" rel="noreferrer">View</a>
+                    <EmailCopyButton contract={d.contract} clientName={b.name} clientEmail={b.email} className="refresh bd-doc-btn"
+                      onSent={at => setD(x => ({ ...x, contract: { ...x.contract, client_copy_sent_at: at } }))} />
+                  </div>
+                  <div className="bd-doc">
+                    <NavIcon name="yes" />
+                    <span className="bd-doc-t"><b>Signing certificate</b><small>Who signed, when and from where</small></span>
+                    <a className="refresh bd-doc-btn" href={`/api/contracts/certificate/${d.contract.token}/download`} target="_blank" rel="noreferrer">View</a>
+                  </div>
                 </>
               ) : <p className="bd-empty">No signed contract on file.</p>}
               {d.invoices.map(i => (
-                <a key={i.id} className="bd-doc" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">
-                  Invoice {i.invoice_number} — {fmtMoney(i.total)} · balance {fmtMoney(i.balance)}
-                </a>
+                <div key={i.id} className="bd-doc">
+                  <NavIcon name="contracts" />
+                  <span className="bd-doc-t"><b>Invoice {i.invoice_number}</b><small>{fmtMoney(i.total)} · balance {fmtMoney(i.balance)}</small></span>
+                  <a className="refresh bd-doc-btn" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">View</a>
+                </div>
               ))}
             </div>
-            <p className="bd-fine">Open a document and use your browser&apos;s Print to save it as a PDF. Keep your own copy of anything you may need later.</p>
+            <p className="bd-fine">View a document to read it, then download or print it from there. Keep your own copy of anything you may need later.</p>
           </div>
 
           {/* ⭐ after the day: ask the client for a review — their link is set in Settings → Setup Email */}
