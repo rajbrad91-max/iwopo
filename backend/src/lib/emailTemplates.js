@@ -201,8 +201,11 @@ export async function emailMode(vendorId) {
   return s?.email_mode === 'html' ? 'html' : 'text';
 }
 
-/** the vendor's logo as the starter design shows it */
-export const logoUrlFor = (logoPath) => (logoPath ? `${(process.env.APP_URL || 'https://iwopo.com').replace(/\/$/, '')}/api/me/logo/${encodeURIComponent(logoPath)}` : '');
+/** the vendor's logo as the starter design shows it — as a PNG, the one picture every email app shows (the stored WebP
+ *  comes out garbled in Gmail and not at all in Outlook — routes/me.js /logo, Raj 2026-11-18) */
+export const logoUrlFor = (logoPath) => (logoPath
+  ? `${(process.env.APP_URL || 'https://iwopo.com').replace(/\/$/, '')}/api/me/logo/${encodeURIComponent(String(logoPath).replace(/\.webp$/, '.png'))}`
+  : '');
 
 /* ── HTML helpers ── */
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

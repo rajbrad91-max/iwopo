@@ -388,25 +388,42 @@ router.post('/logo', requireAuth, upload.single('logo'), async (req, res) => {
  *
  * Logos live in one flat folder with the vendor id at the front of the name,
  * so the R2 key is derived from that name rather than from a path segment. The
- * shape is checked first — anything that is not <digits>_<digits>.webp is
- * refused outright, so a crafted name cannot be turned into a key at all.
+ * shape is checked first — anything that is not <digits>_<digits>.webp (or .png)
+ * is refused outright, so a crafted name cannot be turned into a key at all.
+ *
+ * 📧 The same name ending in .png is that logo as a PNG, made from the stored WebP when asked for — for emails: Gmail
+ * garbles a WebP with a transparent background and Outlook cannot show WebP at all (Raj, 2026-11-18).
  */
 router.get('/logo/:file', async (req, res) => {
   const name = path.basename(req.params.file);
-  const m = name.match(/^(\d+)_\d+\.webp$/);
+  const m = name.match(/^(\d+)_(\d+)\.(webp|png)$/);
+  const asPng = m?.[3] === 'png';
+  const stored = m ? `${m[1]}_${m[2]}.webp` : name;   // what is kept: always the WebP
+
+  /** the logo out of a stream: as stored, or turned into a PNG */
+  const send = (stream, contentType, size) => {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (!asPng) {
+      if (contentType) res.setHeader('Content-Type', contentType);
+      if (size) res.setHeader('Content-Length', size);
+      return stream.pipe(res);                      // streamed, never buffered
+    }
+    res.setHeader('Content-Type', 'image/png');
+    const png = sharp().png();
+    png.on('error', () => (res.headersSent ? res.destroy() : res.status(404).end()));
+    return stream.pipe(png).pipe(res);
+  };
 
   if (m && await objects.enabled(objects.PUBLIC)) {
     try {
-      const o = await objects.getStream(objects.PUBLIC, objects.keyFor(Number(m[1]), 'logos', name));
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      if (o.contentType) res.setHeader('Content-Type', o.contentType);
-      if (o.size) res.setHeader('Content-Length', o.size);
-      return o.stream.pipe(res);                    // streamed, never buffered
+      const o = await objects.getStream(objects.PUBLIC, objects.keyFor(Number(m[1]), 'logos', stored));
+      return send(o.stream, o.contentType, o.size);
     } catch { /* not migrated yet — fall through to the disk */ }
   }
 
-  const f = path.join(LOGO_DIR, name);
+  const f = path.join(LOGO_DIR, stored);
   if (!fs.existsSync(f)) return res.status(404).end();
+  if (asPng) return send(fs.createReadStream(f));
   res.sendFile(f, (err) => { if (err && !res.headersSent) res.status(404).end(); });
 });
 
