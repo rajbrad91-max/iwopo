@@ -110,11 +110,11 @@ export default function InvoiceView({ token }) {
                   {it.inclusions?.length > 0 && (
                     <ul className="iv-incl">{it.inclusions.map((x, j) => <li key={j}>{x}</li>)}</ul>
                   )}
-                  {/* 📅 the pre-events this booking covers (Raj, 2026-11-18) */}
+                  {/* 📅 the pre-events this booking covers, in date order (Raj, 2026-11-18) */}
                   {it.events?.length > 0 && (
                     <div className="iv-events">
                       <div className="iv-events-h">Pre-events</div>
-                      {it.events.map((e, j) => (
+                      {[...it.events].sort((a, b) => `${a.date} ${a.from}`.localeCompare(`${b.date} ${b.from}`)).map((e, j) => (
                         <div key={j} className="iv-event">
                           <b>{e.name}</b>
                           {[e.date && eventDay(e.date),
