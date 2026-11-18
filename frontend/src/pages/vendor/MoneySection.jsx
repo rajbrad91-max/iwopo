@@ -13,8 +13,9 @@ import NavIcon from '../../components/NavIcon';   // 🎨 the section's own draw
  * refresh: bumped when packages are loaded, saved or sent. status / onStatus: the lead's status, kept by the page (a
  * confirmed payment can book the lead). showStatus: show the status here — a booking does; the lead page shows it in Packages.
  * onPaid: after a payment is recorded (it can lock the packages again — lib/offerLock.js on the server).
+ * onCancelled(lead): after the booking is cancelled here — the lead with its new notes.
  */
-export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus = false, onPaid }) {
+export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus = false, onPaid, onCancelled }) {
   const [hidePay, setHidePay] = useState(false);   // 🔒 the vendor's payment-privacy setting
   const [reveal, setReveal] = useState(false);     // 👁 shown for this visit only
   useEffect(() => { api.mySettings().then(s => setHidePay(!!s?.settings?.hide_payments)).catch(() => {}); }, []);
@@ -219,7 +220,7 @@ export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus =
       )}
 
       {showStatus && (
-        <LeadStatus lead={lead} status={status} onChange={onStatus}
+        <LeadStatus lead={lead} status={status} onChange={onStatus} onCancelled={onCancelled}
           onMessage={m => { setMsg(m); setTimeout(() => setMsg(''), 1500); }} />
       )}
       {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}

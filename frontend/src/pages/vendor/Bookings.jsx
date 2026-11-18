@@ -42,7 +42,7 @@ export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
   const [selectMode, setSelectMode] = useState(false);
   const [checked, setChecked] = useState([]);
   useEffect(() => {
-    api.bookings().then(d => setBookings(d.bookings || [])).catch(() => {}).finally(() => setLoading(false));
+    api.bookings({ cancelled: true }).then(d => setBookings(d.bookings || [])).catch(() => {}).finally(() => setLoading(false));
   }, [routeBooking]);
 
   /* 🗑️ The Leads bin (Raj, 2026-11-15), in place of a bin on every row: press it to pick bookings, press it again to
@@ -72,7 +72,8 @@ export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
     year: d => d.getFullYear() === now.getFullYear(),
     next: d => d.getFullYear() === now.getFullYear() + 1,
   };
-  const inPeriod = (b, p) => { const d = eventDateValue(b.event_date); return !!d && IN[p](d); };
+  // a cancelled booking stays in the list but is never counted in a period
+  const inPeriod = (b, p) => { const d = eventDateValue(b.event_date); return b.status === 'booked' && !!d && IN[p](d); };
   const countIn = (p) => bookings.filter(b => inPeriod(b, p)).length;
 
   // 🔢 Booking number, counting down the table so the top row is #1 — matching
@@ -151,8 +152,10 @@ export function BookingsView({ routeBooking, onOpenBooking, rawsel = false }) {
                   {/* the hours they've booked you for — what a vendor checks
                       when planning a day, rather than the money */}
                   <td className="bk-nw bk-time">{b.timing_from ? `${fmtTime(b.timing_from)} – ${b.timing_to ? fmtTime(b.timing_to) : '?'}` : '—'}</td>
-                  <td className="bk-crew" data-label="Crew Status"><span className={`badge is-dot ${cs.cls}`}>{cs.label}</span></td>
-                  <td className="bk-st"><span className="badge is-dot active">Booked</span></td>
+                  <td className="bk-crew" data-label="Crew Status">{b.status === 'cancelled' ? '—' : <span className={`badge is-dot ${cs.cls}`}>{cs.label}</span>}</td>
+                  <td className="bk-st">{b.status === 'cancelled'
+                    ? <span className="badge is-dot cancelled">Cancelled</span>
+                    : <span className="badge is-dot active">Booked</span>}</td>
                 </tr>
                 );
               })}
@@ -287,7 +290,8 @@ function BookingDetail({ id, rawsel = false }) {
         <div className="lead-right">
           {/* Same money controls as the lead page — a booking is the same record */}
           <MoneySection lead={b} showStatus status={b.status || 'booked'}
-            onStatus={s => setD(x => ({ ...x, booking: { ...x.booking, status: s } }))} />
+            onStatus={s => setD(x => ({ ...x, booking: { ...x.booking, status: s } }))}
+            onCancelled={l => setD(x => ({ ...x, booking: { ...x.booking, ...l } }))} />
 
           {/* ── paperwork: kept indefinitely, downloadable any time. The offer's Secure and Timer controls belong to the
               lead page, before a booking — a booked client has accepted the offer (Raj, 2026-11-05).

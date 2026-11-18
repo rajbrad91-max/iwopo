@@ -6,20 +6,23 @@ import { quotePackage } from '../lib/packageQuote.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
+import { resolveTimezone } from '../lib/timezones.js';
 
 const router = express.Router();
 
 
-// GET /api/bookings → booked leads (calendar-ready)
+// GET /api/bookings → booked leads (calendar-ready); ?cancelled=1 adds the cancelled ones — the Bookings list keeps them,
+// marked, because they were once booked (Raj, 2026-11-17); the calendar and the dashboard leave them out
 router.get('/', requireAuth, async (req, res) => {
   const v = actingVendorId(req);
+  const status = req.query.cancelled === '1' ? { in: ['booked', 'cancelled'] } : 'booked';
   try {
     // 🔒 tenancy: a vendor is always filtered to their own leads; only a super_admin
     // with no vendor_id selected sees across tenants (same rule as before).
     const rows = await prisma.leads.findMany({
       where: v
-        ? { vendor_id: Number(v), status: 'booked', archived_at: null }   // 🔒 tenancy + not archived
-        : { status: 'booked', archived_at: null },
+        ? { vendor_id: Number(v), status, archived_at: null }   // 🔒 tenancy + not archived
+        : { status, archived_at: null },
       orderBy: { event_date: { sort: 'asc', nulls: 'last' } },
     });
     const bookings = [];
@@ -67,7 +70,7 @@ router.get('/', requireAuth, async (req, res) => {
  * chosen one marked, the signed contract, invoices, the assigned crew and the
  * roster to assign from — so the page doesn't stitch seven requests together.
  *
- * Only a confirmed booking has a page, matching how the list is built.
+ * Only a confirmed booking has a page, matching how the list is built — or a cancelled one, which stays in the list.
  */
 router.get('/:leadId', requireAuth, async (req, res) => {
   try {
@@ -77,7 +80,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && lead.vendor_id !== actingVendorId(req)) {
       return res.status(403).json({ error: 'Forbidden' });           // 🔒 tenancy
     }
-    if (lead.status !== 'booked') {
+    if (lead.status !== 'booked' && lead.status !== 'cancelled') {
       return res.status(409).json({ error: 'That lead is not a confirmed booking yet' });
     }
 
@@ -127,6 +130,7 @@ router.put('/:leadId/status', requireAuth, async (req, res) => {
   const { status } = req.body;
   const id = Number(req.params.leadId);
   if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  if (status === 'cancelled') return res.status(400).json({ error: 'Cancel a booking with its reason' });   // PUT …/cancel
   try {
     const own = await prisma.leads.findUnique({ where: { id }, select: { vendor_id: true } });
     if (!own) return res.status(404).json({ error: 'Not found' });
@@ -135,6 +139,40 @@ router.put('/:leadId/status', requireAuth, async (req, res) => {
     const lead = await prisma.leads.update({
       where: { id, ...mine(actingVendorId(req)) },
       data: { status, updated_at: new Date() },
+    });
+    res.json({ lead });
+  } catch (e) { serverError(res, e); }
+});
+
+/**
+ * ❌ PUT /api/bookings/:leadId/cancel { reason } → a booking is cancelled (Raj, 2026-11-17). Only a confirmed booking,
+ * and only with a reason: it goes at the top of the lead's notes as "Cancellation reason (Nov 17, 2026): …", and the
+ * status becomes Cancelled. The booking stays in the Bookings list; payments, contract and invoice are left as they are.
+ * Choosing Booking Confirmed again brings it back (the status route above).
+ */
+router.put('/:leadId/cancel', requireAuth, async (req, res) => {
+  const reason = String(req.body?.reason || '').trim().slice(0, 500);
+  if (!reason) return res.status(400).json({ error: 'Write the reason for cancelling' });
+  const id = Number(req.params.leadId);
+  try {
+    const own = await prisma.leads.findUnique({ where: { id }, select: { vendor_id: true, status: true, notes: true } });
+    if (!own) return res.status(404).json({ error: 'Not found' });
+    if (req.user.role !== 'super_admin' && own.vendor_id !== actingVendorId(req))
+      return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
+    if (own.status !== 'booked') return res.status(409).json({ error: 'Only a confirmed booking can be cancelled' });
+
+    const [vs, ven] = await Promise.all([
+      prisma.vendor_settings.findUnique({ where: { vendor_id: own.vendor_id }, select: { timezone: true } }),
+      prisma.vendors.findUnique({ where: { id: own.vendor_id }, select: { country: true } }),
+    ]);
+    const day = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: resolveTimezone(vs?.timezone, ven?.country).tz })
+      .format(new Date());
+    const before = String(own.notes || '').trim();
+    const notes = `Cancellation reason (${day}): ${reason}${before ? `\n\n${before}` : ''}`;
+
+    const lead = await prisma.leads.update({
+      where: { id, ...mine(actingVendorId(req)) },
+      data: { status: 'cancelled', notes, updated_at: new Date() },
     });
     res.json({ lead });
   } catch (e) { serverError(res, e); }

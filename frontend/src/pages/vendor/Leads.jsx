@@ -288,7 +288,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
                 {/* the folder that was sent, or the package once the client
                     has chosen one from it */}
                 <td data-label="Packages">{l.package_name || (l.package_template_id ? `📁 ${l.template_name || 'Sent'}` : '—')}</td>
-                <td data-label="Status"><span className={`badge ${l.status === 'booked' ? 'active' : 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
+                <td data-label="Status"><span className={`badge ${l.status === 'booked' ? 'active' : l.status === 'cancelled' ? 'cancelled' : 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
                 <td className="col-actions" data-label="Actions">
                   {view === 'active'
                     ? <div className="lead-actions">
@@ -478,7 +478,7 @@ function LeadDetail({ lead, onSaved }) {
         </div>
 
         {/* 🏷️ the status first: sending packages is what moves it on (Raj, 2026-11-17 — it sat in Payments before) */}
-        <LeadStatus lead={lead} status={status} onChange={setStatus} onMessage={flashPkg} />
+        <LeadStatus lead={lead} status={status} onChange={setStatus} onMessage={flashPkg} onCancelled={onSaved} />
 
         {/* pick a folder → its packages are copied here, ready to tailor */}
         {/* the folder icon beside the list — a list's own lines can hold text only (Raj, 2026-11-17, in place of 📁) */}

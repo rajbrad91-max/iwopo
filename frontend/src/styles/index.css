@@ -188,6 +188,7 @@ tr:last-child td { border-bottom:none; }
 /* a status pill led by a small dot in its own colour — in place of an emoji (Bookings, Raj 2026-11-15) */
 .badge.is-dot::before { content:''; display:inline-block; width:6px; height:6px; margin-right:6px; border-radius:50%; background:currentColor; vertical-align:1px; }
 .badge.past   { background:#fb718522;         color:var(--red);   }
+.badge.cancelled { background:#fb718522; color:var(--red); }   /* a booking that was cancelled (Raj, 2026-11-17) */
 .badge.active { background:#4ade8022; color:var(--green); }
 .badge.trial { background:var(--teal-soft); color:var(--teal); }
 .badge.past { background:#fb718522; color:var(--red); }

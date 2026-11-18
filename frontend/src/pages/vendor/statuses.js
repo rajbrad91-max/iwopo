@@ -7,5 +7,5 @@
 
 
 export const STATUSES = ['new', 'quoted', 'booked'];
-export const S_ICON = { new: 'leads', quoted: 'packages-send', booked: 'yes' };
-export const S_LABEL = { new: 'New', quoted: 'Package Sent', booked: 'Booking Confirmed' };
+export const S_ICON = { new: 'leads', quoted: 'packages-send', booked: 'yes', cancelled: 'no' };
+export const S_LABEL = { new: 'New', quoted: 'Package Sent', booked: 'Booking Confirmed', cancelled: 'Cancelled' };

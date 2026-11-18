@@ -129,7 +129,8 @@ export async function markBooked(leadId) {
   const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
   if (!lead) return;
   await relockOffer(lead.id, lead.vendor_id);   // 🔒 every recorded payment comes through here
-  if (lead.status === 'booked') return;
+  // a cancelled booking is brought back by the vendor (Booking Confirmed in the list), never by a payment
+  if (lead.status === 'booked' || lead.status === 'cancelled') return;
   const money = await moneySummary(lead);
   // F4 (2026-10-30): whole cents — in floating point 35% of $3,200 is 1120.0000000000002, so a $1,120 deposit
   // never counted as paid and the vendor had to confirm the booking by hand
