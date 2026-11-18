@@ -744,6 +744,8 @@
   font-size: 11.5px; font-family: inherit; cursor: pointer;
 }
 .ld-pkg-acts button:hover { border-color: var(--teal); }
+.ld-pkg-acts button.is-danger:hover { border-color: #fb7185; color: #fb7185; }
+.ld-pkg-acts .ld-ic-btn .nav-svg svg { width: 13px; height: 13px; }   /* Remove's bin, at these buttons' size */
 .ld-pkg-acts button.is-primary { background: var(--btn-fill); color: var(--btn-fill-ink); border-color: var(--teal); font-weight: 700; }
 .ld-pkg-edit .fb-label { margin-top: 8px; }
 .ld-pkg-edit .fb-label:first-child { margin-top: 0; }

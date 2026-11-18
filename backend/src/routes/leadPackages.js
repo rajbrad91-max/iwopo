@@ -146,7 +146,23 @@ router.put('/:leadId/:id', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-// (no DELETE for one package: an offer starts over by loading a folder again — Raj, 2026-11-17)
+// DELETE /api/lead-packages/:leadId/:id → drop one package from the offer (the panel asks first; never the package the
+// client picked — Raj, 2026-11-17)
+router.delete('/:leadId/:id', requireAuth, async (req, res) => {
+  try {
+    const lead = await ownedLead(req, req.params.leadId);
+    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (lead.packages_sent_at) {
+      return res.status(423).json({ error: 'These packages have been sent. Unlock them first to make changes.' });
+    }
+    const { count } = await prisma.lead_packages.deleteMany({
+      where: { id: Number(req.params.id), lead_id: lead.id, is_selected: false, ...mine(actingVendorId(req, { body: false })) },   // 🔒 tenancy on the write
+    });
+    if (!count) return res.status(404).json({ error: 'Package not found, or it is the one the client picked' });
+    await redrawIfInForce(lead.id, null);   // one left now means that one is in force
+    res.json({ ok: true });
+  } catch (e) { serverError(res, e); }
+});
 
 // PUT /api/lead-packages/:leadId/lock → lock or unlock the offer.
 // Locking is what "Send Packages" does; unlocking is the deliberate act of

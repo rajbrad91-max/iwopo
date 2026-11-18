@@ -4,6 +4,7 @@
  * The price is worked out by lib/packageQuote.js, the same function the server charges by.
  */
 import { useState } from 'react';
+import NavIcon from '../../components/NavIcon';
 import { fmtMoney, moneySymbol } from '../../lib/api';
 import { quotePackage, EXTRA_UNITS, EXTRA_MODES, unitText, newExtraId, hoursBetween, taxOf } from '../../lib/packageQuote';
 
@@ -36,7 +37,7 @@ export function preEventExtras(lead, pkg) {
     .filter(x => !have.has(x.name));
 }
 
-export function LeadPkgRow({ pkg: p, lead, locked, onEdit }) {
+export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove }) {
   const q = quotePackage(p, lead);
   const extras = (Array.isArray(p.extras) ? p.extras : []).filter(x => x.mode !== 'off');
   const priced = new Set(q.extras.map(l => l.id));
@@ -86,6 +87,10 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit }) {
       {!locked && (
         <div className="ld-pkg-acts">
           <button type="button" onClick={onEdit}>Edit</button>
+          {/* 🗑️ asks first (the lead page); never on the package the client picked (Raj, 2026-11-17) */}
+          {!p.is_selected && (
+            <button type="button" className="is-danger ld-ic-btn" onClick={onRemove}><NavIcon name="remove" />Remove</button>
+          )}
         </div>
       )}
     </div>

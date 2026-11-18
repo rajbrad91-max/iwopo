@@ -421,6 +421,16 @@ function LeadDetail({ lead, onSaved }) {
     } finally { setPkgBusy(false); }
   }
 
+  async function removePkg(id, name) {
+    if (!await dialog.confirm(`"${name}" will no longer be offered to this client. Loading the folder again brings it back.`,
+      { title: 'Remove this package?', okLabel: 'Remove' })) return;
+    try {
+      await api.deleteLeadPackage(lead.id, id);
+      setLeadPkgs(ps => ps.filter(p => p.id !== id));
+      setMoneyTick(t => t + 1);   // one package left is the one in force
+    } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
+  }
+
   async function savePkg(id, patch) {
     try {
       const d = await api.updateLeadPackage(lead.id, id, patch);
@@ -499,7 +509,7 @@ function LeadDetail({ lead, onSaved }) {
         {leadPkgs.map(p => (editPkg === p.id
           ? <div key={p.id} className="ld-pkg"><PackageEditor pkg={p} lead={lead} onSave={patch => savePkg(p.id, patch)} onCancel={() => setEditPkg(null)} /></div>
           : <LeadPkgRow key={p.id} pkg={p} lead={lead} locked={pkgLocked}
-              onEdit={() => setEditPkg(p.id)} />
+              onEdit={() => setEditPkg(p.id)} onRemove={() => removePkg(p.id, p.name)} />
         ))}
 
         {!leadPkgs.length && tplId && !pkgBusy && (
