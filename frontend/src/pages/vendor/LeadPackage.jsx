@@ -36,7 +36,7 @@ export function preEventExtras(lead, pkg) {
     .filter(x => !have.has(x.name));
 }
 
-export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove }) {
+export function LeadPkgRow({ pkg: p, lead, locked, onEdit }) {
   const q = quotePackage(p, lead);
   const extras = (Array.isArray(p.extras) ? p.extras : []).filter(x => x.mode !== 'off');
   const priced = new Set(q.extras.map(l => l.id));
@@ -86,7 +86,6 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove }) {
       {!locked && (
         <div className="ld-pkg-acts">
           <button type="button" onClick={onEdit}>Edit</button>
-          <button type="button" className="is-danger" onClick={onRemove}>🗑️ Remove</button>
         </div>
       )}
     </div>

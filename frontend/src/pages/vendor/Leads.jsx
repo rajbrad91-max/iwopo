@@ -19,6 +19,9 @@ import { MoneySection } from './MoneySection';
 import LeadStatus from './LeadStatus';
 import { LeadPkgRow, PackageEditor } from './LeadPackage';
 
+/** the folder list's own line for loading the folder already chosen once more (a list can't re-pick its value) */
+const LOAD_AGAIN = 'again';
+
 // ➕ Add lead — the same form as a lead's Edit details (components/LeadEditor), empty (Raj, 2026-11-15)
 function AddLead({ vendorId, onClose }) {
   const [cfg, setCfg] = useState(null);
@@ -392,9 +395,19 @@ function LeadDetail({ lead, onSaved }) {
 
   // Copy a folder's packages onto this lead. Replaces what's there — this is
   // "offer this client these packages", not "add more".
+  // 📂 the folder list is how an offer starts over (Raj, 2026-11-17 — no Remove button on a package): picking a folder,
+  // or loading the same one again, replaces the packages here, so it asks first when there are packages to lose
   async function loadFolder(id) {
+    if (!id) return;
+    if (leadPkgs.length) {
+      const folder = tpls.find(t => String(t.id) === String(id))?.name || 'that folder';
+      const n = leadPkgs.length;
+      const picked = leadPkgs.some(p => p.is_selected) ? '\n\nThe package the client picked is cleared too.' : '';
+      const ok = await dialog.confirm(`This replaces the ${n} package${n === 1 ? '' : 's'} on this lead with the ones in “${folder}”. `
+        + `Anything you changed for this client is lost.${picked}`, { title: 'Load these packages?', okLabel: 'Load packages' });
+      if (!ok) return;
+    }
     setTplId(id);
-    if (!id) { setLeadPkgs([]); return; }
     setPkgBusy(true);
     try {
       const d = await api.loadLeadPackages(lead.id, id);
@@ -417,14 +430,6 @@ function LeadDetail({ lead, onSaved }) {
     } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
   }
 
-  async function removePkg(id, name) {
-    if (!await dialog.confirm(`"${name}" will no longer be offered to this client.`, { title: 'Remove this package?', okLabel: 'Remove' })) return;
-    try {
-      await api.deleteLeadPackage(lead.id, id);
-      setLeadPkgs(ps => ps.filter(p => p.id !== id));
-      setMoneyTick(t => t + 1);   // one package left is the one in force
-    } catch (e) { setMsg('⚠️ ' + e.message); setTimeout(() => setMsg(''), 3000); }
-  }
 
   async function toggleLock() {
     const next = !pkgLocked;
@@ -470,13 +475,16 @@ function LeadDetail({ lead, onSaved }) {
         <div className="ld-pkg-pick">
           <NavIcon name="folder" />
           <select className="ld-select ld-pkg-select" value={tplId}
-            onChange={e => loadFolder(e.target.value)} disabled={pkgLocked || pkgBusy}>
-            <option value="">— Choose a package folder —</option>
+            onChange={e => loadFolder(e.target.value === LOAD_AGAIN ? tplId : e.target.value)} disabled={pkgLocked || pkgBusy}>
+            {!tplId && <option value="">— Choose a package folder —</option>}
             {tpls.map(t => (
               <option key={t.id} value={t.id}>
                 {t.name} ({(t.packages || []).length} package{(t.packages || []).length === 1 ? '' : 's'})
               </option>
             ))}
+            {tplId && leadPkgs.length > 0 && (
+              <option value={LOAD_AGAIN}>Load “{tpls.find(t => String(t.id) === String(tplId))?.name || 'this folder'}” again — start over</option>
+            )}
           </select>
         </div>
 
@@ -491,7 +499,7 @@ function LeadDetail({ lead, onSaved }) {
         {leadPkgs.map(p => (editPkg === p.id
           ? <div key={p.id} className="ld-pkg"><PackageEditor pkg={p} lead={lead} onSave={patch => savePkg(p.id, patch)} onCancel={() => setEditPkg(null)} /></div>
           : <LeadPkgRow key={p.id} pkg={p} lead={lead} locked={pkgLocked}
-              onEdit={() => setEditPkg(p.id)} onRemove={() => removePkg(p.id, p.name)} />
+              onEdit={() => setEditPkg(p.id)} />
         ))}
 
         {!leadPkgs.length && tplId && !pkgBusy && (

@@ -796,7 +796,6 @@ export const api = {
     { method: 'POST', body: JSON.stringify({ template_id }) }),
   updateLeadPackage: (leadId, id, data) => request(`/lead-packages/${leadId}/${id}`,
     { method: 'PUT', body: JSON.stringify(data) }),
-  deleteLeadPackage: (leadId, id) => request(`/lead-packages/${leadId}/${id}`, { method: 'DELETE' }),
   setPackagesLock: (leadId, locked) => request(`/lead-packages/${leadId}/lock/set`,
     { method: 'PUT', body: JSON.stringify({ locked }) }),
   leadPayments: (leadId) => request(`/payments/lead/${leadId}`),
