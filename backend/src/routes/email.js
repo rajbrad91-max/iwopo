@@ -1,6 +1,6 @@
 import { EMAILS, TAG_LABELS, SAMPLE, SUBJECT_MAX, BODY_MAX, HTML_MAX, htmlAllowed, emailMode, logoUrlFor, cleanEmailHtml, starterHtml, renderEmail } from '../lib/emailTemplates.js';   // ✉️ the client emails and their defaults
 import { clientBaseUrl } from '../lib/vendorHosts.js';
-import { leadEmail, cleanReviewUrl } from '../lib/leadEmails.js';   // 💰⭐ payment reminder, review request
+import { leadEmail, leadEmailSent, cleanReviewUrl } from '../lib/leadEmails.js';   // 💰⭐🧾 payment reminder, review request, invoice
 import express from 'express';
 import { logEmail } from '../lib/projectStages.js';
 import nodemailer from 'nodemailer';
@@ -402,6 +402,7 @@ router.post('/lead/:leadId/send/:kind', requireAuth, async (req, res) => {
     const kind = String(req.params.kind);
     const m = await leadEmail(lead, kind);
     await sendLeadEmail(req, lead, m.subject, m.body, { kind, html: m.html });
+    await leadEmailSent(lead, kind);
     res.json({ ok: true, sent_to: m.to });
   } catch (e) { e.code === 'self_mode' ? res.status(400).json({ error: e.message }) : leadEmailFailed(res, e); }
 });

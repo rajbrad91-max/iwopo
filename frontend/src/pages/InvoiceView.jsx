@@ -28,6 +28,20 @@ function paidOn(iso, tz) {
   catch { return String(iso).slice(0, 10); }
 }
 
+/** a pre-event's day — "Wed, Dec 2" — read as the calendar day it is, whatever the time zone */
+function eventDay(ymd) {
+  const d = new Date(`${ymd}T12:00:00Z`);
+  return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+/** "17:00" → "5:00 PM" (or kept 24-hour, as the vendor prefers) */
+function clock(hm, pref) {
+  const m = String(hm || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return '';
+  if (pref === '24h') return `${m[1].padStart(2, '0')}:${m[2]}`;
+  const h = Number(m[1]);
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
 /** how a payment came in, in the client's words */
 const PAID_BY = { manual: 'Payment', etransfer: 'E-transfer', cash: 'Cash', card: 'Card', direct: 'Paid directly' };
 
@@ -95,6 +109,20 @@ export default function InvoiceView({ token }) {
                   {it.description && <div className="iv-desc">{it.description}</div>}
                   {it.inclusions?.length > 0 && (
                     <ul className="iv-incl">{it.inclusions.map((x, j) => <li key={j}>{x}</li>)}</ul>
+                  )}
+                  {/* 📅 the pre-events this booking covers (Raj, 2026-11-18) */}
+                  {it.events?.length > 0 && (
+                    <div className="iv-events">
+                      <div className="iv-events-h">Pre-events</div>
+                      {it.events.map((e, j) => (
+                        <div key={j} className="iv-event">
+                          <b>{e.name}</b>
+                          {[e.date && eventDay(e.date),
+                            e.from && e.to && `${clock(e.from, inv.time_format)} – ${clock(e.to, inv.time_format)}`,
+                            e.service].filter(Boolean).map((t, k) => <span key={k}> · {t}</span>)}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </td>
                 <td className="iv-amount">{money(it.amount)}</td>

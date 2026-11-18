@@ -10,7 +10,7 @@ import { useDialog } from '../../lib/dialog.jsx';
 import { api, fmtTime, fmtDateTime, fmtMoney, eventDateValue } from '../../lib/api';
 import { CalendarView } from './Calendar';
 import { MoneySection } from './MoneySection';
-import LeadEmailModal from '../../components/LeadEmailModal';   // ⭐ the review request, read before it goes
+import LeadEmailModal from '../../components/LeadEmailModal';   // ⭐🧾 the review request and the invoice, read before they go
 import NavIcon from '../../components/NavIcon';
 
 /**
@@ -181,6 +181,7 @@ function BookingDetail({ id, rawsel = false }) {
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [review, setReview] = useState(false);   // ⭐ the review request window
+  const [sendInvoice, setSendInvoice] = useState(false);   // 🧾 the invoice email, read before it goes
   const [busy, setBusy] = useState(false);
   const [cfg, setCfg] = useState(null);
   const [edit, setEdit] = useState(false);   // ✏️ Edit Details open   // 🧾 the vendor's inquiry form — which questions this client was asked
@@ -326,10 +327,26 @@ function BookingDetail({ id, rawsel = false }) {
               {d.invoices.map(i => (
                 <div key={i.id} className="bd-doc">
                   <NavIcon name="contracts" />
-                  <span className="bd-doc-t"><b>Invoice {i.invoice_number}</b><small>{fmtMoney(i.total)} · balance {fmtMoney(i.balance)}</small></span>
+                  <span className="bd-doc-t">
+                    <b>Invoice {i.invoice_number}</b>
+                    <small>{[`${fmtMoney(i.total)} · balance ${fmtMoney(i.balance)}`,
+                      i.sent_at && `emailed ${fmtDateTime(i.sent_at, { dateOnly: true })}`].filter(Boolean).join(' · ')}</small>
+                  </span>
                   <a className="refresh bd-doc-btn" href={`/invoice/${i.token}`} target="_blank" rel="noreferrer">View</a>
+                  {/* 🧾 the newest invoice can be emailed — a preview first, like the payment reminder (Raj, 2026-11-18) */}
+                  {i.id === d.invoices[0].id && b.email && (
+                    <button type="button" className="refresh bd-doc-btn" onClick={() => setSendInvoice(true)}>{i.sent_at ? 'Send again' : 'Send'}</button>
+                  )}
                 </div>
               ))}
+              {sendInvoice && (
+                <LeadEmailModal lead={b} kind="invoice" title="Email the invoice" onClose={() => setSendInvoice(false)}
+                  onSent={() => {
+                    const at = new Date().toISOString();
+                    setD(x => ({ ...x, invoices: x.invoices.map((inv, n) => (n === 0 ? { ...inv, sent_at: at } : inv)) }));
+                    flash('✅ Invoice sent');
+                  }} />
+              )}
             </div>
             <p className="bd-fine">View a document to read it, then download or print it from there. Keep your own copy of anything you may need later.</p>
           </div>

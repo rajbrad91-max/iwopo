@@ -61,11 +61,19 @@ function extraLabel(x) {
   return x.qty > 1 ? `${x.name} × ${x.qty}` : x.name;
 }
 
+/** 📅 the booking's pre-events, plainly: name, day, time and what it is for — no hours or guests (Raj, 2026-11-18) */
+function preEventsOf(lead) {
+  return (Array.isArray(lead.pre_events) ? lead.pre_events : [])
+    .filter(e => e && String(e.name || '').trim())
+    .map(e => ({ name: String(e.name).trim(), date: e.date || '', from: e.from || '', to: e.to || '', service: e.service || '' }));
+}
+
 /**
  * 🧾 What an invoice bills, frozen when it is made: the package the client picked as they saw it when choosing — its
  * line under the name, what it includes and its tax wording — then each extra as its own line, marked when the client
- * added it (Raj, 2026-11-18). A vendor's own total wins: one line for the services, as before.
- * Each item: { label, amount, kind: 'package' | 'extra', description?, inclusions?, tax?, client_added? }.
+ * added it (Raj, 2026-11-18). A vendor's own total wins: one line for the services, as before. The package line also
+ * carries the booking's pre-events, which its price covers.
+ * Each item: { label, amount, kind: 'package' | 'extra', description?, inclusions?, tax?, events?, client_added? }.
  */
 export async function invoiceItems(lead) {
   const when = `${lead.event_type || 'Event'}${lead.event_date ? ' (' + String(lead.event_date).slice(0, 10) + ')' : ''}`;
@@ -80,6 +88,7 @@ export async function invoiceItems(lead) {
         description: picked.description || '',
         inclusions: Array.isArray(picked.inclusions) ? picked.inclusions : [],
         tax: { mode: picked.tax_mode || 'none', rate: picked.tax_rate == null ? null : Number(picked.tax_rate) },
+        events: preEventsOf(lead),
       },
       ...q.extras.map(x => ({ kind: 'extra', label: extraLabel(x), amount: x.amount, client_added: x.mode === 'optional' })),
     ];
@@ -89,7 +98,7 @@ export async function invoiceItems(lead) {
     const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
     pkgName = p.name || 'Services';
   }
-  return [{ kind: 'package', label: `${pkgName} — ${when}`, amount: (await moneySummary(lead)).base_total }];
+  return [{ kind: 'package', label: `${pkgName} — ${when}`, amount: (await moneySummary(lead)).base_total, events: preEventsOf(lead) }];
 }
 
 /** The invoice for a lead: from its package and payments, or the items given. Shared by the button and by booking. */

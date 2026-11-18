@@ -39,6 +39,7 @@ export const TAG_LABELS = {
   amount_due: 'Amount due',
   total_amount: 'Total',
   paid_amount: 'Paid so far',
+  invoice_number: 'Invoice number',
 };
 
 /** sample values, for the preview only */
@@ -47,6 +48,7 @@ export const SAMPLE = {
   contract_title: 'Videography Agreement', gallery_name: 'Priya & Arjun', view_password: 'rose24', pick_password: 'lily57',
   admin_password: 'rose24', guest_password: 'lily57',
   payment_due: 'remaining balance', amount_due: '$3,000', total_amount: '$4,500', paid_amount: '$1,500',
+  invoice_number: 'INV-1-0042',
 };
 
 /** the order on the page is the order a booking goes through. `button` = the words on the link's button in a design */
@@ -96,6 +98,27 @@ You can see the details and pay here:
 {link}
 
 If you have already sent it, thank you, and please ignore this email.
+
+{business_name}`,
+  },
+  /* 🧾 sent from a booking (Raj, 2026-11-18): the invoice's link always shows the latest payments, so it is the
+     client's receipt too */
+  invoice: {
+    label: 'Invoice',
+    when: 'When you press Send beside the invoice on a booking. Its link always shows the latest payments, so it is a receipt too.',
+    tags: [...COMMON, 'invoice_number', 'total_amount', 'paid_amount', 'amount_due', 'link'],
+    button: 'View your invoice',
+    subject: 'Your invoice {invoice_number} — {business_name}',
+    body: `Hi {client_first_name},
+
+Here is your invoice {invoice_number}. It shows everything included, what you have paid and what is left:
+{link}
+
+Total: {total_amount}
+Paid so far: {paid_amount}
+Balance: {amount_due}
+
+The link always shows your latest payments, so you can keep it as your receipt.
 
 {business_name}`,
   },

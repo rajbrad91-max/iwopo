@@ -1,6 +1,6 @@
 /**
- * ✉️ The client emails a vendor sends from a lead or booking with one button (Raj, 2026-11-17): a payment reminder
- * and a review request. Each is the vendor's own email (Settings → Email templates, lib/emailTemplates.js), filled
+ * ✉️ The client emails a vendor sends from a lead or booking with one button (Raj, 2026-11-17): a payment reminder,
+ * a review request and the invoice (2026-11-18). Each is the vendor's own email (Settings → Email templates, lib/emailTemplates.js), filled
  * here for this one client — the vendor sees it first, then sends it (routes/email.js /lead/:leadId/send/:kind).
  */
 import prisma from '../config/prisma.js';
@@ -10,7 +10,7 @@ import { currencyFor } from './currencies.js';
 import { moneySummary } from '../routes/payments.js';
 
 /** the emails sent this way */
-export const LEAD_EMAILS = ['payment_reminder', 'review_request'];
+export const LEAD_EMAILS = ['payment_reminder', 'review_request', 'invoice'];
 
 /** "$4,500", or "$4,500.50" when there are cents — in the vendor's own currency */
 function moneyText(n, currency) {
@@ -57,11 +57,42 @@ async function reviewValues(lead) {
   return { link: s.review_url };
 }
 
+/** 🧾 the booking's invoice — its newest one — with what it bills, what is paid and what is left */
+async function latestInvoice(lead) {
+  return prisma.invoices.findFirst({ where: { lead_id: lead.id, vendor_id: lead.vendor_id }, orderBy: { id: 'desc' } });   // 🔒 the lead's owner
+}
+async function invoiceValues(lead) {
+  const inv = await latestInvoice(lead);
+  if (!inv) throw refuse('This booking has no invoice yet');
+  const [vset, ven, base] = await Promise.all([
+    prisma.vendor_settings.findUnique({ where: { vendor_id: lead.vendor_id }, select: { currency: true } }),
+    prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { country: true } }),
+    clientBaseUrl(lead.vendor_id),
+  ]);
+  const cur = currencyFor(vset?.currency, ven?.country);
+  return {
+    invoice_number: inv.invoice_number,
+    total_amount: moneyText(inv.total, cur),
+    paid_amount: moneyText(inv.paid, cur),
+    amount_due: moneyText(inv.balance, cur),
+    link: `${base}/invoice/${inv.token}`,   // the vendor's own address, like the client's page
+  };
+}
+
+/** what a sent email leaves behind: the invoice remembers when it was emailed */
+export async function leadEmailSent(lead, kind) {
+  if (kind !== 'invoice') return;
+  const inv = await latestInvoice(lead);
+  if (inv) await prisma.invoices.update({ where: { id: inv.id }, data: { sent_at: new Date() } });
+}
+
 /** the email ready to send to this lead's client: { to, subject, body, html? } */
 export async function leadEmail(lead, kind) {
   if (!LEAD_EMAILS.includes(kind)) throw Object.assign(new Error('No such email'), { status: 404 });
   if (!lead.email) throw refuse('This client has no email address');
-  const values = kind === 'payment_reminder' ? await paymentValues(lead) : await reviewValues(lead);
+  const values = kind === 'payment_reminder' ? await paymentValues(lead)
+    : kind === 'invoice' ? await invoiceValues(lead)
+      : await reviewValues(lead);
   const m = await renderEmail(lead.vendor_id, kind, { client_name: lead.name || '', ...values });
   return { to: lead.email, ...m };
 }

@@ -98,7 +98,7 @@ router.get('/:leadId', requireAuth, async (req, res) => {
       prisma.invoices.findMany({
         where: { lead_id: id },
         orderBy: { id: 'desc' },
-        select: { id: true, token: true, invoice_number: true, total: true, paid: true, balance: true, created_at: true },
+        select: { id: true, token: true, invoice_number: true, total: true, paid: true, balance: true, created_at: true, sent_at: true },
       }),
       prisma.lead_crew.findMany({ where: { lead_id: id }, orderBy: { id: 'asc' } }),
       prisma.crew_members.findMany({
