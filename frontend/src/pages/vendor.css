@@ -778,6 +778,7 @@
 .ld-x-add { margin-top: 8px; padding: 5px 10px; border-radius: 7px; border: 1px dashed var(--line); background: transparent;
   color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
 .ld-x-add:hover { border-color: var(--teal); color: var(--teal); }
+.ld-x-add + .ld-x-add { margin-left: 8px; }   /* + an extra, + the pre-events */
 @media (max-width: 520px) { .ld-x-row { grid-template-columns: minmax(0, 1fr) 80px 28px; } .ld-x-name { grid-column: 1 / 2; }
   .ld-x-price { grid-column: 2; } .ld-x-del { grid-column: 3; } .ld-x-unit { grid-column: 1; } .ld-x-mode { grid-column: 1 / -1; grid-row: 3; }
   .ld-x-qty { grid-column: 2; } .ld-x-note { grid-row: 4; } }

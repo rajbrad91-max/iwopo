@@ -489,9 +489,9 @@ function LeadDetail({ lead, onSaved }) {
 
         {/* the client's own copies — editable per client, master list untouched */}
         {leadPkgs.map(p => (editPkg === p.id
-          ? <div key={p.id} className="ld-pkg"><PackageEditor pkg={p} onSave={patch => savePkg(p.id, patch)} onCancel={() => setEditPkg(null)} /></div>
+          ? <div key={p.id} className="ld-pkg"><PackageEditor pkg={p} lead={lead} onSave={patch => savePkg(p.id, patch)} onCancel={() => setEditPkg(null)} /></div>
           : <LeadPkgRow key={p.id} pkg={p} lead={lead} locked={pkgLocked}
-              onEdit={() => setEditPkg(p.id)} onRemove={() => removePkg(p.id, p.name)} onSave={patch => savePkg(p.id, patch)} />
+              onEdit={() => setEditPkg(p.id)} onRemove={() => removePkg(p.id, p.name)} />
         ))}
 
         {!leadPkgs.length && tplId && !pkgBusy && (

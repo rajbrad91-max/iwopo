@@ -17,7 +17,9 @@ function lineLabel(l) {
   return l.qty > 1 ? `${l.name} × ${l.qty}` : l.name;
 }
 
-/** pre-events with a start and end time, as extras priced at this package's extra-hour rate */
+/** pre-events with a start and end time, as extras priced at this package's extra-hour rate — offered only inside the
+ *  editor, where they are rows like any other until Save (Raj, 2026-11-17: a one-click button on the card changed a
+ *  signed booking's total) */
 export function preEventExtras(lead, pkg) {
   const rate = Number(pkg.per_hour_price) || 0;
   const have = new Set((pkg.extras || []).filter(x => x.source === 'pre_event').map(x => x.name));
@@ -34,12 +36,11 @@ export function preEventExtras(lead, pkg) {
     .filter(x => !have.has(x.name));
 }
 
-export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove, onSave }) {
+export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove }) {
   const q = quotePackage(p, lead);
   const extras = (Array.isArray(p.extras) ? p.extras : []).filter(x => x.mode !== 'off');
   const priced = new Set(q.extras.map(l => l.id));
   const others = extras.filter(x => !priced.has(x.id));          // included, or offered and not taken
-  const pre = locked ? [] : preEventExtras(lead, p);
   const showQuote = q.extras.length > 0 || q.price_mode === 'per_guest';
 
 
@@ -85,10 +86,6 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove, onSave }) {
       {!locked && (
         <div className="ld-pkg-acts">
           <button type="button" onClick={onEdit}>Edit</button>
-          {pre.length > 0 && (
-            <button type="button" title="Each pre-event's hours at this package's extra-hour price — edit them after"
-              onClick={() => onSave({ extras: [...(p.extras || []), ...pre] })}>➕ Add {pre.length} pre-event{pre.length === 1 ? '' : 's'} as extras</button>
-          )}
           <button type="button" className="is-danger" onClick={onRemove}>🗑️ Remove</button>
         </div>
       )}
@@ -99,7 +96,7 @@ export function LeadPkgRow({ pkg: p, lead, locked, onEdit, onRemove, onSave }) {
 const blankExtra = () => ({ id: newExtraId(), name: '', description: '', price: '', unit: 'once', max_qty: null, mode: 'added', chosen: false, qty: 1, source: 'custom' });
 
 /** ✏️ This client's copy of a package — never the vendor's master list. */
-export function PackageEditor({ pkg, onSave, onCancel }) {
+export function PackageEditor({ pkg, lead, onSave, onCancel }) {
   const [f, setF] = useState(() => ({
     name: pkg.name,
     price: String(pkg.price ?? 0),
@@ -110,6 +107,7 @@ export function PackageEditor({ pkg, onSave, onCancel }) {
   const [err, setErr] = useState('');
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const setX = (i, k, v) => setF(s => ({ ...s, extras: s.extras.map((x, j) => (j === i ? { ...x, [k]: v } : x)) }));
+  const pre = preEventExtras(lead, { ...pkg, extras: f.extras });   // the pre-events not already rows here
 
   function save() {
     if (f.extras.some(x => !String(x.name).trim())) { setErr('Give every extra a name, or remove the empty one.'); return; }
@@ -166,6 +164,10 @@ export function PackageEditor({ pkg, onSave, onCancel }) {
       ))}
       {f.extras.length < 20 && (
         <button type="button" className="ld-x-add" onClick={() => setF(s => ({ ...s, extras: [...s.extras, blankExtra()] }))}>+ Add an extra for this client</button>
+      )}
+      {pre.length > 0 && f.extras.length + pre.length <= 20 && (
+        <button type="button" className="ld-x-add" title="Each pre-event's hours at this package's extra-hour price — check them, then Save"
+          onClick={() => setF(s => ({ ...s, extras: [...s.extras, ...pre] }))}>+ Add the {pre.length} pre-event{pre.length === 1 ? '' : 's'} as extras</button>
       )}
 
       {err && <div className="ld-msg is-err ld-msg-mt">{err}</div>}
