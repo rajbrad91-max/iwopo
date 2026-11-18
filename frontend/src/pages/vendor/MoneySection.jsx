@@ -221,8 +221,9 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
         <div className="ms-status-row">
           <label className="ms-status-lbl">Status</label>
           <select className="ms-status-sel" value={status} onChange={e => changeStatus(e.target.value)} title="Lead status: New, Package Sent, or Booking Confirmed">
-            {STATUSES.map(s => <option key={s} value={s}>{S_ICON[s]} {S_LABEL[s]}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{S_LABEL[s]}</option>)}
           </select>
+          {S_ICON[status] && <NavIcon name={S_ICON[status]} />}
         </div>
         <button className={`ms-webpay-chip ${webPay ? 'is-on' : ''}`} onClick={toggleWebPay}
           title={webPay ? 'Client can pay online by card' : 'Client pays in person only'}>
