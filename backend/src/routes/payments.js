@@ -2,7 +2,7 @@ import express from 'express';
 import prisma from '../config/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { templateForLead, buildContractBody } from './contracts.js';
-import { ensureInvoice } from './invoices.js';
+import { ensureInvoice, refreshInvoicePaid } from './invoices.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
@@ -129,6 +129,7 @@ export async function markBooked(leadId) {
   const lead = await prisma.leads.findUnique({ where: { id: Number(leadId) } });
   if (!lead) return;
   await relockOffer(lead.id, lead.vendor_id);   // 🔒 every recorded payment comes through here
+  await refreshInvoicePaid(lead.id);             // 💵 …and the invoice shows it
   // a cancelled booking is brought back by the vendor (Booking Confirmed in the list), never by a payment
   if (lead.status === 'booked' || lead.status === 'cancelled') return;
   const money = await moneySummary(lead);
@@ -225,6 +226,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
     if (req.user.role !== 'super_admin' && pay.vendor_id !== actingVendorId(req))
       return res.status(403).json({ error: 'Forbidden' });          // 🔒 tenancy
     await prisma.payments.delete({ where: { id, ...mine(actingVendorId(req)) } });
+    await refreshInvoicePaid(pay.lead_id);   // 💵 the invoice no longer counts it
     res.json({ ok: true });
   } catch (e) { serverError(res, e); }
 });

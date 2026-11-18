@@ -209,7 +209,9 @@ INNER
 
 echo
 echo "=== 5. server boots clean ==="
-pm2 restart iwopo-staging-api >/dev/null 2>&1; sleep 4
+pm2 restart iwopo-staging-api >/dev/null 2>&1
+# wait until it answers (it takes ~15 s to start) — a fixed 4 s wait read a slow start as a dead server
+for i in $(seq 1 45); do [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3002/api/hello)" = 200 ] && break; sleep 1; done
 pm2 logs iwopo-staging-api --err --lines 25 --nostream 2>/dev/null \
   | grep -viE 'tensorflow|oneDNN|env vars|APP_URL|PLATFORM_SMTP|TAILING|error.log last' \
   | grep -vE '^\s*$' | tail -4

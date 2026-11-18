@@ -54,32 +54,48 @@ router.post('/lead/:leadId', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
+/** an extra's line as the client saw it on their package: "Second photographer × 4 hr", "Prints × 3" */
+function extraLabel(x) {
+  if (x.unit === 'per_hour') return `${x.name} × ${x.qty} hr`;
+  if (x.unit === 'per_guest') return `${x.name} × ${x.qty} guests`;
+  return x.qty > 1 ? `${x.name} × ${x.qty}` : x.name;
+}
+
+/**
+ * 🧾 What an invoice bills, frozen when it is made: the package the client picked as they saw it when choosing — its
+ * line under the name, what it includes and its tax wording — then each extra as its own line, marked when the client
+ * added it (Raj, 2026-11-18). A vendor's own total wins: one line for the services, as before.
+ * Each item: { label, amount, kind: 'package' | 'extra', description?, inclusions?, tax?, client_added? }.
+ */
+export async function invoiceItems(lead) {
+  const when = `${lead.event_type || 'Event'}${lead.event_date ? ' (' + String(lead.event_date).slice(0, 10) + ')' : ''}`;
+  const picked = lead.price_override == null
+    ? pickedOffer(await prisma.lead_packages.findMany({ where: { lead_id: lead.id }, select: { ...QUOTE_FIELDS, description: true } }))   // 🔒 via the lead
+    : null;
+  if (picked) {
+    const q = quotePackage(picked, lead);
+    return [
+      {
+        kind: 'package', label: `${picked.name} — ${when}${q.price_mode === 'per_guest' ? ` · ${q.guests} guests` : ''}`, amount: q.base,
+        description: picked.description || '',
+        inclusions: Array.isArray(picked.inclusions) ? picked.inclusions : [],
+        tax: { mode: picked.tax_mode || 'none', rate: picked.tax_rate == null ? null : Number(picked.tax_rate) },
+      },
+      ...q.extras.map(x => ({ kind: 'extra', label: extraLabel(x), amount: x.amount, client_added: x.mode === 'optional' })),
+    ];
+  }
+  let pkgName = 'Services';
+  if (lead.package_snapshot) {
+    const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
+    pkgName = p.name || 'Services';
+  }
+  return [{ kind: 'package', label: `${pkgName} — ${when}`, amount: (await moneySummary(lead)).base_total }];
+}
+
 /** The invoice for a lead: from its package and payments, or the items given. Shared by the button and by booking. */
 async function invoiceData(lead, givenItems, notes) {
     const money = await moneySummary(lead);
-    let items = givenItems;
-    if (!Array.isArray(items) || !items.length) {
-      const when = `${lead.event_type || 'Event'}${lead.event_date ? ' (' + String(lead.event_date).slice(0, 10) + ')' : ''}`;
-      /* 📦 the chosen package line by line — the package, its extra hours, each extra — so the invoice lists
-         what the client agreed to rather than one lump (lib/packageQuote.js). A vendor's own total wins. */
-      const picked = lead.price_override == null
-        ? pickedOffer(await prisma.lead_packages.findMany({ where: { lead_id: lead.id }, select: QUOTE_FIELDS }))   // 🔒 via the lead
-        : null;
-      if (picked) {
-        const q = quotePackage(picked, lead);
-        items = [
-          { label: `${picked.name} — ${when}${q.price_mode === 'per_guest' ? ` · ${q.guests} guests` : ''}`, amount: q.base },
-          ...q.extras.map(x => ({ label: x.qty > 1 ? `${x.name} × ${x.qty}` : x.name, amount: x.amount })),
-        ];
-      } else {
-        let pkgName = 'Services';
-        if (lead.package_snapshot) {
-          const p = typeof lead.package_snapshot === 'string' ? JSON.parse(lead.package_snapshot) : lead.package_snapshot;
-          pkgName = p.name || 'Services';
-        }
-        items = [{ label: `${pkgName} — ${when}`, amount: money.base_total }];
-      }
-    }
+    const items = Array.isArray(givenItems) && givenItems.length ? givenItems : await invoiceItems(lead);
     const subtotal = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
     const discount = money.discount_amount;
     const total = Math.max(subtotal - discount, 0);
@@ -117,6 +133,24 @@ export async function ensureInvoice(leadId) {
   } catch (e) { console.error('auto-invoice failed for lead', leadId, e.message); return null; }
 }
 
+/**
+ * 💵 A lead's invoices follow the money (Raj, 2026-11-18): the lines stay as booked, but what was paid and what is
+ * left are brought up to date after every payment recorded or removed — before, they stayed as they were the day the
+ * invoice was made, so a second instalment never showed.
+ */
+export async function refreshInvoicePaid(leadId) {
+  const agg = await prisma.payments.aggregate({ where: { lead_id: Number(leadId) }, _sum: { amount: true } });
+  const paid = Number(agg._sum.amount || 0);
+  const invoices = await prisma.invoices.findMany({ where: { lead_id: Number(leadId) }, select: { id: true, total: true } });   // 🔒 via the lead
+  for (const inv of invoices) {
+    const total = Number(inv.total) || 0;
+    await prisma.invoices.update({
+      where: { id: inv.id },
+      data: { paid, balance: Math.max(total - paid, 0), status: paid >= total && total > 0 ? 'paid' : 'issued' },
+    });
+  }
+}
+
 // DELETE /api/invoices/:id → void
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
@@ -140,6 +174,12 @@ router.get('/view/:token', async (req, res) => {
       },
     });
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
+    // 💵 each payment, so the invoice is the client's receipt too (Raj, 2026-11-18)
+    const payments = await prisma.payments.findMany({
+      where: { lead_id: inv.lead_id },          // 🔒 the invoice's own lead
+      orderBy: [{ paid_at: 'asc' }, { id: 'asc' }],
+      select: { paid_at: true, method: true, amount: true },
+    });
 
     // the vendor's currency, resolved the same way everywhere else does it
     const vset = await prisma.vendor_settings.findUnique({
@@ -166,6 +206,7 @@ router.get('/view/:token', async (req, res) => {
         // the vendor's own mark, so the client sees one business across the
         // portal, the contract and this invoice rather than three anonymous pages
         logo_path: vendors?.logo_path ?? null,
+        payments,
       },
     });
   } catch (e) { serverError(res, e); }
