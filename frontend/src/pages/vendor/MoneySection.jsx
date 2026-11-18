@@ -7,6 +7,7 @@ import { useDialog } from '../../lib/dialog.jsx';
 import { api, fmtDateTime, fmtMoney, moneySymbol } from '../../lib/api';
 import { STATUSES, S_ICON, S_LABEL } from './statuses';
 import LeadEmailModal from '../../components/LeadEmailModal';   // 💰 the payment reminder, read before it goes
+import NavIcon from '../../components/NavIcon';   // 🎨 the section's own drawn icons (Raj, 2026-11-17)
 
 export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when packages are loaded, saved or sent
   const [hidePay, setHidePay] = useState(false);   // 🔒 the vendor's payment-privacy setting
@@ -140,23 +141,25 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
   return (
     <div className={`ms-wrap ${masked ? 'is-pay-hidden' : ''}`}>
       <div className="ld-card-h ms-pay-h">
-        💰 Payments
+        <NavIcon name="wallet" />Payments
         {hidePay && (
           <button type="button" className="pay-eye" onClick={() => setReveal(r => !r)} aria-pressed={reveal}
             title={reveal ? 'Hide the amounts' : 'Show the amounts'} aria-label={reveal ? 'Hide the amounts' : 'Show the amounts'}>
-            {reveal ? '🙈' : '👁️'}
+            <NavIcon name={reveal ? 'hide' : 'preview'} />
           </button>
         )}
       </div>
-      {masked && <div className="pay-hidden-note">Amounts are hidden · tap 👁️ to show them</div>}
+      {masked && <div className="pay-hidden-note">Amounts are hidden · tap <NavIcon name="preview" /> to show them</div>}
       {/* 💰 the client says they've paid — confirm it once the money is in.
           Sits at the top because it's the one thing here that needs an action. */}
       {claimed && (
         <div className="ms-claim">
-          <p className="ms-claim-t">💰 {lead.name || 'The client'} says they&apos;ve paid{sum && sum.deposit_amount > 0 && <> — deposit <b>{fmtMoney(sum.deposit_amount)}</b> of {fmtMoney(sum.final_total)}</>}</p>
+          <p className="ms-claim-t"><NavIcon name="paid-claim" />{lead.name || 'The client'} says they&apos;ve paid{sum && sum.deposit_amount > 0 && <> — deposit <b>{fmtMoney(sum.deposit_amount)}</b> of {fmtMoney(sum.final_total)}</>}</p>
           <p className="ms-claim-b">Confirm once the money is in your account — that&apos;s what records it.</p>
           <div className="ms-claim-acts">
-            <button type="button" className="is-primary" onClick={() => openClaim(false)}>✅ Confirm received</button>
+            <button type="button" className="is-primary" onClick={() => openClaim(false)}>
+              <NavIcon name="yes" />Confirm received
+            </button>
             <button type="button" onClick={() => openClaim(true)}>Not yet</button>
           </div>
         </div>
@@ -223,7 +226,7 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
         </div>
         <button className={`ms-webpay-chip ${webPay ? 'is-on' : ''}`} onClick={toggleWebPay}
           title={webPay ? 'Client can pay online by card' : 'Client pays in person only'}>
-          💻 Online pay: <b>{webPay ? 'ON' : 'OFF'}</b>
+          <NavIcon name="card" />Online pay: <b>{webPay ? 'ON' : 'OFF'}</b>
         </button>
       </div>
       {msg && <div className={`ms-msg ${msg[0] === '✅' ? 'is-ok' : 'is-err'}`}>{msg}</div>}
@@ -286,8 +289,8 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
         </div>
       )}
       {sum && (Math.round(sum.paid * 100) >= Math.round(sum.deposit_amount * 100) && sum.deposit_amount > 0
-        ? <div className="ms-deposit-line">✅ Deposit paid: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>
-        : <div className="ms-deposit-line">🔐 Deposit due: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>)}
+        ? <div className="ms-deposit-line"><NavIcon name="yes" />Deposit paid: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>
+        : <div className="ms-deposit-line"><NavIcon name="due" />Deposit due: <b>{fmtMoney(sum.deposit_amount)}</b> ({sum.deposit_percent}%)</div>)}
 
       {/* 💰 the client's own payment reminder: the deposit until the first payment, then the remaining balance */}
       {sum && pending > 0 && lead.email && (
@@ -313,8 +316,10 @@ export function MoneySection({ lead, refresh = 0 }) {   // refresh: bumped when 
         <div className="ms-pay-list">
           {data.payments.map(p => (
             <div key={p.id} className="ms-pay-item">
-              <span>💵 <b>{fmtMoney(p.amount, { decimals: 2 })}</b> · {p.method} · {fmtDateTime(p.paid_at, { dateOnly: true })}</span>
-              <span className="bx-del" onClick={() => delPay(p.id)} title="Remove this payment record" role="button">🗑️</span>
+              <span className="ms-pay-what"><NavIcon name="cash" /><b>{fmtMoney(p.amount, { decimals: 2 })}</b> · {p.method} · {fmtDateTime(p.paid_at, { dateOnly: true })}</span>
+              <button type="button" className="ms-pay-del" onClick={() => delPay(p.id)} title="Remove this payment record" aria-label="Remove this payment record">
+                <NavIcon name="remove" />
+              </button>
             </div>
           ))}
         </div>
