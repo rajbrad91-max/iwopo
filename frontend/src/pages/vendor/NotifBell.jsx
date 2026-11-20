@@ -72,7 +72,7 @@ export function NotifBell({ onOpen }) {
 
   return (
     <div className="nb-wrap" ref={boxRef}>
-      <button className="hdr-icon nb-btn" onClick={toggle} aria-label="Notifications">
+      <button className="hdr-icon nb-btn" onClick={toggle} title="Notifications" aria-label="Notifications">
         <NavIcon name="bell" />
         {data.unseen > 0 && <span className="nb-count">{data.unseen > 99 ? '99+' : data.unseen}</span>}
       </button>

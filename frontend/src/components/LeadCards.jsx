@@ -90,7 +90,7 @@ export function MainEventCard({ ev, details, onEdit }) {
               {hours && <span className="ldc-pill ldc-hrs"><Emo cp="23f1" />{hours}</span>}
               {ev.guests && <span className="ldc-pill ldc-guests"><Emo cp="1f465" tint />{ev.guests}</span>}
             </div>
-            {ev.location && <div className="ldc-line"><Emo cp="1f4cd" /><span>{ev.location}</span></div>}
+            {ev.location && <div className="ldc-line"><Emo cp="1f4cd" tint /><span>{ev.location}</span></div>}
           </div>
           {edit}
         </div>
@@ -107,12 +107,13 @@ export function MainEventCard({ ev, details, onEdit }) {
 }
 
 /** 🎨 The service as chips, one per part, each in its own colour (Raj, 2026-11-17): "Photos & Videos" reads as a
- *  Photos chip and a Videos chip; any other part ("Drone", "Live streaming") keeps its own words. */
+ *  Photos chip and a Videos chip; any other part ("Drone", "Live streaming") keeps its own words. The camera and the
+ *  clapperboard are drawn in their chip's text colour (Raj, 2026-11-19). */
 function serviceChips(service) {
   return String(service || '').split(/\s*(?:&|\+|,|\/|\band\b)\s*/i).map(s => s.trim()).filter(Boolean).map(part => (
-    /photo/i.test(part) ? ['1f4f7', part, ' ldc-photo']
-      : /video|film|cinema/i.test(part) ? ['1f3ac', part, ' ldc-video']
-        : ['1f3ac', part, ' ldc-svc']
+    /photo/i.test(part) ? ['1f4f7', part, ' ldc-photo', true]
+      : /video|film|cinema/i.test(part) ? ['1f3ac', part, ' ldc-video', true]
+        : ['1f3ac', part, ' ldc-svc', true]
   ));
 }
 
@@ -127,7 +128,7 @@ function PreEventCard({ ev }) {
       <div className="ldc-event-body">
         <div className="ldc-name">{ev.name}</div>
         {time && <div className="ldc-time"><Emo cp="1f550" />{time}</div>}
-        {ev.location && <div className="ldc-line"><Emo cp="1f4cd" /><span>{ev.location}</span></div>}
+        {ev.location && <div className="ldc-line"><Emo cp="1f4cd" tint /><span>{ev.location}</span></div>}
         {chips.length > 0 && (
           <div className="ldc-chips">{chips.map(([cp, text, tone, tint], i) => <span className={`ldc-chip${tone}`} key={i}><Emo cp={cp} tint={tint} />{text}</span>)}</div>
         )}

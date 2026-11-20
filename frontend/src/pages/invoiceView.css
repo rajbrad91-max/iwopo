@@ -52,4 +52,7 @@
 @media print {
   .iv-print { display: none; }
   body { background: #fff; }
+  /* 📄 on paper, and in the PDF attached to the invoice email: a plain white page, no card around it */
+  .iv { min-height: 0; padding: 0; background: #fff; }
+  .iv-card { box-shadow: none; border-radius: 0; padding: 0; }
 }

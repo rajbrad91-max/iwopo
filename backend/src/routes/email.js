@@ -1,6 +1,6 @@
 import { EMAILS, TAG_LABELS, SAMPLE, SUBJECT_MAX, BODY_MAX, HTML_MAX, htmlAllowed, emailMode, logoUrlFor, cleanEmailHtml, starterHtml, renderEmail } from '../lib/emailTemplates.js';   // ✉️ the client emails and their defaults
 import { clientBaseUrl } from '../lib/vendorHosts.js';
-import { leadEmail, leadEmailSent, cleanReviewUrl } from '../lib/leadEmails.js';   // 💰⭐🧾 payment reminder, review request, invoice
+import { leadEmail, leadEmailSent, leadEmailFileNames, leadEmailAttachments, cleanReviewUrl } from '../lib/leadEmails.js';   // 💰⭐🧾 payment reminder, review request, invoice
 import express from 'express';
 import { logEmail } from '../lib/projectStages.js';
 import nodemailer from 'nodemailer';
@@ -391,8 +391,9 @@ const leadEmailFailed = (res, e) => (e.status && e.status < 500 ? res.status(e.s
 router.post('/lead/:leadId/send/:kind/preview', requireAuth, async (req, res) => {
   try {
     const lead = await ownLead(req, res); if (!lead) return;
-    const m = await leadEmail(lead, String(req.params.kind));
-    res.json({ to: m.to, subject: m.subject, body: m.body, html: m.html || null });
+    const kind = String(req.params.kind);
+    const m = await leadEmail(lead, kind);
+    res.json({ to: m.to, subject: m.subject, body: m.body, html: m.html || null, files: await leadEmailFileNames(lead, kind) });
   } catch (e) { leadEmailFailed(res, e); }
 });
 
@@ -401,7 +402,8 @@ router.post('/lead/:leadId/send/:kind', requireAuth, async (req, res) => {
     const lead = await ownLead(req, res); if (!lead) return;
     const kind = String(req.params.kind);
     const m = await leadEmail(lead, kind);
-    await sendLeadEmail(req, lead, m.subject, m.body, { kind, html: m.html });
+    const attachments = await leadEmailAttachments(lead, kind);   // 📎 the invoice's PDF
+    await sendLeadEmail(req, lead, m.subject, m.body, { kind, html: m.html, attachments });
     await leadEmailSent(lead, kind);
     res.json({ ok: true, sent_to: m.to });
   } catch (e) { e.code === 'self_mode' ? res.status(400).json({ error: e.message }) : leadEmailFailed(res, e); }

@@ -2,12 +2,14 @@
  * ✉️ The client emails a vendor sends from a lead or booking with one button (Raj, 2026-11-17): a payment reminder,
  * a review request and the invoice (2026-11-18). Each is the vendor's own email (Settings → Email templates, lib/emailTemplates.js), filled
  * here for this one client — the vendor sees it first, then sends it (routes/email.js /lead/:leadId/send/:kind).
+ * The invoice goes with its PDF attached (Raj, 2026-11-19), so the client keeps their own copy whatever happens to the link.
  */
 import prisma from '../config/prisma.js';
 import { renderEmail } from './emailTemplates.js';
 import { clientBaseUrl } from './vendorHosts.js';
 import { currencyFor } from './currencies.js';
 import { moneySummary } from '../routes/payments.js';
+import { pageToPdf } from './pdf.js';
 
 /** the emails sent this way */
 export const LEAD_EMAILS = ['payment_reminder', 'review_request', 'invoice'];
@@ -77,6 +79,31 @@ async function invoiceValues(lead) {
     amount_due: moneyText(inv.balance, cur),
     link: `${base}/invoice/${inv.token}`,   // the vendor's own address, like the client's page
   };
+}
+
+/** 📎 the files that go with an email, by name — what the vendor is shown before sending */
+export async function leadEmailFileNames(lead, kind) {
+  if (kind !== 'invoice') return [];
+  const inv = await latestInvoice(lead);
+  return inv ? [await invoiceFileName(lead, inv)] : [];
+}
+
+/** 📎 …and the files themselves, made as the email goes: the invoice as its PDF, as it reads today */
+export async function leadEmailAttachments(lead, kind) {
+  if (kind !== 'invoice') return [];
+  const inv = await latestInvoice(lead);
+  if (!inv) throw refuse('This booking has no invoice yet');
+  // our own address renders it: the vendor's own domain may not be pointed at us yet
+  const pdf = await pageToPdf(`${process.env.APP_URL || 'https://iwopo.com'}/invoice/${inv.token}`, '.iv-card.is-doc')
+    .catch(() => { throw Object.assign(new Error('The invoice PDF could not be made — please try again.'), { status: 503 }); });
+  return [{ filename: await invoiceFileName(lead, inv), content: pdf, contentType: 'application/pdf' }];
+}
+
+/** "Invoice INV-1-0003 - Perfect Poses Media.pdf" */
+async function invoiceFileName(lead, inv) {
+  const ven = await prisma.vendors.findUnique({ where: { id: lead.vendor_id }, select: { business_name: true } });   // 🔒 the lead's owner
+  const name = [`Invoice ${inv.invoice_number}`, ven?.business_name].filter(Boolean).join(' - ');
+  return `${name.replace(/[\\/:*?"<>|]+/g, '').trim()}.pdf`;
 }
 
 /** what a sent email leaves behind: the invoice remembers when it was emailed */

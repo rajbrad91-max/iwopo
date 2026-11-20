@@ -20,6 +20,8 @@ import { mine } from '../lib/tenancy.js';
 import { JWT_SECRET } from '../config/secrets.js';   // 🔑 one secret, no fallback
 import { quotePackage } from '../lib/packageQuote.js';
 import { rebuildUnsignedContract } from './payments.js';
+import * as objects from '../lib/objectStore.js';
+import { noteFailure } from '../lib/noteFailure.js';
 
 const router = express.Router();
 
@@ -165,16 +167,21 @@ router.post('/bulk-archive', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-// POST /api/leads/bulk-delete  { ids: [] } 🗑️ (hard delete)
+/* POST /api/leads/bulk-delete  { ids: [] } 🗑️ deleted for good (Raj, 2026-11-20): only a lead already in History —
+   the list's bin archives first — and it leaves nothing behind. Its packages, contracts, invoices, payments and crew go
+   with it (database cascades) and so do the signed contracts' PDFs in storage; its galleries stay in Galleries. */
 router.post('/bulk-delete', requireAuth, async (req, res) => {
   const vid = vendorIdFor(req);
   const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
   if (!ids.length) return res.status(400).json({ error: 'No ids' });
   try {
-    const { count } = await prisma.leads.deleteMany({
-      where: scope(vid, { id: { in: ids } }),      // 🔒 tenancy on the write itself
-    });
-    if (!count) return res.status(404).json({ error: 'No matching leads' });
+    const where = scope(vid, { id: { in: ids }, archived_at: { not: null } });   // 🔒 tenancy, and History only
+    const signed = await prisma.contracts.findMany({ where: { leads: where, pdf_key: { not: null } }, select: { pdf_key: true } });
+    const { count } = await prisma.leads.deleteMany({ where });
+    if (!count) return res.status(404).json({ error: 'No matching leads in History' });
+    for (const { pdf_key: key } of signed) {
+      await objects.deleteObject(objects.PRIVATE, key).catch(e => noteFailure('remove a deleted lead’s signed contract', e));
+    }
     res.json({ deleted: count });
   } catch (e) { serverError(res, e); }
 });

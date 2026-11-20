@@ -2,10 +2,12 @@
  * ✉️ One client email, read before it goes (Raj, 2026-11-17): the payment reminder (Payments, on a lead or booking)
  * and the review request (a booking). The server fills the vendor's own email for this client
  * (lib/leadEmails.js) — the amount due, their page, the review link — and this shows it exactly as it will arrive.
- * Its words and design are changed in Settings → Setup Email.
+ * Its words and design are changed in Settings → Setup Email. A file that goes with it (the invoice's PDF) is named
+ * under the subject.
  */
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import NavIcon from './NavIcon';
 
 export default function LeadEmailModal({ lead, kind, title, onClose, onSent }) {
   const [mail, setMail] = useState(null);
@@ -34,6 +36,7 @@ export default function LeadEmailModal({ lead, kind, title, onClose, onSent }) {
           <>
             <p className="lem-to">To <b>{mail.to}</b></p>
             <p className="lem-subj">{mail.subject}</p>
+            {mail.files?.map(f => <p className="lem-file" key={f}><NavIcon name="contracts" />{f}</p>)}
             {mail.html
               /* sandbox with nothing allowed: the design shows, nothing in it can run */
               ? <iframe className="et-frame lem-frame" title="Email preview" sandbox="" srcDoc={mail.html} />

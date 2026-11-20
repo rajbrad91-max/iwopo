@@ -232,9 +232,9 @@ tr:last-child td { border-bottom:none; }
 
 /* 🎨 the same artwork beside text in the panel's cards (components/Emo.jsx) */
 .emo { display: inline-block; flex: none; width: 1.15em; height: 1.15em; margin-right: .4em; vertical-align: -.2em; }
-/* 🎨 a tinted emoji (components/Emo.jsx): its outline filled with the text's colour, a little quieter than the text */
-.emo-tint { background: currentColor; opacity: .75; -webkit-mask: var(--emo-src) center / contain no-repeat; mask: var(--emo-src) center / contain no-repeat; }
-.emo-1f465 { --emo-src: url('/emoji/1f465.svg'); }
+/* 🎨 a tinted emoji (components/Emo.jsx): the picture in the text's own colour, a little quieter than the text */
+.emo-tint { opacity: .85; }
+.emo-tint svg { display: block; width: 100%; height: 100%; }
 
 /* " New to iwopo? Create an account\ under the sign-in form (design review 2026-11-01) */
 .login-new { margin: 14px 0 0; text-align: center; font-size: 13px; color: var(--muted, #6b7280); }

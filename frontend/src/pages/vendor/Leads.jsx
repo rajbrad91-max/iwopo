@@ -60,7 +60,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
   }
   async function deleteChecked() {
     if (!checked.length) return;
-    if (!await dialog.confirm(`This erases their packages, contracts and payment history.\n\nIt cannot be undone.`, { title: `Permanently delete ${checked.length} lead${checked.length === 1 ? '' : 's'}?`, okLabel: 'Delete for good' })) return;
+    if (!await dialog.confirm(`This erases their packages, contracts, invoices, payments and every PDF of them. Their galleries stay in Galleries.\n\nIt cannot be undone.`, { title: `Permanently delete ${checked.length} lead${checked.length === 1 ? '' : 's'}?`, okLabel: 'Delete for good' })) return;
     try { await api.bulkDeleteLeads(checked); setMsg('🗑️ Deleted for good'); setTimeout(() => setMsg(''), 1500); setSelectMode(false); load(); }
     catch (e) { setMsg('⚠️ ' + e.message); }
   }
@@ -481,9 +481,9 @@ function LeadDetail({ lead, onSaved }) {
         <LeadStatus lead={lead} status={status} onChange={setStatus} onMessage={flashPkg} onCancelled={onSaved} />
 
         {/* pick a folder → its packages are copied here, ready to tailor */}
-        {/* the folder icon beside the list — a list's own lines can hold text only (Raj, 2026-11-17, in place of 📁) */}
+        {/* the sidebar's Packages icon beside the list — a list's own lines can hold text only (Raj, 2026-11-19: the folder didn't say packages) */}
         <div className="ld-pkg-pick">
-          <NavIcon name="folder" />
+          <NavIcon name="packages" />
           <select className="ld-select ld-pkg-select" value={tplId}
             onChange={e => loadFolder(e.target.value === LOAD_AGAIN ? tplId : e.target.value)} disabled={pkgLocked || pkgBusy}>
             {!tplId && <option value="">— Choose a package folder —</option>}
