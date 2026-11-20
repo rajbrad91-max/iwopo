@@ -284,7 +284,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
                 <td data-label="Location">{l.location || '—'}</td>
                 {/* the folder that was sent, or the package once the client
                     has chosen one from it */}
-                <td data-label="Packages">{l.package_name || (l.package_template_id ? `📁 ${l.template_name || 'Sent'}` : '—')}</td>
+                <td data-label="Packages">{l.package_name || (l.package_template_id ? (l.template_name || 'Sent') : '—')}</td>
                 <td data-label="Status"><span className={`badge ${l.status === 'booked' ? 'active' : l.status === 'cancelled' ? 'cancelled' : 'trial'}`}>{S_LABEL[l.status] || l.status}</span></td>
                 <td className="col-actions" data-label="Actions">
                   {view === 'active'

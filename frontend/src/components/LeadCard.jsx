@@ -40,7 +40,7 @@ export default function LeadCard({ lead: l, history = false, onSend, onRestore }
         {l.location && <div className="lc-row"><dt>Location</dt><dd>{l.location}</dd></div>}
         {(pick || folder) && (
           <div className="lc-row"><dt>Package</dt><dd>
-            {pick ? <span className="lc-pick">✓ {pick.name}{pick.price != null && <>: <b>{money(pick.price)}</b></>}</span> : <>📁 {folder}</>}
+            {pick ? <span className="lc-pick">✓ {pick.name}{pick.price != null && <>: <b>{money(pick.price)}</b></>}</span> : folder}
             {sent && <span className="lc-aside">{sent}</span>}
           </dd></div>
         )}

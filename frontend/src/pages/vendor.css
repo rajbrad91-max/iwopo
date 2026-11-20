@@ -2241,9 +2241,11 @@ a.nav-item { color: inherit; text-decoration: none; }
 .ad-photo.is-video .ad-photo-name { padding-right: 48px; }
 
 /* 📊 Dashboard counters (Raj, 2026-10-23): always ONE row of four compact squares (phones, folds, tablets, desktop),
-   the tiles themselves are the Leads page's (components/StatTile.jsx, 2026-11-20); a label may use two lines, never cut */
+   the tiles themselves are the Leads page's (components/StatTile.jsx, 2026-11-20). Every label keeps room for two lines
+   ("Photo Selection" may need them), so every count sits at the same height, whatever the font or screen */
 .dash .stats { grid-template-columns: repeat(4, minmax(0, 120px)); gap: 8px; justify-content: start; }
-.dash .stats .stat-tile-lbl { white-space: normal; line-height: 1.15; }
+.dash .stats .stat-tile-lbl { white-space: normal; line-height: 1.15; min-height: 2.3em; }
+.dash .stats .stat-tile-val { font-size: 28px; }   /* the dashboard's taller tiles carry a bigger count (Raj, 2026-11-20) */
 @media (max-width: 600px) {
   .dash .stats { grid-template-columns: repeat(4, minmax(0, 80px)); justify-content: space-between; gap: 6px; }
   .dash .stats > .stat-tile { padding: 8px; border-radius: 14px; }
