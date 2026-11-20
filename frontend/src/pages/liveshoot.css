@@ -8,11 +8,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap');
 
 .ls {
-  --ink: #2b2420;
-  --ink-soft: #8a7a6e;
-  --cream: #faf7f3;
-  --line: #ece2d6;
-  --gold: #b3935f;
+  --ink: var(--stone-267);
+  --ink-soft: var(--stone-591);
+  --cream: var(--gray-977);
+  --line: var(--stone-917);
+  --gold: var(--brand-681);
 
   /* ⚠️ A column that FILLS the height, rather than fixed paddings tuned until
      the page happened to equal one laptop's 666 pixels. That was right on
@@ -30,7 +30,7 @@
      number that suits one machine */
   padding: clamp(24px, 5vh, 52px) 20px clamp(20px, 4vh, 40px);
   background:
-    radial-gradient(900px 480px at 50% -8%, #fffdfa 0%, transparent 72%),
+    radial-gradient(900px 480px at 50% -8%, var(--gray-995) 0%, transparent 72%),
     var(--cream);
   color: var(--ink);
   font-family: 'Jost', system-ui, sans-serif;
@@ -65,8 +65,8 @@
   content: '';
   position: absolute; inset: 0;
   background: linear-gradient(180deg,
-    rgba(250,247,243,.55) 0%,
-    rgba(250,247,243,.78) 45%,
+    color-mix(in srgb, var(--gray-977) 55%, transparent) 0%,
+    color-mix(in srgb, var(--gray-977) 78%, transparent) 45%,
     var(--cream) 100%);
 }
 
@@ -81,7 +81,7 @@
   width: 46px; height: 46px; flex: none;
   display: grid; place-items: center;
   border: 1px solid var(--line); border-radius: 50%;
-  background: rgba(255,255,255,.7);
+  background: color-mix(in srgb, var(--gray-1000) 70%, transparent);
   color: var(--gold); font-size: 16px;
   overflow: hidden;
 }
@@ -135,13 +135,13 @@
   display: inline-flex; align-items: center; justify-content: center; gap: 9px;
   padding: 13px 20px;
   border: 1px solid var(--ink); border-radius: 999px;
-  background: var(--ink); color: #fdfbf8;
+  background: var(--ink); color: var(--gray-989);
   font-family: 'Jost', sans-serif;
   font-size: 14px; font-weight: 400; letter-spacing: .01em;
   cursor: pointer;
   transition: background .18s ease, color .18s ease, border-color .18s ease;
 }
-.ls-b:hover:not(:disabled) { background: #1c1714; border-color: #1c1714; }
+.ls-b:hover:not(:disabled) { background: var(--gray-209); border-color: var(--gray-209); }
 .ls-b:disabled { opacity: .5; cursor: default; }
 
 .ls-b.is-ghost {
@@ -156,7 +156,7 @@
 
 .ls-fine { margin: 22px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-soft); opacity: .9; }
 .ls-note { margin: 16px 0 0; font-size: 12px; color: var(--gold); line-height: 1.55; }
-.ls-err { margin: 16px 0 0; font-size: 13px; color: #b4453a; line-height: 1.55; }
+.ls-err { margin: 16px 0 0; font-size: 13px; color: var(--red-540); line-height: 1.55; }
 .ls-quiet { color: var(--ink-soft); font-size: 14px; padding: 48px 0; }
 
 /* ── once they are in ─────────────────────────────────────────────────── */
@@ -190,4 +190,4 @@
 /* The grid and lightbox come from gallery.css so they stay in step with the
    gallery; these two lines only lift them out of its dark theme. */
 .ls .pg-grid { gap: 8px; }
-.ls .pg-tile { background: #efe7dd; border-radius: 2px; }
+.ls .pg-tile { background: var(--stone-932); border-radius: 2px; }

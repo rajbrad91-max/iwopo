@@ -5,7 +5,7 @@
   display: flex; flex-direction: column; gap: 10px; width: min(370px, calc(100vw - 24px)); }
 
 .sp-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-  padding: 12px 14px 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .28);
+  padding: 12px 14px 14px; box-shadow: 0 14px 40px color-mix(in srgb, var(--gray-0) 28%, transparent);
   animation: sp-in .22s ease-out; }
 .sp-card.is-ringing { border-color: var(--teal); }
 .sp-card.is-missed { border-color: var(--red); }
@@ -27,7 +27,7 @@
 .sp-num { font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; }
 .sp-badge { align-self: flex-start; margin-top: 4px; padding: 2px 9px; border-radius: 20px;
   font-size: 11px; font-weight: 700; background: var(--teal-soft); color: var(--teal); }
-.sp-badge.is-booked { background: color-mix(in srgb, #16a34a 16%, transparent); color: #15803d; }
+.sp-badge.is-booked { background: color-mix(in srgb, var(--green-627) 16%, transparent); color: var(--green-527); }
 .sp-count { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
 
 .sp-sec { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }

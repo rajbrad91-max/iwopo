@@ -15,10 +15,10 @@
 .dm-remove { opacity: .85; }
 .dm-chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
 .dm-chip-none { background: var(--panel-2); color: var(--muted); }
-.dm-chip-wait { background: rgba(217, 119, 6, .16); color: #d97706; }
-.dm-chip-live { background: rgba(22, 163, 74, .16); color: #16a34a; }
-.dm-chip-err { background: rgba(220, 38, 38, .14); color: #dc2626; }
-.dm-problem { margin: 8px 0; padding: 9px 12px; border-radius: 10px; font-size: 13px; background: rgba(217, 119, 6, .1); border: 1px solid rgba(217, 119, 6, .25); }
+.dm-chip-wait { background: color-mix(in srgb, var(--orange-666) 16%, transparent); color: var(--orange-666); }
+.dm-chip-live { background: color-mix(in srgb, var(--green-627) 16%, transparent); color: var(--green-627); }
+.dm-chip-err { background: color-mix(in srgb, var(--red-577) 14%, transparent); color: var(--red-577); }
+.dm-problem { margin: 8px 0; padding: 9px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, var(--orange-666) 10%, transparent); border: 1px solid color-mix(in srgb, var(--orange-666) 25%, transparent); }
 .dm-dns { margin: 8px 0; border-radius: 12px; overflow-x: auto; border: 1px solid var(--line); }
 .dm-dns-r { display: grid; grid-template-columns: 60px minmax(90px, 1fr) minmax(120px, 1.4fr) 40px; gap: 8px; align-items: center;
   padding: 9px 12px; font-size: 13px; border-top: 1px solid var(--line); }

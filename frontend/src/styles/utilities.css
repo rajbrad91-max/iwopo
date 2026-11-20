@@ -4,7 +4,7 @@
 .u-align-items-center { align-items: center !important; }
 .u-background-panel { background: var(--panel) !important; }
 .u-background-panel-2 { background: var(--panel-2) !important; }
-.u-background-rgba-000_5 { background: rgba(0,0,0,.5) !important; }
+.u-background-rgba-000_5 { background: color-mix(in srgb, var(--gray-0) 50%, transparent) !important; }
 .u-background-teal { background: var(--teal) !important; }
 .u-background-transparent { background: transparent !important; }
 .u-border-1px-solid-line { border: 1px solid var(--line) !important; }

@@ -15,22 +15,22 @@
 .rp-countries span { display: block; margin-top: 4px; color: var(--muted); }
 /* 🎨 one light tint per plan, down the whole column, header included — distinct but quiet. Dark panel: a soft wash of
    the same hue; light panel (data-theme="light", lib/theme.js): the pale tints Raj chose. */
-.rp .rp-band-essential { background: color-mix(in srgb, #5b8fd8 16%, transparent); }
-.rp .rp-band-pro { background: color-mix(in srgb, #4fa86c 16%, transparent); }
-.rp .rp-band-studio { background: color-mix(in srgb, #e39a55 16%, transparent); }
-[data-theme="light"] .rp .rp-band-essential { background: #e5eefc; }
-[data-theme="light"] .rp .rp-band-pro { background: #e2f3e7; }
-[data-theme="light"] .rp .rp-band-studio { background: #fdebda; }
+.rp .rp-band-essential { background: color-mix(in srgb, var(--blue-646) 16%, transparent); }
+.rp .rp-band-pro { background: color-mix(in srgb, var(--green-661) 16%, transparent); }
+.rp .rp-band-studio { background: color-mix(in srgb, var(--gold-745) 16%, transparent); }
+[data-theme="light"] .rp .rp-band-essential { background: var(--slate-946); }
+[data-theme="light"] .rp .rp-band-pro { background: var(--slate-948); }
+[data-theme="light"] .rp .rp-band-studio { background: var(--stone-950); }
 .rp-margin { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 1px solid; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
-.rp-margin.is-good { border-color: color-mix(in srgb, #4f9a6a 55%, transparent); background: color-mix(in srgb, #4f9a6a 14%, transparent); color: #4f9a6a; }
-.rp-margin.is-ok { border-color: color-mix(in srgb, #c99032 55%, transparent); background: color-mix(in srgb, #c99032 14%, transparent); color: #c99032; }
-.rp-margin.is-low { border-color: color-mix(in srgb, #c4524a 55%, transparent); background: color-mix(in srgb, #c4524a 14%, transparent); color: #c4524a; }
+.rp-margin.is-good { border-color: color-mix(in srgb, var(--green-625) 55%, transparent); background: color-mix(in srgb, var(--green-625) 14%, transparent); color: var(--green-625); }
+.rp-margin.is-ok { border-color: color-mix(in srgb, var(--gold-693) 55%, transparent); background: color-mix(in srgb, var(--gold-693) 14%, transparent); color: var(--gold-693); }
+.rp-margin.is-low { border-color: color-mix(in srgb, var(--red-585) 55%, transparent); background: color-mix(in srgb, var(--red-585) 14%, transparent); color: var(--red-585); }
 .rp-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .rp-bar .rp-help { margin: 0; }
 .rp-switch { display: inline-flex; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
 .rp-switch button { padding: 6px 12px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer;
   transition: transform .15s ease, box-shadow .15s ease, color .15s ease; }
 .rp-switch button:hover { color: var(--teal); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }   /* rises like every button */
-.rp-switch button.is-on { background: color-mix(in srgb, var(--teal, #2bb3a3) 18%, transparent); font-weight: 700; }
+.rp-switch button.is-on { background: color-mix(in srgb, var(--teal) 18%, transparent); font-weight: 700; }
 .rp-note { margin: 6px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--muted); }
-.rp-err { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, #c4524a 12%, transparent); color: #c4524a; }
+.rp-err { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--red-585) 12%, transparent); color: var(--red-585); }

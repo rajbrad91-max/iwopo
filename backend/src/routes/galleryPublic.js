@@ -447,8 +447,22 @@ router.get('/:token/download/:photoId', async (req, res) => {
   } catch { res.status(404).end(); }
 });
 
-/** what a Zip of this gallery holds: one tab (?event=ID) or every photograph, in the gallery's order */
-async function zipScope(a, eventParam) {
+/** the photos a client picked (?ids=1,2,3), as the Download pop-up sends them for more than 50 on a computer
+ *  (Raj, 2026-11-20) — photographs only, like Download All, and only ones in THIS gallery */
+const MAX_PICKED_ZIP = 5000;
+function pickedIds(param) {
+  const ids = String(param || '').split(',').map(n => parseInt(n, 10)).filter(n => n > 0);
+  return ids.length ? [...new Set(ids)].slice(0, MAX_PICKED_ZIP) : null;
+}
+
+/** what a Zip of this gallery holds: the client's picks (?ids=), one tab (?event=ID) or every photograph, in the
+ *  gallery's order */
+async function zipScope(a, eventParam, idsParam) {
+  const ids = pickedIds(idsParam);
+  if (ids) {
+    const photos = await readPhotos({ album_id: a.id, id: { in: ids }, kind: { not: 'video' }, ready: true }, ZIP_FIELDS);   // 🔒 this album
+    return { photos, label: `${a.title || 'gallery'}-selected`, name: 'Selected photos', picked: true };
+  }
   const eventId = eventParam ? parseInt(eventParam, 10) : null;
   if (!eventId) return { photos: await allPhotoRowsInAlbum(a.id), label: a.title || 'gallery', name: 'All photos' };
   const ev = await prisma.album_events.findFirst({
@@ -475,7 +489,7 @@ router.get('/:token/download-parts', async (req, res) => {
     const a = await findAlbum(req.params.token);
     if (!a) return res.status(404).json({ error: "This gallery isn't available any more." });
     if (!viewOf(req, a.id)) return res.status(401).json({ error: 'Open the gallery again — your viewing session has ended.' });
-    const { photos } = await zipScope(a, req.query.event);
+    const { photos } = await zipScope(a, req.query.event, req.query.ids);
     const parts = zipParts(photos).map((p, i) => ({ part: i + 1, count: p.rows.length, bytes: p.bytes }));
     res.json({ parts, count: photos.length, bytes: parts.reduce((n, p) => n + p.bytes, 0) });
   } catch (e) { serverError(res, e); }
@@ -488,7 +502,7 @@ router.get('/:token/download-all', async (req, res) => {
     if (!a) return downloadFailed(req, res, 404, 'not_found', "This gallery isn't available any more.");
     if (!viewOf(req, a.id)) return downloadFailed(req, res, 401, 'unauthorised', 'Open the gallery again, then download — your viewing session has ended.');
 
-    let { photos, label: zipLabel, name: zipName } = await zipScope(a, req.query.event);
+    let { photos, label: zipLabel, name: zipName, picked } = await zipScope(a, req.query.event, req.query.ids);
     const eventId = req.query.event ? parseInt(req.query.event, 10) || null : null;
     let part = null, parts = null;
     if (!photos.length) return downloadFailed(req, res, 404, 'No photos', 'There are no photos to download here yet.');
@@ -502,8 +516,10 @@ router.get('/:token/download-all', async (req, res) => {
     }
 
     recordEvent(req, a.vendor_id, 'zip_download', { targetId: a.id, label: zipLabel });
-    // 📊 Studio download log — and, once every Zip has been downloaded, the gallery's 🟢 mark
-    recordDownload(req, a, { kind: 'zip', label: `${zipName} (${photos.length} files)`, eventId, part, parts })
+    /* 📊 Studio download log — and, once every Zip has been downloaded, the gallery's 🟢 mark. A Zip of the client's
+       picks is logged as a 'selection': it is not the gallery or a tab, so it never counts towards that mark. */
+    if (picked) recordDownload(req, a, { kind: 'selection', label: `${zipName} (${photos.length} files)`, part, parts });
+    else recordDownload(req, a, { kind: 'zip', label: `${zipName} (${photos.length} files)`, eventId, part, parts })
       .then(logged => logged && checkAllDownloaded(a));
 
     const safe = zipLabel.replace(/[^a-z0-9]+/gi, '-').toLowerCase();

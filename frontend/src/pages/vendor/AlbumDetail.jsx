@@ -11,7 +11,7 @@ import NavIcon from '../../components/NavIcon';
 const RAW_FILE = /\.(arw|cr3|cr2|nef|raf|dng|rw2|orf)$/i;
 const RAW_ACCEPT = '.arw,.cr3,.cr2,.nef,.raf,.dng,.rw2,.orf';
 
-export function AlbumDetail({ albumId, onBack }) {
+export function AlbumDetail({ albumId, onBack, rawsel = false }) {
   const dialog = useDialog();
   const [album, setAlbum] = useState(null);
   const [photos, setPhotos] = useState([]);
@@ -32,8 +32,10 @@ export function AlbumDetail({ albumId, onBack }) {
   /* 🎞️ Raw Selector (private feature): null when it is off for this vendor —
      then RAW files are simply not offered, exactly as before */
   const [raw, setRaw] = useState(null);
-  const loadRaw = () => api.rawselStatus(albumId).then(setRaw).catch(() => setRaw(null));
-  useEffect(() => { api.rawselStatus(albumId).then(setRaw).catch(() => setRaw(null)); }, [albumId]);
+  /* 🎞️ Raw Selector is Perfect Poses' private feature: only a vendor who has it asks (every other vendor's album page
+     used to ask anyway and log a 402 for each gallery opened — stress test, 2026-11-20) */
+  const loadRaw = () => { if (rawsel) api.rawselStatus(albumId).then(setRaw).catch(() => setRaw(null)); };
+  useEffect(() => { if (rawsel) api.rawselStatus(albumId).then(setRaw).catch(() => setRaw(null)); }, [albumId, rawsel]);
   const [selModal, setSelModal] = useState(false);      // 📩 show the client's sent selection
   const [selData, setSelData] = useState(null);
   const [selBusy, setSelBusy] = useState(false);

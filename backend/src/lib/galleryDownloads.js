@@ -35,7 +35,8 @@ function placeOf(ip) {
   return g ? [g.city, g.region, g.country].filter(Boolean).join(', ').slice(0, 120) || null : null;
 }
 
-/** note one download: kind 'photo' (a photo or film) or 'zip'; label = the file name, or what the Zip held */
+/** note one download: kind 'photo' (a photo or film), 'zip' (the gallery or a tab) or 'selection' (a Zip of the photos the
+ *  client picked); label = the file name, or what the Zip held */
 export async function recordDownload(req, album, { kind, label, photoId = null, eventId = null, part = null, parts = null }) {
   try {
     if (!(await getFeatures(album.vendor_id)).has('gallery_insights')) return false;
@@ -94,7 +95,7 @@ export async function downloadLog(albumId) {
     totals: {
       downloads: rows.length,
       photos: rows.filter(r => r.kind === 'photo').length,
-      zips: rows.filter(r => r.kind === 'zip').length,
+      zips: rows.filter(r => r.kind === 'zip' || r.kind === 'selection').length,
       ips: new Set(rows.map(r => r.ip)).size,
       last: rows.length ? rows[rows.length - 1].created_at : null,
     },

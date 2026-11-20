@@ -52,7 +52,7 @@
 .cm-badge { align-self: flex-start; display: inline-block; margin: 2px 0 1px; padding: 1px 8px;
   border-radius: 20px; font-size: 10.5px; font-weight: 700; text-decoration: none; white-space: nowrap;
   background: var(--teal-soft); color: var(--teal); }
-.cm-badge.is-booked { background: color-mix(in srgb, #16a34a 16%, transparent); color: #15803d; }
+.cm-badge.is-booked { background: color-mix(in srgb, var(--green-627) 16%, transparent); color: var(--green-527); }
 a.cm-badge:hover { text-decoration: underline; }
 
 .cm-convo { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
@@ -88,7 +88,7 @@ a.cm-badge:hover { text-decoration: underline; }
 .cm-bubble { padding: 8px 12px; border-radius: 16px; font-size: 13.5px; line-height: 1.45;
   white-space: pre-wrap; overflow-wrap: anywhere; }
 .cm-msg.is-in .cm-bubble { background: var(--panel-2); color: var(--text); border-bottom-left-radius: 4px; }
-.cm-msg.is-out .cm-bubble { background: var(--teal); color: #fff; border-bottom-right-radius: 4px; }
+.cm-msg.is-out .cm-bubble { background: var(--teal); color: var(--gray-1000); border-bottom-right-radius: 4px; }
 .cm-mtime { font-size: 10.5px; color: var(--muted); margin: 3px 6px 0; }
 
 /* ── calls: a card across the conversation ───────────────────────────── */
@@ -134,9 +134,9 @@ a.cm-leadnote.is-done, .cm-leadnote.is-done { color: var(--teal); font-weight: 6
 a.cm-leadnote:hover { text-decoration: underline; }
 /* 🟢 a booking heard on the call — never set by the model, only offered to Raj */
 .cm-booked { margin-top: 12px; padding: 10px 12px; border-radius: 10px;
-  border: 1px solid color-mix(in srgb, #16a34a 45%, var(--line));
-  background: color-mix(in srgb, #16a34a 8%, transparent); }
-.cm-booked-h { font-size: 13px; font-weight: 700; color: #15803d; }
+  border: 1px solid color-mix(in srgb, var(--green-627) 45%, var(--line));
+  background: color-mix(in srgb, var(--green-627) 8%, transparent); }
+.cm-booked-h { font-size: 13px; font-weight: 700; color: var(--green-527); }
 .cm-booked-q { margin-top: 4px; font-size: 12.5px; color: var(--text); font-style: italic; }
 .cm-booked-acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
@@ -154,7 +154,7 @@ a.cm-leadnote:hover { text-decoration: underline; }
 /* ── ✍️ the Save-contact sheet ───────────────────────────────────────── */
 .cm-modal {
   position: fixed; inset: 0; z-index: 400;
-  background: rgba(8,12,14,.6);
+  background: color-mix(in srgb, var(--gray-151b) 60%, transparent);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .cm-sheet {
@@ -182,7 +182,7 @@ a.cm-leadnote:hover { text-decoration: underline; }
 .cm-newtext { min-height: 96px; resize: vertical; font: inherit; }
 
 /* 💡 "Save as <lead name>" — a light suggestion, not a call to action */
-.cm-suggest { border-style: dashed; border-color: var(--teal, #0f9f8f); color: var(--teal, #0f9f8f); background: transparent; }
+.cm-suggest { border-style: dashed; border-color: var(--teal); color: var(--teal); background: transparent; }
 
 /* ✉️ New text, status pill, banners, empty states, delivery — Muse review 2026-10-20 */
 .cm-status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
@@ -206,35 +206,35 @@ a.cm-leadnote:hover { text-decoration: underline; }
 .cm-sugg button { width: 100%; text-align: left; display: flex; gap: 8px; align-items: center; padding: 7px 9px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 13.5px; cursor: pointer; }
 .cm-sugg button:hover { background: var(--fill); }
 .cm-sugg button span { color: var(--muted); font-size: 12.5px; }
-.cm-field-err { margin: 6px 0 0; font-size: 13px; color: #dc2626; }
+.cm-field-err { margin: 6px 0 0; font-size: 13px; color: var(--red-577); }
 .cm-msg-h { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .cm-quick { width: auto; max-width: 260px; font-size: 12.5px; padding: 5px 8px; }
 .cm-count-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
 .cm-seg { font-size: 12px; color: var(--muted); }
-.cm-seg.is-warn, .cm-count.is-warn { color: #b45309; font-weight: 600; }
+.cm-seg.is-warn, .cm-count.is-warn { color: var(--orange-555); font-weight: 600; }
 .cm-linkbtn { border: 0; background: none; padding: 0 0 0 8px; font: inherit; font-size: 12px; font-weight: 600; color: var(--teal); cursor: pointer; }
 .cm-linkbtn:disabled { color: var(--muted); cursor: default; }
 .cm-review { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 14px; }
 .cm-review .lbl { display: block; margin-bottom: 2px; }
 .cm-review-msg { white-space: pre-wrap; padding: 10px 12px; border-radius: 10px; background: var(--teal-soft); color: var(--text); }
-.cm-real { margin: 0; font-size: 13px; font-weight: 600; color: #b45309; }
-.cm-fail { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: #b91c1c; background: color-mix(in srgb, #dc2626 9%, transparent); }
+.cm-real { margin: 0; font-size: 13px; font-weight: 600; color: var(--orange-555); }
+.cm-fail { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: var(--red-505); background: color-mix(in srgb, var(--red-577) 9%, transparent); }
 .cm-dlv.is-ok { color: var(--teal); }
-.cm-dlv.is-bad { color: #dc2626; font-weight: 600; }
+.cm-dlv.is-bad { color: var(--red-577); font-weight: 600; }
 .cm-dlv.is-wait { color: var(--muted); }
 
 .cm-updating { font-size: 12px; color: var(--muted); }
 /* 🧪 staging practice mode */
-.cm-status.is-practice { color: #b45309; background: color-mix(in srgb, #f59e0b 14%, transparent); border-color: transparent; }
-.cm-practice { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: #92400e; background: color-mix(in srgb, #f59e0b 14%, transparent); }
+.cm-status.is-practice { color: var(--orange-555); background: color-mix(in srgb, var(--gold-769) 14%, transparent); border-color: transparent; }
+.cm-practice { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: var(--orange-473); background: color-mix(in srgb, var(--gold-769) 14%, transparent); }
 
 /* 👁️ unread conversations: bold and highlighted until opened (or reported by Tornado) */
 .cm-person.is-unread { background: var(--teal-soft); }
 .cm-person.is-unread .cm-pname, .cm-person.is-unread .cm-plast { font-weight: 700; color: var(--text); }
 .cm-kind { font-size: 14px; line-height: 1; display: inline-flex; align-items: center; opacity: .85; }
-.cm-kind.is-missed { color: #dc2626; }
-.cm-kind.is-call { color: #16a34a; }
-.cm-unread { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--teal); color: #fff;
+.cm-kind.is-missed { color: var(--red-577); }
+.cm-kind.is-call { color: var(--green-627); }
+.cm-unread { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--teal); color: var(--gray-1000);
   font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 
 /* calm toolbar (Raj, 2026-10-23): the chosen filter is a soft highlight, New text a plain button with teal text */

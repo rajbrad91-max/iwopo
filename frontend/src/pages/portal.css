@@ -11,12 +11,12 @@
  */
 
 .po-page {
-  --line: #e8e0d0;
-  --ink: #1f1810;
-  --body: #4a3f30;
-  --soft: #8a7c68;
-  --paper: #faf8f4;
-  --tint: color-mix(in srgb, var(--brand, #b8922a) 8%, #fff);
+  --line: var(--stone-909);
+  --ink: var(--stone-215);
+  --body: var(--stone-375);
+  --soft: var(--stone-593);
+  --paper: var(--gray-980b);
+  --tint: color-mix(in srgb, var(--brand, var(--brand-678)) 8%, var(--gray-1000));
   min-height: 100vh;
   background: var(--paper);
   color: var(--body);
@@ -29,25 +29,25 @@
 .po-hd {
   text-align: center;
   padding: 48px 24px 36px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--brand, #b8922a) 10%, #fff) 0%, var(--paper) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand, var(--brand-678)) 10%, var(--gray-1000)) 0%, var(--paper) 100%);
   border-bottom: 1px solid var(--line);
 }
 .po-logo {
   width: 60px; height: 60px; border-radius: 50%;
   object-fit: cover; margin: 0 auto 16px; display: block;
-  border: 2px solid #fff;
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--brand, #b8922a) 22%, transparent);
+  border: 2px solid var(--gray-1000);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--brand, var(--brand-678)) 22%, transparent);
 }
 .po-biz {
   font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
-  color: var(--brand, #b8922a); margin: 0 0 12px;
+  color: var(--brand, var(--brand-678)); margin: 0 0 12px;
 }
 .po-title {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(30px, 5vw, 42px); font-weight: 400; line-height: 1.15;
   color: var(--ink); margin: 0 0 10px;
 }
-.po-title em { color: var(--brand, #b8922a); font-style: italic; }
+.po-title em { color: var(--brand, var(--brand-678)); font-style: italic; }
 .po-meta { font-size: 16px; color: var(--soft); margin: 0; }
 .po-meta strong { color: var(--ink); font-weight: 600; }
 
@@ -59,7 +59,7 @@
 .po-steps li {
   display: flex; align-items: center; gap: 9px;
   font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-  color: #bfb3a0;
+  color: var(--stone-772);
 }
 .po-steps li + li::before {
   content: ''; width: 44px; height: 1px; background: var(--line); margin: 0 14px;
@@ -74,25 +74,25 @@
   cursor: pointer;
 }
 .po-step-hit:disabled { cursor: default; }
-.po-step-hit:focus-visible { outline: 2px solid var(--brand, #b8922a); outline-offset: 4px; border-radius: 4px; }
+.po-step-hit:focus-visible { outline: 2px solid var(--brand, var(--brand-678)); outline-offset: 4px; border-radius: 4px; }
 .po-steps .po-dot-n {
   width: 26px; height: 26px; border-radius: 50%;
   display: grid; place-items: center;
-  background: #fff; border: 1px solid var(--line);
+  background: var(--gray-1000); border: 1px solid var(--line);
   font-size: 11px; font-weight: 700;
 }
 .po-steps li.is-now { color: var(--ink); }
 .po-steps li.is-now .po-dot-n {
-  background: var(--brand, #b8922a); border-color: var(--brand, #b8922a); color: #fff;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #b8922a) 14%, transparent);
+  background: var(--brand, var(--brand-678)); border-color: var(--brand, var(--brand-678)); color: var(--gray-1000);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, var(--brand-678)) 14%, transparent);
 }
 .po-steps li.is-done { color: var(--soft); }
 .po-steps li.is-done .po-dot-n {
-  background: color-mix(in srgb, var(--brand, #b8922a) 16%, #fff);
-  border-color: color-mix(in srgb, var(--brand, #b8922a) 40%, #fff);
-  color: var(--brand, #b8922a);
+  background: color-mix(in srgb, var(--brand, var(--brand-678)) 16%, var(--gray-1000));
+  border-color: color-mix(in srgb, var(--brand, var(--brand-678)) 40%, var(--gray-1000));
+  color: var(--brand, var(--brand-678));
 }
-.po-step-hit:not(:disabled):hover .po-step-lbl { color: var(--brand, #b8922a); }
+.po-step-hit:not(:disabled):hover .po-step-lbl { color: var(--brand, var(--brand-678)); }
 
 /* ── body ─────────────────────────────────────────────────── */
 .po-main { max-width: 1040px; margin: 0 auto; padding: 40px 24px 64px; }
@@ -101,7 +101,7 @@
 .po-eyebrow {
   text-align: center; font-size: 11px; font-weight: 700;
   letter-spacing: .2em; text-transform: uppercase;
-  color: var(--brand, #b8922a); margin: 0 0 8px;
+  color: var(--brand, var(--brand-678)); margin: 0 0 8px;
 }
 .po-h {
   font-family: 'Playfair Display', Georgia, serif;
@@ -114,8 +114,8 @@
   max-width: 520px; margin: 0 auto 24px;
   padding: 12px 16px; border-radius: 10px; font-size: 14px; text-align: center;
 }
-.po-msg.is-ok { background: #edf7f0; color: #2b6e47; }
-.po-msg.is-err { background: #fbeeee; color: #a83a30; }
+.po-msg.is-ok { background: var(--slate-967); color: var(--green-484); }
+.po-msg.is-err { background: var(--mauve-959); color: var(--red-504); }
 
 /* ── packages ─────────────────────────────────────────────── */
 /* the cards in a row share one height and every Choose button sits at the bottom, so the buttons line up
@@ -129,26 +129,26 @@
 .po-pkg {
   position: relative; display: flex; flex-direction: column;
   text-align: left; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif; cursor: pointer;   /* the contract's fonts (Raj, 2026-11-13) */
-  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+  background: var(--gray-1000); border: 1px solid var(--line); border-radius: 16px;
   padding: 0;   /* no overflow:hidden — the tier ribbon deliberately sits
                         above the card's top edge and was being clipped away */
-  box-shadow: 0 4px 22px rgba(184, 146, 42, .06);
+  box-shadow: 0 4px 22px color-mix(in srgb, var(--brand-678) 6%, transparent);
   transition: transform .18s, box-shadow .18s, border-color .18s;
 }
 .po-pkg:hover:not(:disabled) {
   transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--brand, #b8922a) 45%, #fff);
-  box-shadow: 0 12px 34px rgba(184, 146, 42, .16);
+  border-color: color-mix(in srgb, var(--brand, var(--brand-678)) 45%, var(--gray-1000));
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--brand-678) 16%, transparent);
 }
 .po-pkg:disabled { opacity: .7; cursor: default; }
 .po-pkg.is-chosen {
-  border: 2px solid var(--brand, #b8922a);
-  box-shadow: 0 10px 40px color-mix(in srgb, var(--brand, #b8922a) 22%, transparent);
+  border: 2px solid var(--brand, var(--brand-678));
+  box-shadow: 0 10px 40px color-mix(in srgb, var(--brand, var(--brand-678)) 22%, transparent);
 }
 .po-pkg-badge {
   position: absolute; top: 14px; right: 14px; z-index: 2;
   padding: 4px 12px; border-radius: 20px;
-  background: var(--brand, #b8922a); color: #fff;
+  background: var(--brand, var(--brand-678)); color: var(--gray-1000);
   font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
 /* the name sits above the price now, so this stops being a row */
@@ -170,7 +170,7 @@
 }
 .po-pkg-cur {
   font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
-  font-size: 23px; font-weight: 500; color: var(--brandText, var(--brand, #b8922a));
+  font-size: 23px; font-weight: 500; color: var(--brandText, var(--brand, var(--brand-678)));
 }
 .po-pkg-code {
   font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
@@ -195,11 +195,11 @@
 /* ── contract ─────────────────────────────────────────────── */
 .po-panel {
   max-width: 620px; margin: 0 auto;
-  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+  background: var(--gray-1000); border: 1px solid var(--line); border-radius: 16px;
   padding: 30px; text-align: center;
-  box-shadow: 0 4px 22px rgba(184, 146, 42, .06);
+  box-shadow: 0 4px 22px color-mix(in srgb, var(--brand-678) 6%, transparent);
 }
-.po-panel.is-done { background: #f4faf6; border-color: #cfe7d8; }
+.po-panel.is-done { background: var(--gray-979); border-color: var(--slate-906); }
 .po-panel-t { font-family: 'Playfair Display', Georgia, serif; font-size: 21px; color: var(--ink); margin: 0 0 6px; }
 .po-panel-p { color: var(--soft); margin: 0 0 22px; font-size: 15px; }
 .po-panel-p.no-gap { margin-bottom: 0; }
@@ -207,11 +207,11 @@
 /* ── money ────────────────────────────────────────────────── */
 .po-bill {
   max-width: 480px; margin: 0 auto 24px; padding: 0; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
-  background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+  background: var(--gray-1000); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
 }
 .po-bill > div {
   display: flex; justify-content: space-between; align-items: baseline;
-  padding: 15px 22px; border-bottom: 1px solid #f2ece0;
+  padding: 15px 22px; border-bottom: 1px solid var(--stone-944);
 }
 .po-bill > div:last-child { border-bottom: none; }
 .po-bill dt { margin: 0; font-size: 14px; color: var(--soft); }
@@ -219,13 +219,13 @@
   margin: 0; font-size: 17px; font-weight: 600; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-.po-bill .is-paid { background: #f4faf6; }
-.po-bill .is-paid dd { color: #2b6e47; }
+.po-bill .is-paid { background: var(--gray-979); }
+.po-bill .is-paid dd { color: var(--green-484); }
 .po-bill .is-due { background: var(--tint); }
 .po-bill .is-due dt { color: var(--ink); font-weight: 600; }
 .po-bill .is-due dd {
   font-family: Lora, Georgia, serif;
-  font-size: 24px; font-weight: 700; color: var(--brand, #b8922a);
+  font-size: 24px; font-weight: 700; color: var(--brand, var(--brand-678));
 }
 
 /* ── buttons ──────────────────────────────────────────────── */
@@ -233,15 +233,15 @@
   display: block; width: 100%; max-width: 340px; margin: 0 auto;
   box-sizing: border-box; padding: 15px 28px;
   border: none; border-radius: 50px;
-  background: var(--brand, #b8922a); color: #fff;
+  background: var(--brand, var(--brand-678)); color: var(--gray-1000);
   font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: .02em;
   text-align: center; text-decoration: none; cursor: pointer;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand, #b8922a) 32%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand, var(--brand-678)) 32%, transparent);
   transition: transform .15s, box-shadow .15s;
 }
 .po-cta:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 7px 22px color-mix(in srgb, var(--brand, #b8922a) 40%, transparent);
+  box-shadow: 0 7px 22px color-mix(in srgb, var(--brand, var(--brand-678)) 40%, transparent);
 }
 .po-cta:disabled { opacity: .6; cursor: default; box-shadow: none; }
 
@@ -252,7 +252,7 @@
   text-align: center; padding: 30px 24px 44px;
   border-top: 1px solid var(--line); color: var(--soft); font-size: 14px;
 }
-.po-ft a { color: var(--brand, #b8922a); text-decoration: none; font-weight: 600; }
+.po-ft a { color: var(--brand, var(--brand-678)); text-decoration: none; font-weight: 600; }
 
 .po-state { text-align: center; padding: 80px 24px; color: var(--soft); }
 
@@ -270,9 +270,9 @@
 .po-strip {
   max-width: 1000px; margin: 26px auto 0;
   display: flex; flex-direction: column; gap: 12px;   /* the package line, then the events (2026-11-13) */
-  padding: 18px 22px; background: #fffefb;
+  padding: 18px 22px; background: var(--gray-997);
   border: 1px solid var(--line); border-radius: 20px;
-  box-shadow: 0 4px 14px #2a1c0a0f;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--stone-239) 5.88%, transparent);
 }
 .po-strip-i { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .po-strip-l {
@@ -284,14 +284,14 @@
 /* 🗓️ the booking's events, one line each, in date order (Raj, 2026-11-13) */
 .po-strip-row { display: flex; flex-wrap: wrap; gap: 8px 22px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .po-events { list-style: none; margin: 0; padding: 0; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif; }
-.po-events li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; padding: 9px 0; border-bottom: 1px solid #f2ece0; font-size: 14px; color: var(--body); line-height: 1.5; }
+.po-events li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; padding: 9px 0; border-bottom: 1px solid var(--stone-944); font-size: 14px; color: var(--body); line-height: 1.5; }
 .po-events li:last-child { border-bottom: 0; padding-bottom: 0; }
 .po-events li:first-child { padding-top: 0; }
 .po-ev-day { min-width: 92px; margin-right: 10px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .po-ev-name { font-weight: 600; color: var(--ink); }
 .po-ev-name em { margin-left: 8px; padding: 1px 8px; border-radius: 20px; font-style: normal; font-size: 10.5px; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; background: var(--tint); color: var(--brandText, var(--brand, #b8922a)); }
-.po-ev-part::before { content: '·'; margin: 0 8px; color: #c9bca6; }
+  letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; background: var(--tint); color: var(--brandText, var(--brand, var(--brand-678))); }
+.po-ev-part::before { content: '·'; margin: 0 8px; color: var(--stone-800); }
 .po-events li.is-main { color: var(--ink); }
 @media (max-width: 600px) {
   .po-ev-day { flex-basis: 100%; min-width: 0; margin: 0 0 1px; font-size: 12.5px; color: var(--soft); }
@@ -304,10 +304,10 @@
 /* ── continue button on a revisited step ──────────────────── */
 .po-next {
   display: block; margin: 28px auto 0; padding: 13px 30px;
-  background: none; border: 1.5px solid var(--brandText, var(--brand, #b8922a)); border-radius: 10px;
-  font-size: 15px; font-weight: 600; color: var(--brandText, var(--brand, #b8922a)); cursor: pointer;
+  background: none; border: 1.5px solid var(--brandText, var(--brand, var(--brand-678))); border-radius: 10px;
+  font-size: 15px; font-weight: 600; color: var(--brandText, var(--brand, var(--brand-678))); cursor: pointer;
 }
-.po-next:hover { background: color-mix(in srgb, var(--brand, #b8922a) 10%, #fff); }
+.po-next:hover { background: color-mix(in srgb, var(--brand, var(--brand-678)) 10%, var(--gray-1000)); }
 
 /* ── signed! ──────────────────────────────────────────────── */
 .po-cheer {
@@ -319,7 +319,7 @@
 .po-check {
   width: 78px; height: 78px; margin: 0 auto 20px; border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--brand, #b8922a); color: #fff; font-size: 34px;
+  background: var(--brand, var(--brand-678)); color: var(--gray-1000); font-size: 34px;
   animation: po-pop .4s cubic-bezier(.175, .885, .32, 1.275);
 }
 @keyframes po-pop { from { transform: scale(0); } to { transform: scale(1); } }
@@ -342,15 +342,15 @@
 .po-gate-logo { max-width: 120px; max-height: 60px; object-fit: contain; margin: 0 auto 20px; display: block; }
 .po-gate-h { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 400; color: var(--ink); margin: 0 0 8px; }
 .po-gate-sub { color: var(--soft); font-size: 15px; line-height: 1.6; margin: 0 0 28px; }
-.po-gate-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 28px 30px; text-align: left; }
+.po-gate-card { background: var(--gray-1000); border: 1px solid var(--line); border-radius: 16px; padding: 28px 30px; text-align: left; }
 .po-gate-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); margin: 0 0 8px; }
 .po-gate-input { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 15px; font-family: inherit; }
-.po-gate-input:focus { outline: none; border-color: var(--brand, #C9A86A); }
-.po-gate-input.is-err { border-color: #dc3545; }
-.po-gate-err { color: #dc3545; font-size: 13px; margin: 8px 0 0; }
+.po-gate-input:focus { outline: none; border-color: var(--brand, var(--brand-747)); }
+.po-gate-input.is-err { border-color: var(--red-592); }
+.po-gate-err { color: var(--red-592); font-size: 13px; margin: 8px 0 0; }
 .po-gate-btn {
   width: 100%; margin-top: 16px; padding: 13px; border: none; border-radius: 10px;
-  background: var(--brand, #C9A86A); color: #fff; font-size: 15px; font-weight: 600;
+  background: var(--brand, var(--brand-747)); color: var(--gray-1000); font-size: 15px; font-weight: 600;
   font-family: inherit; cursor: pointer;
 }
 .po-gate-btn:hover { opacity: .92; }
@@ -362,31 +362,31 @@
 .po-timer { text-align: center; margin: 18px 0 8px; }
 .po-timer-eyebrow {
   font-size: 10px; font-weight: 400; letter-spacing: 1.5px; text-transform: uppercase;
-  color: #8a7355; margin: 0 0 8px;
+  color: var(--brand-570); margin: 0 0 8px;
 }
 /* tinted from the vendor's own colour rather than a fixed gold, so the panel
    belongs to whoever's page it is */
 .po-timer-card {
   display: inline-flex; align-items: center; gap: 0;
-  background: color-mix(in srgb, var(--brand, #b8922a) 8%, #fff);
-  border: 1.5px solid color-mix(in srgb, var(--brand, #b8922a) 24%, transparent);
+  background: color-mix(in srgb, var(--brand, var(--brand-678)) 8%, var(--gray-1000));
+  border: 1.5px solid color-mix(in srgb, var(--brand, var(--brand-678)) 24%, transparent);
   border-radius: 16px; padding: 10px 22px;
-  box-shadow: 0 2px 16px color-mix(in srgb, var(--brand, #b8922a) 10%, transparent);
+  box-shadow: 0 2px 16px color-mix(in srgb, var(--brand, var(--brand-678)) 10%, transparent);
 }
 .po-timer-unit { display: flex; flex-direction: column; align-items: center; padding: 0 10px; }
 .po-timer-num {
   font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700;
-  color: var(--brand, #b8922a); letter-spacing: -.56px; line-height: 1;
+  color: var(--brand, var(--brand-678)); letter-spacing: -.56px; line-height: 1;
 }
 .po-timer-lbl {
   font-size: 8px; font-weight: 700; letter-spacing: .96px; text-transform: uppercase;
-  color: #8a7355; margin-top: 3px;
+  color: var(--brand-570); margin-top: 3px;
 }
 .po-timer-colon {
-  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #f5e9c8;
+  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--brand-935);
 }
 .po-timer-expired {
-  font-size: 14px; color: #dc3545; background: #fff5f5; border: 1px solid #fcc;
+  font-size: 14px; color: var(--red-592); background: var(--gray-978); border: 1px solid var(--red-890);
   border-radius: 10px; padding: 12px 16px; margin: 0;
 }
 
@@ -401,15 +401,15 @@
 
 /* the chosen card, ringed in the vendor's own colour */
 .po-pkg.is-chosen {
-  border-color: var(--brand, #b8922a);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, #b8922a) 12%, #fff),
-              0 4px 14px #2a1c0a0f;
+  border-color: var(--brand, var(--brand-678));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand, var(--brand-678)) 12%, var(--gray-1000)),
+              0 4px 14px color-mix(in srgb, var(--stone-239) 5.88%, transparent);
 }
 
 /* the amount due, tinted and oversized — the one figure a client looks for */
-.po-bill .is-due { background: color-mix(in srgb, var(--brand, #b8922a) 8%, #fff); }
+.po-bill .is-due { background: color-mix(in srgb, var(--brand, var(--brand-678)) 8%, var(--gray-1000)); }
 .po-bill .is-due dt { color: var(--ink); font-weight: 600; }
-.po-bill .is-due dd { font-size: 26px; color: var(--brandText, var(--brand, #b8922a)); }
+.po-bill .is-due dd { font-size: 26px; color: var(--brandText, var(--brand, var(--brand-678))); }
 
 /* every lift and spring above is decoration; somebody who asked their system
    for less movement should not have to sit through it */
@@ -428,7 +428,7 @@
    focus ring a real button gave for free */
 .po-pkg:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, #b8922a) 45%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, var(--brand-678)) 45%, transparent);
 }
 .po-pkg.is-busy { opacity: .6; cursor: default; }
 
@@ -438,8 +438,8 @@
   position: absolute; top: -11px; left: 24px;
   padding: 5px 13px; border-radius: 20px; white-space: nowrap;
   font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-  background: var(--brand, #b8922a); color: #fff;
-  box-shadow: 0 4px 14px #2a1c0a0f;
+  background: var(--brand, var(--brand-678)); color: var(--gray-1000);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--stone-239) 5.88%, transparent);
 }
 /* the value one is inked rather than branded, so the two read as a pair
    without competing for the same accent */
@@ -457,18 +457,18 @@
      button, never above it — every Choose button in a row at one height (Raj, 2026-11-04) */
   width: 100%; margin-top: auto; padding: 14px;
   border: none; border-radius: 15px;
-  background: var(--ink); color: #fff;
+  background: var(--ink); color: var(--gray-1000);
   font: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
-  box-shadow: 0 4px 14px #2a1c0a0f;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--stone-239) 5.88%, transparent);
   transition: transform .2s cubic-bezier(.32,1.32,.64,1), box-shadow .2s ease;
 }
-.po-pkg-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 40px #2a1c0a14; }
+.po-pkg-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 40px color-mix(in srgb, var(--stone-239) 7.84%, transparent); }
 .po-pkg-cta:active { transform: scale(.97); }
 .po-pkg-cta:disabled { opacity: .6; cursor: default; transform: none; }
 /* once chosen it stops shouting — it is a confirmation, not a call to act */
 .po-pkg.is-chosen .po-pkg-cta {
-  background: color-mix(in srgb, var(--brand, #b8922a) 12%, #fff);
-  color: var(--brandText, var(--brand, #b8922a));
+  background: color-mix(in srgb, var(--brand, var(--brand-678)) 12%, var(--gray-1000));
+  color: var(--brandText, var(--brand, var(--brand-678)));
 }
 
 
@@ -484,7 +484,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 .po-common {
   max-width: 1000px; margin: 0 auto 26px; padding: 18px 22px; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
-  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+  background: var(--gray-1000); border: 1px solid var(--line); border-radius: 16px;
 }
 .po-inc-cols { columns: 2 260px; column-gap: 28px; }
 .po-inc-cols li { break-inside: avoid; }
@@ -492,20 +492,20 @@
 .po-pkg-tax { margin: 6px 0 0; font-size: 13px; color: var(--soft); }   /* 🧾 "Includes 5% tax (CA$171)" / "Plus tax" */
 .po-pkg-sub { margin: 8px 0 0; font-size: 13px; color: var(--soft); line-height: 1.45; }
 .po-inc-none { margin: 0; font-size: 14px; color: var(--soft); font-style: italic; }
-.po-pkg.is-draft { border-color: color-mix(in srgb, var(--brand, #b8922a) 55%, #fff); }
+.po-pkg.is-draft { border-color: color-mix(in srgb, var(--brand, var(--brand-678)) 55%, var(--gray-1000)); }
 
 .po-xs { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); cursor: default; }
-.po-x { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: #fffefb; transition: border-color .15s, background .15s; }
-.po-x.is-on { border-color: color-mix(in srgb, var(--brand, #b8922a) 55%, #fff); background: var(--tint); }
+.po-x { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; background: var(--gray-997); transition: border-color .15s, background .15s; }
+.po-x.is-on { border-color: color-mix(in srgb, var(--brand, var(--brand-678)) 55%, var(--gray-1000)); background: var(--tint); }
 .po-x-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; cursor: pointer; }
-.po-x-row input { width: 18px; height: 18px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--brandText, var(--brand, #b8922a)); cursor: pointer; }
+.po-x-row input { width: 18px; height: 18px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--brandText, var(--brand, var(--brand-678))); cursor: pointer; }
 .po-x-t { flex: 1; min-width: 0; font-size: 14px; color: var(--ink); line-height: 1.4; }
 .po-x-t b { font-weight: 600; }
 .po-x-t small { display: block; font-size: 12.5px; color: var(--soft); }
-.po-x-p { font-size: 13px; font-weight: 600; color: var(--brandText, var(--brand, #b8922a)); white-space: nowrap; }
+.po-x-p { font-size: 13px; font-weight: 600; color: var(--brandText, var(--brand, var(--brand-678))); white-space: nowrap; }
 .po-x-qty { display: flex; align-items: center; gap: 8px; padding: 0 12px 10px 40px; font-size: 13px; color: var(--body); }
 .po-x-qty button {
-  width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: #fff;
+  width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--gray-1000);
   font: inherit; font-size: 16px; line-height: 1; color: var(--ink); cursor: pointer;
 }
 .po-x-qty button:disabled { opacity: .4; cursor: default; }
@@ -516,8 +516,8 @@
 .po-bar {
   position: sticky; bottom: 0; z-index: 30;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: color-mix(in srgb, #fff 97%, transparent); backdrop-filter: blur(10px);
-  border-top: 1px solid var(--line); box-shadow: 0 -6px 24px #2a1c0a12;
+  background: color-mix(in srgb, var(--gray-1000) 97%, transparent); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line); box-shadow: 0 -6px 24px color-mix(in srgb, var(--stone-239) 7.06%, transparent);
 }
 .po-bar-in { font-family: "Open Sans", "Segoe UI", system-ui, sans-serif; max-width: 1000px; margin: 0 auto; display: flex; align-items: center; gap: 12px 22px; flex-wrap: wrap; }
 .po-bar-what { font-size: 15px; color: var(--ink); }
@@ -526,8 +526,8 @@
 .po-bar-sum b { font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .po-bar-btn {
   margin-left: auto; padding: 12px 24px; border: none; border-radius: 50px;
-  background: var(--brand, #b8922a); color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand, #b8922a) 32%, transparent);
+  background: var(--brand, var(--brand-678)); color: var(--gray-1000); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--brand, var(--brand-678)) 32%, transparent);
 }
 .po-bar-btn:disabled { opacity: .6; cursor: default; }
 @media (max-width: 600px) {
@@ -542,12 +542,12 @@
 
 /* 🎨 text in the vendor's colour uses the readable version (a pale brand colour stays for fills only) */
 .po-biz, .po-title em, .po-eyebrow, .po-step-hit:not(:disabled):hover .po-step-lbl,
-.po-steps li.is-done .po-dot-n, .po-ft a, .po-timer-num { color: var(--brandText, var(--brand, #b8922a)); }
+.po-steps li.is-done .po-dot-n, .po-ft a, .po-timer-num { color: var(--brandText, var(--brand, var(--brand-678))); }
 /* white words on a brand fill need the readable version too — a pale colour behind white text says nothing */
 .po-cta, .po-bar-btn, .po-pkg-badge, .po-ribbon:not(.is-value), .po-steps li.is-now .po-dot-n, .po-check, .po-gate-btn {
-  background: var(--brandText, var(--brand, #b8922a));
+  background: var(--brandText, var(--brand, var(--brand-678)));
 }
-.po-steps li.is-now .po-dot-n { border-color: var(--brandText, var(--brand, #b8922a)); }
+.po-steps li.is-now .po-dot-n { border-color: var(--brandText, var(--brand, var(--brand-678))); }
 .po-cta.is-alt { background: transparent; }
 
 /* 🏦 the second way to pay, beside card (Stripe Connect) */

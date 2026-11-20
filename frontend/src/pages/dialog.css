@@ -9,7 +9,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 .dlg-backdrop {
   position: fixed; inset: 0; z-index: 9999;
-  background: rgba(12, 18, 22, .55); backdrop-filter: blur(2px);
+  background: color-mix(in srgb, var(--slate-178) 55%, transparent); backdrop-filter: blur(2px);
   display: flex; align-items: center; justify-content: center; padding: 20px;
   animation: dlg-fade .12s ease-out;
 }
@@ -17,18 +17,18 @@
 
 .dlg-panel {
   width: 100%; max-width: 430px;
-  background: #ffffff; border-radius: 14px; padding: 24px 26px 20px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+  background: var(--gray-1000); border-radius: 14px; padding: 24px 26px 20px;
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--gray-0) 28%, transparent);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   animation: dlg-rise .14s ease-out;
 }
 @keyframes dlg-rise { from { transform: translateY(8px); opacity: 0 } to { transform: none; opacity: 1 } }
 
 .dlg-title {
-  margin: 0 0 8px; font-size: 17px; font-weight: 700; color: #1a2529; line-height: 1.35;
+  margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--slate-256); line-height: 1.35;
 }
 .dlg-msg {
-  margin: 0; font-size: 14px; line-height: 1.65; color: #4a5560;
+  margin: 0; font-size: 14px; line-height: 1.65; color: var(--slate-444);
   /* several of the confirms this replaced used blank lines to separate a
      warning from its detail — keep those breaks rather than flattening them */
   white-space: pre-wrap;
@@ -36,11 +36,11 @@
 
 .dlg-input {
   width: 100%; margin-top: 14px; padding: 10px 13px; box-sizing: border-box;
-  font: inherit; font-size: 14.5px; color: #1a2529;
-  background: #fff; border: 1.5px solid #dde3e7; border-radius: 9px;
+  font: inherit; font-size: 14.5px; color: var(--slate-256);
+  background: var(--gray-1000); border: 1.5px solid var(--gray-912); border-radius: 9px;
 }
-.dlg-input:focus { outline: none; border-color: #0f766e; }
-.dlg-input[readonly] { background: #f7f9fa; color: #4a5560; }
+.dlg-input:focus { outline: none; border-color: var(--accent-511); }
+.dlg-input[readonly] { background: var(--gray-981); color: var(--slate-444); }
 
 .dlg-actions {
   display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px;
@@ -48,19 +48,19 @@
 .dlg-btn {
   min-width: 104px; padding: 10px 20px; font: inherit; font-size: 14px; font-weight: 700; line-height: 1.2;
   cursor: pointer; border-radius: 12px;
-  background: #ffffff; border: 1px solid #dde3e7; color: #1a2529;
+  background: var(--gray-1000); border: 1px solid var(--gray-912); color: var(--slate-256);
   transition: transform .22s cubic-bezier(.34, 1.4, .64, 1), box-shadow .22s ease, border-color .22s ease, color .22s ease;
 }
 /* the panel's white rising button (.pop-btn), in this file's own colours */
-.dlg-btn:not(:disabled):hover { border-color: #0d9488; color: #0d9488; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(13, 148, 136, .13); }
+.dlg-btn:not(:disabled):hover { border-color: var(--accent-600); color: var(--accent-600); transform: translateY(-2px); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-600) 13%, transparent); }
 .dlg-btn:not(:disabled):active { transform: scale(.96); }
 .dlg-btn:disabled { opacity: .55; cursor: default; }
 /* a destructive step should not look like an ordinary one — the button a
    vendor is about to press deletes a client's photos */
-.dlg-btn.is-danger { color: #dc2626; border-color: #f1c4c4; }
-.dlg-btn.is-danger:not(:disabled):hover { border-color: #dc2626; color: #dc2626; box-shadow: 0 4px 14px rgba(220, 38, 38, .15); }
+.dlg-btn.is-danger { color: var(--red-577); border-color: var(--red-860); }
+.dlg-btn.is-danger:not(:disabled):hover { border-color: var(--red-577); color: var(--red-577); box-shadow: 0 4px 14px color-mix(in srgb, var(--red-577) 15%, transparent); }
 
-.dlg-panel.is-error .dlg-title { color: #b91c1c; }
+.dlg-panel.is-error .dlg-title { color: var(--red-505); }
 
 @media (max-width: 480px) {
   .dlg-panel { padding: 20px 18px 16px; }

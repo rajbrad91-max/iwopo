@@ -4,6 +4,9 @@ import { paidSubscription } from './billing.js';
 import { disconnect } from './stripeConnect.js';
 import { stripe } from './stripe.js';
 import { quiet } from './quiet.js';
+import fs from 'fs';
+import path from 'path';
+import { FILES_DIR, GALLERIES_ROOT } from '../config/paths.js';
 
 /**
  * 🗑️ Delete a vendor for good (Super Admin, Raj, 2026-11-06). Never an owner account. A paying vendor's Stripe
@@ -47,9 +50,14 @@ export async function deleteVendor(vendorId, confirmName, { cancelSubscription =
   return p.counts;
 }
 
-/** The deleted vendor's photos and files in storage, removed after the answer (a large account takes minutes). */
+/** The deleted vendor's photos and files in storage, removed after the answer (a large account takes minutes) — and
+ *  their folders on this server's own disk too (File Flyer thumbnails, gallery working copies): the stress test of
+ *  2026-11-20 found those left behind after the bucket was emptied. */
 function removeStoredFiles(v) {
   (async () => {
+    for (const dir of [path.join(FILES_DIR, String(v)), path.join(GALLERIES_ROOT, String(v))]) {
+      await fs.promises.rm(dir, { recursive: true, force: true }).catch(quiet('remove a deleted vendor’s folder on disk'));
+    }
     for (const cls of [objects.PRIVATE, objects.PUBLIC]) {
       const keys = await objects.listAll(cls, `vendor/${v}/`).catch(() => []);
       for (const k of keys) await objects.deleteObject(cls, k.key || k).catch(quiet('remove a deleted vendor’s stored file'));

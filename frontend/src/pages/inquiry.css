@@ -13,26 +13,26 @@
 
 
 .iq-theme-bold .iq-section-title { text-transform: uppercase; font-size: 17px; }
-.iq-theme-minimal { border-radius: 4px; box-shadow: none; border: 1px solid #E8E0D5; }
+.iq-theme-minimal { border-radius: 4px; box-shadow: none; border: 1px solid var(--stone-910); }
 
 
 /* page bg = brand color (soft) */
 .iq-wrap {
   /* resolved by themeStyleObject at runtime; these cover first paint and the
      case where that never runs, so the admin theme can never show through */
-  --brand: #C9A86A;
-  --brand-strong: #a8874a;
-  --brand-ink: #4A3E3D;
-  --on-brand: #ffffff;
-  --page-bg: #F5F0EA;
-  --surface: #FAF8F5;
-  --line: #E8E0D5;
-  --field-bg: #EFEAE2;
-  --field-line: #E0D6C8;
-  --label: #4A3E3D;
-  --text: #3D3530;
-  --muted: #8A7B6E;
-  --shadow: 0 16px 50px rgba(74, 62, 61, .12);
+  --brand: var(--brand-747);
+  --brand-strong: var(--brand-641);
+  --brand-ink: var(--mauve-376);
+  --on-brand: var(--gray-1000);
+  --page-bg: var(--gray-957);
+  --surface: var(--gray-980);
+  --line: var(--stone-910);
+  --field-bg: var(--gray-939);
+  --field-line: var(--stone-880);
+  --label: var(--mauve-376);
+  --text: var(--stone-336);
+  --muted: var(--stone-593b);
+  --shadow: 0 16px 50px color-mix(in srgb, var(--mauve-376) 12%, transparent);
 
   min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
   padding: 40px 20px; color: var(--text);
@@ -49,12 +49,12 @@
 
 /* header, every theme: the logo (or the studio's initials) centred on top, the name and intro under it
    (tester report 2026-10-16: the logo only showed in Ivory) */
-.iq-hd { position: relative; z-index: 2; padding: 0 0 20px; background: var(--card, #fff); border-bottom: 1px solid rgba(15, 23, 42, .07);
+.iq-hd { position: relative; z-index: 2; padding: 0 0 20px; background: var(--card, var(--gray-1000)); border-bottom: 1px solid color-mix(in srgb, var(--slate-208) 7%, transparent);
   display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text); }
 /* 🎨 design 3: a pale wash of the studio's colour, and the logo in a white circle that overlaps it */
-.iq-band { align-self: stretch; height: 66px; background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 38%, #fff), color-mix(in srgb, var(--brand) 12%, #fff)); }
-.iq-badge { width: 82px; height: 82px; margin-top: -42px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 20px -10px rgba(15, 23, 42, .4), 0 0 0 1px rgba(15, 23, 42, .04); }
+.iq-band { align-self: stretch; height: 66px; background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 38%, var(--gray-1000)), color-mix(in srgb, var(--brand) 12%, var(--gray-1000))); }
+.iq-badge { width: 82px; height: 82px; margin-top: -42px; border-radius: 50%; background: var(--gray-1000); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--slate-208) 40%, transparent), 0 0 0 1px color-mix(in srgb, var(--slate-208) 4%, transparent); }
 .iq-logo { width: 56px; height: 56px; object-fit: contain; flex-shrink: 0; }
 .iq-hd-text { width: 100%; text-align: center; padding: 0 32px; box-sizing: border-box; }
 .iq-brand { font-size: 23px; font-weight: 700; letter-spacing: -.01em; color: var(--text); display:flex; align-items:center; justify-content:center; gap:8px; }
@@ -85,9 +85,9 @@
 }
 
 /* sections */
-.iq-section { padding: 20px 0; border-top: 1px solid #D3C3AC; }   /* a divider you can see, the same between every section */
+.iq-section { padding: 20px 0; border-top: 1px solid var(--stone-824b); }   /* a divider you can see, the same between every section */
 .iq-section:first-child { border-top: none; padding-top: 4px; }
-.iq-section-title { font-size: 15px; font-weight: 800; color: #4A3E3D; margin-bottom: 14px; letter-spacing: .3px; }
+.iq-section-title { font-size: 15px; font-weight: 800; color: var(--mauve-376); margin-bottom: 14px; letter-spacing: .3px; }
 
 /* two-column grid */
 .iq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -96,7 +96,7 @@
 .iq-card label { display: block; font-size: 12px; color: var(--label); font-weight: 700; margin: 0 0 5px; }
 .iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 12px 14px; background-color: var(--field-bg);
   border: 1px solid var(--field-line); border-radius: 10px; color: var(--text); font-size: 14px; font-family: inherit; box-sizing: border-box; }
-.iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, #C9A86A); background-color: #fff; }
+.iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, var(--brand-747)); background-color: var(--gray-1000); }
 /* 🔽 Dropdowns draw their own arrow. The browser's arrow sat against the right edge (padding moves only the text)
    and kept its own size when the page was zoomed. This chevron is sized in em, so it scales exactly with the text,
    and is inset from the right edge by --dd-inset; the text stops short of it. */
@@ -109,27 +109,27 @@
 /* Matched at the same depth as the rules above rather than shouted over them:
    `.iq-card label` and `.iq-card input` are two classes deep, so a bare
    .iq-check-row lost every time and !important was standing in for specificity. */
-.iq-card .iq-check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; color: #3D3530; cursor: pointer; }
-.iq-card .iq-check-row input { width: 17px; height: 17px; accent-color: var(--brand, #C9A86A); cursor: pointer; }
+.iq-card .iq-check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--stone-336); cursor: pointer; }
+.iq-card .iq-check-row input { width: 17px; height: 17px; accent-color: var(--brand, var(--brand-747)); cursor: pointer; }
 
 /* ⏱️ hours field — the "auto" tag sits beside the label, the reset link below */
 .iq-auto-tag {
   display: inline-block; margin-left: 7px; padding: 1px 7px;
-  background: #E7DFCF; color: #7A6A55; border-radius: 20px;
+  background: var(--stone-906); color: var(--stone-534); border-radius: 20px;
   font-size: 10px; font-weight: 700; letter-spacing: .04em;
   text-transform: uppercase; vertical-align: middle;
 }
 .iq-auto-reset {
   margin-top: 5px; padding: 0; background: none; border: none;
-  color: #8A7B62; font-size: 11.5px; font-family: inherit;
+  color: var(--stone-590); font-size: 11.5px; font-family: inherit;
   cursor: pointer; text-decoration: underline;
 }
-.iq-auto-reset:hover { color: #4A3E3D; }
+.iq-auto-reset:hover { color: var(--mauve-376); }
 
-.iq-err { background: #fbeaea; color: #b4433a; padding: 11px; border-radius: 9px; margin-top: 14px; font-size: 13px; }
+.iq-err { background: var(--mauve-951); color: var(--red-537); padding: 11px; border-radius: 9px; margin-top: 14px; font-size: 13px; }
 /* 🎯 the field an error is about: outlined, with its message right under it */
-.iq-card .iq-field-err input, .iq-card .iq-field-err select, .iq-card .iq-field-err textarea { border-color: #b4433a; box-shadow: 0 0 0 3px #b4433a22; }
-.iq-field-msg { color: #b4433a; font-size: 12.5px; margin-top: 6px; }
+.iq-card .iq-field-err input, .iq-card .iq-field-err select, .iq-card .iq-field-err textarea { border-color: var(--red-537); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-537) 13.33%, transparent); }
+.iq-field-msg { color: var(--red-537); font-size: 12.5px; margin-top: 6px; }
 .iq-btn { width: 100%; margin-top: 20px; padding: 14px; background: var(--brand); color: var(--on-brand); border: none; border-radius: 11px; font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; }   /* the form's own font (a button does not inherit it by itself) */
 .iq-btn:hover { background: var(--brand-strong); }
 .iq-btn:disabled { opacity: 0.6; }
@@ -144,7 +144,7 @@
 .iq-done { text-align: center; padding: 40px 32px; }
 /* the vendor's own colour where the page carries one (the thank-you does now);
    the old beige only where it does not, e.g. a dead-link card */
-.iq-check { width: 64px; height: 64px; background: var(--brand-soft, #E7DFCF); color: var(--brand-ink, #4A3E3D); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 34px; margin: 0 auto 16px; }
+.iq-check { width: 64px; height: 64px; background: var(--brand-soft, var(--stone-906)); color: var(--brand-ink, var(--mauve-376)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 34px; margin: 0 auto 16px; }
 
 @media (max-width: 620px) {
   .iq-grid { grid-template-columns: 1fr; }
@@ -160,7 +160,7 @@
    shifts the button, the accents and the page shade together. */
 .iq-mono { display: flex; width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid var(--brand); color: var(--brand); align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; flex-shrink: 0; }
 .iq-req-note { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
-.iq-card.iq-theme-ivory { max-width: 820px; border-radius: 4px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(40, 32, 24, 0.05); }
+.iq-card.iq-theme-ivory { max-width: 820px; border-radius: 4px; background: var(--gray-1000); border: 1px solid var(--line); box-shadow: 0 1px 3px color-mix(in srgb, var(--stone-250) 5%, transparent); }
 .iq-theme-ivory .iq-hd { flex-direction: column; gap: 14px; padding: 38px 28px 6px; background: transparent; border-bottom: none; color: var(--text); }
 .iq-theme-ivory .iq-logo { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
 .iq-theme-ivory .iq-band { display: none; }
@@ -175,7 +175,7 @@
 .iq-theme-ivory .iq-section-title { font-size: 13px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: var(--text); margin-bottom: 14px; }
 .iq-theme-ivory .iq-emoji { display: none; }
 .iq-card.iq-theme-ivory label { font-size: 13px; font-weight: 500; color: var(--label); margin-bottom: 6px; }
-.iq-card.iq-theme-ivory input, .iq-card.iq-theme-ivory select, .iq-card.iq-theme-ivory textarea { min-height: 46px; border: 1px solid var(--field-line); border-radius: 4px; background-color: #fffdfa; font-size: 15px; }
+.iq-card.iq-theme-ivory input, .iq-card.iq-theme-ivory select, .iq-card.iq-theme-ivory textarea { min-height: 46px; border: 1px solid var(--field-line); border-radius: 4px; background-color: var(--gray-995); font-size: 15px; }
 .iq-card.iq-theme-ivory textarea { min-height: 90px; }
 .iq-card.iq-theme-ivory .iq-check-row input { min-height: 0; }
 .iq-theme-ivory .iq-btn { height: 52px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500; box-shadow: none; }
@@ -193,7 +193,7 @@
 
 /* 📸 Instagram: a fixed "@" in front of the handle */
 .inq-at { position: relative; }
-.inq-at-sign { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6b7a86; font-weight: 600; pointer-events: none; }
+.inq-at-sign { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--slate-571); font-weight: 600; pointer-events: none; }
 .inq-at input { padding-left: 32px; }
 
 /* 🔀 the builder's optional extras (2026-10-30) — a section title inside the questions, the "type your own" box,
@@ -206,14 +206,14 @@
 .iq-pe-no { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
 .iq-card .iq-pe-remove { width: auto; padding: 4px 10px; background: none; border: 1px solid var(--field-line); border-radius: 8px;
   color: var(--muted); font-size: 12px; font-family: inherit; cursor: pointer; }
-.iq-card .iq-pe-remove:hover { color: #b4433a; border-color: #b4433a; }
+.iq-card .iq-pe-remove:hover { color: var(--red-537); border-color: var(--red-537); }
 /* ＋ Add Pre-Event: an outlined button that always looks ready — a light tint of the brand, an edge that is clearly
    there (the brand, or charcoal for a neutral one) and dark text; a near-white brand's grey dashes looked disabled
    (Raj, 2026-11-05) */
-.iq-card .iq-pe-add { width: 100%; padding: 12px; background: var(--brand-tint, #eef0f2); border: 1.5px solid var(--brand-edge, #2b2b2b);
-  border-radius: 10px; color: var(--brand-ink, #1f2937); font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer;
+.iq-card .iq-pe-add { width: 100%; padding: 12px; background: var(--brand-tint, var(--gray-954b)); border: 1.5px solid var(--brand-edge, var(--gray-289));
+  border-radius: 10px; color: var(--brand-ink, var(--slate-278)); font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer;
   transition: box-shadow .15s, transform .15s; }
-.iq-card .iq-pe-add:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, .1); transform: translateY(-1px); }
+.iq-card .iq-pe-add:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--gray-0) 10%, transparent); transform: translateY(-1px); }
 @media (max-width: 560px) { .iq-pe-card { padding: 12px; } }
 /* ⏱️ a pre-event's hours, worked out from its times — shown, not typed */
 .iq-card .iq-pe-hours { color: var(--muted); cursor: default; }

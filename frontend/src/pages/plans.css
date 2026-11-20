@@ -32,11 +32,11 @@
 
 /* 💳 billing (2026-10-31) */
 .pl-banner { margin: 0 0 14px; padding: 11px 14px; border-radius: 12px; font-size: 13.5px; background: var(--panel-2); border: 1px solid var(--line); }
-.pl-banner.is-bad { background: rgba(220, 38, 38, .1); border-color: rgba(220, 38, 38, .3); }
+.pl-banner.is-bad { background: color-mix(in srgb, var(--red-577) 10%, transparent); border-color: color-mix(in srgb, var(--red-577) 30%, transparent); }
 .pl-state { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 0 0 14px;
   padding: 12px 16px; border-radius: 14px; border: 1px solid var(--line); font-size: 14px; }
 .pl-state p { margin: 0; line-height: 1.5; }
-.pl-state-warn { color: #d97706; }
+.pl-state-warn { color: var(--orange-666); }
 .pl-manage { width: auto; }
 /* 🔁 Monthly / Yearly, in the plans table's corner: two equal buttons, stacked on a phone (2026-11-11) */
 .pl-cycle { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; padding: 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); box-sizing: border-box; }

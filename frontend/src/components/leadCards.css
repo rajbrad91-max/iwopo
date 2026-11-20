@@ -35,7 +35,7 @@
 .ldc-name { font-size: 15.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; overflow-wrap: anywhere; }
 .ldc-main .ldc-name { font-size: 17px; }
 .ldc-badge { display: inline-block; white-space: nowrap; margin-left: 7px; padding: 2px 7px; border-radius: 999px; font-size: 9.5px;
-  font-weight: 700; letter-spacing: .08em; vertical-align: 2px; background: var(--teal-2); color: #fff; }
+  font-weight: 700; letter-spacing: .08em; vertical-align: 2px; background: var(--teal-2); color: var(--gray-1000); }
 .ldc-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .ldc-main .ldc-pill { font-size: 12.5px; padding: 4px 9px; border-radius: 9px; }
 /* every question shares one label column, only as wide as the longest — answers sit close and aligned */
@@ -54,7 +54,7 @@
 /* the slim calendar tile */
 .ldc-tile { flex: none; align-self: flex-start; width: 50px; display: flex; flex-direction: column; align-items: center;
   border-radius: 10px; padding: 6px 0 7px; background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
-.ldc-tile.is-main { width: 58px; background: var(--teal-2); color: #fff; }
+.ldc-tile.is-main { width: 58px; background: var(--teal-2); color: var(--gray-1000); }
 .ldc-tile-sm { font-size: 10px; font-weight: 700; letter-spacing: .1em; opacity: .85; }
 .ldc-tile-day { font-size: 20px; font-weight: 800; line-height: 1.15; }
 .ldc-tile.is-main .ldc-tile-day { font-size: 24px; }
@@ -71,10 +71,10 @@
 /* 🎨 each value its own quiet colour, on the pre-event chips and the main event's pills (Raj, 2026-11-17): a faint
    tint behind, and text that is the page's own text leaning toward the colour — so it reads in either theme without
    pulling the eye. hours blue · guests amber · photos rose · videos green · any other service teal */
-.ldc-hrs { background: color-mix(in srgb, #3b82f6 7%, transparent); color: color-mix(in srgb, #3b82f6 45%, var(--text)); }
-.ldc-guests { background: color-mix(in srgb, #d97706 7%, transparent); color: color-mix(in srgb, #d97706 45%, var(--text)); }
-.ldc-photo { background: color-mix(in srgb, #e11d48 6%, transparent); color: color-mix(in srgb, #e11d48 30%, var(--text)); }   /* a shade deeper (Raj, 2026-11-19) */
-.ldc-video { background: color-mix(in srgb, #16a34a 7%, transparent); color: color-mix(in srgb, #16a34a 45%, var(--text)); }
+.ldc-hrs { background: color-mix(in srgb, var(--blue-623) 7%, transparent); color: color-mix(in srgb, var(--blue-623) 45%, var(--text)); }
+.ldc-guests { background: color-mix(in srgb, var(--orange-666) 7%, transparent); color: color-mix(in srgb, var(--orange-666) 45%, var(--text)); }
+.ldc-photo { background: color-mix(in srgb, var(--red-586) 6%, transparent); color: color-mix(in srgb, var(--red-586) 30%, var(--text)); }   /* a shade deeper (Raj, 2026-11-19) */
+.ldc-video { background: color-mix(in srgb, var(--green-627) 7%, transparent); color: color-mix(in srgb, var(--green-627) 45%, var(--text)); }
 .ldc-svc { background: color-mix(in srgb, var(--teal) 7%, transparent); color: color-mix(in srgb, var(--teal) 55%, var(--text)); }
 
 /* ✔️ a yes/no answer: the panel's own Yes / No icon beside the word; its cut lines take the card's colour */

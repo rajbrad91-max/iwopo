@@ -38,7 +38,7 @@
 .dash .cts-x .nav-svg svg { width: 16px; height: 16px; }
 
 /* the add / edit card */
-.cts-modal { position: fixed; inset: 0; background: rgba(12,22,24,.45); z-index: 900;
+.cts-modal { position: fixed; inset: 0; background: color-mix(in srgb, var(--slate-191) 45%, transparent); z-index: 900;
   display: flex; align-items: center; justify-content: center; padding: 20px; }
 .cts-card { background: var(--panel); border-radius: 14px; padding: 22px; width: 100%;
   max-width: 420px; border: 1px solid var(--line); }

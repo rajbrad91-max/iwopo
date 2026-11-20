@@ -342,6 +342,10 @@ router.post('/chat/:handle', async (req, res) => {
 // ── 🧑‍💼 VENDOR (their own chatbot only) ──
 
 
+/* 🤖 Every vendor route below asks the SAME question the panel's status and the public chat ask (isActiveSubscriber:
+   the Super Admin switch if one is set, else the plan). They used to require a Super Admin subscriber row, so a vendor
+   who had AI Chat through their plan saw "subscribed", could not read a single conversation, and could not save their
+   bot's knowledge — "Not subscribed" (stress test, 2026-11-20). */
 // am I subscribed? (drives the panel: history vs upsell)
 router.get('/my/status', requireAuth, async (req, res) => {
   try {
@@ -354,11 +358,7 @@ router.get('/my/status', requireAuth, async (req, res) => {
 router.get('/my/history', requireAuth, async (req, res) => {
   const v = ownVendorId(req);
   try {
-    const sub = await prisma.chatbot_subscribers.findUnique({
-      where: { vendor_id: v },                    // 🔒 tenancy
-      select: { active: true },
-    });
-    if (!sub) return res.status(403).json({ error: 'Not subscribed' });
+    if (!(await isActiveSubscriber(v))) return res.status(403).json({ error: 'Not subscribed' });   // 🔒 own vendor · the switch, else the plan
 
     const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);   // interval '30 days'
     const rows = await prisma.chatbot_transcripts.findMany({
@@ -390,11 +390,7 @@ router.get('/my/history', requireAuth, async (req, res) => {
 router.get('/my/knowledge', requireAuth, async (req, res) => {
   const v = Number(ownVendorId(req));
   try {
-    const sub = await prisma.chatbot_subscribers.findUnique({
-      where: { vendor_id: v },                    // 🔒 tenancy — own row only
-      select: { active: true },
-    });
-    if (!sub) return res.status(403).json({ error: 'Not subscribed' });
+    if (!(await isActiveSubscriber(v))) return res.status(403).json({ error: 'Not subscribed' });   // 🔒 own vendor · the switch, else the plan
     const knowledge = await prisma.chatbot_knowledge.findUnique({ where: { vendor_id: v } });
     res.json({ knowledge: knowledge || emptyKnowledge(v), fields: KNOWLEDGE_FIELDS });
   } catch (e) { serverError(res, e); }
@@ -403,11 +399,7 @@ router.get('/my/knowledge', requireAuth, async (req, res) => {
 router.put('/my/knowledge', requireAuth, async (req, res) => {
   const v = Number(ownVendorId(req));
   try {
-    const sub = await prisma.chatbot_subscribers.findUnique({
-      where: { vendor_id: v },                    // 🔒 tenancy — own row only
-      select: { active: true },
-    });
-    if (!sub) return res.status(403).json({ error: 'Not subscribed' });
+    if (!(await isActiveSubscriber(v))) return res.status(403).json({ error: 'Not subscribed' });   // 🔒 own vendor · the switch, else the plan
     // 🔒 the id comes from the token, never the body, so a vendor can only ever
     // write their own knowledge no matter what they post
     await saveKnowledge(v, req.body);

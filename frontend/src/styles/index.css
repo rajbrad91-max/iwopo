@@ -1,47 +1,47 @@
 :root {
   /* the chosen tab / filter / view button everywhere: a soft teal tint, not a solid fill (Raj, 2026-10-27) */
-  --sel-bg: rgba(13, 148, 136, 0.2);
-  --sel-line: rgba(13, 148, 136, 0.5);
-  --sel-ink: #0f766e;
-  --bg:#0a1013; --panel:#141d21; --panel-2:#18242a; --line:#ffffff14;
-  --muted:#8a9ba1; --text:#f1f7f8; --teal:#0d9488; --teal-2:#0b7c72;
-  --teal-soft:color-mix(in srgb, var(--teal) 12%, transparent); --green:#4ade80; --amber:#fbbf24; --red:#fb7185;
+  --sel-bg: color-mix(in srgb, var(--accent-600) 20%, transparent);
+  --sel-line: color-mix(in srgb, var(--accent-600) 50%, transparent);
+  --sel-ink: var(--accent-511);
+  --bg:var(--gray-168); --panel:var(--slate-224); --panel-2:var(--slate-252); --line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent);
+  --muted:var(--slate-678); --text:var(--gray-972b); --teal:var(--accent-600); --teal-2:var(--accent-528);
+  --teal-soft:color-mix(in srgb, var(--teal) 12%, transparent); --green:var(--green-800); --amber:var(--gold-837); --red:var(--red-719);
   /* vendor-panel gradient/detail tokens (dark defaults) */
-  --v-side-1:#141d21; --v-side-2:#141d21; --v-side-line:#ffffff14;
-  --v-navhover:#ffffff0f; --v-card-1:#18242a; --v-card-2:#141d21;
-  --v-card-line:#ffffff14; --v-topbar-1:#141d21; --v-topbar-2:#141d21;
-  --v-table-1:#18242a; --v-table-2:#18242a; --v-th:#ffffff0f;
-  --v-rowhover:#ffffff0f; --v-wrap-hover:color-mix(in srgb, var(--teal) 24%, transparent); --v-group:#8a9ba1;
-  --v-scroll:#ffffff17; --v-shadow:#00000059;
-  --v-brand-2:var(--teal); --v-value-2:#f1f7f8;
+  --v-side-1:var(--slate-224); --v-side-2:var(--slate-224); --v-side-line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent);
+  --v-navhover:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --v-card-1:var(--slate-252); --v-card-2:var(--slate-224);
+  --v-card-line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent); --v-topbar-1:var(--slate-224); --v-topbar-2:var(--slate-224);
+  --v-table-1:var(--slate-252); --v-table-2:var(--slate-252); --v-th:color-mix(in srgb, var(--gray-1000) 5.88%, transparent);
+  --v-rowhover:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --v-wrap-hover:color-mix(in srgb, var(--teal) 24%, transparent); --v-group:var(--slate-678);
+  --v-scroll:color-mix(in srgb, var(--gray-1000) 9.02%, transparent); --v-shadow:color-mix(in srgb, var(--gray-0) 34.9%, transparent);
+  --v-brand-2:var(--teal); --v-value-2:var(--gray-972b);
   /* material + motion — translucency, fills and the spring used on press */
-  --mat:#141d21e6; --fill:#ffffff0f; --fill2:#ffffff17;
-  --line2:#ffffff0d; --accInk:#ffffff;
-  --amberSoft:#fbbf2422; --greenSoft:#4ade8022;
-  --glow1:#ffffff12; --glow2:#ffffff0a; --dot:#ffffff0d;
-  --shadow:0 18px 44px #00000059; --shadowSm:0 6px 18px #00000038;
+  --mat:color-mix(in srgb, var(--slate-224) 90.2%, transparent); --fill:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --fill2:color-mix(in srgb, var(--gray-1000) 9.02%, transparent);
+  --line2:color-mix(in srgb, var(--gray-1000) 5.1%, transparent); --accInk:var(--gray-1000);
+  --amberSoft:color-mix(in srgb, var(--gold-837) 13.33%, transparent); --greenSoft:color-mix(in srgb, var(--green-800) 13.33%, transparent);
+  --glow1:color-mix(in srgb, var(--gray-1000) 7.06%, transparent); --glow2:color-mix(in srgb, var(--gray-1000) 3.92%, transparent); --dot:color-mix(in srgb, var(--gray-1000) 5.1%, transparent);
+  --shadow:0 18px 44px color-mix(in srgb, var(--gray-0) 34.9%, transparent); --shadowSm:0 6px 18px color-mix(in srgb, var(--gray-0) 21.96%, transparent);
   --dur:.22s; --ease:cubic-bezier(.34,1.4,.64,1);
   /* 🎈 how far things rise on hover — tiles like the dashboard's, buttons like Active / History (Raj, 2026-11-12) */
   --lift-tile: -4px; --lift-btn: -2px; --glow-btn: 0 4px 14px color-mix(in srgb, var(--teal) 13%, transparent);
   /* 🟩 the one button green — the light theme's teal, in light AND dark; never the old bright var(--teal) (Raj, 2026-11-12) */
-  --btn-fill: #0d9488; --btn-fill-hover: #0b7c72; --btn-fill-ink: #ffffff;
+  --btn-fill: var(--accent-600); --btn-fill-hover: var(--accent-528); --btn-fill-ink: var(--gray-1000);
 }
 [data-theme="light"] {
-  --bg:#eef2f3; --panel:#ffffff; --panel-2:#f7f9fa; --line:#0a151a14;
-  --muted:#66787e; --text:#0c1618; --teal:#0d9488; --teal-2:#0b7c72;
-  --teal-soft:#0d94881a; --green:#15803d; --amber:#b45309; --red:#e11d48;
-  --v-side-1:#ffffff; --v-side-2:#ffffff; --v-side-line:#0a151a14;
-  --v-navhover:#0a151a0a; --v-card-1:#ffffff; --v-card-2:#ffffff;
-  --v-card-line:#0a151a14; --v-topbar-1:#ffffff; --v-topbar-2:#ffffff;
-  --v-table-1:#ffffff; --v-table-2:#ffffff; --v-th:#0a151a0a;
-  --v-rowhover:#0a151a0a; --v-wrap-hover:#0d948840; --v-group:#66787e;
-  --v-scroll:#0a151a14; --v-shadow:#0f172a1f;
-  --v-brand-2:#0d9488; --v-value-2:#0c1618;
-  --mat:#ffffffd9; --fill:#0a151a0a; --fill2:#0a151a14;
-  --line2:#0a151a0a; --accInk:#ffffff;
-  --amberSoft:#b4530918; --greenSoft:#15803d18;
-  --glow1:#ffffffe6; --glow2:#ffffff8c; --dot:#0a151a14;
-  --shadow:0 18px 40px #0f172a1f; --shadowSm:0 6px 16px #0f172a14;
+  --bg:var(--gray-958); --panel:var(--gray-1000); --panel-2:var(--gray-981); --line:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
+  --muted:var(--slate-560); --text:var(--slate-191); --teal:var(--accent-600); --teal-2:var(--accent-528);
+  --teal-soft:color-mix(in srgb, var(--accent-600) 10.2%, transparent); --green:var(--green-527); --amber:var(--orange-555); --red:var(--red-586);
+  --v-side-1:var(--gray-1000); --v-side-2:var(--gray-1000); --v-side-line:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
+  --v-navhover:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --v-card-1:var(--gray-1000); --v-card-2:var(--gray-1000);
+  --v-card-line:color-mix(in srgb, var(--slate-188) 7.84%, transparent); --v-topbar-1:var(--gray-1000); --v-topbar-2:var(--gray-1000);
+  --v-table-1:var(--gray-1000); --v-table-2:var(--gray-1000); --v-th:color-mix(in srgb, var(--slate-188) 3.92%, transparent);
+  --v-rowhover:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --v-wrap-hover:color-mix(in srgb, var(--accent-600) 25.1%, transparent); --v-group:var(--slate-560);
+  --v-scroll:color-mix(in srgb, var(--slate-188) 7.84%, transparent); --v-shadow:color-mix(in srgb, var(--slate-208) 12.16%, transparent);
+  --v-brand-2:var(--accent-600); --v-value-2:var(--slate-191);
+  --mat:color-mix(in srgb, var(--gray-1000) 85.1%, transparent); --fill:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --fill2:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
+  --line2:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --accInk:var(--gray-1000);
+  --amberSoft:color-mix(in srgb, var(--orange-555) 9.41%, transparent); --greenSoft:color-mix(in srgb, var(--green-527) 9.41%, transparent);
+  --glow1:color-mix(in srgb, var(--gray-1000) 90.2%, transparent); --glow2:color-mix(in srgb, var(--gray-1000) 54.9%, transparent); --dot:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
+  --shadow:0 18px 40px color-mix(in srgb, var(--slate-208) 12.16%, transparent); --shadowSm:0 6px 16px color-mix(in srgb, var(--slate-208) 7.84%, transparent);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 /* 🌗 While a page's code is still downloading the app shows nothing, so the
@@ -79,8 +79,8 @@ body {
 .login-btn { width:100%; margin-top:22px; padding:13px; background:var(--btn-fill); color:var(--btn-fill-ink); border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
 .login-btn:hover { background:var(--btn-fill-hover); }
 .login-btn:disabled { opacity:0.6; cursor:default; }
-.login-error { margin-top:16px; padding:10px 14px; background:#fb718522; color:var(--red); border-radius:10px; font-size:13px; }
-.login-notice { margin-top:16px; padding:10px 14px; background:#4ade8022; color:#16a34a; border-radius:10px; font-size:13px; }
+.login-error { margin-top:16px; padding:10px 14px; background:color-mix(in srgb, var(--red-719) 13.33%, transparent); color:var(--red); border-radius:10px; font-size:13px; }
+.login-notice { margin-top:16px; padding:10px 14px; background:color-mix(in srgb, var(--green-800) 13.33%, transparent); color:var(--green-627); border-radius:10px; font-size:13px; }
 .login-forgot-row { margin-top:16px; text-align:center; }
 .login-forgot-link { color:var(--teal); font-size:13px; cursor:pointer; }
 .login-forgot-link:hover { text-decoration:underline; }
@@ -109,7 +109,7 @@ body {
 .nav-item:hover { background:var(--panel-2); color:var(--text); }
 .nav-item.active { background:var(--teal-soft); color:var(--teal); font-weight:600; }
 .logout { margin-top:auto; padding:10px 12px; border-radius:9px; color:var(--muted); cursor:pointer; }
-.logout:hover { background:#fb718522; color:var(--red); }
+.logout:hover { background:color-mix(in srgb, var(--red-719) 13.33%, transparent); color:var(--red); }
 
 .main { flex:1; padding:24px 30px; overflow-y:auto; }
 .refresh {
@@ -137,7 +137,7 @@ body {
 .pop-foot { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; margin-top:16px; }
 @media (max-width:480px) { .pop-foot > .pop-btn { flex:1 1 0; } }   /* phone: the buttons share the row equally */
 
-.err-banner { padding:12px 16px; background:#fb718522; color:var(--red); border-radius:10px; margin-bottom:20px; }
+.err-banner { padding:12px 16px; background:color-mix(in srgb, var(--red-719) 13.33%, transparent); color:var(--red); border-radius:10px; margin-bottom:20px; }
 .loading { color:var(--muted); padding:40px; text-align:center; }
 
 .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
@@ -187,11 +187,11 @@ tr:last-child td { border-bottom:none; }
 .badge.quoted, .badge.warn { background:var(--amberSoft);  color:var(--amber); }
 /* a status pill led by a small dot in its own colour — in place of an emoji (Bookings, Raj 2026-11-15) */
 .badge.is-dot::before { content:''; display:inline-block; width:6px; height:6px; margin-right:6px; border-radius:50%; background:currentColor; vertical-align:1px; }
-.badge.past   { background:#fb718522;         color:var(--red);   }
-.badge.cancelled { background:#fb718522; color:var(--red); }   /* a booking that was cancelled (Raj, 2026-11-17) */
-.badge.active { background:#4ade8022; color:var(--green); }
+.badge.past   { background:color-mix(in srgb, var(--red-719) 13.33%, transparent);         color:var(--red);   }
+.badge.cancelled { background:color-mix(in srgb, var(--red-719) 13.33%, transparent); color:var(--red); }   /* a booking that was cancelled (Raj, 2026-11-17) */
+.badge.active { background:color-mix(in srgb, var(--green-800) 13.33%, transparent); color:var(--green); }
 .badge.trial { background:var(--teal-soft); color:var(--teal); }
-.badge.past { background:#fb718522; color:var(--red); }
+.badge.past { background:color-mix(in srgb, var(--red-719) 13.33%, transparent); color:var(--red); }
 
 /* MANAGE BUTTON + DRAWER */
 .login-back { color:var(--muted); cursor:pointer; font-size:13px; margin-bottom:16px; }
@@ -205,7 +205,7 @@ tr:last-child td { border-bottom:none; }
 .switch.on { background:var(--btn-fill); }
 .switch::after {
   content:''; position:absolute; top:3px; left:3px; width:22px; height:22px;
-  background:#fff; border-radius:50%; box-shadow:0 2px 5px #00000033;
+  background:var(--gray-1000); border-radius:50%; box-shadow:0 2px 5px color-mix(in srgb, var(--gray-0) 20%, transparent);
   transition:transform .24s var(--ease);
 }
 .switch.on::after { transform:translateX(18px); }   /* 46 - 22 - 3 - 3 */
@@ -223,12 +223,12 @@ tr:last-child td { border-bottom:none; }
 
 /* ✉️ "Check your email" code step (VerifyCode.jsx) — inside the sign-in card, and over the sign-up page */
 .login-card .vc-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
-.vc-practice { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: #92400e; background: color-mix(in srgb, #f59e0b 16%, transparent); }
-.vc-warn { margin: 0 0 12px; font-size: 13px; color: #b45309; }
+.vc-practice { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: var(--orange-473); background: color-mix(in srgb, var(--gold-769) 16%, transparent); }
+.vc-warn { margin: 0 0 12px; font-size: 13px; color: var(--orange-555); }
 .vc-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-.vc-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: #0d9488; cursor: pointer; }
-.vc-link:disabled { color: #9ca3af; cursor: default; }
-.vc-overlay { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .55); }
+.vc-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-600); cursor: pointer; }
+.vc-link:disabled { color: var(--slate-714); cursor: default; }
+.vc-overlay { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--gray-0) 55%, transparent); }
 
 /* 🎨 the same artwork beside text in the panel's cards (components/Emo.jsx) */
 .emo { display: inline-block; flex: none; width: 1.15em; height: 1.15em; margin-right: .4em; vertical-align: -.2em; }
@@ -237,7 +237,7 @@ tr:last-child td { border-bottom:none; }
 .emo-tint svg { display: block; width: 100%; height: 100%; }
 
 /* " New to iwopo? Create an account\ under the sign-in form (design review 2026-11-01) */
-.login-new { margin: 14px 0 0; text-align: center; font-size: 13px; color: var(--muted, #6b7280); }
+.login-new { margin: 14px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
 .login-new a { color: inherit; font-weight: 700; text-decoration: underline; }
 
 /* 🫥 until the app has drawn, the server's search-engine copy stays out of sight (public/boot.js, main.jsx) */
@@ -246,23 +246,23 @@ html[data-app-pending] #root { visibility: hidden; }
 /* 🔐 Before the panel — sign in, password reset, the email-link page and the sign-up window's code step — the public
  * site's light look and orange buttons; the panel's teal only once the vendor is inside (Raj, 2026-11-07). */
 .auth-public {
-  --ap-ink: #1A120B; --ap-text: #2C241C; --ap-gray: #6E6258; --ap-line: #EDE4DA; --ap-field: #FFFBF7;
-  --ap-accent: #E65C00; --ap-deep: #C44D00; --ap-grad: linear-gradient(135deg, #C44D00 0%, #E65C00 45%, #FF7A26 100%);
+  --ap-ink: var(--stone-190); --ap-text: var(--stone-267b); --ap-gray: var(--stone-505); --ap-line: var(--stone-923); --ap-field: var(--gray-990);
+  --ap-accent: var(--orange-645); --ap-deep: var(--orange-571); --ap-grad: linear-gradient(135deg, var(--orange-571) 0%, var(--orange-645) 45%, var(--orange-724) 100%);
   color: var(--ap-text);
 }
-.login-wrap.auth-public { background: #FFF7F0; }
-.auth-public .login-card { background: #fff; border-color: var(--ap-line); box-shadow: 0 30px 70px -40px rgba(26, 18, 11, .45); }
+.login-wrap.auth-public { background: var(--stone-980); }
+.auth-public .login-card { background: var(--gray-1000); border-color: var(--ap-line); box-shadow: 0 30px 70px -40px color-mix(in srgb, var(--stone-190) 45%, transparent); }
 .auth-public h1 { margin: 0 0 6px; font-family: 'Sora', sans-serif; font-size: 24px; color: var(--ap-ink); }
 .auth-public .login-sub, .auth-public label, .auth-public .login-new, .auth-public .login-back { color: var(--ap-gray); }
 .auth-public input { background: var(--ap-field); border: 1px solid var(--ap-line); color: var(--ap-ink); }
 .auth-public input:focus { outline: none; border-color: var(--ap-accent); }
 .auth-public .vc-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
-.auth-public .login-btn { border: 0; border-radius: 12px; background: var(--ap-grad); color: #fff; font-weight: 700; }
+.auth-public .login-btn { border: 0; border-radius: 12px; background: var(--ap-grad); color: var(--gray-1000); font-weight: 700; }
 .auth-public .login-btn:hover { background: var(--ap-grad); filter: brightness(1.05); }
 .auth-public .login-btn:disabled { opacity: 1; filter: none; cursor: default; }   /* waits, never fades */
 .auth-public .login-forgot-link, .auth-public .vc-link, .auth-public .login-back:hover { color: var(--ap-deep); }
-.auth-public .vc-link:disabled { color: #A89C91; }
-.auth-public .login-error { background: #FEECEB; color: #B42318; }
-.auth-public .login-notice { background: #EAF6EF; color: #1F5A4F; }
-.auth-public .pw-rules li.is-ok { color: #1F7A4D; }
+.auth-public .vc-link:disabled { color: var(--stone-700); }
+.auth-public .login-error { background: var(--mauve-957); color: var(--red-500); }
+.auth-public .login-notice { background: var(--slate-962b); color: var(--accent-426); }
+.auth-public .pw-rules li.is-ok { color: var(--green-515); }
 

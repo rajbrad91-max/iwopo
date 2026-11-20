@@ -56,7 +56,7 @@ function FocalPicker({ src, focus, onFocus, view }) {
  * and that happens on the public page. Forking this into a second view would
  * mean every future gallery fix needing to be made twice.
  */
-export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'gallery', shortcuts = false, insights = false }) {
+export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'gallery', shortcuts = false, insights = false, rawsel = false }) {
   const dialog = useDialog();
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -329,7 +329,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
-  if (open) return <AlbumDetail albumId={open} onBack={() => { setOpen(null); load(); }} />;
+  if (open) return <AlbumDetail albumId={open} rawsel={rawsel} onBack={() => { setOpen(null); load(); }} />;
   if (loading) return <div className="loading">Loading…</div>;
 
   /* 🎯 One definition, rendered in two places: at the top for a NEW album,

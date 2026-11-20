@@ -16,7 +16,7 @@
  */
 
 .st {
-  --st-ink: #1b1a18; --st-paper: #fdfcfa; --st-soft: #75726c; --st-line: #e9e6e0;
+  --st-ink: var(--gray-218); --st-paper: var(--gray-991); --st-soft: var(--gray-553); --st-line: var(--gray-926);
   background: var(--st-paper); color: var(--st-ink);
   font-family: var(--st-body); font-size: 16px; line-height: 1.6;
   min-height: 100vh; overflow-x: hidden;
@@ -26,8 +26,8 @@
 .st img { max-width: 100%; }
 
 .st-loading, .st-missing { min-height: 60vh; display: grid; place-content: center;
-  text-align: center; font-family: system-ui, sans-serif; color: #75726c; padding: 40px; }
-.st-missing h1 { font-size: 22px; margin: 0 0 6px; color: #1b1a18; }
+  text-align: center; font-family: system-ui, sans-serif; color: var(--gray-553); padding: 40px; }
+.st-missing h1 { font-size: 22px; margin: 0 0 6px; color: var(--gray-218); }
 
 /* ── motion ──────────────────────────────────────────────────────────── */
 /* A view is rebuilt on every navigation, so it plays this once — that single
@@ -102,7 +102,7 @@
 .st-more { text-align: center; margin-top: 48px; }
 
 .st-cta { display: inline-block; padding: 14px 34px; border-radius: 2px;
-  background: var(--st-accent); color: #fff; text-decoration: none; border: 1px solid var(--st-accent);
+  background: var(--st-accent); color: var(--gray-1000); text-decoration: none; border: 1px solid var(--st-accent);
   font-size: 11px; letter-spacing: .2em; text-transform: uppercase; font-weight: 600;
   transition: background .3s ease, color .3s ease, border-color .3s ease, opacity .3s ease; }
 .st-cta:hover { opacity: .84; }
@@ -116,9 +116,9 @@
 .st-hero-cover { position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; object-position: var(--focus, 50% 50%); z-index: -2; }
 .st-hero.has-cover::after { content: ''; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.46)); }
-.st-hero.has-cover .st-hero-title, .st-hero.has-cover .st-hero-cta { color: #fff; }
-.st-hero.has-cover .st-hero-tagline { color: rgba(255,255,255,.88); }
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gray-0) 22%, transparent), color-mix(in srgb, var(--gray-0) 46%, transparent)); }
+.st-hero.has-cover .st-hero-title, .st-hero.has-cover .st-hero-cta { color: var(--gray-1000); }
+.st-hero.has-cover .st-hero-tagline { color: color-mix(in srgb, var(--gray-1000) 88%, transparent); }
 
 .st-hero-inner { max-width: 760px; }
 .st-hero-logo { display: block; max-height: 84px; max-width: 280px;
@@ -203,7 +203,7 @@
   background: var(--st-paper); color: var(--st-ink); font-size: 22px; line-height: 1;
   cursor: pointer; opacity: 0; transition: opacity .3s ease, background .3s ease; }
 .st-reel:hover .st-reel-nav { opacity: 1; }
-.st-reel-nav:hover { background: var(--st-accent); color: #fff; border-color: var(--st-accent); }
+.st-reel-nav:hover { background: var(--st-accent); color: var(--gray-1000); border-color: var(--st-accent); }
 .st-reel-nav:focus-visible { opacity: 1; outline: 2px solid var(--st-accent); outline-offset: 2px; }
 .st-reel-prev { left: -18px; }
 .st-reel-next { right: -18px; }
@@ -271,26 +271,26 @@
 .st-aperture .st-hero { min-height: 100vh; place-content: end center;
   padding: 0 44px clamp(56px, 9vh, 96px); text-align: center; }
 .st-aperture .st-hero.has-cover::after {
-  background: linear-gradient(180deg, rgba(0,0,0,.06) 0%, rgba(0,0,0,.18) 42%, rgba(0,0,0,.62) 100%); }
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gray-0) 6%, transparent) 0%, color-mix(in srgb, var(--gray-0) 18%, transparent) 42%, color-mix(in srgb, var(--gray-0) 62%, transparent) 100%); }
 .st-aperture .st-hero-title { font-size: clamp(40px, 8vw, 92px); font-weight: 300;
   letter-spacing: -.04em; margin-bottom: 12px; }
 .st-aperture .st-hero-tagline { letter-spacing: .2em; text-transform: uppercase;
   font-size: 11px; max-width: 420px; margin-bottom: 28px; }
 .st-aperture .st-hero-logo { margin-bottom: 18px; max-height: 64px; }
-.st-aperture .st-hero .st-cta { background: transparent; border-color: #fff; color: #fff; border-radius: 0;
+.st-aperture .st-hero .st-cta { background: transparent; border-color: var(--gray-1000); color: var(--gray-1000); border-radius: 0;
   padding: 13px 28px; }
-.st-aperture .st-hero .st-cta:hover { background: #fff; color: #111; opacity: 1; }
-.st-aperture .st-hero .st-cta.is-ghost { border-color: rgba(255,255,255,.55); }
-.st-aperture .st-hero .st-cta.is-ghost:hover { background: rgba(255,255,255,.14); color: #fff; border-color: #fff; }
+.st-aperture .st-hero .st-cta:hover { background: var(--gray-1000); color: var(--gray-178); opacity: 1; }
+.st-aperture .st-hero .st-cta.is-ghost { border-color: color-mix(in srgb, var(--gray-1000) 55%, transparent); }
+.st-aperture .st-hero .st-cta.is-ghost:hover { background: color-mix(in srgb, var(--gray-1000) 14%, transparent); color: var(--gray-1000); border-color: var(--gray-1000); }
 .st-aperture.st-page-home .st-nav { position: fixed; left: 0; right: 0;
-  background: none; backdrop-filter: none; border-bottom: 0; color: #fff; }
-.st-aperture.st-page-home .st-links a, .st-aperture.st-page-home .st-brand-name { color: #fff; }
+  background: none; backdrop-filter: none; border-bottom: 0; color: var(--gray-1000); }
+.st-aperture.st-page-home .st-links a, .st-aperture.st-page-home .st-brand-name { color: var(--gray-1000); }
 .st-aperture .st-about { padding-top: 72px; padding-bottom: 56px; }
 .st-aperture .st-gal-cap { padding-top: 10px; }
 .st-aperture .st-reel-track { gap: 6px; }
 .st-aperture .st-reel-i { flex: 0 0 360px; }
 .st-aperture .st-reel-nav { border-radius: 0; }
-.st-aperture .st-alt { background: #f5f3ef; }
+.st-aperture .st-alt { background: var(--gray-965b); }
 /* recent work: the photographs touch, edge to edge — a strip, not three cards */
 .st-aperture .st-section.st-alt .st-wrap { max-width: none; padding-left: 0; padding-right: 0; }
 .st-aperture .st-section.st-alt .st-head,
@@ -338,12 +338,12 @@
 .st-atelier .st-reel-track { gap: 12px; }
 .st-atelier .st-reel-i { flex: 0 0 220px; }
 .st-atelier .st-reel-nav { border-radius: 0; border-color: var(--st-ink); }
-.st-atelier .st-alt { background: #f8f7f4; }
+.st-atelier .st-alt { background: var(--gray-976); }
 .st-atelier .st-gal-frame:hover .st-gal-img { transform: scale(1.03); }
 
 /* ── 3. VELLUM — warm and unhurried. Everything centred, words always under
    the picture rather than beside it, and a rule under each heading. */
-.st-vellum { --st-paper: #fcf9f4; --st-line: #ece1d0; --st-soft: #7c6b56; --st-ink: #2c2013; }
+.st-vellum { --st-paper: var(--gray-983); --st-line: var(--stone-914); --st-soft: var(--stone-538); --st-ink: var(--stone-254); }
 .st-vellum .st-hero { min-height: 76vh; }
 .st-vellum .st-hero-title { font-style: italic; }
 .st-vellum .st-cta { border-radius: 999px; padding: 14px 38px; }
@@ -357,12 +357,12 @@
 .st-vellum .st-reel-track { gap: 34px; }
 .st-vellum .st-reel-i { flex: 0 0 250px; }
 .st-vellum .st-reel-i .st-gal-img { aspect-ratio: 1 / 1; }
-.st-vellum .st-alt { background: #f6efe3; }
+.st-vellum .st-alt { background: var(--stone-954); }
 
 /* ── 4. NOIR — dark and cinematic. Frames are letterboxed, type is tracked
    out, and the rail runs like a strip of film. */
-.st-noir { --st-paper: #0b0b0d; --st-ink: #f1f1f3; --st-soft: #96969f; --st-line: #212127; }
-.st-noir .st-nav { background: color-mix(in srgb, #0b0b0d 84%, transparent); }
+.st-noir { --st-paper: var(--gray-151c); --st-ink: var(--gray-959); --st-soft: var(--slate-676); --st-line: var(--gray-250); }
+.st-noir .st-nav { background: color-mix(in srgb, var(--gray-151c) 84%, transparent); }
 .st-noir.st-page-home .st-nav { background: none; backdrop-filter: none; border-bottom: 0;
   position: fixed; left: 0; right: 0; }
 .st-noir .st-hero { min-height: 88vh; }
@@ -377,14 +377,14 @@
 .st-noir .st-reel-track { gap: 12px; }
 .st-noir .st-reel-i { flex: 0 0 340px; }
 .st-noir .st-reel-i .st-gal-img { aspect-ratio: 16 / 9; }
-.st-noir .st-reel-nav { border-radius: 0; background: #131317; }
-.st-noir .st-alt { background: #131317; }
+.st-noir .st-reel-nav { border-radius: 0; background: var(--gray-189); }
+.st-noir .st-alt { background: var(--gray-189); }
 .st-noir .st-logo img { filter: grayscale(1) invert(1); opacity: .6; }
 .st-noir .st-logo:hover img { filter: grayscale(1) invert(1); opacity: 1; }
 
 /* ── 5. BLOOM — light and airy. Soft corners, small frames, three staggered
    columns and plenty of white between them. */
-.st-bloom { --st-paper: #fffdfd; --st-line: #f1ebf5; --st-soft: #7a7085; --st-ink: #241f28; }
+.st-bloom { --st-paper: var(--gray-996); --st-line: var(--mauve-948b); --st-soft: var(--mauve-562); --st-ink: var(--mauve-249); }
 .st-bloom .st-hero { min-height: 70vh; }
 .st-bloom .st-hero-title { letter-spacing: -.01em; }
 .st-bloom .st-cta { border-radius: 999px; padding: 14px 38px; }
@@ -393,7 +393,7 @@
 .st-bloom .st-reel-track { gap: 26px; }
 .st-bloom .st-reel-i { flex: 0 0 215px; }
 .st-bloom .st-reel-i .st-gal-img { aspect-ratio: 3 / 4; }
-.st-bloom .st-alt { background: #faf6fc; }
+.st-bloom .st-alt { background: var(--gray-978b); }
 
 /* ── narrower screens ─────────────────────────────────────────────────── */
 @media (max-width: 1080px) {
@@ -530,7 +530,7 @@
 .st-noir .st-hero-logo { margin: 0 0 22px; }
 .st-noir .st-hero-cta { justify-content: flex-start; }
 .st-noir .st-hero.has-cover::after {
-  background: linear-gradient(0deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.15) 58%); }
+  background: linear-gradient(0deg, color-mix(in srgb, var(--gray-0) 72%, transparent) 0%, color-mix(in srgb, var(--gray-0) 15%, transparent) 58%); }
 
 /* 5 · BLOOM — the photograph as a card with air around it, the words below it
    rather than on top. Softer, and it never fights the picture for legibility. */
@@ -627,7 +627,7 @@
 /* one control per frame, and it says what it does. A bare ✕ asks a vendor to
    guess, and guessing wrong deletes their photograph. */
 .st-ph-swap { position: absolute; top: 8px; right: 8px; z-index: 4; cursor: pointer;
-  border-radius: 999px; background: rgba(12,12,14,.66); color: #fff;
+  border-radius: 999px; background: color-mix(in srgb, var(--gray-155) 66%, transparent); color: var(--gray-1000);
   padding: 5px 12px; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
   opacity: 0; transition: opacity .18s ease, background .18s ease; }
 .is-editable:hover .st-ph-swap { opacity: 1; }
@@ -638,10 +638,10 @@
    and the row does the spacing. */
 .st-ph-tools { position: absolute; top: 14px; left: 14px; z-index: 4;
   display: flex; gap: 8px; align-items: center; }
-.st-ph-cover, .st-ph-aim { cursor: pointer; border: 0; color: #fff;
-  background: rgba(12,12,14,.6); border-radius: 999px; padding: 7px 15px;
+.st-ph-cover, .st-ph-aim { cursor: pointer; border: 0; color: var(--gray-1000);
+  background: color-mix(in srgb, var(--gray-155) 60%, transparent); border-radius: 999px; padding: 7px 15px;
   font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
-.st-ph-cover:hover { background: rgba(12,12,14,.85); }
+.st-ph-cover:hover { background: color-mix(in srgb, var(--gray-155) 85%, transparent); }
 
 /* deliberately a wide, obvious target — adding work is the thing a vendor does
    most, and it should not be a small icon they have to find */
@@ -657,7 +657,7 @@
 
 /* ── ✍️ adding and removing the parts of a page, on the page ────────────── */
 .st-ph-del { border: 0; }
-.st-ph-del:hover { background: #c0392b; }
+.st-ph-del:hover { background: var(--red-543); }
 
 .st-quote.is-editable, .st-logo.is-editable { position: relative; }
 .st-quote.is-editable .st-ph-swap { top: -4px; right: -4px; }
@@ -676,6 +676,6 @@
 /* on a block that already has a picture the control is a small overlay, not a
    dashed tile standing in for one that isn't there */
 .st-sec-swap { position: absolute; top: 10px; right: 10px; margin: 0; padding: 5px 12px;
-  border-style: solid; border-color: transparent; background: rgba(12,12,14,.66);
-  color: #fff; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+  border-style: solid; border-color: transparent; background: color-mix(in srgb, var(--gray-155) 66%, transparent);
+  color: var(--gray-1000); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
 .st-split-img { position: relative; }

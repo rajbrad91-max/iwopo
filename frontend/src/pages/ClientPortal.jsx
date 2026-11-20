@@ -670,10 +670,12 @@ export default function ClientPortal({ token }) {
               <p className="po-eyebrow">Step two</p>
               <h2 className="po-h">Your contract</h2>
               <div className="po-panel">
-                                <h3 className="po-panel-t">On its way</h3>
+                {/* ⏳ No promise of an email (Raj, 2026-11-20): releasing a contract sends none — the client waits for the
+                    vendor to release it, or gets in touch with them */}
+                <h3 className="po-panel-t">On its way</h3>
                 <p className="po-panel-p no-gap">
-                  We&apos;re preparing your contract now. You&apos;ll get an email the moment
-                  it&apos;s ready to sign.
+                  Your contract is being prepared. Please wait for {business_name} to release it,
+                  or contact {business_name} if you have any questions.
                 </p>
               </div>
             </section>

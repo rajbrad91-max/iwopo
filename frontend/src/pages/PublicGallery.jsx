@@ -52,6 +52,9 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   const [lightbox, setLightbox] = useState(null);
   const [zipBusy, setZipBusy] = useState('');
   const [zipParts, setZipParts] = useState(null);   // a big download's parts: { q, title, parts, got }
+  const [saveFlow, setSaveFlow] = useState(null);   // 📱 saving picks to Photos, 20 a time: { ids, done, files, err }
+  const [zipAsk, setZipAsk] = useState(null);       // 💻 more than 50 picked: { ids } — asked before the one Zip
+  const [dlBar, setDlBar] = useState(null);         // 💻 50 or fewer, one file each: { n, got }
   const [activeEvent, setActiveEvent] = useState('all');
   const [matchIds, setMatchIds] = useState(null);
   const [selfieBusy, setSelfieBusy] = useState(false);
@@ -316,15 +319,18 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   /* 📦 A big tab comes in parts of up to 4 GB (backend lib/photoZip.js): ask first, then either download the one Zip
      as before or offer the parts — each its own Zip, so a dropped connection repeats one part, not all of it. */
   async function downloadAll(eventId) {
-    const key = eventId || 'all';
-    setZipBusy(key);
     const q = eventId && eventId !== 'all' ? `?event=${eventId}` : '';
+    const name = session.events.find(ev => String(ev.id) === String(eventId))?.name;
+    downloadZip(q, name || 'these photos', eventId || 'all');
+  }
+  /** one Zip — or its parts when it is big — of the gallery, a tab (?event=) or the client's picks (?ids=) */
+  async function downloadZip(q, title, key) {
+    setZipBusy(key);
     try {
       const r = await fetch(`${API}/${token}/download-parts${q}`);
       const d = r.ok ? await r.json() : null;
       if (d?.parts?.length > 1) {
-        const name = session.events.find(ev => String(ev.id) === String(eventId))?.name;
-        setZipParts({ q, title: name || 'these photos', parts: d.parts, count: d.count, bytes: d.bytes, got: [] });
+        setZipParts({ q, title, parts: d.parts, count: d.count, bytes: d.bytes, got: [] });
         setZipBusy('');
         return;
       }
@@ -333,11 +339,58 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
     setTimeout(() => setZipBusy(''), 4000);
   }
   const gb = (bytes) => `${(bytes / 1e9).toFixed(1)} GB`;   // as drives label it, like the 4 GB parts
-  function downloadPicked() {
-    setZipBusy('picked');
-    [...picked].forEach((id, i) => setTimeout(() => downloadOne(id), i * 400));
-    setTimeout(() => setZipBusy(''), picked.size * 400 + 800);
+
+  /* ⬇️ Downloading the picks (Raj, 2026-11-20). A device that can hand files to its Photos app (phones, tablets,
+     folds — asked, never guessed from the screen) saves them 20 at a time from its own Save sheet. Anything else
+     (a computer) downloads up to 50 as separate files with a small bar saying to click Allow, and more than 50 as
+     one Zip after a heads-up. Separate files used to start all at once, and browsers kept only the first. */
+  const SAVE_GROUP = 20, MAX_SEPARATE = 50;
+  const pickedInOrder = () => allPhotos.filter(p => picked.has(p.id)).map(p => p.id);
+  function canSaveToPhotos() {
+    try {
+      if (!window.matchMedia?.('(pointer: coarse)').matches || !navigator.canShare) return false;
+      return navigator.canShare({ files: [new File([new Blob(['x'], { type: 'image/jpeg' })], 'x.jpg', { type: 'image/jpeg' })] });
+    } catch { return false; }
   }
+  function downloadPicked() {
+    const ids = pickedInOrder();
+    if (!ids.length) return;
+    if (canSaveToPhotos()) { setSaveFlow({ ids, done: 0, files: null, err: '' }); prepareGroup(ids, 0); return; }
+    if (ids.length > MAX_SEPARATE) { setZipAsk({ ids }); return; }
+    const gap = 700;   // one at a time: browsers handle a run of downloads far better than a burst
+    setDlBar({ n: ids.length, got: 0 });
+    ids.forEach((id, i) => setTimeout(() => { downloadOne(id); setDlBar(b => b && { ...b, got: i + 1 }); }, i * gap));
+    setTimeout(() => setDlBar(null), ids.length * gap + 2500);
+  }
+  /* The Save sheet opens only straight from a tap, so each group is fetched BEFORE its button is tapped. */
+  async function prepareGroup(ids, from) {
+    try {
+      const files = await Promise.all(ids.slice(from, from + SAVE_GROUP).map(async (id) => {
+        const r = await fetch(`${API}/${token}/download/${id}`);
+        if (!r.ok) throw new Error('not ready');
+        const blob = await r.blob();
+        const name = allPhotos.find(p => p.id === id)?.filename || `photo-${id}.jpg`;
+        return new File([blob], name, { type: blob.type || 'image/jpeg' });
+      }));
+      setSaveFlow(f => f && f.done === from && { ...f, files });
+    } catch {
+      setSaveFlow(f => f && { ...f, err: 'Some photos could not be prepared. Check your connection and try again.' });
+    }
+  }
+  async function saveGroup() {
+    const f = saveFlow;
+    if (!f?.files) return;   // still preparing
+    try {
+      await navigator.share({ files: f.files });
+      const done = f.done + f.files.length;
+      if (done >= f.ids.length && f.ids.length <= SAVE_GROUP) { setSaveFlow(null); return; }   // one group: done in one tap
+      setSaveFlow({ ...f, done, files: null, err: '' });
+      if (done < f.ids.length) prepareGroup(f.ids, done);
+    } catch (e) {
+      if (e?.name !== 'AbortError') setSaveFlow({ ...f, err: 'Your phone could not open its Save sheet. Try again.' });
+    }
+  }
+  function retryGroup() { setSaveFlow(f => f && { ...f, err: '' }); prepareGroup(saveFlow.ids, saveFlow.done); }
 
   function togglePick(id) {
     setPicked(prev => {
@@ -742,6 +795,64 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 📱 save the picks to Photos, 20 a time (approved by Raj, 2026-11-20) */}
+      {saveFlow && (() => {
+        const n = saveFlow.ids.length, done = saveFlow.done, to = Math.min(done + SAVE_GROUP, n);
+        const one = n <= SAVE_GROUP, finished = done >= n;
+        const label = one ? `Save ${n} photos` : `Save photos ${done + 1}–${to}`;
+        return (
+          <div className="pg-modal" onClick={() => setSaveFlow(null)}>
+            <div className="pg-modal-card" onClick={e => e.stopPropagation()}>
+              <button className="pg-modal-x" onClick={() => setSaveFlow(null)} title="Close">✕</button>
+              <h2 className="pg-modal-title">{finished ? `All ${n} photos saved` : done ? `${done} photos saved` : `Save ${n} photos?`}</h2>
+              {done > 0 && (
+                <>
+                  <p className="pg-save-count">{done} of {n} saved</p>
+                  <progress className="pg-save-track" value={done} max={n} aria-label={`${done} of ${n} saved`} />
+                </>
+              )}
+              <p className="pg-modal-sub">
+                {finished ? 'You’ll find them in your Photos app.' : done ? `Tap below to save the next ${to - done}.` : one ? 'They’ll save to your Photos.' : `They’ll save to your Photos, ${SAVE_GROUP} at a time.`}
+              </p>
+              {saveFlow.err && <p className="pg-err">{saveFlow.err}</p>}
+              <div className="pg-modal-acts">
+                {finished ? <button className="pg-btn" onClick={() => setSaveFlow(null)}>Done</button> : saveFlow.err ? (
+                  <button className="pg-btn" onClick={retryGroup}>Try again</button>
+                ) : (
+                  <button className={`pg-btn${saveFlow.files ? '' : ' is-busy'}`} onClick={saveGroup} aria-busy={!saveFlow.files}>
+                    {saveFlow.files ? label : 'Preparing photos…'}
+                  </button>
+                )}
+                {!finished && <button className="pg-btn is-ghost" onClick={() => setSaveFlow(null)}>{done ? 'Done for now' : 'Cancel'}</button>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 💻 more than 50 picked on a computer: one Zip, said before it starts (approved by Raj, 2026-11-20) */}
+      {zipAsk && (
+        <div className="pg-modal" onClick={() => setZipAsk(null)}>
+          <div className="pg-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="pg-modal-x" onClick={() => setZipAsk(null)} title="Close">✕</button>
+            <h2 className="pg-modal-title">Download {zipAsk.ids.length} photos?</h2>
+            <p className="pg-modal-sub">More than {MAX_SEPARATE} photos come as one zip file.<br />Want separate photos? Select {MAX_SEPARATE} or fewer.</p>
+            <div className="pg-modal-acts">
+              <button className="pg-btn" onClick={() => { const q = `?ids=${zipAsk.ids.join(',')}`; setZipAsk(null); downloadZip(q, 'your selection', 'picked'); }}>Download zip</button>
+              <button className="pg-btn is-ghost" onClick={() => setZipAsk(null)}>Change my selection</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 💻 50 or fewer on a computer: no pop-up, just this bar while they arrive */}
+      {dlBar && (
+        <div className="pg-dlbar" role="status">
+          <span className="pg-dlbar-n">Downloading {dlBar.n} photos · {dlBar.got} of {dlBar.n}</span>
+          <span className="pg-dlbar-tip">If your browser asks, click <b>Allow</b>.</span>
         </div>
       )}
 

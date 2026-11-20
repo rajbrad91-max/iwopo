@@ -439,7 +439,7 @@ export default function VendorPanel({ onLogout }) {
           ) : tab === 'requests' ? (
             <RequestsView />
           ) : tab === 'liveshoot' ? (
-            <GalleriesView key="liveshoot" kind="liveshoot" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
+            <GalleriesView key="liveshoot" kind="liveshoot" rawsel={has('rawsel')} routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'liveshoot', album: id ? String(id) : null })} />
           ) : tab === 'ppm' ? (
             has('agent') ? <PpmBoard /> : null   /* 📊 the owner's private board — nothing for anyone else */
           ) : tab === 'comms' ? (
@@ -455,7 +455,7 @@ export default function VendorPanel({ onLogout }) {
           ) : tab === 'galleries' ? (
             <GalleriesView key="galleries" routeAlbum={route.album} onOpenAlbum={(id) => navigate({ tab: 'galleries', album: id ? String(id) : null })}
               onEditEmail={() => { setEmailFocus('gallery_shared'); setTab('settings'); }}
-              shortcuts={has('galleries')} insights={has('gallery_insights')} />
+              shortcuts={has('galleries')} insights={has('gallery_insights')} rawsel={has('rawsel')} />
           ) : tab === 'website' ? (
             <WebsiteView />
           ) : tab === 'aichat' ? (
