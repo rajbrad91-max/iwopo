@@ -19,7 +19,7 @@
 .ffp-logo { max-width: 110px; max-height: 56px; object-fit: contain; display: block; margin: 0 auto 16px; }
 .ffp-biz { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .16em;
   text-transform: uppercase; color: #8a949c; text-align: center; }
-.ffp-h1 { margin: 0 0 8px; font-size: 24px; font-weight: 600; color: #1a2529; text-align: center; }
+.ffp-h1 { margin: 0 0 18px; font-size: 24px; font-weight: 600; color: #1a2529; text-align: center; }
 .ffp-sub { margin: 0 0 20px; font-size: 14px; color: #64757d; line-height: 1.6; text-align: center; }
 .ffp-note { margin: 0 0 22px; font-size: 14px; color: #4a5560; line-height: 1.7;
   background: #f7f9fa; border: 1px solid #e8edf0; border-radius: 10px; padding: 12px 15px; }
@@ -37,16 +37,24 @@
 .ffp-btn:disabled { opacity: .6; cursor: default; }
 
 .ffp-items { display: flex; flex-direction: column; gap: 8px; }
-.ffp-item { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+.ffp-item { display: flex; align-items: center; gap: 12px;
   padding: 12px 15px; background: #f7f9fa; border: 1px solid #e8edf0; border-radius: 9px;
   text-decoration: none; color: inherit; }
 .ffp-item:hover { border-color: #0f766e; background: #f0f6f5; }
 .ffp-item.is-mine { background: #fff; cursor: default; }
 .ffp-item.is-mine:hover { border-color: #e8edf0; background: #fff; }
-.ffp-item-name { font-size: 14px; color: #1a2529; word-break: break-all; }
+.ffp-item-name { flex: 1; min-width: 0; text-align: left; font-size: 14px; color: #1a2529; overflow-wrap: anywhere; }
 .ffp-item-meta { font-size: 12.5px; color: #8a949c; white-space: nowrap; flex-shrink: 0; }
+/* the row's own action, said in words (Raj, 2026-11-20 — the rows gave no sign they could be clicked) */
+.ffp-item-go { flex-shrink: 0; padding: 5px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+  color: #0f766e; background: #fff; border: 1px solid #d5e2e0; transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+.ffp-item:hover .ffp-item-go { border-color: #0f766e; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(13, 148, 136, .13); }
+.ffp-page .nav-svg { display: inline-flex; flex-shrink: 0; }
+.ffp-page .nav-svg svg { display: block; width: 18px; height: 18px; }
+.ffp-thumb-folder { display: flex; align-items: center; justify-content: center; --nav-cut: #f7f9fa; }
+.ffp-thumb-folder .nav-svg svg { width: 24px; height: 24px; }
 
-.ffp-drop { display: block; margin-top: 10px; padding: 22px; text-align: center;
+.ffp-drop { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; padding: 22px; text-align: center;
   border: 1.5px dashed #c4ced4; border-radius: 11px; background: #fbfcfd;
   font-size: 14px; color: #64757d; cursor: pointer; }
 .ffp-drop:hover { border-color: #0f766e; color: #0f766e; background: #f0f6f5; }
@@ -54,6 +62,7 @@
 
 .ffp-msg { margin: 14px 0 0; padding: 11px 14px; border-radius: 9px; font-size: 13.5px; }
 .ffp-msg.is-ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+@media (max-width: 560px) { .ffp-item-meta { display: none; } }   /* a phone keeps the name and its action */
 .ffp-msg.is-err { background: #fff5f5; border: 1px solid #fcc; color: #c53030; }
 .ffp-state { text-align: center; color: #64757d; font-size: 14px; padding: 20px 0; margin: 0; }
 
@@ -75,9 +84,18 @@
 
 .fd { position: relative; }
 
+/* 🧭 two tidy rows (Raj, 2026-11-20): Files/Contacts and the search on top; where you are and what you can do
+   under them. On a narrower screen everything stacks, and nothing is pushed off the edge. */
 .fd-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+  grid-template-areas: "tabs find" "crumbs actions"; gap: 10px 16px; margin-bottom: 10px;
+}
+.fd-bar > .ff-tabs { grid-area: tabs; }
+.fd-bar > .fd-find { grid-area: find; }
+.fd-bar > .fd-crumbs { grid-area: crumbs; }
+.fd-bar > .fd-actions { grid-area: actions; }
+@media (max-width: 900px) {
+  .fd-bar { grid-template-columns: minmax(0, 1fr); grid-template-areas: "tabs" "crumbs" "actions" "find"; }
 }
 
 /* ── where you are ─────────────────────────────────────────────────────── */
@@ -92,30 +110,25 @@
 .fd-crumb.is-here:hover { background: none; }
 .fd-sep { color: var(--muted); opacity: .4; font-size: 13px; }
 
-/* the share state of the folder you are standing in, inline with its name */
-.fd-tag {
-  margin-left: 8px; padding: 3px 10px; border-radius: 20px; cursor: pointer;
-  background: var(--fill); border: 1px solid var(--line); color: var(--muted);
-  font: inherit; font-size: 11.5px; font-weight: 600;
-}
-.fd-tag:hover { color: var(--text); border-color: var(--teal); }
-.fd-tag.is-on { background: var(--teal-soft); border-color: transparent; color: var(--teal); }
-
 /* ── what you can do ───────────────────────────────────────────────────── */
-.fd-actions { display: flex; align-items: center; gap: 6px; }
+.fd-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 900px) { .fd-actions { justify-content: flex-start; } }
 .fd-b {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   padding: 7px 13px; border-radius: 10px; cursor: pointer;
   background: var(--panel); border: 1px solid var(--line); color: var(--text);
-  font: inherit; font-size: 13px; font-weight: 500;
-  transition: border-color .18s ease, background .18s ease, transform .18s var(--ease);
+  font: inherit; font-size: 13px; font-weight: 600;
+  transition: border-color .18s ease, color .18s ease, transform .18s var(--ease), box-shadow .18s ease;
 }
-.fd-b:hover { border-color: var(--teal); }
-.fd-b:active { transform: scale(.96); }
-.fd-b:disabled { opacity: .5; cursor: default; transform: none; }
-.fd-b.is-primary { background: var(--btn-fill); border-color: var(--btn-fill); color: var(--btn-fill-ink); font-weight: 600; }
+.fd-b:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
+.fd-b:active:not(:disabled) { transform: scale(.96); }
+.fd-b:disabled { opacity: .5; cursor: default; }
+.dash .fd-b .nav-svg { width: auto; height: auto; }
+.dash .fd-b .nav-svg svg { width: 15px; height: 15px; }
 
 .fd-view { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-left: 4px; }
-.fd-v { background: var(--panel); border: 0; cursor: pointer; padding: 6px 11px; font-size: 14px; color: var(--muted); }
+.fd-v { background: var(--panel); border: 0; cursor: pointer; padding: 7px 12px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.fd-v:hover { color: var(--teal); }
 .fd-v.is-on { background: var(--fill2); color: var(--text); }
 
 /* ── how full you are: a thin line, not a panel ────────────────────────── */
@@ -147,6 +160,9 @@
   position: relative;
 }
 .fd-ic img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; display: block; }
+.fd-ic.is-folder { --nav-cut: var(--panel); }
+.dash .fd-ic.is-folder .nav-svg { width: 46%; height: auto; }
+.dash .fd-ic.is-folder .nav-svg svg { width: 100%; height: auto; }
 .fd-ext { font-size: 13px; font-weight: 800; letter-spacing: .06em; color: var(--muted); }
 .fd-wait { width: 100%; height: 100%; border-radius: 7px; background: var(--fill2); }
 .fd-name {
@@ -173,12 +189,16 @@
 .fd-row td { padding: 9px 12px; font-size: 13.5px; border-bottom: 1px solid var(--line2); }
 .fd-row:hover { background: var(--fill); }
 .fd-row.is-folder { cursor: pointer; }
+.fd-row-ic { display: inline-flex; vertical-align: -4px; margin-right: 9px; --nav-cut: var(--panel); }
+.dash .fd-row-ic .nav-svg { width: auto; height: auto; }
+.dash .fd-row-ic .nav-svg svg { width: 18px; height: 18px; }
 .fd-row-ext { display: inline-block; min-width: 40px; margin-right: 9px; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: var(--muted); }
 .fd-row-acts { width: 110px; text-align: right; white-space: nowrap; }
 
 /* ── empty, quiet, drop ────────────────────────────────────────────────── */
 .fd-quiet { color: var(--muted); font-size: 13px; }
 .fd-msg { margin: 0 0 10px; font-size: 13px; color: var(--teal); }
+.fd-msg.is-err { color: var(--red); }
 .fd-empty { padding: 52px 20px; text-align: center; border: 1.5px dashed var(--line); border-radius: 14px; }
 .fd-empty-t { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--text); }
 .fd-drop {
@@ -190,8 +210,10 @@
 }
 
 @media (max-width: 640px) {
-  .fd-bar { flex-direction: column; align-items: stretch; gap: 10px; }
-  .fd-actions { justify-content: space-between; }
+  .fd-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }   /* three to a row, not two giant squares */
+  .fd-tile { padding: 8px 6px 9px; }
+  .fd-name { font-size: 12px; }
+  .fd-meta { font-size: 10.5px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -282,7 +304,9 @@
 .fd-resume { margin: 10px 0 4px; display: flex; flex-direction: column; gap: 6px; }
 .fd-resume-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px;
   border-radius: 9px; background: #fff7ed; border: 1px solid #fed7aa; font-size: 13px; }
-.fd-resume-ic { flex: none; }
+.fd-resume-ic { flex: none; display: inline-flex; --nav-cut: #fff7ed; }
+.dash .fd-resume-ic .nav-svg { width: auto; height: auto; }
+.dash .fd-resume-ic .nav-svg svg { width: 18px; height: 18px; }
 .fd-resume-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fd-resume-at { color: #9a6b2f; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fd-resume-go { margin-left: auto; padding: 5px 11px; border-radius: 7px; cursor: pointer;
@@ -297,11 +321,13 @@
    rather than sitting apart in the sidebar. Contacts exist only to choose who
    a file goes to; they are not a general address book. */
 .ff-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
-.ff-tab { padding: 9px 16px; border: 0; background: none; cursor: pointer;
+.ff-tab { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: 0; background: none; cursor: pointer;
   font-size: 13.5px; font-weight: 600; color: var(--muted);
   border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .ff-tab:hover { color: var(--text); }
 .ff-tab.is-on { color: var(--teal); border-bottom-color: var(--teal); }
+.dash .ff-tab .nav-svg { width: auto; height: auto; }
+.dash .ff-tab .nav-svg svg { width: 17px; height: 17px; }
 
 /* 🔗 one labelled main action per row + a ⋯ menu (Muse review 2026-10-20) */
 .fd-act { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 7px;
@@ -317,6 +343,11 @@
 .fd-menu-i.is-del { color: #dc2626; }
 .fd-acts:has(.fd-menu) { opacity: 1; }
 @media (hover: none) { .fd-acts { opacity: 1; } }
+/* 📱 on a phone a small tile has no room for a drop-down, so the menu rises from the bottom as a sheet */
+@media (max-width: 640px) {
+  .fd-menu { position: fixed; left: 12px; right: 12px; bottom: 12px; top: auto; z-index: 60; padding: 6px; border-radius: 14px; box-shadow: 0 -6px 30px rgba(0, 0, 0, .22); }
+  .fd-menu-i { padding: 13px 14px; font-size: 15px; }
+}
 .fd-pill { display: inline-block; margin-top: 6px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
   background: var(--teal-soft); color: var(--teal); }
 .fd-pill.is-inline { margin-top: 0; margin-left: 8px; }
@@ -326,7 +357,7 @@
 .ff-share .dlg-input { margin-top: 6px; }
 .ff-share-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #64757d; margin: 16px 0 0; }
 .ff-share-hint { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: #64757d; }
-.ff-status { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e6f4f1; color: #0f766e; }
+.ff-status { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e6f4f1; color: #0f766e; margin-top: 2px; }
 .ff-link-row { display: flex; gap: 8px; margin-top: 12px; }
 .ff-link-row .dlg-input { flex: 1; min-width: 0; margin-top: 0; }
 .ff-section { border-top: 1px solid #e3e8ec; margin-top: 16px; padding-top: 2px; }
@@ -338,14 +369,28 @@
 .ff-person-n { overflow-wrap: anywhere; }
 .ff-person-s { font-size: 12px; color: #64757d; }
 .ff-note { margin: 12px 0 0; font-size: 13px; color: #0f766e; }
+/* 📇 the vendor's Contacts, ticked with a tap (Raj, 2026-11-20) */
+.ff-pick { list-style: none; margin: 8px 0 0; padding: 4px; max-height: 232px; overflow-y: auto;
+  border: 1px solid #e3e8ec; border-radius: 10px; background: #fff; }
+.ff-pick-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.ff-pick-row:hover { background: #f4f8f7; }
+.ff-pick-row.is-on { background: #e6f4f1; }
+.ff-pick-row input { flex: none; width: 16px; height: 16px; accent-color: #0f766e; }
+.ff-pick-who { display: flex; flex-direction: column; min-width: 0; }
+.ff-pick-name { font-size: 13.5px; font-weight: 600; color: #1a2529; }
+.ff-pick-note { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: #0f766e; background: #e6f4f1; }
+.ff-pick-row.is-on .ff-pick-note { background: #fff; }
+.ff-pick-mail { display: block; font-size: 12px; font-weight: 400; color: #64757d; overflow-wrap: anywhere; }
+.ff-settings > summary { display: list-item; cursor: pointer; list-style-position: inside; margin: 14px 0 4px; }
+.ff-settings > summary:hover { color: #0f766e; }
 .ff-spacer { flex: 1; }
 
 /* 🔍 one sticky toolbar (tabs + where you are + search + actions), then filters and sort — Muse review 2026-10-20 */
 .fd-sticky { position: sticky; top: 0; z-index: 6; padding: 8px 0 2px; margin-bottom: 6px;
   background: color-mix(in srgb, var(--panel-2) 92%, transparent); backdrop-filter: blur(6px); }
 .fd-bar .ff-tabs { margin: 0; border-bottom: 0; }   /* the tabs share the toolbar row */
-.fd-find { flex: 1 1 260px; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 420px; }
-@media (max-width: 900px) { .fd-find { flex-basis: 100%; max-width: none; order: 3; } }
+.fd-find { display: flex; align-items: center; gap: 8px; min-width: 0; width: 380px; max-width: 100%; }
+@media (max-width: 900px) { .fd-find { width: 100%; } }
 .fd-search { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 9px;
   border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
 .fd-search:focus { outline: none; border-color: var(--teal); }
@@ -358,7 +403,9 @@
 .fd-sort { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
 .fd-sort select { font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
 .fd-sub { margin-left: 8px; font-size: 11.5px; color: var(--muted); }
-.fd-empty-art { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+.fd-empty-art { display: flex; justify-content: center; margin-bottom: 10px; --nav-cut: var(--panel-2); }
+.dash .fd-empty-art .nav-svg { width: auto; height: auto; }
+.dash .fd-empty-art .nav-svg svg { width: 56px; height: 56px; }
 .fd-empty-acts { display: flex; gap: 8px; justify-content: center; margin: 12px 0 8px; }
 .fd-limit { font-size: 11.5px; }
 
@@ -387,8 +434,10 @@
 .fd-collage.is-n3 .fd-collage-cell:first-child { grid-row: span 2; }
 .fd-collage-cell { overflow: hidden; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
 .fd-collage-cell img { border-radius: 0; }
-.fd-folder-badge { position: absolute; left: 6px; bottom: 6px; font-size: 14px; line-height: 1; padding: 3px 5px;
-  border-radius: 6px; background: rgba(255, 255, 255, .88); }
+.fd-folder-badge { position: absolute; left: 6px; bottom: 6px; display: flex; padding: 3px;
+  border-radius: 6px; background: rgba(255, 255, 255, .9); --nav-cut: #fff; }
+.dash .fd-folder-badge .nav-svg { width: auto; height: auto; }
+.dash .fd-folder-badge .nav-svg svg { width: 16px; height: 16px; }
 /* 🎬 a video's poster wears a play badge */
 .fd-play { position: absolute; inset: 0; margin: auto; width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff;
@@ -397,8 +446,6 @@
 /* R2-5: the share link, readable in full */
 .ff-link-text { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid #e3e8ec; background: #f6f8f9;
   color: #1a2529; font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; user-select: all; }
-/* R2-4: inside a folder the toolbar has one more button: it wraps on a phone instead of running off */
-@media (max-width: 720px) { .fd-actions { flex-wrap: wrap; } }
 
 /* R2-5 (phone): the link box sits above the Copy button instead of being squeezed beside it */
 @media (max-width: 560px) {

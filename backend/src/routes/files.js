@@ -412,11 +412,12 @@ function shareEmailHtml({ vendorName, title, note, url, hasPassword, message }) 
 }
 
 /**
- * POST /api/files/:id/email → send the share link to one or more addresses.
+ * POST /api/files/:id/email { contact_ids?, to?, message? } → send the share link.
  *
- * The link is built from the request's own origin rather than a configured
- * domain, so a share sent from staging points at staging. A hard-coded live URL
- * here has already caused a staging feature to hand out live links once.
+ * `contact_ids` are people ticked from the vendor's Contacts; `to` is any other
+ * address typed in. Everyone it went to who is in Contacts is remembered on the
+ * share with the day it was sent (share_recipients), so the Share pop-up can
+ * say who already has the link (Raj, 2026-11-20).
  */
 router.post('/:id/email', requireAuth, async (req, res) => {
   try {
@@ -426,7 +427,12 @@ router.post('/:id/email', requireAuth, async (req, res) => {
     if (own.vendor_id !== vid(req)) return res.status(403).json({ error: 'Forbidden' });   // 🔒 tenancy
 
     const raw = Array.isArray(req.body?.to) ? req.body.to : String(req.body?.to || '').split(/[,;\s]+/);
-    const to = raw.map(x => String(x).trim()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    const typed = raw.map(x => String(x).trim().toLowerCase()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    const ids = Array.isArray(req.body?.contact_ids) ? req.body.contact_ids.map(Number).filter(Boolean) : [];
+    // 📇 every contact of THIS vendor — the ticked ones, and any typed address that is already one of them
+    const book = await prisma.contacts.findMany({ where: { vendor_id: own.vendor_id }, select: { id: true, email: true } });   // 🔒 tenancy
+    const ticked = book.filter(c => ids.includes(c.id));
+    const to = [...new Set([...ticked.map(c => c.email.trim().toLowerCase()), ...typed])];
     if (!to.length) return res.status(400).json({ error: 'Give at least one valid email address' });
     if (to.length > 20) return res.status(400).json({ error: 'Twenty addresses at a time is the limit' });
 
@@ -447,15 +453,26 @@ router.post('/:id/email', requireAuth, async (req, res) => {
       + `${own.password ? '\n\nThis link asks for a password. Whoever sent it to you will have it.' : ''}`
       + `\n\nSent with iwopo · File Flyer`;
 
-    const sent = await sendAsVendor(own.vendor_id, {
-      to: to.join(', '),
-      subject: `${vendorName} has shared files with you`,
-      html, text,
-    });
+    /* ✉️ one email each, so nobody sees who else got the link — a client never
+       learns the editor's address (Raj, 2026-11-20) */
+    const delivered = [];
+    let refusal = null;
+    for (const addr of to) {
+      const sent = await sendAsVendor(own.vendor_id, { to: addr, subject: `${vendorName} has shared files with you`, html, text });
+      if (sent.ok) delivered.push(addr); else refusal = refusal || sent;
+    }
     // the share itself is fine either way — say which happened rather than
     // reporting a failure the vendor cannot act on
-    if (!sent.ok) return res.status(502).json({ error: sent.error, message: sent.message });
-    res.json({ ok: true, sent_to: to.length, via: sent.via });
+    if (!delivered.length) return res.status(502).json({ error: refusal.error, message: refusal.message });
+    const now = new Date();
+    for (const c of book.filter(k => delivered.includes(k.email.trim().toLowerCase()))) {
+      await prisma.share_recipients.upsert({
+        where: { share_id_contact_id: { share_id: own.id, contact_id: c.id } },
+        update: { sent_at: now },
+        create: { share_id: own.id, contact_id: c.id, vendor_id: own.vendor_id, sent_at: now },
+      });
+    }
+    res.json({ ok: true, sent_to: delivered.length, failed: to.filter(a => !delivered.includes(a)) });
   } catch (e) { serverError(res, e); }
 });
 

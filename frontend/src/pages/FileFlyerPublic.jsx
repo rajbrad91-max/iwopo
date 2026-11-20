@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import './fileflyer.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { fileExt } from '../lib/fileExt';
+import NavIcon from '../components/NavIcon';
 
 function fmtBytes(n) {
   const b = Number(n || 0);
@@ -28,7 +29,7 @@ export default function FileFlyerPublic({ token }) {
   /* A large file goes up in parts, and without this the button says "Uploading…"
      for an hour with no sign of life. */
   const [prog, setProg] = useState('');
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState(null);   // { tone: 'ok' | 'err', text }
   const fileRef = useRef(null);
   useDocumentTitle(data?.business_name);
 
@@ -73,18 +74,18 @@ export default function FileFlyerPublic({ token }) {
   async function onPick(e) {
     const files = [...(e.target.files || [])];
     if (!files.length) return;
-    setBusy(true); setMsg('');
+    setBusy(true); setMsg(null);
     try {
       await api.clientUploadFiles(token, files, name, folderId, (fname, done, total) =>
         setProg(`${fname} — ${done} of ${total} parts sent`));
       await load();
       await loadFolder(folderId);
-      setMsg(`✅ Sent ${files.length} file${files.length === 1 ? '' : 's'} — thank you!`);
-    } catch (er) { setMsg('⚠️ ' + er.message); }
+      setMsg({ tone: 'ok', text: `Sent ${files.length} file${files.length === 1 ? '' : 's'} — thank you!` });
+    } catch (er) { setMsg({ tone: 'err', text: er.message }); }
     finally {
       setBusy(false); setProg('');
       if (fileRef.current) fileRef.current.value = '';
-      setTimeout(() => setMsg(''), 4000);
+      setTimeout(() => setMsg(null), 4000);
     }
   }
 
@@ -98,7 +99,7 @@ export default function FileFlyerPublic({ token }) {
 
   const isImage = (it) => /^image\//.test(it.mime || '');
 
-  if (err) return <div className="ffp-page"><div className="ffp-card"><p className="ffp-state">⚠️ {err}</p></div></div>;
+  if (err) return <div className="ffp-page"><div className="ffp-card"><p className="ffp-state">{err}</p></div></div>;
   if (!data) return <div className="ffp-page"><div className="ffp-card"><p className="ffp-state">Loading…</p></div></div>;
 
   if (data.gated) return (
@@ -110,7 +111,7 @@ export default function FileFlyerPublic({ token }) {
         <form onSubmit={unlock}>
           <input className={`ffp-input ${pwErr ? 'is-err' : ''}`} type="password" placeholder="Password"
             value={pw} onChange={e => setPw(e.target.value)} autoFocus />
-          {pwErr && <p className="ffp-err">⚠️ {pwErr}</p>}
+          {pwErr && <p className="ffp-err">{pwErr}</p>}
           <button className="ffp-btn" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Open'}</button>
         </form>
       </div>
@@ -148,7 +149,7 @@ export default function FileFlyerPublic({ token }) {
                 {idx === trail.length - 1
                   ? <span className="ffp-crumb is-here">{t.name}</span>
                   : <button className="ffp-crumb" onClick={() => setFolderId(idx === 0 ? null : t.id)}>
-                      {idx === 0 ? '🏠 ' : ''}{t.name}
+                      {t.name}
                     </button>}
               </span>
             ))}
@@ -167,8 +168,10 @@ export default function FileFlyerPublic({ token }) {
             <div className="ffp-items">
               {folders.map(f => (
                 <button key={f.id} className="ffp-item ffp-folder" onClick={() => setFolderId(f.id)}>
-                  <span className="ffp-item-name">📁 {f.name}</span>
-                  <span className="ffp-item-meta">{f.file_count} file{f.file_count === 1 ? '' : 's'} ›</span>
+                  <span className="ffp-thumb ffp-thumb-folder"><NavIcon name="folder" /></span>
+                  <span className="ffp-item-name">{f.name}</span>
+                  <span className="ffp-item-meta">{f.file_count} file{f.file_count === 1 ? '' : 's'}</span>
+                  <span className="ffp-item-go">Open</span>
                 </button>
               ))}
             </div>
@@ -188,6 +191,7 @@ export default function FileFlyerPublic({ token }) {
                     : <span className="ffp-thumb ffp-thumb-doc">{fileExt(i.filename)}</span>}
                   <span className="ffp-item-name">{i.filename}</span>
                   <span className="ffp-item-meta">{fmtBytes(i.size_bytes)}</span>
+                  <span className="ffp-item-go">Download</span>
                 </a>
               ))}
             </div>
@@ -201,12 +205,12 @@ export default function FileFlyerPublic({ token }) {
               value={name} onChange={e => setName(e.target.value)} />
             <input ref={fileRef} type="file" multiple onChange={onPick} disabled={busy} id="ffp-file" hidden />
             <label htmlFor="ffp-file" className={`ffp-drop ${busy ? 'is-busy' : ''}`}>
-              {busy ? (prog || 'Uploading…') : '📎 Choose files to send'}
+              {busy ? (prog || 'Uploading…') : <><NavIcon name="upload" />Choose files to send</>}
             </label>
           </>
         )}
 
-        {msg && <p className={`ffp-msg ${msg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{msg}</p>}
+        {msg && <p className={`ffp-msg is-${msg.tone}`} role={msg.tone === 'err' ? 'alert' : 'status'}>{msg.text}</p>}
 
         {fromMe.length > 0 && (
           <>
@@ -214,6 +218,7 @@ export default function FileFlyerPublic({ token }) {
             <div className="ffp-items">
               {fromMe.map(i => (
                 <div key={i.id} className="ffp-item is-mine">
+                  <span className="ffp-thumb ffp-thumb-doc">{fileExt(i.filename)}</span>
                   <span className="ffp-item-name">{i.filename}</span>
                   <span className="ffp-item-meta">{fmtBytes(i.size_bytes)}</span>
                 </div>

@@ -4,6 +4,7 @@ import { fmtBytes } from './FileFlyerView.jsx';
 import { useDialog } from '../lib/dialog.jsx';
 import ShareDialog from './ShareDialog.jsx';
 import { fileExt } from '../lib/fileExt';
+import NavIcon from '../components/NavIcon';
 
 /** ⋯ The quieter actions for one row. Destructive ones live here, never one click from the main action. */
 function RowMenu({ label, items }) {
@@ -212,7 +213,7 @@ export default function ShareDrive({onStorage, tabs }) {
   const resumeInput = useRef(null);
   const resumeFor = useRef(null);
   const [zipping, setZipping] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState(null);            // { tone: 'ok' | 'err', text }
   const [dragging, setDragging] = useState(false);
   const [sharing, setSharing] = useState(null);    // { folder, share } open in the Share dialog
   const [viewing, setViewing] = useState(-1);       // index into photos, -1 = closed
@@ -223,7 +224,7 @@ export default function ShareDrive({onStorage, tabs }) {
   const onStorageRef = useRef(onStorage);
   useEffect(() => { onStorageRef.current = onStorage; }, [onStorage]);
 
-  const flash = (t) => { setMsg(t); setTimeout(() => setMsg(''), 1800); };
+  const flash = (text) => { setMsg({ tone: 'ok', text }); setTimeout(() => setMsg(null), 1800); };
   const chooseView = (v) => { setView(v); localStorage.setItem('ff_view', v); };
   const chooseSort = (v) => { setSort(v); localStorage.setItem('ff_sort', v); };
   useEffect(() => {
@@ -240,7 +241,7 @@ export default function ShareDrive({onStorage, tabs }) {
       setTrail(d.trail || []); setFolders(d.folders || []); setItems(d.items || []);
       setShare(d.share || null);
       if (d.storage) { setStorage(d.storage); onStorageRef.current?.(d.storage); }
-    } catch (e) { setMsg('⚠️ ' + e.message); }
+    } catch (e) { setMsg({ tone: 'err', text: e.message }); }
     finally { setLoading(false); }
   }, []);
 
@@ -280,14 +281,14 @@ export default function ShareDrive({onStorage, tabs }) {
     e.stopPropagation();
     if (!await dialog.confirm(`"${f.name}" and everything inside it will be deleted. This cannot be undone.`,
       { title: 'Delete folder?', okLabel: 'Delete' })) return;
-    try { await api.deleteFolder(f.id); load(folderId); flash('🗑️ Deleted'); }
+    try { await api.deleteFolder(f.id); load(folderId); flash('Deleted'); }
     catch (err) { dialog.alert(err.message, { error: true }); }
   }
 
   async function removeItem(it, e) {
     e.stopPropagation();
     if (!await dialog.confirm(`"${it.filename}" will be deleted.`, { title: 'Delete file?', okLabel: 'Delete' })) return;
-    try { await api.deleteShareItem(it.id); load(folderId); flash('🗑️ Deleted'); }
+    try { await api.deleteShareItem(it.id); load(folderId); flash('Deleted'); }
     catch (err) { dialog.alert(err.message, { error: true }); }
   }
 
@@ -313,7 +314,7 @@ export default function ShareDrive({onStorage, tabs }) {
     }
     load(folderId); loadPending();
     setBusy(false); setProg('');
-    if (ok) flash(`✅ ${ok} added`);
+    if (ok) flash(`${ok} added`);
   }
 
   /** Uploads that started and never finished — shown so they are not lost.
@@ -332,7 +333,7 @@ export default function ShareDrive({onStorage, tabs }) {
     try {
       await api.resumeBigUpload(p.id, file,
         (name, done, total) => setProg(`${name} — part ${done} of ${total}`));
-      load(folderId); loadPending(); flash('✅ Finished');
+      load(folderId); loadPending(); flash('Finished');
     }
     catch (e) { dialog.alert(e.message, { error: true }); }
     finally { setBusy(false); setProg(''); }
@@ -341,7 +342,7 @@ export default function ShareDrive({onStorage, tabs }) {
   async function discard(p) {
     if (!await dialog.confirm(`"${p.filename}" was never finished. Throw it away?`,
       { title: 'Discard upload?', okLabel: 'Discard' })) return;
-    try { await api.bigDiscard(p.id); loadPending(); flash('🗑️ Discarded'); }
+    try { await api.bigDiscard(p.id); loadPending(); flash('Discarded'); }
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
@@ -384,7 +385,7 @@ export default function ShareDrive({onStorage, tabs }) {
         <div className="fd-resume">
           {pending.map(p => (
             <div key={p.id} className="fd-resume-row">
-              <span className="fd-resume-ic">🔄</span>
+              <span className="fd-resume-ic"><NavIcon name="upload" /></span>
               <span className="fd-resume-name">{p.filename}</span>
               <span className="fd-resume-at">
                 {fmtBytes(p.bytes_done)} of {fmtBytes(p.size_bytes)} sent
@@ -418,11 +419,7 @@ export default function ShareDrive({onStorage, tabs }) {
                 onClick={() => setFolderId(t.id)}>{t.name}</button>
             </span>
           ))}
-          {folderId && (
-            <button className={`fd-tag ${share ? 'is-on' : ''}`} onClick={e => openShare({ id: folderId, name: here }, share, e)}>
-              {share ? 'Shared · link' : 'Share'}
-            </button>
-          )}
+          {folderId && share && <span className="fd-pill is-inline">Shared · link</span>}
         </nav>
 
         <div className="fd-find">
@@ -432,10 +429,16 @@ export default function ShareDrive({onStorage, tabs }) {
         </div>
 
         <div className="fd-actions">
-          <button className="fd-b is-primary" disabled={busy} onClick={() => fileRef.current?.click()}>
-            {busy ? (prog || 'Uploading…') : 'Upload'}
+          {/* 🔗 the folder you are standing in: sharing it is an action like the others (Raj, 2026-11-20) */}
+          {folderId && (
+            <button className="fd-b" onClick={e => openShare({ id: folderId, name: here }, share, e)}>
+              <NavIcon name="packages-send" />{share ? 'Sharing' : 'Share'}
+            </button>
+          )}
+          <button className="fd-b" disabled={busy} onClick={() => fileRef.current?.click()}>
+            <NavIcon name="upload" />{busy ? (prog || 'Uploading…') : 'Upload'}
           </button>
-          <button className="fd-b" onClick={newFolder}>New folder</button>
+          <button className="fd-b" onClick={newFolder}><NavIcon name="add-folder" />New folder</button>
           {/* only offered inside a folder — zipping the entire drive is rarely
               what anyone wants and it crowded the one action that matters */}
           {folderId && (
@@ -445,8 +448,8 @@ export default function ShareDrive({onStorage, tabs }) {
             </button>
           )}
           <div className="fd-view" role="group" aria-label="View">
-            <button className={`fd-v ${view === 'grid' ? 'is-on' : ''}`} onClick={() => chooseView('grid')} title="Thumbnails">▦</button>
-            <button className={`fd-v ${view === 'list' ? 'is-on' : ''}`} onClick={() => chooseView('list')} title="List">☰</button>
+            <button className={`fd-v ${view === 'grid' ? 'is-on' : ''}`} onClick={() => chooseView('grid')} aria-pressed={view === 'grid'}>Tiles</button>
+            <button className={`fd-v ${view === 'list' ? 'is-on' : ''}`} onClick={() => chooseView('list')} aria-pressed={view === 'list'}>List</button>
           </div>
         </div>
       </div>
@@ -470,14 +473,14 @@ export default function ShareDrive({onStorage, tabs }) {
       {storage && pct > 80 && (
         <div className="fd-quota">
           <div className="fd-quota-bar" style={{ '--pct': `${pct}%` }}><span className={pct > 90 ? 'is-full' : ''} /></div>
-          <span className="fd-quota-t">⚠️ {fmtBytes(storage.used_bytes)} of {fmtBytes(storage.limit_bytes)} used ({pct}%)</span>
+          <span className="fd-quota-t">Nearly full: {fmtBytes(storage.used_bytes)} of {fmtBytes(storage.limit_bytes)} used ({pct}%)</span>
         </div>
       )}
 
       <input ref={fileRef} type="file" multiple hidden
         onChange={e => { upload([...e.target.files]); e.target.value = ''; }} />
 
-      {msg && <p className="fd-msg">{msg}</p>}
+      {msg && <p className={`fd-msg is-${msg.tone}`} role={msg.tone === 'err' ? 'alert' : 'status'}>{msg.text}</p>}
 
       {queue.length > 0 && (
         <div className="fd-queue" aria-live="polite">
@@ -500,12 +503,12 @@ export default function ShareDrive({onStorage, tabs }) {
       {loading ? <p className="fd-quiet">Loading…</p>
         : isEmpty ? (
           <div className="fd-empty">
-            <div className="fd-empty-art" aria-hidden="true">📂</div>
+            <div className="fd-empty-art" aria-hidden="true"><NavIcon name="folder" /></div>
             <p className="fd-empty-t">Nothing here yet</p>
             <p className="fd-quiet">Drag files onto this page, or:</p>
             <div className="fd-empty-acts">
-              <button type="button" className="fd-b is-primary" onClick={() => fileRef.current?.click()}>Upload files</button>
-              <button type="button" className="fd-b" onClick={newFolder}>New folder</button>
+              <button type="button" className="fd-b" onClick={() => fileRef.current?.click()}><NavIcon name="upload" />Upload files</button>
+              <button type="button" className="fd-b" onClick={newFolder}><NavIcon name="add-folder" />New folder</button>
             </div>
             <p className="fd-quiet fd-limit">Any file type. Up to 2 GB goes up in one go; bigger files go up in parts and can resume.</p>
           </div>
@@ -520,15 +523,15 @@ export default function ShareDrive({onStorage, tabs }) {
                 {f.previews?.length ? (
                   <span className={`fd-ic fd-collage is-n${Math.min(4, f.previews.length)}`}>
                     {f.previews.slice(0, 4).map(id => <span key={id} className="fd-collage-cell"><Thumb itemId={id} name="" /></span>)}
-                    <span className="fd-folder-badge" aria-hidden="true">📁</span>
+                    <span className="fd-folder-badge" aria-hidden="true"><NavIcon name="folder" /></span>
                   </span>
-                ) : <span className="fd-ic">📁</span>}
+                ) : <span className="fd-ic is-folder"><NavIcon name="folder" /></span>}
                 <span className="fd-name">{f.name}</span>
                 <span className="fd-meta">{f.file_count} item{f.file_count === 1 ? '' : 's'} · {when(f.modified_at)}{f.in_folder ? ` · in ${f.in_folder}` : ''}</span>
                 {f.share && <span className="fd-pill">Shared · link</span>}
                 <span className="fd-acts">
-                  <button type="button" className="fd-act" onClick={e => openShare(f, f.share, e)}>{f.share ? 'Shared' : 'Share'}</button>
                   <RowMenu label={f.name} items={[
+                    { label: f.share ? 'Sharing…' : 'Share…', run: e => openShare(f, f.share, e) },
                     { label: 'Rename', run: e => renameFolder(f, e) },
                     { label: 'Download', run: () => download(`/files/zip?folder=${f.id}`, f.name + '.zip') },
                     { label: 'Move to…', run: () => setMoving({ kind: 'folder', id: f.id, name: f.name }) },
@@ -549,8 +552,7 @@ export default function ShareDrive({onStorage, tabs }) {
                 <span className="fd-name">{it.filename}</span>
                 <span className="fd-meta">{fmtBytes(it.size_bytes)} · {when(it.created_at)}{it.in_folder ? ` · in ${it.in_folder}` : ''}</span>
                 <span className="fd-acts">
-                  <button type="button" className="fd-act" onClick={e => { e.stopPropagation(); download(`/files/item/${it.id}/download`, it.filename); }}>Download</button>
-                  <RowMenu label={it.filename} items={[{ label: 'Move to…', run: () => setMoving({ kind: 'file', id: it.id, name: it.filename }) }, { label: 'Delete…', run: e => removeItem(it, e), danger: true }]} />
+                  <RowMenu label={it.filename} items={[{ label: 'Download', run: () => download(`/files/item/${it.id}/download`, it.filename) }, { label: 'Move to…', run: () => setMoving({ kind: 'file', id: it.id, name: it.filename }) }, { label: 'Delete…', run: e => removeItem(it, e), danger: true }]} />
                 </span>
               </div>
             ))}
@@ -561,7 +563,7 @@ export default function ShareDrive({onStorage, tabs }) {
             <tbody>
               {shownFolders.map(f => (
                 <tr key={'f' + f.id} className="fd-row is-folder" onClick={() => setFolderId(f.id)}>
-                  <td><span className="fd-row-ic">📁</span>{f.name}<span className="fd-sub">{f.file_count} item{f.file_count === 1 ? '' : 's'}{f.in_folder ? ` · in ${f.in_folder}` : ''}</span>{f.share && <span className="fd-pill is-inline">Shared · link</span>}</td>
+                  <td><span className="fd-row-ic"><NavIcon name="folder" /></span>{f.name}<span className="fd-sub">{f.file_count} item{f.file_count === 1 ? '' : 's'}{f.in_folder ? ` · in ${f.in_folder}` : ''}</span>{f.share && <span className="fd-pill is-inline">Shared · link</span>}</td>
                   <td className="fd-quiet">{when(f.modified_at)}</td>
                   <td>{f.size_bytes ? fmtBytes(f.size_bytes) : '—'}</td>
                   <td className="fd-quiet">—</td>
@@ -596,7 +598,7 @@ export default function ShareDrive({onStorage, tabs }) {
 
       {dragging && <div className="fd-drop">Drop to upload into {here}</div>}
 
-      {moving && <MoveDialog what={moving} onClose={() => setMoving(null)} onMoved={() => { setMoving(null); load(folderId); flash('↪️ Moved'); }} />}
+      {moving && <MoveDialog what={moving} onClose={() => setMoving(null)} onMoved={() => { setMoving(null); load(folderId); flash('Moved'); }} />}
       {sharing && <ShareDialog folder={sharing.folder} share={sharing.share} onClose={() => setSharing(null)} onChanged={() => load(folderId)} />}
 
       {viewing > -1 && (

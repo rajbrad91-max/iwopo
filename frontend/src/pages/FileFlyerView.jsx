@@ -2,6 +2,7 @@ import { useState } from 'react';
 import './fileflyer.css';
 import ShareDrive from './ShareDrive.jsx';
 import ContactsView from './ContactsView.jsx';
+import NavIcon from '../components/NavIcon';
 
 /** Bytes as something a person reads, not a number to decode. */
 export function fmtBytes(n) {
@@ -32,10 +33,10 @@ export default function FileFlyerView() {
     <div className="ff-tabs" role="tablist">
       <button role="tab" aria-selected={tab === 'files'}
         className={`ff-tab ${tab === 'files' ? 'is-on' : ''}`}
-        onClick={() => setTab('files')}>📁 Files</button>
+        onClick={() => setTab('files')}><NavIcon name="folder" />Files</button>
       <button role="tab" aria-selected={tab === 'contacts'}
         className={`ff-tab ${tab === 'contacts' ? 'is-on' : ''}`}
-        onClick={() => setTab('contacts')}>📇 Contacts</button>
+        onClick={() => setTab('contacts')}><NavIcon name="crew" />Contacts</button>
     </div>
   );
 

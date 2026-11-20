@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { phoneChars } from '../lib/phone';
 import { api } from '../lib/api';
 import { useDialog } from '../lib/dialog.jsx';
+import NavIcon from '../components/NavIcon';
 import './contacts.css';
 
 /**
@@ -43,7 +44,7 @@ export default function ContactsView() {
     try {
       if (edit.id) await api.updateContact(edit.id, edit);
       else await api.addContact(edit);
-      setEdit(null); load(q.trim()); flash('✅ Saved');
+      setEdit(null); load(q.trim()); flash('Saved');
     } catch (e) { dialog.alert(e.message, { error: true }); }
     finally { setBusy(false); }
   }
@@ -51,22 +52,22 @@ export default function ContactsView() {
   async function remove(c) {
     if (!await dialog.confirm(`Remove ${c.name} from your contacts?`,
       { title: 'Remove contact?', okLabel: 'Remove' })) return;
-    try { await api.deleteContact(c.id); load(q.trim()); flash('🗑️ Removed'); }
+    try { await api.deleteContact(c.id); load(q.trim()); flash('Removed'); }
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   return (
     <div className="cts">
       <p className="cts-intro">
-        People you send files to. Pick them when you share a folder instead of
-        typing an address each time.
+        People you send files to — your editor, a second shooter, a client. Tick them
+        when you share a folder instead of typing an address each time.
       </p>
 
       <div className="cts-bar">
         <input className="cts-search" placeholder="Search name or email"
           value={q} onChange={e => setQ(e.target.value)} />
-        <button className="cts-b is-primary" onClick={() => setEdit({ name: '', email: '' })}>
-          Add contact
+        <button className="cts-b" onClick={() => setEdit({ name: '', email: '' })}>
+          <NavIcon name="crew" />Add contact
         </button>
       </div>
 
@@ -86,8 +87,8 @@ export default function ContactsView() {
               </div>
               {c.phone && <span className="cts-phone">{c.phone}</span>}
               {c.note && <span className="cts-note">{c.note}</span>}
-              <button className="cts-x" onClick={() => setEdit(c)} aria-label="Edit">✎</button>
-              <button className="cts-x" onClick={() => remove(c)} aria-label="Remove">✕</button>
+              <button className="cts-x" onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`} title="Edit"><NavIcon name="rename" /></button>
+              <button className="cts-x" onClick={() => remove(c)} aria-label={`Remove ${c.name}`} title="Remove"><NavIcon name="remove" /></button>
             </div>
           ))}
         </div>
