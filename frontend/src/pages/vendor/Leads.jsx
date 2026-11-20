@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from 'react';
 import LeadCard from '../../components/LeadCard';
 import NavIcon from '../../components/NavIcon';
+import StatTile from '../../components/StatTile';
 import { MdSwapVert } from 'react-icons/md';
 import LeadListingMenu, { DEFAULT_LISTING, rangeLabel } from '../../components/LeadListingMenu';
 import { LeadContact, LeadEvents } from '../../components/LeadOverview';
@@ -179,8 +180,8 @@ export function LeadsView({ routeLead, onOpenLead }) {
   /* the sidebar's own drawings, as on the dashboard tiles (Raj, 2026-11-15) */
   const TILES = [
     ['all', 'leads-all', 'Total Leads'],
-    ['new', 'leads', 'New'],
-    ['quoted', 'packages', 'Packages Sent'],
+    ['new', 'leads-new', 'New'],   // ⭐ the star on the left, where the tilted tile still shows it
+    ['quoted', 'packages-send', 'Packages Sent'],   // 📦➡️ the same icon as the Package Sent status
     ['booked', 'bookings', 'Booked'],
   ];
 
@@ -195,11 +196,7 @@ export function LeadsView({ routeLead, onOpenLead }) {
         {view === 'active' ? (
           <div className="lead-stats">
             {TILES.map(([key, icon, label]) => (
-              <button key={key} className={`lead-stat ${filter === key ? 'is-on' : ''}`} onClick={() => setFilter(key)}>
-                <span className="lead-stat-ic"><NavIcon name={icon} /></span>
-                <span className="lead-stat-val">{counts[key]}</span>
-                <span className="lead-stat-lbl">{label}</span>
-              </button>
+              <StatTile key={key} icon={icon} value={counts[key]} label={label} on={filter === key} onClick={() => setFilter(key)} />
             ))}
           </div>
         ) : <div />}

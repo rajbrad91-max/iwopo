@@ -6,26 +6,13 @@ import { useState, useEffect } from 'react';
 import { api, eventDateValue } from '../../lib/api';
 import { EventCard } from './Calendar';
 import { S_LABEL } from './statuses';
-import NavIcon from '../../components/NavIcon';
+import StatTile from '../../components/StatTile';
 import WeatherCard from './WeatherCard';
 
-/**
- * 📊 One dashboard tile. Every tile opens the list it counts.
- *
- * A real button rather than a clickable div, so it can be reached by keyboard
- * and announces itself to a screen reader — three of these were dead numbers
- * and the fourth was a div with a cursor style, which looks clickable to a
- * mouse and to nothing else.
- */
-function StatTile({ icon, value, label, onOpen }) {
-  return (
-    <button type="button" className="card is-link" onClick={onOpen} aria-label={`${label}: ${value}. Open`}>
-      <div className="ic">{icon}</div>
-      <div className="value">{value}</div>
-      <div className="label">{label}</div>
-    </button>
-  );
-}
+/** 📊 One dashboard tile (components/StatTile.jsx): every tile opens the list it counts. */
+const DashTile = ({ icon, value, label, onOpen }) => (
+  <StatTile icon={icon} value={value} label={label} onClick={onOpen} ariaLabel={`${label}: ${value}. Open`} />
+);
 
 export function DashHome({ goTab, openBooking }) {
   const [leads, setLeads] = useState([]);
@@ -62,14 +49,14 @@ export function DashHome({ goTab, openBooking }) {
               but not act on just makes you go and find it yourself. */}
           <div className="dash-top">
           <div className="stats dash-stats-4">
-            <StatTile icon={<NavIcon name="leads-all" />} value={leads.length} label="Total Leads" onOpen={() => goTab('leads')} />
-            <StatTile icon={<NavIcon name="leads" />} value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
-            <StatTile icon={<NavIcon name="bookings" />} value={booked} label="Booked" onOpen={() => goTab('bookings')} />
+            <DashTile icon="leads-all" value={leads.length} label="Total Leads" onOpen={() => goTab('leads')} />
+            <DashTile icon="leads-new" value={newLeads} label="New Leads" onOpen={() => goTab('leads')} />
+            <DashTile icon="bookings" value={booked} label="Booked" onOpen={() => goTab('bookings')} />
             {/* 🖼️ Straight to the page that lists them, not to Galleries.
                 It sent you to a list of albums to go and find the selections
                 yourself — one more step than the tile implied, and the reason
                 there appeared to be several places to look. */}
-            <StatTile icon={<NavIcon name="requests" />} value={photoSel} label="Photo Selection" onOpen={() => goTab('requests')} />
+            <DashTile icon="requests" value={photoSel} label="Photo Selection" onOpen={() => goTab('requests')} />
           </div>
           {/* 🌦️ next event's forecast, or today + tomorrow (Raj, 2026-11-14) */}
           <WeatherCard openBooking={openBooking} />

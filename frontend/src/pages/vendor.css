@@ -63,8 +63,6 @@
               border-color var(--dur) ease;
 }
 .dash .card:active { transform: translateY(-1px) scale(.985); }
-.dash .stats .card .label { font-size: 11.5px; }
-.dash .stats .card .value { font-size: 26px; margin-top: 2px; }
 /* the gradient hairline along the top of a tile is gone: against a 20px radius
    and a lift on hover it read as a seam rather than an edge */
 .dash .card::before { display: none; }
@@ -188,9 +186,6 @@
 }
 .dash-right { position:sticky; top:20px; }
 
-/* stat tile icon circle */
-.dash .stats .card .ic { width:36px; height:36px; border-radius:50%; background:var(--v-icon-bg); display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:8px; }
-
 /* 🔵 event cards */
 .ev-card {
   display:flex; background:var(--panel);
@@ -226,23 +221,34 @@
 
 /* 📊 Lead stat tiles */
 .lead-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.lead-stats { display: grid; grid-template-columns: repeat(4, 118px); gap: 10px; }   /* four equal tiles (Raj, 2026-10-26) */
-.lead-stat {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
-  padding: 13px 14px; background: var(--panel); color: var(--text); text-align: left; --nav-cut: var(--panel);
-  border: 1px solid var(--line); border-radius: 18px;
+.lead-stats { display: grid; grid-template-columns: repeat(4, 128px); gap: 10px; }   /* four equal tiles (Raj, 2026-10-26) */
+/* 🧩 A counter tile (components/StatTile.jsx) — Leads and the dashboard (Raj, 2026-11-20) */
+.stat-tile {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 1px; min-height: 86px; font: inherit;
+  padding: 13px 14px; --stat-bg: var(--panel); background: var(--stat-bg); color: var(--text); text-align: left; --nav-cut: var(--stat-bg);
+  border: 1px solid var(--line); border-radius: 18px; isolation: isolate;
   cursor: pointer; min-width: 0;
   transition: transform var(--dur) var(--ease), background var(--dur) ease,
               border-color var(--dur) ease, box-shadow var(--dur) ease;
 }
-.lead-stat:active, .bk-stat:active { transform: scale(.97); }
-.lead-stat:hover, .bk-stat:hover { border-color: color-mix(in srgb, var(--teal) 53%, transparent); transform: translateY(var(--lift-tile)); box-shadow: var(--shadow); }   /* rises like the dashboard tiles (Bookings' counters too) */
-.lead-stat.is-on, .bk-stat.is-on { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, transparent); }
-.lead-stat-ic { display: flex; margin-bottom: 4px; }
-.dash .lead-stat-ic .nav-ic, .dash .lead-stat-ic .nav-svg { width: auto; height: auto; }
-.lead-stat-ic .nav-svg svg { width: 24px; height: 24px; }
-.lead-stat-val { font-size: 22px; font-weight: 800; line-height: 1.1; letter-spacing: -.8px; }
-.lead-stat-lbl { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.stat-tile:active, .bk-stat:active { transform: scale(.97); }
+.stat-tile:hover, .bk-stat:hover { border-color: color-mix(in srgb, var(--teal) 53%, transparent); transform: translateY(var(--lift-tile)); box-shadow: var(--shadow); }   /* rises like the dashboard tiles (Bookings' counters too) */
+.stat-tile.is-on { border-color: var(--teal); --stat-bg: color-mix(in srgb, var(--teal) 8%, var(--panel)); }
+.bk-stat.is-on { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, transparent); }
+.stat-tile:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.stat-tile-val { font-size: 24px; font-weight: 800; line-height: 1.05; letter-spacing: -.8px; }
+.stat-tile-lbl { font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+/* 🧩 each tile's own icon, large and tilted behind the count, fading out toward the bottom-left so the number reads
+   clearly (Raj, 2026-11-20 — version A). Clipped inside the tile by its own layer, so the hover bridge below the tile
+   (styles/index.css) still works. --stat-bg is the tile's colour: the fade and the icon's cut lines take it. */
+.stat-tile-art { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.dash .stat-tile-art .nav-ic, .dash .stat-tile-art .nav-svg { position: absolute; width: 72%; height: auto; aspect-ratio: 1 / 1; right: -2px; top: -6px; opacity: .3; transform: rotate(-14deg); }   /* sized by the tile, so a phone's small tile keeps the same look */
+.dash .stat-tile-art .nav-svg svg { display: block; width: 100%; height: 100%; }
+.stat-tile-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top right, var(--stat-bg) 30%, transparent 72%); }
+/* 🖼️ Photo Selection's drawing keeps its colour low down, where the fade is: a little stronger, set a little higher */
+.dash .stat-tile-art[data-icon="requests"] .nav-svg { opacity: .35; top: -12px; right: -8px; }
+/* 📊 on the dashboard: square tiles in the panel's softer shade, as the dashboard's tiles have always been */
+.dash .stats > .stat-tile { --stat-bg: var(--panel-2); border-radius: 20px; aspect-ratio: 1 / 1; min-height: 0; }
 
 /* 📋 Leads list */
 .leads-tabs, .leads-actions { display: flex; gap: 8px; align-items: center; }
@@ -946,10 +952,6 @@
 
   /* 4 small tiles in one row */
   .dash .stats { grid-template-columns:repeat(4,1fr); gap:8px; margin-top:6px; }
-  .dash .stats .card { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:10px 4px; gap:2px; }
-  .dash .stats .card .ic { width:26px; height:26px; font-size:13px; margin-bottom:2px; }
-  .dash .stats .card .value { font-size:19px; font-weight:800; }
-  .dash .stats .card .label { font-size:8px; line-height:1.1; color:var(--v-muted); }
 
   /* tables fit screen */
   .dash .table-wrap table { width:100%; font-size:12.5px; }
@@ -959,8 +961,6 @@
 /* Fold (≤380px) */
 @media (max-width:380px){
   .dash .stats { gap:5px; }
-  .dash .stats .card { padding:8px 3px; }
-  .dash .stats .card .label { font-size:7px; }
   .dash .main { padding:12px 8px; }
   .dash .hdr-icon { width:36px; height:36px; }
 }
@@ -2241,34 +2241,25 @@ a.nav-item { color: inherit; text-decoration: none; }
 .ad-photo.is-video .ad-photo-name { padding-right: 48px; }
 
 /* 📊 Dashboard counters (Raj, 2026-10-23): always ONE row of four compact squares (phones, folds, tablets, desktop),
-   content centred and filling the square — full-colour emoji, big number, label (may use two lines, never cut) */
+   the tiles themselves are the Leads page's (components/StatTile.jsx, 2026-11-20); a label may use two lines, never cut */
 .dash .stats { grid-template-columns: repeat(4, minmax(0, 120px)); gap: 8px; justify-content: start; }
-.dash .stats .card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-  aspect-ratio: 1 / 1; min-height: 0; padding: 10px; gap: 4px; }
-.dash .stats .card .ic { position: static; width: auto; height: auto; margin: 0; background: none; font-size: 28px; line-height: 1; opacity: 1; pointer-events: none; }
-.dash .stats .card .value { margin: 0; font-size: 30px; font-weight: 800; line-height: 1; color: var(--text); }
-.dash .stats .card .label { font-size: 11px; font-weight: 600; line-height: 1.15; letter-spacing: 0; color: var(--muted); text-align: center; white-space: normal; }
+.dash .stats .stat-tile-lbl { white-space: normal; line-height: 1.15; }
 @media (max-width: 600px) {
   .dash .stats { grid-template-columns: repeat(4, minmax(0, 80px)); justify-content: space-between; gap: 6px; }
-  .dash .stats .card { padding: 6px 4px; gap: 2px; border-radius: 14px; }
-  .dash .stats .card .ic { font-size: 17px; }
-  .dash .stats .card .value { font-size: 22px; }
-  .dash .stats .card .label { font-size: 11px; line-height: 1.1; }
+  .dash .stats > .stat-tile { padding: 8px; border-radius: 14px; }
+  .dash .stats .stat-tile-val { font-size: 20px; }
+  .dash .stats .stat-tile-lbl { font-size: 10.5px; }
 }
 @media (max-width: 345px) {
-  .dash .stats .card { padding: 5px 3px; gap: 1px; }
-  .dash .stats .card .ic { font-size: 15px; }
-  .dash .stats .card .value { font-size: 19px; }
-  .dash .stats .card .label { font-size: 10px; }
+  .dash .stats > .stat-tile { padding: 6px; }
+  .dash .stats .stat-tile-val { font-size: 18px; }
+  .dash .stats .stat-tile-lbl { font-size: 10px; }
 }
 
 /* 🌦️ The counters and the weather share one row; the weather wraps under them when there is no room (Raj, 2026-11-14).
-   Tile icons are the sidebar's own drawings: Total Leads is the leads tray without its star, New Leads keeps the star. */
+   Tile icons are the sidebar's own drawings: Total Leads is the leads tray without its star; New Leads has it, on the left. */
 .dash-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 28px; }
 .dash-top > .stats { margin-bottom: 0; flex: none; }
-.dash .stats .card { --nav-cut: var(--panel-2); }
-.dash .stats .card .ic .nav-svg { width: auto; height: auto; }
-.dash .stats .card .ic .nav-svg svg { width: 30px; height: 30px; }
 .dash .wx-card { --wx-accent: #E2622A; flex: 1 1 210px; max-width: 290px; min-width: 0; display: flex; flex-direction: column;
   justify-content: center; gap: 4px; padding: 12px 14px; color: var(--text); }
 .dash .wx-card.is-link { width: auto; display: flex; align-items: stretch; text-align: left; }   /* stretched, so every line is held to the card's width */
@@ -2294,7 +2285,6 @@ a.nav-item { color: inherit; text-decoration: none; }
 @media (max-width: 600px) {
   .dash-top { flex-direction: column; }
   .dash .wx-card { max-width: none; flex: none; }
-  .dash .stats .card .ic .nav-svg svg { width: 20px; height: 20px; }
 }
 
 /* 📋 Recent Leads: four on phones */
@@ -2442,8 +2432,8 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
 /* 📊 phones: the four Leads tiles share the full width equally; a long label may take two lines */
 @media (max-width: 600px) {
   .lead-topbar > .lead-stats { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .lead-stat { padding: 12px 10px; }
-  .lead-stat-lbl { white-space: normal; line-height: 1.2; }
+  .lead-stats > .stat-tile { padding: 12px 10px; }
+  .lead-stats .stat-tile-lbl { white-space: normal; line-height: 1.2; }
 }
 
 
@@ -2465,8 +2455,8 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
   .leads-tabs > .lsm-wrap { margin-right: 10px; }   /* the icons, then a little more room before Active · History */
 }
 @container (max-width: 939px) {
-  .lead-topbar > .lead-stats { flex: 0 1 auto; min-width: 0; grid-template-columns: repeat(4, minmax(0, 118px)); }
-  .lead-stat-lbl { white-space: normal; line-height: 1.2; }   /* "Packages Sent" may take two lines on a narrow tile */
+  .lead-topbar > .lead-stats { flex: 0 1 auto; min-width: 0; grid-template-columns: repeat(4, minmax(0, 128px)); }
+  .lead-stats .stat-tile-lbl { white-space: normal; line-height: 1.2; }   /* "Packages Sent" may take two lines on a narrow tile */
   .lead-topbar > .leads-tabs { flex: none; display: grid; grid-template-columns: repeat(4, 38px); gap: 8px; align-self: stretch; align-content: space-between; }
   .leads-tabs > .lsm-wrap { margin-right: 0; }
   .leads-tabs > .refresh { grid-column: span 2; justify-content: center; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
