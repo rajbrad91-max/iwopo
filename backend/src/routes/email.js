@@ -11,7 +11,7 @@ import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { noteFailure } from '../lib/noteFailure.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
-import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
+import { mailTransport } from '../lib/mailHost.js';   // 📧 connects as a real domain, and never mails a test address
 
 const router = express.Router();
 
@@ -105,14 +105,14 @@ async function transporterFor(s) {
   /* A vendor's own mail account first, so their clients see their address
      rather than ours. */
   if (s.mode === 'smtp' && s.smtp_host && s.smtp_user) {
-    return nodemailer.createTransport({ name: EHLO_NAME, 
+    return mailTransport(nodemailer, { 
       host: s.smtp_host, port: s.smtp_port || 587, secure: (s.smtp_port || 587) === 465,
       auth: { user: s.smtp_user, pass: s.smtp_pass },
     });
   }
   const p = await platformMail();
   if (p.ready) {
-    return nodemailer.createTransport({ name: EHLO_NAME, 
+    return mailTransport(nodemailer, { 
       host: p.host, port: p.port, secure: p.port === 465,
       auth: { user: p.user, pass: p.pass },
     });
@@ -448,7 +448,7 @@ export async function notifyNewLead(lead) {
 async function platformTransporter() {
   const m = await platformMail();
   if (!m.ready) return null;
-  return { m, t: nodemailer.createTransport({ name: EHLO_NAME,  host: m.host, port: m.port, secure: m.port === 465, auth: { user: m.user, pass: m.pass } }) };
+  return { m, t: mailTransport(nodemailer, {  host: m.host, port: m.port, secure: m.port === 465, auth: { user: m.user, pass: m.pass } }) };
 }
 
 // 📤 send a platform-level email (password resets, system notices).

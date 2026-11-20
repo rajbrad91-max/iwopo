@@ -26,7 +26,7 @@ import { visitorCountry } from '../lib/localPrice.js';
 import { stripe, stripeReady } from '../lib/stripe.js';
 import { myReferrals, referrerBoard } from '../lib/referrals.js';
 import * as objects from '../lib/objectStore.js';
-import { EHLO_NAME } from '../lib/mailHost.js';   // 📧 connect as a real domain — Google's relay refuses a bare machine name
+import { mailTransport } from '../lib/mailHost.js';   // 📧 connects as a real domain, and never mails a test address
 import { quiet } from '../lib/quiet.js';
 
 const router = express.Router();
@@ -158,7 +158,7 @@ router.post('/settings/platform/test-email', requireAuth, requireSuperAdmin, asy
       return res.status(400).json({ error: 'Set the mail host, username and password first.' });
     }
 
-    const t = nodemailer.createTransport({ name: EHLO_NAME, 
+    const t = mailTransport(nodemailer, { 
       host: p.host, port: p.port, secure: p.port === 465,
       auth: { user: p.user, pass: p.pass },
     });
