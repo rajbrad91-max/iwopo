@@ -166,7 +166,7 @@ export default function ContractPreview({ leadId }) {
       {lead && (
         <div className="cp-send">
           <p className="cp-send-note">Happy with the contract? Send {lead.name || 'your client'} their packages.</p>
-          <button type="button" className="cp-build-btn cp-send-btn" onClick={sendPackages}>📤 Send Packages</button>
+          <button type="button" className="cp-build-btn cp-send-btn" onClick={sendPackages}>Send Packages</button>
           {sendMsg && <div className={`cp-msg ${sendMsg[0] === '⚠' ? 'is-err' : 'is-ok'}`}>{sendMsg}</div>}
         </div>
       )}

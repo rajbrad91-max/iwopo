@@ -365,7 +365,7 @@ function BookingDetail({ id, rawsel = false }) {
 
           {/* ── crew ── */}
           <div className="bd-side">
-            <div className="ld-card-h">👥 Team on the day</div>
+            <div className="ld-card-h">Team on the day</div>
             {/* 👥 one card per person: who, what they do, when they're there, how to reach them */}
             {d.crew.length > 0 ? (
               <div className="bd-crew">

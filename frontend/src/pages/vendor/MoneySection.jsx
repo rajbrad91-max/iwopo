@@ -38,6 +38,8 @@ export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus =
   // same as every other field here.
   const [depositMode, setDepositMode] = useState(lead.deposit_amount_override != null ? 'amount' : 'percent');
   const [webPay, setWebPay] = useState(lead.web_payment_enabled !== false);
+  const [cardReady, setCardReady] = useState(false);   // 💳 the vendor's own Stripe is connected
+  const online = webPay && cardReady;                   // 💳 what the client actually gets: a card button, or pay directly
   const [msg, setMsg] = useState('');
   const [remind, setRemind] = useState(false);   // 💰 the payment reminder window
 
@@ -46,7 +48,7 @@ export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus =
   // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the listed values change; load reads the latest state each time it is called
   }, [refresh]);
   async function load() {
-    try { const d = await api.leadPayments(lead.id); setData(d); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
+    try { const d = await api.leadPayments(lead.id); setData(d); setCardReady(!!d.card_ready); if (d.summary) setWebPay(d.summary.web_payment_enabled); } catch {}
   }
 
   // The client pressed "Pay directly"; this is where the vendor says what
@@ -120,6 +122,7 @@ export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus =
   }
   function switchDepositMode(mode) { setDepositMode(mode); }
   async function toggleWebPay() {
+    if (!cardReady) { setMsg('⚠️ Connect your Stripe account in Settings first — then clients can pay online.'); setTimeout(() => setMsg(''), 4000); return; }
     const next = !webPay; setWebPay(next);
     try { await api.setWebPayment(lead.id, next); }
     catch (e) { setWebPay(!next); setMsg('⚠️ ' + e.message); }
@@ -141,9 +144,9 @@ export function MoneySection({ lead, refresh = 0, status, onStatus, showStatus =
     <div className={`ms-wrap ${masked ? 'is-pay-hidden' : ''}`}>
       <div className="ld-card-h ms-pay-h">
         <NavIcon name="wallet" />Payments
-        <button type="button" className={`ms-webpay-chip ${webPay ? 'is-on' : ''}`} onClick={toggleWebPay}
-          title={webPay ? 'Client can pay online by card' : 'Client pays in person only'}>
-          <NavIcon name="card" />Online pay: <b>{webPay ? 'ON' : 'OFF'}</b>
+        <button type="button" className={`ms-webpay-chip ${online ? 'is-on' : ''}`} onClick={toggleWebPay}
+          title={online ? 'Client can pay online by card' : cardReady ? 'Client pays you directly — no online payment' : 'Connect your Stripe account in Settings to let clients pay online'}>
+          <NavIcon name="card" />Online pay: <b>{online ? 'ON' : 'OFF'}</b>
         </button>
         {hidePay && (
           <button type="button" className="pay-eye" onClick={() => setReveal(r => !r)} aria-pressed={reveal}

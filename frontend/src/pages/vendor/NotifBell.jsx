@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api, fmtDateTime } from '../../lib/api';
 import { chime } from '../../lib/chime';
 import { noticeTarget } from '../../lib/noticeLink.js';
+import NavIcon from '../../components/NavIcon';
 
 /** "2h ago" / "3d ago" / "24 Jul" — relative for the first week, then a date,
  *  because "34d ago" stops meaning anything and by then the date is more use. */
@@ -72,7 +73,7 @@ export function NotifBell({ onOpen }) {
   return (
     <div className="nb-wrap" ref={boxRef}>
       <button className="hdr-icon nb-btn" onClick={toggle} aria-label="Notifications">
-        🔔
+        <NavIcon name="bell" />
         {data.unseen > 0 && <span className="nb-count">{data.unseen > 99 ? '99+' : data.unseen}</span>}
       </button>
 

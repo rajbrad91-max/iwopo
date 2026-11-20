@@ -78,10 +78,21 @@ export async function accountOf(vendorId) {
   return s?.stripe_account_id ? s : null;
 }
 
+/** 💳 Can this vendor take cards at all: their own Stripe connected, and Connect set up on iwopo. */
+export async function cardReady(vendorId) {
+  return !!(await accountOf(vendorId)) && await connectReady();
+}
+
+/** 💳 Can THIS booking's client pay online: the vendor takes cards AND the booking's "Online pay" is ON (Raj,
+ *  2026-11-19 — OFF means the client pays the vendor directly, and the portal offers no card button). */
+export async function cardPayOpen(lead) {
+  return lead.web_payment_enabled !== false && await cardReady(lead.vendor_id);
+}
+
 /** A Stripe Checkout page ON the vendor's account for what the client owes now (the deposit, then the balance). */
 export async function cardCheckout({ lead, amount, currency, description, token }) {
+  if (!await cardPayOpen(lead)) throw Object.assign(new Error('Card payments are not set up for this booking.'), { status: 409 });
   const acct = await accountOf(lead.vendor_id);
-  if (!acct || !await connectReady()) throw Object.assign(new Error('Card payments are not set up for this booking.'), { status: 409 });
   const cents = Math.round(Number(amount) * 100);
   if (!(cents > 0)) throw Object.assign(new Error('Nothing is due right now.'), { status: 409 });
   const meta = { lead_id: lead.id, vendor_id: lead.vendor_id };

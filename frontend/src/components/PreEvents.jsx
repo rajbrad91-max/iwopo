@@ -34,7 +34,7 @@ export default function PreEvents({ lead, onSaved, onDone }) {
   }
   return (
     <div className="ld-card">
-      <div className="ld-card-h">🗓️ Pre-Events</div>
+      <div className="ld-card-h">Pre-Events</div>
       {list.length === 0 && <p className="pe-empty">Mehndi, Jaggo, Sangeet, Reception… add them here and they appear in the contract's schedule.</p>}
       {list.map((e, i) => (
         <div className="pe-row" key={i}>

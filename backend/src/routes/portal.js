@@ -11,7 +11,7 @@ import { ownDomainAllowed } from '../lib/vendorHosts.js';
 import { clientIp } from '../lib/clientIp.js';
 import { serverError } from '../lib/httpError.js';
 import { getFeatures } from '../lib/entitlements.js';
-import { accountOf, connectReady, cardCheckout } from '../lib/stripeConnect.js';
+import { cardPayOpen, cardCheckout } from '../lib/stripeConnect.js';
 import { quotePackage, publicExtra, extraQty } from '../lib/packageQuote.js';
 import { eventsForLead } from '../lib/leadEvents.js';
 import { questionsForLead } from '../lib/leadQuestions.js';
@@ -323,7 +323,7 @@ router.get('/:token', async (req, res) => {
     res.json({
       // 🎉 can this vendor take the booking here (contracts in their plan)? If not, the pick becomes a request (Raj, 2026-11-06)
       books: (await getFeatures(lead.vendor_id)).has('contracts'),
-      card_pay: !!(await accountOf(lead.vendor_id)) && await connectReady(),   // 💳 the vendor's own Stripe is connected
+      card_pay: await cardPayOpen(lead),   // 💳 the vendor's own Stripe is connected and Online pay is ON for this booking
       // 💲 the vendor set this booking's price by hand — the page shows that figure, not one worked out from the package
       custom_price: lead.price_override != null,
       lead: {

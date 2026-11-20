@@ -522,7 +522,7 @@ function LeadDetail({ lead, onSaved }) {
             title="Preview the contract before you send packages"
             onClick={() => window.open(`/contract-preview/${lead.id}`, '_blank')}
           ><NavIcon name="preview" />Preview Contract</button>
-          <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh bx-primary ld-btn-sm ld-ic-btn" disabled={pkgBusy}
+          <SendPackagesButton lead={lead} packageCount={leadPkgs.length} className="refresh ld-btn-sm ld-ic-btn" disabled={pkgBusy}
             onMessage={flashPkg} onSent={() => { setPkgLocked(true); setMoneyTick(t => t + 1); reloadLead(); }} />
         </div>
         {pkgMsg && <div className={`ld-msg ${pkgMsg[0] === '⚠' ? 'is-err' : 'is-ok'} ld-msg-mt`}>{pkgMsg}</div>}

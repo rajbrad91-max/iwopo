@@ -9,6 +9,7 @@ import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor t
 import { quotePackage } from '../lib/packageQuote.js';
 import { sendSignedCopy } from '../lib/signedCopy.js';   // 📧 the client's signed contract, once the deposit is accepted
 import { relockOffer } from '../lib/offerLock.js';   // 🔒 a payment locks an offer reopened after signing
+import { cardReady } from '../lib/stripeConnect.js';   // 💳 can this vendor take cards at all
 
 const router = express.Router();
 
@@ -111,7 +112,8 @@ router.get('/lead/:leadId', requireAuth, async (req, res) => {
       where: { lead_id: lead.id },
       orderBy: { paid_at: 'desc' },
     });
-    res.json({ payments, summary: await moneySummary(lead) });
+    // 💳 card_ready: whether "Online pay" can mean anything — without the vendor's own Stripe it always reads OFF
+    res.json({ payments, summary: await moneySummary(lead), card_ready: await cardReady(lead.vendor_id) });
   } catch (e) { serverError(res, e); }
 });
 
@@ -327,9 +329,14 @@ router.put('/lead/:leadId/web-payment', requireAuth, async (req, res) => {
   try {
     const lead = await leadFor(req, res, req.params.leadId);
     if (!lead) return;
+    const enabled = !!req.body.enabled;
+    // 💳 ON promises the client a card button — only true once the vendor's own Stripe is connected
+    if (enabled && !await cardReady(lead.vendor_id)) {
+      return res.status(409).json({ error: 'Connect your Stripe account in Settings first — then clients can pay online.' });
+    }
     const updated = await prisma.leads.update({
       where: { id: lead.id, ...mine(actingVendorId(req)) },
-      data: { web_payment_enabled: !!req.body.enabled, updated_at: new Date() },
+      data: { web_payment_enabled: enabled, updated_at: new Date() },
     });
     res.json({ web_payment_enabled: updated.web_payment_enabled });
   } catch (e) { serverError(res, e); }

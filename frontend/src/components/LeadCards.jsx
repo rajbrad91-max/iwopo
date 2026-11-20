@@ -88,14 +88,14 @@ export function MainEventCard({ ev, details, onEdit }) {
             <div className="ldc-pills">
               {time && <span className="ldc-pill"><Emo cp="1f550" />{time}</span>}
               {hours && <span className="ldc-pill ldc-hrs"><Emo cp="23f1" />{hours}</span>}
-              {ev.guests && <span className="ldc-pill ldc-guests"><Emo cp="1f465" />{ev.guests}</span>}
+              {ev.guests && <span className="ldc-pill ldc-guests"><Emo cp="1f465" tint />{ev.guests}</span>}
             </div>
             {ev.location && <div className="ldc-line"><Emo cp="1f4cd" /><span>{ev.location}</span></div>}
           </div>
           {edit}
         </div>
       )}
-      {!ev && <div className="ldc-head"><div className="ld-card-h">🎉 Event details</div>{edit}</div>}
+      {!ev && <div className="ldc-head"><div className="ld-card-h">Event details</div>{edit}</div>}
       {!ev && !details.length && <p className="ldc-empty">No event details yet.</p>}
       {details.length > 0 && (
         <dl className={`ldc-details${ev ? '' : ' is-first'}`}>
@@ -120,7 +120,7 @@ function serviceChips(service) {
 function PreEventCard({ ev }) {
   const hours = ev.hours || spanHours(ev.from, ev.to);
   const time = timeRange(ev.from, ev.to);
-  const chips = [['23f1', hours, ' ldc-hrs'], ['1f465', ev.guests && `${ev.guests} guests`, ' ldc-guests'], ...serviceChips(ev.service)].filter(([, t]) => t);
+  const chips = [['23f1', hours, ' ldc-hrs'], ['1f465', ev.guests && `${ev.guests} guests`, ' ldc-guests', true], ...serviceChips(ev.service)].filter(([, t]) => t);
   return (
     <div className="ldc-pre">
       <DateTile date={ev.date} />
@@ -129,7 +129,7 @@ function PreEventCard({ ev }) {
         {time && <div className="ldc-time"><Emo cp="1f550" />{time}</div>}
         {ev.location && <div className="ldc-line"><Emo cp="1f4cd" /><span>{ev.location}</span></div>}
         {chips.length > 0 && (
-          <div className="ldc-chips">{chips.map(([cp, text, tone], i) => <span className={`ldc-chip${tone}`} key={i}><Emo cp={cp} />{text}</span>)}</div>
+          <div className="ldc-chips">{chips.map(([cp, text, tone, tint], i) => <span className={`ldc-chip${tone}`} key={i}><Emo cp={cp} tint={tint} />{text}</span>)}</div>
         )}
       </div>
     </div>
@@ -143,7 +143,7 @@ export function PreEventCards({ preEvents, onAdd }) {
   return (
     <div className="ld-card">
       <div className="ldc-head">
-        <div className="ld-card-h">🗓️ Pre-events</div>
+        <div className="ld-card-h">Pre-events</div>
         <button type="button" className="refresh ldc-add" onClick={onAdd}>＋ Add</button>
       </div>
       {list.length > 0
@@ -157,7 +157,7 @@ export function PreEventCards({ preEvents, onAdd }) {
 export function NotesCard({ notes }) {
   return (
     <div className="ld-card">
-      <div className="ld-card-h">📝 Notes</div>
+      <div className="ld-card-h">Notes</div>
       {notes ? <p className="ldc-notes">{notes}</p> : <p className="ldc-empty">No notes.</p>}
     </div>
   );
