@@ -25,6 +25,7 @@ import { noteFailure } from '../lib/noteFailure.js';
 import { sendSignedCopy } from '../lib/signedCopy.js';
 import { relockOffer } from '../lib/offerLock.js';   // 🔒 signing locks an offer that was reopened
 import { quiet } from '../lib/quiet.js';
+import { CARD_FIELDS, cardOf } from '../lib/businessCard.js';   // 🪪 the vendor's own details, as on their invoices
 
 const router = express.Router();
 
@@ -503,9 +504,10 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
       where: { vendor_id: lead.vendor_id }, select: { currency: true, time_format: true, timezone: true }, // 🔒 the lead's owner
     }),
     prisma.vendors.findUnique({
-      where: { id: lead.vendor_id }, select: { country: true, logo_path: true, phone: true, email: true },
+      where: { id: lead.vendor_id }, select: { country: true, ...CARD_FIELDS },
     }),
   ]);
+  const card = cardOf(vrow);   // 🪪 their Business profile — the header, and {{company_phone}} / {{company_email}}
   const chosen = forceId
     ? (offeredPkgs.find(p => p.id === forceId) || null)
     : pickedOffer(offeredPkgs);
@@ -560,8 +562,8 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
     '{{balance}}': cash(Math.max(money.final_total - money.deposit_amount, 0)),
     '{{today_date}}': today,
     '{{company_name}}': businessName || '—',
-    '{{company_phone}}': vrow?.phone || '',
-    '{{company_email}}': vrow?.email || '',
+    '{{company_phone}}': card.phone || '',
+    '{{company_email}}': card.email || '',
   };
   const extras = extrasHtml(chosen, quote, cash, money, agreedPrice, tax);
   const blocks = {
@@ -591,7 +593,7 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
     ? `<div class="ct-sec"><h2>Terms &amp; Conditions</h2>${proseHtml(substitute(legal, values))}</div>` : '';
 
   const doc = [
-    headbandHtml(substitute(template.header || '', values), vrow?.logo_path, { name: businessName, phone: vrow?.phone, email: vrow?.email }),
+    headbandHtml(substitute(template.header || '', values), card.logo_path, { name: businessName, phone: card.phone, email: card.email }),
     `<h1 class="ct-doc-title">${escapeHtml(template.name || 'Service Agreement')}</h1>`,
     `<p class="ct-doc-for">For ${escapeHtml(lead.name || '')} — ${escapeHtml(lead.event_type || '')} on ${escapeHtml(fmtDate(lead.event_date))}</p>`,
     secHtml,

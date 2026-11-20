@@ -83,6 +83,9 @@ export default function InvoiceView({ token }) {
                 the portal, the contract and this invoice */}
             {inv.logo_path && <img src={`/api/me/logo/${inv.logo_path}`} alt="" className="iv-logo" />}
             <b>{inv.business_name}</b><br />
+            {/* 🪪 how to reach them — their Business profile, as on their contracts */}
+            {inv.business_phone && <>{inv.business_phone}<br /></>}
+            {inv.business_email && <>{inv.business_email}<br /></>}
             {issuedOn(inv.created_at, inv.timezone, inv.time_format)}
           </div>
         </div>

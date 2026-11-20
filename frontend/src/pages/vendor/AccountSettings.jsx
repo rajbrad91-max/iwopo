@@ -42,7 +42,7 @@ function BusinessProfile({ onProfileChange, onProfileSaved }) {
   return (
     <div className="table-wrap acct-card">
       <h2 className="acct-h">Business profile</h2>
-      <p className="acct-sub">How your business appears to clients.</p>
+      <p className="acct-sub">How your business appears to clients — on your portal, contracts and invoices.</p>
 
       <span className="acct-label">Logo</span>
       <div className="acct-logo">

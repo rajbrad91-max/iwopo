@@ -1,6 +1,6 @@
 import { LOGO_DIR as LOGO_DIR_CFG } from '../config/paths.js';
 import { checkPassword, weakAnswer } from '../lib/passwordPolicy.js';
-import { issueCode, useCode, notice } from '../lib/emailCodes.js';
+import { issueCode, useCode, notice, normEmail, emailOk } from '../lib/emailCodes.js';
 import { phoneProblem } from '../lib/phone.js';
 import * as objects from '../lib/objectStore.js';
 import express from 'express';
@@ -342,14 +342,17 @@ router.put('/profession', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
-// PUT /api/me/profile → update business info
+// PUT /api/me/profile → update business info — the details printed on their contracts and invoices (lib/businessCard.js)
 router.put('/profile', requireAuth, async (req, res) => {
   const vid = req.user.vendor_id;
   if (!vid) return res.status(400).json({ error: 'No vendor' });
-  const { business_name, phone, email, country } = req.body;
+  const { business_name, phone, country } = req.body;
+  const email = normEmail(req.body.email);
   if (phoneProblem(phone)) return res.status(400).json({ error: phoneProblem(phone), field: 'phone' });   // 📞 never letters
+  // ✉️ it prints on every contract and invoice, so it must be a real address
+  if (email && !emailOk(email)) return res.status(400).json({ error: 'That business email is not valid — check it has an @ and a domain, like name@example.com.', field: 'email' });
   try {
-    const data = { phone: phone || '', email: email || '', country: country || '' };
+    const data = { phone: String(phone || '').trim(), email, country: country || '' };
     if (business_name) data.business_name = business_name;   // COALESCE($1,business_name)
     await prisma.vendors.update({ where: { id: vid }, data }); // 🔒 tenancy
     res.json({ ok: true });

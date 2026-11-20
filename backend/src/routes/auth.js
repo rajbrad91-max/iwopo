@@ -219,6 +219,7 @@ router.post('/signup', limit({ name: 'signup', max: 6, windowMs: 60 * 60_000 }),
       const vendor = await tx.vendors.create({
         data: {
           business_name: businessName,
+          email: normEmail(email),   // 🪪 their business email to start with — printed on contracts and invoices; Settings changes it
           profession: professionOf(profession),   // 🧑‍💼 their trade — "Other" when they don't say
           slug: await uniqueVendorSlug(tx, businessName),
           /* ⚠️ vendors.plan used to be set here and read by the storage quota,

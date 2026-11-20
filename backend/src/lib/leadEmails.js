@@ -10,6 +10,7 @@ import { clientBaseUrl } from './vendorHosts.js';
 import { currencyFor } from './currencies.js';
 import { moneySummary } from '../routes/payments.js';
 import { pageToPdf } from './pdf.js';
+import { noteFailure } from './noteFailure.js';
 
 /** the emails sent this way */
 export const LEAD_EMAILS = ['payment_reminder', 'review_request', 'invoice'];
@@ -93,10 +94,20 @@ export async function leadEmailAttachments(lead, kind) {
   if (kind !== 'invoice') return [];
   const inv = await latestInvoice(lead);
   if (!inv) throw refuse('This booking has no invoice yet');
+  return [{ filename: await invoiceFileName(lead, inv), content: await invoicePdf(inv), contentType: 'application/pdf' }];
+}
+
+/** 📄 the client's invoice page as a PDF — a second try if the first stumbles; the reason is logged, never lost */
+async function invoicePdf(inv) {
   // our own address renders it: the vendor's own domain may not be pointed at us yet
-  const pdf = await pageToPdf(`${process.env.APP_URL || 'https://iwopo.com'}/invoice/${inv.token}`, '.iv-card.is-doc')
-    .catch(() => { throw Object.assign(new Error('The invoice PDF could not be made — please try again.'), { status: 503 }); });
-  return [{ filename: await invoiceFileName(lead, inv), content: pdf, contentType: 'application/pdf' }];
+  const url = `${process.env.APP_URL || 'https://iwopo.com'}/invoice/${inv.token}`;
+  for (let attempt = 1; ; attempt++) {
+    try { return await pageToPdf(url, '.iv-card.is-doc'); }
+    catch (e) {
+      noteFailure(`make invoice ${inv.invoice_number}'s PDF (try ${attempt})`, e);
+      if (attempt === 2) throw Object.assign(new Error('The invoice PDF could not be made — please try again.'), { status: 503 });
+    }
+  }
 }
 
 /** "Invoice INV-1-0003 - Perfect Poses Media.pdf" */

@@ -9,6 +9,7 @@ import { resolveTimezone } from '../lib/timezones.js';
 import { serverError } from '../lib/httpError.js';
 import { mine } from '../lib/tenancy.js';
 import { actingVendorId } from '../lib/vendorScope.js';   // 🔒 which vendor this request acts for
+import { CARD_FIELDS, cardOf } from '../lib/businessCard.js';   // 🪪 the vendor's own details
 
 const router = express.Router();
 
@@ -179,7 +180,7 @@ router.get('/view/:token', async (req, res) => {
       where: { token: req.params.token },       // the token itself is the access key
       include: {
         leads: { select: { name: true, email: true, event_type: true, event_date: true } },
-        vendors: { select: { business_name: true, logo_path: true } },
+        vendors: { select: CARD_FIELDS },
       },
     });
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
@@ -201,6 +202,7 @@ router.get('/view/:token', async (req, res) => {
     const zone = resolveTimezone(vset?.timezone, vrow?.country);
 
     const { leads, vendors, ...rest } = inv;
+    const card = cardOf(vendors);   // 🪪 Settings → Account → Business profile, as on their contracts
     res.json({
       invoice: {
         ...rest,
@@ -208,13 +210,15 @@ router.get('/view/:token', async (req, res) => {
         client_email: leads?.email ?? null,
         event_type: leads?.event_type ?? null,
         event_date: leads?.event_date ?? null,
-        business_name: vendors?.business_name ?? null,
+        business_name: card.name,
+        business_phone: card.phone,
+        business_email: card.email,
         currency: invCurrency,
         timezone: zone.tz || '',
         time_format: vset?.time_format === '24h' ? '24h' : '12h',
         // the vendor's own mark, so the client sees one business across the
         // portal, the contract and this invoice rather than three anonymous pages
-        logo_path: vendors?.logo_path ?? null,
+        logo_path: card.logo_path,
         payments,
       },
     });
