@@ -11,6 +11,7 @@ export function noticeTarget(n) {
     case 'lead': return n.link_id ? { tab: 'leads', lead: String(n.link_id) } : null;
     case 'album': return n.link_id ? { tab: 'galleries', album: String(n.link_id) } : null;
     case 'occasion': return { tab: 'occasions' };
+    case 'folder': return { tab: 'fileflyer' };          // File Flyer, then that folder (handed over by the panel)
     case 'comms': case 'email': return { tab: 'comms' };
     default: return PAGES.has(n.link_type) ? { tab: n.link_type } : null;
   }

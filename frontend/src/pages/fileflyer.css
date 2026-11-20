@@ -34,7 +34,7 @@
 .ffp-btn { width: 100%; margin-top: 14px; padding: 12px; border: none; border-radius: 9px;
   background: var(--btn-fill); color: var(--btn-fill-ink); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .ffp-btn:hover { opacity: .92; }
-.ffp-btn:disabled { opacity: .6; cursor: default; }
+.ffp-btn:disabled { cursor: progress; }
 
 .ffp-items { display: flex; flex-direction: column; gap: 8px; }
 .ffp-item { display: flex; align-items: center; gap: 12px;
@@ -58,7 +58,7 @@
   border: 1.5px dashed #c4ced4; border-radius: 11px; background: #fbfcfd;
   font-size: 14px; color: #64757d; cursor: pointer; }
 .ffp-drop:hover { border-color: #0f766e; color: #0f766e; background: #f0f6f5; }
-.ffp-drop.is-busy { opacity: .6; cursor: default; }
+.ffp-drop.is-busy { cursor: progress; }
 
 .ffp-msg { margin: 14px 0 0; padding: 11px 14px; border-radius: 9px; font-size: 13.5px; }
 .ffp-msg.is-ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
@@ -122,7 +122,7 @@
 }
 .fd-b:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
 .fd-b:active:not(:disabled) { transform: scale(.96); }
-.fd-b:disabled { opacity: .5; cursor: default; }
+.fd-b:disabled { cursor: progress; }   /* busy, never faded */
 .dash .fd-b .nav-svg { width: auto; height: auto; }
 .dash .fd-b .nav-svg svg { width: 15px; height: 15px; }
 
@@ -170,6 +170,7 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .fd-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.fd-from { font-size: 11px; font-weight: 600; color: var(--teal); margin-top: 2px; }   /* sent back through a link */
 
 /* shared shows on the folder itself — there is no second list underneath */
 
@@ -288,7 +289,7 @@
   border: 1px solid var(--ffp-accent, #b08968); background: transparent;
   color: var(--ffp-accent, #b08968); transition: background .18s ease, color .18s ease; }
 .ffp-zip:hover:not(:disabled) { background: var(--ffp-accent, #b08968); color: #fff; }
-.ffp-zip:disabled { opacity: .55; cursor: default; }
+.ffp-zip:disabled { cursor: progress; }
 
 /* 📁 a folder reads like a file row but leads somewhere */
 .ffp-folder { width: 100%; text-align: left; background: none; border: 0;
@@ -313,7 +314,7 @@
   font-size: 12.5px; font-weight: 600; border: 1px solid #f59e0b;
   background: #fffbeb; color: #92400e; }
 .fd-resume-go:hover:not(:disabled) { background: #fef3c7; }
-.fd-resume-go:disabled { opacity: .5; cursor: not-allowed; }
+.fd-resume-go:disabled { cursor: progress; }
 .fd-resume-x { flex: none; border: 0; background: none; cursor: pointer; color: #9a6b2f;
   font-size: 14px; padding: 2px 4px; }
 

@@ -14,7 +14,7 @@
   font-size: 13px; font-weight: 600; border: 1px solid var(--line); background: var(--panel); color: var(--text);
   transition: border-color .18s ease, color .18s ease, transform .18s var(--ease), box-shadow .18s ease; }
 .cts-b:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
-.cts-b:disabled { opacity: .55; cursor: not-allowed; }
+.cts-b:disabled { cursor: progress; }
 .dash .cts-b .nav-svg { width: auto; height: auto; }
 .dash .cts-b .nav-svg svg { width: 16px; height: 16px; }
 

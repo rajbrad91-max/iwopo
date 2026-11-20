@@ -14,6 +14,8 @@ import { recordEvent } from '../lib/siteEvents.js';
 import { gateValue, gatePassed, cookieOf } from '../lib/gateCookie.js';
 import { serverError } from '../lib/httpError.js';
 import { downloadFailed, downloadCrashed } from '../lib/downloadPage.js';
+import { notify } from './notifications.js';
+import { quiet } from '../lib/quiet.js';
 
 /**
  * Is `folderId` the shared folder, or somewhere beneath it?
@@ -344,6 +346,15 @@ router.get('/:token/download/:itemId', async (req, res) => {
    is rebuilt from the share's own vendor id and compared.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/** 🔔 Files came back through a link: the bell says who sent how many, and opens the folder they are in.
+    Not awaited, and notify() swallows its own errors — the client's upload has already succeeded. */
+function tellVendor(share, folderId, who, n) {
+  prisma.file_folders.findFirst({ where: { id: folderId, vendor_id: share.vendor_id }, select: { name: true } })
+    .then(f => notify(share.vendor_id, `${who || 'Someone'} sent you ${n} file${n === 1 ? '' : 's'}`,
+      `In "${f?.name || share.title}" through your File Flyer link`, 'info', { type: 'folder', id: folderId }))
+    .catch(quiet('files · tellVendor'));
+}
+
 const BIG_PART_SIZE = 64 * 1024 * 1024;
 const BIG_MIN_PART_SIZE = 5 * 1024 * 1024;
 
@@ -450,7 +461,7 @@ router.post('/:token/big/complete', limit({ name: 'share-big-complete', max: 60,
     const row = await prisma.file_share_items.create({
       data: {
         vendor_id: share.vendor_id,                    // 🔒 stamped from the share
-        folder_id: folderId,
+        folder_id: folderId ?? share.folder_id,       // the top of the link IS the shared folder, as /browse reads it
         filename: String(req.body?.filename || 'file').slice(0, 300),
         stored_name: path.basename(key),
         size_bytes: BigInt(realSize),
@@ -459,6 +470,7 @@ router.post('/:token/big/complete', limit({ name: 'share-big-complete', max: 60,
         uploader_name: String(req.body?.uploader_name || '').trim().slice(0, 120) || null,
       },
     });
+    tellVendor(share, row.folder_id, row.uploader_name, 1);
     res.status(201).json({ added: 1, id: row.id });
   } catch (e) { serverError(res, e); }
 });
@@ -537,11 +549,12 @@ router.post('/:token/upload', limit({ name: 'share-upload', max: 60, windowMs: 6
           mime: f.mimetype ? String(f.mimetype).slice(0, 150) : null,
           uploaded_by: 'client',
           uploader_name: who,
-          folder_id: folderId,
+          folder_id: folderId ?? share.folder_id,      // the top of the link IS the shared folder, as /browse reads it
         },
       });
       n++;
     }
+    tellVendor(share, folderId ?? share.folder_id, who, n);
     res.status(201).json({ ok: true, added: n });
   } catch (e) { cleanup(); serverError(res, e); }
 });

@@ -513,6 +513,7 @@ export const api = {
     request(`/files/folder/${folderId}/share`, { method: 'DELETE' }),
   searchFiles: (q) => request('/files/search?q=' + encodeURIComponent(q)),
   allFolders: () => request('/files/folders/all'),
+  renameItem: (itemId, filename) => request(`/files/item/${itemId}`, { method: 'PUT', body: JSON.stringify({ filename }) }),
   moveItem: (itemId, folderId) => request(`/files/item/${itemId}/move`, { method: 'PUT', body: JSON.stringify({ folder_id: folderId }) }),
   moveFolder: (folderId, parentId) => request(`/files/folder/${folderId}/move`, { method: 'PUT', body: JSON.stringify({ parent_id: parentId }) }),
   renameFolder: (folderId, name) =>

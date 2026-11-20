@@ -13,8 +13,10 @@ import { useDialog } from '../lib/dialog.jsx';
  * any other address typed underneath, a confirm before anything is emailed — then who it already went to.
  * The link's settings sit folded below, saved only when they were changed.
  */
-const dayOf = (v) => (v ? String(v).slice(0, 10) : '');
-const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+/* The end date is a day on the VENDOR's calendar: shown as their local day, saved as the last second of it */
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const dayOf = (v) => (v ? ymd(new Date(v)) : '');
+const todayLocal = () => ymd(new Date());
 const shortDay = (v) => (v ? new Date(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '');
 const typedEmails = (s) => s.split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
 const EMAIL_OK = (e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
@@ -74,7 +76,7 @@ export default function ShareDialog({ folder, share: initial, onClose, onChanged
 
   /** What the settings say, in the shape the server takes. Password only when typed or removed. */
   function settings() {
-    const body = { allow_upload: upload, expires_at: expires ? `${expires}T23:59:59` : null };
+    const body = { allow_upload: upload, expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : null };
     if (dropPassword) body.password = '';
     else if (password.trim()) body.password = password.trim();
     return body;

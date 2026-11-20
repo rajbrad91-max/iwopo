@@ -5,6 +5,7 @@ import { useDialog } from '../lib/dialog.jsx';
 import ShareDialog from './ShareDialog.jsx';
 import { fileExt } from '../lib/fileExt';
 import NavIcon from '../components/NavIcon';
+import { takeHandOver } from '../lib/noticeLink.js';
 
 /** ⋯ The quieter actions for one row. Destructive ones live here, never one click from the main action. */
 function RowMenu({ label, items }) {
@@ -193,6 +194,13 @@ export default function ShareDrive({onStorage, tabs }) {
     window.addEventListener('popstate', back);
     return () => window.removeEventListener('popstate', back);
   }, []);
+  // 🔔 a bell notice about files sent back opens the folder they landed in (lib/noticeLink.js)
+  useEffect(() => {
+    const open = () => { const id = Number(takeHandOver('ff-open')); if (id) setFolderId(id); };
+    open();
+    window.addEventListener('ff-open', open);
+    return () => window.removeEventListener('ff-open', open);
+  }, [setFolderId]);
   const [trail, setTrail] = useState([]);
   const [folders, setFolders] = useState([]);
   const [items, setItems] = useState([]);
@@ -280,15 +288,26 @@ export default function ShareDrive({onStorage, tabs }) {
   async function removeFolder(f, e) {
     e.stopPropagation();
     if (!await dialog.confirm(`"${f.name}" and everything inside it will be deleted. This cannot be undone.`,
-      { title: 'Delete folder?', okLabel: 'Delete' })) return;
+      { title: 'Delete folder?', okLabel: 'Delete', danger: true })) return;
     try { await api.deleteFolder(f.id); load(folderId); flash('Deleted'); }
     catch (err) { dialog.alert(err.message, { error: true }); }
   }
 
   async function removeItem(it, e) {
     e.stopPropagation();
-    if (!await dialog.confirm(`"${it.filename}" will be deleted.`, { title: 'Delete file?', okLabel: 'Delete' })) return;
+    if (!await dialog.confirm(`"${it.filename}" will be deleted.`, { title: 'Delete file?', okLabel: 'Delete', danger: true })) return;
     try { await api.deleteShareItem(it.id); load(folderId); flash('Deleted'); }
+    catch (err) { dialog.alert(err.message, { error: true }); }
+  }
+
+  /** ✏️ A file's name. The extension stays unless it is typed differently, so "IMG_0412" keeps its ".jpg". */
+  async function renameItem(it, e) {
+    e.stopPropagation();
+    const name = (await dialog.prompt('New name', it.filename, { title: 'Rename file', okLabel: 'Rename' }))?.trim();
+    if (!name || name === it.filename) return;
+    const ext = (it.filename.match(/\.[^.]+$/) || [''])[0];
+    const full = ext && !/\.[^.]+$/.test(name) ? name + ext : name;
+    try { await api.renameItem(it.id, full); load(folderId); }
     catch (err) { dialog.alert(err.message, { error: true }); }
   }
 
@@ -341,13 +360,29 @@ export default function ShareDrive({onStorage, tabs }) {
 
   async function discard(p) {
     if (!await dialog.confirm(`"${p.filename}" was never finished. Throw it away?`,
-      { title: 'Discard upload?', okLabel: 'Discard' })) return;
+      { title: 'Discard upload?', okLabel: 'Discard', danger: true })) return;
     try { await api.bigDiscard(p.id); loadPending(); flash('Discarded'); }
     catch (e) { dialog.alert(e.message, { error: true }); }
   }
 
   /** 🔗 Open the Share dialog: nothing becomes public until the dialog's "Create link" is pressed. */
   const openShare = (folder, folderShare, e) => { e?.stopPropagation(); setSharing({ folder, share: folderShare || null }); };
+
+  /* ⋯ One menu per folder and per file, the same in tiles and in the list. A tile has room for the menu alone,
+     so it also carries Share / Download; a list row shows those as buttons beside it. */
+  const folderMenu = (f, all) => [
+    ...(all ? [{ label: f.share ? 'Sharing…' : 'Share…', run: e => openShare(f, f.share, e) }] : []),
+    { label: 'Rename', run: e => renameFolder(f, e) },
+    { label: 'Download', run: () => download(`/files/zip?folder=${f.id}`, f.name + '.zip') },
+    { label: 'Move to…', run: () => setMoving({ kind: 'folder', id: f.id, name: f.name }) },
+    { label: 'Delete…', run: e => removeFolder(f, e), danger: true },
+  ];
+  const fileMenu = (it, all) => [
+    ...(all ? [{ label: 'Download', run: () => download(`/files/item/${it.id}/download`, it.filename) }] : []),
+    { label: 'Rename', run: e => renameItem(it, e) },
+    { label: 'Move to…', run: () => setMoving({ kind: 'file', id: it.id, name: it.filename }) },
+    { label: 'Delete…', run: e => removeItem(it, e), danger: true },
+  ];
 
   const photos = items.filter(i => looksImage(i.filename));
   const openPhoto = (it) => { const i = photos.findIndex(p => p.id === it.id); if (i > -1) setViewing(i); };
@@ -444,7 +479,7 @@ export default function ShareDrive({onStorage, tabs }) {
           {folderId && (
             <button className="fd-b" disabled={zipping}
               onClick={() => download(`/files/zip?folder=${folderId}`, here + '.zip')}>
-              {zipping ? 'Preparing…' : 'Download'}
+              <NavIcon name="download" />{zipping ? 'Preparing…' : 'Download'}
             </button>
           )}
           <div className="fd-view" role="group" aria-label="View">
@@ -530,13 +565,7 @@ export default function ShareDrive({onStorage, tabs }) {
                 <span className="fd-meta">{f.file_count} item{f.file_count === 1 ? '' : 's'} · {when(f.modified_at)}{f.in_folder ? ` · in ${f.in_folder}` : ''}</span>
                 {f.share && <span className="fd-pill">Shared · link</span>}
                 <span className="fd-acts">
-                  <RowMenu label={f.name} items={[
-                    { label: f.share ? 'Sharing…' : 'Share…', run: e => openShare(f, f.share, e) },
-                    { label: 'Rename', run: e => renameFolder(f, e) },
-                    { label: 'Download', run: () => download(`/files/zip?folder=${f.id}`, f.name + '.zip') },
-                    { label: 'Move to…', run: () => setMoving({ kind: 'folder', id: f.id, name: f.name }) },
-                    { label: 'Delete…', run: e => removeFolder(f, e), danger: true },
-                  ]} />
+                  <RowMenu label={f.name} items={folderMenu(f, true)} />
                 </span>
               </div>
             ))}
@@ -551,8 +580,9 @@ export default function ShareDrive({onStorage, tabs }) {
                 </span>
                 <span className="fd-name">{it.filename}</span>
                 <span className="fd-meta">{fmtBytes(it.size_bytes)} · {when(it.created_at)}{it.in_folder ? ` · in ${it.in_folder}` : ''}</span>
+                {it.uploaded_by === 'client' && <span className="fd-from">From {it.uploader_name || 'your client'}</span>}
                 <span className="fd-acts">
-                  <RowMenu label={it.filename} items={[{ label: 'Download', run: () => download(`/files/item/${it.id}/download`, it.filename) }, { label: 'Move to…', run: () => setMoving({ kind: 'file', id: it.id, name: it.filename }) }, { label: 'Delete…', run: e => removeItem(it, e), danger: true }]} />
+                  <RowMenu label={it.filename} items={fileMenu(it, true)} />
                 </span>
               </div>
             ))}
@@ -568,13 +598,8 @@ export default function ShareDrive({onStorage, tabs }) {
                   <td>{f.size_bytes ? fmtBytes(f.size_bytes) : '—'}</td>
                   <td className="fd-quiet">—</td>
                   <td className="fd-row-acts">
-                    <button type="button" className="fd-act" onClick={e => openShare(f, f.share, e)}>{f.share ? 'Shared' : 'Share'}</button>
-                    <RowMenu label={f.name} items={[
-                      { label: 'Rename', run: e => renameFolder(f, e) },
-                      { label: 'Download', run: () => download(`/files/zip?folder=${f.id}`, f.name + '.zip') },
-                    { label: 'Move to…', run: () => setMoving({ kind: 'folder', id: f.id, name: f.name }) },
-                      { label: 'Delete…', run: e => removeFolder(f, e), danger: true },
-                    ]} />
+                    <button type="button" className="fd-act" onClick={e => openShare(f, f.share, e)}>{f.share ? 'Sharing' : 'Share'}</button>
+                    <RowMenu label={f.name} items={folderMenu(f, false)} />
                   </td>
                 </tr>
               ))}
@@ -588,7 +613,7 @@ export default function ShareDrive({onStorage, tabs }) {
                   <td className="fd-quiet">{it.uploaded_by === 'client' ? (it.uploader_name || 'Client') : 'You'}</td>
                   <td className="fd-row-acts">
                     <button type="button" className="fd-act" onClick={e => { e.stopPropagation(); download(`/files/item/${it.id}/download`, it.filename); }}>Download</button>
-                    <RowMenu label={it.filename} items={[{ label: 'Move to…', run: () => setMoving({ kind: 'file', id: it.id, name: it.filename }) }, { label: 'Delete…', run: e => removeItem(it, e), danger: true }]} />
+                    <RowMenu label={it.filename} items={fileMenu(it, false)} />
                   </td>
                 </tr>
               ))}

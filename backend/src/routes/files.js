@@ -193,6 +193,19 @@ router.put('/item/:itemId/move', requireAuth, async (req, res) => {
   } catch (e) { serverError(res, e); }
 });
 
+/* ✏️ PUT /api/files/item/:itemId { filename } — a file's name (the stored object keeps its own key). */
+router.put('/item/:itemId', requireAuth, async (req, res) => {
+  try {
+    const v = Number(vid(req));
+    const name = String(req.body?.filename || '').replace(/[\\/]|\p{Cc}/gu, '').trim().slice(0, 300);   // no folders, no control characters
+    if (!name) return res.status(400).json({ error: 'Give the file a name' });
+    const it = await prisma.file_share_items.findFirst({ where: { id: Number(req.params.itemId), vendor_id: v }, select: { id: true } });   // 🔒
+    if (!it) return res.status(404).json({ error: 'File not found' });
+    await prisma.file_share_items.update({ where: { id: it.id, ...mine(v) }, data: { filename: name } });
+    res.json({ ok: true });
+  } catch (e) { serverError(res, e); }
+});
+
 /* ↪️ PUT /api/files/folder/:folderId/move { parent_id } — a folder into another (never into itself or its own sub-folders). */
 router.put('/folder/:folderId/move', requireAuth, async (req, res) => {
   try {

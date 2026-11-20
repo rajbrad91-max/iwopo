@@ -277,6 +277,8 @@ export default function VendorPanel({ onLogout }) {
     if (n.link_type === 'email') handOver('ib-open', n.thread || '');
     if (n.link_type === 'agent') handOver('ag-reminders');
     navigate(to);
+    // after the move, so the folder's own address is the one left in the bar
+    if (n.link_type === 'folder' && n.link_id) handOver('ff-open', String(n.link_id));
   }
 
   /* 📞 From the screen pop: open Calls & messages on the caller, by number —
