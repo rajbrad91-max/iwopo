@@ -8,7 +8,7 @@
 .smr-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .smr-who { font-weight: 700; font-size: 15px; color: var(--text); }
 .smr-chan { font-weight: 500; color: var(--muted); }
-.smr-when { font-size: 12.5px; font-weight: 600; color: var(--red-553); white-space: nowrap; }
+.smr-when { font-size: 12.5px; font-weight: 600; color: var(--red-577); white-space: nowrap; }
 .smr-contact { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .smr-snip { font-size: 13.5px; color: var(--text); line-height: 1.45; overflow-wrap: anywhere; }
 .smr-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }

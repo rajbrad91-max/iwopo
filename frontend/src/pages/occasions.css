@@ -39,7 +39,7 @@
 
 .oc-modal {
   position: fixed; inset: 0; z-index: 400;
-  background: color-mix(in srgb, var(--gray-151b) 60%, transparent);
+  background: color-mix(in srgb, var(--gray-0) 60%, transparent);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .oc-sheet {

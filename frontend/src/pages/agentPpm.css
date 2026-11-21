@@ -22,7 +22,7 @@
   font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
 .agp-step-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .agp-step.is-done { background: color-mix(in srgb, var(--green-627) 14%, transparent); color: var(--green-527); border-color: color-mix(in srgb, var(--green-627) 30%, transparent); }
-.agp-step.is-todo { background: color-mix(in srgb, var(--orange-705) 12%, transparent); color: var(--red-553); border-color: color-mix(in srgb, var(--orange-705) 28%, transparent); }
+.agp-step.is-todo { background: color-mix(in srgb, var(--orange-727) 12%, transparent); color: var(--red-577); border-color: color-mix(in srgb, var(--orange-727) 28%, transparent); }
 .agp-step.is-busy { opacity: .55; cursor: progress; }
 .agp-detail { margin-top: 10px; }
 @media (max-width: 600px) {

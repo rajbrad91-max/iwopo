@@ -7,9 +7,9 @@
    getting anyway. */
 /* 🌗 Super panel light theme — scoped to .sa-wrap, independent of vendor panels */
 .sa-wrap[data-sa-theme="light"] {
-  --bg:var(--gray-972); --panel:var(--gray-1000); --panel-2:var(--gray-962); --line:var(--gray-912);
-  --muted:var(--slate-551); --text:var(--slate-256); --teal:var(--accent-511); --teal-2:var(--accent-439);
-  --teal-soft:color-mix(in srgb, var(--accent-511) 7.84%, transparent); --green:var(--green-627); --amber:var(--orange-666); --red:var(--red-586);
+  --bg:var(--gray-967); --panel:var(--gray-1000); --panel-2:var(--gray-959); --line:var(--gray-912);
+  --muted:var(--slate-551b); --text:var(--slate-256); --teal:var(--accent-511); --teal-2:var(--accent-511);
+  --teal-soft:color-mix(in srgb, var(--accent-511) 7.84%, transparent); --green:var(--green-627); --amber:var(--orange-666); --red:var(--red-577);
 }
 .sa-wrap { display:flex; min-height:100vh; background:var(--bg); color:var(--text); font-size:13px; }
 .sa-wrap * { box-sizing:border-box; }
@@ -170,7 +170,7 @@
 .sa-manage-card:hover { border-color: var(--teal-2); transform: translateY(-3px); }
 .sa-manage-name { font-weight: 800; font-size: 15px; margin-bottom: 4px; }
 .sa-manage-desc { color: var(--muted); font-size: 12px; line-height: 1.4; }
-.sa-manage-badge { position: absolute; top: 12px; right: 12px; background: color-mix(in srgb, var(--gold-837) 9.41%, transparent); color: var(--gold-837); border: 1px solid color-mix(in srgb, var(--gold-837) 26.67%, transparent); padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.sa-manage-badge { position: absolute; top: 12px; right: 12px; background: color-mix(in srgb, var(--gold-769) 9.41%, transparent); color: var(--gold-769); border: 1px solid color-mix(in srgb, var(--gold-769) 26.67%, transparent); padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }
 
 /* 🔔 topbar notification bells */
 .sa-bells { display:flex; gap:10px; align-items:center; margin-left:auto; }
@@ -243,7 +243,7 @@
 .cb-share-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .cb-share-hint { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
 .cb-share-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.cb-warn { color: var(--gold-837); font-size: 12.5px; }
+.cb-warn { color: var(--gold-769); font-size: 12.5px; }
 .cb-msg { color: var(--green-800); font-size: 13px; margin-bottom: 12px; }
 
 .cb-knowledge { padding: 20px; }
@@ -375,11 +375,11 @@
 
 /* 💾 storage per buyer, in the list */
 .sa-store { min-width: 118px; }
-.sa-store-bar { height: 5px; border-radius: 3px; background: var(--slate-304); overflow: hidden; }
+.sa-store-bar { height: 5px; border-radius: 3px; background: var(--slate-278); overflow: hidden; }
 .sa-store-bar span { display: block; height: 100%; border-radius: 3px; transition: width .3s ease; width: var(--pct); background: var(--tone); }
 .sa-store-txt { margin-top: 4px; font-size: 11.5px; color: var(--sa-muted, var(--slate-643)); font-variant-numeric: tabular-nums; }
 .sa-store-tag { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px;
-  background: var(--slate-328); color: var(--teal); text-transform: uppercase; letter-spacing: .04em; }
+  background: var(--slate-278); color: var(--teal); text-transform: uppercase; letter-spacing: .04em; }
 .sa-muted { color: var(--sa-muted, var(--slate-643)); }
 
 /* 🔓 what a plan actually unlocks (PlanUnlocks in Dashboard.jsx) */
@@ -429,7 +429,7 @@
 .sa-pt .pt-coming { color: var(--gray); font-weight: 500; }
 .sa-pt .pt-note-sm { font-size: 11.5px; color: var(--gray); }
 .sa-pt .pt-tog { width: 44px; height: 34px; margin: 2px; border-radius: 8px; border: 1px solid var(--line); background: var(--gray-990); color: var(--stone-811); font-weight: 800; cursor: pointer; transition: background .15s, color .15s; }
-.sa-pt .pt-tog.is-on { background: color-mix(in srgb, var(--orange-645) 12%, transparent); border-color: color-mix(in srgb, var(--orange-645) 30%, transparent); color: var(--p-deep); }
+.sa-pt .pt-tog.is-on { background: color-mix(in srgb, var(--orange-666) 12%, transparent); border-color: color-mix(in srgb, var(--orange-666) 30%, transparent); color: var(--p-deep); }
 .sa-pt .pt-calc { opacity: .75; }
 .sa-pt .pt-help { text-align: left; font-size: 12.5px; color: var(--gray); }
 .sa-pt .pt-coming input { width: 15px; height: 15px; accent-color: var(--p); }
@@ -447,7 +447,7 @@
 .sa-limit-row { display: flex; gap: 8px; align-items: center; }
 .sa-limit-in { width: 150px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2); color: var(--text); font-size: 13.5px; }
 .sa-limit-unit { font-size: 13px; color: var(--muted); }
-.sa-limit-msg { font-size: 12.5px; color: var(--red-711); }
+.sa-limit-msg { font-size: 12.5px; color: var(--red-719); }
 .sa-limit-msg.is-ok { color: var(--green-800); }
 .sa-limit-hint { margin-top: 6px; font-size: 12px; color: var(--muted); }
 
@@ -462,8 +462,8 @@
 .sa-mem-muted { color: var(--muted); font-size: 12.5px; }
 .sa-mem-warn { color: var(--gold-769); font-weight: 600; }
 .sa-mem-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
-.sa-mem-now { padding: 7px 12px; border: 1px solid var(--red-711); border-radius: 8px; background: transparent; color: var(--red-711); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.sa-mem-now.is-sure { background: var(--red-711); color: var(--slate-248); }
+.sa-mem-now { padding: 7px 12px; border: 1px solid var(--red-719); border-radius: 8px; background: transparent; color: var(--red-719); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.sa-mem-now.is-sure { background: var(--red-719); color: var(--slate-256); }
 .sa-former-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px; }
 .sa-former-mail { font-size: 12px; color: var(--muted); }
 

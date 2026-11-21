@@ -16,7 +16,7 @@
  */
 
 .st {
-  --st-ink: var(--gray-218); --st-paper: var(--gray-991); --st-soft: var(--gray-553); --st-line: var(--gray-926);
+  --st-ink: var(--stone-239); --st-paper: var(--gray-981); --st-soft: var(--gray-553); --st-line: var(--stone-936);
   background: var(--st-paper); color: var(--st-ink);
   font-family: var(--st-body); font-size: 16px; line-height: 1.6;
   min-height: 100vh; overflow-x: hidden;
@@ -27,7 +27,7 @@
 
 .st-loading, .st-missing { min-height: 60vh; display: grid; place-content: center;
   text-align: center; font-family: system-ui, sans-serif; color: var(--gray-553); padding: 40px; }
-.st-missing h1 { font-size: 22px; margin: 0 0 6px; color: var(--gray-218); }
+.st-missing h1 { font-size: 22px; margin: 0 0 6px; color: var(--stone-239); }
 
 /* ── motion ──────────────────────────────────────────────────────────── */
 /* A view is rebuilt on every navigation, so it plays this once — that single
@@ -279,7 +279,7 @@
 .st-aperture .st-hero-logo { margin-bottom: 18px; max-height: 64px; }
 .st-aperture .st-hero .st-cta { background: transparent; border-color: var(--gray-1000); color: var(--gray-1000); border-radius: 0;
   padding: 13px 28px; }
-.st-aperture .st-hero .st-cta:hover { background: var(--gray-1000); color: var(--gray-178); opacity: 1; }
+.st-aperture .st-hero .st-cta:hover { background: var(--gray-1000); color: var(--gray-0); opacity: 1; }
 .st-aperture .st-hero .st-cta.is-ghost { border-color: color-mix(in srgb, var(--gray-1000) 55%, transparent); }
 .st-aperture .st-hero .st-cta.is-ghost:hover { background: color-mix(in srgb, var(--gray-1000) 14%, transparent); color: var(--gray-1000); border-color: var(--gray-1000); }
 .st-aperture.st-page-home .st-nav { position: fixed; left: 0; right: 0;
@@ -290,7 +290,7 @@
 .st-aperture .st-reel-track { gap: 6px; }
 .st-aperture .st-reel-i { flex: 0 0 360px; }
 .st-aperture .st-reel-nav { border-radius: 0; }
-.st-aperture .st-alt { background: var(--gray-965b); }
+.st-aperture .st-alt { background: var(--stone-951); }
 /* recent work: the photographs touch, edge to edge — a strip, not three cards */
 .st-aperture .st-section.st-alt .st-wrap { max-width: none; padding-left: 0; padding-right: 0; }
 .st-aperture .st-section.st-alt .st-head,
@@ -338,12 +338,12 @@
 .st-atelier .st-reel-track { gap: 12px; }
 .st-atelier .st-reel-i { flex: 0 0 220px; }
 .st-atelier .st-reel-nav { border-radius: 0; border-color: var(--st-ink); }
-.st-atelier .st-alt { background: var(--gray-976); }
+.st-atelier .st-alt { background: var(--gray-980); }
 .st-atelier .st-gal-frame:hover .st-gal-img { transform: scale(1.03); }
 
 /* ── 3. VELLUM — warm and unhurried. Everything centred, words always under
    the picture rather than beside it, and a rule under each heading. */
-.st-vellum { --st-paper: var(--gray-983); --st-line: var(--stone-914); --st-soft: var(--stone-538); --st-ink: var(--stone-254); }
+.st-vellum { --st-paper: var(--gray-990); --st-line: var(--stone-880); --st-soft: var(--gray-553); --st-ink: var(--stone-239); }
 .st-vellum .st-hero { min-height: 76vh; }
 .st-vellum .st-hero-title { font-style: italic; }
 .st-vellum .st-cta { border-radius: 999px; padding: 14px 38px; }
@@ -357,12 +357,12 @@
 .st-vellum .st-reel-track { gap: 34px; }
 .st-vellum .st-reel-i { flex: 0 0 250px; }
 .st-vellum .st-reel-i .st-gal-img { aspect-ratio: 1 / 1; }
-.st-vellum .st-alt { background: var(--stone-954); }
+.st-vellum .st-alt { background: var(--stone-951); }
 
 /* ── 4. NOIR — dark and cinematic. Frames are letterboxed, type is tracked
    out, and the rail runs like a strip of film. */
-.st-noir { --st-paper: var(--gray-151c); --st-ink: var(--gray-959); --st-soft: var(--slate-676); --st-line: var(--gray-250); }
-.st-noir .st-nav { background: color-mix(in srgb, var(--gray-151c) 84%, transparent); }
+.st-noir { --st-paper: var(--gray-0); --st-ink: var(--gray-959); --st-soft: var(--slate-714); --st-line: var(--slate-256); }
+.st-noir .st-nav { background: color-mix(in srgb, var(--gray-0) 84%, transparent); }
 .st-noir.st-page-home .st-nav { background: none; backdrop-filter: none; border-bottom: 0;
   position: fixed; left: 0; right: 0; }
 .st-noir .st-hero { min-height: 88vh; }
@@ -377,14 +377,14 @@
 .st-noir .st-reel-track { gap: 12px; }
 .st-noir .st-reel-i { flex: 0 0 340px; }
 .st-noir .st-reel-i .st-gal-img { aspect-ratio: 16 / 9; }
-.st-noir .st-reel-nav { border-radius: 0; background: var(--gray-189); }
-.st-noir .st-alt { background: var(--gray-189); }
+.st-noir .st-reel-nav { border-radius: 0; background: var(--slate-256); }
+.st-noir .st-alt { background: var(--slate-256); }
 .st-noir .st-logo img { filter: grayscale(1) invert(1); opacity: .6; }
 .st-noir .st-logo:hover img { filter: grayscale(1) invert(1); opacity: 1; }
 
 /* ── 5. BLOOM — light and airy. Soft corners, small frames, three staggered
    columns and plenty of white between them. */
-.st-bloom { --st-paper: var(--gray-996); --st-line: var(--mauve-948b); --st-soft: var(--mauve-562); --st-ink: var(--mauve-249); }
+.st-bloom { --st-paper: var(--gray-1000); --st-line: var(--gray-959); --st-soft: var(--slate-551b); --st-ink: var(--slate-256); }
 .st-bloom .st-hero { min-height: 70vh; }
 .st-bloom .st-hero-title { letter-spacing: -.01em; }
 .st-bloom .st-cta { border-radius: 999px; padding: 14px 38px; }
@@ -393,7 +393,7 @@
 .st-bloom .st-reel-track { gap: 26px; }
 .st-bloom .st-reel-i { flex: 0 0 215px; }
 .st-bloom .st-reel-i .st-gal-img { aspect-ratio: 3 / 4; }
-.st-bloom .st-alt { background: var(--gray-978b); }
+.st-bloom .st-alt { background: var(--gray-967); }
 
 /* ── narrower screens ─────────────────────────────────────────────────── */
 @media (max-width: 1080px) {
@@ -627,7 +627,7 @@
 /* one control per frame, and it says what it does. A bare ✕ asks a vendor to
    guess, and guessing wrong deletes their photograph. */
 .st-ph-swap { position: absolute; top: 8px; right: 8px; z-index: 4; cursor: pointer;
-  border-radius: 999px; background: color-mix(in srgb, var(--gray-155) 66%, transparent); color: var(--gray-1000);
+  border-radius: 999px; background: color-mix(in srgb, var(--gray-0) 66%, transparent); color: var(--gray-1000);
   padding: 5px 12px; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
   opacity: 0; transition: opacity .18s ease, background .18s ease; }
 .is-editable:hover .st-ph-swap { opacity: 1; }
@@ -639,9 +639,9 @@
 .st-ph-tools { position: absolute; top: 14px; left: 14px; z-index: 4;
   display: flex; gap: 8px; align-items: center; }
 .st-ph-cover, .st-ph-aim { cursor: pointer; border: 0; color: var(--gray-1000);
-  background: color-mix(in srgb, var(--gray-155) 60%, transparent); border-radius: 999px; padding: 7px 15px;
+  background: color-mix(in srgb, var(--gray-0) 60%, transparent); border-radius: 999px; padding: 7px 15px;
   font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
-.st-ph-cover:hover { background: color-mix(in srgb, var(--gray-155) 85%, transparent); }
+.st-ph-cover:hover { background: color-mix(in srgb, var(--gray-0) 85%, transparent); }
 
 /* deliberately a wide, obvious target — adding work is the thing a vendor does
    most, and it should not be a small icon they have to find */
@@ -657,7 +657,7 @@
 
 /* ── ✍️ adding and removing the parts of a page, on the page ────────────── */
 .st-ph-del { border: 0; }
-.st-ph-del:hover { background: var(--red-543); }
+.st-ph-del:hover { background: var(--red-537); }
 
 .st-quote.is-editable, .st-logo.is-editable { position: relative; }
 .st-quote.is-editable .st-ph-swap { top: -4px; right: -4px; }
@@ -676,6 +676,6 @@
 /* on a block that already has a picture the control is a small overlay, not a
    dashed tile standing in for one that isn't there */
 .st-sec-swap { position: absolute; top: 10px; right: 10px; margin: 0; padding: 5px 12px;
-  border-style: solid; border-color: transparent; background: color-mix(in srgb, var(--gray-155) 66%, transparent);
+  border-style: solid; border-color: transparent; background: color-mix(in srgb, var(--gray-0) 66%, transparent);
   color: var(--gray-1000); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
 .st-split-img { position: relative; }

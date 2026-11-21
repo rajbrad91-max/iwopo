@@ -21,8 +21,8 @@
   max-width: 816px;
   margin: 0 auto;
   background: var(--gray-1000);
-  border: 1px solid var(--stone-909b);
-  box-shadow: 0 10px 36px color-mix(in srgb, var(--stone-319) 8%, transparent);
+  border: 1px solid var(--stone-880);
+  box-shadow: 0 10px 36px color-mix(in srgb, var(--stone-336) 8%, transparent);
   padding: 52px 64px 56px;
   font-family: "Segoe UI", system-ui, sans-serif;
   font-size: 14.5px;
@@ -47,20 +47,20 @@
   margin: 0 auto 12px;
   max-width: 816px;
   padding: 10px 14px;
-  background: var(--stone-965);
+  background: var(--gray-980);
   border: 1px solid var(--brand-881);
 }
 .ct-prev-tag { font-size: 12.5px; color: var(--brand-549); font-weight: 700; }
 /* the vendor's controls: Auto Release and Release contract, at the bar's right */
 .ct-prev-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ct-prev-auto, .ct-prev-edit { display: flex; align-items: center; gap: 7px; cursor: pointer; padding: 7px 12px; font-size: 12.5px; font-weight: 700;
-  color: var(--brand-417); background: var(--stone-986); border: 1px solid var(--brand-881); white-space: nowrap; }
-.ct-prev-auto:hover, .ct-prev-edit:hover:not(:disabled) { border-color: var(--brand-745); }
+  color: var(--brand-549); background: var(--gray-990); border: 1px solid var(--brand-881); white-space: nowrap; }
+.ct-prev-auto:hover, .ct-prev-edit:hover:not(:disabled) { border-color: var(--brand-747); }
 .ct-prev-edit { font-family: inherit; }   /* ✏️ Edit this contract: the same box as Auto Release */
 .ct-prev-own { font-size: 12px; font-weight: 700; color: var(--stone-493); }
 .ct-prev-auto input { cursor: pointer; }
 .ct-prev-release {
-  background: var(--stone-216);
+  background: var(--stone-239);
   border: 0;
   color: var(--gray-980);
   padding: 8px 16px;
@@ -70,7 +70,7 @@
   font-weight: 700;
 }
 .ct-prev-release:hover:not(:disabled) { background: var(--stone-336); }
-.ct-prev-release:disabled { background: var(--stone-861); color: var(--stone-493); cursor: not-allowed; }
+.ct-prev-release:disabled { background: var(--gray-871); color: var(--stone-493); cursor: not-allowed; }
 
 .ct-versions {
   display: flex;
@@ -85,7 +85,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--stone-489);
+  color: var(--stone-493);
   margin-right: 4px;
 }
 .ct-ver {
@@ -100,18 +100,18 @@
   font-size: 13px;
   cursor: pointer;
 }
-.ct-ver:hover { border-color: var(--stone-216); }
-.ct-ver:focus-visible { outline: 2px solid var(--stone-216); outline-offset: 2px; }
-.ct-ver.is-on { background: var(--stone-216); border-color: var(--stone-216); color: var(--gray-1000); }
+.ct-ver:hover { border-color: var(--stone-239); }
+.ct-ver:focus-visible { outline: 2px solid var(--stone-239); outline-offset: 2px; }
+.ct-ver.is-on { background: var(--stone-239); border-color: var(--stone-239); color: var(--gray-1000); }
 .ct-ver:disabled { cursor: default; }
 .ct-ver-price { font-size: 12px; opacity: 0.75; }
 
 .ct-left { font-size: 12.5px; margin: 14px 0 0; font-weight: 600; }
 .ct-left.is-todo { color: var(--brand-549); }
-.ct-left.is-done { color: var(--green-448); }
+.ct-left.is-done { color: var(--green-527); }
 
 .ct-accept { margin-top: 8px; }
-.ct-accept-lead { margin: 0 0 4px; color: var(--slate-446); font-size: 14px; }
+.ct-accept-lead { margin: 0 0 4px; color: var(--gray-450); font-size: 14px; }
 .ct-field-label {
   display: block;
   margin: 16px 0 6px;
@@ -132,7 +132,7 @@
   color: var(--slate-278);
 }
 .ct-field:focus { outline: none; border-color: var(--slate-278); }
-.ct-field:disabled { background: var(--gray-985); color: var(--slate-551b); }
+.ct-field:disabled { background: var(--gray-981); color: var(--slate-551b); }
 .ct-pad {
   display: block;
   width: 100%;
@@ -140,7 +140,7 @@
   margin: 0;
   color: var(--slate-278);
   background: var(--gray-1000);
-  border: 1px dashed var(--stone-777);
+  border: 1px dashed var(--stone-811);
   border-radius: 0;
   touch-action: none;
 }
@@ -166,7 +166,7 @@
   margin-top: 18px;
   padding: 12px 16px;
   border: 0;
-  background: var(--stone-216);
+  background: var(--stone-239);
   color: var(--gray-1000);
   font: inherit;
   font-size: 15px;
@@ -177,7 +177,7 @@
 .ct-sign-btn:disabled { opacity: 0.55; cursor: default; }
 .ct-fine { font-size: 12px; color: var(--slate-551b); margin: 12px 0 0; text-align: center; }
 .ct-err {
-  background: var(--mauve-951);
+  background: var(--gray-959);
   color: var(--red-537);
   padding: 10px 12px;
   margin-top: 14px;
@@ -192,12 +192,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--slate-960b);
-  color: var(--green-448);
+  background: var(--gray-959);
+  color: var(--green-527);
   font-size: 28px;
 }
-.ct-done h2 { font-size: 22px; margin: 0 0 8px; color: var(--slate-279); }
-.ct-done p { margin: 0; color: var(--slate-446); }
+.ct-done h2 { font-size: 22px; margin: 0 0 8px; color: var(--slate-278); }
+.ct-done p { margin: 0; color: var(--gray-450); }
 
 @media (max-width: 700px) {
   .ct-page { padding: 16px 12px 48px; }
@@ -213,7 +213,7 @@
 /* ✍️ the "what's still missing" note, floating where the client is looking (guideToMissing) */
 .ct-guide { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60;
   width: max-content; max-width: min(560px, calc(100vw - 32px)); padding: 14px 18px; border-radius: 14px;
-  background: var(--slate-278); color: var(--gray-1000); font-size: 14.5px; line-height: 1.45; box-shadow: 0 14px 40px color-mix(in srgb, var(--slate-210) 30%, transparent);
+  background: var(--slate-278); color: var(--gray-1000); font-size: 14.5px; line-height: 1.45; box-shadow: 0 14px 40px color-mix(in srgb, var(--slate-256) 30%, transparent);
   animation: ct-guide-in .25s ease-out; }
 @keyframes ct-guide-in { from { opacity: 0; transform: translate(-50%, 10px); } }
 /* Sign stays pressable while something is missing — it just looks not-quite-ready */

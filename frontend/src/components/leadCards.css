@@ -73,7 +73,7 @@
    pulling the eye. hours blue · guests amber · photos rose · videos green · any other service teal */
 .ldc-hrs { background: color-mix(in srgb, var(--blue-623) 7%, transparent); color: color-mix(in srgb, var(--blue-623) 45%, var(--text)); }
 .ldc-guests { background: color-mix(in srgb, var(--orange-666) 7%, transparent); color: color-mix(in srgb, var(--orange-666) 45%, var(--text)); }
-.ldc-photo { background: color-mix(in srgb, var(--red-586) 6%, transparent); color: color-mix(in srgb, var(--red-586) 30%, var(--text)); }   /* a shade deeper (Raj, 2026-11-19) */
+.ldc-photo { background: color-mix(in srgb, var(--red-577) 6%, transparent); color: color-mix(in srgb, var(--red-577) 30%, var(--text)); }   /* a shade deeper (Raj, 2026-11-19) */
 .ldc-video { background: color-mix(in srgb, var(--green-627) 7%, transparent); color: color-mix(in srgb, var(--green-627) 45%, var(--text)); }
 .ldc-svc { background: color-mix(in srgb, var(--teal) 7%, transparent); color: color-mix(in srgb, var(--teal) 55%, var(--text)); }
 

@@ -267,6 +267,7 @@ export default function CrewCheckin({ token }) {
 
   const alreadyIn = !!a.checked_in_at;
   const alreadyOut = !!a.checked_out_at;
+  const att = a.attendance || { check_in: 'open', check_out: 'open' };
   const pref = a.time_format || '12h';
   const date = a.event_date ? fmtEventDate(a.event_date) : 'To be confirmed';
   const start = a.arrive_time || a.timing_from;
@@ -335,7 +336,17 @@ export default function CrewCheckin({ token }) {
 
           {err && <p className="ck-err">{err}</p>}
 
-          {!alreadyIn && (
+          {/* 📅 Attendance is held to the event day (Raj, 2026-11-20): check-in
+              that day only, clock-out that day or the next. Outside it the
+              page says when, instead of offering a button the server refuses. */}
+          {!alreadyIn && att.check_in === 'before' && (
+            <div className="ck-status is-wait">Check-in opens on {date}.</div>
+          )}
+          {!alreadyIn && att.check_in === 'after' && (
+            <div className="ck-status is-wait">Check-in closed. It was open on {date}.</div>
+          )}
+
+          {!alreadyIn && att.check_in === 'open' && (
             <>
               <section className="ck-decl-block">
                 <h2 className="ck-section-title">Please confirm</h2>
@@ -400,7 +411,11 @@ export default function CrewCheckin({ token }) {
             </div>
           )}
 
-          {alreadyIn && !alreadyOut && (
+          {alreadyIn && !alreadyOut && att.check_out === 'after' && (
+            <div className="ck-status is-wait">Clock-out closed. It was open on {date} and the day after.</div>
+          )}
+
+          {alreadyIn && !alreadyOut && att.check_out === 'open' && (
             <button type="button" className="iq-btn ck-submit" onClick={checkout} disabled={busy}>
               {busy ? 'Saving…' : 'Clock out'}
             </button>

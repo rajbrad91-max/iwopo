@@ -1,6 +1,6 @@
 /* 📚 Public knowledge fill-in page */
 * { box-sizing: border-box; }
-.kf-wrap { min-height: 100vh; background: var(--gray-177); color: var(--gray-967); font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 44px 18px; }
+.kf-wrap { min-height: 100vh; background: var(--gray-0); color: var(--gray-967); font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 44px 18px; }
 .kf-msg { padding: 80px; color: var(--slate-714); }
 .kf-gate { width: 100%; max-width: 420px; text-align: center; padding-top: 40px; }
 .kf-card { width: 100%; max-width: 620px; }
@@ -11,7 +11,7 @@
 
 .kf-field { margin-bottom: 18px; }
 .kf-label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-872); margin-bottom: 7px; }
-.kf-input { width: 100%; padding: 13px 15px; border-radius: 11px; border: 1px solid var(--slate-288); background: var(--slate-218); color: var(--gray-967); font-size: 14.5px; font-family: inherit; }
+.kf-input { width: 100%; padding: 13px 15px; border-radius: 11px; border: 1px solid var(--slate-278); background: var(--slate-256); color: var(--gray-967); font-size: 14.5px; font-family: inherit; }
 .kf-input::placeholder { color: var(--slate-551b); }
 .kf-input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 13%, transparent); }
 .kf-area { min-height: 110px; resize: vertical; line-height: 1.5; }
@@ -21,4 +21,4 @@
 .kf-btn:disabled { opacity: .6; cursor: default; }
 .kf-submit { width: 100%; margin-top: 8px; }
 .kf-err { color: var(--red-719); margin-top: 14px; font-size: 14px; }
-.kf-foot { text-align: center; margin-top: 30px; color: var(--slate-446); font-size: 12px; }
+.kf-foot { text-align: center; margin-top: 30px; color: var(--gray-450); font-size: 12px; }

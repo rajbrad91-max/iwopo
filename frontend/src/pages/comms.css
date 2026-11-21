@@ -154,7 +154,7 @@ a.cm-leadnote:hover { text-decoration: underline; }
 /* ── ✍️ the Save-contact sheet ───────────────────────────────────────── */
 .cm-modal {
   position: fixed; inset: 0; z-index: 400;
-  background: color-mix(in srgb, var(--gray-151b) 60%, transparent);
+  background: color-mix(in srgb, var(--gray-0) 60%, transparent);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .cm-sheet {
@@ -211,21 +211,21 @@ a.cm-leadnote:hover { text-decoration: underline; }
 .cm-quick { width: auto; max-width: 260px; font-size: 12.5px; padding: 5px 8px; }
 .cm-count-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
 .cm-seg { font-size: 12px; color: var(--muted); }
-.cm-seg.is-warn, .cm-count.is-warn { color: var(--orange-555); font-weight: 600; }
+.cm-seg.is-warn, .cm-count.is-warn { color: var(--orange-666); font-weight: 600; }
 .cm-linkbtn { border: 0; background: none; padding: 0 0 0 8px; font: inherit; font-size: 12px; font-weight: 600; color: var(--teal); cursor: pointer; }
 .cm-linkbtn:disabled { color: var(--muted); cursor: default; }
 .cm-review { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 14px; }
 .cm-review .lbl { display: block; margin-bottom: 2px; }
 .cm-review-msg { white-space: pre-wrap; padding: 10px 12px; border-radius: 10px; background: var(--teal-soft); color: var(--text); }
-.cm-real { margin: 0; font-size: 13px; font-weight: 600; color: var(--orange-555); }
-.cm-fail { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: var(--red-505); background: color-mix(in srgb, var(--red-577) 9%, transparent); }
+.cm-real { margin: 0; font-size: 13px; font-weight: 600; color: var(--orange-666); }
+.cm-fail { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; color: var(--red-537); background: color-mix(in srgb, var(--red-577) 9%, transparent); }
 .cm-dlv.is-ok { color: var(--teal); }
 .cm-dlv.is-bad { color: var(--red-577); font-weight: 600; }
 .cm-dlv.is-wait { color: var(--muted); }
 
 .cm-updating { font-size: 12px; color: var(--muted); }
 /* 🧪 staging practice mode */
-.cm-status.is-practice { color: var(--orange-555); background: color-mix(in srgb, var(--gold-769) 14%, transparent); border-color: transparent; }
+.cm-status.is-practice { color: var(--orange-666); background: color-mix(in srgb, var(--gold-769) 14%, transparent); border-color: transparent; }
 .cm-practice { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: var(--orange-473); background: color-mix(in srgb, var(--gold-769) 14%, transparent); }
 
 /* 👁️ unread conversations: bold and highlighted until opened (or reported by Tornado) */

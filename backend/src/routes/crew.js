@@ -63,6 +63,25 @@ async function vendorZone(vendorId) {
   return resolveTimezone(vs?.timezone, vendor?.country).tz || 'UTC';
 }
 
+/**
+ * 📅 When a crew member may mark attendance (Raj, 2026-11-20).
+ * Check-in: the event day only. Check-out: the event day or the next day,
+ * because weddings run past midnight — never the day after that.
+ * "Today" is the vendor's day, so a Vancouver shoot is judged on Vancouver time.
+ * An assignment with no event date has no day to hold it to, so it stays open.
+ */
+function attendanceWindow(eventDate, timeZone) {
+  const day = dateOnlyKey(eventDate);
+  if (!day) return { day: null, check_in: 'open', check_out: 'open' };
+  const today = calendarKey(timeZone);
+  const after = shiftCalendarKey(day, 1);
+  return {
+    day,
+    check_in: today < day ? 'before' : today === day ? 'open' : 'after',
+    check_out: today < day ? 'before' : today <= after ? 'open' : 'after',
+  };
+}
+
 /** Parse "HH:MM" or "H:MM" into minutes from midnight; null if unusable. */
 function minsOf(t) {
   if (!t || typeof t !== 'string') return null;
@@ -591,6 +610,7 @@ router.get('/checkin/:token', async (req, res) => {
         timing_from: leads?.timing_from ?? null, timing_to: leads?.timing_to ?? null,
         time_format: timeFormat,
         timezone,
+        attendance: attendanceWindow(leads?.event_date, timezone),
       },
       venue: venue.lat != null
         ? { lat: venue.lat, lng: venue.lng, precise: !!venue.precise }
@@ -605,9 +625,18 @@ router.post('/checkin/:token', limit({ name: 'crew-checkin', max: 30, windowMs: 
     const { action, declarations, lat, lng } = req.body; // in | out
     const a = await prisma.lead_crew.findFirst({
       where: { checkin_token: req.params.token },
-      include: { leads: { select: { location: true } } },
+      include: { leads: { select: { location: true, event_date: true, vendor_id: true } } },
     });
     if (!a) return res.status(404).json({ error: 'Invalid link' });
+
+    // 📅 Held to the event day — the page hides the buttons, this is the lock.
+    const win = attendanceWindow(a.leads?.event_date, await vendorZone(a.leads?.vendor_id));
+    if (action === 'out' && win.check_out !== 'open') {
+      return res.status(400).json({ error: 'Clock-out is only open on the event day and the day after.' });
+    }
+    if (action !== 'out' && win.check_in !== 'open') {
+      return res.status(400).json({ error: 'Check-in is only open on the event day.' });
+    }
 
     if (action === 'out') {
       const assignment = await prisma.lead_crew.update({

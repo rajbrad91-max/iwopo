@@ -11,11 +11,11 @@
  */
 
 .po-page {
-  --line: var(--stone-909);
-  --ink: var(--stone-215);
+  --line: var(--stone-880);
+  --ink: var(--stone-239);
   --body: var(--stone-375);
   --soft: var(--stone-593);
-  --paper: var(--gray-980b);
+  --paper: var(--gray-980);
   --tint: color-mix(in srgb, var(--brand, var(--brand-678)) 8%, var(--gray-1000));
   min-height: 100vh;
   background: var(--paper);
@@ -59,7 +59,7 @@
 .po-steps li {
   display: flex; align-items: center; gap: 9px;
   font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--stone-772);
+  color: var(--stone-811);
 }
 .po-steps li + li::before {
   content: ''; width: 44px; height: 1px; background: var(--line); margin: 0 14px;
@@ -114,8 +114,8 @@
   max-width: 520px; margin: 0 auto 24px;
   padding: 12px 16px; border-radius: 10px; font-size: 14px; text-align: center;
 }
-.po-msg.is-ok { background: var(--slate-967); color: var(--green-484); }
-.po-msg.is-err { background: var(--mauve-959); color: var(--red-504); }
+.po-msg.is-ok { background: var(--gray-967); color: var(--green-527); }
+.po-msg.is-err { background: var(--gray-959); color: var(--red-537); }
 
 /* ── packages ─────────────────────────────────────────────── */
 /* the cards in a row share one height and every Choose button sits at the bottom, so the buttons line up
@@ -199,7 +199,7 @@
   padding: 30px; text-align: center;
   box-shadow: 0 4px 22px color-mix(in srgb, var(--brand-678) 6%, transparent);
 }
-.po-panel.is-done { background: var(--gray-979); border-color: var(--slate-906); }
+.po-panel.is-done { background: var(--gray-967); border-color: var(--gray-912); }
 .po-panel-t { font-family: 'Playfair Display', Georgia, serif; font-size: 21px; color: var(--ink); margin: 0 0 6px; }
 .po-panel-p { color: var(--soft); margin: 0 0 22px; font-size: 15px; }
 .po-panel-p.no-gap { margin-bottom: 0; }
@@ -211,7 +211,7 @@
 }
 .po-bill > div {
   display: flex; justify-content: space-between; align-items: baseline;
-  padding: 15px 22px; border-bottom: 1px solid var(--stone-944);
+  padding: 15px 22px; border-bottom: 1px solid var(--stone-936);
 }
 .po-bill > div:last-child { border-bottom: none; }
 .po-bill dt { margin: 0; font-size: 14px; color: var(--soft); }
@@ -219,8 +219,8 @@
   margin: 0; font-size: 17px; font-weight: 600; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-.po-bill .is-paid { background: var(--gray-979); }
-.po-bill .is-paid dd { color: var(--green-484); }
+.po-bill .is-paid { background: var(--gray-967); }
+.po-bill .is-paid dd { color: var(--green-527); }
 .po-bill .is-due { background: var(--tint); }
 .po-bill .is-due dt { color: var(--ink); font-weight: 600; }
 .po-bill .is-due dd {
@@ -284,14 +284,14 @@
 /* 🗓️ the booking's events, one line each, in date order (Raj, 2026-11-13) */
 .po-strip-row { display: flex; flex-wrap: wrap; gap: 8px 22px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .po-events { list-style: none; margin: 0; padding: 0; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif; }
-.po-events li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; padding: 9px 0; border-bottom: 1px solid var(--stone-944); font-size: 14px; color: var(--body); line-height: 1.5; }
+.po-events li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; padding: 9px 0; border-bottom: 1px solid var(--stone-936); font-size: 14px; color: var(--body); line-height: 1.5; }
 .po-events li:last-child { border-bottom: 0; padding-bottom: 0; }
 .po-events li:first-child { padding-top: 0; }
 .po-ev-day { min-width: 92px; margin-right: 10px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .po-ev-name { font-weight: 600; color: var(--ink); }
 .po-ev-name em { margin-left: 8px; padding: 1px 8px; border-radius: 20px; font-style: normal; font-size: 10.5px; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; background: var(--tint); color: var(--brandText, var(--brand, var(--brand-678))); }
-.po-ev-part::before { content: '·'; margin: 0 8px; color: var(--stone-800); }
+.po-ev-part::before { content: '·'; margin: 0 8px; color: var(--stone-811); }
 .po-events li.is-main { color: var(--ink); }
 @media (max-width: 600px) {
   .po-ev-day { flex-basis: 100%; min-width: 0; margin: 0 0 1px; font-size: 12.5px; color: var(--soft); }
@@ -346,8 +346,8 @@
 .po-gate-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); margin: 0 0 8px; }
 .po-gate-input { width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 15px; font-family: inherit; }
 .po-gate-input:focus { outline: none; border-color: var(--brand, var(--brand-747)); }
-.po-gate-input.is-err { border-color: var(--red-592); }
-.po-gate-err { color: var(--red-592); font-size: 13px; margin: 8px 0 0; }
+.po-gate-input.is-err { border-color: var(--red-577); }
+.po-gate-err { color: var(--red-577); font-size: 13px; margin: 8px 0 0; }
 .po-gate-btn {
   width: 100%; margin-top: 16px; padding: 13px; border: none; border-radius: 10px;
   background: var(--brand, var(--brand-747)); color: var(--gray-1000); font-size: 15px; font-weight: 600;
@@ -362,7 +362,7 @@
 .po-timer { text-align: center; margin: 18px 0 8px; }
 .po-timer-eyebrow {
   font-size: 10px; font-weight: 400; letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--brand-570); margin: 0 0 8px;
+  color: var(--brand-678); margin: 0 0 8px;
 }
 /* tinted from the vendor's own colour rather than a fixed gold, so the panel
    belongs to whoever's page it is */
@@ -380,13 +380,13 @@
 }
 .po-timer-lbl {
   font-size: 8px; font-weight: 700; letter-spacing: .96px; text-transform: uppercase;
-  color: var(--brand-570); margin-top: 3px;
+  color: var(--brand-678); margin-top: 3px;
 }
 .po-timer-colon {
-  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--brand-935);
+  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--brand-881);
 }
 .po-timer-expired {
-  font-size: 14px; color: var(--red-592); background: var(--gray-978); border: 1px solid var(--red-890);
+  font-size: 14px; color: var(--red-577); background: var(--gray-967); border: 1px solid var(--red-890);
   border-radius: 10px; padding: 12px 16px; margin: 0;
 }
 

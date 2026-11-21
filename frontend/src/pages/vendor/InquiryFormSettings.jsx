@@ -5,9 +5,10 @@
 import { useState, useEffect } from 'react';
 import { useDialog } from '../../lib/dialog.jsx';
 import { api } from '../../lib/api';
-import { PROFESSIONS } from '../InquiryForm';
+import { PROFESSIONS, InquiryPreview } from '../InquiryForm';
 import { OTHER } from '../../lib/formRules';
 import { inquiryUrl } from '../../lib/clientBase';
+import NavIcon from '../../components/NavIcon';
 
 /**
  * 🔀 "Show this question: Always / Only when…" (2026-10-30). Optional on every question — "Always" is how every
@@ -29,7 +30,7 @@ function ShowIfEditor({ f, index, fields, onChange }) {
   const set = (patch) => onChange({ ...rule, ...patch });
   return (
     <div className="fb-showif">
-      <label className="fb-label">👁️ Show this question</label>
+      <label className="fb-label">Show this question</label>
       <select className="fb-select" value={rule?.field || ''} onChange={e => {
         const s2 = sources.find(x => x.id === e.target.value);
         onChange(s2 ? { field: s2.id, op: 'in', values: s2.type === 'checkbox' ? [true] : [] } : null);
@@ -57,9 +58,9 @@ function ShowIfEditor({ f, index, fields, onChange }) {
             </label>
           ))}
         </div>
-        {!values.length && <p className="fb-hint">💡 Tick at least one answer — until then this question always shows.</p>}
+        {!values.length && <p className="fb-hint">Tick at least one answer — until then this question always shows.</p>}
       </>)}
-      {rule && !src && <p className="fb-hint">⚠️ The question this depended on was removed or moved below it — it now always shows.</p>}
+      {rule && !src && <p className="fb-hint">The question this depended on was removed or moved below it — it now always shows.</p>}
     </div>
   );
 }
@@ -322,9 +323,14 @@ function FieldBuilder({ fields, setFields, onTrade }) {
         : !taken.has('timing_to') ? 'timing_to' : '';
     }
     const options = t === 'dropdown' ? ['Option 1'] : t === 'pre_events' ? [...PRE_EVENT_NAMES] : [];
-    setFields([...fields, { id: uid(), type: t, label: t === 'pre_events' ? 'Pre-Events' : '', required: false, maps_to, options }]);
+    const id = uid();
+    setFields([...fields, { id, type: t, label: t === 'pre_events' ? 'Pre-Events' : '', required: false, maps_to, options }]);
+    setOpenId(id);
   };
   const upd = (i, patch) => setFields(fields.map((f, idx) => idx === i ? { ...f, ...patch } : f));
+  /* 📐 One question open at a time (Raj, 2026-11-20): the rest fold to one line,
+     so a form of twenty questions is a screen, not nine. A new question opens. */
+  const [openId, setOpenId] = useState(null);
 
   // 🎉 Add the whole event group at once. A column already claimed by an
   // existing field is left claimed — the new field still appears, just
@@ -415,7 +421,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
           rediscovering that list by forgetting something on a real booking is a
           poor way to learn it. */}
       <div className="fb-preset-row">
-        <span className="fb-preset-label">🧰 Start from a preset</span>
+        <span className="fb-preset-label">Start from a preset</span>
         <select className="fb-preset-sel" value="" onChange={e => { loadPreset(e.target.value); e.target.value = ''; }}>
           <option value="">Choose your trade…</option>
           {Object.entries(FORM_PRESETS).map(([k, v]) => (
@@ -430,7 +436,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
       <div className="fb-add-row">
         <button className="refresh fb-preset" onClick={addEventGroup}
           title="Adds Type of Event, Date, Starting Time, Ending Time, Hours and Location — all editable">
-          + 🎉 Event
+          + Event
         </button>
         <span className="fb-add-sep" />
         {FIELD_TYPES.map(ft => (
@@ -438,26 +444,32 @@ function FieldBuilder({ fields, setFields, onTrade }) {
         ))}
       </div>
 
-      {fields.length === 0 && <p className="sub">No custom fields yet. Add fields above ☝️</p>}
+      {fields.length === 0 && <p className="sub">No custom fields yet. Add fields above</p>}
 
       {/* field list */}
       {fields.map((f, i) => (
-        <div className="u-background-panel-2 u-border-1px-solid-line u-border-radius-10px u-padding-12px u-margin-bottom-10px" key={f.id}>
-          <div className="u-display-flex u-align-items-center u-gap-8px u-margin-bottom-8px">
-            <span className="u-font-size-12px u-color-muted">{FIELD_TYPES.find(x => x.t === f.type)?.label}</span>
-            <div className="u-margin-left-auto u-display-flex u-gap-4px">
-              <button className="refresh u-padding-3px-8px u-font-size-11px" onClick={() => move(i, -1)}>↑</button>
-              <button className="refresh u-padding-3px-8px u-font-size-11px" onClick={() => move(i, 1)}>↓</button>
-              <button className="refresh u-padding-3px-8px u-font-size-11px u-color-red" onClick={() => del(i)}>🗑️</button>
+        <div className={`fb-q${openId === f.id ? ' is-open' : ''}`} key={f.id}>
+          <div className="fb-q-head" role="button" tabIndex={0} aria-expanded={openId === f.id}
+            onClick={() => setOpenId(openId === f.id ? null : f.id)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(openId === f.id ? null : f.id); } }}>
+            <span className="fb-q-type">{FIELD_TYPES.find(x => x.t === f.type)?.label}</span>
+            <span className="fb-q-name">{f.label || 'Untitled question'}</span>
+            {f.required && <span className="fb-q-pill">Required</span>}
+            <div className="fb-q-acts" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+              <button className="refresh fb-q-btn" onClick={() => move(i, -1)} title="Move up">↑</button>
+              <button className="refresh fb-q-btn" onClick={() => move(i, 1)} title="Move down">↓</button>
+              <button className="refresh fb-q-btn" onClick={() => del(i)} title="Delete this question" aria-label="Delete this question"><NavIcon name="delete" /></button>
             </div>
           </div>
+
+          {openId === f.id && (<div className="fb-q-body">
 
           <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-8px u-width-100pct u-font-size-13px" placeholder="Field label (e.g. Event Type)" value={f.label} onChange={e => upd(i, { label: e.target.value })} />
 
           {/* dropdown options */}
           {(f.type === 'dropdown' || f.type === 'pre_events') && (
             <div className="u-margin-top-8px">
-              {f.type === 'pre_events' && <p className="fb-hint">🗓️ The event names clients can pick — they can also type their own.</p>}
+              {f.type === 'pre_events' && <p className="fb-hint">The event names clients can pick — they can also type their own.</p>}
               {f.options.map((opt, oi) => (
                 <div className="u-display-flex u-gap-6px u-margin-bottom-5px" key={oi}>
                   <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-8px u-width-100pct u-font-size-12px" value={opt} onChange={e => upd(i, { options: f.options.map((o, x) => x === oi ? e.target.value : o) })} />
@@ -472,7 +484,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
           {f.type === 'dropdown' && (
             <label className="fb-check">
               <input type="checkbox" checked={!!f.allow_other} onChange={e => upd(i, { allow_other: e.target.checked })} />
-              ✍️ Let clients type their own answer (adds “Other — type your own”)
+              Let clients type their own answer (adds “Other — type your own”)
             </label>
           )}
 
@@ -480,7 +492,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
           {f.type === 'pre_events' && (
             <div className="fb-pair">
               <div>
-                <label className="fb-label">Service choices (optional) 🎬</label>
+                <label className="fb-label">Service choices (optional)</label>
                 <ListInput value={f.pe_services} placeholder="Photos & Videos, Only Photos" onChange={v => upd(i, { pe_services: v })} />
               </div>
               <div>
@@ -498,13 +510,13 @@ function FieldBuilder({ fields, setFields, onTrade }) {
               ? `${t.label} (question ${fields.indexOf(t) + 1})` : t.label);
             if (!times.length) return (
               <p className="fb-hint">
-                💡 Add two <strong>🕐 Time</strong> fields to calculate hours automatically.
+                Add two <strong>Time</strong> fields to calculate hours automatically.
               </p>
             );
             return (
               <div className="fb-pair">
                 <div>
-                  <label className="fb-label">Calculate from ⏱️</label>
+                  <label className="fb-label">Calculate from</label>
                   <select className="fb-select" value={f.from_field || ''}
                     onChange={e => upd(i, { from_field: e.target.value })}>
                     <option value="">Client types it</option>
@@ -565,7 +577,7 @@ function FieldBuilder({ fields, setFields, onTrade }) {
           {cols.some(c => c.key !== 'event_type' && c.types.includes(f.type)) && (
             <div className="fb-map">
               <label className="fb-label">
-                Where should this answer appear? 🔗
+                Where should this answer appear?
               </label>
               <select
                 className="fb-select"
@@ -573,24 +585,25 @@ function FieldBuilder({ fields, setFields, onTrade }) {
                 disabled={f.maps_to === 'event_type'}
                 onChange={e => upd(i, { maps_to: e.target.value })}
               >
-                <option value="">📋 In the answers list only</option>
+                <option value="">In the answers list only</option>
                 {cols.filter(c => c.key !== 'event_type' && c.types.includes(f.type)).map(c => {
                   // one column can only be fed by one field
                   const taken = fields.some((o, oi) => oi !== i && o.maps_to === c.key);
                   return <option key={c.key} value={c.key} disabled={taken}>
-                    ⭐ {c.label}{taken ? ' — used by another field' : ''}
+                    {c.label}{taken ? ' — used by another field' : ''}
                   </option>;
                 })}
               </select>
               <p className="fb-hint">
                 {f.maps_to === 'event_type'
-                  ? <>📋 Already showing in the <strong>Event</strong> column — untick above to change this.</>
+                  ? <>Already showing in the <strong>Event</strong> column — untick above to change this.</>
                   : f.maps_to
-                    ? <>⭐ Shows as <strong>{cols.find(c => c.key === f.maps_to)?.label}</strong> on the lead, and in Bookings, Calendar and contracts.</>
-                    : <>📋 Saved with the inquiry and shown in the lead&apos;s answers list. Pick a field above to also show it on the lead card.</>}
+                    ? <>Shows as <strong>{cols.find(c => c.key === f.maps_to)?.label}</strong> on the lead, and in Bookings, Calendar and contracts.</>
+                    : <>Saved with the inquiry and shown in the lead&apos;s answers list. Pick a field above to also show it on the lead card.</>}
               </p>
             </div>
           )}
+          </div>)}
         </div>
       ))}
     </div>
@@ -607,6 +620,7 @@ export function InqFormSettings() {
   const [s, setS] = useState(null);
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [view, setView] = useState('questions');   // the left side's tab: the questions, or the form's look
 
   useEffect(() => {
     api.myInquirySettings()
@@ -626,96 +640,112 @@ export function InqFormSettings() {
       // "✅ Saved" while the two quietly disagree.
       const fresh = await api.myInquirySettings();
       setS(fresh.settings);
-      setMsg('✅ Saved');
+      setMsg('Saved');
       setTimeout(() => setMsg(''), 2500);
     }
-    catch (e) { setMsg('⚠️ ' + e.message); }
+    catch (e) { setMsg(e.message); }
     setSaving(false);
   }
   if (!s) return <div className="loading">Loading…</div>;
 
   return (
-    <div className="u-max-width-560px">
+    /* 📐 Raj, 2026-11-20: build on the left, see it on the right. The left
+       side has two tabs — the questions, and the form's look (name, colour,
+       watermark, intro, theme, font) — and the live preview stays in view on
+       the right, drawn from the changes not saved yet. */
+    <div className="if-page">
       <div className="table-wrap u-padding-22px">
-        <h2 className="u-margin-top-0">🎨 Customize your inquiry form {msg && <span className="u-font-size-13px u-color-green">{msg}</span>}</h2>
+        <h2 className="u-margin-top-0 if-title"><NavIcon name="inqform" />Customize your inquiry form {msg && <span className="u-font-size-13px u-color-green">{msg}</span>}</h2>
         <p className="sub inq-link-row">
-          Your link: <b className="inq-link">{handle ? inquiryUrl(handle) : '…'}</b> 🔗
+          Your link: <b className="inq-link">{handle ? inquiryUrl(handle) : '…'}</b>
           {' · '}
           {/* opens the live public form, so a vendor can check a change landed
               without hunting for the URL. Cache-busted because the page they
               last looked at may still be open in another tab. */}
           <a href={`${inquiryUrl(handle)}?v=${Date.now()}`} target="_blank" rel="noreferrer"
             className="inq-preview">
-            👁️ Preview
+            <NavIcon name="preview" />Open
           </a>
         </p>
 
-        <label className="u-font-size-12px u-color-muted">Brand name</label>
-        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
-
-        <div className="if-brand-row">
-          <div>
-            <label className="u-font-size-12px u-color-muted u-display-block">Brand color</label>
-            <div className="u-display-flex u-align-items-center u-gap-8px">
-              <input className="u-width-60px u-height-36px u-border-none u-background-transparent u-cursor-pointer" type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })} />
-              <HexField value={s.brand_color} onChange={hex => setS({ ...s, brand_color: hex })} />
-            </div>
-          </div>
-          <div className="if-wm">
-            <label className="u-font-size-12px u-color-muted u-display-block u-margin-bottom-4px">Background watermark</label>
-            <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.background || 'none'} onChange={e => setS({ ...s, background: e.target.value })}>
-              {Object.entries(PROFESSIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </div>
+        <div className="set-tabbar if-tabs" role="tablist">
+          {[['questions', 'Questions'], ['look', 'Form look']].map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={view === k} className={`set-tab${view === k ? ' is-on' : ''}`} onClick={() => setView(k)}>{label}</button>
+          ))}
         </div>
 
-        <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-12px">Intro text</label>
-        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.intro_text || ''} onChange={e => setS({ ...s, intro_text: e.target.value })} />
-
-        <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-10px">Intro link (optional — makes intro clickable) 🔗</label>
-        <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.intro_link || ''} placeholder="https://yoursite.com" onChange={e => setS({ ...s, intro_link: e.target.value })} />
-
-        {/* 🎨 Theme + font */}
-        <div className="u-display-flex u-gap-12px u-margin-top-14px">
-          <div className="u-flex-1">
-            <label className="u-font-size-12px u-color-muted">Theme</label>
-            <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.theme || 'ivory'} onChange={e => setS({ ...s, theme: e.target.value })}>
-              <option value="ivory">Ivory (calm, classic)</option>
-              <option value="classic">Classic</option>
-              <option value="modern">Modern</option>
-              <option value="elegant">Elegant</option>
-              <option value="bold">Bold</option>
-              <option value="minimal">Minimal</option>
-            </select>
-          </div>
-          <div className="u-flex-1">
-            <label className="u-font-size-12px u-color-muted">Font</label>
-            <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.font || 'Inter'} onChange={e => setS({ ...s, font: e.target.value })}>
-              <option value="Inter">Inter</option>
-              <option value="Poppins">Poppins</option>
-              <option value="Playfair Display">Playfair</option>
-              <option value="Montserrat">Montserrat</option>
-              <option value="Lora">Lora</option>
-            </select>
-          </div>
-        </div>
-
-        {/* 🏗️ Section 2 builder */}
-        <div className="u-border-top-1px-solid-line u-margin-20px-0-14px u-padding-top-16px">
-          <label className="u-font-size-12px u-color-muted">Section 2 heading</label>
-          <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.details_heading || ''} placeholder="Event Details" onChange={e => setS({ ...s, details_heading: e.target.value })} />
-          <h3 className="u-margin-16px-0-4px">🏗️ Inquiry Details fields</h3>
-          <p className="sub u-margin-bottom-12px">Build your custom questions below</p>
+        {view === 'questions' ? (
           <FieldBuilder
             fields={s.custom_fields || []}
             setFields={(f) => setS(prev => ({ ...prev, custom_fields: f }))}
             onTrade={(key) => { setS(prev => ({ ...prev, background: key, details_heading: '' })); setChosenTrade(key); }}
           />
-        </div>
+        ) : (
+          <div>
+            <label className="u-font-size-12px u-color-muted">Brand name</label>
+            <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
 
-        <button className="refresh u-margin-top-16px u-width-100pct u-background-teal u-color-acc-ink" onClick={save} disabled={saving}>
+            <div className="if-brand-row">
+              <div>
+                <label className="u-font-size-12px u-color-muted u-display-block">Brand color</label>
+                <div className="u-display-flex u-align-items-center u-gap-8px">
+                  <input className="u-width-60px u-height-36px u-border-none u-background-transparent u-cursor-pointer" type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })} />
+                  <HexField value={s.brand_color} onChange={hex => setS({ ...s, brand_color: hex })} />
+                </div>
+              </div>
+              <div className="if-wm">
+                <label className="u-font-size-12px u-color-muted u-display-block u-margin-bottom-4px">Background watermark</label>
+                <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.background || 'none'} onChange={e => setS({ ...s, background: e.target.value })}>
+                  {Object.entries(PROFESSIONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-12px">Intro text</label>
+            <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.intro_text || ''} onChange={e => setS({ ...s, intro_text: e.target.value })} />
+
+            <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-10px">Intro link (optional — makes intro clickable)</label>
+            <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.intro_link || ''} placeholder="https://yoursite.com" onChange={e => setS({ ...s, intro_link: e.target.value })} />
+
+            {/* 🎨 Theme + font */}
+            <div className="u-display-flex u-gap-12px u-margin-top-14px">
+              <div className="u-flex-1">
+                <label className="u-font-size-12px u-color-muted">Theme</label>
+                <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.theme || 'ivory'} onChange={e => setS({ ...s, theme: e.target.value })}>
+                  <option value="ivory">Ivory (calm, classic)</option>
+                  <option value="classic">Classic</option>
+                  <option value="modern">Modern</option>
+                  <option value="elegant">Elegant</option>
+                  <option value="bold">Bold</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </div>
+              <div className="u-flex-1">
+                <label className="u-font-size-12px u-color-muted">Font</label>
+                <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.font || 'Inter'} onChange={e => setS({ ...s, font: e.target.value })}>
+                  <option value="Inter">Inter</option>
+                  <option value="Poppins">Poppins</option>
+                  <option value="Playfair Display">Playfair</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Lora">Lora</option>
+                </select>
+              </div>
+            </div>
+
+            <label className="u-font-size-12px u-color-muted u-display-block u-margin-top-14px">Section 2 heading</label>
+            <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.details_heading || ''} placeholder="Event Details" onChange={e => setS({ ...s, details_heading: e.target.value })} />
+          </div>
+        )}
+
+        <button className="refresh u-margin-top-16px u-width-100pct" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : msg || 'Save form settings'}
         </button>
+      </div>
+
+      {/* 👀 the form as clients will see it, updating as the vendor types */}
+      <div className="table-wrap if-pv">
+        <p className="sub if-pv-note">Live preview — your changes show here before you save. Try the answers; nothing is sent.</p>
+        <InquiryPreview cfg={s} />
       </div>
     </div>
   );

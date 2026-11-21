@@ -596,10 +596,10 @@ export function AlbumDetail({ albumId, onBack, rawsel = false }) {
             title={onlyPhotos || 'See the photo selection the client sent you'}><NavIcon name="selection" />Selection</button>
           {isPerClient && (
             <div className="ad-ev-actions">
-              {/* Not faded in the Videos folder: adding a photo folder is the
+              {/* Not faded in the Videos folder: adding an event is the
                   one thing a vendor standing there is most likely to want. */}
               <button className="refresh ad-ev-btn" onClick={openAddEvent}
-                title="Add a photos folder"><NavIcon name="add-folder" />Add Photos Folder</button>
+                title="Add an event, like Haldi or Wedding"><NavIcon name="add-folder" />Add Event</button>
               <button className="refresh ad-ev-btn" onClick={openEditEvent} disabled={activeEvent === 'all' || inVideos}
                 title={onlyPhotos || 'Rename the selected event'}><NavIcon name="rename" />Rename</button>
               <button className="refresh ad-ev-btn ad-ev-btn-del" onClick={openDeleteEvent} disabled={activeEvent === 'all' || inVideos}
@@ -823,7 +823,7 @@ export function AlbumDetail({ albumId, onBack, rawsel = false }) {
 
       {shown.length === 0 && pendingShown.length === 0 ? (
         (isPerClient && activeEvent === 'all' && events.length === 0) ? (
-          <div className="table-wrap ad-empty">Click ➕ Add up top to create an event, then upload photos into it 📤</div>
+          <div className="table-wrap ad-empty">Add an event up top, then upload photos into it.</div>
         ) : (
           <div
             className={`ad-dropzone ${dragOver ? 'is-drag' : ''} ${uploading || (isPerClient && activeEvent === 'all') ? 'is-off' : ''}`}

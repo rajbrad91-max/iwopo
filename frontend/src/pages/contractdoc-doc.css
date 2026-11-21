@@ -27,9 +27,9 @@
 .ct-accent-gold { --ct-accent: var(--brand-678); }
 .ct-accent-navy { --ct-accent: var(--blue-346); }
 .ct-accent-black { --ct-accent: var(--slate-278); }
-.ct-accent-rose { --ct-accent: var(--pink-570); }
-.ct-accent-emerald { --ct-accent: var(--green-519); }
-.ct-accent-plum { --ct-accent: var(--violet-445); }
+.ct-accent-rose { --ct-accent: var(--pink-598); }
+.ct-accent-emerald { --ct-accent: var(--green-527); }
+.ct-accent-plum { --ct-accent: var(--violet-491); }
 .ct-fonts-classic { --ct-head: Lora, Georgia, serif; --ct-body: "Open Sans", "Segoe UI", system-ui, sans-serif; }
 .ct-fonts-modern { --ct-head: Inter, "Segoe UI", system-ui, sans-serif; --ct-body: Inter, "Segoe UI", system-ui, sans-serif; }
 .ct-fonts-traditional { --ct-head: Georgia, "Times New Roman", serif; --ct-body: Georgia, "Times New Roman", serif; }
@@ -39,8 +39,8 @@
 .ct-doc .ct-hb-logo { width: 126px; padding: 0 16px 14px 0; vertical-align: middle; border: 0; background: transparent; }
 .ct-doc .ct-logo { display: block; width: auto; height: auto; max-width: 110px; max-height: 88px; object-fit: contain; }
 .ct-doc .ct-hb-info { text-align: right; vertical-align: middle; padding: 0 0 14px 12px; border: 0; background: transparent; }
-.ct-doc .ct-hb-info p { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--slate-442); }
-.ct-doc .ct-hb-info p:first-child { font-size: 13px; color: var(--slate-373); }
+.ct-doc .ct-hb-info p { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--gray-450); }
+.ct-doc .ct-hb-info p:first-child { font-size: 13px; color: var(--mauve-376); }
 
 /* title */
 .ct-doc .ct-doc-title {
@@ -54,7 +54,7 @@
   margin: 30px 0 8px;
   line-height: 1.25;
 }
-.ct-doc .ct-doc-for { font-size: 16px; text-align: center; color: var(--slate-442); margin: 0 0 30px; }
+.ct-doc .ct-doc-for { font-size: 16px; text-align: center; color: var(--gray-450); margin: 0 0 30px; }
 
 /* sections */
 .ct-doc .ct-sec { margin: 0 0 6px; }
@@ -104,8 +104,8 @@
 .ct-doc tr:last-child td { border: 0; }
 
 /* bordered tables: Booking Details, Acceptance, Services Summary */
-.ct-doc .ct-details { margin: 8px 0 18px; border: 1px solid var(--slate-881); }
-.ct-doc .ct-svc { width: 60%; margin: 8px 0 18px; border: 1px solid var(--slate-881); }
+.ct-doc .ct-details { margin: 8px 0 18px; border: 1px solid var(--gray-912); }
+.ct-doc .ct-svc { width: 60%; margin: 8px 0 18px; border: 1px solid var(--gray-912); }
 .ct-doc .ct-details th,
 .ct-doc .ct-details td,
 .ct-doc .ct-svc th,
@@ -113,8 +113,8 @@
 .ct-doc .ct-details tr:last-child th,
 .ct-doc .ct-details tr:last-child td,
 .ct-doc .ct-svc tr:last-child th,
-.ct-doc .ct-svc tr:last-child td { border: 1px solid var(--slate-881); padding: 10px 12px; font-size: 14px; }
-.ct-doc .ct-details th { background: var(--gray-967); font-weight: 600; color: var(--slate-373); white-space: nowrap; width: 1%; }   /* labels on one line ("Client Name"), the column fits its words */
+.ct-doc .ct-svc tr:last-child td { border: 1px solid var(--gray-912); padding: 10px 12px; font-size: 14px; }
+.ct-doc .ct-details th { background: var(--gray-967); font-weight: 600; color: var(--mauve-376); white-space: nowrap; width: 1%; }   /* labels on one line ("Client Name"), the column fits its words */
 .ct-doc .ct-svc th { width: 50%; background: var(--gray-1000); font-weight: 400; color: var(--slate-278); }
 
 /* label / value lists (the schedule) */
@@ -123,20 +123,23 @@
 .ct-doc .ct-kv td,
 .ct-doc .ct-kv tr:last-child th,
 .ct-doc .ct-kv tr:last-child td { border: 0; background: transparent; padding: 3px 0; font-size: 14px; }
-.ct-doc .ct-kv th { width: 170px; font-weight: 600; color: var(--slate-373); padding-right: 18px; }   /* label column like the reference (~125pt) */
+.ct-doc .ct-kv th { width: 170px; font-weight: 600; color: var(--mauve-376); padding-right: 18px; }   /* label column like the reference (~125pt) */
 /* {{extras}}: the price, line by line — wider labels, and the total ruled off (Raj, 2026-11-13) */
 .ct-doc .ct-extras th { width: 60%; }
+/* Package & Price: the package named as the package, the extras under their own small label */
+.ct-doc .ct-extras .ct-x-kind { font-weight: 400; opacity: .75; margin-right: 6px; }
+.ct-doc .ct-extras .ct-x-sub th { padding-top: 12px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; opacity: .6; }
 .ct-doc .ct-extras tr:last-child th,
-.ct-doc .ct-extras tr:last-child td { border-top: 1px solid var(--gray-872); padding-top: 6px; font-weight: 700; color: var(--slate-210); }
+.ct-doc .ct-extras tr:last-child td { border-top: 1px solid var(--gray-872); padding-top: 6px; font-weight: 700; color: var(--slate-256); }
 
-.ct-doc .ct-inc { font-weight: 700; color: var(--green-445); }
-.ct-doc .ct-notinc { font-weight: 700; color: var(--slate-711); }
+.ct-doc .ct-inc { font-weight: 700; color: var(--green-527); }
+.ct-doc .ct-notinc { font-weight: 700; color: var(--slate-714); }
 
 /* client initials: a small grey label and the initials in italic serif, on one line */
 .ct-doc .ct-init { width: auto; margin: 12px 0 4px; border: 0; }
 .ct-doc .ct-init td,
 .ct-doc .ct-init tr:last-child td { border: 0; background: transparent; padding: 0 10px 0 0; vertical-align: baseline; }
-.ct-doc .ct-init-label { font-size: 13px; font-weight: 700; color: var(--slate-549); white-space: nowrap; }
+.ct-doc .ct-init-label { font-size: 13px; font-weight: 700; color: var(--slate-551b); white-space: nowrap; }
 .ct-doc .ct-init-line { min-width: 90px; }
 .ct-doc .ct-init-tap {
   display: inline-block;
@@ -154,7 +157,7 @@
   cursor: pointer;
 }
 .ct-doc .ct-init-tap:hover { color: var(--slate-278); border-bottom-color: var(--slate-278); }
-.ct-doc .ct-init-tap.is-done { background: transparent; border-bottom-color: transparent; color: var(--slate-210); }
+.ct-doc .ct-init-tap.is-done { background: transparent; border-bottom-color: transparent; color: var(--slate-256); }
 .ct-hand,
 .ct-doc .ct-init-tap.ct-hand {
   /* ✍️ initials read as hand-written, and stay legible as letters (Caveat — Raj, 2026-11-04) */
@@ -165,7 +168,7 @@
   line-height: 1.2;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--slate-210);
+  color: var(--slate-256);
   padding: 0 4px;
   min-width: 28px;
 }
@@ -176,10 +179,10 @@
 /* ✍️ Acceptance & Signature in the delivered contract: thick rules, a 65% table, the signature on its line */
 .ct-doc .ct-accept-doc { border-top: 2px solid var(--slate-278); margin-top: 36px; padding-top: 4px; }
 .ct-doc .ct-accept-doc .ct-details { width: 65%; }
-.ct-doc .ct-signed-by { border-top: 2px solid var(--slate-278); padding-top: 18px; margin: 20px 0 4px; color: var(--slate-549); }
+.ct-doc .ct-signed-by { border-top: 2px solid var(--slate-278); padding-top: 18px; margin: 20px 0 4px; color: var(--slate-551b); }
 .ct-doc .ct-sig-img { display: block; width: 300px; max-width: 100%; max-height: 90px; object-fit: contain; object-position: left bottom; border-bottom: 1px solid var(--slate-278); margin: 4px 0 8px; }
 .ct-doc .ct-sig-name { margin: 0; }
-.ct-doc .ct-sig-when { margin: 0; font-size: 13px; color: var(--slate-549); }
+.ct-doc .ct-sig-when { margin: 0; font-size: 13px; color: var(--slate-551b); }
 .ct-doc .ct-fingerprint { margin: 22px 0 0; font-size: 11px; color: var(--slate-714); overflow-wrap: anywhere; }
 
 /* phones */
@@ -197,7 +200,7 @@
 /* ✍️ the initial box the client is sent to when they press Sign with it still empty (guideToMissing) */
 .ct-doc .ct-init-tap.is-attention { animation: ct-attention .85s ease-in-out 3; }
 @keyframes ct-attention {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-666) 0%, transparent); background: var(--stone-978); }
-  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--brand-666) 35%, transparent); background: var(--brand-934); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-678) 0%, transparent); background: var(--gray-980); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--brand-678) 35%, transparent); background: var(--brand-881); }
 }
-@media (prefers-reduced-motion: reduce) { .ct-doc .ct-init-tap.is-attention { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-666) 55%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .ct-doc .ct-init-tap.is-attention { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-678) 55%, transparent); } }

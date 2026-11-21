@@ -9,7 +9,7 @@
 
 .lc {
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
-  padding: 14px 16px 16px; box-shadow: 0 1px 3px color-mix(in srgb, var(--slate-208) 5%, transparent);
+  padding: 14px 16px 16px; box-shadow: 0 1px 3px color-mix(in srgb, var(--slate-256) 5%, transparent);
 }
 .lc-head { display: flex; align-items: baseline; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }   /* name, email and phone on one line */
 .lc-name { flex: 0 0 auto; max-width: 60%; margin: 0; font-size: 17px; font-weight: 800; line-height: 1.25; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -31,7 +31,7 @@
 .lc-status { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
 .lc-st-new { background: var(--teal-soft); color: var(--teal); }
 .lc-st-quoted { background: var(--gold-962); color: var(--orange-473); }
-.lc-st-booked { background: var(--slate-962); color: var(--green-448); }
+.lc-st-booked { background: var(--gray-959); color: var(--green-527); }
 
 .lc-pick { font-weight: 700; }
 .lc-pick b { font-weight: 800; }

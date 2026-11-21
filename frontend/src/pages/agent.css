@@ -9,7 +9,7 @@
 .ag-msg { max-width: 82%; align-self: flex-start; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: var(--panel); border: 1px solid var(--line); color: var(--text); font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; }
 .ag-msg.is-me { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: var(--teal); border-color: transparent; color: var(--gray-1000); }
 .ag-typing { color: var(--muted); font-style: italic; }
-.ag-err { margin: 6px 0; padding: 9px 12px; border-radius: 9px; background: var(--mauve-957b); color: var(--red-496); font-size: 13px; }
+.ag-err { margin: 6px 0; padding: 9px 12px; border-radius: 9px; background: var(--gray-959); color: var(--red-537); font-size: 13px; }
 .ag-bar { display: flex; gap: 8px; align-items: flex-end; padding-top: 8px; border-top: 1px solid var(--line); }
 .ag-bar textarea { flex: 1; min-height: 44px; max-height: 140px; resize: vertical; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); font: inherit; font-size: 15px; }
 .ag-send { min-height: 44px; padding: 0 18px; border: none; border-radius: 12px; background: var(--teal); color: var(--gray-1000); font: inherit; font-weight: 600; cursor: pointer; }
@@ -31,9 +31,9 @@
 .ag-tool.is-on { border-color: var(--teal); color: var(--text); }
 .ag-tool:disabled { opacity: .6; cursor: default; }
 .ag-mic { flex: 0 0 auto; width: 48px; height: 48px; border: none; border-radius: 50%; background: var(--panel-2); font-size: 21px; cursor: pointer; }
-.ag-mic.is-on { background: var(--red-626); animation: ag-pulse 1.2s ease-in-out infinite; }
+.ag-mic.is-on { background: var(--red-577); animation: ag-pulse 1.2s ease-in-out infinite; }
 .ag-mic.is-ready { box-shadow: 0 0 0 3px var(--teal); }
-@keyframes ag-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red-626) 50%, transparent); } 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--red-626) 0%, transparent); } }
+@keyframes ag-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red-577) 50%, transparent); } 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--red-577) 0%, transparent); } }
 
 /* 🧠 knowledge & memory */
 .ag-know { flex: 1; overflow-y: auto; display: grid; gap: 14px; align-content: start; padding-bottom: 12px; }
@@ -47,7 +47,7 @@
 .ag-k-list li:first-child { border-top: none; }
 .ag-k-list li span { flex: 1; }
 .ag-k-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; }
-.ag-k-x:hover { color: var(--red-626); }
+.ag-k-x:hover { color: var(--red-577); }
 .ag-k-empty { font-size: 13px; color: var(--muted); }
 .ag-k-link { background: none; border: none; color: var(--teal); cursor: pointer; font: inherit; font-size: 13px; padding: 0 0 0 6px; }
 .ag-k-brief { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.55; background: var(--panel-2); padding: 12px; border-radius: 10px; }

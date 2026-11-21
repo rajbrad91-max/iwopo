@@ -3,45 +3,45 @@
   --sel-bg: color-mix(in srgb, var(--accent-600) 20%, transparent);
   --sel-line: color-mix(in srgb, var(--accent-600) 50%, transparent);
   --sel-ink: var(--accent-511);
-  --bg:var(--gray-168); --panel:var(--slate-224); --panel-2:var(--slate-252); --line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent);
-  --muted:var(--slate-678); --text:var(--gray-972b); --teal:var(--accent-600); --teal-2:var(--accent-528);
-  --teal-soft:color-mix(in srgb, var(--teal) 12%, transparent); --green:var(--green-800); --amber:var(--gold-837); --red:var(--red-719);
+  --bg:var(--gray-0); --panel:var(--slate-256); --panel-2:var(--slate-256); --line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent);
+  --muted:var(--slate-714); --text:var(--gray-967); --teal:var(--accent-600); --teal-2:var(--accent-511);
+  --teal-soft:color-mix(in srgb, var(--teal) 12%, transparent); --green:var(--green-800); --amber:var(--gold-769); --red:var(--red-719);
   /* vendor-panel gradient/detail tokens (dark defaults) */
-  --v-side-1:var(--slate-224); --v-side-2:var(--slate-224); --v-side-line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent);
-  --v-navhover:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --v-card-1:var(--slate-252); --v-card-2:var(--slate-224);
-  --v-card-line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent); --v-topbar-1:var(--slate-224); --v-topbar-2:var(--slate-224);
-  --v-table-1:var(--slate-252); --v-table-2:var(--slate-252); --v-th:color-mix(in srgb, var(--gray-1000) 5.88%, transparent);
-  --v-rowhover:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --v-wrap-hover:color-mix(in srgb, var(--teal) 24%, transparent); --v-group:var(--slate-678);
+  --v-side-1:var(--slate-256); --v-side-2:var(--slate-256); --v-side-line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent);
+  --v-navhover:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --v-card-1:var(--slate-256); --v-card-2:var(--slate-256);
+  --v-card-line:color-mix(in srgb, var(--gray-1000) 7.84%, transparent); --v-topbar-1:var(--slate-256); --v-topbar-2:var(--slate-256);
+  --v-table-1:var(--slate-256); --v-table-2:var(--slate-256); --v-th:color-mix(in srgb, var(--gray-1000) 5.88%, transparent);
+  --v-rowhover:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --v-wrap-hover:color-mix(in srgb, var(--teal) 24%, transparent); --v-group:var(--slate-714);
   --v-scroll:color-mix(in srgb, var(--gray-1000) 9.02%, transparent); --v-shadow:color-mix(in srgb, var(--gray-0) 34.9%, transparent);
-  --v-brand-2:var(--teal); --v-value-2:var(--gray-972b);
+  --v-brand-2:var(--teal); --v-value-2:var(--gray-967);
   /* material + motion — translucency, fills and the spring used on press */
-  --mat:color-mix(in srgb, var(--slate-224) 90.2%, transparent); --fill:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --fill2:color-mix(in srgb, var(--gray-1000) 9.02%, transparent);
+  --mat:color-mix(in srgb, var(--slate-256) 90.2%, transparent); --fill:color-mix(in srgb, var(--gray-1000) 5.88%, transparent); --fill2:color-mix(in srgb, var(--gray-1000) 9.02%, transparent);
   --line2:color-mix(in srgb, var(--gray-1000) 5.1%, transparent); --accInk:var(--gray-1000);
-  --amberSoft:color-mix(in srgb, var(--gold-837) 13.33%, transparent); --greenSoft:color-mix(in srgb, var(--green-800) 13.33%, transparent);
+  --amberSoft:color-mix(in srgb, var(--gold-769) 13.33%, transparent); --greenSoft:color-mix(in srgb, var(--green-800) 13.33%, transparent);
   --glow1:color-mix(in srgb, var(--gray-1000) 7.06%, transparent); --glow2:color-mix(in srgb, var(--gray-1000) 3.92%, transparent); --dot:color-mix(in srgb, var(--gray-1000) 5.1%, transparent);
   --shadow:0 18px 44px color-mix(in srgb, var(--gray-0) 34.9%, transparent); --shadowSm:0 6px 18px color-mix(in srgb, var(--gray-0) 21.96%, transparent);
   --dur:.22s; --ease:cubic-bezier(.34,1.4,.64,1);
   /* 🎈 how far things rise on hover — tiles like the dashboard's, buttons like Active / History (Raj, 2026-11-12) */
   --lift-tile: -4px; --lift-btn: -2px; --glow-btn: 0 4px 14px color-mix(in srgb, var(--teal) 13%, transparent);
   /* 🟩 the one button green — the light theme's teal, in light AND dark; never the old bright var(--teal) (Raj, 2026-11-12) */
-  --btn-fill: var(--accent-600); --btn-fill-hover: var(--accent-528); --btn-fill-ink: var(--gray-1000);
+  --btn-fill: var(--accent-600); --btn-fill-hover: var(--accent-511); --btn-fill-ink: var(--gray-1000);
 }
 [data-theme="light"] {
-  --bg:var(--gray-958); --panel:var(--gray-1000); --panel-2:var(--gray-981); --line:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
-  --muted:var(--slate-560); --text:var(--slate-191); --teal:var(--accent-600); --teal-2:var(--accent-528);
-  --teal-soft:color-mix(in srgb, var(--accent-600) 10.2%, transparent); --green:var(--green-527); --amber:var(--orange-555); --red:var(--red-586);
-  --v-side-1:var(--gray-1000); --v-side-2:var(--gray-1000); --v-side-line:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
-  --v-navhover:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --v-card-1:var(--gray-1000); --v-card-2:var(--gray-1000);
-  --v-card-line:color-mix(in srgb, var(--slate-188) 7.84%, transparent); --v-topbar-1:var(--gray-1000); --v-topbar-2:var(--gray-1000);
-  --v-table-1:var(--gray-1000); --v-table-2:var(--gray-1000); --v-th:color-mix(in srgb, var(--slate-188) 3.92%, transparent);
-  --v-rowhover:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --v-wrap-hover:color-mix(in srgb, var(--accent-600) 25.1%, transparent); --v-group:var(--slate-560);
-  --v-scroll:color-mix(in srgb, var(--slate-188) 7.84%, transparent); --v-shadow:color-mix(in srgb, var(--slate-208) 12.16%, transparent);
-  --v-brand-2:var(--accent-600); --v-value-2:var(--slate-191);
-  --mat:color-mix(in srgb, var(--gray-1000) 85.1%, transparent); --fill:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --fill2:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
-  --line2:color-mix(in srgb, var(--slate-188) 3.92%, transparent); --accInk:var(--gray-1000);
-  --amberSoft:color-mix(in srgb, var(--orange-555) 9.41%, transparent); --greenSoft:color-mix(in srgb, var(--green-527) 9.41%, transparent);
-  --glow1:color-mix(in srgb, var(--gray-1000) 90.2%, transparent); --glow2:color-mix(in srgb, var(--gray-1000) 54.9%, transparent); --dot:color-mix(in srgb, var(--slate-188) 7.84%, transparent);
-  --shadow:0 18px 40px color-mix(in srgb, var(--slate-208) 12.16%, transparent); --shadowSm:0 6px 16px color-mix(in srgb, var(--slate-208) 7.84%, transparent);
+  --bg:var(--gray-959); --panel:var(--gray-1000); --panel-2:var(--gray-981); --line:color-mix(in srgb, var(--slate-256) 7.84%, transparent);
+  --muted:var(--slate-551b); --text:var(--slate-256); --teal:var(--accent-600); --teal-2:var(--accent-511);
+  --teal-soft:color-mix(in srgb, var(--accent-600) 10.2%, transparent); --green:var(--green-527); --amber:var(--orange-666); --red:var(--red-577);
+  --v-side-1:var(--gray-1000); --v-side-2:var(--gray-1000); --v-side-line:color-mix(in srgb, var(--slate-256) 7.84%, transparent);
+  --v-navhover:color-mix(in srgb, var(--slate-256) 3.92%, transparent); --v-card-1:var(--gray-1000); --v-card-2:var(--gray-1000);
+  --v-card-line:color-mix(in srgb, var(--slate-256) 7.84%, transparent); --v-topbar-1:var(--gray-1000); --v-topbar-2:var(--gray-1000);
+  --v-table-1:var(--gray-1000); --v-table-2:var(--gray-1000); --v-th:color-mix(in srgb, var(--slate-256) 3.92%, transparent);
+  --v-rowhover:color-mix(in srgb, var(--slate-256) 3.92%, transparent); --v-wrap-hover:color-mix(in srgb, var(--accent-600) 25.1%, transparent); --v-group:var(--slate-551b);
+  --v-scroll:color-mix(in srgb, var(--slate-256) 7.84%, transparent); --v-shadow:color-mix(in srgb, var(--slate-256) 12.16%, transparent);
+  --v-brand-2:var(--accent-600); --v-value-2:var(--slate-256);
+  --mat:color-mix(in srgb, var(--gray-1000) 85.1%, transparent); --fill:color-mix(in srgb, var(--slate-256) 3.92%, transparent); --fill2:color-mix(in srgb, var(--slate-256) 7.84%, transparent);
+  --line2:color-mix(in srgb, var(--slate-256) 3.92%, transparent); --accInk:var(--gray-1000);
+  --amberSoft:color-mix(in srgb, var(--orange-666) 9.41%, transparent); --greenSoft:color-mix(in srgb, var(--green-527) 9.41%, transparent);
+  --glow1:color-mix(in srgb, var(--gray-1000) 90.2%, transparent); --glow2:color-mix(in srgb, var(--gray-1000) 54.9%, transparent); --dot:color-mix(in srgb, var(--slate-256) 7.84%, transparent);
+  --shadow:0 18px 40px color-mix(in srgb, var(--slate-256) 12.16%, transparent); --shadowSm:0 6px 16px color-mix(in srgb, var(--slate-256) 7.84%, transparent);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 /* 🌗 While a page's code is still downloading the app shows nothing, so the
@@ -224,7 +224,7 @@ tr:last-child td { border-bottom:none; }
 /* ✉️ "Check your email" code step (VerifyCode.jsx) — inside the sign-in card, and over the sign-up page */
 .login-card .vc-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
 .vc-practice { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: var(--orange-473); background: color-mix(in srgb, var(--gold-769) 16%, transparent); }
-.vc-warn { margin: 0 0 12px; font-size: 13px; color: var(--orange-555); }
+.vc-warn { margin: 0 0 12px; font-size: 13px; color: var(--orange-666); }
 .vc-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .vc-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-600); cursor: pointer; }
 .vc-link:disabled { color: var(--slate-714); cursor: default; }
@@ -246,12 +246,12 @@ html[data-app-pending] #root { visibility: hidden; }
 /* 🔐 Before the panel — sign in, password reset, the email-link page and the sign-up window's code step — the public
  * site's light look and orange buttons; the panel's teal only once the vendor is inside (Raj, 2026-11-07). */
 .auth-public {
-  --ap-ink: var(--stone-190); --ap-text: var(--stone-267b); --ap-gray: var(--stone-505); --ap-line: var(--stone-923); --ap-field: var(--gray-990);
-  --ap-accent: var(--orange-645); --ap-deep: var(--orange-571); --ap-grad: linear-gradient(135deg, var(--orange-571) 0%, var(--orange-645) 45%, var(--orange-724) 100%);
+  --ap-ink: var(--stone-239); --ap-text: var(--stone-336); --ap-gray: var(--gray-553); --ap-line: var(--stone-936); --ap-field: var(--gray-990);
+  --ap-accent: var(--orange-666); --ap-deep: var(--orange-666); --ap-grad: linear-gradient(135deg, var(--orange-666) 0%, var(--orange-666) 45%, var(--orange-727) 100%);
   color: var(--ap-text);
 }
-.login-wrap.auth-public { background: var(--stone-980); }
-.auth-public .login-card { background: var(--gray-1000); border-color: var(--ap-line); box-shadow: 0 30px 70px -40px color-mix(in srgb, var(--stone-190) 45%, transparent); }
+.login-wrap.auth-public { background: var(--gray-990); }
+.auth-public .login-card { background: var(--gray-1000); border-color: var(--ap-line); box-shadow: 0 30px 70px -40px color-mix(in srgb, var(--stone-239) 45%, transparent); }
 .auth-public h1 { margin: 0 0 6px; font-family: 'Sora', sans-serif; font-size: 24px; color: var(--ap-ink); }
 .auth-public .login-sub, .auth-public label, .auth-public .login-new, .auth-public .login-back { color: var(--ap-gray); }
 .auth-public input { background: var(--ap-field); border: 1px solid var(--ap-line); color: var(--ap-ink); }
@@ -262,7 +262,7 @@ html[data-app-pending] #root { visibility: hidden; }
 .auth-public .login-btn:disabled { opacity: 1; filter: none; cursor: default; }   /* waits, never fades */
 .auth-public .login-forgot-link, .auth-public .vc-link, .auth-public .login-back:hover { color: var(--ap-deep); }
 .auth-public .vc-link:disabled { color: var(--stone-700); }
-.auth-public .login-error { background: var(--mauve-957); color: var(--red-500); }
-.auth-public .login-notice { background: var(--slate-962b); color: var(--accent-426); }
-.auth-public .pw-rules li.is-ok { color: var(--green-515); }
+.auth-public .login-error { background: var(--gray-959); color: var(--red-537); }
+.auth-public .login-notice { background: var(--gray-959); color: var(--accent-511); }
+.auth-public .pw-rules li.is-ok { color: var(--green-527); }
 

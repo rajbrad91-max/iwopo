@@ -5,17 +5,17 @@
  * pricing section and the Super Admin preview. .pt-scope carries the table's own theme, so it looks exactly
  * the same inside the dark panel as on the public page (Raj, 2026-11-07). */
 .pt-scope {
-  --p: var(--orange-645);
-  --p2: var(--orange-750);
-  --p-deep: var(--orange-571);
-  --ink: var(--stone-190);
-  --text: var(--stone-267b);
-  --gray: var(--stone-505);
-  --line: var(--stone-923);
-  --bg: var(--stone-980);
+  --p: var(--orange-666);
+  --p2: var(--orange-727);
+  --p-deep: var(--orange-666);
+  --ink: var(--stone-239);
+  --text: var(--stone-336);
+  --gray: var(--gray-553);
+  --line: var(--stone-936);
+  --bg: var(--gray-990);
   --card: var(--gray-1000);
-  --shadow: 0 18px 40px -24px color-mix(in srgb, var(--stone-190) 35%, transparent);
-  --grad: linear-gradient(135deg, var(--orange-571) 0%, var(--orange-645) 45%, var(--orange-724) 100%);
+  --shadow: 0 18px 40px -24px color-mix(in srgb, var(--stone-239) 35%, transparent);
+  --grad: linear-gradient(135deg, var(--orange-666) 0%, var(--orange-666) 45%, var(--orange-727) 100%);
   --maxw: 1120px;
   font-family: 'Outfit', 'Sora', sans-serif;
   color: var(--text);
@@ -43,19 +43,19 @@
 .pt-save { display: block; margin: 6px 0 14px; font-size: 12.5px; font-weight: 600; color: var(--p-deep); white-space: nowrap; }   /* 💰 what yearly saves (public page) */
 .pt-note { margin: 6px 0 16px; min-height: 30px; font-size: 11.5px; font-weight: 400; color: var(--gray); }
 .pt .pt-cta { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--ink); background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s; }
-.pt .pt-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 20px -12px color-mix(in srgb, var(--stone-190) 45%, transparent); }
+.pt .pt-cta:hover { transform: translateY(-1px); box-shadow: 0 10px 20px -12px color-mix(in srgb, var(--stone-239) 45%, transparent); }
 .pt .pt-cta.is-solid { border-color: transparent; background: var(--grad); color: var(--gray-1000); }
 .pt .pt-cta:disabled { cursor: default; transform: none; box-shadow: none; border-color: var(--line); background: var(--bg); color: var(--gray); }   /* e.g. Current plan — a state, not an action */
 .pt-ribbon.pt-mine { background: var(--ink); color: var(--gray-1000); }   /* the vendor's own plan, on Plans & Upgrades */
 .pt thead .is-mine { box-shadow: inset 0 3px 0 var(--ink); }
 .pt-trial { margin-top: 9px; font-size: 12px; font-weight: 600; color: var(--p-deep); }   /* the trial is a buying condition: by the button, not a feature row */
-.pt .is-pop { background: color-mix(in srgb, var(--orange-645) 4.5%, transparent); }
+.pt .is-pop { background: color-mix(in srgb, var(--orange-666) 4.5%, transparent); }
 .pt thead .is-pop { box-shadow: inset 0 3px 0 var(--p); }
-.pt-ribbon { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--orange-645) 10%, transparent); color: var(--p-deep); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.pt-ribbon { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--orange-666) 10%, transparent); color: var(--p-deep); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
 .pt-group th { padding: 24px 18px 9px; text-align: left; background: var(--bg); color: var(--gray); font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .pt-feat { min-width: 250px; font-weight: 500; color: var(--ink); }
 .pt tbody tr:not(.pt-group):hover > * { background: var(--gray-990); }
-.pt-yes { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--orange-645) 12%, transparent); color: var(--p-deep); font-size: 13px; font-weight: 800; }
+.pt-yes { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--orange-666) 12%, transparent); color: var(--p-deep); font-size: 13px; font-weight: 800; }
 .pt-no { color: var(--stone-811); }
 .pt-val { font-weight: 600; color: var(--ink); }
 .pt-star { margin-left: 2px; color: var(--p-deep); font-weight: 700; }

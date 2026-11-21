@@ -336,11 +336,13 @@ function servicesSummaryHtml(inclusions, pkg) {
 }
 
 /**
- * Extras — what this booking costs beyond the package itself (Raj, 2026-11-13).
+ * Package & Price — what this booking costs (Raj, 2026-11-13; layout 2026-11-20).
  *
- * The package line and each extra the vendor added or the client chose, with
- * its amount and the total. Nothing to add
- * beyond the package, no table: the block drops out like any empty one.
+ * The package is named as the package, the extras the vendor added or the
+ * client chose sit under their own small "Extras" label, then tax and the
+ * total. Before 2026-11-20 the package sat in the same list as the extras,
+ * under the heading "Extras", as if it were one. Nothing to add beyond the
+ * package, no table: the block drops out like any empty one.
  */
 function extrasHtml(pkg, quote, cash, money, agreedPrice, tax) {
   const taxRow = tax?.text ? [[tax.mode === 'included' ? `Includes ${tax.rate}% tax` : 'Tax', tax.mode === 'included' ? cash(tax.amount) : 'Plus tax']] : [];
@@ -349,23 +351,19 @@ function extrasHtml(pkg, quote, cash, money, agreedPrice, tax) {
   const extraLabel = (l) => (l.qty > 1 || l.unit === 'per_guest'
     ? `${l.name} × ${l.qty}${unitWord[l.unit] ? ` ${unitWord[l.unit]}` : ''}` : l.name);
   // a price the vendor agreed by hand covers everything — the lines are listed, the agreed figure is what's owed
-  if (agreedPrice) {
-    return kvTable('ct-kv ct-extras', [
-      [pkg.name || 'Package', 'Included'],
-      ...quote.extras.map(l => [extraLabel(l), 'Included']),
+  const pkgPrice = agreedPrice ? 'Included'
+    : quote.price_mode === 'per_guest' ? `${cash(quote.base)} (${quote.guests} guests × ${cash(quote.price)})` : cash(quote.base);
+  const pkgRow = `<tr class="ct-x-pkg"><th><span class="ct-x-kind">Package</span> ${escapeHtml(pkg.name || 'Package')}</th><td>${escapeHtml(pkgPrice)}</td></tr>`;
+  const subRow = '<tr class="ct-x-sub"><th colspan="2">Extras</th></tr>';
+  const tail = agreedPrice
+    ? [...quote.extras.map(l => [extraLabel(l), 'Included']), ...taxRow, ['Agreed price', cash(money.final_total)]]
+    : [
+      ...quote.extras.map(l => [extraLabel(l), cash(l.amount)]),
+      ...(Number(money?.discount_amount) > 0 ? [[`Discount (${Number(money.discount_percent) || 0}%)`, `− ${cash(money.discount_amount)}`]] : []),
       ...taxRow,
-      ['Agreed price', cash(money.final_total)],
-    ]);
-  }
-  const rows = [
-    [pkg.name || 'Package', quote.price_mode === 'per_guest'
-      ? `${cash(quote.base)} (${quote.guests} guests × ${cash(quote.price)})` : cash(quote.base)],
-    ...quote.extras.map(l => [extraLabel(l), cash(l.amount)]),
-    ...(Number(money?.discount_amount) > 0 ? [[`Discount (${Number(money.discount_percent) || 0}%)`, `− ${cash(money.discount_amount)}`]] : []),
-    ...taxRow,
-    ['Total', cash(money ? money.final_total : quote.total)],
-  ];
-  return kvTable('ct-kv ct-extras', rows);
+      ['Total', cash(money ? money.final_total : quote.total)],
+    ];
+  return `<table class="ct-kv ct-extras"><tbody>${pkgRow}${subRow}${kvRows(tail)}</tbody></table>`;
 }
 
 /** Who is coming, and what they are doing. */
@@ -584,7 +582,7 @@ export async function buildContractBody(template, leadRow, businessName, opts = 
   if (extras && !sections.some(x => /\{\{extras\}\}/.test(x.text || ''))) {
     const host = ['deliverables', 'booking_details', 'services_summary']
       .find(k => sections.some(x => new RegExp(`\\{\\{${k}\\}\\}`).test(x.text || '')));
-    if (host) blocks[host] += `<h3>Extras</h3>${extras}`;
+    if (host) blocks[host] += `<h3>Package &amp; Price</h3>${extras}`;
   }
   const initCounter = { n: 0 };
   const secHtml = sections.map(x => sectionHtml(x, values, blocks, initCounter)).filter(Boolean).join('');

@@ -7,8 +7,8 @@
   width: 58px; height: 58px; border-radius: 50%; border: none;
   /* part of the form (Raj, 2026-11-05): a light tint of the form's colour, outlined in its colour — easy to spot,
      never loud, never looking switched off */
-  background: var(--brand-tint, var(--gray-931)); color: var(--brand-ink, var(--gray-269)); font-size: 25px; cursor: pointer;
-  box-shadow: inset 0 0 0 2.5px var(--brand-edge, var(--gray-289)), 0 8px 22px color-mix(in srgb, var(--gray-0) 16%, transparent);
+  background: var(--brand-tint, var(--gray-928)); color: var(--brand-ink, var(--slate-278)); font-size: 25px; cursor: pointer;
+  box-shadow: inset 0 0 0 2.5px var(--brand-edge, var(--slate-278)), 0 8px 22px color-mix(in srgb, var(--gray-0) 16%, transparent);
   transition: transform .18s;
   animation: cw-float 3.4s ease-in-out infinite;
 }
@@ -47,7 +47,7 @@
 }
 .cw-head {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 16px; background: var(--brand-soft, var(--gray-976b)); border-bottom: 1px solid var(--line);
+  padding: 14px 16px; background: var(--brand-soft, var(--gray-967)); border-bottom: 1px solid var(--line);
 }
 .cw-name { font-weight: 700; font-size: 15px; color: var(--brand-ink, var(--slate-278)); }
 .cw-status { font-size: 11px; color: var(--muted); margin-top: 2px; }
@@ -60,7 +60,7 @@
   font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
 }
 .cw-msg.assistant { background: var(--field-bg, var(--gray-967)); border: 1px solid var(--line); color: var(--text); align-self: flex-start; border-bottom-left-radius: 5px; }
-.cw-msg.user { background: var(--brand-soft, var(--slate-962c)); border: 1px solid var(--brand-border, var(--slate-906b)); color: var(--brand-ink, var(--slate-278)); align-self: flex-end; border-bottom-right-radius: 5px; font-weight: 500; }
+.cw-msg.user { background: var(--brand-soft, var(--gray-959)); border: 1px solid var(--brand-border, var(--gray-912)); color: var(--brand-ink, var(--slate-278)); align-self: flex-end; border-bottom-right-radius: 5px; font-weight: 500; }
 
 .cw-typing { display: flex; gap: 4px; align-items: center; padding: 13px 14px; }
 .cw-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: cw-blink 1.3s infinite; }
@@ -73,11 +73,11 @@
   flex: 1; padding: 11px 14px; border-radius: 10px;
   border: 1px solid var(--field-line, var(--gray-872)); background: var(--field-bg, var(--gray-1000)); color: var(--text); font-size: 14px;
 }
-.cw-input:focus { outline: none; border-color: var(--brand, var(--slate-446)); box-shadow: 0 0 0 3px var(--brand-ring, color-mix(in srgb, var(--slate-446) 18%, transparent)); }
+.cw-input:focus { outline: none; border-color: var(--brand, var(--gray-450)); box-shadow: 0 0 0 3px var(--brand-ring, color-mix(in srgb, var(--gray-450) 18%, transparent)); }
 .cw-input::placeholder { color: var(--muted); }
 .cw-send {
   width: 42px; border-radius: 10px; border: none;
-  background: var(--brand-solid, var(--gray-289)); color: var(--on-brand-solid, var(--gray-1000)); font-size: 15px; cursor: pointer;
+  background: var(--brand-solid, var(--slate-278)); color: var(--on-brand-solid, var(--gray-1000)); font-size: 15px; cursor: pointer;
 }
 .cw-send:disabled { opacity: .45; cursor: default; }
 

@@ -1,11 +1,11 @@
 /* 📊 PPM Board (components/PpmBoard.jsx) — a progress rail per booking, on the panel's light and dark themes.
    One colour language: green done, iwopo orange the next step, grey not yet, amber due soon, brick red late. */
 .ppm {
-  --ppm-done: var(--green-625);
-  --ppm-next: var(--orange-645);
+  --ppm-done: var(--green-627);
+  --ppm-next: var(--orange-666);
   --ppm-todo: color-mix(in srgb, var(--muted) 55%, transparent);
   --ppm-soon: var(--gold-693);
-  --ppm-late: var(--red-585);
+  --ppm-late: var(--red-577);
   display: flex; flex-direction: column; gap: 14px;
 }
 .ppm-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }

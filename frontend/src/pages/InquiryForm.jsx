@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, createContext, useContext } from 'react';
+import { useRef, useState, useEffect, createContext, useContext, useId } from 'react';
 import { firstName } from '../lib/firstName';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import { instaHandle, instaProblem } from '../lib/instagram';
@@ -135,6 +135,28 @@ export function formAnswers(shown, answers) {
     if (f.type === 'number' && custom[f.id] !== undefined && custom[f.id] !== '') custom[f.id] = plainNumber(custom[f.id]);
   }
   return custom;
+}
+
+/**
+ * 👀 The form as a client will see it, drawn from the builder's unsaved
+ * settings (Raj, 2026-11-20). The boxes can be filled in to try the questions
+ * that only show for some answers; the Send button is there to be seen but
+ * sends nothing, because this is the vendor's own preview.
+ */
+export function InquiryPreview({ cfg }) {
+  const [p, setP] = useState({ role: '', name: '', email: '', phone: '', instagram: '', heard: '' });
+  const [answers, setAnswers] = useState({});
+  const [notes, setNotes] = useState('');
+  return (
+    <InquiryShell cfg={cfg} embedded>
+      <div className="iq-body">
+        <LeadFormBody cfg={cfg} p={p} setPI={(k, v) => setP(x => ({ ...x, [k]: v }))}
+          answers={answers} setAns={(id, v) => setAnswers(x => ({ ...x, [id]: v }))} notes={notes} setNotes={setNotes} clientForm />
+        <button type="button" className="iq-btn" title="Preview only — nothing is sent">Send Inquiry</button>
+        <p className="iq-req-note">Fields marked * are required</p>
+      </div>
+    </InquiryShell>
+  );
 }
 
 export default function InquiryForm({ handle, byHost = false }) {
@@ -285,37 +307,37 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
         <div className="iq-section-title">{clientForm && <span className="iq-emoji">📇 </span>}Contact Details</div>
         <div className="iq-grid">
           <div {...box('role')}>
-            <label>Your Role *</label>
-            <select value={p.role} onChange={e => setPI('role', e.target.value)}>
+            <label htmlFor="iq-role">Your Role *</label>
+            <select id="iq-role" value={p.role} onChange={e => setPI('role', e.target.value)}>
               <option value="" disabled hidden>Select…</option>
               <option>Bride</option><option>Groom</option><option>Planner</option><option>Other</option>
             </select>
             {note('role')}
           </div>
           <div {...box('name')}>
-            <label>Full Name *</label>
-            <input value={p.name} onChange={e => setPI('name', e.target.value)} placeholder="Full name" autoComplete="name" />
+            <label htmlFor="iq-name">Full Name *</label>
+            <input id="iq-name" value={p.name} onChange={e => setPI('name', e.target.value)} placeholder="Full name" autoComplete="name" />
             {note('name')}
           </div>
           {/* 📱 real email / phone fields: a phone shows the @ keyboard and the number pad */}
           <div {...box('email')}>
-            <label>Email *</label>
-            <input type="email" inputMode="email" autoComplete="email" value={p.email} onChange={e => setPI('email', e.target.value)} placeholder="you@email.com" />
+            <label htmlFor="iq-email">Email *</label>
+            <input id="iq-email" type="email" inputMode="email" autoComplete="email" value={p.email} onChange={e => setPI('email', e.target.value)} placeholder="you@email.com" />
             {note('email')}
           </div>
           <div {...box('phone')}>
-            <label>Phone *</label>
-            <input type="tel" inputMode="tel" autoComplete="tel" value={p.phone} onChange={e => setPI('phone', phoneChars(e.target.value))} placeholder="Phone number" />
+            <label htmlFor="iq-phone">Phone *</label>
+            <input id="iq-phone" type="tel" inputMode="tel" autoComplete="tel" value={p.phone} onChange={e => setPI('phone', phoneChars(e.target.value))} placeholder="Phone number" />
             {note('phone')}
           </div>
           <div {...box('instagram')}>
-            <label>Instagram Handle</label>
-            <div className="inq-at"><span className="inq-at-sign" aria-hidden="true">@</span><input value={p.instagram} onChange={e => setPI('instagram', instaHandle(e.target.value))} placeholder="yourhandle" autoCapitalize="none" autoCorrect="off" spellCheck="false" aria-label="Instagram handle, without the @" /></div>
+            <label htmlFor="iq-insta">Instagram Handle</label>
+            <div className="inq-at"><span className="inq-at-sign" aria-hidden="true">@</span><input id="iq-insta" value={p.instagram} onChange={e => setPI('instagram', instaHandle(e.target.value))} placeholder="yourhandle" autoCapitalize="none" autoCorrect="off" spellCheck="false" aria-label="Instagram handle, without the @" /></div>
             {note('instagram')}
           </div>
           <div>
-            <label>How did you hear about us?</label>
-            <select value={p.heard} onChange={e => setPI('heard', e.target.value)}>
+            <label htmlFor="iq-heard">How did you hear about us?</label>
+            <select id="iq-heard" value={p.heard} onChange={e => setPI('heard', e.target.value)}>
               <option value="" disabled hidden>Select…</option>
               <option>Friend</option><option>Google Maps</option><option>Instagram</option><option>Facebook</option><option>Other</option>
             </select>
@@ -359,8 +381,8 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
       {/* Section 3: Notes */}
       <div className="iq-section">
         <div className="iq-section-title">{clientForm && <span className="iq-emoji">📝 </span>}Notes</div>
-        <label>Anything else?</label>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" placeholder="Tell us more…" />
+        <label htmlFor="iq-notes">Anything else?</label>
+        <textarea id="iq-notes" value={notes} onChange={e => setNotes(e.target.value)} rows="3" placeholder="Tell us more…" />
       </div>
     </TimeFormat.Provider>
   );
@@ -465,7 +487,9 @@ export function checkAnswers(fields, answers, allFields = fields, { editing = fa
 }
 
 function CustomField({ fld, value, onChange, answers, fields, clientForm = false }) {
-  const label = <label>{fld.label}{fld.required && ' *'}</label>;
+  // ♿ each label names its box, so a screen reader says what the box is for
+  const fid = useId();
+  const label = <label id={`${fid}-l`} htmlFor={fid}>{fld.label}{fld.required && ' *'}</label>;
 
   if (fld.type === 'heading') return <div className="iq-section-title iq-subhead">{fld.label}</div>;
 
@@ -476,32 +500,32 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
   // ✍️ a dropdown that also lets the client type their own answer
   if (fld.type === 'dropdown' && fld.allow_other) return (<>
     {label}
-    <OtherSelect options={fld.options || []} value={value} onChange={onChange} otherLabel={fld.other_label} />
+    <OtherSelect id={fid} options={fld.options || []} value={value} onChange={onChange} otherLabel={fld.other_label} />
   </>);
 
   if (fld.type === 'dropdown') return (<>
     {label}
-    <select value={value || ''} onChange={e => onChange(e.target.value)}>
+    <select id={fid} value={value || ''} onChange={e => onChange(e.target.value)}>
       <option value="" disabled hidden>Select…</option>
       {(fld.options || []).map((o, i) => <option key={i}>{o}</option>)}
     </select>
   </>);
 
   if (fld.type === 'text') return (<>{label}
-    <input value={value || ''} onChange={e => onChange(e.target.value)} /></>);
+    <input id={fid} value={value || ''} onChange={e => onChange(e.target.value)} /></>);
 
   // 📝 a longer answer — line breaks kept (QA 2026-10-10: a one-line box flattened them)
   if (fld.type === 'paragraph') return (<>{label}
-    <textarea rows="4" value={value || ''} onChange={e => onChange(e.target.value)} /></>);
+    <textarea id={fid} rows="4" value={value || ''} onChange={e => onChange(e.target.value)} /></>);
 
   if (fld.type === 'date') return (<>{label}
-    <input type="date" value={value || ''} onChange={e => onChange(e.target.value)}
+    <input id={fid} type="date" value={value || ''} onChange={e => onChange(e.target.value)}
       min={clientForm && isEventDate(fld, fields) ? todayLocal() : undefined} /></>);
 
   // 🔢 a number — a count or an amount. A text box with the number pad: a number
   // box turned 349.99 into 349.989990234375 in some browsers and refused it.
   if (fld.type === 'number') return (<>{label}
-    <input type="text" inputMode="decimal" value={value ?? ''} placeholder="e.g. 150"
+    <input id={fid} type="text" inputMode="decimal" value={value ?? ''} placeholder="e.g. 150"
       onChange={e => {
         // tester report 2026-10-16: letters could be typed — they never appear now, and the box says why
         const raw = e.target.value, clean = numberChars(raw);
@@ -511,10 +535,10 @@ function CustomField({ fld, value, onChange, answers, fields, clientForm = false
       }} /></>);
 
   if (fld.type === 'time') return (<>{label}
-    <TimeSelect value={value} onChange={onChange} /></>);
+    <TimeSelect labelledBy={`${fid}-l`} value={value} onChange={onChange} /></>);
 
   if (fld.type === 'location') return (<>{label}
-    <LocationField value={value || ''} onChange={onChange} /></>);
+    <LocationField id={fid} value={value || ''} onChange={onChange} /></>);
 
   if (fld.type === 'hours') return (
     <HoursField fld={fld} value={value} onChange={onChange} answers={answers} fields={fields} />
@@ -572,7 +596,7 @@ function useTypeToPick(options, pick) {
   };
 }
 
-function TimeSelect({ value, onChange }) {
+function TimeSelect({ value, onChange, labelledBy }) {
   const is24 = useContext(TimeFormat) === '24h';
   const m = /^(\d{1,2}):(\d{2})$/.exec(value || '');
   const [part, setPart] = useState(() => {
@@ -594,7 +618,7 @@ function TimeSelect({ value, onChange }) {
   const typeHour = useTypeToPick(hours, h => put({ h }));
   const typeMinute = useTypeToPick(MINUTES, mi => put({ mi }));
   return (
-    <div className={`iq-time${is24 ? ' iq-time-24' : ''}`}>
+    <div className={`iq-time${is24 ? ' iq-time-24' : ''}`} role="group" aria-labelledby={labelledBy}>
       <select aria-label="Hour" value={part.h} onChange={e => put({ h: e.target.value })} onKeyDown={typeHour}>
         <option value="" disabled hidden>Hour</option>
         {/* the label a browser matches when its list is open and digits are typed: "9", not "09" (Muse re-test) */}
@@ -623,6 +647,7 @@ function TimeSelect({ value, onChange }) {
  */
 function HoursField({ fld, value, onChange, answers, fields }) {
   const [manual, setManual] = useState(false);
+  const fid = useId();
 
   const fromId = fld.from_field;
   const toId = fld.to_field;
@@ -648,11 +673,12 @@ function HoursField({ fld, value, onChange, answers, fields }) {
   const linked = fromId && toId;
 
   return (<>
-    <label>
+    <label htmlFor={fid}>
       {fld.label}{fld.required && ' *'}
       {linked && !manual && <>{' '}<span className="iq-auto-tag">auto</span></>}
     </label>
     <input
+      id={fid}
       value={value || ''}
       placeholder={linked ? `From ${fromLabel || 'start'} → ${toLabel || 'end'}` : 'e.g. 6 hrs 30 min'}
       onChange={e => { setManual(true); onChange(e.target.value); }}
@@ -675,9 +701,10 @@ function HoursField({ fld, value, onChange, answers, fields }) {
  * simply stop if it went down or rate-limited us. Clients know their own venue;
  * typing it is fine.
  */
-function LocationField({ value, onChange }) {
+function LocationField({ id, value, onChange }) {
   return (
     <input
+      id={id}
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder="Venue name and address"
@@ -717,20 +744,20 @@ const peServiceChoices = (list, current) => (current && !list.includes(current) 
  * The box takes the cursor only when "Other" is picked there and then — a form opened with a typed answer already
  * in it (Edit Details) stays where it is (Raj, 2026-11-05: it jumped to a pre-event named Mehndi).
  */
-function OtherSelect({ options, value, onChange, otherLabel }) {
+function OtherSelect({ id, options, value, onChange, otherLabel }) {
   const typed = !!value && !options.includes(value);
   const [typing, setTyping] = useState(typed);
   const [picked, setPicked] = useState(false);   // "Other" was just chosen here
   return (<>
     {/* picking "Other" is itself the answer (OTHER) until words are typed, so questions that depend on "Other"
         appear the moment it is picked — not only after typing (Muse, 2026-10-30) */}
-    <select value={typing ? OTHER : (value || '')}
+    <select id={id} value={typing ? OTHER : (value || '')}
       onChange={e => { const v = e.target.value; setTyping(v === OTHER); setPicked(v === OTHER); onChange(v); }}>
       <option value="" disabled hidden>Select…</option>
       {options.map((o, i) => <option key={i}>{o}</option>)}
       <option value={OTHER}>{otherLabel || 'Other (type your own)'}</option>
     </select>
-    {typing && <input className="iq-other" value={value === OTHER ? '' : (value || '')} onChange={e => onChange(e.target.value || OTHER)} placeholder="Type your own" autoFocus={picked} />}
+    {typing && <input className="iq-other" aria-label="Your own answer" value={value === OTHER ? '' : (value || '')} onChange={e => onChange(e.target.value || OTHER)} placeholder="Type your own" autoFocus={picked} />}
   </>);
 }
 
@@ -744,9 +771,10 @@ function PreEventsField({ fld, value, onChange, clientForm = false }) {
   const rows = Array.isArray(value) ? value : [];
   const set = (i, patch) => onChange(rows.map((r, x) => (x === i ? { ...r, ...patch } : r)));
   const names = fld.options || [];
+  const pid = useId();
   return (
-    <div className="iq-pe">
-      <label>{fld.label}{fld.required && ' *'}</label>
+    <div role="group" aria-labelledby={`${pid}-t`}>
+      <label id={`${pid}-t`}>{fld.label}{fld.required && ' *'}</label>
       {rows.map((r, i) => (
         <div className="iq-pe-card" key={r._k ?? i}>
           <div className="iq-pe-top">
@@ -756,26 +784,26 @@ function PreEventsField({ fld, value, onChange, clientForm = false }) {
           </div>
           <div className="iq-grid">
             <div>
-              <label>Event *</label>
+              <label htmlFor={`${pid}-${i}-name`}>Event *</label>
               {names.length
-                ? <OtherSelect options={names} value={r.name} onChange={v => set(i, { name: v })} />
-                : <input value={r.name} onChange={e => set(i, { name: e.target.value })} placeholder="e.g. Mehndi" />}
+                ? <OtherSelect id={`${pid}-${i}-name`} options={names} value={r.name} onChange={v => set(i, { name: v })} />
+                : <input id={`${pid}-${i}-name`} value={r.name} onChange={e => set(i, { name: e.target.value })} placeholder="e.g. Mehndi" />}
             </div>
-            <div><label>Date</label><input type="date" value={r.date} min={todayLocal()} onChange={e => set(i, { date: e.target.value })} /></div>
-            <div><label>Starting Time</label><TimeSelect value={r.from} onChange={v => set(i, { from: v })} /></div>
-            <div><label>Ending Time</label><TimeSelect value={r.to} onChange={v => set(i, { to: v })} /></div>
+            <div><label htmlFor={`${pid}-${i}-date`}>Date</label><input id={`${pid}-${i}-date`} type="date" value={r.date} min={todayLocal()} onChange={e => set(i, { date: e.target.value })} /></div>
+            <div><label id={`${pid}-${i}-from`}>Starting Time</label><TimeSelect labelledBy={`${pid}-${i}-from`} value={r.from} onChange={v => set(i, { from: v })} /></div>
+            <div><label id={`${pid}-${i}-to`}>Ending Time</label><TimeSelect labelledBy={`${pid}-${i}-to`} value={r.to} onChange={v => set(i, { to: v })} /></div>
             {/* ⏱️ worked out from this pre-event's own times (the lead and the contract count it the same way) */}
-            <div><label>Hours <span className="iq-auto-tag">auto</span></label><input readOnly className="iq-pe-hours" value={peHours(r)} placeholder="From the times" /></div>
-            <div className="iq-full"><label>Location</label><LocationField value={r.location} onChange={v => set(i, { location: v })} /></div>
-            <div><label>Est. Guests</label><input type="text" inputMode="numeric" value={r.guests} placeholder="e.g. 150" onChange={e => set(i, { guests: e.target.value.replace(/\D/g, '') })} /></div>
+            <div><label htmlFor={`${pid}-${i}-hrs`}>Hours <span className="iq-auto-tag">auto</span></label><input id={`${pid}-${i}-hrs`} readOnly className="iq-pe-hours" value={peHours(r)} placeholder="From the times" /></div>
+            <div className="iq-full"><label htmlFor={`${pid}-${i}-loc`}>Location</label><LocationField id={`${pid}-${i}-loc`} value={r.location} onChange={v => set(i, { location: v })} /></div>
+            <div><label htmlFor={`${pid}-${i}-guests`}>Est. Guests</label><input id={`${pid}-${i}-guests`} type="text" inputMode="numeric" value={r.guests} placeholder="e.g. 150" onChange={e => set(i, { guests: e.target.value.replace(/\D/g, '') })} /></div>
             <div>
-              <label>Service</label>
+              <label htmlFor={`${pid}-${i}-svc`}>Service</label>
               {(fld.pe_services || []).length
-                ? <select value={r.service} onChange={e => set(i, { service: e.target.value })}>
+                ? <select id={`${pid}-${i}-svc`} value={r.service} onChange={e => set(i, { service: e.target.value })}>
                     <option value="" disabled hidden>Select…</option>
                     {peServiceChoices(fld.pe_services, r.service).map((o, x) => <option key={x}>{o}</option>)}
                   </select>
-                : <input value={r.service} placeholder="e.g. Photos & Videos" onChange={e => set(i, { service: e.target.value })} />}
+                : <input id={`${pid}-${i}-svc`} value={r.service} placeholder="e.g. Photos & Videos" onChange={e => set(i, { service: e.target.value })} />}
             </div>
           </div>
         </div>

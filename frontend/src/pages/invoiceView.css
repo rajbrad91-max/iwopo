@@ -1,12 +1,12 @@
 /* 🧾 The client's invoice page (InvoiceView.jsx) — its look moved out of inline styles unchanged (code audit #3,
    Raj 2026-11-11). It keeps its own light print-friendly colours, separate from the vendor panel's theme. */
-.iv { min-height: 100vh; background: var(--gray-974); display: flex; justify-content: center; padding: 24px; font-family: 'Segoe UI', sans-serif; }
-.iv-card { background: var(--gray-1000); border-radius: 14px; padding: 30px; width: 100%; box-shadow: 0 2px 14px color-mix(in srgb, var(--gray-0) 7%, transparent); color: var(--gray-252); height: fit-content; }
+.iv { min-height: 100vh; background: var(--gray-967); display: flex; justify-content: center; padding: 24px; font-family: 'Segoe UI', sans-serif; }
+.iv-card { background: var(--gray-1000); border-radius: 14px; padding: 30px; width: 100%; box-shadow: 0 2px 14px color-mix(in srgb, var(--gray-0) 7%, transparent); color: var(--slate-256); height: fit-content; }
 .iv-card.is-doc { max-width: 640px; }
 
 .iv-head { display: flex; justify-content: space-between; align-items: flex-start; }
 .iv-title { margin: 0; font-size: 22px; color: var(--teal-511); }
-.iv-number { color: var(--gray-510); font-size: 13px; margin-top: 4px; }
+.iv-number { color: var(--slate-551b); font-size: 13px; margin-top: 4px; }
 .iv-from { text-align: right; font-size: 13px; }
 .iv-logo { height: 44px; max-width: 140px; object-fit: contain; display: block; margin-left: auto; margin-bottom: 6px; }
 
@@ -15,37 +15,37 @@
 .iv-items { width: 100%; border-collapse: collapse; font-size: 14px; }
 .iv-items thead tr { border-bottom: 2px solid var(--teal-511); text-align: left; }
 .iv-items th { padding: 8px 4px; }
-.iv-items tbody tr { border-bottom: 1px solid var(--gray-949); }
+.iv-items tbody tr { border-bottom: 1px solid var(--gray-959); }
 .iv-items td { padding: 9px 4px; }
 .iv-items td { vertical-align: top; }
 .iv-items .iv-amount { text-align: right; white-space: nowrap; }
 /* 📦 the package as the client saw it when choosing (Raj, 2026-11-18) */
-.iv-desc { margin-top: 2px; font-size: 12.5px; color: var(--gray-510); }
+.iv-desc { margin-top: 2px; font-size: 12.5px; color: var(--slate-551b); }
 .iv-incl { margin: 8px 0 2px; padding-left: 18px; font-size: 12.5px; color: var(--gray-450); line-height: 1.6; }
 .iv-events { margin-top: 10px; font-size: 12.5px; color: var(--gray-450); }
-.iv-events-h { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--gray-510); margin-bottom: 4px; }
+.iv-events-h { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--slate-551b); margin-bottom: 4px; }
 .iv-event { padding: 2px 0; line-height: 1.55; }
-.iv-event b { color: var(--gray-252); font-weight: 600; }
-.iv-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--slate-956); color: var(--teal-511);
+.iv-event b { color: var(--slate-256); font-weight: 600; }
+.iv-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--gray-959); color: var(--teal-511);
   font-size: 10px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; vertical-align: 1px; }
 
 .iv-totals { margin-top: 14px; margin-left: auto; width: 240px; font-size: 14px; }
-.iv-row { display: flex; justify-content: space-between; padding: 5px 0; font-weight: 400; color: var(--gray-252); }
+.iv-row { display: flex; justify-content: space-between; padding: 5px 0; font-weight: 400; color: var(--slate-256); }
 .iv-row.is-bold { font-weight: 700; }
-.iv-row.is-green { color: var(--green-596); }
-.iv-row.is-amber { color: var(--brand-652); }
+.iv-row.is-green { color: var(--green-627); }
+.iv-row.is-amber { color: var(--brand-678); }
 
-.iv-tax { margin: 4px 0 0 auto; width: 240px; text-align: right; font-size: 12px; color: var(--gray-510); }
+.iv-tax { margin: 4px 0 0 auto; width: 240px; text-align: right; font-size: 12px; color: var(--slate-551b); }
 
 /* 💵 every payment received — the same link is the client's receipt after each instalment */
-.iv-pays { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--gray-949); }
-.iv-pays-h { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--gray-510); }
-.iv-pay { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed var(--gray-922); }
-.iv-pay-amt { text-align: right; font-weight: 700; color: var(--green-596); }
+.iv-pays { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--gray-959); }
+.iv-pays-h { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--slate-551b); }
+.iv-pay { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed var(--gray-928); }
+.iv-pay-amt { text-align: right; font-weight: 700; color: var(--green-627); }
 
-.iv-notes { margin-top: 16px; font-size: 13px; color: var(--gray-510); }
+.iv-notes { margin-top: 16px; font-size: 13px; color: var(--slate-551b); }
 /* the panel's button: white, teal on hover, rising with the soft glow */
-.iv-print { margin-top: 22px; width: 100%; padding: 12px; background: var(--gray-1000); color: var(--teal-511); border: 1px solid var(--slate-902); border-radius: 8px;
+.iv-print { margin-top: 22px; width: 100%; padding: 12px; background: var(--gray-1000); color: var(--teal-511); border: 1px solid var(--gray-912); border-radius: 8px;
   font-weight: 700; font-family: inherit; cursor: pointer; transition: transform var(--dur) var(--ease), box-shadow var(--dur) ease, border-color var(--dur) ease; }
 .iv-print:hover { border-color: var(--teal-511); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
 

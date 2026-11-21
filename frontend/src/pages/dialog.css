@@ -9,7 +9,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 .dlg-backdrop {
   position: fixed; inset: 0; z-index: 9999;
-  background: color-mix(in srgb, var(--slate-178) 55%, transparent); backdrop-filter: blur(2px);
+  background: color-mix(in srgb, var(--gray-0) 55%, transparent); backdrop-filter: blur(2px);
   display: flex; align-items: center; justify-content: center; padding: 20px;
   animation: dlg-fade .12s ease-out;
 }
@@ -28,7 +28,7 @@
   margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--slate-256); line-height: 1.35;
 }
 .dlg-msg {
-  margin: 0; font-size: 14px; line-height: 1.65; color: var(--slate-444);
+  margin: 0; font-size: 14px; line-height: 1.65; color: var(--gray-450);
   /* several of the confirms this replaced used blank lines to separate a
      warning from its detail — keep those breaks rather than flattening them */
   white-space: pre-wrap;
@@ -40,7 +40,7 @@
   background: var(--gray-1000); border: 1.5px solid var(--gray-912); border-radius: 9px;
 }
 .dlg-input:focus { outline: none; border-color: var(--accent-511); }
-.dlg-input[readonly] { background: var(--gray-981); color: var(--slate-444); }
+.dlg-input[readonly] { background: var(--gray-981); color: var(--gray-450); }
 
 .dlg-actions {
   display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px;
@@ -57,10 +57,10 @@
 .dlg-btn:disabled { opacity: .55; cursor: default; }
 /* a destructive step should not look like an ordinary one — the button a
    vendor is about to press deletes a client's photos */
-.dlg-btn.is-danger { color: var(--red-577); border-color: var(--red-860); }
+.dlg-btn.is-danger { color: var(--red-577); border-color: var(--red-890); }
 .dlg-btn.is-danger:not(:disabled):hover { border-color: var(--red-577); color: var(--red-577); box-shadow: 0 4px 14px color-mix(in srgb, var(--red-577) 15%, transparent); }
 
-.dlg-panel.is-error .dlg-title { color: var(--red-505); }
+.dlg-panel.is-error .dlg-title { color: var(--red-537); }
 
 @media (max-width: 480px) {
   .dlg-panel { padding: 20px 18px 16px; }

@@ -4,10 +4,10 @@
 .es { padding: 22px; }
 .es-title { margin-top: 0; }
 .es-msg { margin: 14px 0 0; font-size: 13px; font-weight: 600; color: var(--green-800); }
-.es-msg.is-bad { color: var(--red-585); }
+.es-msg.is-bad { color: var(--red-577); }
 /* the box "My own SMTP" still needs (routes/email.js names it) */
-.es-field.is-missing .es-input { border-color: var(--red-585); box-shadow: 0 0 0 1px var(--red-585); }
-.es-hint { display: block; margin: 0; font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--slate-750); }
+.es-field.is-missing .es-input { border-color: var(--red-577); box-shadow: 0 0 0 1px var(--red-577); }
+.es-hint { display: block; margin: 0; font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--slate-814); }
 
 .es-modes { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .es-mode { border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); transition: border-color .15s, box-shadow .15s; }
