@@ -40,14 +40,14 @@
 }
 .po-biz {
   font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase;
-  color: var(--brand, var(--brand-678)); margin: 0 0 12px;
+  color: var(--soft); margin: 0 0 12px;
 }
 .po-title {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(30px, 5vw, 42px); font-weight: 400; line-height: 1.15;
   color: var(--ink); margin: 0 0 10px;
 }
-.po-title em { color: var(--brand, var(--brand-678)); font-style: italic; }
+.po-title em { font-style: italic; }
 .po-meta { font-size: 16px; color: var(--soft); margin: 0; }
 .po-meta strong { color: var(--ink); font-weight: 600; }
 
@@ -101,7 +101,7 @@
 .po-eyebrow {
   text-align: center; font-size: 11px; font-weight: 700;
   letter-spacing: .2em; text-transform: uppercase;
-  color: var(--brand, var(--brand-678)); margin: 0 0 8px;
+  color: var(--soft); margin: 0 0 8px;
 }
 .po-h {
   font-family: 'Playfair Display', Georgia, serif;
@@ -170,7 +170,7 @@
 }
 .po-pkg-cur {
   font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
-  font-size: 23px; font-weight: 500; color: var(--brandText, var(--brand, var(--brand-678)));
+  font-size: 23px; font-weight: 500; color: var(--ink);
 }
 .po-pkg-code {
   font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
@@ -225,7 +225,7 @@
 .po-bill .is-due dt { color: var(--ink); font-weight: 600; }
 .po-bill .is-due dd {
   font-family: Lora, Georgia, serif;
-  font-size: 24px; font-weight: 700; color: var(--brand, var(--brand-678));
+  font-size: 24px; font-weight: 700; color: var(--ink);
 }
 
 /* ── buttons ──────────────────────────────────────────────── */
@@ -290,7 +290,7 @@
 .po-ev-day { min-width: 92px; margin-right: 10px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .po-ev-name { font-weight: 600; color: var(--ink); }
 .po-ev-name em { margin-left: 8px; padding: 1px 8px; border-radius: 20px; font-style: normal; font-size: 10.5px; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; background: var(--tint); color: var(--brandText, var(--brand, var(--brand-678))); }
+  letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; background: var(--stone-936); color: var(--soft); }
 .po-ev-part::before { content: '·'; margin: 0 8px; color: var(--stone-811); }
 .po-events li.is-main { color: var(--ink); }
 @media (max-width: 600px) {
@@ -362,7 +362,7 @@
 .po-timer { text-align: center; margin: 18px 0 8px; }
 .po-timer-eyebrow {
   font-size: 10px; font-weight: 400; letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--brand-678); margin: 0 0 8px;
+  color: var(--soft); margin: 0 0 8px;
 }
 /* tinted from the vendor's own colour rather than a fixed gold, so the panel
    belongs to whoever's page it is */
@@ -376,14 +376,14 @@
 .po-timer-unit { display: flex; flex-direction: column; align-items: center; padding: 0 10px; }
 .po-timer-num {
   font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700;
-  color: var(--brand, var(--brand-678)); letter-spacing: -.56px; line-height: 1;
+  color: var(--ink); letter-spacing: -.56px; line-height: 1;
 }
 .po-timer-lbl {
   font-size: 8px; font-weight: 700; letter-spacing: .96px; text-transform: uppercase;
-  color: var(--brand-678); margin-top: 3px;
+  color: var(--soft); margin-top: 3px;
 }
 .po-timer-colon {
-  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--brand-881);
+  font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--stone-811);
 }
 .po-timer-expired {
   font-size: 14px; color: var(--red-577); background: var(--gray-967); border: 1px solid var(--red-890);
@@ -409,7 +409,7 @@
 /* the amount due, tinted and oversized — the one figure a client looks for */
 .po-bill .is-due { background: color-mix(in srgb, var(--brand, var(--brand-678)) 8%, var(--gray-1000)); }
 .po-bill .is-due dt { color: var(--ink); font-weight: 600; }
-.po-bill .is-due dd { font-size: 26px; color: var(--brandText, var(--brand, var(--brand-678))); }
+.po-bill .is-due dd { font-size: 26px; }
 
 /* every lift and spring above is decoration; somebody who asked their system
    for less movement should not have to sit through it */
@@ -480,18 +480,11 @@
 .po-empty { grid-column: 1 / -1; margin: 10px 0 0; text-align: center; color: var(--soft); font-size: 15px; }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Extras, differences first, and the running total (Raj, 2026-11-13)
+   Extras and the running total (Raj, 2026-11-13); each card lists everything it includes (Raj, 2026-11-21)
    ══════════════════════════════════════════════════════════════════════ */
-.po-common {
-  max-width: 1000px; margin: 0 auto 26px; padding: 18px 22px; font-family: "Open Sans", "Segoe UI", system-ui, sans-serif;
-  background: var(--gray-1000); border: 1px solid var(--line); border-radius: 16px;
-}
-.po-inc-cols { columns: 2 260px; column-gap: 28px; }
-.po-inc-cols li { break-inside: avoid; }
 .po-pkg-desc { margin: -2px 0 10px; font-size: 14px; color: var(--soft); line-height: 1.45; }
 .po-pkg-tax { margin: 6px 0 0; font-size: 13px; color: var(--soft); }   /* 🧾 "Includes 5% tax (CA$171)" / "Plus tax" */
 .po-pkg-sub { margin: 8px 0 0; font-size: 13px; color: var(--soft); line-height: 1.45; }
-.po-inc-none { margin: 0; font-size: 14px; color: var(--soft); font-style: italic; }
 .po-pkg.is-draft { border-color: color-mix(in srgb, var(--brand, var(--brand-678)) 55%, var(--gray-1000)); }
 
 .po-xs { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); cursor: default; }
@@ -502,7 +495,7 @@
 .po-x-t { flex: 1; min-width: 0; font-size: 14px; color: var(--ink); line-height: 1.4; }
 .po-x-t b { font-weight: 600; }
 .po-x-t small { display: block; font-size: 12.5px; color: var(--soft); }
-.po-x-p { font-size: 13px; font-weight: 600; color: var(--brandText, var(--brand, var(--brand-678))); white-space: nowrap; }
+.po-x-p { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .po-x-qty { display: flex; align-items: center; gap: 8px; padding: 0 12px 10px 40px; font-size: 13px; color: var(--body); }
 .po-x-qty button {
   width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--gray-1000);
@@ -540,9 +533,10 @@
 .po-bill .is-line dt { font-size: 13.5px; }
 .po-bill .is-line dd { font-size: 15px; font-weight: 500; }
 
-/* 🎨 text in the vendor's colour uses the readable version (a pale brand colour stays for fills only) */
-.po-biz, .po-title em, .po-eyebrow, .po-step-hit:not(:disabled):hover .po-step-lbl,
-.po-steps li.is-done .po-dot-n, .po-ft a, .po-timer-num { color: var(--brandText, var(--brand, var(--brand-678))); }
+/* 🎨 the vendor's colour marks only what a client taps and the progress dots — words stay in the text colours
+   (Raj, 2026-11-21); where it is used, it is the readable version (a pale brand colour stays for fills only) */
+.po-step-hit:not(:disabled):hover .po-step-lbl,
+.po-steps li.is-done .po-dot-n, .po-ft a { color: var(--brandText, var(--brand, var(--brand-678))); }
 /* white words on a brand fill need the readable version too — a pale colour behind white text says nothing */
 .po-cta, .po-bar-btn, .po-pkg-badge, .po-ribbon:not(.is-value), .po-steps li.is-now .po-dot-n, .po-check, .po-gate-btn {
   background: var(--brandText, var(--brand, var(--brand-678)));

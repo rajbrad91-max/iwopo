@@ -61,8 +61,6 @@ export function InquiryShell({ cfg, intro = true, art = true, embedded = false, 
       <div className={`iq-card iq-theme-${c.theme || DEFAULT_THEME}`}>
         {/* header: logo (or initials) on top, brand + intro under it — every theme */}
         <div className="iq-hd">
-          {/* 🎨 a soft wash of the studio's colour, the logo in a white circle overlapping it (design 3, 2026-11-03) */}
-          <div className="iq-band" aria-hidden="true" />
           {/* a logo that fails to load is never an empty box — the studio's initials in a circle instead */}
           <div className="iq-badge">
             {c.logo_path && logoOk
@@ -265,7 +263,7 @@ export default function InquiryForm({ handle, byHost = false }) {
             <input id="iq-hp-field" name="website" type="text" tabIndex={-1} autoComplete="off" value={trap} onChange={e => setTrap(e.target.value)} />
           </div>
           <button className="iq-btn" onClick={submit} disabled={busy}>
-            {busy ? 'Sending…' : <><span className="iq-emoji">📨 </span>Send Inquiry</>}
+            {busy ? 'Sending…' : 'Send Inquiry'}
           </button>
           <p className="iq-req-note">Fields marked * are required</p>
         </div>
@@ -305,7 +303,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
     <TimeFormat.Provider value={c.time_format === '24h' ? '24h' : '12h'}>
       {/* Section 1: Contact Details */}
       <div className="iq-section">
-        <div className="iq-section-title">{clientForm && <span className="iq-emoji">📇 </span>}Contact Details</div>
+        <div className="iq-section-title">Contact Details</div>
         <div className="iq-grid">
           <div {...box('role')}>
             <label htmlFor="iq-role">Your Role *</label>
@@ -349,7 +347,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
       {/* Section 2: Inquiry Details (custom fields) */}
       {(c.custom_fields || []).length > 0 && (
         <div className="iq-section">
-          <div className="iq-section-title">{clientForm && <span className="iq-emoji">📝 </span>}{c.details_heading || 'Inquiry Details'}</div>
+          <div className="iq-section-title">{c.details_heading || 'Inquiry Details'}</div>
           <div className="iq-grid">
             {fieldsShown().map(fld => (
               <div key={fld.id} {...box(`f:${fld.id}`, FULL_WIDTH.has(fld.type) ? 'iq-full' : '')}>
@@ -381,7 +379,7 @@ export function LeadFormBody({ cfg, p, setPI, answers, setAns, notes, setNotes, 
 
       {/* Section 3: Notes */}
       <div className="iq-section">
-        <div className="iq-section-title">{clientForm && <span className="iq-emoji">📝 </span>}Notes</div>
+        <div className="iq-section-title">Notes</div>
         <label htmlFor="iq-notes">Anything else?</label>
         <textarea id="iq-notes" value={notes} onChange={e => setNotes(e.target.value)} rows="3" placeholder="Tell us more…" />
       </div>

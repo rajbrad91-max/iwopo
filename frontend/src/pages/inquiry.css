@@ -29,7 +29,6 @@
   --line: var(--stone-880);
   --field-bg: var(--stone-936);
   --field-line: var(--stone-880);
-  --label: var(--mauve-376);
   --text: var(--stone-336);
   --muted: var(--stone-593);
   --shadow: 0 16px 50px color-mix(in srgb, var(--mauve-376) 12%, transparent);
@@ -51,17 +50,16 @@
    (tester report 2026-10-16: the logo only showed in Ivory) */
 .iq-hd { position: relative; z-index: 2; padding: 0 0 20px; background: var(--card, var(--gray-1000)); border-bottom: 1px solid color-mix(in srgb, var(--slate-256) 7%, transparent);
   display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text); }
-/* 🎨 design 3: a pale wash of the studio's colour, and the logo in a white circle that overlaps it */
-.iq-band { align-self: stretch; height: 66px; background: linear-gradient(120deg, color-mix(in srgb, var(--brand) 38%, var(--gray-1000)), color-mix(in srgb, var(--brand) 12%, var(--gray-1000))); }
-.iq-badge { width: 82px; height: 82px; margin-top: -42px; border-radius: 50%; background: var(--gray-1000); display: flex; align-items: center; justify-content: center;
+/* the logo in a white circle on plain white — no colour strip above it, in any theme or colour (Raj, 2026-11-21) */
+.iq-badge { width: 82px; height: 82px; margin-top: 28px; border-radius: 50%; background: var(--gray-1000); display: flex; align-items: center; justify-content: center;
   box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--slate-256) 40%, transparent), 0 0 0 1px color-mix(in srgb, var(--slate-256) 4%, transparent); }
 .iq-logo { width: 56px; height: 56px; object-fit: contain; flex-shrink: 0; }
 .iq-hd-text { width: 100%; text-align: center; padding: 0 32px; box-sizing: border-box; }
 .iq-brand { font-size: 23px; font-weight: 700; letter-spacing: -.01em; color: var(--text); display:flex; align-items:center; justify-content:center; gap:8px; }
 .iq-sub { color: var(--muted); font-size: 14px; margin: 5px 0 0; }
 
-/* The header text sits on white (only the thin wash above it carries the brand colour), so it uses the page's
-   own --text / --muted pair, readable whatever the studio's colour is. */
+/* All words use the page's own --text / --muted pair, readable whatever the studio's colour is: the studio's colour
+   tints shades and marks what a client taps, never single words (Raj, 2026-11-21). */
 .iq-sub-link { display: inline-block; text-decoration: underline; cursor: pointer; }
 /* hovering only drops the underline, so the link never changes colour or disappears */
 .iq-sub-link:hover { color: var(--text); text-decoration-color: transparent; }
@@ -87,13 +85,13 @@
 /* sections */
 .iq-section { padding: 20px 0; border-top: 1px solid var(--gray-871); }   /* a divider you can see, the same between every section */
 .iq-section:first-child { border-top: none; padding-top: 4px; }
-.iq-section-title { font-size: 15px; font-weight: 800; color: var(--mauve-376); margin-bottom: 14px; letter-spacing: .3px; }
+.iq-section-title { font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 14px; letter-spacing: .3px; }
 
 /* two-column grid */
 .iq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .iq-grid .iq-full { grid-column: 1 / -1; }
 
-.iq-card label { display: block; font-size: 12px; color: var(--label); font-weight: 700; margin: 0 0 5px; }
+.iq-card label { display: block; font-size: 12px; color: var(--text); font-weight: 700; margin: 0 0 5px; }
 .iq-card input, .iq-card select, .iq-card textarea { width: 100%; padding: 12px 14px; background-color: var(--field-bg);
   border: 1px solid var(--field-line); border-radius: 10px; color: var(--text); font-size: 14px; font-family: inherit; box-sizing: border-box; }
 .iq-card input:focus, .iq-card select:focus, .iq-card textarea:focus { outline: none; border-color: var(--brand, var(--brand-747)); background-color: var(--gray-1000); }
@@ -155,7 +153,7 @@
 /* ── 🤍 Ivory ───────────────────────────────────────────────────────────
    Raj's pick (2026-10-09) of four designs: white card on a soft page tinted
    from the brand colour, monogram or logo in a circle, serif name with space
-   (not a line) below it, small-caps section titles in the brand colour, plain
+   (not a line) below it, small-caps section titles, plain
    boxed fields, and the brand colour on the button. The brand colour setting
    shifts the button, the accents and the page shade together. */
 .iq-mono { display: flex; width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid var(--brand); color: var(--brand); align-items: center; justify-content: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; flex-shrink: 0; }
@@ -163,18 +161,16 @@
 .iq-card.iq-theme-ivory { max-width: 820px; border-radius: 4px; background: var(--gray-1000); border: 1px solid var(--line); box-shadow: 0 1px 3px color-mix(in srgb, var(--stone-239) 5%, transparent); }
 .iq-theme-ivory .iq-hd { flex-direction: column; gap: 14px; padding: 38px 28px 6px; background: transparent; border-bottom: none; color: var(--text); }
 .iq-theme-ivory .iq-logo { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
-.iq-theme-ivory .iq-band { display: none; }
 .iq-theme-ivory .iq-badge { width: auto; height: auto; margin: 0; background: none; box-shadow: none; }
 .iq-theme-ivory .iq-hd-text { padding: 0; }
 .iq-theme-ivory .iq-mono { display: flex; width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--brand); color: var(--brand); align-items: center; justify-content: center; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; letter-spacing: 1px; }
 .iq-theme-ivory .iq-hd-text .iq-brand { color: var(--text); font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 34px; letter-spacing: .5px; line-height: 1.15; }
-.iq-theme-ivory .iq-hd-text .iq-sub { margin-top: 16px; color: var(--label); font-weight: 500; font-size: 15px; line-height: 1.55; }
+.iq-theme-ivory .iq-hd-text .iq-sub { margin-top: 16px; color: var(--text); font-weight: 500; font-size: 15px; line-height: 1.55; }
 .iq-theme-ivory .iq-sub-link:hover { color: var(--text); }
 .iq-theme-ivory .iq-body { padding: 10px 28px 32px; }
 .iq-theme-ivory .iq-section { border-top: none; padding: 20px 0 4px; }
 .iq-theme-ivory .iq-section-title { font-size: 13px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: var(--text); margin-bottom: 14px; }
-.iq-theme-ivory .iq-emoji { display: none; }
-.iq-card.iq-theme-ivory label { font-size: 13px; font-weight: 500; color: var(--label); margin-bottom: 6px; }
+.iq-card.iq-theme-ivory label { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
 .iq-card.iq-theme-ivory input, .iq-card.iq-theme-ivory select, .iq-card.iq-theme-ivory textarea { min-height: 46px; border: 1px solid var(--field-line); border-radius: 4px; background-color: var(--gray-997); font-size: 15px; }
 .iq-card.iq-theme-ivory textarea { min-height: 90px; }
 .iq-card.iq-theme-ivory .iq-check-row input { min-height: 0; }
@@ -203,7 +199,7 @@
 .iq-card .iq-other { margin-top: 8px; }
 .iq-pe-card { border: 1px solid var(--field-line); border-radius: 12px; padding: 14px; margin: 0 0 12px; background: var(--field-bg); }
 .iq-pe-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.iq-pe-no { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--label); }
+.iq-pe-no { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text); }
 .iq-card .iq-pe-remove { width: auto; padding: 4px 10px; background: none; border: 1px solid var(--field-line); border-radius: 8px;
   color: var(--muted); font-size: 12px; font-family: inherit; cursor: pointer; }
 .iq-card .iq-pe-remove:hover { color: var(--red-537); border-color: var(--red-537); }

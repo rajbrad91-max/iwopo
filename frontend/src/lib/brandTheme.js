@@ -136,7 +136,6 @@ export function buildTheme(brandColor, themeName = 'Modern', fontFamily) {
     '--line': fromOklch(0.91, c * 0.16, h),
     '--field-bg': fromOklch(0.985, c * 0.1, h),
     '--field-line': fromOklch(0.89, c * 0.2, h),
-    '--label': fromOklch(0.42, Math.min(c * 0.5, 0.06), h),
     '--text': fromOklch(0.3, Math.min(c * 0.3, 0.035), h),
     '--muted': fromOklch(0.6, Math.min(c * 0.3, 0.04), h),
     '--wm': fromOklch(0.955, c * 0.2, h),                         // watermark

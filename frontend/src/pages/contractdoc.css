@@ -50,7 +50,7 @@
   background: var(--gray-980);
   border: 1px solid var(--brand-881);
 }
-.ct-prev-tag { font-size: 12.5px; color: var(--brand-549); font-weight: 700; }
+.ct-prev-tag { font-size: 12.5px; color: var(--slate-551b); font-weight: 700; }
 /* the vendor's controls: Auto Release and Release contract, at the bar's right */
 .ct-prev-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ct-prev-auto, .ct-prev-edit { display: flex; align-items: center; gap: 7px; cursor: pointer; padding: 7px 12px; font-size: 12.5px; font-weight: 700;
@@ -107,7 +107,7 @@
 .ct-ver-price { font-size: 12px; opacity: 0.75; }
 
 .ct-left { font-size: 12.5px; margin: 14px 0 0; font-weight: 600; }
-.ct-left.is-todo { color: var(--brand-549); }
+.ct-left.is-todo { color: var(--slate-256); }
 .ct-left.is-done { color: var(--green-527); }
 
 .ct-accept { margin-top: 8px; }

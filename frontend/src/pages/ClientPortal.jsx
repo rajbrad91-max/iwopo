@@ -418,12 +418,7 @@ export default function ClientPortal({ token }) {
     const dep = money?.deposit_mode === 'amount' ? Number(money.deposit_amount) || 0 : final * (Number(money?.deposit_percent) || 0) / 100;
     return { final, dep };
   }
-  /* "Every package includes": lines all the packages share, said once so each card shows only its differences */
-  const norm = (t) => String(t).trim().toLowerCase();
   const incOf = (p) => (Array.isArray(p.inclusions) ? p.inclusions : []).map(String).filter(t => t.trim());
-  const shared = packages.length >= 2 ? incOf(packages[0]).filter(t => packages.every(p => incOf(p).some(u => norm(u) === norm(t)))) : [];
-  const common = shared.length >= 2 ? shared : [];
-  const commonSet = new Set(common.map(norm));
   // the package being shaped, while it differs from what is saved
   const draftPkg = packages.find(p => p.id === draftId);
   const draft = draftPkg && (lead.package_id !== draftPkg.id || !samePicks(picksFor(draftPkg), savedPicks(draftPkg))) ? draftPkg : null;
@@ -517,17 +512,6 @@ export default function ClientPortal({ token }) {
               <Countdown startedAt={lead.timer_started_at || lead.created_at} hours={lead.timer_hours} />
             )}
 
-            {/* what every package has, said once — so each card shows only what makes it different */}
-            {common.length > 0 && (
-              <div className="po-common">
-                <p className="po-inc-label">Every package includes</p>
-                <ul className="po-inc po-inc-cols">
-                  {common.map((x, k) => (
-                    <li key={k}><span className="po-inc-ic" aria-hidden="true">✦</span><span className="po-inc-t">{x}</span></li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             <div className="po-grid">
               {packages.length === 0 && (
@@ -539,7 +523,7 @@ export default function ClientPortal({ token }) {
                 const changed = isChosen && !samePicks(pk, savedPicks(p));
                 const opts = optionalOf(p);
                 const ticked = Object.keys(pk).length;
-                const own = incOf(p).filter(s => !commonSet.has(norm(s)));
+                const own = incOf(p);
                 const inPrice = (p.extras || []).filter(x => x.mode === 'included' || x.mode === 'added');
                 const q0 = quoteFor(p, {});             // the package for this client, before anything optional
                 /* the vendor's own ribbon wins ("none" hides it); without one, the middle of three is the popular one
@@ -572,7 +556,7 @@ export default function ClientPortal({ token }) {
                     <div className="po-pkg-hd">
                       <h3 className="po-pkg-name">{p.name}</h3>
                       {p.description && <p className="po-pkg-desc">{p.description}</p>}
-                      {/* symbol small in the brand colour, the number large and dark, the code small and grey — split by
+                      {/* symbol small, the number large, both dark; the code small and grey — split by
                           Intl so a currency that puts its symbol after the number still reads right */}
                       <p className="po-pkg-price">
                         {m.symbolFirst && m.symbol && <span className="po-pkg-cur">{m.symbol}</span>}
@@ -589,7 +573,7 @@ export default function ClientPortal({ token }) {
                     <div className="po-pkg-body">
                       {(own.length > 0 || inPrice.length > 0) && (
                         <>
-                          <p className="po-inc-label">{common.length ? 'In this package' : 'What’s included'}</p>
+                          <p className="po-inc-label">What’s included</p>
                           <ul className="po-inc">
                             {own.map((x, k) => (
                               <li key={k}><span className="po-inc-ic" aria-hidden="true">✦</span><span className="po-inc-t">{x}</span></li>
@@ -600,9 +584,6 @@ export default function ClientPortal({ token }) {
                             ))}
                           </ul>
                         </>
-                      )}
-                      {own.length === 0 && inPrice.length === 0 && common.length > 0 && (
-                        <p className="po-inc-none">Everything every package includes, above.</p>
                       )}
 
                       {/* Make it yours — the extras this client can add, priced as they tick */}

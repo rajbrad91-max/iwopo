@@ -141,7 +141,7 @@ export default function InvoiceView({ token }) {
           {Number(inv.discount) > 0 && <Row l="Discount" v={`-${money(inv.discount)}`} />}
           <Row l="Total" v={money(inv.total)} bold />
           <Row l="Paid" v={money(inv.paid)} green />
-          <Row l="Balance due" v={money(inv.balance)} bold amber={Number(inv.balance) > 0} />
+          <Row l="Balance due" v={money(inv.balance)} bold />
         </div>
         {tax && <div className="iv-tax">{tax}</div>}
 
@@ -166,8 +166,8 @@ export default function InvoiceView({ token }) {
   );
 }
 
-function Row({ l, v, bold, green, amber }) {
-  const cls = ['iv-row', bold && 'is-bold', green ? 'is-green' : amber && 'is-amber'].filter(Boolean).join(' ');
+function Row({ l, v, bold, green }) {
+  const cls = ['iv-row', bold && 'is-bold', green && 'is-green'].filter(Boolean).join(' ');
   return (
     <div className={cls}>
       <span>{l}</span><span>{v}</span>

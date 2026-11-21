@@ -28,7 +28,7 @@
   background: var(--surface, var(--gray-1000)); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
 }
 .cw-teaser-hi { margin: 0; font-size: 13.5px; line-height: 1.4; color: var(--text); }
-.cw-teaser-hi b { color: var(--brand-ink, var(--slate-278)); }
+.cw-teaser-hi b { color: var(--text, var(--slate-278)); }
 .cw-teaser-ask { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); }
 .cw-teaser-x { position: absolute; top: 6px; right: 8px; padding: 2px 4px; border: none; background: none; cursor: pointer; font-size: 12px; color: var(--muted); }
 .cw-teaser-x:hover { color: var(--text); }
@@ -49,7 +49,7 @@
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 16px; background: var(--brand-soft, var(--gray-967)); border-bottom: 1px solid var(--line);
 }
-.cw-name { font-weight: 700; font-size: 15px; color: var(--brand-ink, var(--slate-278)); }
+.cw-name { font-weight: 700; font-size: 15px; color: var(--text, var(--slate-278)); }
 .cw-status { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .cw-x { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px; }
 .cw-x:hover { color: var(--text); }
@@ -60,7 +60,7 @@
   font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-break: break-word;
 }
 .cw-msg.assistant { background: var(--field-bg, var(--gray-967)); border: 1px solid var(--line); color: var(--text); align-self: flex-start; border-bottom-left-radius: 5px; }
-.cw-msg.user { background: var(--brand-soft, var(--gray-959)); border: 1px solid var(--brand-border, var(--gray-912)); color: var(--brand-ink, var(--slate-278)); align-self: flex-end; border-bottom-right-radius: 5px; font-weight: 500; }
+.cw-msg.user { background: var(--brand-soft, var(--gray-959)); border: 1px solid var(--brand-border, var(--gray-912)); color: var(--text, var(--slate-278)); align-self: flex-end; border-bottom-right-radius: 5px; font-weight: 500; }
 
 .cw-typing { display: flex; gap: 4px; align-items: center; padding: 13px 14px; }
 .cw-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: cw-blink 1.3s infinite; }

@@ -5,7 +5,7 @@
 .iv-card.is-doc { max-width: 640px; }
 
 .iv-head { display: flex; justify-content: space-between; align-items: flex-start; }
-.iv-title { margin: 0; font-size: 22px; color: var(--brand-549); }
+.iv-title { margin: 0; font-size: 22px; color: var(--slate-256); }
 .iv-number { color: var(--slate-551b); font-size: 13px; margin-top: 4px; }
 .iv-from { text-align: right; font-size: 13px; }
 .iv-logo { height: 44px; max-width: 140px; object-fit: contain; display: block; margin-left: auto; margin-bottom: 6px; }
@@ -26,14 +26,13 @@
 .iv-events-h { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--slate-551b); margin-bottom: 4px; }
 .iv-event { padding: 2px 0; line-height: 1.55; }
 .iv-event b { color: var(--slate-256); font-weight: 600; }
-.iv-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--gray-959); color: var(--brand-549);
+.iv-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--gray-959); color: var(--slate-551b);
   font-size: 10px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; vertical-align: 1px; }
 
 .iv-totals { margin-top: 14px; margin-left: auto; width: 240px; font-size: 14px; }
 .iv-row { display: flex; justify-content: space-between; padding: 5px 0; font-weight: 400; color: var(--slate-256); }
 .iv-row.is-bold { font-weight: 700; }
 .iv-row.is-green { color: var(--green-627); }
-.iv-row.is-amber { color: var(--brand-678); }
 
 .iv-tax { margin: 4px 0 0 auto; width: 240px; text-align: right; font-size: 12px; color: var(--slate-551b); }
 
