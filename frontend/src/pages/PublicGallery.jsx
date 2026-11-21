@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { readableOn } from '../lib/brandColour';
 import PasswordInput from '../components/PasswordInput';
 import './gallery.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -239,7 +240,7 @@ export default function PublicGallery({ token, embedded, onBack, preview = null 
   const styleVars = {
     '--pg-bg': theme.bg_color || '#fbfbfa',
     '--pg-head': theme.heading_color || '#16161a',
-    '--pg-accent': theme.accent_color || '#1f6f6b',
+    '--pg-accent': readableOn(theme.accent_color || '#1f6f6b', theme.bg_color),   // 💍 the vendor's colour, made to read on this gallery's background
     '--pg-sub': theme.sub_color || '#8a8a8f',
     '--pg-hfont': `'${theme.heading_font || 'Playfair Display'}', serif`,
     '--pg-bfont': `'${theme.body_font || 'Jost'}', sans-serif`,

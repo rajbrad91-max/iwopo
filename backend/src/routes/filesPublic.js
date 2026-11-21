@@ -78,6 +78,7 @@ function publicShare(share, vendor) {
     allow_upload: share.allow_upload,
     business_name: vendor?.business_name || null,
     logo_path: vendor?.logo_path || null,
+    brand_color: vendor?.brand_color || null,   // 💍 the vendor's one colour (Raj, 2026-11-21)
   };
 }
 
@@ -92,6 +93,10 @@ router.get('/:token', async (req, res) => {
     const vendor = await prisma.vendors.findUnique({
       where: { id: share.vendor_id }, select: { business_name: true, logo_path: true },
     });
+    if (vendor) {
+      const brand = await prisma.inquiry_settings.findUnique({ where: { vendor_id: share.vendor_id }, select: { brand_color: true } });   // 🔒 the share's own vendor
+      vendor.brand_color = brand?.brand_color || null;
+    }
 
     // password gate: nothing about the contents leaves until it's passed
     if (locked(req, share)) {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { brandVars, PORTAL_DEFAULT } from '../lib/brandColour';
 import { firstName } from '../lib/firstName';
 import { api, fmtEventDate, fmtMoney, moneyParts } from '../lib/api';
 import { useContractInitials, countInitBoxes, guideToMissing } from '../lib/contractDoc';
@@ -222,7 +223,7 @@ function ContractStep({ contract, clientName, onSigned }) {
  */
 function readableBrand(hex) {
   const h = String(hex || '').replace('#', '');
-  if (h.length !== 6) return hex || '#C9A86A';
+  if (h.length !== 6) return hex || PORTAL_DEFAULT;
   const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
   const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
   const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
@@ -349,8 +350,8 @@ export default function ClientPortal({ token }) {
   if (!data) return <div className="po-page"><p className="po-state">Loading…</p></div>;
 
   if (data.gated) return (
-    <div className="po-page" style={{ '--brand': data.branding?.brand_color || '#C9A86A',
-      '--brandText': readableBrand(data.branding?.brand_color || '#C9A86A') }}>
+    <div className="po-page" style={{ '--brand': data.branding?.brand_color || PORTAL_DEFAULT, ...brandVars(data.branding?.brand_color),
+      '--brandText': readableBrand(data.branding?.brand_color || PORTAL_DEFAULT) }}>
       <div className="po-gate">
         {data.branding?.logo_path && <img className="po-gate-logo" src={`/api/me/logo/${data.branding.logo_path}`} alt="" />}
         <h1 className="po-gate-h">Enter your registered email</h1>
@@ -444,8 +445,8 @@ export default function ClientPortal({ token }) {
   const events = Array.isArray(data.events) ? data.events : [];
 
   return (
-    <div className="po-page" style={{ '--brand': branding.brand_color || '#C9A86A',
-      '--brandText': readableBrand(branding.brand_color || '#C9A86A') }}>
+    <div className="po-page" style={{ '--brand': branding.brand_color || PORTAL_DEFAULT, ...brandVars(branding.brand_color),
+      '--brandText': readableBrand(branding.brand_color || PORTAL_DEFAULT) }}>
 
       <header className="po-hd">
         {branding.logo_path && <img className="po-logo" src={`/api/me/logo/${branding.logo_path}`} alt="" />}

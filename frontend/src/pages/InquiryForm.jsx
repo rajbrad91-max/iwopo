@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, createContext, useContext, useId } from 'react';
+import { brandVars, BRAND_DEFAULT } from '../lib/brandColour';
 import { firstName } from '../lib/firstName';
 import { phoneChars, phoneProblem } from '../lib/phone';
 import { instaHandle, instaProblem } from '../lib/instagram';
@@ -53,7 +54,7 @@ export function InquiryShell({ cfg, intro = true, art = true, embedded = false, 
   const links = embedded ? null : c.links;   // 🔗 the vendor's optional links — the client's own page only (components/ClientLinks.jsx)
   const brand = c.brand_name || 'Booking Inquiry';
   return (
-    <div className={`iq-wrap${embedded ? ' is-embedded' : ''}${links ? ' has-links' : ''}`} style={themeStyleObject(c.brand_color || '#0d9488', c.theme, c.font || 'Inter')}>
+    <div className={`iq-wrap${embedded ? ' is-embedded' : ''}${links ? ' has-links' : ''}`} style={{ ...themeStyleObject(c.brand_color || BRAND_DEFAULT, c.theme, c.font || 'Inter'), ...brandVars(c.brand_color) }}>
       {/* 🖼️ one big drawing for the vendor's trade behind the card ("None": plain) */}
       {art && <ProfessionArt trade={c.background} />}
       {links && <ClientTopBar links={links} variant="form" />}

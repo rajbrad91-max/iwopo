@@ -12,6 +12,7 @@ import StripeConnectCard from '../../components/StripeConnect';
 import ClientLinksSettings from '../../components/ClientLinksSettings';
 import { AccountSettings } from './AccountSettings';
 import { applyTheme } from '../../lib/theme';
+import { tooLight } from '../../lib/brandColour';
 
 
 /**
@@ -119,6 +120,21 @@ export function SettingsView({ user, onProfileChange, emailFocus = null, onFocus
   const [sub, setSub] = useState(emailFocus ? 'email' : 'prefs');
   useEffect(() => { if (emailFocus) onFocusUsed?.(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
   const [saved, setSaved] = useState('');
+  /* 💍 the one colour the vendor's clients see (Raj, 2026-11-21) — on the
+     gallery, inquiry form, portal, contract, invoice and File Flyer */
+  const [brand, setBrand] = useState('');
+  const [brandSaved, setBrandSaved] = useState('');
+  const [brandMsg, setBrandMsg] = useState('');
+  useEffect(() => {
+    api.myInquirySettings().then(d => { const c = d.settings?.brand_color || d.brand_color || '#0d9488'; setBrand(c); setBrandSaved(c); }).catch(() => {});
+  }, []);
+  async function saveBrand() {
+    setBrandMsg('');
+    if (!/^#[0-9a-f]{6}$/i.test(brand)) return setBrandMsg('Type a colour like #1F4E79.');
+    if (tooLight(brand)) return setBrandMsg('That colour is too light to read on white pages. Pick a deeper one.');
+    try { const d = await api.saveBrandColour(brand); setBrandSaved(d.brand_color); setBrandMsg('Saved. Your client pages use this colour now.'); }
+    catch (e) { setBrandMsg(e.message); }
+  }
   // 💱 the choices come from the server so the country-to-currency rules live in
   // one place; `chosen` being null means they're following their country
   const [currencies, setCurrencies] = useState([]);
@@ -185,6 +201,15 @@ export function SettingsView({ user, onProfileChange, emailFocus = null, onFocus
               className={`refresh set-theme-btn${(s.theme || 'system') === t ? ' is-on' : ''}`}>{label}</button>
           ))}
         </div>
+
+        <label className="set-theme-label" htmlFor="set-brand-hex">Brand colour</label>
+        <div className="set-brand-row">
+          <input type="color" className="set-brand-pick" value={/^#[0-9a-f]{6}$/i.test(brand) ? brand : '#0d9488'} onChange={e => setBrand(e.target.value)} aria-label="Pick your brand colour" />
+          <input id="set-brand-hex" className="pref-static set-brand-hex" value={brand} maxLength={7} onChange={e => setBrand(e.target.value.trim())} />
+          <button type="button" className="refresh" onClick={saveBrand} disabled={brand === brandSaved}>Save colour</button>
+        </div>
+        <div className="pref-hint">The one colour your clients see: galleries, inquiry form, client portal, contracts, invoices and File Flyer. Your own panel keeps iwopo’s colours.</div>
+        {brandMsg && <div className="pref-hint set-brand-msg" role="status">{brandMsg}</div>}
 
         <label className="u-font-size-13px u-color-muted u-display-block u-margin-top-14px">Timezone</label>
         {zones.length > 1 ? (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { readableOn } from '../lib/brandColour';
 import PublicGallery from './PublicGallery';
 import './gallery.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -34,7 +35,7 @@ export default function VendorGallery({ token }) {
   const styleVars = {
     '--pg-bg': theme.bg_color || '#0f1115',
     '--pg-head': theme.heading_color || '#f3f4f6',
-    '--pg-accent': theme.accent_color || '#0d9488',
+    '--pg-accent': readableOn(theme.accent_color || '#0d9488', theme.bg_color),   // 💍 the vendor's colour, made to read on this background
     '--pg-sub': theme.sub_color || '#9ca3af',
     '--pg-hfont': `'${theme.heading_font || 'Playfair Display'}', serif`,
     '--pg-bfont': `'${theme.body_font || 'Jost'}', sans-serif`,

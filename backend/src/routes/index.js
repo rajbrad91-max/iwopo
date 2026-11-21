@@ -68,6 +68,28 @@ router.get('/settings/platform', requireAuth, requireSuperAdmin, async (req, res
 // per-album Rekognition collections. Leaving those behind would orphan face data
 // on AWS (which is billed) while the local rows disappear, so an album would look
 // un-indexed while AWS still held its faces.
+/**
+ * 🎨 The panel theme every vendor sees (Raj, 2026-11-21): Teal, Ocean or Clay,
+ * chosen once in Super Admin. Any signed-in panel reads it; only a super admin
+ * changes it. A vendor's own brand colour is a separate thing — it dresses the
+ * pages their clients see, never the panel.
+ */
+const PANEL_THEMES = ['teal', 'ocean', 'clay'];
+router.get('/settings/panel-theme', requireAuth, async (req, res) => {
+  try {
+    const t = await getSetting('panel_theme', 'teal');
+    res.json({ theme: PANEL_THEMES.includes(t) ? t : 'teal' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/settings/panel-theme', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const t = String(req.body?.theme || '');
+    if (!PANEL_THEMES.includes(t)) return res.status(400).json({ error: 'Pick Teal, Ocean or Clay.' });
+    await setSetting('panel_theme', t);
+    res.json({ theme: t });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/settings/reindex-all', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     // which albums currently hold an AWS collection? (needed before we clear the flag)

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { brandVars } from '../lib/brandColour';
 import { api } from '../lib/api';
 import { useContractInitials, countInitBoxes, guideToMissing } from '../lib/contractDoc';
 import './contractdoc.css';
@@ -60,8 +61,11 @@ export default function SignContract({ token, previewLeadId, previewActions, onL
   useEffect(() => {
     const el = pageRef.current;
     if (!el) return;
-    if (c?.brand_color) el.style.setProperty('--brand', c.brand_color);
-    else el.style.removeProperty('--brand');
+    // 💍 the vendor's one colour, and the shades of it the contract is drawn in
+    const vars = brandVars(c?.brand_color);
+    for (const k of ['--brand', '--brand-881', '--brand-747', '--brand-678', '--brand-549']) {
+      if (vars[k]) el.style.setProperty(k, vars[k]); else el.style.removeProperty(k);
+    }
   }, [c?.brand_color]);
 
   useContractInitials(docRef, initialed, setInitialed, name, { preview });

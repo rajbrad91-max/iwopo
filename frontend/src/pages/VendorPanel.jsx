@@ -3,6 +3,7 @@ import { useInboxCounts } from '../lib/inboxCounts.js';
 import { useDialog } from '../lib/dialog.jsx';
 import { noticeTarget, handOver } from '../lib/noticeLink.js';
 import { applyBrandTone } from '../lib/brandTone.js';
+import { themeSeed } from '../lib/panelTheme.js';
 import { api, getUser, logout, applyVendorClock } from '../lib/api';
 import { useAppRoute } from '../lib/appRoute';
 import './inquiry.css';
@@ -293,17 +294,16 @@ export default function VendorPanel({ onLogout }) {
 
   // the vendor's brand hue, tinting the panel's own tokens
   const dashRef = useRef(null);
-  const [brandHex, setBrandHex] = useState(null);
+  /* 🎨 the panel theme Super Admin chose for every vendor (Raj, 2026-11-21) —
+     the vendor's own brand colour dresses their client pages, not this panel */
+  const [palette, setPalette] = useState('teal');
   const [themeMode, setThemeMode] = useState(
     () => (document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'));
 
   useEffect(() => {
-    const vid = user?.vendor_id || user?.vendor?.id;
-    if (!vid) return;
-    api.myInquirySettings(vid)
-      .then(d => setBrandHex(d.settings?.brand_color || d.brand_color || null))
-      .catch(() => { /* no brand set, or not permitted — stock theme stands */ });
-  }, [user]);
+    api.panelTheme().then(d => setPalette(d.theme || 'teal'))
+      .catch(() => { /* unreachable — the default theme stands */ });
+  }, []);
 
   // the light/dark switch is made by writing an attribute on <html>, so that is
   // what has to be watched; a state flag here would miss a change made anywhere
@@ -316,10 +316,10 @@ export default function VendorPanel({ onLogout }) {
     return () => mo.disconnect();
   }, []);
 
-  useEffect(() => { applyBrandTone(dashRef.current, brandHex, themeMode); }, [brandHex, themeMode]);
+  useEffect(() => { applyBrandTone(dashRef.current, themeSeed(palette), themeMode); }, [palette, themeMode]);
 
   return (
-    <div ref={dashRef} className={`dash ${collapsed ? 'sidebar-collapsed' : ''} ${autoHide ? 'sidebar-auto' : ''}`}>
+    <div ref={dashRef} data-palette={palette} className={`dash ${collapsed ? 'sidebar-collapsed' : ''} ${autoHide ? 'sidebar-auto' : ''}`}>
       <div className={`sidebar-backdrop ${collapsed ? '' : 'is-open'}`} onClick={() => setCollapsed(true)} />
       <aside className="sidebar"
         onTouchStart={e => { swipeX.current = e.touches[0].clientX; }}

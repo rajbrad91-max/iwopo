@@ -5,7 +5,7 @@
 .iv-card.is-doc { max-width: 640px; }
 
 .iv-head { display: flex; justify-content: space-between; align-items: flex-start; }
-.iv-title { margin: 0; font-size: 22px; color: var(--teal-511); }
+.iv-title { margin: 0; font-size: 22px; color: var(--brand-549); }
 .iv-number { color: var(--slate-551b); font-size: 13px; margin-top: 4px; }
 .iv-from { text-align: right; font-size: 13px; }
 .iv-logo { height: 44px; max-width: 140px; object-fit: contain; display: block; margin-left: auto; margin-bottom: 6px; }
@@ -13,7 +13,7 @@
 .iv-to { margin: 18px 0; font-size: 14px; }
 
 .iv-items { width: 100%; border-collapse: collapse; font-size: 14px; }
-.iv-items thead tr { border-bottom: 2px solid var(--teal-511); text-align: left; }
+.iv-items thead tr { border-bottom: 2px solid var(--brand-549); text-align: left; }
 .iv-items th { padding: 8px 4px; }
 .iv-items tbody tr { border-bottom: 1px solid var(--gray-959); }
 .iv-items td { padding: 9px 4px; }
@@ -26,7 +26,7 @@
 .iv-events-h { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--slate-551b); margin-bottom: 4px; }
 .iv-event { padding: 2px 0; line-height: 1.55; }
 .iv-event b { color: var(--slate-256); font-weight: 600; }
-.iv-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--gray-959); color: var(--teal-511);
+.iv-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: var(--gray-959); color: var(--brand-549);
   font-size: 10px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; vertical-align: 1px; }
 
 .iv-totals { margin-top: 14px; margin-left: auto; width: 240px; font-size: 14px; }
@@ -45,9 +45,9 @@
 
 .iv-notes { margin-top: 16px; font-size: 13px; color: var(--slate-551b); }
 /* the panel's button: white, teal on hover, rising with the soft glow */
-.iv-print { margin-top: 22px; width: 100%; padding: 12px; background: var(--gray-1000); color: var(--teal-511); border: 1px solid var(--gray-912); border-radius: 8px;
+.iv-print { margin-top: 22px; width: 100%; padding: 12px; background: var(--gray-1000); color: var(--brand-549); border: 1px solid var(--gray-912); border-radius: 8px;
   font-weight: 700; font-family: inherit; cursor: pointer; transition: transform var(--dur) var(--ease), box-shadow var(--dur) ease, border-color var(--dur) ease; }
-.iv-print:hover { border-color: var(--teal-511); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
+.iv-print:hover { border-color: var(--brand-549); transform: translateY(var(--lift-btn)); box-shadow: var(--glow-btn); }
 
 @media print {
   .iv-print { display: none; }

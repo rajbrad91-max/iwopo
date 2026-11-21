@@ -499,3 +499,30 @@
 .sa-test-msg { margin-top: 10px; font-size: 12.5px; color: var(--red); }
 .sa-test-msg.is-ok { color: var(--green); }
 .sa-btn-remove { padding: 7px 14px; font-size: 12.5px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; color: var(--red); cursor: pointer; }
+
+/* 🎨 Super Admin → Settings → Vendor panel: the three panel themes. Each option
+   carries its own colour as --c, handed over by the page; the little drawing is
+   a panel in miniature — sidebar, stat tiles, a button — in that colour. */
+.sa-pal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.sa-pal-opt { position: relative; display: block; padding: 10px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--panel); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.sa-pal-opt:hover { transform: translateY(-1px); box-shadow: 0 6px 18px color-mix(in srgb, var(--c) 16%, transparent); }
+.sa-pal-opt.is-on { border-color: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 14%, transparent); }
+.sa-pal-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.sa-pal-opt:focus-within { outline: 2px solid var(--c); outline-offset: 2px; }
+.sa-pal-mini { display: flex; height: 132px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--c) 5%, var(--gray-967)); }
+.sa-pal-side { display: flex; flex-direction: column; gap: 8px; width: 34%; padding: 12px 10px; background: var(--gray-1000); border-right: 1px solid var(--line); }
+.sa-pal-side i { height: 7px; width: 70%; border-radius: 4px; background: var(--gray-928); }
+.sa-pal-side b { height: 16px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.sa-pal-main { flex: 1; display: flex; flex-direction: column; gap: 9px; padding: 12px; }
+.sa-pal-stats { display: flex; gap: 7px; }
+.sa-pal-stats em { flex: 1; height: 30px; border-radius: 8px; background: var(--gray-1000); border: 1px solid var(--gray-928); }
+.sa-pal-stats em:first-child { border-color: var(--c); }
+.sa-pal-lines { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px; background: var(--gray-1000); border: 1px solid var(--gray-928); }
+.sa-pal-lines i { height: 6px; border-radius: 3px; background: var(--gray-928); }
+.sa-pal-btn { align-self: flex-start; padding: 3px 9px; font-size: 11px; font-weight: 700; color: var(--c); border: 1px solid var(--c); border-radius: 7px; background: var(--gray-1000); }
+.sa-pal-name { display: flex; align-items: baseline; gap: 8px; padding: 10px 4px 2px; font-size: 14px; }
+.sa-pal-name span { font-size: 12.5px; color: var(--muted); }
+.sa-pal-foot { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+.sa-pal-note { font-size: 12.5px; color: var(--muted); }
+@media (max-width: 760px) { .sa-pal { grid-template-columns: 1fr; } }
+

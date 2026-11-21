@@ -102,7 +102,11 @@ const THEME_DEFAULTS = {
 };
 async function getTheme(vendorId) {
   const t = await prisma.gallery_theme.findUnique({ where: { vendor_id: vendorId } });
-  return t || { ...THEME_DEFAULTS };
+  /* 💍 The accent is the vendor's one brand colour (Raj, 2026-11-21), the same
+     one on their inquiry form, portal and contract. The gallery's own look —
+     background, heading, fonts — stays the gallery setting. */
+  const brand = await prisma.inquiry_settings.findUnique({ where: { vendor_id: vendorId }, select: { brand_color: true } });
+  return { ...(t || THEME_DEFAULTS), ...(brand?.brand_color ? { accent_color: brand.brand_color } : {}) };
 }
 
 const router = express.Router();

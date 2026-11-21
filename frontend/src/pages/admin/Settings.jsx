@@ -11,6 +11,7 @@ import { api } from '../../lib/api';
 import { useDialog } from '../../lib/dialog.jsx';
 import { adminPath } from '../../lib/adminRoute';
 import { Switch } from './common';
+import { PANEL_THEMES } from '../../lib/panelTheme';
 
 export const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },
@@ -19,7 +20,50 @@ export const SETTINGS_TABS = [
   { id: 'storage', label: 'Storage' },
   { id: 'faces', label: 'Face recognition' },
   { id: 'ai', label: 'AI' },
+  { id: 'panel', label: 'Vendor panel' },
 ];
+
+/**
+ * 🎨 The colours of every vendor's panel (Raj, 2026-11-21). Three ready-made
+ * themes, no free picker: each is tested for readable text and buttons that
+ * never look faded. Green, red and amber keep their meaning in all three.
+ */
+function PanelThemeTab() {
+  const [theme, setTheme] = useState(null);
+  const [saved, setSaved] = useState(null);
+  const [msg, setMsg] = useState('');
+  useEffect(() => { api.panelTheme().then(d => { setTheme(d.theme); setSaved(d.theme); }).catch(e => setMsg(e.message)); }, []);
+  const save = async () => {
+    setMsg('');
+    try { const d = await api.savePanelTheme(theme); setSaved(d.theme); setMsg('Saved. Every vendor’s panel now uses this theme.'); }
+    catch (e) { setMsg(e.message); }
+  };
+  if (!theme) return <div className="sa-loading">{msg || 'Loading…'}</div>;
+  return (
+    <section className="sa-set-card">
+      <div className="sa-set-hd">
+        <div><h3>Panel colours</h3><p>Every vendor’s panel uses the one you pick. Green, red and amber always keep their meaning (paid, cancelled, warning).</p></div>
+      </div>
+      <div className="sa-pal" role="radiogroup" aria-label="Panel theme">
+        {PANEL_THEMES.map(t => (
+          <label key={t.key} className={`sa-pal-opt${theme === t.key ? ' is-on' : ''}`} style={{ '--c': t.seed }}>
+            <input type="radio" name="panel-theme" value={t.key} checked={theme === t.key} onChange={() => setTheme(t.key)} />
+            <span className="sa-pal-mini" aria-hidden="true">
+              <span className="sa-pal-side"><i /><b /><i /><i /></span>
+              <span className="sa-pal-main"><span className="sa-pal-stats"><em /><em /><em /></span><span className="sa-pal-lines"><i /><i /></span><span className="sa-pal-btn">Active</span></span>
+            </span>
+            <span className="sa-pal-name"><b>{t.label}</b><span>{t.note}</span></span>
+          </label>
+        ))}
+      </div>
+      <div className="sa-pal-foot">
+        <button type="button" className="sa-btn" onClick={save} disabled={theme === saved}>Save for all vendors</button>
+        <span className="sa-pal-note">Light and dark mode both follow the choice.</span>
+      </div>
+      {msg && <div className="sa-set-msg">{msg}</div>}
+    </section>
+  );
+}
 
 /** 🔒 Settings that are keys or passwords — write-only: never read back, only replaced. */
 const SECRET_FIELDS = ['aws_secret_key', 'r2_secret_access_key', 'r2_private_secret_access_key', 'r2_public_secret_access_key', 'smtp_pass', 'stripe_connect_webhook_secret'];
@@ -391,6 +435,7 @@ export function SettingsView({ saTheme, setSaTheme, user, section, onSection }) 
         </span>
       </div>
       {tab === 'account' ? <AccountTab user={user} />
+        : tab === 'panel' ? <PanelThemeTab />
         : !f.s ? <div className="sa-loading">Loading…</div>
         : tab === 'email' ? <EmailTab f={f} />
         : tab === 'payments' ? <PaymentsTab f={f} />

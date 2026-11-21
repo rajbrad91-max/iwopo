@@ -148,7 +148,9 @@ router.put('/', requireAuth, async (req, res) => {
       brand_name: b.brand_name || null,
       /* ⚠️ A hex colour or the default. Anything else used to be stored as
          typed and quietly became a colour nobody picked. */
-      brand_color: looksLikeColour(b.brand_color) ? b.brand_color : '#0d9488',
+      /* 💍 Since 2026-11-21 the colour is set in Settings (PUT /brand-colour),
+         so this save leaves it alone unless it is sent. */
+      ...(b.brand_color !== undefined ? { brand_color: looksLikeColour(b.brand_color) ? b.brand_color : '#0d9488' } : {}),
       intro_text: b.intro_text || DEFAULTS.intro_text,
       intro_link: b.intro_link || '',
       theme: b.theme || 'classic',
@@ -164,6 +166,26 @@ router.put('/', requireAuth, async (req, res) => {
       create: { vendor_id: v, ...data },
     });
     res.json({ ok: true });
+  } catch (e) { serverError(res, e); }
+});
+
+/**
+ * 💍 The vendor's one brand colour (Raj, 2026-11-21): set in Settings, worn by
+ * every page their clients see. Stored where the inquiry form always kept it,
+ * so the portal and contract — which already read it from here — follow too.
+ */
+router.put('/brand-colour', requireAuth, async (req, res) => {
+  const v = req.user.vendor_id;
+  if (!v) return res.status(400).json({ error: 'No vendor' });
+  const c = String(req.body?.brand_color || '');
+  if (!looksLikeColour(c)) return res.status(400).json({ error: 'Pick a colour.' });
+  try {
+    await prisma.inquiry_settings.upsert({
+      where: { vendor_id: v },                // 🔒 tenancy: the signed-in vendor's own row
+      update: { brand_color: c, updated_at: new Date() },
+      create: { vendor_id: v, brand_color: c },
+    });
+    res.json({ brand_color: c });
   } catch (e) { serverError(res, e); }
 });
 

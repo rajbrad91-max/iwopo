@@ -632,7 +632,7 @@ export function InqFormSettings() {
     setMsg('');
     setSaving(true);
     try {
-      await api.saveInquirySettings(s);
+      await api.saveInquirySettings({ ...s, brand_color: undefined });   // 💍 the colour is Settings' to save (Raj, 2026-11-21)
       if (chosenTrade) { await api.setProfession(chosenTrade); setChosenTrade(null); }
       // Re-read from the server rather than trusting the local copy. A save that
       // half-succeeded, or a second tab editing the same form, would otherwise
@@ -686,13 +686,6 @@ export function InqFormSettings() {
             <input className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.brand_name || ''} onChange={e => setS({ ...s, brand_name: e.target.value })} />
 
             <div className="if-brand-row">
-              <div>
-                <label className="u-font-size-12px u-color-muted u-display-block">Brand color</label>
-                <div className="u-display-flex u-align-items-center u-gap-8px">
-                  <input className="u-width-60px u-height-36px u-border-none u-background-transparent u-cursor-pointer" type="color" value={s.brand_color} onChange={e => setS({ ...s, brand_color: e.target.value })} />
-                  <HexField value={s.brand_color} onChange={hex => setS({ ...s, brand_color: hex })} />
-                </div>
-              </div>
               <div className="if-wm">
                 <label className="u-font-size-12px u-color-muted u-display-block u-margin-bottom-4px">Background watermark</label>
                 <select className="u-background-panel-2 u-border-1px-solid-line u-border-radius-8px u-color-text u-padding-9px u-width-100pct" value={s.background || 'none'} onChange={e => setS({ ...s, background: e.target.value })}>
@@ -751,36 +744,3 @@ export function InqFormSettings() {
   );
 }
 
-/**
- * A hex code beside the colour swatch.
- *
- * Holds its own draft while typing, because a half-typed code is not a colour:
- * committing every keystroke would push "#1", "#12", "#123" upward and repaint
- * the form through three wrong shades on the way to the right one. The draft is
- * released on blur, so an abandoned or malformed entry reverts rather than
- * sitting there looking accepted.
- */
-function HexField({ value, onChange }) {
-  const [draft, setDraft] = useState(null);
-  const shown = draft ?? (value || '');
-
-  function type(raw) {
-    let v = raw.trim();
-    if (v && !v.startsWith('#')) v = '#' + v;         // pasting 'aabbcc' should work
-    v = v.replace(/[^#0-9a-fA-F]/g, '').slice(0, 7);
-    setDraft(v);
-    if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v.toLowerCase());
-  }
-
-  return (
-    <input
-      value={shown}
-      onChange={e => type(e.target.value)}
-      onBlur={() => setDraft(null)}
-      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-      placeholder="#000000"
-      spellCheck={false}
-      aria-label="Brand colour hex code"
-      className="ifs-hex" />
-  );
-}

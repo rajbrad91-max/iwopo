@@ -1161,12 +1161,6 @@
 .gal-tp-kicker { text-transform: uppercase; letter-spacing: 3px; font-size: 10px; color: var(--tp-accent); font-family: var(--tp-bfont); }
 .gal-tp-title { font-family: var(--tp-hfont); font-size: 22px; color: var(--tp-head); margin: 4px 0; }
 .gal-tp-sub { font-size: 12px; color: var(--tp-sub); font-family: var(--tp-bfont); }
-/* the brand colour's hex box (Inquiry form settings) */
-.ifs-hex { width: 100px; height: 36px; box-sizing: border-box; padding: 0 10px; border-radius: 9px; border: 1px solid var(--line);
-  background: var(--panel); color: var(--text); }
-/* a colour code, so monospaced: written to match the panel's uniform field rule (top of this file) plus this class,
-   so it wins on its own, without !important */
-.dash input.ifs-hex:not([type=checkbox]):not([type=color]):not(.iq-wrap *) { font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 760px) {
   .gal-set-cols { grid-template-columns: 1fr; gap: 18px; }
   .gal-set-modal-lg { max-width: 96vw; }
@@ -2944,3 +2938,12 @@ a.brand { color: inherit; text-decoration: none; cursor: pointer; }
    Without this a browser draws its own blue, so boxes without a rule of their
    own (the Inquiry Form builder's) looked like they came from another app. */
 .dash input[type="checkbox"], .dash input[type="radio"] { accent-color: var(--teal); }
+
+/* 💍 Settings → Preferences → Brand colour (Raj, 2026-11-21) */
+.set-brand-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.set-brand-pick { width: 52px; height: 38px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; }
+.set-brand-hex { width: 120px; margin-top: 0; }
+/* a colour code, so monospaced: matched to the panel's uniform field rule plus this class, so it wins without !important */
+.dash input.set-brand-hex:not([type=checkbox]):not([type=color]):not(.iq-wrap *) { font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.set-brand-msg { color: var(--text); }
+

@@ -203,6 +203,7 @@ router.get('/view/:token', async (req, res) => {
 
     const { leads, vendors, ...rest } = inv;
     const card = cardOf(vendors);   // 🪪 Settings → Account → Business profile, as on their contracts
+    const brand = await prisma.inquiry_settings.findUnique({ where: { vendor_id: inv.vendor_id }, select: { brand_color: true } });   // 🔒 the invoice's own vendor
     res.json({
       invoice: {
         ...rest,
@@ -219,6 +220,7 @@ router.get('/view/:token', async (req, res) => {
         // the vendor's own mark, so the client sees one business across the
         // portal, the contract and this invoice rather than three anonymous pages
         logo_path: card.logo_path,
+        brand_color: brand?.brand_color || null,   // 💍 the vendor's one colour (Raj, 2026-11-21)
         payments,
       },
     });

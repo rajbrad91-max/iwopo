@@ -475,6 +475,8 @@ export const api = {
   markCountSeen: (group) => request(`/admin/counts/${group}/seen`, { method: 'PUT' }),
   adminMessages: () => request('/admin/messages'),
   platformSettings: () => request('/settings/platform'),
+  panelTheme: () => request('/settings/panel-theme'),
+  savePanelTheme: (theme) => request('/settings/panel-theme', { method: 'PUT', body: JSON.stringify({ theme }) }),
   savePlatformSettings: (data) => request('/settings/platform', { method: 'PUT', body: JSON.stringify(data) }),
   reindexAll: () => request('/settings/reindex-all', { method: 'POST' }),
   faceQueueStatus: () => request('/face-queue/status'),
@@ -815,6 +817,10 @@ export const api = {
   saveInquirySettings: (data) => {
     clearGetCache('/inquiry-settings');
     return request('/inquiry-settings', { method: 'PUT', body: JSON.stringify(data) });
+  },
+  saveBrandColour: (brand_color) => {
+    clearGetCache('/inquiry-settings');
+    return request('/inquiry-settings/brand-colour', { method: 'PUT', body: JSON.stringify({ brand_color }) });
   },
   myProfile: () => request('/me/profile'),
   saveProfile: (data) => request('/me/profile', { method: 'PUT', body: JSON.stringify(data) }),

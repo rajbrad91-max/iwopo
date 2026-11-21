@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { brandVars } from '../lib/brandColour';
 import { api, fmtMoney } from '../lib/api';
 import { taxOf } from '../lib/packageQuote';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -70,8 +71,9 @@ export default function InvoiceView({ token }) {
   const tax = pkg?.tax ? taxOf(pkg.tax.mode, pkg.tax.rate, inv.total, money).text : '';
   const payments = Array.isArray(inv.payments) ? inv.payments : [];
 
+  const ivVars = brandVars(inv.brand_color);   // 💍 the vendor's one colour (Raj, 2026-11-21)
   return (
-    <div className="iv">
+    <div className="iv" style={ivVars}>
       <div className="iv-card is-doc">
         <div className="iv-head">
           <div>

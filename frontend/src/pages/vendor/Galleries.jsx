@@ -10,6 +10,7 @@ import GalleryDownloadLog from '../../components/GalleryDownloadLog';
 import { MailIcon, ChartIcon, GearIcon, DownloadedMark } from '../../components/TileIcons';
 import { AlbumDetail } from './AlbumDetail';
 import NavIcon from '../../components/NavIcon';
+import { BRAND_DEFAULT } from '../../lib/brandColour';
 import { EyeOpen, EyeClosed } from '../../components/PasswordInput';
 
 // 🎯 Cover focal-point picker: click or drag to set where the cover centers.
@@ -87,20 +88,25 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
   // 🎨 curated looks — professionally paired fonts + palettes
   const GAL_PRESETS = [
     { id: 'editorial', name: 'Editorial', note: 'Light and airy. Photos do the talking.',
-      t: { heading_font: 'Playfair Display', body_font: 'Jost', bg_color: '#fbfbfa', heading_color: '#16161a', accent_color: '#1f6f6b', sub_color: '#8a8a8f' } },
+      t: { heading_font: 'Playfair Display', body_font: 'Jost', bg_color: '#fbfbfa', heading_color: '#16161a', sub_color: '#8a8a8f' } },
     { id: 'noir', name: 'Noir', note: 'Deep charcoal. Makes colour glow.',
-      t: { heading_font: 'Cormorant Garamond', body_font: 'Jost', bg_color: '#0e0e11', heading_color: '#f2f2f0', accent_color: '#c9a227', sub_color: '#8b8b93' } },
+      t: { heading_font: 'Cormorant Garamond', body_font: 'Jost', bg_color: '#0e0e11', heading_color: '#f2f2f0', sub_color: '#8b8b93' } },
     { id: 'blush', name: 'Blush', note: 'Warm white, muted rose. Romantic.',
-      t: { heading_font: 'Cormorant Garamond', body_font: 'Montserrat', bg_color: '#faf6f4', heading_color: '#2b2320', accent_color: '#b4756b', sub_color: '#9c8b85' } },
+      t: { heading_font: 'Cormorant Garamond', body_font: 'Montserrat', bg_color: '#faf6f4', heading_color: '#2b2320', sub_color: '#9c8b85' } },
     { id: 'studio', name: 'Studio', note: 'Neutral grey. Tight and modern.',
-      t: { heading_font: 'Raleway', body_font: 'Jost', bg_color: '#f4f4f5', heading_color: '#18181b', accent_color: '#3f3f46', sub_color: '#8e8e96' } },
+      t: { heading_font: 'Raleway', body_font: 'Jost', bg_color: '#f4f4f5', heading_color: '#18181b', sub_color: '#8e8e96' } },
     { id: 'sage', name: 'Sage', note: 'Cool green-grey. Calm and natural.',
-      t: { heading_font: 'Lora', body_font: 'Jost', bg_color: '#f3f5f2', heading_color: '#1f2620', accent_color: '#5c7a63', sub_color: '#8b968c' } },
+      t: { heading_font: 'Lora', body_font: 'Jost', bg_color: '#f3f5f2', heading_color: '#1f2620', sub_color: '#8b968c' } },
     { id: 'midnight', name: 'Midnight', note: 'Deep navy, cool accent. Confident.',
-      t: { heading_font: 'Playfair Display', body_font: 'Poppins', bg_color: '#0d1220', heading_color: '#eef1f7', accent_color: '#7aa2f7', sub_color: '#7d879c' } },
+      t: { heading_font: 'Playfair Display', body_font: 'Poppins', bg_color: '#0d1220', heading_color: '#eef1f7', sub_color: '#7d879c' } },
   ];
   const applyPreset = (p) => setTheme(t => ({ ...t, ...p.t }));
-  const presetActive = (p) => ['heading_font', 'body_font', 'bg_color', 'heading_color', 'accent_color', 'sub_color']
+  /* 💍 the gallery's accent is the vendor's brand colour (Settings → Preferences),
+     shown here so the swatches and preview look like the real gallery */
+  const [brand, setBrand] = useState(null);
+  useEffect(() => { api.myInquirySettings().then(d => setBrand(d.settings?.brand_color || null)).catch(() => {}); }, []);
+  // 💍 the accent is the vendor's brand colour from Settings, so a preset no longer sets or compares it
+  const presetActive = (p) => ['heading_font', 'body_font', 'bg_color', 'heading_color', 'sub_color']
     .every(k => (theme[k] || '').toLowerCase() === p.t[k].toLowerCase());
   function setT(k, val) { setTheme(t => ({ ...t, [k]: val })); }
   async function saveTheme() {
@@ -542,7 +548,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                       onClick={() => applyPreset(p)}
                       title={p.note}
                     >
-                      <span className="gal-preset-swatch" style={{ '--sw-bg': p.t.bg_color, '--sw-a': p.t.accent_color, '--sw-b': p.t.heading_color }}>
+                      <span className="gal-preset-swatch" style={{ '--sw-bg': p.t.bg_color, '--sw-a': brand || BRAND_DEFAULT, '--sw-b': p.t.heading_color }}>
                         <i />
                         <i />
                       </span>
@@ -567,7 +573,7 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 </div>
 
                 <div className="gal-theme-colors">
-                  {[['bg_color', 'Background', '#0f1115'], ['heading_color', 'Heading', '#f3f4f6'], ['accent_color', 'Accent', '#0d9488'], ['sub_color', 'Subtitle', '#9ca3af']].map(([k, lbl, def]) => (
+                  {[['bg_color', 'Background', '#0f1115'], ['heading_color', 'Heading', '#f3f4f6'], ['sub_color', 'Subtitle', '#9ca3af']].map(([k, lbl, def]) => (
                     <div key={k} className="gal-color-row">
                       <input type="color" className="gal-color" value={theme[k] || def} onChange={e => setT(k, e.target.value)} />
                       <span>{lbl}</span>
@@ -583,7 +589,8 @@ export function GalleriesView({ routeAlbum, onOpenAlbum, onEditEmail, kind = 'ga
                 <input className="gal-input" value={theme.tagline_text ?? ''} onChange={e => setT('tagline_text', e.target.value)} placeholder="Ready to view, share and download." />
 
                 {/* live preview */}
-                <div className="gal-theme-preview" style={{ '--tp-bg': theme.bg_color || '#0f1115', '--tp-accent': theme.accent_color || '#0d9488',
+                <p className="pref-hint">The accent is your brand colour, set in Settings → Preferences.</p>
+                <div className="gal-theme-preview" style={{ '--tp-bg': theme.bg_color || '#0f1115', '--tp-accent': brand || BRAND_DEFAULT,
                   '--tp-head': theme.heading_color || '#f3f4f6', '--tp-sub': theme.sub_color || '#9ca3af',
                   '--tp-hfont': `'${theme.heading_font || 'Playfair Display'}',serif`, '--tp-bfont': `'${theme.body_font || 'Jost'}',sans-serif` }}>
                   <div className="gal-tp-kicker">{theme.title_text || 'Client Galleries'}</div>

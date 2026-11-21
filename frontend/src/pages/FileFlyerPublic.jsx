@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { accentVars } from '../lib/brandColour';
 import { api } from '../lib/api';
 import './fileflyer.css';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
@@ -98,12 +99,14 @@ export default function FileFlyerPublic({ token }) {
   }
 
   const isImage = (it) => /^image\//.test(it.mime || '');
+  // 💍 the vendor's one colour, in the shades this page is drawn in (Raj, 2026-11-21)
+  const ffpVars = accentVars(data?.brand_color);
 
-  if (err) return <div className="ffp-page"><div className="ffp-card"><p className="ffp-state">{err}</p></div></div>;
-  if (!data) return <div className="ffp-page"><div className="ffp-card"><p className="ffp-state">Loading…</p></div></div>;
+  if (err) return <div className="ffp-page" style={ffpVars}><div className="ffp-card"><p className="ffp-state">{err}</p></div></div>;
+  if (!data) return <div className="ffp-page" style={ffpVars}><div className="ffp-card"><p className="ffp-state">Loading…</p></div></div>;
 
   if (data.gated) return (
-    <div className="ffp-page">
+    <div className="ffp-page" style={ffpVars}>
       <div className="ffp-card ffp-gate">
         {data.logo_path && <img className="ffp-logo" src={`/api/me/logo/${data.logo_path}`} alt="" />}
         <h1 className="ffp-h1">{data.title}</h1>
@@ -128,7 +131,7 @@ export default function FileFlyerPublic({ token }) {
   const anything = folders.length > 0 || fromThem.length > 0;
 
   return (
-    <div className="ffp-page">
+    <div className="ffp-page" style={ffpVars}>
       <div className="ffp-card">
         {data.logo_path && <img className="ffp-logo" src={`/api/me/logo/${data.logo_path}`} alt="" />}
         <p className="ffp-biz">{data.business_name}</p>

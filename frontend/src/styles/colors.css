@@ -1,7 +1,7 @@
 /* 🎨 Every colour iwopo uses, written once.
    Nowhere else in the CSS is a colour typed: every file points here with
    var(--name). The number in a name is how light the colour is (0 black,
-   1000 white), so --gray-965 is a very light gray.
+   1000 white), so --gray-967 is a very light gray.
    A panel theme overrides the accent family; a vendor brand colour
    overrides the brand family. Change a value here and every page using
    it follows. Near-duplicates were merged: 321 colours became 61, so
@@ -83,3 +83,13 @@
   /* Pinkish grays */
   --mauve-376: #4a3e3d;
 }
+
+/* 🎨 Panel themes (Raj, 2026-11-21). Super Admin picks one for every vendor's
+   panel; Teal is the default and its accent is the one above. A theme swaps the
+   accent shades, and the tokens built from the accent are declared again on the
+   panel so they are worked out from the theme's accent, not the default one.
+   Client pages never carry data-palette, so a theme never reaches them. */
+.dash[data-palette="ocean"] { --accent-704: #4596d0; --accent-600: #3875a6; --accent-511: #2c5a82; }
+.dash[data-palette="clay"] { --accent-704: #d87d57; --accent-600: #ad6442; --accent-511: #885033; }
+.dash[data-palette] { --sel-bg: color-mix(in srgb, var(--accent-600) 20%, transparent); --sel-line: color-mix(in srgb, var(--accent-600) 50%, transparent); --sel-ink: var(--accent-511); --teal: var(--accent-600); --teal-2: var(--accent-511); --teal-soft: color-mix(in srgb, var(--teal) 12%, transparent); --v-wrap-hover: color-mix(in srgb, var(--teal) 24%, transparent); --v-brand-2: var(--teal); --glow-btn: 0 4px 14px color-mix(in srgb, var(--teal) 13%, transparent); --btn-fill: var(--accent-600); --btn-fill-hover: var(--accent-511); }
+[data-theme="light"] .dash[data-palette] { --teal: var(--accent-600); --teal-2: var(--accent-511); --teal-soft: color-mix(in srgb, var(--accent-600) 10.2%, transparent); --v-wrap-hover: color-mix(in srgb, var(--accent-600) 25.1%, transparent); --v-brand-2: var(--accent-600); }
