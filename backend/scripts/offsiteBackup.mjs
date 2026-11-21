@@ -7,6 +7,9 @@
  * _backups/<YYYY-MM-DD>/, checks each copy's size, and removes old copies there: the databases (every lead,
  * contract and booking) after 30 days, the uploaded media (logos, website photos) after 15.
  *
+ * /usr/local/bin/perfectposes-backup.sh sends the Perfect Poses site's nightly files the same way (2026-11-21):
+ * its database (db-<date>.sql.gz, 30 days) and media (media-<date>.tar.gz, 15 days). Its .env never leaves the server.
+ *
  * _backups/ sits outside every vendor/<id>/ prefix, so no vendor's storage meter counts it and no cleanup job
  * (orphan sweep, raw-file sweep, ledger reconcile — all scoped to vendor/) can touch it.
  *
@@ -21,7 +24,7 @@ import prisma from '../src/config/prisma.js';
 const PREFIX = '_backups/';
 /** How long each kind of copy is kept off-site, by file name. Anything unrecognised keeps the longest. */
 const KEEP_DAYS = [
-  { kind: 'media', match: /\/storage-[^/]*\.tar\.gz$/, days: 15 },
+  { kind: 'media', match: /\/(storage|media)-[^/]*\.tar\.gz$/, days: 15 },
   { kind: 'databases', match: /\.sql\.gz$/, days: 30 },
 ];
 const LONGEST = Math.max(...KEEP_DAYS.map(k => k.days));
